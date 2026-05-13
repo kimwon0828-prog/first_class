@@ -1,0 +1,95 @@
+.form {
+  margin-top: 100px;
+  padding: 0 12px;
+}
+
+.field {
+  display: block;
+}
+
+.field + .field {
+  margin-top: 36px;
+}
+
+.label {
+  display: block;
+  font-size: 13px;
+  line-height: 16px;
+  color: #000;
+}
+
+.input {
+  width: 100%;
+  margin-top: 4px;
+  border: 0;
+  border-bottom: 1px solid #dcdcdc;
+  border-radius: 0;
+  padding: 0 0 6px;
+  font-size: 15px;
+  line-height: 20px;
+  background: #fff;
+  outline: none;
+}
+
+.input:focus {
+  border-bottom-color: #87c122;
+}
+
+.input:disabled {
+  background: #fff;
+  color: #7a7a7a;
+}
+
+.links {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 11px;
+  margin-top: 47px;
+  color: #000;
+  font-size: 13px;
+}
+
+.links a {
+  color: #000;
+  text-decoration: none;
+}
+
+.separator {
+  color: #a4a4a4;
+}
+
+.errorMessage {
+  margin: 20px 0 0;
+  color: #b42318;
+  font-size: 13px;
+}
+
+.infoMessage {
+  margin: 20px 0 0;
+  color: #1f2937;
+  font-size: 13px;
+}
+
+.submitButton {
+  margin-top: 106px;
+  width: 100%;
+  border: 0;
+  border-radius: 10px;
+  background: #87c122;
+  color: #fff;
+  font-size: 16px;
+  line-height: 22px;
+  font-weight: 500;
+  padding: 14px 0;
+}
+
+.submitButton:disabled {
+  opacity: 0.75;
+}
+
+@media (max-width: 420px) {
+  .form {
+    padding: 0;
+  }
+}
