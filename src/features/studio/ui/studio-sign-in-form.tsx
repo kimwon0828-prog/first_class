@@ -5,26 +5,23 @@ import { useRouter } from "next/navigation"
 import { useActionState, useEffect } from "react"
 
 import {
-  signInAction,
-  type SignInActionState
-} from "@/features/auth/actions/sign-in"
-import styles from "@/features/auth/ui/sign-in-form.module.css"
+  studioSignInAction,
+  type StudioSignInActionState
+} from "@/features/studio/actions/studio-sign-in"
+import styles from "@/features/studio/ui/studio-sign-in-form.module.css"
 
-const initialState: SignInActionState = {
+const initialState: StudioSignInActionState = {
   status: "idle",
   message: ""
 }
 
-type SignInFormProps = {
+type StudioSignInFormProps = {
   returnTo?: string
 }
 
-export const SignInForm = ({ returnTo }: SignInFormProps) => {
+export const StudioSignInForm = ({ returnTo }: StudioSignInFormProps) => {
   const router = useRouter()
-  const [state, formAction, isPending] = useActionState(signInAction, initialState)
-  const signUpHref = returnTo
-    ? `/auth/sign-up?returnTo=${encodeURIComponent(returnTo)}`
-    : "/auth/sign-up"
+  const [state, formAction, isPending] = useActionState(studioSignInAction, initialState)
 
   useEffect(() => {
     if (state.status === "success" && state.redirectTo) {
@@ -35,33 +32,33 @@ export const SignInForm = ({ returnTo }: SignInFormProps) => {
   return (
     <form action={formAction} className={styles.form}>
       {returnTo ? <input type="hidden" name="returnTo" value={returnTo} /> : null}
+
       <label className={styles.field}>
-        <span className={styles.label}>아이디</span>
+        <span className={styles.label}>이메일</span>
         <input
+          className={styles.input}
           name="email"
           type="email"
-          required
           autoComplete="email"
-          placeholder=""
+          required
           disabled={isPending}
-          className={styles.input}
         />
       </label>
 
       <label className={styles.field}>
         <span className={styles.label}>비밀번호</span>
         <input
+          className={styles.input}
           name="password"
           type="password"
-          required
           autoComplete="current-password"
+          required
           disabled={isPending}
-          className={styles.input}
         />
       </label>
 
       {state.message ? (
-        <p className={state.status === "error" ? styles.errorMessage : styles.infoMessage}>
+        <p className={`${styles.message} ${state.status === "error" ? styles.error : styles.info}`}>
           {state.message}
         </p>
       ) : null}
@@ -70,18 +67,16 @@ export const SignInForm = ({ returnTo }: SignInFormProps) => {
         <span>아이디 찾기</span>
         <span className={styles.separator}>|</span>
         <span>비밀번호 찾기</span>
-        <span className={styles.separator}>|</span>
-        <Link href={signUpHref}>회원가입</Link>
       </div>
 
       <button type="submit" disabled={isPending} className={styles.submitButton}>
-        {isPending ? "로그인 중..." : "로그인"}
+        {isPending ? "로그인 중..." : "선생님 로그인"}
       </button>
 
       <div style={{ marginTop: 24, textAlign: "center", fontSize: 13, color: "#6b7280" }}>
-        선생님/학원 관리자이신가요?{" "}
-        <Link href="/studio/sign-in" style={{ color: "#2563eb", textDecoration: "none" }}>
-          선생님 로그인
+        아직 계정이 없으신가요?{" "}
+        <Link href="/studio/sign-up" style={{ color: "#2563eb", textDecoration: "none" }}>
+          선생님 회원가입
         </Link>
       </div>
     </form>

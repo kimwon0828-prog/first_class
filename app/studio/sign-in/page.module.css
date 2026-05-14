@@ -1,0 +1,54 @@
+.page {
+  min-height: 100dvh;
+  background: #f3f4f6;
+  padding: 40px 24px;
+}
+
+.container {
+  width: 100%;
+  max-width: 440px;
+  margin: 80px auto 0;
+  border: 1px solid #e5e7eb;
+  border-radius: 20px;
+  background: #fff;
+  padding: 32px;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.06);
+}
+
+.eyebrow {
+  margin: 0 0 8px;
+  font-size: 13px;
+  line-height: 18px;
+  color: #4f46e5;
+  font-weight: 700;
+}
+
+.title {
+  margin: 0;
+  font-size: 28px;
+  line-height: 34px;
+  color: #111827;
+}
+
+.description {
+  margin: 12px 0 24px;
+  font-size: 14px;
+  line-height: 20px;
+  color: #4b5563;
+}
+
+@media (max-width: 640px) {
+  .page {
+    padding: 20px 16px;
+  }
+
+  .container {
+    margin-top: 24px;
+    padding: 24px 20px;
+  }
+
+  .title {
+    font-size: 24px;
+    line-height: 30px;
+  }
+}

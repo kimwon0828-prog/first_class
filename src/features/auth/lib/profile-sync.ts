@@ -6,6 +6,7 @@ export type AuthProfile = {
   id: string
   role: ProfileRole
   name: string
+  organizationId: string | null
 }
 
 const getFallbackName = (email: string | undefined): string => {
@@ -33,7 +34,7 @@ export const getMyProfile = async (): Promise<AuthProfile | null> => {
 
   const { data, error } = await supabase
     .from("profiles")
-    .select("id, role, name")
+    .select("id, role, name, organization_id")
     .eq("id", user.id)
     .maybeSingle()
 
@@ -45,7 +46,12 @@ export const getMyProfile = async (): Promise<AuthProfile | null> => {
     return null
   }
 
-  return data as AuthProfile
+  return {
+    id: data.id,
+    role: data.role,
+    name: data.name,
+    organizationId: data.organization_id
+  }
 }
 
 type EnsureParentProfileOptions = {
@@ -79,7 +85,8 @@ export const ensureParentProfile = async (
   const isTeacherAccount =
     metadataRole === "teacher" ||
     signupIntent === "teacher_invite" ||
-    signupIntent === "staff_invite"
+    signupIntent === "staff_invite" ||
+    signupIntent === "teacher_public"
   if (isTeacherAccount) {
     return null
   }

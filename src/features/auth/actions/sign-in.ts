@@ -109,14 +109,15 @@ export async function signInAction(
     const isExplicitTeacherMetadata =
       metadataRole === "teacher" ||
       signupIntent === "teacher_invite" ||
-      signupIntent === "staff_invite"
+      signupIntent === "staff_invite" ||
+      signupIntent === "teacher_public"
 
     if (isExplicitTeacherMetadata) {
       await supabase.auth.signOut()
       return {
         status: "error",
         message:
-          "teacher 계정은 공개 회원가입을 지원하지 않습니다. 초대/수동 생성된 계정으로 로그인해 주세요."
+          "선생님 계정은 studio에서 로그인해 주세요. 승인 대기 중이면 studio 로그인 후 안내를 확인할 수 있습니다."
       }
     }
 

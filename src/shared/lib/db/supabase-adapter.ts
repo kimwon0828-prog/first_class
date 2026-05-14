@@ -1,12 +1,18 @@
 import { getSupabaseServerClient } from "@/integrations/supabase/server"
 import type {
+  ApplicationLogEntry,
   AvailableScheduleSlot,
   ClassDetail,
   ClassSummary,
   DataAdapter,
+  StudioApplicationDetail,
+  StudioApplicationSummary,
   TeacherPublicProfile,
+  TeacherSignupRequest,
+  TeacherSignupRequestStatus,
   TrialApplicationInput,
-  TrialApplicationSummary
+  TrialApplicationSummary,
+  UpdateStudioApplicationStatusInput
 } from "@/shared/lib/db/adapter"
 
 type ClassRow = {
@@ -36,11 +42,33 @@ type TrialApplicationRow = {
   child_name: string
   child_grade: string
   requested_slot_at: string
+  confirmed_slot_at?: string | null
+  confirmed_schedule_block_id?: string | null
+  assigned_teacher_id?: string | null
+  memo?: string | null
   status: TrialApplicationSummary["status"]
   created_at: string
+  updated_at: string
   classes?: Array<{
     title: string
+    subject?: string
+    region?: string
   }> | null
+}
+
+type ApplicationLogRow = {
+  id: string
+  application_id: string
+  from_status: TrialApplicationSummary["status"] | null
+  to_status: TrialApplicationSummary["status"]
+  actor_id: string
+  note: string | null
+  created_at: string
+}
+
+type ProfileActorRow = {
+  id: string
+  name: string
 }
 
 type ScheduleBlockRow = {
@@ -50,6 +78,19 @@ type ScheduleBlockRow = {
   end_at: string
   capacity: number
   type?: string
+}
+
+type TeacherSignupRequestRow = {
+  id: string
+  user_id: string
+  status: TeacherSignupRequestStatus
+  teacher_name: string
+  teacher_phone: string | null
+  organization_name: string
+  branch_name: string | null
+  organization_phone: string | null
+  request_note: string | null
+  created_at: string
 }
 
 const mapTeacherProfile = (
@@ -86,7 +127,30 @@ const mapApplication = (row: TrialApplicationRow): TrialApplicationSummary => ({
   childName: row.child_name,
   childGrade: row.child_grade,
   requestedSlotAt: row.requested_slot_at,
+  confirmedSlotAt: row.confirmed_slot_at ?? null,
   status: row.status,
+  createdAt: row.created_at,
+  updatedAt: row.updated_at
+})
+
+const mapStudioApplication = (row: TrialApplicationRow): StudioApplicationSummary => ({
+  ...mapApplication(row),
+  classSubject: row.classes?.[0]?.subject ?? null,
+  classRegion: row.classes?.[0]?.region ?? null,
+  assignedTeacherId: row.assigned_teacher_id ?? null
+})
+
+const mapApplicationLog = (
+  row: ApplicationLogRow,
+  actorNameById: Map<string, string>
+): ApplicationLogEntry => ({
+  id: row.id,
+  applicationId: row.application_id,
+  fromStatus: row.from_status,
+  toStatus: row.to_status,
+  actorId: row.actor_id,
+  actorName: actorNameById.get(row.actor_id) ?? null,
+  note: row.note,
   createdAt: row.created_at
 })
 
@@ -99,6 +163,19 @@ const mapAvailableSlot = (row: ScheduleBlockRow): AvailableScheduleSlot => ({
   appliedCount: 0,
   remainingCount: row.capacity,
   isClosed: false
+})
+
+const mapTeacherSignupRequest = (row: TeacherSignupRequestRow): TeacherSignupRequest => ({
+  id: row.id,
+  userId: row.user_id,
+  status: row.status,
+  teacherName: row.teacher_name,
+  teacherPhone: row.teacher_phone,
+  organizationName: row.organization_name,
+  branchName: row.branch_name,
+  organizationPhone: row.organization_phone,
+  requestNote: row.request_note,
+  createdAt: row.created_at
 })
 
 const ACTIVE_APPLICATION_STATUSES: TrialApplicationSummary["status"][] = [
@@ -128,6 +205,23 @@ const getTeacherProfilesMap = async (teacherIds: string[]) => {
 
   return new Map<string, TeacherPublicProfile>(
     mapped.map((profile) => [profile.teacherId, profile])
+  )
+}
+
+const getActorNameMap = async (actorIds: string[]) => {
+  if (actorIds.length === 0) {
+    return new Map<string, string>()
+  }
+
+  const supabase = await getSupabaseServerClient()
+  const { data, error } = await supabase.from("profiles").select("id, name").in("id", actorIds)
+
+  if (error) {
+    throw new Error("failed_to_fetch_application_log_actors")
+  }
+
+  return new Map<string, string>(
+    ((data ?? []) as ProfileActorRow[]).map((row) => [row.id, row.name])
   )
 }
 
@@ -266,7 +360,7 @@ export const supabaseDataAdapter: DataAdapter = {
     const { data, error } = await supabase
       .from("trial_applications")
       .select(
-        "id, class_id, parent_id, child_name, child_grade, requested_slot_at, status, created_at, classes(title)"
+        "id, class_id, parent_id, child_name, child_grade, requested_slot_at, confirmed_slot_at, status, created_at, updated_at, classes(title)"
       )
       .eq("parent_id", parentId)
       .order("created_at", { ascending: false })
@@ -276,6 +370,117 @@ export const supabaseDataAdapter: DataAdapter = {
     }
 
     return ((data ?? []) as TrialApplicationRow[]).map(mapApplication)
+  },
+  async listStudioApplications(organizationId) {
+    const supabase = await getSupabaseServerClient()
+    const { data, error } = await supabase
+      .from("trial_applications")
+      .select(
+        "id, class_id, parent_id, child_name, child_grade, requested_slot_at, confirmed_slot_at, assigned_teacher_id, status, created_at, updated_at, classes!inner(title, subject, region, organization_id)"
+      )
+      .eq("classes.organization_id", organizationId)
+      .order("created_at", { ascending: false })
+
+    if (error) {
+      throw new Error("failed_to_fetch_studio_applications")
+    }
+
+    return ((data ?? []) as TrialApplicationRow[]).map(mapStudioApplication)
+  },
+  async getStudioApplicationDetail(applicationId, organizationId) {
+    const supabase = await getSupabaseServerClient()
+    const { data, error } = await supabase
+      .from("trial_applications")
+      .select(
+        "id, class_id, parent_id, child_name, child_grade, requested_slot_at, confirmed_slot_at, confirmed_schedule_block_id, assigned_teacher_id, memo, status, created_at, updated_at, classes!inner(title, subject, region, organization_id)"
+      )
+      .eq("id", applicationId)
+      .eq("classes.organization_id", organizationId)
+      .maybeSingle()
+
+    if (error) {
+      throw new Error("failed_to_fetch_studio_application_detail")
+    }
+
+    if (!data) {
+      return null
+    }
+
+    const { data: logData, error: logError } = await supabase
+      .from("application_logs")
+      .select("id, application_id, from_status, to_status, actor_id, note, created_at")
+      .eq("application_id", applicationId)
+      .order("created_at", { ascending: false })
+
+    if (logError) {
+      throw new Error("failed_to_fetch_application_logs")
+    }
+
+    const logRows = (logData ?? []) as ApplicationLogRow[]
+    const actorIds = Array.from(new Set(logRows.map((row) => row.actor_id)))
+    const actorNameById = await getActorNameMap(actorIds)
+
+    const detail: StudioApplicationDetail = {
+      ...mapStudioApplication(data as TrialApplicationRow),
+      confirmedScheduleBlockId: (data as TrialApplicationRow).confirmed_schedule_block_id ?? null,
+      memo: (data as TrialApplicationRow).memo ?? null,
+      logs: logRows.map((row) => mapApplicationLog(row, actorNameById))
+    }
+
+    return detail
+  },
+  async updateStudioApplicationStatus(input: UpdateStudioApplicationStatusInput) {
+    const supabase = await getSupabaseServerClient()
+    const updatePayload: {
+      status: TrialApplicationSummary["status"]
+      updated_at: string
+      confirmed_slot_at?: string | null
+    } = {
+      status: input.nextStatus,
+      updated_at: new Date().toISOString()
+    }
+
+    if (input.nextStatus === "confirmed") {
+      const { data: currentRow, error: currentError } = await supabase
+        .from("trial_applications")
+        .select("requested_slot_at")
+        .eq("id", input.applicationId)
+        .maybeSingle()
+
+      if (currentError || !currentRow) {
+        throw new Error("failed_to_prepare_application_status_update")
+      }
+
+      updatePayload.confirmed_slot_at = currentRow.requested_slot_at
+    }
+
+    const { data, error } = await supabase
+      .from("trial_applications")
+      .update(updatePayload)
+      .eq("id", input.applicationId)
+      .eq("status", input.currentStatus)
+      .select("id")
+      .maybeSingle()
+
+    if (error) {
+      throw new Error("failed_to_update_application_status")
+    }
+
+    if (!data) {
+      throw new Error("application_status_conflict")
+    }
+
+    const { error: logError } = await supabase.from("application_logs").insert({
+      application_id: input.applicationId,
+      from_status: input.currentStatus,
+      to_status: input.nextStatus,
+      actor_id: input.actorId,
+      note: input.note
+    })
+
+    if (logError) {
+      throw new Error("failed_to_create_application_log")
+    }
   },
   async createTrialApplication(input: TrialApplicationInput) {
     const supabase = await getSupabaseServerClient()
@@ -355,7 +560,7 @@ export const supabaseDataAdapter: DataAdapter = {
         status: "new"
       })
       .select(
-        "id, class_id, parent_id, child_name, child_grade, requested_slot_at, status, created_at, classes(title)"
+        "id, class_id, parent_id, child_name, child_grade, requested_slot_at, confirmed_slot_at, status, created_at, updated_at, classes(title)"
       )
       .single()
 
@@ -378,5 +583,62 @@ export const supabaseDataAdapter: DataAdapter = {
     }
 
     return mapApplication(insertedApplication)
+  },
+  async getPendingTeacherSignupRequest(userId) {
+    const supabase = await getSupabaseServerClient()
+    const { data, error } = await supabase
+      .from("teacher_signup_requests")
+      .select("id, user_id, status, teacher_name, teacher_phone, organization_name, branch_name, organization_phone, request_note, created_at")
+      .eq("user_id", userId)
+      .eq("status", "pending")
+      .maybeSingle()
+
+    if (error) {
+      throw new Error("failed_to_fetch_teacher_signup_request")
+    }
+
+    if (!data) {
+      return null
+    }
+
+    return mapTeacherSignupRequest(data as TeacherSignupRequestRow)
+  },
+  async createTeacherSignupRequest(input) {
+    const supabase = await getSupabaseServerClient()
+    const { data: existing, error: existingError } = await supabase
+      .from("teacher_signup_requests")
+      .select("id")
+      .eq("user_id", input.userId)
+      .in("status", ["pending", "approved"])
+      .maybeSingle()
+
+    if (existingError) {
+      throw new Error("failed_to_validate_teacher_signup_request")
+    }
+
+    if (existing) {
+      throw new Error("already_requested_or_approved")
+    }
+
+    const { data, error } = await supabase
+      .from("teacher_signup_requests")
+      .insert({
+        user_id: input.userId,
+        status: "pending",
+        teacher_name: input.teacherName,
+        teacher_phone: input.teacherPhone,
+        organization_name: input.organizationName,
+        branch_name: input.branchName,
+        organization_phone: input.organizationPhone,
+        request_note: input.requestNote
+      })
+      .select("id, user_id, status, teacher_name, teacher_phone, organization_name, branch_name, organization_phone, request_note, created_at")
+      .single()
+
+    if (error || !data) {
+      throw new Error("failed_to_create_teacher_signup_request")
+    }
+
+    return mapTeacherSignupRequest(data as TeacherSignupRequestRow)
   }
 }

@@ -1,11 +1,16 @@
 import type {
+  ApplicationLogEntry,
   AvailableScheduleSlot,
   ClassDetail,
   ClassSummary,
   DataAdapter,
+  StudioApplicationDetail,
+  StudioApplicationSummary,
   TeacherPublicProfile,
+  TeacherSignupRequest,
   TrialApplicationInput,
-  TrialApplicationSummary
+  TrialApplicationSummary,
+  UpdateStudioApplicationStatusInput
 } from "@/shared/lib/db/adapter"
 
 const teacherProfiles: TeacherPublicProfile[] = [
@@ -78,12 +83,22 @@ const classes: ClassSummary[] = [
 
 type GlobalMockStore = typeof globalThis & {
   __firstClassMockApplications__?: TrialApplicationSummary[]
+  __firstClassMockApplicationLogs__?: ApplicationLogEntry[]
+  __firstClassMockTeacherSignupRequests__?: TeacherSignupRequest[]
 }
 
 const globalMockStore = globalThis as GlobalMockStore
 const applications =
   globalMockStore.__firstClassMockApplications__ ??
   (globalMockStore.__firstClassMockApplications__ = [])
+const applicationLogs =
+  globalMockStore.__firstClassMockApplicationLogs__ ??
+  (globalMockStore.__firstClassMockApplicationLogs__ = [])
+const teacherSignupRequests =
+  globalMockStore.__firstClassMockTeacherSignupRequests__ ??
+  (globalMockStore.__firstClassMockTeacherSignupRequests__ = [])
+const mockOrganizationId = "org-1"
+const mockTeacherProfileId = "teacher-profile-1"
 
 const getFutureIso = (hoursFromNow: number) => {
   return new Date(Date.now() + hoursFromNow * 60 * 60 * 1000).toISOString()
@@ -182,6 +197,79 @@ export const mockDataAdapter: DataAdapter = {
       .filter((item) => item.parentId === parentId)
       .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))
   },
+  async listStudioApplications(organizationId) {
+    if (organizationId !== mockOrganizationId) {
+      return []
+    }
+
+    return applications
+      .map((item) => {
+        const classItem = classes.find((classRow) => classRow.id === item.classId)
+        const mapped: StudioApplicationSummary = {
+          ...item,
+          classSubject: classItem?.subject ?? null,
+          classRegion: classItem?.region ?? null,
+          assignedTeacherId: classItem?.teacherId ?? null
+        }
+
+        return mapped
+      })
+      .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))
+  },
+  async getStudioApplicationDetail(applicationId, organizationId) {
+    if (organizationId !== mockOrganizationId) {
+      return null
+    }
+
+    const application = applications.find((item) => item.id === applicationId)
+    if (!application) {
+      return null
+    }
+
+    const classItem = classes.find((item) => item.id === application.classId)
+    const logs = applicationLogs
+      .filter((item) => item.applicationId === applicationId)
+      .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))
+
+    const detail: StudioApplicationDetail = {
+      ...application,
+      classSubject: classItem?.subject ?? null,
+      classRegion: classItem?.region ?? null,
+      assignedTeacherId: classItem?.teacherId ?? null,
+      confirmedScheduleBlockId: null,
+      memo: null,
+      logs
+    }
+
+    return detail
+  },
+  async updateStudioApplicationStatus(input: UpdateStudioApplicationStatusInput) {
+    const target = applications.find(
+      (item) => item.id === input.applicationId && item.status === input.currentStatus
+    )
+
+    if (!target) {
+      throw new Error("application_status_conflict")
+    }
+
+    target.status = input.nextStatus
+    target.updatedAt = new Date().toISOString()
+
+    if (input.nextStatus === "confirmed") {
+      target.confirmedSlotAt = target.requestedSlotAt
+    }
+
+    applicationLogs.unshift({
+      id: `log-${applicationLogs.length + 1}`,
+      applicationId: input.applicationId,
+      fromStatus: input.currentStatus,
+      toStatus: input.nextStatus,
+      actorId: input.actorId,
+      actorName: input.actorId === mockTeacherProfileId ? "테스트 선생님" : null,
+      note: input.note,
+      createdAt: new Date().toISOString()
+    })
+  },
   async createTrialApplication(input: TrialApplicationInput) {
     if (!input.selectedScheduleBlockId) {
       throw new Error("invalid_schedule_slot")
@@ -219,10 +307,55 @@ export const mockDataAdapter: DataAdapter = {
       childName: input.childName,
       childGrade: input.childGrade,
       requestedSlotAt: matchedSlot.startAt,
+      confirmedSlotAt: null,
       status: "new",
-      createdAt: new Date().toISOString()
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
     }
     applications.push(created)
+
+    applicationLogs.unshift({
+      id: `log-${applicationLogs.length + 1}`,
+      applicationId: created.id,
+      fromStatus: null,
+      toStatus: "new",
+      actorId: input.parentId,
+      actorName: null,
+      note: "학부모 체험 신청 생성",
+      createdAt: new Date().toISOString()
+    })
+
+    return created
+  },
+  async getPendingTeacherSignupRequest(userId) {
+    const found = teacherSignupRequests.find(
+      (req) => req.userId === userId && req.status === "pending"
+    )
+    return found ?? null
+  },
+  async createTeacherSignupRequest(input) {
+    const existing = teacherSignupRequests.find(
+      (req) => req.userId === input.userId && (req.status === "pending" || req.status === "approved")
+    )
+
+    if (existing) {
+      throw new Error("already_requested_or_approved")
+    }
+
+    const created: TeacherSignupRequest = {
+      id: `tsr-${teacherSignupRequests.length + 1}`,
+      userId: input.userId,
+      status: "pending",
+      teacherName: input.teacherName,
+      teacherPhone: input.teacherPhone,
+      organizationName: input.organizationName,
+      branchName: input.branchName,
+      organizationPhone: input.organizationPhone,
+      requestNote: input.requestNote,
+      createdAt: new Date().toISOString()
+    }
+
+    teacherSignupRequests.push(created)
     return created
   }
 }

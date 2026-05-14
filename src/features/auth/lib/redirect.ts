@@ -6,5 +6,5 @@ export const resolvePostAuthRedirect = (role: ProfileRole): string => {
   }
 
   // Teacher is the only studio role in the MVP.
-  return "/studio"
+  return "/studio/applications"
 }
