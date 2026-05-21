@@ -116,10 +116,27 @@ export default async function ClassesPage() {
         <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "grid", gap: 10 }}>
           {classes.map((item) => (
             <li key={item.id} style={sectionCardStyle}>
+              {item.coverImageUrl ? (
+                <>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={item.coverImageUrl}
+                    alt={`${item.title} 대표 이미지`}
+                    style={{
+                      display: "block",
+                      width: "100%",
+                      height: 180,
+                      objectFit: "cover",
+                      borderRadius: 10,
+                      marginBottom: 12
+                    }}
+                  />
+                </>
+              ) : null}
               <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 8 }}>
                 <span style={chipStyle}>{item.subject}</span>
                 <span style={chipStyle}>{item.region}</span>
-                <span style={chipStyle}>{item.targetAge}세</span>
+                <span style={chipStyle}>{item.targetAge}</span>
               </div>
 
               <h2 style={{ margin: "0 0 8px", fontSize: 18 }}>{item.title}</h2>
@@ -128,7 +145,9 @@ export default async function ClassesPage() {
                 {formatPrice(item.trialPrice)}
               </p>
               <p style={{ margin: "0 0 12px", fontSize: 13, color: "#4b5563" }}>
-                {item.teacherName ? `선생님 ${item.teacherName}` : "선생님 정보 준비 중"}
+                {item.teacherDisplayName || item.teacherName
+                  ? `선생님 ${item.teacherDisplayName ?? item.teacherName}`
+                  : "선생님 정보 준비 중"}
               </p>
 
               <div style={{ display: "flex", gap: 8 }}>

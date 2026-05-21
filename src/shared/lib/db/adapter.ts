@@ -1,5 +1,7 @@
 export type UserRole = "parent" | "teacher"
 
+export type ClassProgramType = "trial_class" | "level_test"
+
 export type ApplicationStatus =
   | "new"
   | "reviewing"
@@ -17,6 +19,7 @@ export type TeacherPublicProfile = {
 
 export type ClassSummary = {
   id: string
+  programType: ClassProgramType
   title: string
   subject: string
   region: string
@@ -24,7 +27,9 @@ export type ClassSummary = {
   description: string
   trialPrice: number
   teacherId: string | null
+  teacherDisplayName: string | null
   teacherName: string | null
+  coverImageUrl: string | null
   isActive: boolean
 }
 
@@ -35,6 +40,7 @@ export type ClassDetail = ClassSummary & {
 export type AvailableScheduleSlot = {
   id: string
   teacherId: string
+  classId: string | null
   startAt: string
   endAt: string
   capacity: number
@@ -43,11 +49,86 @@ export type AvailableScheduleSlot = {
   isClosed: boolean
 }
 
+export type StudioDashboardSummary = {
+  newApplicationCount: number
+  activeApplicationCount: number
+  myClassCount: number
+  availableSlotCount: number
+}
+
+export type StudioTeacherOption = {
+  teacherId: string
+  teacherName: string
+}
+
+export type StudioClassInput = {
+  mode: "create" | "update"
+  classId?: string
+  organizationId: string
+  programType: ClassProgramType
+  title: string
+  subject: string
+  targetAge: string
+  region: string
+  description: string
+  trialPrice: number
+  teacherId: string
+  teacherDisplayName: string
+  coverImageUrl: string | null
+  isActive: boolean
+  scheduleSlots?: StudioClassScheduleSlotInput[]
+}
+
+export type StudioScheduleBlockType = "regular" | "available" | "blocked" | "trial_booked"
+
+export type StudioScheduleBlockSummary = {
+  id: string
+  teacherId: string
+  classId: string | null
+  type: StudioScheduleBlockType
+  startAt: string
+  endAt: string
+  capacity: number
+  appliedCount: number
+  remainingCount: number
+  isClosed: boolean
+}
+
+export type CreateStudioScheduleBlockInput = {
+  teacherId: string
+  classId?: string | null
+  startAt: string
+  endAt: string
+  capacity: number
+}
+
+export type StudioClassScheduleSlotInput = {
+  startAt: string
+  endAt: string
+  capacity: number
+}
+
+export type UpdateStudioScheduleBlockTypeInput = {
+  scheduleBlockId: string
+  teacherId: string
+  nextType: Extract<StudioScheduleBlockType, "available" | "blocked">
+}
+
 export type TrialApplicationInput = {
   parentId: string
   classId: string
   childName: string
   childGrade: string
+  parentName: string
+  parentPhone: string
+  childSchool: string | null
+  childNotes: string | null
+  subjectExperienceYn: boolean | null
+  subjectExperienceDuration: string | null
+  currentLevel: string | null
+  preferredRegularSchedule: string | null
+  goalType: string | null
+  goalNote: string | null
   requestedSlotAt?: string
   selectedScheduleBlockId?: string
   memo: string | null
@@ -60,9 +141,13 @@ export type TrialApplicationSummary = {
   parentId: string
   childName: string
   childGrade: string
+  parentName: string | null
+  parentPhone: string | null
+  requestedScheduleBlockId: string | null
   requestedSlotAt: string
   confirmedSlotAt: string | null
   status: ApplicationStatus
+  goalType: string | null
   createdAt: string
   updatedAt: string
 }
@@ -86,6 +171,17 @@ export type StudioApplicationSummary = TrialApplicationSummary & {
 
 export type StudioApplicationDetail = StudioApplicationSummary & {
   confirmedScheduleBlockId: string | null
+  childSchool: string | null
+  childNotes: string | null
+  subjectExperienceYn: boolean | null
+  subjectExperienceDuration: string | null
+  currentLevel: string | null
+  preferredRegularSchedule: string | null
+  goalNote: string | null
+  consultationNote: string | null
+  trialFeedback: string | null
+  finalLevel: string | null
+  finalSchedule: string | null
   memo: string | null
   logs: ApplicationLogEntry[]
 }
@@ -127,6 +223,17 @@ export interface DataAdapter {
   listClasses(): Promise<ClassSummary[]>
   getClassById(classId: string): Promise<ClassDetail | null>
   listAvailableScheduleSlotsByClassId(classId: string): Promise<AvailableScheduleSlot[]>
+  listStudioClasses(organizationId: string): Promise<ClassSummary[]>
+  listStudioTeacherOptions(organizationId: string): Promise<StudioTeacherOption[]>
+  upsertStudioClass(input: StudioClassInput): Promise<ClassSummary>
+  updateStudioClassActive(
+    classId: string,
+    organizationId: string,
+    isActive: boolean
+  ): Promise<void>
+  listTeacherScheduleBlocks(teacherId: string): Promise<StudioScheduleBlockSummary[]>
+  createStudioScheduleBlock(input: CreateStudioScheduleBlockInput): Promise<StudioScheduleBlockSummary>
+  updateStudioScheduleBlockType(input: UpdateStudioScheduleBlockTypeInput): Promise<void>
   listMyApplications(parentId: string): Promise<TrialApplicationSummary[]>
   listStudioApplications(organizationId: string): Promise<StudioApplicationSummary[]>
   getStudioApplicationDetail(

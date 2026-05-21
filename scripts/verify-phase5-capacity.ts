@@ -32,7 +32,17 @@ const run = async () => {
     parentId,
     classId,
     childName: "테스트자녀",
-    childGrade: "8세",
+    childGrade: "초2",
+    parentName: "테스트 보호자",
+    parentPhone: "010-1234-5678",
+    childSchool: null,
+    childNotes: null,
+    subjectExperienceYn: null,
+    subjectExperienceDuration: null,
+    currentLevel: null,
+    preferredRegularSchedule: null,
+    goalType: null,
+    goalNote: null,
     requestedSlotAt: slotToClose.startAt,
     selectedScheduleBlockId: slotToClose.id,
     memo: null
@@ -59,7 +69,17 @@ const run = async () => {
       parentId: "parent-verify-2",
       classId,
       childName: "다른자녀",
-      childGrade: "9세",
+      childGrade: "초3",
+      parentName: "다른 보호자",
+      parentPhone: "010-0000-0000",
+      childSchool: null,
+      childNotes: null,
+      subjectExperienceYn: null,
+      subjectExperienceDuration: null,
+      currentLevel: null,
+      preferredRegularSchedule: null,
+      goalType: null,
+      goalNote: null,
       requestedSlotAt: closedSlot.startAt,
       selectedScheduleBlockId: closedSlot.id,
       memo: null
@@ -86,8 +106,8 @@ const run = async () => {
     "UI에서 마감 슬롯 disabled 처리가 없습니다."
   )
   assert(
-    applyFormSource.includes("Array.from({ length: 9 }"),
-    "자녀 나이 드롭다운이 5세~13세 범위와 일치하지 않습니다."
+    applyFormSource.includes("const gradeOptions = ["),
+    "학년 선택 옵션 정의가 없습니다."
   )
 
   console.log("PASS: 슬롯 remainingCount/isClosed, 마감 슬롯 선택 불가, 신청 후 내 신청 반영 검증 완료")

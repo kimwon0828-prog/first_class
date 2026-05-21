@@ -89,7 +89,8 @@ export default async function ClassApplyPage({ params }: ApplyPageProps) {
               <p style={{ margin: 0 }}>과목: {classItem.subject}</p>
               <p style={{ margin: 0 }}>지역: {classItem.region}</p>
               <p style={{ margin: 0 }}>
-                선생님명: {classItem.teacherName ? classItem.teacherName : "정보 준비 중"}
+                선생님명:{" "}
+                {classItem.teacherDisplayName ?? classItem.teacherName ?? "정보 준비 중"}
               </p>
               <p style={{ margin: 0 }}>체험비: {formatPrice(classItem.trialPrice)}</p>
             </div>

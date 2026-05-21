@@ -36,33 +36,33 @@ export const StudioApplicationTable = ({ items }: StudioApplicationTableProps) =
         background: "#fff"
       }}
     >
-      <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 960 }}>
+      <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 1120 }}>
         <thead>
           <tr style={{ background: "#f9fafb", textAlign: "left" }}>
-            <th style={headerCellStyle}>신청일</th>
             <th style={headerCellStyle}>상태</th>
-            <th style={headerCellStyle}>수업</th>
-            <th style={headerCellStyle}>과목/지역</th>
-            <th style={headerCellStyle}>아이</th>
-            <th style={headerCellStyle}>희망 시간</th>
-            <th style={headerCellStyle}>확정 시간</th>
+            <th style={headerCellStyle}>학생명 / 학년</th>
+            <th style={headerCellStyle}>보호자명</th>
+            <th style={headerCellStyle}>보호자 연락처</th>
+            <th style={headerCellStyle}>수업명</th>
+            <th style={headerCellStyle}>체험 희망 시간</th>
+            <th style={headerCellStyle}>목표</th>
+            <th style={headerCellStyle}>신청일</th>
             <th style={headerCellStyle}>상세</th>
           </tr>
         </thead>
         <tbody>
           {items.map((item) => (
             <tr key={item.id} style={{ borderTop: "1px solid #f3f4f6" }}>
-              <td style={bodyCellStyle}>{formatDateTime(item.createdAt)}</td>
               <td style={bodyCellStyle}>{STATUS_LABELS[item.status]}</td>
-              <td style={bodyCellStyle}>{item.classTitle ?? "-"}</td>
-              <td style={bodyCellStyle}>
-                {[item.classSubject, item.classRegion].filter(Boolean).join(" / ") || "-"}
-              </td>
               <td style={bodyCellStyle}>
                 {item.childName} / {item.childGrade}
               </td>
+              <td style={bodyCellStyle}>{item.parentName ?? "-"}</td>
+              <td style={bodyCellStyle}>{item.parentPhone ?? "-"}</td>
+              <td style={bodyCellStyle}>{item.classTitle ?? "-"}</td>
               <td style={bodyCellStyle}>{formatDateTime(item.requestedSlotAt)}</td>
-              <td style={bodyCellStyle}>{formatDateTime(item.confirmedSlotAt)}</td>
+              <td style={bodyCellStyle}>{item.goalType ?? "-"}</td>
+              <td style={bodyCellStyle}>{formatDateTime(item.createdAt)}</td>
               <td style={bodyCellStyle}>
                 <Link href={`/studio/applications/${item.id}`} style={linkStyle}>
                   상세 보기

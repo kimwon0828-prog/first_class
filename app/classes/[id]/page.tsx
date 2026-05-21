@@ -76,10 +76,27 @@ export default async function ClassDetailPage({ params }: ClassDetailPageProps) 
       {!error && classItem ? (
         <>
           <section style={{ ...sectionCardStyle, marginBottom: 10 }}>
+            {classItem.coverImageUrl ? (
+              <>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={classItem.coverImageUrl}
+                  alt={`${classItem.title} 대표 이미지`}
+                  style={{
+                    display: "block",
+                    width: "100%",
+                    height: 220,
+                    objectFit: "cover",
+                    borderRadius: 10,
+                    marginBottom: 12
+                  }}
+                />
+              </>
+            ) : null}
             <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 8 }}>
               <span style={chipStyle}>{classItem.subject}</span>
               <span style={chipStyle}>{classItem.region}</span>
-              <span style={chipStyle}>{classItem.targetAge}세</span>
+              <span style={chipStyle}>{classItem.targetAge}</span>
             </div>
 
             <h1 style={{ margin: "0 0 10px", fontSize: 22 }}>{classItem.title}</h1>
@@ -87,8 +104,8 @@ export default async function ClassDetailPage({ params }: ClassDetailPageProps) 
               {formatPrice(classItem.trialPrice)}
             </p>
             <p style={{ margin: 0, fontSize: 13, color: "#4b5563" }}>
-              {classItem.teacherName
-                ? `담당 선생님 ${classItem.teacherName}`
+              {classItem.teacherDisplayName || classItem.teacherName
+                ? `담당 선생님 ${classItem.teacherDisplayName ?? classItem.teacherName}`
                 : "담당 선생님 정보 준비 중"}
             </p>
           </section>

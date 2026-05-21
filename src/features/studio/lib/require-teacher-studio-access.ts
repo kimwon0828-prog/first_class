@@ -4,9 +4,11 @@ import { redirect } from "next/navigation"
 
 import { getMyProfile } from "@/features/auth/lib/profile-sync"
 import { getSession } from "@/features/auth/lib/session"
+import { getSupabaseServerClient } from "@/integrations/supabase/server"
 
 export type TeacherStudioAccess = {
   id: string
+  teacherId: string
   name: string
   organizationId: string
 }
@@ -37,8 +39,20 @@ export const requireTeacherStudioAccess = async (): Promise<TeacherStudioAccess>
     redirect("/studio/sign-in")
   }
 
+  const supabase = await getSupabaseServerClient()
+  const { data: teacherRow, error: teacherError } = await supabase
+    .from("teachers")
+    .select("id")
+    .eq("profile_id", profile.id)
+    .maybeSingle()
+
+  if (teacherError || !teacherRow) {
+    redirect("/studio/sign-in")
+  }
+
   return {
     id: profile.id,
+    teacherId: teacherRow.id,
     name: profile.name,
     organizationId: profile.organizationId
   }

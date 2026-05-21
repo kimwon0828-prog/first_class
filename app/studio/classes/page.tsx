@@ -1,10 +1,10 @@
 import { requireTeacherStudioAccess } from "@/features/studio/lib/require-teacher-studio-access"
-import { getStudioDashboardSummary } from "@/features/studio/queries/get-studio-dashboard-summary"
-import { StudioDashboardSummaryView } from "@/features/studio/ui/studio-dashboard-summary"
+import { getStudioClasses } from "@/features/studio/queries/get-studio-classes"
+import { StudioClassesManager } from "@/features/studio/ui/studio-classes-manager"
 
-export default async function StudioIndexPage() {
+export default async function StudioClassesPage() {
   const teacher = await requireTeacherStudioAccess()
-  const { data, error } = await getStudioDashboardSummary(teacher.organizationId, teacher.teacherId)
+  const { data: classes, error } = await getStudioClasses(teacher.organizationId)
 
   return (
     <main
@@ -21,10 +21,10 @@ export default async function StudioIndexPage() {
           FIRST CLASS STUDIO
         </p>
         <h1 style={{ margin: 0, fontSize: 28, lineHeight: "34px", color: "#111827" }}>
-          운영 대시보드
+          수업 관리
         </h1>
         <p style={{ margin: "12px 0 0", fontSize: 14, lineHeight: "20px", color: "#4b5563" }}>
-          {teacher.name} 선생님의 신청/수업/일정 운영 현황을 요약해서 보여줍니다.
+          같은 organization 체험수업을 등록하고 담당 선생님과 공개 상태를 관리합니다.
         </p>
       </header>
 
@@ -40,7 +40,7 @@ export default async function StudioIndexPage() {
           <p style={{ margin: 0, color: "#991b1b", fontSize: 14, lineHeight: "20px" }}>{error}</p>
         </section>
       ) : (
-        <StudioDashboardSummaryView summary={data} />
+        <StudioClassesManager items={classes} currentTeacherName={teacher.name} />
       )}
     </main>
   )

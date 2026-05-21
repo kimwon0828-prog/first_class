@@ -20,7 +20,21 @@ const initialState: CreateTrialApplicationActionState = {
   message: ""
 }
 
-const ageOptions = Array.from({ length: 9 }, (_, index) => `${index + 5}세`)
+const gradeOptions = [
+  "유아",
+  "초1",
+  "초2",
+  "초3",
+  "초4",
+  "초5",
+  "초6",
+  "중1",
+  "중2",
+  "중3",
+  "고1",
+  "고2",
+  "고3"
+]
 
 const formatSlot = (value: string) => {
   const date = new Date(value)
@@ -68,7 +82,7 @@ export const ApplyForm = ({ classId, availableSlots, slotsError }: ApplyFormProp
   return (
     <form action={formAction} style={{ display: "grid", gap: 12 }}>
       <label style={{ display: "grid", gap: 6 }}>
-        <span>자녀 이름</span>
+        <span>학생명</span>
         <input
           name="childName"
           type="text"
@@ -81,7 +95,7 @@ export const ApplyForm = ({ classId, availableSlots, slotsError }: ApplyFormProp
       </label>
 
       <label style={{ display: "grid", gap: 6 }}>
-        <span>자녀 나이</span>
+        <span>학년</span>
         <select
           name="childGrade"
           required
@@ -90,14 +104,41 @@ export const ApplyForm = ({ classId, availableSlots, slotsError }: ApplyFormProp
           defaultValue=""
         >
           <option value="" disabled>
-            자녀 나이를 선택해 주세요
+            학년을 선택해 주세요
           </option>
-          {ageOptions.map((option) => (
+          {gradeOptions.map((option) => (
             <option key={option} value={option}>
               {option}
             </option>
           ))}
         </select>
+      </label>
+
+      <label style={{ display: "grid", gap: 6 }}>
+        <span>보호자명</span>
+        <input
+          name="parentName"
+          type="text"
+          required
+          minLength={2}
+          maxLength={30}
+          disabled={isPending}
+          style={{ padding: 10 }}
+        />
+      </label>
+
+      <label style={{ display: "grid", gap: 6 }}>
+        <span>보호자 연락처</span>
+        <input
+          name="parentPhone"
+          type="tel"
+          required
+          minLength={8}
+          maxLength={20}
+          disabled={isPending}
+          placeholder="010-0000-0000"
+          style={{ padding: 10 }}
+        />
       </label>
 
       <fieldset
@@ -109,7 +150,7 @@ export const ApplyForm = ({ classId, availableSlots, slotsError }: ApplyFormProp
           gap: 8
         }}
       >
-        <legend style={{ padding: "0 4px" }}>예약 가능 시간대</legend>
+        <legend style={{ padding: "0 4px" }}>체험 희망 시간대</legend>
 
         {slotsError ? (
           <p style={{ margin: 0, color: "#b42318", fontSize: 14 }}>{slotsError}</p>
@@ -159,8 +200,119 @@ export const ApplyForm = ({ classId, availableSlots, slotsError }: ApplyFormProp
           : null}
       </fieldset>
 
+      <details
+        style={{
+          border: "1px solid #e5e7eb",
+          borderRadius: 10,
+          padding: 10,
+          background: "#fcfcfd"
+        }}
+      >
+        <summary style={{ cursor: "pointer", fontSize: 14, fontWeight: 600 }}>
+          선택 정보 추가 입력
+        </summary>
+        <div style={{ display: "grid", gap: 12, marginTop: 12 }}>
+          <label style={{ display: "grid", gap: 6 }}>
+            <span>학교</span>
+            <input
+              name="childSchool"
+              type="text"
+              maxLength={60}
+              disabled={isPending}
+              style={{ padding: 10 }}
+            />
+          </label>
+
+          <label style={{ display: "grid", gap: 6 }}>
+            <span>학생 특이사항</span>
+            <textarea
+              name="childNotes"
+              rows={3}
+              maxLength={500}
+              disabled={isPending}
+              placeholder="알레르기, 성향, 주의사항이 있으면 적어 주세요."
+              style={{ padding: 10, resize: "vertical" }}
+            />
+          </label>
+
+          <label style={{ display: "grid", gap: 6 }}>
+            <span>과목 경험 여부</span>
+            <select
+              name="subjectExperienceYn"
+              defaultValue=""
+              disabled={isPending}
+              style={{ padding: 10 }}
+            >
+              <option value="">선택 안 함</option>
+              <option value="yes">있음</option>
+              <option value="no">없음</option>
+            </select>
+          </label>
+
+          <label style={{ display: "grid", gap: 6 }}>
+            <span>경험 기간</span>
+            <input
+              name="subjectExperienceDuration"
+              type="text"
+              maxLength={60}
+              disabled={isPending}
+              placeholder="예: 6개월, 1년"
+              style={{ padding: 10 }}
+            />
+          </label>
+
+          <label style={{ display: "grid", gap: 6 }}>
+            <span>현재 수준</span>
+            <input
+              name="currentLevel"
+              type="text"
+              maxLength={80}
+              disabled={isPending}
+              placeholder="예: 기초 개념 가능, 입문 단계"
+              style={{ padding: 10 }}
+            />
+          </label>
+
+          <label style={{ display: "grid", gap: 6 }}>
+            <span>실제 등록 시 선호 수업 시간대</span>
+            <input
+              name="preferredRegularSchedule"
+              type="text"
+              maxLength={120}
+              disabled={isPending}
+              placeholder="예: 평일 5시 이후, 토요일 오전"
+              style={{ padding: 10 }}
+            />
+          </label>
+
+          <label style={{ display: "grid", gap: 6 }}>
+            <span>목표</span>
+            <select name="goalType" defaultValue="" disabled={isPending} style={{ padding: 10 }}>
+              <option value="">선택 안 함</option>
+              <option value="영재원">영재원</option>
+              <option value="고입">고입</option>
+              <option value="입시">입시</option>
+              <option value="대회">대회</option>
+              <option value="흥미">흥미</option>
+            </select>
+          </label>
+
+          <label style={{ display: "grid", gap: 6 }}>
+            <span>목표 상세</span>
+            <textarea
+              name="goalNote"
+              rows={3}
+              maxLength={500}
+              disabled={isPending}
+              placeholder="목표나 상담 희망 내용을 자유롭게 적어 주세요."
+              style={{ padding: 10, resize: "vertical" }}
+            />
+          </label>
+        </div>
+      </details>
+
       <label style={{ display: "grid", gap: 6 }}>
-        <span>메모</span>
+        <span>추가 메모</span>
         <textarea
           name="memo"
           rows={4}

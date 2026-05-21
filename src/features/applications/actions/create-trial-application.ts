@@ -18,16 +18,49 @@ const defaultState: CreateTrialApplicationActionState = {
 const validateForm = (formData: FormData) => {
   const childName = String(formData.get("childName") ?? "").trim()
   const childGrade = String(formData.get("childGrade") ?? "").trim()
+  const parentName = String(formData.get("parentName") ?? "").trim()
+  const parentPhone = String(formData.get("parentPhone") ?? "").trim()
+  const childSchoolRaw = String(formData.get("childSchool") ?? "").trim()
+  const childNotesRaw = String(formData.get("childNotes") ?? "").trim()
+  const subjectExperienceYnRaw = String(formData.get("subjectExperienceYn") ?? "").trim()
+  const subjectExperienceDurationRaw = String(formData.get("subjectExperienceDuration") ?? "").trim()
+  const currentLevelRaw = String(formData.get("currentLevel") ?? "").trim()
+  const preferredRegularScheduleRaw = String(formData.get("preferredRegularSchedule") ?? "").trim()
+  const goalTypeRaw = String(formData.get("goalType") ?? "").trim()
+  const goalNoteRaw = String(formData.get("goalNote") ?? "").trim()
   const selectedScheduleBlockId = String(formData.get("selectedScheduleBlockId") ?? "").trim()
   const memoRaw = String(formData.get("memo") ?? "").trim()
+  const childSchool = childSchoolRaw.length > 0 ? childSchoolRaw : null
+  const childNotes = childNotesRaw.length > 0 ? childNotesRaw : null
+  const subjectExperienceDuration =
+    subjectExperienceDurationRaw.length > 0 ? subjectExperienceDurationRaw : null
+  const currentLevel = currentLevelRaw.length > 0 ? currentLevelRaw : null
+  const preferredRegularSchedule =
+    preferredRegularScheduleRaw.length > 0 ? preferredRegularScheduleRaw : null
+  const goalType = goalTypeRaw.length > 0 ? goalTypeRaw : null
+  const goalNote = goalNoteRaw.length > 0 ? goalNoteRaw : null
   const memo = memoRaw.length > 0 ? memoRaw : null
+  const subjectExperienceYn =
+    subjectExperienceYnRaw === "yes"
+      ? true
+      : subjectExperienceYnRaw === "no"
+        ? false
+        : null
 
   if (!childName || childName.length < 2) {
     return { ok: false as const, message: "자녀 이름은 2자 이상 입력해 주세요." }
   }
 
   if (!childGrade || childGrade.length < 1) {
-    return { ok: false as const, message: "자녀 나이를 선택해 주세요." }
+    return { ok: false as const, message: "학년을 선택해 주세요." }
+  }
+
+  if (!parentName || parentName.length < 2) {
+    return { ok: false as const, message: "보호자 이름은 2자 이상 입력해 주세요." }
+  }
+
+  if (!parentPhone || parentPhone.length < 8) {
+    return { ok: false as const, message: "보호자 연락처를 입력해 주세요." }
   }
 
   if (!selectedScheduleBlockId) {
@@ -38,6 +71,16 @@ const validateForm = (formData: FormData) => {
     ok: true as const,
     childName,
     childGrade,
+    parentName,
+    parentPhone,
+    childSchool,
+    childNotes,
+    subjectExperienceYn,
+    subjectExperienceDuration,
+    currentLevel,
+    preferredRegularSchedule,
+    goalType,
+    goalNote,
     selectedScheduleBlockId,
     memo
   }
@@ -97,6 +140,16 @@ export async function createTrialApplicationAction(
       classId,
       childName: validated.childName,
       childGrade: validated.childGrade,
+      parentName: validated.parentName,
+      parentPhone: validated.parentPhone,
+      childSchool: validated.childSchool,
+      childNotes: validated.childNotes,
+      subjectExperienceYn: validated.subjectExperienceYn,
+      subjectExperienceDuration: validated.subjectExperienceDuration,
+      currentLevel: validated.currentLevel,
+      preferredRegularSchedule: validated.preferredRegularSchedule,
+      goalType: validated.goalType,
+      goalNote: validated.goalNote,
       selectedScheduleBlockId: validated.selectedScheduleBlockId,
       memo: validated.memo
     })
