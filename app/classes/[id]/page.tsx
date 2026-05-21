@@ -34,10 +34,18 @@ const chipStyle: CSSProperties = {
 
 const formatPrice = (price: number) => {
   if (price <= 0) {
-    return "무료 체험"
+    return "무료"
   }
 
-  return `체험비 ${price.toLocaleString("ko-KR")}원`
+  return `신청비 ${price.toLocaleString("ko-KR")}원`
+}
+
+const formatProgramType = (value: string) => {
+  if (value === "level_test") {
+    return "레벨테스트"
+  }
+
+  return "체험수업"
 }
 
 export default async function ClassDetailPage({ params }: ClassDetailPageProps) {
@@ -51,7 +59,7 @@ export default async function ClassDetailPage({ params }: ClassDetailPageProps) 
       </div>
       <div style={{ marginBottom: 12 }}>
         <Link href="/classes" style={{ color: "#2563eb", fontSize: 14 }}>
-          ← 수업 목록으로
+          ← 프로그램 목록으로
         </Link>
       </div>
 
@@ -66,9 +74,9 @@ export default async function ClassDetailPage({ params }: ClassDetailPageProps) 
 
       {!error && !classItem ? (
         <section style={sectionCardStyle}>
-          <h1 style={{ margin: "0 0 8px", fontSize: 20 }}>수업 정보를 찾을 수 없어요</h1>
+          <h1 style={{ margin: "0 0 8px", fontSize: 20 }}>프로그램 정보를 찾을 수 없어요</h1>
           <p style={{ margin: 0, color: "#6b7280", fontSize: 14 }}>
-            링크가 바뀌었거나 공개가 종료된 수업일 수 있습니다.
+            링크가 바뀌었거나 공개가 종료된 프로그램일 수 있습니다.
           </p>
         </section>
       ) : null}
@@ -94,6 +102,7 @@ export default async function ClassDetailPage({ params }: ClassDetailPageProps) 
               </>
             ) : null}
             <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 8 }}>
+              <span style={chipStyle}>{formatProgramType(classItem.programType)}</span>
               <span style={chipStyle}>{classItem.subject}</span>
               <span style={chipStyle}>{classItem.region}</span>
               <span style={chipStyle}>{classItem.targetAge}</span>
@@ -111,7 +120,7 @@ export default async function ClassDetailPage({ params }: ClassDetailPageProps) 
           </section>
 
           <section style={{ ...sectionCardStyle, marginBottom: 10 }}>
-            <h2 style={{ margin: "0 0 8px", fontSize: 17 }}>수업 소개</h2>
+            <h2 style={{ margin: "0 0 8px", fontSize: 17 }}>프로그램 소개</h2>
             <p style={{ margin: 0, lineHeight: 1.6, color: "#374151", fontSize: 14 }}>
               {classItem.description}
             </p>
@@ -163,7 +172,7 @@ export default async function ClassDetailPage({ params }: ClassDetailPageProps) 
                 textDecoration: "none"
               }}
             >
-              체험수업 예약하기
+              {formatProgramType(classItem.programType)} 신청하기
             </Link>
           </section>
         </>

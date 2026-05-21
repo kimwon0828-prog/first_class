@@ -99,7 +99,7 @@ export async function createTrialApplicationAction(
   if (!profile || profile.role !== "parent") {
     return {
       status: "error",
-      message: "학부모 계정만 체험 신청할 수 있습니다."
+      message: "학부모 계정만 신청할 수 있습니다."
     }
   }
 
@@ -107,7 +107,7 @@ export async function createTrialApplicationAction(
   if (!classItem) {
     return {
       status: "error",
-      message: "신청할 수업 정보를 찾을 수 없습니다."
+      message: "신청할 프로그램 정보를 찾을 수 없습니다."
     }
   }
 
@@ -188,13 +188,13 @@ export async function createTrialApplicationAction(
 
     return {
       status: "error",
-      message: "체험 신청에 실패했습니다. 잠시 후 다시 시도해 주세요."
+      message: "신청에 실패했습니다. 잠시 후 다시 시도해 주세요."
     }
   }
 
   return {
     status: "success",
-    message: "체험 신청이 완료되었습니다.",
+    message: "신청이 완료되었습니다.",
     redirectTo: "/my/applications"
   }
 }

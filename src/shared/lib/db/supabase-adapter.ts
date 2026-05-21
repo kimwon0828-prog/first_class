@@ -583,28 +583,6 @@ export const supabaseDataAdapter: DataAdapter = {
       throw new Error("invalid_class_id_for_update")
     }
 
-    if (process.env.NODE_ENV !== "production") {
-      if (input.mode === "create") {
-        console.info("[studio-class:path:create]")
-      } else {
-        console.info("[studio-class:path:update]")
-      }
-      console.info(
-        input.mode === "create" ? "[studio-class:insert:payload]" : "[studio-class:update:payload]",
-        {
-          mode: input.mode,
-          classId: normalizedClassId,
-          organizationId: input.organizationId,
-          teacherId: input.teacherId,
-          title: input.title,
-          subject: input.subject,
-          targetAge: input.targetAge,
-          region: input.region,
-          trialPrice: input.trialPrice
-        }
-      )
-    }
-
     const query =
       input.mode === "update"
         ? supabase

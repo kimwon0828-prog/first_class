@@ -150,7 +150,7 @@ export const ApplyForm = ({ classId, availableSlots, slotsError }: ApplyFormProp
           gap: 8
         }}
       >
-        <legend style={{ padding: "0 4px" }}>체험 희망 시간대</legend>
+        <legend style={{ padding: "0 4px" }}>희망 시간대</legend>
 
         {slotsError ? (
           <p style={{ margin: 0, color: "#b42318", fontSize: 14 }}>{slotsError}</p>
@@ -274,7 +274,7 @@ export const ApplyForm = ({ classId, availableSlots, slotsError }: ApplyFormProp
           </label>
 
           <label style={{ display: "grid", gap: 6 }}>
-            <span>실제 등록 시 선호 수업 시간대</span>
+            <span>실제 등록 시 선호 시간대</span>
             <input
               name="preferredRegularSchedule"
               type="text"
@@ -336,7 +336,7 @@ export const ApplyForm = ({ classId, availableSlots, slotsError }: ApplyFormProp
       ) : null}
 
       <button type="submit" disabled={isPending || !canSubmit} style={{ padding: "12px 14px" }}>
-        {isPending ? "신청 제출 중..." : "체험 신청하기"}
+        {isPending ? "신청 제출 중..." : "신청하기"}
       </button>
     </form>
   )

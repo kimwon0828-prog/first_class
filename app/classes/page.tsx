@@ -34,10 +34,18 @@ const chipStyle: CSSProperties = {
 
 const formatPrice = (price: number) => {
   if (price <= 0) {
-    return "무료 체험"
+    return "무료"
   }
 
-  return `체험비 ${price.toLocaleString("ko-KR")}원`
+  return `신청비 ${price.toLocaleString("ko-KR")}원`
+}
+
+const formatProgramType = (value: string) => {
+  if (value === "level_test") {
+    return "레벨테스트"
+  }
+
+  return "체험수업"
 }
 
 export default async function ClassesPage() {
@@ -49,9 +57,9 @@ export default async function ClassesPage() {
         <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 12 }}>
           <AuthEntryButton returnTo="/classes" />
         </div>
-        <h1 style={{ margin: "0 0 8px", fontSize: 24 }}>체험수업 찾기</h1>
+        <h1 style={{ margin: "0 0 8px", fontSize: 24 }}>프로그램 찾기</h1>
         <p style={mutedTextStyle}>
-          로그인 없이 수업 정보를 확인하고, 마음에 드는 수업을 골라보세요.
+          로그인 없이 프로그램 정보를 확인하고, 마음에 드는 프로그램을 골라보세요.
         </p>
       </section>
 
@@ -90,7 +98,7 @@ export default async function ClassesPage() {
 
       <section style={{ marginBottom: 10 }}>
         <p style={{ margin: 0, color: "#374151", fontSize: 14 }}>
-          총 {classes.length}개의 수업
+          총 {classes.length}개의 프로그램
         </p>
       </section>
 
@@ -106,7 +114,7 @@ export default async function ClassesPage() {
       {!error && classes.length === 0 ? (
         <section style={sectionCardStyle}>
           <p style={{ margin: "0 0 8px", fontSize: 15 }}>
-            현재 공개된 체험수업이 아직 없어요.
+            현재 공개된 프로그램이 아직 없어요.
           </p>
           <p style={mutedTextStyle}>조금 뒤 다시 확인해 주세요.</p>
         </section>
@@ -134,6 +142,7 @@ export default async function ClassesPage() {
                 </>
               ) : null}
               <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 8 }}>
+                <span style={chipStyle}>{formatProgramType(item.programType)}</span>
                 <span style={chipStyle}>{item.subject}</span>
                 <span style={chipStyle}>{item.region}</span>
                 <span style={chipStyle}>{item.targetAge}</span>

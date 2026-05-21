@@ -92,7 +92,7 @@ export const StudioClassForm = ({ currentTeacherName, initialItem }: StudioClass
     <section style={cardStyle}>
       <h2 style={titleStyle}>{selectedClassId ? "프로그램 수정" : "새 프로그램 등록"}</h2>
       <p style={descriptionStyle}>
-        현재 로그인한 teacher 소유권으로 저장합니다. create 모드에서만 프로그램 가능 시간을 함께 만들고, update 모드는 이번 단계에서 기본 정보만 수정합니다.
+        현재 로그인한 teacher 소유권으로 저장합니다. create 모드에서만 예약 가능 시간을 함께 만들고, update 모드는 이번 단계에서 기본 정보만 수정합니다.
       </p>
 
       <form action={formAction} style={{ display: "grid", gap: 12 }}>
@@ -233,7 +233,7 @@ export const StudioClassForm = ({ currentTeacherName, initialItem }: StudioClass
         </label>
 
         <label style={fieldStyle}>
-          <span>체험비</span>
+          <span>신청비</span>
           <input
             name="trialPrice"
             type="number"
@@ -277,7 +277,7 @@ export const StudioClassForm = ({ currentTeacherName, initialItem }: StudioClass
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={safeCoverImageUrlDraft}
-              alt={`${initialItem?.title ?? "새 체험수업"} 대표 이미지`}
+              alt={`${initialItem?.title ?? "새 프로그램"} 대표 이미지`}
               style={previewImageStyle}
             />
           </div>
@@ -286,7 +286,7 @@ export const StudioClassForm = ({ currentTeacherName, initialItem }: StudioClass
         {mode === "create" ? (
           <section style={slotSectionStyle}>
             <div style={{ display: "grid", gap: 4 }}>
-              <strong style={{ color: "#111827", fontSize: 15 }}>체험 가능 시간</strong>
+              <strong style={{ color: "#111827", fontSize: 15 }}>예약 가능 시간</strong>
               <p style={{ ...helperTextStyle, margin: 0 }}>
                 신규 프로그램 등록과 동시에 `available` 슬롯을 생성합니다. 반복 생성, 겹침 탐지는 이번 단계에서 만들지 않습니다.
               </p>
@@ -380,7 +380,7 @@ export const StudioClassForm = ({ currentTeacherName, initialItem }: StudioClass
           </section>
         ) : (
           <section style={slotSectionStyle}>
-            <strong style={{ color: "#111827", fontSize: 15 }}>연결된 체험 가능 시간</strong>
+            <strong style={{ color: "#111827", fontSize: 15 }}>연결된 예약 가능 시간</strong>
             <p style={{ ...helperTextStyle, margin: 0 }}>
               update 모드에서는 프로그램 기본 정보만 수정합니다. linked slot 대량 수정은 이번 단계 범위에서 제외합니다.
             </p>

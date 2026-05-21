@@ -28,7 +28,7 @@ const cardStyle: CSSProperties = {
 
 const formatPrice = (price: number) => {
   if (price <= 0) {
-    return "무료 체험"
+    return "무료"
   }
 
   return `${price.toLocaleString("ko-KR")}원`
@@ -50,13 +50,13 @@ export default async function ClassApplyPage({ params }: ApplyPageProps) {
         </Link>
       </div>
 
-      <h1 style={{ margin: "0 0 12px", fontSize: 24 }}>체험 신청</h1>
+      <h1 style={{ margin: "0 0 12px", fontSize: 24 }}>프로그램 신청</h1>
 
       {error ? (
         <section style={{ ...cardStyle, borderColor: "#fecaca" }}>
           <p style={{ margin: "0 0 8px", color: "#991b1b", fontSize: 14 }}>{error}</p>
           <Link href="/classes" style={{ color: "#2563eb", fontSize: 14 }}>
-            수업 목록으로 이동
+            프로그램 목록으로 이동
           </Link>
         </section>
       ) : null}
@@ -64,7 +64,7 @@ export default async function ClassApplyPage({ params }: ApplyPageProps) {
       {!error && !classItem ? (
         <section style={cardStyle}>
           <p style={{ margin: 0, fontSize: 14, color: "#4b5563" }}>
-            신청할 수업 정보를 찾을 수 없습니다.
+            신청할 프로그램 정보를 찾을 수 없습니다.
           </p>
         </section>
       ) : null}
@@ -74,25 +74,25 @@ export default async function ClassApplyPage({ params }: ApplyPageProps) {
           {!profile || profile.role !== "parent" ? (
             <section style={{ ...cardStyle, borderColor: "#fecaca" }}>
               <p style={{ margin: "0 0 8px", color: "#991b1b", fontSize: 14 }}>
-                학부모(parent) 계정만 체험수업 예약이 가능합니다.
+                학부모(parent) 계정만 신청할 수 있습니다.
               </p>
               <Link href={`/classes/${resolvedParams.id}`} style={{ color: "#2563eb", fontSize: 14 }}>
-                수업 상세로 돌아가기
+                프로그램 상세로 돌아가기
               </Link>
             </section>
           ) : null}
 
           <section style={cardStyle}>
-            <h2 style={{ margin: "0 0 8px", fontSize: 17 }}>수업 요약</h2>
+            <h2 style={{ margin: "0 0 8px", fontSize: 17 }}>프로그램 요약</h2>
             <div style={{ display: "grid", gap: 4, fontSize: 14, color: "#374151" }}>
-              <p style={{ margin: 0 }}>수업명: {classItem.title}</p>
+              <p style={{ margin: 0 }}>프로그램명: {classItem.title}</p>
               <p style={{ margin: 0 }}>과목: {classItem.subject}</p>
               <p style={{ margin: 0 }}>지역: {classItem.region}</p>
               <p style={{ margin: 0 }}>
                 선생님명:{" "}
                 {classItem.teacherDisplayName ?? classItem.teacherName ?? "정보 준비 중"}
               </p>
-              <p style={{ margin: 0 }}>체험비: {formatPrice(classItem.trialPrice)}</p>
+              <p style={{ margin: 0 }}>신청비: {formatPrice(classItem.trialPrice)}</p>
             </div>
           </section>
 

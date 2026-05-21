@@ -110,7 +110,7 @@ const parseScheduleSlots = (
     endTimes.length !== dates.length ||
     capacities.length !== dates.length
   ) {
-    return { ok: false, message: "체험 가능 시간을 1개 이상 정확히 입력해 주세요." }
+    return { ok: false, message: "예약 가능 시간을 1개 이상 정확히 입력해 주세요." }
   }
 
   const slots: StudioClassScheduleSlotInput[] = []
@@ -121,26 +121,26 @@ const parseScheduleSlots = (
     const capacityRaw = capacities[index]
 
     if (!date || !startTime || !endTime || !capacityRaw) {
-      return { ok: false, message: `체험 가능 시간 ${index + 1}의 날짜, 시간, 정원을 모두 입력해 주세요.` }
+      return { ok: false, message: `예약 가능 시간 ${index + 1}의 날짜, 시간, 정원을 모두 입력해 주세요.` }
     }
 
     const capacity = parsePositiveInt(capacityRaw)
     if (capacity == null || capacity < 1) {
-      return { ok: false, message: `체험 가능 시간 ${index + 1}의 정원은 1명 이상이어야 합니다.` }
+      return { ok: false, message: `예약 가능 시간 ${index + 1}의 정원은 1명 이상이어야 합니다.` }
     }
 
     const startAt = buildLocalIso(date, startTime)
     const endAt = buildLocalIso(date, endTime)
     if (!startAt || !endAt) {
-      return { ok: false, message: `체험 가능 시간 ${index + 1}의 날짜 또는 시간이 올바르지 않습니다.` }
+      return { ok: false, message: `예약 가능 시간 ${index + 1}의 날짜 또는 시간이 올바르지 않습니다.` }
     }
 
     if (new Date(endAt).getTime() <= new Date(startAt).getTime()) {
-      return { ok: false, message: `체험 가능 시간 ${index + 1}의 종료 시간은 시작 시간보다 뒤여야 합니다.` }
+      return { ok: false, message: `예약 가능 시간 ${index + 1}의 종료 시간은 시작 시간보다 뒤여야 합니다.` }
     }
 
     if (new Date(startAt).getTime() <= Date.now()) {
-      return { ok: false, message: `체험 가능 시간 ${index + 1}에 과거 시간대는 저장할 수 없습니다.` }
+      return { ok: false, message: `예약 가능 시간 ${index + 1}에 과거 시간대는 저장할 수 없습니다.` }
     }
 
     slots.push({
@@ -153,30 +153,14 @@ const parseScheduleSlots = (
   return { ok: true, slots }
 }
 
-type UpsertStudioClassDebugPayload = {
-  mode: "create" | "update" | null
-  classId: string | null
-  organizationId: string | null | undefined
-  teacherId: string | null | undefined
-  programType: ClassProgramType | null
-  title: string
-  subject: string
-  targetAge: string
-  region: string
-  trialPriceRaw: string
-  trialPrice: number | null
-}
-
 export async function upsertStudioClassAction(
   previousState: UpsertStudioClassActionState = defaultState,
   formData: FormData
 ): Promise<UpsertStudioClassActionState> {
   void previousState
-  let debugPayload: UpsertStudioClassDebugPayload | null = null
 
   try {
     const teacher = await requireTeacherStudioAccess()
-    const rawClassId = String(formData.get("classId") ?? "").trim()
     const mode = normalizeMode(formData.get("mode"))
     const requestedClassId = normalizeClassId(formData.get("classId"))
     const classId = mode === "update" ? requestedClassId : null
@@ -204,40 +188,13 @@ export async function upsertStudioClassAction(
       startOrder != null && endOrder != null && targetAgeStart === targetAgeEnd
         ? targetAgeStart
         : `${targetAgeStart}~${targetAgeEnd}`
-    debugPayload = {
-      mode,
-      classId,
-      organizationId,
-      teacherId,
-      programType,
-      title,
-      subject,
-      targetAge,
-      region,
-      trialPriceRaw,
-      trialPrice
-    }
-
-    if (process.env.NODE_ENV !== "production") {
-      console.info("[studio-class:mode]", {
-        mode,
-        rawClassId,
-        normalizedClassId: classId
-      })
-      if (mode === "create") {
-        console.info("[studio-class:path:create]")
-      } else if (mode === "update") {
-        console.info("[studio-class:path:update]")
-      }
-      console.info("[studio-class:upsert:input]", debugPayload)
-    }
 
     if (!mode) {
       return { ok: false, message: "저장 모드를 확인할 수 없습니다. 다시 시도해 주세요." }
     }
 
     if (mode === "update" && !isValidUuid(classId)) {
-      return { ok: false, message: "수정할 수업 정보를 확인할 수 없습니다." }
+      return { ok: false, message: "수정할 프로그램 정보를 확인할 수 없습니다." }
     }
 
     if (!programType) {
@@ -245,7 +202,7 @@ export async function upsertStudioClassAction(
     }
 
     if (title.length < 2) {
-      return { ok: false, message: "수업명은 2자 이상 입력해 주세요." }
+      return { ok: false, message: "프로그램명은 2자 이상 입력해 주세요." }
     }
 
     if (!subject) {
@@ -269,11 +226,11 @@ export async function upsertStudioClassAction(
     }
 
     if (description.length < 10) {
-      return { ok: false, message: "수업 소개는 10자 이상 입력해 주세요." }
+      return { ok: false, message: "프로그램 소개는 10자 이상 입력해 주세요." }
     }
 
     if (trialPrice == null || trialPrice < 0) {
-      return { ok: false, message: "체험비는 0원 이상의 숫자로 입력해 주세요." }
+      return { ok: false, message: "신청비는 0원 이상의 숫자로 입력해 주세요." }
     }
 
     if (!organizationId) {
@@ -328,25 +285,18 @@ export async function upsertStudioClassAction(
     return {
       ok: true,
       message:
-        classId ? "프로그램 정보를 수정했습니다." : "새 프로그램과 가능 시간을 등록했습니다."
+        classId ? "프로그램 정보를 수정했습니다." : "새 프로그램과 예약 가능 시간을 등록했습니다."
     }
   } catch (error) {
-    const detailedMessage =
-      error instanceof Error ? error.message : "알 수 없는 오류가 발생했습니다."
-
-    if (process.env.NODE_ENV !== "production") {
-      console.error("[studio-class:upsert:error]", {
-        message: detailedMessage,
-        payload: debugPayload
-      })
+    const message = error instanceof Error ? error.message : "unknown_error"
+    if (message.includes("invalid_teacher_for_organization")) {
+      return { ok: false, message: "프로그램 저장 권한을 확인할 수 없습니다." }
     }
 
-    return {
-      ok: false,
-      message:
-        process.env.NODE_ENV !== "production"
-          ? `수업 저장에 실패했습니다. ${detailedMessage}`
-          : "수업 저장에 실패했습니다. 잠시 후 다시 시도해 주세요."
+    if (message.includes("studio_class_not_found_or_forbidden")) {
+      return { ok: false, message: "프로그램 정보를 찾을 수 없거나 수정 권한이 없습니다." }
     }
+
+    return { ok: false, message: "프로그램 저장에 실패했습니다. 잠시 후 다시 시도해 주세요." }
   }
 }
