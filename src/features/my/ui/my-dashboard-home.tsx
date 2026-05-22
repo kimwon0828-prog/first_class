@@ -1,10 +1,12 @@
 import Link from "next/link"
 import type { CSSProperties } from "react"
 
+import { ParentProfileForm } from "@/features/my/ui/parent-profile-form"
 import type { MyDashboardData, TrialApplicationSummary } from "@/shared/lib/db/adapter"
 
 type MyDashboardHomeProps = {
   profileName: string
+  profilePhone: string | null
   dashboard: MyDashboardData
 }
 
@@ -45,7 +47,11 @@ const statusLabelMap: Record<TrialApplicationSummary["status"], string> = {
   canceled: "취소"
 }
 
-export const MyDashboardHome = ({ profileName, dashboard }: MyDashboardHomeProps) => {
+export const MyDashboardHome = ({
+  profileName,
+  profilePhone,
+  dashboard
+}: MyDashboardHomeProps) => {
   return (
     <section style={{ display: "grid", gap: 12 }}>
       <section style={{ ...cardStyle, backgroundColor: "#f8fafc" }}>
@@ -78,6 +84,16 @@ export const MyDashboardHome = ({ profileName, dashboard }: MyDashboardHomeProps
             {dashboard.completedApplicationCount + dashboard.canceledApplicationCount}
           </strong>
         </article>
+      </section>
+
+      <section style={cardStyle}>
+        <div>
+          <h2 style={{ margin: "0 0 4px", fontSize: 18 }}>보호자 기본 정보</h2>
+          <p style={{ margin: 0, fontSize: 14, color: "#4b5563", lineHeight: "20px" }}>
+            저장한 보호자명과 연락처는 다음 신청 폼의 기본값으로 사용됩니다.
+          </p>
+        </div>
+        <ParentProfileForm initialName={profileName} initialPhone={profilePhone} />
       </section>
 
       <section style={cardStyle}>

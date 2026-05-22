@@ -6,6 +6,7 @@ export type AuthProfile = {
   id: string
   role: ProfileRole
   name: string
+  phone: string | null
   organizationId: string | null
 }
 
@@ -34,7 +35,7 @@ export const getMyProfile = async (): Promise<AuthProfile | null> => {
 
   const { data, error } = await supabase
     .from("profiles")
-    .select("id, role, name, organization_id")
+    .select("id, role, name, phone, organization_id")
     .eq("id", user.id)
     .maybeSingle()
 
@@ -50,6 +51,7 @@ export const getMyProfile = async (): Promise<AuthProfile | null> => {
     id: data.id,
     role: data.role,
     name: data.name,
+    phone: data.phone ?? null,
     organizationId: data.organization_id
   }
 }

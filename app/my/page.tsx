@@ -33,7 +33,11 @@ export default async function MyPage() {
           </Link>
         </section>
       ) : (
-        <MyDashboardHome profileName={profile.name} dashboard={data} />
+        <MyDashboardHome
+          profileName={profile.name}
+          profilePhone={profile.phone}
+          dashboard={data}
+        />
       )}
     </main>
   )

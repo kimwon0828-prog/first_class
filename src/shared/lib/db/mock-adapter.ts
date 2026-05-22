@@ -23,6 +23,10 @@ type MockScheduleBlock = StudioScheduleBlockSummary & {
   classId: string | null
 }
 
+type MockApplicationRecord = StudioApplicationDetail & {
+  childId: string | null
+}
+
 const teacherProfiles: TeacherPublicProfile[] = [
   {
     teacherId: "teacher-1",
@@ -43,7 +47,7 @@ const teacherProfiles: TeacherPublicProfile[] = [
 type GlobalMockStore = typeof globalThis & {
   __firstClassMockClasses__?: ClassSummary[]
   __firstClassMockScheduleBlocks__?: MockScheduleBlock[]
-  __firstClassMockApplications__?: StudioApplicationDetail[]
+  __firstClassMockApplications__?: MockApplicationRecord[]
   __firstClassMockApplicationLogs__?: ApplicationLogEntry[]
   __firstClassMockChildren__?: ChildProfile[]
   __firstClassMockTeacherSignupRequests__?: TeacherSignupRequest[]
@@ -570,7 +574,12 @@ export const mockDataAdapter: DataAdapter = {
     target.updatedAt = new Date().toISOString()
 
     if (input.nextStatus === "confirmed") {
+      if (!target.requestedScheduleBlockId) {
+        throw new Error("missing_requested_schedule_block")
+      }
+
       target.confirmedSlotAt = target.requestedSlotAt
+      target.confirmedScheduleBlockId = target.requestedScheduleBlockId
     }
 
     applicationLogs.unshift({
@@ -634,6 +643,7 @@ export const mockDataAdapter: DataAdapter = {
     }
     applications.push({
       ...created,
+      childId: input.childId ?? null,
       classSubject: classItem?.subject ?? null,
       classRegion: classItem?.region ?? null,
       assignedTeacherId: classItem?.teacherId ?? null,

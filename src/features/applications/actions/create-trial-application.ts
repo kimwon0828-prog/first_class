@@ -16,6 +16,7 @@ const defaultState: CreateTrialApplicationActionState = {
 }
 
 const validateForm = (formData: FormData) => {
+  const childIdRaw = String(formData.get("childId") ?? "").trim()
   const childName = String(formData.get("childName") ?? "").trim()
   const childGrade = String(formData.get("childGrade") ?? "").trim()
   const parentName = String(formData.get("parentName") ?? "").trim()
@@ -40,6 +41,7 @@ const validateForm = (formData: FormData) => {
   const goalType = goalTypeRaw.length > 0 ? goalTypeRaw : null
   const goalNote = goalNoteRaw.length > 0 ? goalNoteRaw : null
   const memo = memoRaw.length > 0 ? memoRaw : null
+  const childId = childIdRaw.length > 0 ? childIdRaw : null
   const subjectExperienceYn =
     subjectExperienceYnRaw === "yes"
       ? true
@@ -69,6 +71,7 @@ const validateForm = (formData: FormData) => {
 
   return {
     ok: true as const,
+    childId,
     childName,
     childGrade,
     parentName,
@@ -117,6 +120,22 @@ export async function createTrialApplicationAction(
   }
 
   try {
+    let validatedChildId: string | null = null
+
+    if (validated.childId) {
+      const myChildren = await dataAdapter.listMyChildren(profile.id)
+      const matchedChild = myChildren.find((child) => child.id === validated.childId) ?? null
+
+      if (!matchedChild) {
+        return {
+          status: "error",
+          message: "선택한 자녀 정보를 확인할 수 없습니다. 다시 선택해 주세요."
+        }
+      }
+
+      validatedChildId = matchedChild.id
+    }
+
     const availableSlots = await dataAdapter.listAvailableScheduleSlotsByClassId(classId)
     const selectedSlot =
       availableSlots.find((slot) => slot.id === validated.selectedScheduleBlockId) ?? null
@@ -138,6 +157,7 @@ export async function createTrialApplicationAction(
     await dataAdapter.createTrialApplication({
       parentId: session.user.id,
       classId,
+      childId: validatedChildId,
       childName: validated.childName,
       childGrade: validated.childGrade,
       parentName: validated.parentName,
@@ -164,14 +184,6 @@ export async function createTrialApplicationAction(
       }
     }
 
-    if (message === "failed_to_create_application_log") {
-      return {
-        status: "error",
-        message:
-          "신청은 접수되었지만 이력 기록 중 문제가 발생했습니다. 잠시 후 내 신청에서 상태를 확인해 주세요."
-      }
-    }
-
     if (message === "invalid_schedule_slot") {
       return {
         status: "error",
@@ -194,7 +206,7 @@ export async function createTrialApplicationAction(
 
   return {
     status: "success",
-    message: "신청이 완료되었습니다.",
+    message: "신청이 접수되었습니다. 내 신청에서 진행 상태를 확인할 수 있어요.",
     redirectTo: "/my/applications"
   }
 }

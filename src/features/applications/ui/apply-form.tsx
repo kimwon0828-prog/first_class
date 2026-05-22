@@ -7,12 +7,16 @@ import {
   createTrialApplicationAction,
   type CreateTrialApplicationActionState
 } from "@/features/applications/actions/create-trial-application"
-import type { AvailableScheduleSlot } from "@/shared/lib/db/adapter"
+import type { AvailableScheduleSlot, ChildProfile } from "@/shared/lib/db/adapter"
 
 type ApplyFormProps = {
   classId: string
   availableSlots: AvailableScheduleSlot[]
   slotsError: string | null
+  childProfiles: ChildProfile[]
+  childProfilesError: string | null
+  parentNameDefault: string
+  parentPhoneDefault: string | null
 }
 
 const initialState: CreateTrialApplicationActionState = {
@@ -50,15 +54,36 @@ const formatSlot = (value: string) => {
   })
 }
 
-export const ApplyForm = ({ classId, availableSlots, slotsError }: ApplyFormProps) => {
+export const ApplyForm = ({
+  classId,
+  availableSlots,
+  slotsError,
+  childProfiles,
+  childProfilesError,
+  parentNameDefault,
+  parentPhoneDefault
+}: ApplyFormProps) => {
   const router = useRouter()
   const boundAction = createTrialApplicationAction.bind(null, classId)
   const [state, formAction, isPending] = useActionState(boundAction, initialState)
+  const [selectedChildId, setSelectedChildId] = useState("")
   const [selectedSlotId, setSelectedSlotId] = useState("")
+  const [childName, setChildName] = useState("")
+  const [childGrade, setChildGrade] = useState("")
+  const [childSchool, setChildSchool] = useState("")
+  const [childNotes, setChildNotes] = useState("")
+  const [currentLevel, setCurrentLevel] = useState("")
+  const [goalNote, setGoalNote] = useState("")
+  const [parentName, setParentName] = useState(parentNameDefault)
+  const [parentPhone, setParentPhone] = useState(parentPhoneDefault ?? "")
 
   const selectedSlot = useMemo(
     () => availableSlots.find((slot) => slot.id === selectedSlotId) ?? null,
     [availableSlots, selectedSlotId]
+  )
+  const selectedChild = useMemo(
+    () => childProfiles.find((child) => child.id === selectedChildId) ?? null,
+    [childProfiles, selectedChildId]
   )
   const hasSelectableSlots = useMemo(
     () => availableSlots.some((slot) => !slot.isClosed),
@@ -74,6 +99,19 @@ export const ApplyForm = ({ classId, availableSlots, slotsError }: ApplyFormProp
   }, [selectedSlot?.isClosed])
 
   useEffect(() => {
+    if (!selectedChild) {
+      return
+    }
+
+    setChildName(selectedChild.name)
+    setChildGrade(selectedChild.grade)
+    setChildSchool(selectedChild.schoolName ?? "")
+    setChildNotes(selectedChild.notes ?? "")
+    setCurrentLevel(selectedChild.currentLevel ?? "")
+    setGoalNote(selectedChild.goalNote ?? "")
+  }, [selectedChild])
+
+  useEffect(() => {
     if (state.status === "success" && state.redirectTo) {
       router.replace(state.redirectTo)
     }
@@ -81,6 +119,37 @@ export const ApplyForm = ({ classId, availableSlots, slotsError }: ApplyFormProp
 
   return (
     <form action={formAction} style={{ display: "grid", gap: 12 }}>
+      {childProfilesError ? (
+        <p style={{ margin: 0, color: "#b42318", fontSize: 14 }}>
+          {childProfilesError} 자녀를 선택하지 않고 직접 입력으로 신청할 수 있습니다.
+        </p>
+      ) : null}
+
+      {childProfiles.length > 0 ? (
+        <label style={{ display: "grid", gap: 6 }}>
+          <span>자녀 선택</span>
+          <select
+            name="childId"
+            value={selectedChildId}
+            disabled={isPending}
+            onChange={(event) => {
+              setSelectedChildId(event.target.value)
+            }}
+            style={{ padding: 10 }}
+          >
+            <option value="">직접 입력</option>
+            {childProfiles.map((child) => (
+              <option key={child.id} value={child.id}>
+                {child.name} / {child.grade}
+              </option>
+            ))}
+          </select>
+          <span style={{ fontSize: 13, color: "#4b5563" }}>
+            등록한 자녀를 선택하면 학생 정보를 자동으로 채워 드립니다.
+          </span>
+        </label>
+      ) : null}
+
       <label style={{ display: "grid", gap: 6 }}>
         <span>학생명</span>
         <input
@@ -89,29 +158,36 @@ export const ApplyForm = ({ classId, availableSlots, slotsError }: ApplyFormProp
           required
           minLength={2}
           maxLength={30}
+          value={childName}
+          onChange={(event) => {
+            setChildName(event.target.value)
+          }}
           disabled={isPending}
           style={{ padding: 10 }}
         />
       </label>
 
       <label style={{ display: "grid", gap: 6 }}>
-        <span>학년</span>
-        <select
+        <span>학년/연령</span>
+        <input
           name="childGrade"
+          type="text"
+          list="child-grade-options"
           required
+          maxLength={30}
+          value={childGrade}
+          onChange={(event) => {
+            setChildGrade(event.target.value)
+          }}
           disabled={isPending}
+          placeholder="예: 초3, 7세"
           style={{ padding: 10 }}
-          defaultValue=""
-        >
-          <option value="" disabled>
-            학년을 선택해 주세요
-          </option>
+        />
+        <datalist id="child-grade-options">
           {gradeOptions.map((option) => (
-            <option key={option} value={option}>
-              {option}
-            </option>
+            <option key={option} value={option} />
           ))}
-        </select>
+        </datalist>
       </label>
 
       <label style={{ display: "grid", gap: 6 }}>
@@ -122,6 +198,10 @@ export const ApplyForm = ({ classId, availableSlots, slotsError }: ApplyFormProp
           required
           minLength={2}
           maxLength={30}
+          value={parentName}
+          onChange={(event) => {
+            setParentName(event.target.value)
+          }}
           disabled={isPending}
           style={{ padding: 10 }}
         />
@@ -135,6 +215,10 @@ export const ApplyForm = ({ classId, availableSlots, slotsError }: ApplyFormProp
           required
           minLength={8}
           maxLength={20}
+          value={parentPhone}
+          onChange={(event) => {
+            setParentPhone(event.target.value)
+          }}
           disabled={isPending}
           placeholder="010-0000-0000"
           style={{ padding: 10 }}
@@ -218,6 +302,10 @@ export const ApplyForm = ({ classId, availableSlots, slotsError }: ApplyFormProp
               name="childSchool"
               type="text"
               maxLength={60}
+              value={childSchool}
+              onChange={(event) => {
+                setChildSchool(event.target.value)
+              }}
               disabled={isPending}
               style={{ padding: 10 }}
             />
@@ -229,6 +317,10 @@ export const ApplyForm = ({ classId, availableSlots, slotsError }: ApplyFormProp
               name="childNotes"
               rows={3}
               maxLength={500}
+              value={childNotes}
+              onChange={(event) => {
+                setChildNotes(event.target.value)
+              }}
               disabled={isPending}
               placeholder="알레르기, 성향, 주의사항이 있으면 적어 주세요."
               style={{ padding: 10, resize: "vertical" }}
@@ -267,6 +359,10 @@ export const ApplyForm = ({ classId, availableSlots, slotsError }: ApplyFormProp
               name="currentLevel"
               type="text"
               maxLength={80}
+              value={currentLevel}
+              onChange={(event) => {
+                setCurrentLevel(event.target.value)
+              }}
               disabled={isPending}
               placeholder="예: 기초 개념 가능, 입문 단계"
               style={{ padding: 10 }}
@@ -303,6 +399,10 @@ export const ApplyForm = ({ classId, availableSlots, slotsError }: ApplyFormProp
               name="goalNote"
               rows={3}
               maxLength={500}
+              value={goalNote}
+              onChange={(event) => {
+                setGoalNote(event.target.value)
+              }}
               disabled={isPending}
               placeholder="목표나 상담 희망 내용을 자유롭게 적어 주세요."
               style={{ padding: 10, resize: "vertical" }}

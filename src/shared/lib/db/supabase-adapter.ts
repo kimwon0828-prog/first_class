@@ -1082,6 +1082,7 @@ export const supabaseDataAdapter: DataAdapter = {
       status: TrialApplicationSummary["status"]
       updated_at: string
       confirmed_slot_at?: string | null
+      confirmed_schedule_block_id?: string | null
     } = {
       status: input.nextStatus,
       updated_at: new Date().toISOString()
@@ -1090,7 +1091,7 @@ export const supabaseDataAdapter: DataAdapter = {
     if (input.nextStatus === "confirmed") {
       const { data: currentRow, error: currentError } = await supabase
         .from("trial_applications")
-        .select("requested_slot_at")
+        .select("requested_slot_at, requested_schedule_block_id")
         .eq("id", input.applicationId)
         .maybeSingle()
 
@@ -1098,7 +1099,12 @@ export const supabaseDataAdapter: DataAdapter = {
         throw new Error("failed_to_prepare_application_status_update")
       }
 
+      if (!currentRow.requested_schedule_block_id) {
+        throw new Error("missing_requested_schedule_block")
+      }
+
       updatePayload.confirmed_slot_at = currentRow.requested_slot_at
+      updatePayload.confirmed_schedule_block_id = currentRow.requested_schedule_block_id
     }
 
     const { data, error } = await supabase
@@ -1126,7 +1132,14 @@ export const supabaseDataAdapter: DataAdapter = {
     })
 
     if (logError) {
-      throw new Error("failed_to_create_application_log")
+      console.warn(
+        formatSupabaseError("non_critical_failed_to_create_application_log", logError, {
+          applicationId: input.applicationId,
+          fromStatus: input.currentStatus,
+          toStatus: input.nextStatus,
+          actorId: input.actorId
+        })
+      )
     }
   },
   async createTrialApplication(input: TrialApplicationInput) {
@@ -1200,6 +1213,7 @@ export const supabaseDataAdapter: DataAdapter = {
       .insert({
         parent_id: input.parentId,
         class_id: input.classId,
+        child_id: input.childId ?? null,
         child_name: input.childName,
         child_grade: input.childGrade,
         parent_name: input.parentName,
@@ -1237,7 +1251,12 @@ export const supabaseDataAdapter: DataAdapter = {
     })
 
     if (logError) {
-      throw new Error("failed_to_create_application_log")
+      console.warn(
+        formatSupabaseError("non_critical_failed_to_create_application_log", logError, {
+          applicationId: insertedApplication.id,
+          actorId: input.parentId
+        })
+      )
     }
 
     return mapApplication(insertedApplication)

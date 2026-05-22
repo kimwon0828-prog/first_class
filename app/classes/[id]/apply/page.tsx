@@ -5,6 +5,7 @@ import { getMyProfile } from "@/features/auth/lib/profile-sync"
 import { requireSession } from "@/features/auth/lib/session"
 import { getClassAvailableSlots } from "@/features/applications/queries/get-class-available-slots"
 import { getPublicClassDetail } from "@/features/classes/queries/get-public-class-detail"
+import { getMyChildren } from "@/features/children/queries/get-my-children"
 import { ApplyForm } from "@/features/applications/ui/apply-form"
 
 type ApplyPageProps = {
@@ -39,8 +40,14 @@ export default async function ClassApplyPage({ params }: ApplyPageProps) {
   const returnTo = `/classes/${resolvedParams.id}/apply`
   await requireSession(`/auth/sign-in?returnTo=${encodeURIComponent(returnTo)}`)
   const profile = await getMyProfile()
-  const { data: classItem, error } = await getPublicClassDetail(resolvedParams.id)
-  const { data: slots, error: slotsError } = await getClassAvailableSlots(resolvedParams.id)
+  const [{ data: classItem, error }, { data: slots, error: slotsError }, { data: children, error: childrenError }] =
+    await Promise.all([
+      getPublicClassDetail(resolvedParams.id),
+      getClassAvailableSlots(resolvedParams.id),
+      profile?.role === "parent"
+        ? getMyChildren()
+        : Promise.resolve({ data: [], error: null })
+    ])
 
   return (
     <main style={pageContainerStyle}>
@@ -98,7 +105,15 @@ export default async function ClassApplyPage({ params }: ApplyPageProps) {
 
           {profile?.role === "parent" ? (
             <section style={cardStyle}>
-              <ApplyForm classId={classItem.id} availableSlots={slots} slotsError={slotsError} />
+              <ApplyForm
+                classId={classItem.id}
+                availableSlots={slots}
+                slotsError={slotsError}
+                childProfiles={children}
+                childProfilesError={childrenError}
+                parentNameDefault={profile.name}
+                parentPhoneDefault={profile.phone}
+              />
             </section>
           ) : null}
         </div>

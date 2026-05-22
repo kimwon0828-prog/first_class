@@ -100,11 +100,11 @@ export async function updateApplicationStatusAction(
       }
     }
 
-    if (message === "failed_to_create_application_log") {
+    if (message === "missing_requested_schedule_block") {
       return {
         status: "error",
         message:
-          "상태 변경 중 로그 기록에 실패했습니다. 새로고침 후 상세 로그를 확인해 주세요."
+          "예약 시간 정보가 없어 확정 처리할 수 없습니다. 신청 시간 정보를 확인해 주세요."
       }
     }
 

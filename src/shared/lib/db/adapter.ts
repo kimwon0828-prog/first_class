@@ -117,6 +117,7 @@ export type UpdateStudioScheduleBlockTypeInput = {
 export type TrialApplicationInput = {
   parentId: string
   classId: string
+  childId?: string | null
   childName: string
   childGrade: string
   parentName: string
