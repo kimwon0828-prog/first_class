@@ -157,6 +157,13 @@ export async function updateApplicationOutcomeAction(
     }
   }
 
+  if (current.status !== "completed") {
+    return {
+      status: "error",
+      message: "완료 처리된 신청에만 운영 기록을 저장할 수 있습니다."
+    }
+  }
+
   const nextValue = {
     consultationNote: normalizeOptionalText(formData.get("consultationNote")),
     trialFeedback: normalizeOptionalText(formData.get("trialFeedback")),
@@ -190,6 +197,7 @@ export async function updateApplicationOutcomeAction(
       note: logNote
     })
 
+    revalidatePath("/studio")
     revalidatePath("/studio/applications")
     revalidatePath(`/studio/applications/${applicationId}`)
 
@@ -205,6 +213,13 @@ export async function updateApplicationOutcomeAction(
       return {
         status: "error",
         message: "수정 권한이 없거나 신청을 찾을 수 없습니다."
+      }
+    }
+
+    if (message === "application_outcome_status_conflict") {
+      return {
+        status: "error",
+        message: "완료 상태가 변경되었습니다. 화면을 새로고침한 뒤 다시 시도해 주세요."
       }
     }
 

@@ -1172,6 +1172,7 @@ export const supabaseDataAdapter: DataAdapter = {
         updated_at: new Date().toISOString()
       })
       .eq("id", input.applicationId)
+      .eq("status", input.currentStatus)
       .select("id")
       .maybeSingle()
 
@@ -1180,7 +1181,11 @@ export const supabaseDataAdapter: DataAdapter = {
     }
 
     if (!data) {
-      throw new Error("application_not_found_or_forbidden")
+      throw new Error(
+        input.currentStatus === "completed"
+          ? "application_outcome_status_conflict"
+          : "application_not_found_or_forbidden"
+      )
     }
 
     const { error: logError } = await supabase.from("application_logs").insert({

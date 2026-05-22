@@ -83,6 +83,7 @@ export async function updateApplicationStatusAction(
       note: STATUS_NOTES[requestedNextStatus]
     })
 
+    revalidatePath("/studio")
     revalidatePath("/studio/applications")
     revalidatePath(`/studio/applications/${applicationId}`)
 
