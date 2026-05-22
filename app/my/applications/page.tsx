@@ -18,7 +18,13 @@ export default async function MyApplicationsPage() {
 
   return (
     <main style={{ maxWidth: 640, margin: "0 auto", padding: "20px 16px 40px" }}>
-      <h1 style={{ margin: "0 0 12px", fontSize: 24 }}>내 신청</h1>
+      <div style={{ marginBottom: 12 }}>
+        <Link href="/my" style={{ color: "#2563eb", fontSize: 14 }}>
+          ← 마이페이지로 돌아가기
+        </Link>
+      </div>
+
+      <h1 style={{ margin: "0 0 12px", fontSize: 24 }}>신청 내역</h1>
 
       {error ? (
         <section
@@ -46,10 +52,10 @@ export default async function MyApplicationsPage() {
           }}
         >
           <p style={{ margin: "0 0 8px", fontSize: 14, color: "#4b5563" }}>
-            아직 신청한 체험 수업이 없습니다.
+            아직 신청한 내역이 없습니다.
           </p>
           <Link href="/classes" style={{ color: "#2563eb", fontSize: 14 }}>
-            체험 수업 둘러보기
+            프로그램 둘러보기
           </Link>
         </section>
       ) : null}

@@ -17,6 +17,8 @@
 | `/classes` | 공개 | parent | mobile-first |
 | `/classes/[id]` | 공개 | parent | mobile-first |
 | `/classes/[id]/apply` | 로그인 필요 | parent | 비로그인 시 `/auth/sign-in` |
+| `/my` | 로그인 필요 | parent | 마이페이지 홈 |
+| `/my/children` | 로그인 필요 | parent | 자녀 프로필 관리 |
 | `/my/applications` | 로그인 필요 | parent | 본인 신청만 |
 | `/auth/sign-in` | 공개 | parent/teacher | 가입은 parent 전용 |
 | `/auth/sign-up` | 공개 | parent | 공개 회원가입 전용 |
@@ -74,12 +76,20 @@
 - `no_show`, `result_entered`, `consultation_needed`, `consultation_completed`, `registered`, `not_registered`는 통합 status에 바로 넣지 않는다.
 - 후속 phase에서 `attendance`, `result`, `consultation`, `registration` 축을 별도 컬럼 또는 구조로 분리한다.
 
-## 8) DB 전환 적용 후 검증 체크리스트
+## 8) 학부모 마이페이지/자녀 프로필 전략
+- `/my`는 보호자 인사, 신청 현황 요약, 최근 신청 내역, 자녀 관리/신청 내역 바로가기를 제공한다.
+- `/my/children`는 mobile-first 단일 컬럼 레이아웃으로 자녀 목록 조회, 등록, 수정을 제공한다.
+- `children` 테이블을 신규 도입하고 parent 본인 데이터만 RLS로 접근 가능하게 한다.
+- `trial_applications.child_id`는 nullable로 추가하되, Phase 8-1에서는 신청 폼 저장에 아직 사용하지 않는다.
+- 기존 `trial_applications.child_name`, `child_grade`, `child_school` 등 신청 스냅샷 컬럼은 유지한다.
+
+## 9) DB 전환 적용 후 검증 체크리스트
 - role 전환 확인: `profiles.role='operator'`가 0건인지 확인
 - 조직 제약 확인: `parent -> organization_id null`, `teacher -> organization_id not null` 위반 0건 확인
 - teacher 정합성 확인: `profiles.role='teacher'`인데 `teachers.profile_id` 없는 행이 0건인지 확인
 - RLS 확인(parent): 공개 화면/신청/내 신청은 동작, `/studio/*` 데이터 쿼리는 차단되는지 확인
 - RLS 확인(teacher): 본인 organization의 `classes/schedule_blocks/trial_applications/application_logs` 접근 가능 확인
+- RLS 확인(parent children): 본인 `children`만 조회/등록/수정 가능하고 delete는 허용되지 않는지 확인
 - 공개 회원가입 확인: 신규 가입 계정의 `profiles.role`이 항상 `parent`인지 확인
 - 회귀 확인: 신청 생성 -> `trial_applications.status='new'` -> `application_logs` 최초 로그 생성 유지 확인
 - 프로그램 유형 확인: `classes.program_type`의 null 값이 없고 허용값 외 데이터가 0건인지 확인

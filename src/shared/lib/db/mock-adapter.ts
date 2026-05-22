@@ -1,15 +1,19 @@
 import type {
   ApplicationLogEntry,
   AvailableScheduleSlot,
+  ChildProfile,
+  ChildProfileInput,
   ClassDetail,
   ClassSummary,
   DataAdapter,
+  MyDashboardData,
   StudioApplicationDetail,
   StudioApplicationSummary,
   StudioScheduleBlockSummary,
   StudioTeacherOption,
   TeacherPublicProfile,
   TeacherSignupRequest,
+  UpdateChildProfileInput,
   TrialApplicationInput,
   TrialApplicationSummary,
   UpdateStudioApplicationStatusInput
@@ -41,6 +45,7 @@ type GlobalMockStore = typeof globalThis & {
   __firstClassMockScheduleBlocks__?: MockScheduleBlock[]
   __firstClassMockApplications__?: StudioApplicationDetail[]
   __firstClassMockApplicationLogs__?: ApplicationLogEntry[]
+  __firstClassMockChildren__?: ChildProfile[]
   __firstClassMockTeacherSignupRequests__?: TeacherSignupRequest[]
 }
 
@@ -155,6 +160,8 @@ const applications =
 const applicationLogs =
   globalMockStore.__firstClassMockApplicationLogs__ ??
   (globalMockStore.__firstClassMockApplicationLogs__ = [])
+const children =
+  globalMockStore.__firstClassMockChildren__ ?? (globalMockStore.__firstClassMockChildren__ = [])
 const teacherSignupRequests =
   globalMockStore.__firstClassMockTeacherSignupRequests__ ??
   (globalMockStore.__firstClassMockTeacherSignupRequests__ = [])
@@ -365,6 +372,64 @@ export const mockDataAdapter: DataAdapter = {
 
     target.type = input.nextType
   },
+  async listMyChildren(parentId) {
+    return children
+      .filter((item) => item.parentId === parentId)
+      .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))
+  },
+  async createChildProfile(input: ChildProfileInput) {
+    const created: ChildProfile = {
+      id: `child-${children.length + 1}`,
+      parentId: input.parentId,
+      name: input.name,
+      grade: input.grade,
+      schoolName: input.schoolName,
+      notes: input.notes,
+      currentLevel: input.currentLevel,
+      interestSubjects: input.interestSubjects,
+      goalNote: input.goalNote,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    }
+
+    children.unshift(created)
+    return created
+  },
+  async updateChildProfile(input: UpdateChildProfileInput) {
+    const target = children.find(
+      (item) => item.id === input.childId && item.parentId === input.parentId
+    )
+
+    if (!target) {
+      throw new Error("child_profile_not_found_or_forbidden")
+    }
+
+    target.name = input.name
+    target.grade = input.grade
+    target.schoolName = input.schoolName
+    target.notes = input.notes
+    target.currentLevel = input.currentLevel
+    target.interestSubjects = input.interestSubjects
+    target.goalNote = input.goalNote
+    target.updatedAt = new Date().toISOString()
+
+    return target
+  },
+  async getMyDashboard(parentId) {
+    const applications = await this.listMyApplications(parentId)
+    const summary: MyDashboardData = {
+      childrenCount: children.filter((item) => item.parentId === parentId).length,
+      totalApplicationCount: applications.length,
+      newApplicationCount: applications.filter((item) => item.status === "new").length,
+      reviewingApplicationCount: applications.filter((item) => item.status === "reviewing").length,
+      confirmedApplicationCount: applications.filter((item) => item.status === "confirmed").length,
+      completedApplicationCount: applications.filter((item) => item.status === "completed").length,
+      canceledApplicationCount: applications.filter((item) => item.status === "canceled").length,
+      recentApplications: applications.slice(0, 5)
+    }
+
+    return summary
+  },
   async listAvailableScheduleSlotsByClassId(classId) {
     const classItem = classes.find((item) => item.id === classId)
     if (!classItem?.teacherId) {
@@ -412,6 +477,7 @@ export const mockDataAdapter: DataAdapter = {
         id: item.id,
         classId: item.classId,
         classTitle: item.classTitle,
+        classProgramType: item.classProgramType,
         parentId: item.parentId,
         childName: item.childName,
         childGrade: item.childGrade,
@@ -552,6 +618,7 @@ export const mockDataAdapter: DataAdapter = {
       id: `app-${applications.length + 1}`,
       classId: input.classId,
       classTitle: classItem?.title ?? null,
+      classProgramType: classItem?.programType ?? null,
       parentId: input.parentId,
       childName: input.childName,
       childGrade: input.childGrade,

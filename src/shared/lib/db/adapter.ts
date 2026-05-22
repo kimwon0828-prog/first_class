@@ -134,10 +134,40 @@ export type TrialApplicationInput = {
   memo: string | null
 }
 
+export type ChildProfile = {
+  id: string
+  parentId: string
+  name: string
+  grade: string
+  schoolName: string | null
+  notes: string | null
+  currentLevel: string | null
+  interestSubjects: string | null
+  goalNote: string | null
+  createdAt: string
+  updatedAt: string
+}
+
+export type ChildProfileInput = {
+  parentId: string
+  name: string
+  grade: string
+  schoolName: string | null
+  notes: string | null
+  currentLevel: string | null
+  interestSubjects: string | null
+  goalNote: string | null
+}
+
+export type UpdateChildProfileInput = ChildProfileInput & {
+  childId: string
+}
+
 export type TrialApplicationSummary = {
   id: string
   classId: string
   classTitle: string | null
+  classProgramType: ClassProgramType | null
   parentId: string
   childName: string
   childGrade: string
@@ -150,6 +180,17 @@ export type TrialApplicationSummary = {
   goalType: string | null
   createdAt: string
   updatedAt: string
+}
+
+export type MyDashboardData = {
+  childrenCount: number
+  totalApplicationCount: number
+  newApplicationCount: number
+  reviewingApplicationCount: number
+  confirmedApplicationCount: number
+  completedApplicationCount: number
+  canceledApplicationCount: number
+  recentApplications: TrialApplicationSummary[]
 }
 
 export type ApplicationLogEntry = {
@@ -234,6 +275,10 @@ export interface DataAdapter {
   listTeacherScheduleBlocks(teacherId: string): Promise<StudioScheduleBlockSummary[]>
   createStudioScheduleBlock(input: CreateStudioScheduleBlockInput): Promise<StudioScheduleBlockSummary>
   updateStudioScheduleBlockType(input: UpdateStudioScheduleBlockTypeInput): Promise<void>
+  listMyChildren(parentId: string): Promise<ChildProfile[]>
+  createChildProfile(input: ChildProfileInput): Promise<ChildProfile>
+  updateChildProfile(input: UpdateChildProfileInput): Promise<ChildProfile>
+  getMyDashboard(parentId: string): Promise<MyDashboardData>
   listMyApplications(parentId: string): Promise<TrialApplicationSummary[]>
   listStudioApplications(organizationId: string): Promise<StudioApplicationSummary[]>
   getStudioApplicationDetail(

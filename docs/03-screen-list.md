@@ -7,7 +7,9 @@
 - P-04 로그인 `/auth/sign-in`
 - P-05 프로그램 신청 `/classes/[id]/apply`
 - P-06 신청 완료 `/applications/complete`
-- P-07 내 신청내역 `/my/applications`
+- P-07 마이페이지 홈 `/my`
+- P-08 내 신청내역 `/my/applications`
+- P-09 자녀 관리 `/my/children`
 
 ## 선생님(studio)
 - 접근 대상: teacher 전용

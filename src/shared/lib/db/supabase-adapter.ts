@@ -2,10 +2,13 @@ import { getSupabaseServerClient } from "@/integrations/supabase/server"
 import type {
   ApplicationLogEntry,
   AvailableScheduleSlot,
+  ChildProfile,
+  ChildProfileInput,
   ClassProgramType,
   ClassDetail,
   ClassSummary,
   DataAdapter,
+  MyDashboardData,
   StudioApplicationDetail,
   StudioApplicationSummary,
   StudioScheduleBlockSummary,
@@ -15,6 +18,7 @@ import type {
   TeacherSignupRequestStatus,
   TrialApplicationInput,
   TrialApplicationSummary,
+  UpdateChildProfileInput,
   UpdateStudioApplicationStatusInput
 } from "@/shared/lib/db/adapter"
 
@@ -46,6 +50,7 @@ type TrialApplicationRow = {
   id: string
   class_id: string
   parent_id: string
+  child_id?: string | null
   child_name: string
   child_grade: string
   parent_name?: string | null
@@ -72,10 +77,25 @@ type TrialApplicationRow = {
   created_at: string
   updated_at: string
   classes?: Array<{
+    program_type?: ClassProgramType
     title: string
     subject?: string
     region?: string
   }> | null
+}
+
+type ChildProfileRow = {
+  id: string
+  parent_id: string
+  name: string
+  grade: string
+  school_name?: string | null
+  notes?: string | null
+  current_level?: string | null
+  interest_subjects?: string | null
+  goal_note?: string | null
+  created_at: string
+  updated_at: string
 }
 
 type ApplicationLogRow = {
@@ -153,6 +173,7 @@ const mapApplication = (row: TrialApplicationRow): TrialApplicationSummary => ({
   id: row.id,
   classId: row.class_id,
   classTitle: row.classes?.[0]?.title ?? null,
+  classProgramType: row.classes?.[0]?.program_type ?? null,
   parentId: row.parent_id,
   childName: row.child_name,
   childGrade: row.child_grade,
@@ -163,6 +184,20 @@ const mapApplication = (row: TrialApplicationRow): TrialApplicationSummary => ({
   confirmedSlotAt: row.confirmed_slot_at ?? null,
   status: row.status,
   goalType: row.goal_type ?? null,
+  createdAt: row.created_at,
+  updatedAt: row.updated_at
+})
+
+const mapChildProfile = (row: ChildProfileRow): ChildProfile => ({
+  id: row.id,
+  parentId: row.parent_id,
+  name: row.name,
+  grade: row.grade,
+  schoolName: row.school_name ?? null,
+  notes: row.notes ?? null,
+  currentLevel: row.current_level ?? null,
+  interestSubjects: row.interest_subjects ?? null,
+  goalNote: row.goal_note ?? null,
   createdAt: row.created_at,
   updatedAt: row.updated_at
 })
@@ -409,6 +444,8 @@ const CLASS_SELECT_FIELDS =
   "id, organization_id, program_type, title, subject, region, target_age, description, trial_price, teacher_id, teacher_display_name, cover_image_url, is_active"
 
 const SCHEDULE_BLOCK_SELECT_FIELDS = "id, teacher_id, class_id, start_at, end_at, capacity, type"
+const CHILD_SELECT_FIELDS =
+  "id, parent_id, name, grade, school_name, notes, current_level, interest_subjects, goal_note, created_at, updated_at"
 
 const getTeacherProfilesMap = async (teacherIds: string[]) => {
   if (teacherIds.length === 0) {
@@ -792,6 +829,96 @@ export const supabaseDataAdapter: DataAdapter = {
       throw new Error("studio_schedule_block_not_found_or_forbidden")
     }
   },
+  async listMyChildren(parentId) {
+    const supabase = await getSupabaseServerClient()
+    const { data, error } = await supabase
+      .from("children")
+      .select(CHILD_SELECT_FIELDS)
+      .eq("parent_id", parentId)
+      .order("created_at", { ascending: false })
+
+    if (error) {
+      throw new Error("failed_to_fetch_my_children")
+    }
+
+    return ((data ?? []) as ChildProfileRow[]).map(mapChildProfile)
+  },
+  async createChildProfile(input: ChildProfileInput) {
+    const supabase = await getSupabaseServerClient()
+    const { data, error } = await supabase
+      .from("children")
+      .insert({
+        parent_id: input.parentId,
+        name: input.name,
+        grade: input.grade,
+        school_name: input.schoolName,
+        notes: input.notes,
+        current_level: input.currentLevel,
+        interest_subjects: input.interestSubjects,
+        goal_note: input.goalNote
+      })
+      .select(CHILD_SELECT_FIELDS)
+      .single()
+
+    if (error || !data) {
+      throw new Error("failed_to_create_child_profile")
+    }
+
+    return mapChildProfile(data as ChildProfileRow)
+  },
+  async updateChildProfile(input: UpdateChildProfileInput) {
+    const supabase = await getSupabaseServerClient()
+    const { data, error } = await supabase
+      .from("children")
+      .update({
+        name: input.name,
+        grade: input.grade,
+        school_name: input.schoolName,
+        notes: input.notes,
+        current_level: input.currentLevel,
+        interest_subjects: input.interestSubjects,
+        goal_note: input.goalNote,
+        updated_at: new Date().toISOString()
+      })
+      .eq("id", input.childId)
+      .eq("parent_id", input.parentId)
+      .select(CHILD_SELECT_FIELDS)
+      .maybeSingle()
+
+    if (error) {
+      throw new Error("failed_to_update_child_profile")
+    }
+
+    if (!data) {
+      throw new Error("child_profile_not_found_or_forbidden")
+    }
+
+    return mapChildProfile(data as ChildProfileRow)
+  },
+  async getMyDashboard(parentId) {
+    const supabase = await getSupabaseServerClient()
+    const [applications, childrenCountResult] = await Promise.all([
+      this.listMyApplications(parentId),
+      supabase.from("children").select("id", { count: "exact", head: true }).eq("parent_id", parentId)
+    ])
+
+    if (childrenCountResult.error) {
+      throw new Error("failed_to_fetch_my_dashboard")
+    }
+
+    const summary: MyDashboardData = {
+      childrenCount: childrenCountResult.count ?? 0,
+      totalApplicationCount: applications.length,
+      newApplicationCount: applications.filter((item) => item.status === "new").length,
+      reviewingApplicationCount: applications.filter((item) => item.status === "reviewing").length,
+      confirmedApplicationCount: applications.filter((item) => item.status === "confirmed").length,
+      completedApplicationCount: applications.filter((item) => item.status === "completed").length,
+      canceledApplicationCount: applications.filter((item) => item.status === "canceled").length,
+      recentApplications: applications.slice(0, 5)
+    }
+
+    return summary
+  },
   async listAvailableScheduleSlotsByClassId(classId) {
     const supabase = await getSupabaseServerClient()
     const { data: classData, error: classError } = await supabase
@@ -869,7 +996,7 @@ export const supabaseDataAdapter: DataAdapter = {
     const { data, error } = await supabase
       .from("trial_applications")
       .select(
-        "id, class_id, parent_id, child_name, child_grade, parent_name, parent_phone, requested_schedule_block_id, requested_slot_at, confirmed_slot_at, goal_type, status, created_at, updated_at, classes(title)"
+        "id, class_id, parent_id, child_name, child_grade, parent_name, parent_phone, requested_schedule_block_id, requested_slot_at, confirmed_slot_at, goal_type, status, created_at, updated_at, classes(title, program_type)"
       )
       .eq("parent_id", parentId)
       .order("created_at", { ascending: false })
@@ -885,7 +1012,7 @@ export const supabaseDataAdapter: DataAdapter = {
     const { data, error } = await supabase
       .from("trial_applications")
       .select(
-        "id, class_id, parent_id, child_name, child_grade, parent_name, parent_phone, requested_schedule_block_id, requested_slot_at, confirmed_slot_at, assigned_teacher_id, goal_type, status, created_at, updated_at, classes!inner(title, subject, region, organization_id)"
+        "id, class_id, parent_id, child_name, child_grade, parent_name, parent_phone, requested_schedule_block_id, requested_slot_at, confirmed_slot_at, assigned_teacher_id, goal_type, status, created_at, updated_at, classes!inner(title, subject, region, organization_id, program_type)"
       )
       .eq("classes.organization_id", organizationId)
       .order("created_at", { ascending: false })
@@ -901,7 +1028,7 @@ export const supabaseDataAdapter: DataAdapter = {
     const { data, error } = await supabase
       .from("trial_applications")
       .select(
-        "id, class_id, parent_id, child_name, child_grade, parent_name, parent_phone, child_school, child_notes, subject_experience_yn, subject_experience_duration, current_level, preferred_regular_schedule, goal_type, goal_note, requested_slot_at, requested_schedule_block_id, confirmed_slot_at, confirmed_schedule_block_id, assigned_teacher_id, consultation_note, trial_feedback, final_level, final_schedule, memo, status, created_at, updated_at, classes!inner(title, subject, region, organization_id)"
+        "id, class_id, parent_id, child_name, child_grade, parent_name, parent_phone, child_school, child_notes, subject_experience_yn, subject_experience_duration, current_level, preferred_regular_schedule, goal_type, goal_note, requested_slot_at, requested_schedule_block_id, confirmed_slot_at, confirmed_schedule_block_id, assigned_teacher_id, consultation_note, trial_feedback, final_level, final_schedule, memo, status, created_at, updated_at, classes!inner(title, subject, region, organization_id, program_type)"
       )
       .eq("id", applicationId)
       .eq("classes.organization_id", organizationId)
@@ -1091,7 +1218,7 @@ export const supabaseDataAdapter: DataAdapter = {
         status: "new"
       })
       .select(
-        "id, class_id, parent_id, child_name, child_grade, parent_name, parent_phone, requested_schedule_block_id, requested_slot_at, confirmed_slot_at, goal_type, status, created_at, updated_at, classes(title)"
+        "id, class_id, parent_id, child_name, child_grade, parent_name, parent_phone, requested_schedule_block_id, requested_slot_at, confirmed_slot_at, goal_type, status, created_at, updated_at, classes(title, program_type)"
       )
       .single()
 

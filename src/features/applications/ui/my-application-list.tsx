@@ -12,6 +12,14 @@ const statusLabelMap: Record<TrialApplicationSummary["status"], string> = {
   canceled: "취소"
 }
 
+const formatProgramType = (value: TrialApplicationSummary["classProgramType"]) => {
+  if (value === "level_test") {
+    return "레벨테스트"
+  }
+
+  return "체험수업"
+}
+
 const formatDateTime = (value: string) => {
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) {
@@ -41,7 +49,12 @@ export const MyApplicationList = ({ items }: MyApplicationListProps) => {
           }}
         >
           <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
-            <h2 style={{ margin: 0, fontSize: 16 }}>{item.classTitle ?? "수업 정보 없음"}</h2>
+            <div style={{ display: "grid", gap: 4 }}>
+              <span style={{ fontSize: 12, color: "#667085" }}>
+                {formatProgramType(item.classProgramType)}
+              </span>
+              <h2 style={{ margin: 0, fontSize: 16 }}>{item.classTitle ?? "수업 정보 없음"}</h2>
+            </div>
             <span
               style={{
                 display: "inline-flex",
@@ -57,9 +70,9 @@ export const MyApplicationList = ({ items }: MyApplicationListProps) => {
             </span>
           </div>
           <div style={{ marginTop: 8, display: "grid", gap: 4, fontSize: 14, color: "#374151" }}>
-            <p style={{ margin: 0 }}>자녀명: {item.childName}</p>
+            <p style={{ margin: 0 }}>학생명: {item.childName}</p>
+            <p style={{ margin: 0 }}>예약 시간: {formatDateTime(item.requestedSlotAt)}</p>
             <p style={{ margin: 0 }}>신청일: {formatDateTime(item.createdAt)}</p>
-            <p style={{ margin: 0 }}>희망시간: {formatDateTime(item.requestedSlotAt)}</p>
           </div>
         </article>
       ))}
