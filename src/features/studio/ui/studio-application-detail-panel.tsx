@@ -21,11 +21,30 @@ const STATUS_LABELS: Record<StudioApplicationDetail["status"], string> = {
   canceled: "취소"
 }
 
+const REGISTRATION_STATUS_LABELS: Record<StudioApplicationDetail["registrationStatus"], string> = {
+  undecided: "미정",
+  enrolled: "등록완료",
+  not_enrolled: "미등록",
+  pending: "보류"
+}
+
+const UNREGISTERED_REASON_LABELS = {
+  schedule_mismatch: "시간 불일치",
+  cost_burden: "비용 부담",
+  distance: "거리",
+  child_reaction: "아이 반응",
+  comparing_other_academies: "타 학원 비교",
+  no_response: "연락두절",
+  other: "기타"
+} satisfies Record<NonNullable<StudioApplicationDetail["unregisteredReason"]>, string>
+
 type StudioApplicationDetailPanelProps = {
   item: StudioApplicationDetail
 }
 
 export const StudioApplicationDetailPanel = ({ item }: StudioApplicationDetailPanelProps) => {
+  const isCompleted = item.status === "completed"
+
   return (
     <section style={cardStyle}>
       <h2 style={titleStyle}>신청 상담 기록지</h2>
@@ -103,25 +122,57 @@ export const StudioApplicationDetailPanel = ({ item }: StudioApplicationDetailPa
         />
       </Section>
 
-      <Section title="상담/체험 기록">
-        <InfoBlock
-          label="상담 내용"
-          value={item.consultationNote}
-          emptyLabel="아직 저장된 상담 내용이 없습니다."
-        />
-        <InfoBlock
-          label="체험 기록"
-          value={item.trialFeedback}
-          emptyLabel="아직 저장된 체험 기록이 없습니다."
-        />
-      </Section>
+      {isCompleted ? (
+        <>
+          <Section title="상담/체험 기록">
+            <InfoBlock
+              label="상담 내용"
+              value={item.consultationNote}
+              emptyLabel="아직 저장된 상담 내용이 없습니다."
+            />
+            <InfoBlock
+              label="체험 기록"
+              value={item.trialFeedback}
+              emptyLabel="아직 저장된 체험 기록이 없습니다."
+            />
+          </Section>
 
-      <Section title="확정 정보">
-        <div style={gridStyle}>
-          <InfoRow label="체험 후 확정 레벨" value={item.finalLevel ?? "-"} />
-          <InfoRow label="체험 후 확정 수업 시간" value={item.finalSchedule ?? "-"} />
-        </div>
-      </Section>
+          <Section title="확정 정보">
+            <div style={gridStyle}>
+              <InfoRow label="추천 과정" value={item.registeredCourse ?? "-"} />
+              <InfoRow label="체험 후 확정 레벨" value={item.finalLevel ?? "-"} />
+              <InfoRow label="체험 후 확정 수업 시간" value={item.finalSchedule ?? "-"} />
+            </div>
+          </Section>
+
+          <Section title="등록 전환">
+            <div style={gridStyle}>
+              <InfoRow label="등록 상태" value={REGISTRATION_STATUS_LABELS[item.registrationStatus]} />
+              <InfoRow
+                label="미등록 사유"
+                value={
+                  item.unregisteredReason
+                    ? UNREGISTERED_REASON_LABELS[item.unregisteredReason]
+                    : "-"
+                }
+              />
+            </div>
+            <InfoBlock
+              label="후속 조치 메모"
+              value={item.followUpNote}
+              emptyLabel="아직 저장된 후속 조치 메모가 없습니다."
+            />
+          </Section>
+        </>
+      ) : (
+        <Section title="운영 기록 안내">
+          <InfoBlock
+            label="안내"
+            value="체험수업/레벨테스트 완료 처리 후 상담 기록과 등록 전환 정보를 확인할 수 있습니다."
+            emptyLabel=""
+          />
+        </Section>
+      )}
     </section>
   )
 }

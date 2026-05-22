@@ -1,5 +1,7 @@
 import type {
   ApplicationLogEntry,
+  ApplicationRegistrationStatus,
+  ApplicationUnregisteredReason,
   AvailableScheduleSlot,
   ChildProfile,
   ChildProfileInput,
@@ -16,6 +18,7 @@ import type {
   UpdateChildProfileInput,
   TrialApplicationInput,
   TrialApplicationSummary,
+  UpdateStudioApplicationOutcomeInput,
   UpdateStudioApplicationStatusInput
 } from "@/shared/lib/db/adapter"
 
@@ -555,6 +558,13 @@ export const mockDataAdapter: DataAdapter = {
       trialFeedback: "trialFeedback" in application ? application.trialFeedback ?? null : null,
       finalLevel: "finalLevel" in application ? application.finalLevel ?? null : null,
       finalSchedule: "finalSchedule" in application ? application.finalSchedule ?? null : null,
+      registrationStatus:
+        "registrationStatus" in application ? application.registrationStatus : "undecided",
+      registeredCourse:
+        "registeredCourse" in application ? application.registeredCourse ?? null : null,
+      unregisteredReason:
+        "unregisteredReason" in application ? application.unregisteredReason ?? null : null,
+      followUpNote: "followUpNote" in application ? application.followUpNote ?? null : null,
       memo: "memo" in application ? application.memo ?? null : null,
       logs
     }
@@ -587,6 +597,34 @@ export const mockDataAdapter: DataAdapter = {
       applicationId: input.applicationId,
       fromStatus: input.currentStatus,
       toStatus: input.nextStatus,
+      actorId: input.actorId,
+      actorName: input.actorId === mockTeacherProfileId ? "테스트 선생님" : null,
+      note: input.note,
+      createdAt: new Date().toISOString()
+    })
+  },
+  async updateStudioApplicationOutcome(input: UpdateStudioApplicationOutcomeInput) {
+    const target = applications.find((item) => item.id === input.applicationId)
+
+    if (!target) {
+      throw new Error("application_not_found_or_forbidden")
+    }
+
+    target.consultationNote = input.consultationNote
+    target.trialFeedback = input.trialFeedback
+    target.registeredCourse = input.registeredCourse
+    target.finalLevel = input.finalLevel
+    target.finalSchedule = input.finalSchedule
+    target.followUpNote = input.followUpNote
+    target.registrationStatus = input.registrationStatus
+    target.unregisteredReason = input.unregisteredReason
+    target.updatedAt = new Date().toISOString()
+
+    applicationLogs.unshift({
+      id: `log-${applicationLogs.length + 1}`,
+      applicationId: input.applicationId,
+      fromStatus: input.currentStatus,
+      toStatus: input.currentStatus,
       actorId: input.actorId,
       actorName: input.actorId === mockTeacherProfileId ? "테스트 선생님" : null,
       note: input.note,
@@ -658,6 +696,10 @@ export const mockDataAdapter: DataAdapter = {
       trialFeedback: null,
       finalLevel: null,
       finalSchedule: null,
+      registrationStatus: "undecided" as ApplicationRegistrationStatus,
+      registeredCourse: null,
+      unregisteredReason: null as ApplicationUnregisteredReason | null,
+      followUpNote: null,
       confirmedScheduleBlockId: null,
       memo: input.memo,
       logs: []

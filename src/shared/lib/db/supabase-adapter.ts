@@ -1,6 +1,8 @@
 import { getSupabaseServerClient } from "@/integrations/supabase/server"
 import type {
   ApplicationLogEntry,
+  ApplicationRegistrationStatus,
+  ApplicationUnregisteredReason,
   AvailableScheduleSlot,
   ChildProfile,
   ChildProfileInput,
@@ -19,6 +21,7 @@ import type {
   TrialApplicationInput,
   TrialApplicationSummary,
   UpdateChildProfileInput,
+  UpdateStudioApplicationOutcomeInput,
   UpdateStudioApplicationStatusInput
 } from "@/shared/lib/db/adapter"
 
@@ -72,6 +75,10 @@ type TrialApplicationRow = {
   trial_feedback?: string | null
   final_level?: string | null
   final_schedule?: string | null
+  registration_status?: ApplicationRegistrationStatus
+  registered_course?: string | null
+  unregistered_reason?: ApplicationUnregisteredReason | null
+  follow_up_note?: string | null
   memo?: string | null
   status: TrialApplicationSummary["status"]
   created_at: string
@@ -1028,7 +1035,7 @@ export const supabaseDataAdapter: DataAdapter = {
     const { data, error } = await supabase
       .from("trial_applications")
       .select(
-        "id, class_id, parent_id, child_name, child_grade, parent_name, parent_phone, child_school, child_notes, subject_experience_yn, subject_experience_duration, current_level, preferred_regular_schedule, goal_type, goal_note, requested_slot_at, requested_schedule_block_id, confirmed_slot_at, confirmed_schedule_block_id, assigned_teacher_id, consultation_note, trial_feedback, final_level, final_schedule, memo, status, created_at, updated_at, classes!inner(title, subject, region, organization_id, program_type)"
+        "id, class_id, parent_id, child_name, child_grade, parent_name, parent_phone, child_school, child_notes, subject_experience_yn, subject_experience_duration, current_level, preferred_regular_schedule, goal_type, goal_note, requested_slot_at, requested_schedule_block_id, confirmed_slot_at, confirmed_schedule_block_id, assigned_teacher_id, consultation_note, trial_feedback, final_level, final_schedule, registration_status, registered_course, unregistered_reason, follow_up_note, memo, status, created_at, updated_at, classes!inner(title, subject, region, organization_id, program_type)"
       )
       .eq("id", applicationId)
       .eq("classes.organization_id", organizationId)
@@ -1070,6 +1077,12 @@ export const supabaseDataAdapter: DataAdapter = {
       trialFeedback: (data as TrialApplicationRow).trial_feedback ?? null,
       finalLevel: (data as TrialApplicationRow).final_level ?? null,
       finalSchedule: (data as TrialApplicationRow).final_schedule ?? null,
+      registrationStatus:
+        (data as TrialApplicationRow).registration_status ?? "undecided",
+      registeredCourse: (data as TrialApplicationRow).registered_course ?? null,
+      unregisteredReason:
+        (data as TrialApplicationRow).unregistered_reason ?? null,
+      followUpNote: (data as TrialApplicationRow).follow_up_note ?? null,
       memo: (data as TrialApplicationRow).memo ?? null,
       logs: logRows.map((row) => mapApplicationLog(row, actorNameById))
     }
@@ -1137,6 +1150,52 @@ export const supabaseDataAdapter: DataAdapter = {
           applicationId: input.applicationId,
           fromStatus: input.currentStatus,
           toStatus: input.nextStatus,
+          actorId: input.actorId
+        })
+      )
+    }
+  },
+  async updateStudioApplicationOutcome(input: UpdateStudioApplicationOutcomeInput) {
+    const supabase = await getSupabaseServerClient()
+    const { data, error } = await supabase
+      .from("trial_applications")
+      .update({
+        consultation_note: input.consultationNote,
+        trial_feedback: input.trialFeedback,
+        registered_course: input.registeredCourse,
+        final_level: input.finalLevel,
+        final_schedule: input.finalSchedule,
+        follow_up_note: input.followUpNote,
+        registration_status: input.registrationStatus,
+        unregistered_reason: input.unregisteredReason,
+        updated_at: new Date().toISOString()
+      })
+      .eq("id", input.applicationId)
+      .select("id")
+      .maybeSingle()
+
+    if (error) {
+      throw new Error("failed_to_update_application_outcome")
+    }
+
+    if (!data) {
+      throw new Error("application_not_found_or_forbidden")
+    }
+
+    const { error: logError } = await supabase.from("application_logs").insert({
+      application_id: input.applicationId,
+      from_status: input.currentStatus,
+      to_status: input.currentStatus,
+      actor_id: input.actorId,
+      note: input.note
+    })
+
+    if (logError) {
+      console.warn(
+        formatSupabaseError("non_critical_failed_to_create_application_log", logError, {
+          applicationId: input.applicationId,
+          fromStatus: input.currentStatus,
+          toStatus: input.currentStatus,
           actorId: input.actorId
         })
       )

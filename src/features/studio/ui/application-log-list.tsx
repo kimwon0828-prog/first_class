@@ -14,6 +14,14 @@ const STATUS_LABELS = {
   canceled: "취소"
 }
 
+const getLogTitle = (item: ApplicationLogEntry) => {
+  if (item.fromStatus === item.toStatus) {
+    return "운영 기록 저장"
+  }
+
+  return `${item.fromStatus ? STATUS_LABELS[item.fromStatus] : "생성"} -> ${STATUS_LABELS[item.toStatus]}`
+}
+
 type ApplicationLogListProps = {
   items: ApplicationLogEntry[]
 }
@@ -37,12 +45,7 @@ export const ApplicationLogList = ({ items }: ApplicationLogListProps) => {
                 background: "#fcfcfd"
               }}
             >
-              <p style={metaStyle}>
-                {formatDateTime(item.createdAt)} /{" "}
-                {(item.fromStatus ? STATUS_LABELS[item.fromStatus] : "생성") +
-                  " -> " +
-                  STATUS_LABELS[item.toStatus]}
-              </p>
+              <p style={metaStyle}>{formatDateTime(item.createdAt)} / {getLogTitle(item)}</p>
               <p style={bodyStyle}>{item.note ?? "상태 변경 기록"}</p>
               <p style={subtleStyle}>
                 actor: {item.actorName ?? "확인 불가"} / id: {item.actorId}

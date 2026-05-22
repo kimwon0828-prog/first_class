@@ -9,6 +9,21 @@ export type ApplicationStatus =
   | "completed"
   | "canceled"
 
+export type ApplicationRegistrationStatus =
+  | "undecided"
+  | "enrolled"
+  | "not_enrolled"
+  | "pending"
+
+export type ApplicationUnregisteredReason =
+  | "schedule_mismatch"
+  | "cost_burden"
+  | "distance"
+  | "child_reaction"
+  | "comparing_other_academies"
+  | "no_response"
+  | "other"
+
 export type TeacherPublicProfile = {
   teacherId: string
   teacherName: string
@@ -224,6 +239,10 @@ export type StudioApplicationDetail = StudioApplicationSummary & {
   trialFeedback: string | null
   finalLevel: string | null
   finalSchedule: string | null
+  registrationStatus: ApplicationRegistrationStatus
+  registeredCourse: string | null
+  unregisteredReason: ApplicationUnregisteredReason | null
+  followUpNote: string | null
   memo: string | null
   logs: ApplicationLogEntry[]
 }
@@ -233,6 +252,21 @@ export type UpdateStudioApplicationStatusInput = {
   currentStatus: ApplicationStatus
   nextStatus: ApplicationStatus
   actorId: string
+  note: string
+}
+
+export type UpdateStudioApplicationOutcomeInput = {
+  applicationId: string
+  actorId: string
+  currentStatus: ApplicationStatus
+  consultationNote: string | null
+  trialFeedback: string | null
+  registeredCourse: string | null
+  finalLevel: string | null
+  finalSchedule: string | null
+  followUpNote: string | null
+  registrationStatus: ApplicationRegistrationStatus
+  unregisteredReason: ApplicationUnregisteredReason | null
   note: string
 }
 
@@ -287,6 +321,7 @@ export interface DataAdapter {
     organizationId: string
   ): Promise<StudioApplicationDetail | null>
   updateStudioApplicationStatus(input: UpdateStudioApplicationStatusInput): Promise<void>
+  updateStudioApplicationOutcome(input: UpdateStudioApplicationOutcomeInput): Promise<void>
   createTrialApplication(
     input: TrialApplicationInput
   ): Promise<TrialApplicationSummary>
