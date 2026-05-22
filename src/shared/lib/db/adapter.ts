@@ -69,6 +69,15 @@ export type StudioDashboardSummary = {
   activeApplicationCount: number
   myClassCount: number
   availableSlotCount: number
+  todayScheduledCount: number
+  pendingConfirmationCount: number
+  needsOutcomeCount: number
+  weeklyRegisteredCount: number
+  weeklyApplicationCount: number
+  weeklyConfirmedCount: number
+  weeklyCompletedCount: number
+  weeklyEnrolledCount: number
+  weeklyEnrollmentRate: number
 }
 
 export type StudioTeacherOption = {
@@ -224,6 +233,7 @@ export type StudioApplicationSummary = TrialApplicationSummary & {
   classSubject: string | null
   classRegion: string | null
   assignedTeacherId: string | null
+  registrationStatus: ApplicationRegistrationStatus
 }
 
 export type StudioApplicationDetail = StudioApplicationSummary & {

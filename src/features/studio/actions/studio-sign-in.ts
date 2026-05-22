@@ -59,7 +59,7 @@ export async function studioSignInAction(
 ): Promise<StudioSignInActionState> {
   void previousState
 
-  const returnTo = resolveSafeReturnTo(formData) ?? "/studio/applications"
+  const returnTo = resolveSafeReturnTo(formData) ?? "/studio"
   const validated = validateSignInForm(formData)
   if (!validated.ok) {
     return { status: "error", message: validated.message }

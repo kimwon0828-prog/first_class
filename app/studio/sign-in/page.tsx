@@ -33,7 +33,7 @@ export default async function StudioSignInPage({ searchParams }: StudioSignInPag
     const profile = await getMyProfile()
 
     if (profile?.role === "teacher") {
-      redirect(returnTo ?? "/studio/applications")
+      redirect(returnTo ?? "/studio")
     }
 
     redirect("/classes")

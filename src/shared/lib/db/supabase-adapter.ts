@@ -213,7 +213,8 @@ const mapStudioApplication = (row: TrialApplicationRow): StudioApplicationSummar
   ...mapApplication(row),
   classSubject: row.classes?.[0]?.subject ?? null,
   classRegion: row.classes?.[0]?.region ?? null,
-  assignedTeacherId: row.assigned_teacher_id ?? null
+  assignedTeacherId: row.assigned_teacher_id ?? null,
+  registrationStatus: row.registration_status ?? "undecided"
 })
 
 const mapApplicationLog = (
@@ -1019,7 +1020,7 @@ export const supabaseDataAdapter: DataAdapter = {
     const { data, error } = await supabase
       .from("trial_applications")
       .select(
-        "id, class_id, parent_id, child_name, child_grade, parent_name, parent_phone, requested_schedule_block_id, requested_slot_at, confirmed_slot_at, assigned_teacher_id, goal_type, status, created_at, updated_at, classes!inner(title, subject, region, organization_id, program_type)"
+        "id, class_id, parent_id, child_name, child_grade, parent_name, parent_phone, requested_schedule_block_id, requested_slot_at, confirmed_slot_at, assigned_teacher_id, goal_type, registration_status, status, created_at, updated_at, classes!inner(title, subject, region, organization_id, program_type)"
       )
       .eq("classes.organization_id", organizationId)
       .order("created_at", { ascending: false })
