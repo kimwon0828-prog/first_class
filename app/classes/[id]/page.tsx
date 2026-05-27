@@ -3,10 +3,14 @@ import type { CSSProperties } from "react"
 
 import { AuthEntryButton } from "@/features/auth/ui/auth-entry-button"
 import { getPublicClassDetail } from "@/features/classes/queries/get-public-class-detail"
+import { normalizeAcademyArea } from "@/shared/config/academy-areas"
 
 type ClassDetailPageProps = {
   params: Promise<{
     id: string
+  }>
+  searchParams?: Promise<{
+    region?: string
   }>
 }
 
@@ -48,17 +52,22 @@ const formatProgramType = (value: string) => {
   return "체험수업"
 }
 
-export default async function ClassDetailPage({ params }: ClassDetailPageProps) {
+export default async function ClassDetailPage({ params, searchParams }: ClassDetailPageProps) {
   const resolvedParams = await params
+  const resolvedSearchParams = searchParams ? await searchParams : undefined
+  const rawRegion = typeof resolvedSearchParams?.region === "string" ? resolvedSearchParams.region : null
+  const selectedRegion = normalizeAcademyArea(rawRegion)
+  const classesHref = `/classes?region=${encodeURIComponent(selectedRegion)}`
+  const detailHref = `/classes/${resolvedParams.id}?region=${encodeURIComponent(selectedRegion)}`
   const { data: classItem, error } = await getPublicClassDetail(resolvedParams.id)
 
   return (
     <main style={pageContainerStyle}>
       <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 12 }}>
-        <AuthEntryButton returnTo={`/classes/${resolvedParams.id}`} />
+        <AuthEntryButton returnTo={detailHref} />
       </div>
       <div style={{ marginBottom: 12 }}>
-        <Link href="/classes" style={{ color: "#2563eb", fontSize: 14 }}>
+        <Link href={classesHref} style={{ color: "#2563eb", fontSize: 14 }}>
           ← 프로그램 목록으로
         </Link>
       </div>
@@ -66,7 +75,7 @@ export default async function ClassDetailPage({ params }: ClassDetailPageProps) 
       {error ? (
         <section style={{ ...sectionCardStyle, borderColor: "#fecaca" }}>
           <p style={{ margin: "0 0 8px", color: "#991b1b", fontSize: 14 }}>{error}</p>
-          <Link href="/classes" style={{ color: "#2563eb", fontSize: 14 }}>
+          <Link href={classesHref} style={{ color: "#2563eb", fontSize: 14 }}>
             목록으로 돌아가기
           </Link>
         </section>
