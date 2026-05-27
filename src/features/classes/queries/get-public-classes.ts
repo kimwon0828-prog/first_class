@@ -1,10 +1,13 @@
 import { dataAdapter } from "@/shared/lib/db"
+import type { AcademyArea } from "@/shared/config/academy-areas"
 import type { ClassSummary } from "@/shared/lib/db/adapter"
 import type { QueryResult } from "@/shared/queries"
 
-export const getPublicClasses = async (): Promise<QueryResult<ClassSummary[]>> => {
+export const getPublicClasses = async (
+  region: AcademyArea
+): Promise<QueryResult<ClassSummary[]>> => {
   try {
-    const data = await dataAdapter.listClasses()
+    const data = await dataAdapter.listClasses({ region })
     return { data, error: null }
   } catch {
     return {

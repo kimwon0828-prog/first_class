@@ -1,10 +1,15 @@
 import { requireTeacherStudioAccess } from "@/features/studio/lib/require-teacher-studio-access"
+import { getStudioClassFormOptions } from "@/features/studio/queries/get-studio-class-form-options"
 import { getStudioClasses } from "@/features/studio/queries/get-studio-classes"
 import { StudioClassesManager } from "@/features/studio/ui/studio-classes-manager"
 
 export default async function StudioClassesPage() {
   const teacher = await requireTeacherStudioAccess()
-  const { data: classes, error } = await getStudioClasses(teacher.organizationId)
+  const [{ data: classes, error }, { data: teacherOptions, error: teacherOptionsError }] =
+    await Promise.all([
+      getStudioClasses(teacher.organizationId),
+      getStudioClassFormOptions(teacher.organizationId)
+    ])
 
   return (
     <main
@@ -40,7 +45,12 @@ export default async function StudioClassesPage() {
           <p style={{ margin: 0, color: "#991b1b", fontSize: 14, lineHeight: "20px" }}>{error}</p>
         </section>
       ) : (
-        <StudioClassesManager items={classes} currentTeacherName={teacher.name} />
+        <StudioClassesManager
+          items={classes}
+          currentTeacherId={teacher.teacherId}
+          teacherOptions={teacherOptions}
+          teacherOptionsError={teacherOptionsError}
+        />
       )}
     </main>
   )

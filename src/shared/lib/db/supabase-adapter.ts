@@ -1,4 +1,5 @@
 import { getSupabaseServerClient } from "@/integrations/supabase/server"
+import type { AcademyArea } from "@/shared/config/academy-areas"
 import type {
   ApplicationLogEntry,
   ApplicationRegistrationStatus,
@@ -31,7 +32,7 @@ type ClassRow = {
   program_type: ClassProgramType
   title: string
   subject: string
-  region: string
+  region: AcademyArea
   target_age: string
   description: string
   trial_price: number
@@ -497,15 +498,21 @@ const getActorNameMap = async (actorIds: string[]) => {
 }
 
 export const supabaseDataAdapter: DataAdapter = {
-  async listClasses() {
+  async listClasses(options) {
     const supabase = await getSupabaseServerClient()
-    const { data, error } = await supabase
+    let query = supabase
       .from("classes")
       .select(
         "id, program_type, title, subject, region, target_age, description, trial_price, teacher_id, teacher_display_name, cover_image_url, is_active"
       )
       .eq("is_active", true)
       .order("created_at", { ascending: false })
+
+    if (options?.region) {
+      query = query.eq("region", options.region)
+    }
+
+    const { data, error } = await query
 
     if (error) {
       throw new Error("failed_to_fetch_classes")
@@ -606,6 +613,8 @@ export const supabaseDataAdapter: DataAdapter = {
     const normalizedClassId = normalizeStudioClassId(input.classId)
 
     await assertTeacherBelongsToOrganization(input.teacherId, input.organizationId)
+    const teacherNames = await getTeacherNamesByIds([input.teacherId])
+    const teacherDisplayName = teacherNames.get(input.teacherId) ?? input.teacherDisplayName
 
     const supabase = await getSupabaseServerClient()
     const payload = {
@@ -618,7 +627,7 @@ export const supabaseDataAdapter: DataAdapter = {
       description: input.description,
       trial_price: input.trialPrice,
       teacher_id: input.teacherId,
-      teacher_display_name: input.teacherDisplayName,
+      teacher_display_name: teacherDisplayName,
       cover_image_url: input.coverImageUrl,
       is_active: input.isActive,
       updated_at: new Date().toISOString()

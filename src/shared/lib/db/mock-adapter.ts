@@ -62,7 +62,7 @@ const defaultClasses: ClassSummary[] = [
     programType: "trial_class",
     title: "초등 저학년 창의 미술 체험",
     subject: "미술",
-    region: "강남",
+    region: "후곡학원가",
     targetAge: "7세~초2",
     description: "기초 드로잉과 색채 표현을 중심으로 즐겁게 배우는 체험 수업입니다.",
     trialPrice: 0,
@@ -77,7 +77,7 @@ const defaultClasses: ClassSummary[] = [
     programType: "trial_class",
     title: "기초 과학 실험 체험",
     subject: "과학",
-    region: "강남",
+    region: "백마학원가",
     targetAge: "초3~초5",
     description: "안전한 실험 키트로 관찰과 기록 습관을 키우는 체험 수업입니다.",
     trialPrice: 10000,
@@ -92,7 +92,7 @@ const defaultClasses: ClassSummary[] = [
     programType: "trial_class",
     title: "초등 사고력 수학 게임 수업",
     subject: "수학",
-    region: "서초",
+    region: "은행사거리학원가",
     targetAge: "초2~초4",
     description: "보드게임과 퍼즐을 통해 수학적 사고력을 키우는 체험 수업입니다.",
     trialPrice: 5000,
@@ -107,7 +107,7 @@ const defaultClasses: ClassSummary[] = [
     programType: "trial_class",
     title: "스토리텔링 영어 말하기 체험",
     subject: "영어",
-    region: "송파",
+    region: "후곡학원가",
     targetAge: "7세~초2",
     description: "짧은 이야기 만들기와 역할놀이로 말하기 자신감을 키워요.",
     trialPrice: 0,
@@ -230,8 +230,18 @@ const getAppliedCountForSlot = (slotId: string, slotStartAt: string, teacherId?:
 }
 
 export const mockDataAdapter: DataAdapter = {
-  async listClasses() {
-    return classes.filter((item) => item.isActive)
+  async listClasses(options) {
+    return classes.filter((item) => {
+      if (!item.isActive) {
+        return false
+      }
+
+      if (options?.region && item.region !== options.region) {
+        return false
+      }
+
+      return true
+    })
   },
   async getClassById(classId) {
     const found = classes.find((item) => item.id === classId) ?? null
@@ -287,8 +297,8 @@ export const mockDataAdapter: DataAdapter = {
       description: input.description,
       trialPrice: input.trialPrice,
       teacherId: input.teacherId,
-      teacherDisplayName: input.teacherDisplayName,
-      teacherName: input.teacherDisplayName || teacherOption.teacherName,
+      teacherDisplayName: teacherOption.teacherName,
+      teacherName: teacherOption.teacherName,
       coverImageUrl: input.coverImageUrl,
       isActive: input.isActive
     }

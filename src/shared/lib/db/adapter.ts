@@ -1,3 +1,5 @@
+import type { AcademyArea } from "@/shared/config/academy-areas"
+
 export type UserRole = "parent" | "teacher"
 
 export type ClassProgramType = "trial_class" | "level_test"
@@ -37,7 +39,7 @@ export type ClassSummary = {
   programType: ClassProgramType
   title: string
   subject: string
-  region: string
+  region: AcademyArea
   targetAge: string
   description: string
   trialPrice: number
@@ -93,7 +95,7 @@ export type StudioClassInput = {
   title: string
   subject: string
   targetAge: string
-  region: string
+  region: AcademyArea
   description: string
   trialPrice: number
   teacherId: string
@@ -305,8 +307,12 @@ export type CreateTeacherSignupRequestInput = {
   requestNote: string | null
 }
 
+export type ListClassesOptions = {
+  region?: AcademyArea
+}
+
 export interface DataAdapter {
-  listClasses(): Promise<ClassSummary[]>
+  listClasses(options?: ListClassesOptions): Promise<ClassSummary[]>
   getClassById(classId: string): Promise<ClassDetail | null>
   listAvailableScheduleSlotsByClassId(classId: string): Promise<AvailableScheduleSlot[]>
   listStudioClasses(organizationId: string): Promise<ClassSummary[]>

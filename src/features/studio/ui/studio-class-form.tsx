@@ -2,6 +2,7 @@
 
 import { useActionState, useEffect, useMemo, useState } from "react"
 
+import { academyAreaOptions, normalizeAcademyArea } from "@/shared/config/academy-areas"
 import {
   upsertStudioClassAction,
   type UpsertStudioClassActionState
@@ -12,10 +13,12 @@ import {
   studioClassGradeAgeOptions,
   studioClassSubjectOptions
 } from "@/features/studio/lib/studio-class-options"
-import type { ClassSummary } from "@/shared/lib/db/adapter"
+import type { ClassSummary, StudioTeacherOption } from "@/shared/lib/db/adapter"
 
 type StudioClassFormProps = {
-  currentTeacherName: string
+  currentTeacherId: string
+  teacherOptions: StudioTeacherOption[]
+  teacherOptionsError: string | null
   initialItem?: ClassSummary | null
 }
 
@@ -40,7 +43,12 @@ const createEmptyScheduleSlotDraft = (): ScheduleSlotDraft => ({
   capacity: "1"
 })
 
-export const StudioClassForm = ({ currentTeacherName, initialItem }: StudioClassFormProps) => {
+export const StudioClassForm = ({
+  currentTeacherId,
+  teacherOptions,
+  teacherOptionsError,
+  initialItem
+}: StudioClassFormProps) => {
   const [selectedClassId, setSelectedClassId] = useState(initialItem?.id ?? "")
   const [selectedProgramType, setSelectedProgramType] = useState(initialItem?.programType ?? "trial_class")
   const [coverImageUrlDraft, setCoverImageUrlDraft] = useState(initialItem?.coverImageUrl ?? "")
@@ -53,6 +61,15 @@ export const StudioClassForm = ({ currentTeacherName, initialItem }: StudioClass
   const action = useMemo(() => upsertStudioClassAction, [])
   const [state, formAction, isPending] = useActionState(action, initialState)
   const targetAgeRange = parseStudioClassTargetAgeRange(initialItem?.targetAge)
+  const selectedRegion = normalizeAcademyArea(initialItem?.region)
+  const teacherOptionIds = new Set(teacherOptions.map((option) => option.teacherId))
+  const selectedTeacherId =
+    initialItem?.teacherId && teacherOptionIds.has(initialItem.teacherId)
+      ? initialItem.teacherId
+      : teacherOptionIds.has(currentTeacherId)
+        ? currentTeacherId
+        : (teacherOptions[0]?.teacherId ?? "")
+  const isTeacherOptionUnavailable = teacherOptions.length === 0
   const mode = selectedClassId ? "update" : "create"
   const safeCoverImageUrlDraft = coverImageUrlDraft ?? ""
 
@@ -92,7 +109,7 @@ export const StudioClassForm = ({ currentTeacherName, initialItem }: StudioClass
     <section style={cardStyle}>
       <h2 style={titleStyle}>{selectedClassId ? "프로그램 수정" : "새 프로그램 등록"}</h2>
       <p style={descriptionStyle}>
-        현재 로그인한 teacher 소유권으로 저장합니다. create 모드에서만 예약 가능 시간을 함께 만들고, update 모드는 이번 단계에서 기본 정보만 수정합니다.
+        같은 organization에 등록된 담당 선생님을 선택해 저장합니다. create 모드에서만 예약 가능 시간을 함께 만들고, update 모드는 이번 단계에서 기본 정보만 수정합니다.
       </p>
 
       <form action={formAction} style={{ display: "grid", gap: 12 }}>
@@ -209,14 +226,18 @@ export const StudioClassForm = ({ currentTeacherName, initialItem }: StudioClass
 
         <label style={fieldStyle}>
           <span>지역</span>
-          <input
+          <select
             name="region"
-            defaultValue={initialItem?.region ?? ""}
-            required
-            maxLength={40}
+            defaultValue={selectedRegion}
             disabled={isPending}
             style={inputStyle}
-          />
+          >
+            {academyAreaOptions.map((option) => (
+              <option key={option} value={option}>
+                {option}
+              </option>
+            ))}
+          </select>
         </label>
 
         <label style={fieldStyle}>
@@ -247,16 +268,26 @@ export const StudioClassForm = ({ currentTeacherName, initialItem }: StudioClass
         </label>
 
         <label style={fieldStyle}>
-          <span>담당 선생님명</span>
-          <input
-            name="teacherDisplayName"
-            required
-            minLength={2}
-            maxLength={30}
-            defaultValue={initialItem?.teacherDisplayName ?? currentTeacherName}
+          <span>담당 선생님</span>
+          <select
+            name="teacherId"
+            defaultValue={selectedTeacherId}
             disabled={isPending}
             style={inputStyle}
-          />
+          >
+            {teacherOptions.map((option) => (
+              <option key={option.teacherId} value={option.teacherId}>
+                {option.teacherName}
+              </option>
+            ))}
+          </select>
+          <span style={helperTextStyle}>
+            {teacherOptionsError
+              ? teacherOptionsError
+              : isTeacherOptionUnavailable
+                ? "현재 organization에 등록된 선생님이 없어 저장할 수 없습니다."
+                : "현재 organization에 등록된 선생님만 선택할 수 있습니다."}
+          </span>
         </label>
 
         <label style={fieldStyle}>
@@ -397,13 +428,20 @@ export const StudioClassForm = ({ currentTeacherName, initialItem }: StudioClass
           <span>공개 상태로 저장</span>
         </label>
 
-        {state.message ? (
+        {state.message || teacherOptionsError || isTeacherOptionUnavailable ? (
           <p style={{ margin: 0, color: state.ok ? "#111827" : "#b42318", fontSize: 14 }}>
-            {state.message}
+            {teacherOptionsError ??
+              (isTeacherOptionUnavailable
+                ? "담당 선생님 목록이 비어 있어 프로그램을 저장할 수 없습니다."
+                : state.message)}
           </p>
         ) : null}
 
-        <button type="submit" disabled={isPending} style={buttonStyle}>
+        <button
+          type="submit"
+          disabled={isPending || isTeacherOptionUnavailable || Boolean(teacherOptionsError)}
+          style={buttonStyle}
+        >
           {isPending ? "저장 중..." : mode === "update" ? "프로그램 수정" : "프로그램 등록"}
         </button>
       </form>

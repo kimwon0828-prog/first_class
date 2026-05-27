@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache"
 
+import { isAcademyArea } from "@/shared/config/academy-areas"
 import {
   studioClassGradeAgeOrder,
   studioClassProgramTypeOptions,
@@ -172,14 +173,13 @@ export async function upsertStudioClassAction(
     const subject = String(formData.get("subject") ?? "").trim()
     const targetAgeStart = String(formData.get("targetAgeStart") ?? "").trim()
     const targetAgeEnd = String(formData.get("targetAgeEnd") ?? "").trim()
-    const region = String(formData.get("region") ?? "").trim()
+    const regionRaw = String(formData.get("region") ?? "").trim()
     const description = String(formData.get("description") ?? "").trim()
-    const teacherDisplayName = String(formData.get("teacherDisplayName") ?? "").trim()
+    const selectedTeacherId = String(formData.get("teacherId") ?? "").trim()
     const trialPriceRaw = String(formData.get("trialPrice") ?? "").trim()
     const coverImageUrlRaw = String(formData.get("coverImageUrl") ?? "").trim()
     const isActive = String(formData.get("isActive") ?? "") === "on"
     const organizationId = teacher.organizationId
-    const teacherId = teacher.teacherId
 
     const startOrder = studioClassGradeAgeOrder.get(targetAgeStart)
     const endOrder = studioClassGradeAgeOrder.get(targetAgeEnd)
@@ -221,8 +221,8 @@ export async function upsertStudioClassAction(
       return { ok: false, message: "끝 학년/연령은 시작 값보다 앞설 수 없습니다." }
     }
 
-    if (!region) {
-      return { ok: false, message: "지역을 입력해 주세요." }
+    if (!isAcademyArea(regionRaw)) {
+      return { ok: false, message: "학원가를 다시 선택해 주세요." }
     }
 
     if (description.length < 10) {
@@ -237,12 +237,14 @@ export async function upsertStudioClassAction(
       return { ok: false, message: "소속 기관 정보를 확인할 수 없습니다." }
     }
 
-    if (!teacherId) {
-      return { ok: false, message: "담당 선생님을 확인할 수 없습니다." }
+    if (!selectedTeacherId || !isValidUuid(selectedTeacherId)) {
+      return { ok: false, message: "담당 선생님을 다시 선택해 주세요." }
     }
 
-    if (teacherDisplayName.length < 2) {
-      return { ok: false, message: "담당 선생님명은 2자 이상 입력해 주세요." }
+    const teacherOptions = await dataAdapter.listStudioTeacherOptions(organizationId)
+    const selectedTeacher = teacherOptions.find((option) => option.teacherId === selectedTeacherId)
+    if (!selectedTeacher) {
+      return { ok: false, message: "같은 organization에 속한 담당 선생님만 선택할 수 있습니다." }
     }
 
     const coverImageUrl = normalizeImageUrl(coverImageUrlRaw)
@@ -266,11 +268,11 @@ export async function upsertStudioClassAction(
       title,
       subject,
       targetAge,
-      region,
+      region: regionRaw,
       description,
       trialPrice,
-      teacherId,
-      teacherDisplayName,
+      teacherId: selectedTeacher.teacherId,
+      teacherDisplayName: selectedTeacher.teacherName,
       coverImageUrl,
       isActive,
       scheduleSlots: parsedSlots.slots

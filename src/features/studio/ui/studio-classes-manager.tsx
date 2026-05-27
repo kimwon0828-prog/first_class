@@ -4,11 +4,13 @@ import { useState } from "react"
 
 import { submitToggleStudioClassActiveAction } from "@/features/studio/actions/toggle-studio-class-active"
 import { StudioClassForm } from "@/features/studio/ui/studio-class-form"
-import type { ClassSummary } from "@/shared/lib/db/adapter"
+import type { ClassSummary, StudioTeacherOption } from "@/shared/lib/db/adapter"
 
 type StudioClassesManagerProps = {
   items: ClassSummary[]
-  currentTeacherName: string
+  currentTeacherId: string
+  teacherOptions: StudioTeacherOption[]
+  teacherOptionsError: string | null
 }
 
 const formatPrice = (price: number) => {
@@ -24,7 +26,12 @@ const PROGRAM_TYPE_LABELS: Record<ClassSummary["programType"], string> = {
   level_test: "레벨테스트"
 }
 
-export const StudioClassesManager = ({ items, currentTeacherName }: StudioClassesManagerProps) => {
+export const StudioClassesManager = ({
+  items,
+  currentTeacherId,
+  teacherOptions,
+  teacherOptionsError
+}: StudioClassesManagerProps) => {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const selectedItem = items.find((item) => item.id === selectedId) ?? null
 
@@ -113,7 +120,9 @@ export const StudioClassesManager = ({ items, currentTeacherName }: StudioClasse
 
       <StudioClassForm
         key={selectedId ?? "create"}
-        currentTeacherName={currentTeacherName}
+        currentTeacherId={currentTeacherId}
+        teacherOptions={teacherOptions}
+        teacherOptionsError={teacherOptionsError}
         initialItem={selectedItem}
       />
     </div>

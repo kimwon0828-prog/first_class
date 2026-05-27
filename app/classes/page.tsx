@@ -1,8 +1,17 @@
 import Link from "next/link"
+import { redirect } from "next/navigation"
 import type { CSSProperties } from "react"
 
 import { AuthEntryButton } from "@/features/auth/ui/auth-entry-button"
+import { ClassesRegionSelect } from "@/features/classes/ui/classes-region-select"
 import { getPublicClasses } from "@/features/classes/queries/get-public-classes"
+import { normalizeAcademyArea } from "@/shared/config/academy-areas"
+
+type ClassesPageProps = {
+  searchParams?: Promise<{
+    region?: string
+  }>
+}
 
 const pageContainerStyle: CSSProperties = {
   maxWidth: 640,
@@ -48,14 +57,23 @@ const formatProgramType = (value: string) => {
   return "체험수업"
 }
 
-export default async function ClassesPage() {
-  const { data: classes, error } = await getPublicClasses()
+export default async function ClassesPage({ searchParams }: ClassesPageProps) {
+  const resolvedSearchParams = searchParams ? await searchParams : undefined
+  const rawRegion = typeof resolvedSearchParams?.region === "string" ? resolvedSearchParams.region : null
+  const selectedRegion = normalizeAcademyArea(rawRegion)
+
+  if (rawRegion !== selectedRegion) {
+    redirect(`/classes?region=${encodeURIComponent(selectedRegion)}`)
+  }
+
+  const { data: classes, error } = await getPublicClasses(selectedRegion)
+  const classesHref = `/classes?region=${encodeURIComponent(selectedRegion)}`
 
   return (
     <main style={pageContainerStyle}>
       <section style={{ marginBottom: 14 }}>
         <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 12 }}>
-          <AuthEntryButton returnTo="/classes" />
+          <AuthEntryButton returnTo={classesHref} />
         </div>
         <h1 style={{ margin: "0 0 8px", fontSize: 24 }}>프로그램 찾기</h1>
         <p style={mutedTextStyle}>
@@ -64,9 +82,7 @@ export default async function ClassesPage() {
       </section>
 
       <section style={{ ...sectionCardStyle, marginBottom: 14 }}>
-        <p style={{ ...mutedTextStyle, marginBottom: 10, fontSize: 13 }}>
-          검색/필터(준비 중)
-        </p>
+        <p style={{ ...mutedTextStyle, marginBottom: 10, fontSize: 13 }}>지역 필터</p>
         <div style={{ display: "grid", gap: 8 }}>
           <input
             disabled
@@ -79,20 +95,7 @@ export default async function ClassesPage() {
               backgroundColor: "#f9fafb"
             }}
           />
-          <button
-            type="button"
-            disabled
-            style={{
-              width: "100%",
-              padding: "10px 12px",
-              borderRadius: 10,
-              border: "1px solid #d1d5db",
-              backgroundColor: "#f9fafb",
-              color: "#6b7280"
-            }}
-          >
-            연령/지역 필터 (곧 제공)
-          </button>
+          <ClassesRegionSelect selectedRegion={selectedRegion} />
         </div>
       </section>
 
@@ -105,7 +108,7 @@ export default async function ClassesPage() {
       {error ? (
         <section style={{ ...sectionCardStyle, borderColor: "#fecaca" }}>
           <p style={{ margin: "0 0 10px", color: "#991b1b", fontSize: 14 }}>{error}</p>
-          <Link href="/classes" style={{ color: "#2563eb", fontSize: 14 }}>
+          <Link href={classesHref} style={{ color: "#2563eb", fontSize: 14 }}>
             다시 불러오기
           </Link>
         </section>
@@ -114,7 +117,7 @@ export default async function ClassesPage() {
       {!error && classes.length === 0 ? (
         <section style={sectionCardStyle}>
           <p style={{ margin: "0 0 8px", fontSize: 15 }}>
-            현재 공개된 프로그램이 아직 없어요.
+            {selectedRegion}에 현재 공개된 프로그램이 아직 없어요.
           </p>
           <p style={mutedTextStyle}>조금 뒤 다시 확인해 주세요.</p>
         </section>
@@ -161,7 +164,7 @@ export default async function ClassesPage() {
 
               <div style={{ display: "flex", gap: 8 }}>
                 <Link
-                  href={`/classes/${item.id}`}
+                  href={`/classes/${item.id}?region=${encodeURIComponent(selectedRegion)}`}
                   style={{
                     flex: 1,
                     textAlign: "center",
