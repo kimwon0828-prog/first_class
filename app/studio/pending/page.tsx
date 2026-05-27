@@ -25,22 +25,23 @@ export default async function StudioPendingPage() {
 
   return (
     <main style={{ maxWidth: 480, margin: "0 auto", padding: "60px 24px", textAlign: "center" }}>
-      <h1 style={{ fontSize: 24, margin: "0 0 16px" }}>가입 승인 대기 중입니다</h1>
+      <h1 style={{ fontSize: 24, margin: "0 0 16px" }}>학원 계정 승인 대기 중입니다</h1>
       
       <p style={{ fontSize: 16, color: "#4b5563", lineHeight: "24px", marginBottom: 32 }}>
-        선생님/학원 회원가입 신청이 접수되었습니다.<br />
-        관리자 확인 및 승인 후 studio 기능을 이용하실 수 있습니다.
+        학원 계정 신청이 접수되었습니다.<br />
+        관리자 확인 및 승인 후 Studio 기능을 이용하실 수 있습니다.
       </p>
 
       {pendingRequest ? (
         <div style={{ background: "#f3f4f6", padding: 20, borderRadius: 12, textAlign: "left", marginBottom: 32 }}>
           <h2 style={{ fontSize: 16, margin: "0 0 12px" }}>신청 정보</h2>
           <ul style={{ listStyle: "none", padding: 0, margin: 0, fontSize: 14, color: "#374151" }}>
-            <li style={{ marginBottom: 8 }}><strong>선생님 이름:</strong> {pendingRequest.teacherName}</li>
             <li style={{ marginBottom: 8 }}><strong>학원 이름:</strong> {pendingRequest.organizationName}</li>
+            <li style={{ marginBottom: 8 }}><strong>학원가:</strong> {pendingRequest.academyArea}</li>
             {pendingRequest.branchName && (
-              <li><strong>지점명:</strong> {pendingRequest.branchName}</li>
+              <li style={{ marginBottom: 8 }}><strong>지점명:</strong> {pendingRequest.branchName}</li>
             )}
+            <li><strong>신청 상태:</strong> {pendingRequest.status === "pending" ? "승인 대기" : pendingRequest.status}</li>
           </ul>
         </div>
       ) : null}

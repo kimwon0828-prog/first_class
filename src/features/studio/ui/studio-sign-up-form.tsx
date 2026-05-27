@@ -4,6 +4,7 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useActionState, useEffect } from "react"
 
+import { academyAreaOptions } from "@/shared/config/academy-areas"
 import {
   studioSignUpAction,
   type StudioSignUpActionState
@@ -28,28 +29,30 @@ export const StudioSignUpForm = () => {
   return (
     <form action={formAction} className={styles.form}>
       <label className={styles.field}>
-        <span className={styles.label}>선생님 이름</span>
+        <span className={styles.label}>학원명</span>
         <input
-          name="teacherName"
+          name="organizationName"
           type="text"
           required
           minLength={2}
-          maxLength={30}
+          maxLength={50}
           disabled={isPending}
           className={styles.input}
         />
       </label>
 
       <label className={styles.field}>
-        <span className={styles.label}>학원/조직 이름</span>
-        <input
-          name="organizationName"
-          type="text"
-          required
-          maxLength={50}
-          disabled={isPending}
-          className={styles.input}
-        />
+        <span className={styles.label}>학원가</span>
+        <select name="academyArea" required disabled={isPending} className={styles.input} defaultValue="">
+          <option value="" disabled>
+            학원가를 선택해 주세요
+          </option>
+          {academyAreaOptions.map((option) => (
+            <option key={option} value={option}>
+              {option}
+            </option>
+          ))}
+        </select>
       </label>
 
       <label className={styles.field}>
@@ -97,14 +100,14 @@ export const StudioSignUpForm = () => {
       ) : null}
 
       <button type="submit" disabled={isPending} className={styles.submitButton}>
-        {isPending ? "가입 신청 중..." : "가입 신청하기"}
+        {isPending ? "학원 계정 신청 중..." : "학원 계정 신청하기"}
       </button>
 
       {state.status === "needs_email_confirm" ? (
         <div style={{ marginTop: 12, textAlign: "center", fontSize: 13, color: "#6b7280" }}>
           이메일 인증 후{" "}
           <Link href="/studio/sign-in" style={{ color: "#2563eb", textDecoration: "none" }}>
-            선생님 로그인
+            Studio 로그인
           </Link>
           으로 들어와 주세요.
         </div>
@@ -113,7 +116,7 @@ export const StudioSignUpForm = () => {
       <div style={{ marginTop: 24, textAlign: "center", fontSize: 13, color: "#6b7280" }}>
         이미 계정이 있으신가요?{" "}
         <Link href="/studio/sign-in" style={{ color: "#2563eb", textDecoration: "none" }}>
-          선생님 로그인
+          Studio 로그인
         </Link>
       </div>
     </form>

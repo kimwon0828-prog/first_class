@@ -1,5 +1,6 @@
 "use server"
 
+import { isAcademyArea } from "@/shared/config/academy-areas"
 import { getSupabaseServerClient } from "@/integrations/supabase/server"
 
 export type StudioSignUpActionState = {
@@ -13,19 +14,18 @@ const defaultState: StudioSignUpActionState = {
 }
 
 const validateSignUpForm = (formData: FormData) => {
-  const teacherName = String(formData.get("teacherName") ?? "").trim()
-  const teacherPhone = String(formData.get("teacherPhone") ?? "").trim()
   const organizationName = String(formData.get("organizationName") ?? "").trim()
+  const academyArea = String(formData.get("academyArea") ?? "").trim()
   const branchName = String(formData.get("branchName") ?? "").trim()
   const email = String(formData.get("email") ?? "").trim().toLowerCase()
   const password = String(formData.get("password") ?? "")
 
-  if (!teacherName || teacherName.length < 2) {
-    return { ok: false as const, message: "선생님 이름은 2자 이상 입력해 주세요." }
+  if (!organizationName) {
+    return { ok: false as const, message: "학원명을 입력해 주세요." }
   }
 
-  if (!organizationName) {
-    return { ok: false as const, message: "학원/조직 이름을 입력해 주세요." }
+  if (!isAcademyArea(academyArea)) {
+    return { ok: false as const, message: "학원가를 선택해 주세요." }
   }
 
   if (!email || !email.includes("@")) {
@@ -38,9 +38,8 @@ const validateSignUpForm = (formData: FormData) => {
 
   return {
     ok: true as const,
-    teacherName,
-    teacherPhone: teacherPhone || null,
     organizationName,
+    academyArea,
     branchName: branchName || null,
     email,
     password
@@ -58,8 +57,9 @@ export async function studioSignUpAction(
   }
 
   const supabase = await getSupabaseServerClient()
+  const fallbackTeacherName = `${validated.organizationName} 관리자`
   
-  // Create auth user. teacher_signup_requests is created by DB trigger on auth.users.
+  // teacher_signup_requests is created by DB trigger on auth.users.
   const { data, error } = await supabase.auth.signUp({
     email: validated.email,
     password: validated.password,
@@ -67,10 +67,11 @@ export async function studioSignUpAction(
       data: {
         signup_intent: "teacher_public",
         role: "teacher",
-        name: validated.teacherName,
-        teacher_name: validated.teacherName,
-        teacher_phone: validated.teacherPhone,
+        name: fallbackTeacherName,
+        teacher_name: fallbackTeacherName,
+        teacher_phone: null,
         organization_name: validated.organizationName,
+        academy_area: validated.academyArea,
         branch_name: validated.branchName,
         organization_phone: null,
         request_note: null
@@ -98,12 +99,12 @@ export async function studioSignUpAction(
   if (!data.session) {
     return {
       status: "needs_email_confirm",
-      message: "이메일 인증 후 로그인해 주세요. 승인 대기 상태로 접수됩니다."
+      message: "이메일 인증 후 로그인해 주세요. 학원 계정 승인 대기 상태로 접수됩니다."
     }
   }
 
   return {
     status: "success",
-    message: "가입 신청이 완료되었습니다."
+    message: "학원 계정 신청이 완료되었습니다."
   }
 }

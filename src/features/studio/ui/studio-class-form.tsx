@@ -269,18 +269,31 @@ export const StudioClassForm = ({
 
         <label style={fieldStyle}>
           <span>담당 선생님</span>
-          <select
-            name="teacherId"
-            defaultValue={selectedTeacherId}
-            disabled={isPending}
-            style={inputStyle}
-          >
-            {teacherOptions.map((option) => (
-              <option key={option.teacherId} value={option.teacherId}>
-                {option.teacherName}
-              </option>
-            ))}
-          </select>
+          {teacherOptions.length > 0 ? (
+            <select
+              name="teacherId"
+              defaultValue={selectedTeacherId}
+              disabled={isPending}
+              style={inputStyle}
+            >
+              {teacherOptions.map((option) => (
+                <option key={option.teacherId} value={option.teacherId}>
+                  {option.teacherName}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <div
+              aria-live="polite"
+              style={{
+                ...inputStyle,
+                color: "#6b7280",
+                backgroundColor: "#f9fafb"
+              }}
+            >
+              등록된 선생님이 없습니다.
+            </div>
+          )}
           <span style={helperTextStyle}>
             {teacherOptionsError
               ? teacherOptionsError

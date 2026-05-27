@@ -76,7 +76,7 @@ export const StudioSignInForm = ({ returnTo }: StudioSignInFormProps) => {
       <div style={{ marginTop: 24, textAlign: "center", fontSize: 13, color: "#6b7280" }}>
         아직 계정이 없으신가요?{" "}
         <Link href="/studio/sign-up" style={{ color: "#2563eb", textDecoration: "none" }}>
-          선생님 회원가입
+          학원 계정 신청
         </Link>
       </div>
     </form>

@@ -34,7 +34,7 @@ export default async function StudioSignUpPage() {
         </Link>
       </div>
 
-      <h1 className={styles.title}>선생님 회원가입</h1>
+      <h1 className={styles.title}>학원 계정 신청</h1>
 
       <section className={styles.hero}>
         <Image
@@ -46,9 +46,9 @@ export default async function StudioSignUpPage() {
           priority
         />
         <p className={styles.headline}>
-          가입 신청을 하시면
+          학원 계정을 신청하시면
           <br />
-          관리자 승인 후 이용 가능합니다.
+          관리자 승인 후 Studio를 이용할 수 있습니다.
         </p>
       </section>
 

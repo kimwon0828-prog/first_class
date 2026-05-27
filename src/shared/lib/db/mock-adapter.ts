@@ -752,6 +752,7 @@ export const mockDataAdapter: DataAdapter = {
       teacherName: input.teacherName,
       teacherPhone: input.teacherPhone,
       organizationName: input.organizationName,
+      academyArea: input.academyArea,
       branchName: input.branchName,
       organizationPhone: input.organizationPhone,
       requestNote: input.requestNote,

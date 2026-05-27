@@ -291,6 +291,7 @@ export type TeacherSignupRequest = {
   teacherName: string
   teacherPhone: string | null
   organizationName: string
+  academyArea: AcademyArea
   branchName: string | null
   organizationPhone: string | null
   requestNote: string | null
@@ -302,6 +303,7 @@ export type CreateTeacherSignupRequestInput = {
   teacherName: string
   teacherPhone: string | null
   organizationName: string
+  academyArea: AcademyArea
   branchName: string | null
   organizationPhone: string | null
   requestNote: string | null

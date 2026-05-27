@@ -36,7 +36,14 @@ export const StudioClassesManager = ({
   const selectedItem = items.find((item) => item.id === selectedId) ?? null
 
   return (
-    <div style={{ display: "grid", gap: 16, gridTemplateColumns: "minmax(0, 1.2fr) 420px" }}>
+    <div
+      style={{
+        display: "grid",
+        gap: 16,
+        alignItems: "start",
+        gridTemplateColumns: "repeat(auto-fit, minmax(360px, 1fr))"
+      }}
+    >
       <section style={cardStyle}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
           <div>
