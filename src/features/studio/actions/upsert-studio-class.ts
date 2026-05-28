@@ -9,6 +9,7 @@ import {
   studioClassSubjectOptions
 } from "@/features/studio/lib/studio-class-options"
 import { requireTeacherStudioAccess } from "@/features/studio/lib/require-teacher-studio-access"
+import { getSupabaseServerClient } from "@/integrations/supabase/server"
 import { dataAdapter } from "@/shared/lib/db"
 import type { ClassProgramType, StudioClassScheduleSlotInput } from "@/shared/lib/db/adapter"
 
@@ -35,23 +36,6 @@ const studioClassProgramTypeSet = new Set<string>(
   studioClassProgramTypeOptions.map((option) => option.value)
 )
 
-const normalizeImageUrl = (value: string) => {
-  if (!value) {
-    return null
-  }
-
-  try {
-    const parsed = new URL(value)
-    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
-      return null
-    }
-
-    return parsed.toString()
-  } catch {
-    return null
-  }
-}
-
 const normalizeClassId = (value: FormDataEntryValue | null) => {
   const rawClassId = String(value ?? "").trim()
   if (!rawClassId) {
@@ -63,6 +47,22 @@ const normalizeClassId = (value: FormDataEntryValue | null) => {
   }
 
   return rawClassId
+}
+
+const MAX_COVER_IMAGE_FILE_SIZE = 5 * 1024 * 1024
+const ALLOWED_COVER_IMAGE_MIME_TYPES = new Set(["image/jpeg", "image/png", "image/webp"])
+
+const getCoverImageExtension = (mimeType: string) => {
+  switch (mimeType) {
+    case "image/jpeg":
+      return "jpg"
+    case "image/png":
+      return "png"
+    case "image/webp":
+      return "webp"
+    default:
+      return null
+  }
 }
 
 const uuidPattern =
@@ -177,9 +177,11 @@ export async function upsertStudioClassAction(
     const description = String(formData.get("description") ?? "").trim()
     const selectedTeacherId = String(formData.get("teacherId") ?? "").trim()
     const trialPriceRaw = String(formData.get("trialPrice") ?? "").trim()
-    const coverImageUrlRaw = String(formData.get("coverImageUrl") ?? "").trim()
+    const coverImageFileEntry = formData.get("coverImageFile")
     const isActive = String(formData.get("isActive") ?? "") === "on"
     const organizationId = teacher.organizationId
+    const coverImageFile =
+      coverImageFileEntry instanceof File && coverImageFileEntry.size > 0 ? coverImageFileEntry : null
 
     const startOrder = studioClassGradeAgeOrder.get(targetAgeStart)
     const endOrder = studioClassGradeAgeOrder.get(targetAgeEnd)
@@ -241,17 +243,80 @@ export async function upsertStudioClassAction(
       return { ok: false, message: "담당 선생님을 다시 선택해 주세요." }
     }
 
-    const teacherOptions = await dataAdapter.listStudioTeacherOptions(organizationId)
-    const selectedTeacher = teacherOptions.find((option) => option.teacherId === selectedTeacherId)
-    if (!selectedTeacher) {
-      return { ok: false, message: "같은 organization에 속한 담당 선생님만 선택할 수 있습니다." }
+    const studioClasses =
+      mode === "update" && classId ? await dataAdapter.listStudioClasses(organizationId) : []
+    const existingClass =
+      mode === "update" && classId ? studioClasses.find((item) => item.id === classId) : null
+
+    if (mode === "update" && classId && !existingClass) {
+      return { ok: false, message: "프로그램 정보를 찾을 수 없거나 수정 권한이 없습니다." }
     }
 
-    const coverImageUrl = normalizeImageUrl(coverImageUrlRaw)
-    if (coverImageUrlRaw && !coverImageUrl) {
-      return {
-        ok: false,
-        message: "대표 이미지는 http 또는 https로 시작하는 이미지 URL만 입력할 수 있습니다."
+    const teacherOptions = await dataAdapter.listStudioTeacherOptions(organizationId)
+    let selectedTeacher = teacherOptions.find((option) => option.teacherId === selectedTeacherId)
+
+    if (!selectedTeacher && existingClass && existingClass.teacherId === selectedTeacherId) {
+      selectedTeacher = {
+        teacherId: selectedTeacherId,
+        teacherName: existingClass.teacherDisplayName ?? existingClass.teacherName ?? "이름 미정"
+      }
+    }
+
+    if (!selectedTeacher) {
+      return { ok: false, message: "active 상태의 담당 선생님만 새로 선택할 수 있습니다." }
+    }
+
+    let coverImageUrl = existingClass?.coverImageUrl ?? null
+    if (mode === "create") {
+      coverImageUrl = null
+    }
+
+    if (coverImageFile) {
+      if (!ALLOWED_COVER_IMAGE_MIME_TYPES.has(coverImageFile.type)) {
+        return {
+          ok: false,
+          message: "대표 이미지는 JPEG, PNG, WEBP 파일만 업로드할 수 있습니다."
+        }
+      }
+
+      if (coverImageFile.size > MAX_COVER_IMAGE_FILE_SIZE) {
+        return { ok: false, message: "대표 이미지는 5MB 이하 파일만 업로드할 수 있습니다." }
+      }
+
+      const extension = getCoverImageExtension(coverImageFile.type)
+      if (!extension) {
+        return {
+          ok: false,
+          message: "대표 이미지 파일 형식을 확인할 수 없습니다. 다른 파일로 다시 시도해 주세요."
+        }
+      }
+
+      const objectName = `${organizationId}/${crypto.randomUUID()}.${extension}`
+      const supabase = await getSupabaseServerClient()
+      const { error: uploadError } = await supabase.storage
+        .from("class-covers")
+        .upload(objectName, coverImageFile, {
+          contentType: coverImageFile.type,
+          upsert: false
+        })
+
+      if (uploadError) {
+        return {
+          ok: false,
+          message: "대표 이미지 업로드에 실패했습니다. 잠시 후 다시 시도해 주세요."
+        }
+      }
+
+      const {
+        data: { publicUrl }
+      } = supabase.storage.from("class-covers").getPublicUrl(objectName)
+
+      coverImageUrl = publicUrl ?? null
+      if (!coverImageUrl) {
+        return {
+          ok: false,
+          message: "대표 이미지 URL을 생성하지 못했습니다. 잠시 후 다시 시도해 주세요."
+        }
       }
     }
 

@@ -51,12 +51,12 @@ export const StudioClassForm = ({
 }: StudioClassFormProps) => {
   const [selectedClassId, setSelectedClassId] = useState(initialItem?.id ?? "")
   const [selectedProgramType, setSelectedProgramType] = useState(initialItem?.programType ?? "trial_class")
-  const [coverImageUrlDraft, setCoverImageUrlDraft] = useState(initialItem?.coverImageUrl ?? "")
   const [selectedSubject, setSelectedSubject] = useState(
     studioClassSubjectOptions.includes(initialItem?.subject as (typeof studioClassSubjectOptions)[number])
       ? initialItem?.subject
       : ""
   )
+  const [coverImageFilePreviewUrl, setCoverImageFilePreviewUrl] = useState("")
   const [scheduleSlots, setScheduleSlots] = useState<ScheduleSlotDraft[]>([createEmptyScheduleSlotDraft()])
   const action = useMemo(() => upsertStudioClassAction, [])
   const [state, formAction, isPending] = useActionState(action, initialState)
@@ -88,19 +88,26 @@ export const StudioClassForm = ({
     initialItem?.teacherId && fallbackTeacherOption && !teacherOptionIds.has(initialItem.teacherId)
   )
   const mode = selectedClassId ? "update" : "create"
-  const safeCoverImageUrlDraft = coverImageUrlDraft ?? ""
 
   useEffect(() => {
     setSelectedClassId(initialItem?.id ?? "")
     setSelectedProgramType(initialItem?.programType ?? "trial_class")
-    setCoverImageUrlDraft(initialItem?.coverImageUrl ?? "")
     setSelectedSubject(
       studioClassSubjectOptions.includes(initialItem?.subject as (typeof studioClassSubjectOptions)[number])
         ? (initialItem?.subject ?? "")
         : ""
     )
+    setCoverImageFilePreviewUrl("")
     setScheduleSlots([createEmptyScheduleSlotDraft()])
   }, [initialItem?.coverImageUrl, initialItem?.id, initialItem?.programType, initialItem?.subject])
+
+  useEffect(() => {
+    return () => {
+      if (coverImageFilePreviewUrl) {
+        URL.revokeObjectURL(coverImageFilePreviewUrl)
+      }
+    }
+  }, [coverImageFilePreviewUrl])
 
   const handleScheduleSlotChange = (
     slotId: string,
@@ -129,7 +136,7 @@ export const StudioClassForm = ({
         같은 organization에 등록된 담당 선생님을 선택해 저장합니다. create 모드에서만 예약 가능 시간을 함께 만들고, update 모드는 이번 단계에서 기본 정보만 수정합니다.
       </p>
 
-      <form action={formAction} style={{ display: "grid", gap: 12 }}>
+      <form action={formAction} encType="multipart/form-data" style={{ display: "grid", gap: 12 }}>
         <input type="hidden" name="mode" value={mode} />
         {mode === "update" ? <input type="hidden" name="classId" value={selectedClassId} /> : null}
         <input type="hidden" name="programType" value={selectedProgramType} />
@@ -326,24 +333,41 @@ export const StudioClassForm = ({
         </label>
 
         <label style={fieldStyle}>
-          <span>대표 이미지 URL</span>
+          <span>대표 이미지</span>
           <input
-            name="coverImageUrl"
-            type="url"
-            value={safeCoverImageUrlDraft}
-            onChange={(event) => setCoverImageUrlDraft(event.target.value ?? "")}
+            name="coverImageFile"
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
             disabled={isPending}
-            placeholder="https://..."
             style={inputStyle}
+            onChange={(event) => {
+              const file = event.target.files?.[0]
+              if (!file) {
+                setCoverImageFilePreviewUrl("")
+                return
+              }
+
+              setCoverImageFilePreviewUrl(URL.createObjectURL(file))
+            }}
           />
+          <span style={helperTextStyle}>JPEG/PNG/WEBP 파일, 5MB 이하만 업로드할 수 있습니다.</span>
         </label>
 
-        {safeCoverImageUrlDraft ? (
+        {coverImageFilePreviewUrl ? (
           <div style={previewWrapperStyle}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src={safeCoverImageUrlDraft}
-              alt={`${initialItem?.title ?? "새 프로그램"} 대표 이미지`}
+              src={coverImageFilePreviewUrl}
+              alt={`${initialItem?.title ?? "새 프로그램"} 새 대표 이미지 미리보기`}
+              style={previewImageStyle}
+            />
+          </div>
+        ) : initialItem?.coverImageUrl ? (
+          <div style={previewWrapperStyle}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={initialItem.coverImageUrl}
+              alt={`${initialItem?.title ?? "프로그램"} 기존 대표 이미지`}
               style={previewImageStyle}
             />
           </div>
