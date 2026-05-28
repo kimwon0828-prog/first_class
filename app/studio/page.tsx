@@ -1,10 +1,33 @@
 import { requireTeacherStudioAccess } from "@/features/studio/lib/require-teacher-studio-access"
+import { getStudioDashboardTeacherOptions } from "@/features/studio/queries/get-studio-dashboard-teacher-options"
 import { getStudioDashboardSummary } from "@/features/studio/queries/get-studio-dashboard-summary"
 import { StudioDashboardSummaryView } from "@/features/studio/ui/studio-dashboard-summary"
+import { StudioTeacherFilter } from "@/features/studio/ui/studio-teacher-filter"
 
-export default async function StudioIndexPage() {
+const uuidPattern =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+
+type StudioIndexPageProps = {
+  searchParams?: Promise<{ teacherId?: string }>
+}
+
+export default async function StudioIndexPage({ searchParams }: StudioIndexPageProps) {
   const teacher = await requireTeacherStudioAccess()
-  const { data, error } = await getStudioDashboardSummary(teacher.organizationId, teacher.teacherId)
+  const resolvedSearchParams = searchParams ? await searchParams : undefined
+  const teacherIdParam = String(resolvedSearchParams?.teacherId ?? "").trim()
+  const { data: filterOptions, error: filterError } = await getStudioDashboardTeacherOptions(
+    teacher.organizationId
+  )
+  const availableTeacherIdSet = new Set(filterOptions.map((option) => option.teacherId))
+  const validatedTeacherId =
+    teacherIdParam && teacherIdParam !== "all" && uuidPattern.test(teacherIdParam) && availableTeacherIdSet.has(teacherIdParam)
+      ? teacherIdParam
+      : null
+  const selectedTeacherId = validatedTeacherId ?? "all"
+
+  const { data, error } = await getStudioDashboardSummary(teacher.organizationId, {
+    teacherId: validatedTeacherId
+  })
 
   return (
     <main
@@ -24,8 +47,16 @@ export default async function StudioIndexPage() {
           운영 대시보드
         </h1>
         <p style={{ margin: "12px 0 0", fontSize: 14, lineHeight: "20px", color: "#4b5563" }}>
-          {teacher.name} 선생님의 신청/수업/일정 운영 현황을 요약해서 보여줍니다.
+          선생님별 운영 현황을 필터링해서 요약합니다.
         </p>
+        <div style={{ marginTop: 16, display: "flex", justifyContent: "space-between", gap: 12 }}>
+          <StudioTeacherFilter options={filterOptions} selectedTeacherId={selectedTeacherId} />
+          {filterError ? (
+            <p style={{ margin: 0, color: "#b42318", fontSize: 13, lineHeight: "18px" }}>
+              {filterError}
+            </p>
+          ) : null}
+        </div>
       </header>
 
       {error ? (

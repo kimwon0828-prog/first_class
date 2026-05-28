@@ -14,22 +14,6 @@ const getEndOfToday = () => {
   return end
 }
 
-const getStartOfWeek = () => {
-  const today = getStartOfToday()
-  const day = today.getDay()
-  const diff = day === 0 ? -6 : 1 - day
-  const start = new Date(today)
-  start.setDate(today.getDate() + diff)
-  return start
-}
-
-const getEndOfWeek = () => {
-  const start = getStartOfWeek()
-  const end = new Date(start)
-  end.setDate(end.getDate() + 7)
-  return end
-}
-
 const isWithinRange = (value: string | null, start: Date, end: Date) => {
   if (!value) {
     return false
@@ -52,33 +36,34 @@ const toEnrollmentRate = (enrolledCount: number, applicationCount: number) => {
 
 export const getStudioDashboardSummary = async (
   organizationId: string,
-  teacherId: string
+  options?: { teacherId?: string | null }
 ): Promise<QueryResult<StudioDashboardSummary>> => {
   try {
-    const [applications, classes, scheduleBlocks] = await Promise.all([
-      dataAdapter.listStudioApplications(organizationId),
-      dataAdapter.listStudioClasses(organizationId),
-      dataAdapter.listTeacherScheduleBlocks(teacherId)
-    ])
+    const applications = await dataAdapter.listStudioApplications(organizationId, {
+      teacherId: options?.teacherId ?? null
+    })
 
     const todayStart = getStartOfToday()
     const todayEnd = getEndOfToday()
-    const weekStart = getStartOfWeek()
-    const weekEnd = getEndOfWeek()
+    const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1)
+    const monthEnd = new Date(monthStart)
+    monthEnd.setMonth(monthEnd.getMonth() + 1)
 
-    const weeklyApplications = applications.filter((item) =>
-      isWithinRange(item.createdAt, weekStart, weekEnd)
-    )
-    const weeklyConfirmedCount = weeklyApplications.filter(
-      (item) => item.status === "confirmed" || item.status === "completed"
-    ).length
-    const weeklyCompletedCount = weeklyApplications.filter((item) => item.status === "completed").length
-    const weeklyEnrolledCount = weeklyApplications.filter(
+    const eligibleApplications = applications.filter((item) => item.status !== "canceled")
+    const enrolledCount = eligibleApplications.filter(
       (item) => item.registrationStatus === "enrolled"
     ).length
-    const weeklyRegisteredCount = applications.filter(
+
+    const monthlyApplications = eligibleApplications.filter((item) =>
+      isWithinRange(item.createdAt, monthStart, monthEnd)
+    )
+    const monthlyCompletedCount = eligibleApplications.filter(
+      (item) => item.status === "completed" && isWithinRange(item.updatedAt, monthStart, monthEnd)
+    ).length
+    const monthlyEnrolledCount = eligibleApplications.filter(
       (item) =>
-        item.registrationStatus === "enrolled" && isWithinRange(item.updatedAt, weekStart, weekEnd)
+        item.registrationStatus === "enrolled" &&
+        isWithinRange(item.updatedAt, monthStart, monthEnd)
     ).length
 
     return {
@@ -87,8 +72,6 @@ export const getStudioDashboardSummary = async (
         activeApplicationCount: applications.filter((item) =>
           item.status === "reviewing" || item.status === "confirmed"
         ).length,
-        myClassCount: classes.filter((item) => item.teacherId === teacherId).length,
-        availableSlotCount: scheduleBlocks.filter((item) => item.type === "available").length,
         todayScheduledCount: applications.filter(
           (item) =>
             item.status !== "canceled" &&
@@ -102,12 +85,12 @@ export const getStudioDashboardSummary = async (
             item.status === "completed" &&
             (item.registrationStatus === "undecided" || item.registrationStatus === "pending")
         ).length,
-        weeklyRegisteredCount,
-        weeklyApplicationCount: weeklyApplications.length,
-        weeklyConfirmedCount,
-        weeklyCompletedCount,
-        weeklyEnrolledCount,
-        weeklyEnrollmentRate: toEnrollmentRate(weeklyEnrolledCount, weeklyApplications.length)
+        registeredCount: enrolledCount,
+        enrollmentRate: toEnrollmentRate(enrolledCount, eligibleApplications.length),
+        monthlyApplicationCount: monthlyApplications.length,
+        monthlyCompletedCount,
+        monthlyEnrolledCount,
+        monthlyEnrollmentRate: toEnrollmentRate(monthlyEnrolledCount, monthlyApplications.length)
       },
       error: null
     }
@@ -116,17 +99,15 @@ export const getStudioDashboardSummary = async (
       data: {
         newApplicationCount: 0,
         activeApplicationCount: 0,
-        myClassCount: 0,
-        availableSlotCount: 0,
         todayScheduledCount: 0,
         pendingConfirmationCount: 0,
         needsOutcomeCount: 0,
-        weeklyRegisteredCount: 0,
-        weeklyApplicationCount: 0,
-        weeklyConfirmedCount: 0,
-        weeklyCompletedCount: 0,
-        weeklyEnrolledCount: 0,
-        weeklyEnrollmentRate: 0
+        registeredCount: 0,
+        enrollmentRate: 0,
+        monthlyApplicationCount: 0,
+        monthlyCompletedCount: 0,
+        monthlyEnrolledCount: 0,
+        monthlyEnrollmentRate: 0
       },
       error: "대시보드 요약 정보를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요."
     }

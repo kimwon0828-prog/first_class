@@ -16,6 +16,9 @@ import type {
   StudioApplicationSummary,
   StudioScheduleBlockSummary,
   StudioScheduleBlockType,
+  StudioDashboardTeacherFilterOption,
+  StudioTeacherSeatSummary,
+  StudioTeacherSummary,
   TeacherPublicProfile,
   TeacherSignupRequest,
   TeacherSignupRequestStatus,
@@ -116,11 +119,6 @@ type ApplicationLogRow = {
   created_at: string
 }
 
-type ProfileActorRow = {
-  id: string
-  name: string
-}
-
 type ScheduleBlockRow = {
   id: string
   teacher_id: string
@@ -147,6 +145,29 @@ type TeacherSignupRequestRow = {
 
 type TeacherRow = {
   id: string
+  profile_id: string | null
+  organization_id: string
+  display_name: string
+  specialty: string | null
+  intro: string | null
+  career_years: number
+  is_active: boolean
+  created_at: string
+}
+
+type StudioDashboardTeacherFilterRow = {
+  id: string
+  display_name: string
+}
+
+type OrganizationTeacherSeatRow = {
+  id: string
+  teacher_seat_limit: number | null
+}
+
+type ProfileNameRow = {
+  id: string
+  name: string | null
 }
 
 const mapTeacherProfile = (
@@ -162,21 +183,25 @@ const mapTeacherProfile = (
 const mapClass = (
   row: ClassRow,
   teacherName: string | null
-): ClassSummary => ({
-  id: row.id,
-  programType: row.program_type,
-  title: row.title,
-  subject: row.subject,
-  region: row.region,
-  targetAge: row.target_age,
-  description: row.description,
-  trialPrice: row.trial_price,
-  teacherId: row.teacher_id,
-  teacherDisplayName: row.teacher_display_name ?? null,
-  teacherName: row.teacher_display_name ?? teacherName,
-  coverImageUrl: row.cover_image_url ?? null,
-  isActive: row.is_active
-})
+): ClassSummary => {
+  const resolvedTeacherName = teacherName ?? row.teacher_display_name ?? null
+
+  return {
+    id: row.id,
+    programType: row.program_type,
+    title: row.title,
+    subject: row.subject,
+    region: row.region,
+    targetAge: row.target_age,
+    description: row.description,
+    trialPrice: row.trial_price,
+    teacherId: row.teacher_id,
+    teacherDisplayName: resolvedTeacherName,
+    teacherName: resolvedTeacherName,
+    coverImageUrl: row.cover_image_url ?? null,
+    isActive: row.is_active
+  }
+}
 
 const mapApplication = (row: TrialApplicationRow): TrialApplicationSummary => ({
   id: row.id,
@@ -292,11 +317,49 @@ const mapTeacherSignupRequest = (row: TeacherSignupRequestRow): TeacherSignupReq
   createdAt: row.created_at
 })
 
+const mapStudioTeacher = (
+  row: TeacherRow,
+  profileNameById: Map<string, string>
+): StudioTeacherSummary => ({
+  id: row.id,
+  profileId: row.profile_id,
+  organizationId: row.organization_id,
+  displayName:
+    row.display_name?.trim() || (row.profile_id ? profileNameById.get(row.profile_id) : null) || "이름 미등록 선생님",
+  specialty: row.specialty,
+  intro: row.intro,
+  careerYears: row.career_years,
+  isActive: row.is_active,
+  createdAt: row.created_at
+})
+
 const ACTIVE_APPLICATION_STATUSES: TrialApplicationSummary["status"][] = [
   "new",
   "reviewing",
   "confirmed"
 ]
+
+const TEACHER_SELECT_FIELDS =
+  "id, profile_id, organization_id, display_name, specialty, intro, career_years, is_active, created_at"
+
+const getProfileNameMap = async (profileIds: string[]) => {
+  if (profileIds.length === 0) {
+    return new Map<string, string>()
+  }
+
+  const supabase = await getSupabaseServerClient()
+  const { data, error } = await supabase.from("profiles").select("id, name").in("id", profileIds)
+
+  if (error) {
+    throw new Error("failed_to_fetch_profile_names")
+  }
+
+  return new Map<string, string>(
+    ((data ?? []) as ProfileNameRow[])
+      .filter((row): row is ProfileNameRow & { name: string } => typeof row.name === "string")
+      .map((row) => [row.id, row.name])
+  )
+}
 
 const getTeacherNamesByIds = async (teacherIds: string[]) => {
   const teacherMap = await getTeacherProfilesMap(teacherIds)
@@ -483,20 +546,49 @@ const getTeacherProfilesMap = async (teacherIds: string[]) => {
 }
 
 const getActorNameMap = async (actorIds: string[]) => {
-  if (actorIds.length === 0) {
-    return new Map<string, string>()
-  }
-
-  const supabase = await getSupabaseServerClient()
-  const { data, error } = await supabase.from("profiles").select("id, name").in("id", actorIds)
-
-  if (error) {
+  try {
+    return await getProfileNameMap(actorIds)
+  } catch {
     throw new Error("failed_to_fetch_application_log_actors")
   }
+}
 
-  return new Map<string, string>(
-    ((data ?? []) as ProfileActorRow[]).map((row) => [row.id, row.name])
-  )
+const getStudioTeacherSeatSummaryByOrganization = async (
+  organizationId: string
+): Promise<StudioTeacherSeatSummary> => {
+  const supabase = await getSupabaseServerClient()
+  const [{ data: organizationRow, error: organizationError }, { count: activeTeacherCount, error: countError }] =
+    await Promise.all([
+      supabase
+        .from("organizations")
+        .select("id, teacher_seat_limit")
+        .eq("id", organizationId)
+        .maybeSingle(),
+      supabase
+        .from("teachers")
+        .select("id", { count: "exact", head: true })
+        .eq("organization_id", organizationId)
+        .eq("is_active", true)
+        .is("profile_id", null)
+    ])
+
+  if (organizationError || !organizationRow) {
+    throw new Error("failed_to_fetch_organization_teacher_seat_limit")
+  }
+
+  if (countError) {
+    throw new Error("failed_to_count_active_teachers")
+  }
+
+  const teacherSeatLimit = Math.max(1, (organizationRow as OrganizationTeacherSeatRow).teacher_seat_limit ?? 3)
+  const safeActiveTeacherCount = activeTeacherCount ?? 0
+
+  return {
+    organizationId,
+    teacherSeatLimit,
+    activeTeacherCount: safeActiveTeacherCount,
+    remainingTeacherSeats: Math.max(0, teacherSeatLimit - safeActiveTeacherCount)
+  }
 }
 
 export const supabaseDataAdapter: DataAdapter = {
@@ -595,8 +687,10 @@ export const supabaseDataAdapter: DataAdapter = {
     const supabase = await getSupabaseServerClient()
     const { data, error } = await supabase
       .from("teachers")
-      .select("id")
+      .select(TEACHER_SELECT_FIELDS)
       .eq("organization_id", organizationId)
+      .eq("is_active", true)
+      .is("profile_id", null)
       .order("created_at", { ascending: true })
 
     if (error) {
@@ -604,12 +698,177 @@ export const supabaseDataAdapter: DataAdapter = {
     }
 
     const teacherRows = (data ?? []) as TeacherRow[]
-    const teacherNames = await getTeacherNamesByIds(teacherRows.map((row) => row.id))
+    const profileNameById = await getProfileNameMap(
+      teacherRows
+        .map((row) => row.profile_id)
+        .filter((profileId): profileId is string => Boolean(profileId))
+    )
 
     return teacherRows.map((row) => ({
       teacherId: row.id,
-      teacherName: teacherNames.get(row.id) ?? "이름 미정"
+      teacherName:
+        row.display_name?.trim() || (row.profile_id ? profileNameById.get(row.profile_id) : null) || "이름 미정"
     }))
+  },
+  async listStudioDashboardTeacherFilterOptions(organizationId) {
+    const supabase = await getSupabaseServerClient()
+    const { data, error } = await supabase
+      .from("teachers")
+      .select("id, display_name")
+      .eq("organization_id", organizationId)
+      .eq("is_active", true)
+      .is("profile_id", null)
+      .order("created_at", { ascending: true })
+
+    if (error) {
+      throw new Error("failed_to_fetch_dashboard_teacher_filter_options")
+    }
+
+    return ((data ?? []) as StudioDashboardTeacherFilterRow[]).map(
+      (row): StudioDashboardTeacherFilterOption => ({
+        teacherId: row.id,
+        teacherName: row.display_name
+      })
+    )
+  },
+  async listStudioTeachers(organizationId) {
+    const supabase = await getSupabaseServerClient()
+    const { data, error } = await supabase
+      .from("teachers")
+      .select(TEACHER_SELECT_FIELDS)
+      .eq("organization_id", organizationId)
+      .is("profile_id", null)
+      .order("created_at", { ascending: false })
+
+    if (error) {
+      throw new Error("failed_to_fetch_studio_teachers")
+    }
+
+    const teacherRows = (data ?? []) as TeacherRow[]
+    const profileNameById = await getProfileNameMap(
+      teacherRows
+        .map((row) => row.profile_id)
+        .filter((profileId): profileId is string => Boolean(profileId))
+    )
+
+    return teacherRows.map((row) => mapStudioTeacher(row, profileNameById))
+  },
+  async getStudioTeacherSeatSummary(organizationId) {
+    return getStudioTeacherSeatSummaryByOrganization(organizationId)
+  },
+  async createStudioTeacher(input) {
+    const seatSummary = await getStudioTeacherSeatSummaryByOrganization(input.organizationId)
+    if (seatSummary.activeTeacherCount >= seatSummary.teacherSeatLimit) {
+      throw new Error("teacher_seat_limit_reached")
+    }
+
+    const supabase = await getSupabaseServerClient()
+    const { data, error } = await supabase
+      .from("teachers")
+      .insert({
+        profile_id: null,
+        organization_id: input.organizationId,
+        display_name: input.displayName,
+        specialty: null,
+        intro: null,
+        career_years: 0,
+        is_active: true
+      })
+      .select(TEACHER_SELECT_FIELDS)
+      .maybeSingle()
+
+    if (error || !data) {
+      throw new Error(
+        formatSupabaseError("failed_to_create_studio_teacher", error ?? {}, {
+          organizationId: input.organizationId
+        })
+      )
+    }
+
+    return mapStudioTeacher(data as TeacherRow, new Map())
+  },
+  async updateStudioTeacher(input) {
+    const supabase = await getSupabaseServerClient()
+    const { data, error } = await supabase
+      .from("teachers")
+      .update({
+        display_name: input.displayName,
+        updated_at: new Date().toISOString()
+      })
+      .eq("id", input.teacherId)
+      .eq("organization_id", input.organizationId)
+      .is("profile_id", null)
+      .select(TEACHER_SELECT_FIELDS)
+      .maybeSingle()
+
+    if (error) {
+      throw new Error(
+        formatSupabaseError("failed_to_update_studio_teacher", error, {
+          organizationId: input.organizationId,
+          teacherId: input.teacherId
+        })
+      )
+    }
+
+    if (!data) {
+      throw new Error("teacher_not_found_or_forbidden")
+    }
+
+    const savedTeacher = data as TeacherRow
+    const profileNameById = await getProfileNameMap(
+      savedTeacher.profile_id ? [savedTeacher.profile_id] : []
+    )
+
+    return mapStudioTeacher(savedTeacher, profileNameById)
+  },
+  async deactivateStudioTeacher(input) {
+    const supabase = await getSupabaseServerClient()
+    const { data: targetTeacher, error: targetError } = await supabase
+      .from("teachers")
+      .select("id, profile_id, organization_id, is_active")
+      .eq("id", input.teacherId)
+      .eq("organization_id", input.organizationId)
+      .maybeSingle()
+
+    if (targetError) {
+      throw new Error(
+        formatSupabaseError("failed_to_fetch_studio_teacher_for_deactivate", targetError, {
+          organizationId: input.organizationId,
+          teacherId: input.teacherId
+        })
+      )
+    }
+
+    if (!targetTeacher) {
+      throw new Error("teacher_not_found_or_forbidden")
+    }
+
+    if (targetTeacher.profile_id) {
+      throw new Error("cannot_deactivate_linked_teacher")
+    }
+
+    if (!targetTeacher.is_active) {
+      return
+    }
+
+    const { error: updateError } = await supabase
+      .from("teachers")
+      .update({
+        is_active: false,
+        updated_at: new Date().toISOString()
+      })
+      .eq("id", input.teacherId)
+      .eq("organization_id", input.organizationId)
+      .is("profile_id", null)
+
+    if (updateError) {
+      throw new Error(
+        formatSupabaseError("failed_to_deactivate_studio_teacher", updateError, {
+          organizationId: input.organizationId,
+          teacherId: input.teacherId
+        })
+      )
+    }
   },
   async upsertStudioClass(input) {
     const normalizedClassId = normalizeStudioClassId(input.classId)
@@ -1026,15 +1285,20 @@ export const supabaseDataAdapter: DataAdapter = {
 
     return ((data ?? []) as TrialApplicationRow[]).map(mapApplication)
   },
-  async listStudioApplications(organizationId) {
+  async listStudioApplications(organizationId, options) {
     const supabase = await getSupabaseServerClient()
-    const { data, error } = await supabase
+    let query = supabase
       .from("trial_applications")
       .select(
-        "id, class_id, parent_id, child_name, child_grade, parent_name, parent_phone, requested_schedule_block_id, requested_slot_at, confirmed_slot_at, assigned_teacher_id, goal_type, registration_status, status, created_at, updated_at, classes!inner(title, subject, region, organization_id, program_type)"
+        "id, class_id, parent_id, child_name, child_grade, parent_name, parent_phone, requested_schedule_block_id, requested_slot_at, confirmed_slot_at, assigned_teacher_id, goal_type, registration_status, status, created_at, updated_at, classes!inner(title, subject, region, organization_id, program_type, teacher_id)"
       )
       .eq("classes.organization_id", organizationId)
-      .order("created_at", { ascending: false })
+
+    if (options?.teacherId) {
+      query = query.eq("classes.teacher_id", options.teacherId)
+    }
+
+    const { data, error } = await query.order("created_at", { ascending: false })
 
     if (error) {
       throw new Error("failed_to_fetch_studio_applications")

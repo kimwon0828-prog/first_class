@@ -63,13 +63,30 @@ export const StudioClassForm = ({
   const targetAgeRange = parseStudioClassTargetAgeRange(initialItem?.targetAge)
   const selectedRegion = normalizeAcademyArea(initialItem?.region)
   const teacherOptionIds = new Set(teacherOptions.map((option) => option.teacherId))
+  const fallbackTeacherOption =
+    initialItem?.teacherId &&
+    !teacherOptionIds.has(initialItem.teacherId) &&
+    (initialItem.teacherDisplayName || initialItem.teacherName)
+      ? {
+          teacherId: initialItem.teacherId,
+          teacherName: initialItem.teacherDisplayName ?? initialItem.teacherName ?? "이름 미정"
+        }
+      : null
+  const mergedTeacherOptions = fallbackTeacherOption
+    ? [fallbackTeacherOption, ...teacherOptions]
+    : teacherOptions
+  const mergedTeacherOptionIds = new Set(mergedTeacherOptions.map((option) => option.teacherId))
   const selectedTeacherId =
-    initialItem?.teacherId && teacherOptionIds.has(initialItem.teacherId)
+    initialItem?.teacherId && mergedTeacherOptionIds.has(initialItem.teacherId)
       ? initialItem.teacherId
-      : teacherOptionIds.has(currentTeacherId)
+      : mergedTeacherOptionIds.has(currentTeacherId)
         ? currentTeacherId
-        : (teacherOptions[0]?.teacherId ?? "")
-  const isTeacherOptionUnavailable = teacherOptions.length === 0
+        : (mergedTeacherOptions[0]?.teacherId ?? "")
+  const isTeacherOptionUnavailable = mergedTeacherOptions.length === 0
+  const hasNoActiveTeacherOption = teacherOptions.length === 0
+  const isTeacherSelectionLockedToInactive = Boolean(
+    initialItem?.teacherId && fallbackTeacherOption && !teacherOptionIds.has(initialItem.teacherId)
+  )
   const mode = selectedClassId ? "update" : "create"
   const safeCoverImageUrlDraft = coverImageUrlDraft ?? ""
 
@@ -276,9 +293,12 @@ export const StudioClassForm = ({
               disabled={isPending}
               style={inputStyle}
             >
-              {teacherOptions.map((option) => (
+              {mergedTeacherOptions.map((option) => (
                 <option key={option.teacherId} value={option.teacherId}>
                   {option.teacherName}
+                  {fallbackTeacherOption?.teacherId === option.teacherId
+                    ? " (현재 비활성 선생님)"
+                    : ""}
                 </option>
               ))}
             </select>
@@ -297,7 +317,9 @@ export const StudioClassForm = ({
           <span style={helperTextStyle}>
             {teacherOptionsError
               ? teacherOptionsError
-              : isTeacherOptionUnavailable
+              : isTeacherSelectionLockedToInactive
+                ? "현재 연결된 선생님이 비활성 상태라 표시만 유지합니다. 다른 선생님으로 바꾸려면 active 목록에서 다시 선택해 주세요."
+              : hasNoActiveTeacherOption
                 ? "현재 organization에 등록된 선생님이 없어 저장할 수 없습니다."
                 : "현재 organization에 등록된 선생님만 선택할 수 있습니다."}
           </span>

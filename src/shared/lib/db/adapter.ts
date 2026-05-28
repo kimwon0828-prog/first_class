@@ -69,22 +69,61 @@ export type AvailableScheduleSlot = {
 export type StudioDashboardSummary = {
   newApplicationCount: number
   activeApplicationCount: number
-  myClassCount: number
-  availableSlotCount: number
   todayScheduledCount: number
   pendingConfirmationCount: number
   needsOutcomeCount: number
-  weeklyRegisteredCount: number
-  weeklyApplicationCount: number
-  weeklyConfirmedCount: number
-  weeklyCompletedCount: number
-  weeklyEnrolledCount: number
-  weeklyEnrollmentRate: number
+  registeredCount: number
+  enrollmentRate: number
+  monthlyApplicationCount: number
+  monthlyCompletedCount: number
+  monthlyEnrolledCount: number
+  monthlyEnrollmentRate: number
 }
 
 export type StudioTeacherOption = {
   teacherId: string
   teacherName: string
+}
+
+export type StudioDashboardTeacherFilterOption = {
+  teacherId: string
+  teacherName: string
+}
+
+export type StudioTeacherSummary = {
+  id: string
+  profileId: string | null
+  organizationId: string
+  displayName: string
+  specialty: string | null
+  intro: string | null
+  careerYears: number
+  isActive: boolean
+  createdAt: string
+}
+
+export type StudioTeacherSeatSummary = {
+  organizationId: string
+  teacherSeatLimit: number
+  activeTeacherCount: number
+  remainingTeacherSeats: number
+}
+
+export type CreateStudioTeacherInput = {
+  organizationId: string
+  displayName: string
+}
+
+export type UpdateStudioTeacherInput = {
+  teacherId: string
+  organizationId: string
+  displayName: string
+}
+
+export type DeactivateStudioTeacherInput = {
+  teacherId: string
+  organizationId: string
+  actorProfileId: string
 }
 
 export type StudioClassInput = {
@@ -319,6 +358,14 @@ export interface DataAdapter {
   listAvailableScheduleSlotsByClassId(classId: string): Promise<AvailableScheduleSlot[]>
   listStudioClasses(organizationId: string): Promise<ClassSummary[]>
   listStudioTeacherOptions(organizationId: string): Promise<StudioTeacherOption[]>
+  listStudioDashboardTeacherFilterOptions(
+    organizationId: string
+  ): Promise<StudioDashboardTeacherFilterOption[]>
+  listStudioTeachers(organizationId: string): Promise<StudioTeacherSummary[]>
+  getStudioTeacherSeatSummary(organizationId: string): Promise<StudioTeacherSeatSummary>
+  createStudioTeacher(input: CreateStudioTeacherInput): Promise<StudioTeacherSummary>
+  updateStudioTeacher(input: UpdateStudioTeacherInput): Promise<StudioTeacherSummary>
+  deactivateStudioTeacher(input: DeactivateStudioTeacherInput): Promise<void>
   upsertStudioClass(input: StudioClassInput): Promise<ClassSummary>
   updateStudioClassActive(
     classId: string,
@@ -333,7 +380,10 @@ export interface DataAdapter {
   updateChildProfile(input: UpdateChildProfileInput): Promise<ChildProfile>
   getMyDashboard(parentId: string): Promise<MyDashboardData>
   listMyApplications(parentId: string): Promise<TrialApplicationSummary[]>
-  listStudioApplications(organizationId: string): Promise<StudioApplicationSummary[]>
+  listStudioApplications(
+    organizationId: string,
+    options?: { teacherId?: string | null }
+  ): Promise<StudioApplicationSummary[]>
   getStudioApplicationDetail(
     applicationId: string,
     organizationId: string

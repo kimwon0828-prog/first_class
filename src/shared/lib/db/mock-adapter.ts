@@ -5,6 +5,8 @@ import type {
   AvailableScheduleSlot,
   ChildProfile,
   ChildProfileInput,
+  CreateStudioTeacherInput,
+  DeactivateStudioTeacherInput,
   ClassDetail,
   ClassSummary,
   DataAdapter,
@@ -12,10 +14,14 @@ import type {
   StudioApplicationDetail,
   StudioApplicationSummary,
   StudioScheduleBlockSummary,
+  StudioDashboardTeacherFilterOption,
+  StudioTeacherSeatSummary,
+  StudioTeacherSummary,
   StudioTeacherOption,
   TeacherPublicProfile,
   TeacherSignupRequest,
   UpdateChildProfileInput,
+  UpdateStudioTeacherInput,
   TrialApplicationInput,
   TrialApplicationSummary,
   UpdateStudioApplicationOutcomeInput,
@@ -29,6 +35,9 @@ type MockScheduleBlock = StudioScheduleBlockSummary & {
 type MockApplicationRecord = StudioApplicationDetail & {
   childId: string | null
 }
+
+const mockOrganizationId = "org-1"
+const mockTeacherProfileId = "teacher-profile-1"
 
 const teacherProfiles: TeacherPublicProfile[] = [
   {
@@ -44,6 +53,31 @@ const teacherProfiles: TeacherPublicProfile[] = [
     intro: "실험과 토론 중심으로 과학 개념을 쉽게 전달합니다.",
     specialty: "초등 과학 탐구",
     careerYears: 8
+  }
+]
+
+const teacherSummaries: StudioTeacherSummary[] = [
+  {
+    id: "teacher-1",
+    profileId: mockTeacherProfileId,
+    organizationId: mockOrganizationId,
+    displayName: "김지은 선생님",
+    specialty: "초등 창의 미술",
+    intro: "아이 눈높이에 맞춘 체험형 수업을 진행합니다.",
+    careerYears: 6,
+    isActive: true,
+    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 30).toISOString()
+  },
+  {
+    id: "teacher-2",
+    profileId: null,
+    organizationId: mockOrganizationId,
+    displayName: "박서현 선생님",
+    specialty: "초등 과학 탐구",
+    intro: "실험과 토론 중심으로 과학 개념을 쉽게 전달합니다.",
+    careerYears: 8,
+    isActive: true,
+    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 20).toISOString()
   }
 ]
 
@@ -172,8 +206,6 @@ const children =
 const teacherSignupRequests =
   globalMockStore.__firstClassMockTeacherSignupRequests__ ??
   (globalMockStore.__firstClassMockTeacherSignupRequests__ = [])
-const mockOrganizationId = "org-1"
-const mockTeacherProfileId = "teacher-profile-1"
 
 const ACTIVE_APPLICATION_STATUSES: TrialApplicationSummary["status"][] = [
   "new",
@@ -186,10 +218,25 @@ function getFutureIso(hoursFromNow: number) {
 }
 
 const getTeacherOptions = (): StudioTeacherOption[] =>
-  teacherProfiles.map((profile) => ({
-    teacherId: profile.teacherId,
-    teacherName: profile.teacherName
-  }))
+  teacherSummaries
+    .filter((teacher) => teacher.isActive)
+    .filter((teacher) => teacher.profileId == null)
+    .map((teacher) => ({
+      teacherId: teacher.id,
+      teacherName: teacher.displayName
+    }))
+
+const getTeacherSeatSummary = (): StudioTeacherSeatSummary => {
+  const teacherSeatLimit = 3
+  const activeTeacherCount = teacherSummaries.filter((teacher) => teacher.isActive && teacher.profileId == null).length
+
+  return {
+    organizationId: mockOrganizationId,
+    teacherSeatLimit,
+    activeTeacherCount,
+    remainingTeacherSeats: Math.max(0, teacherSeatLimit - activeTeacherCount)
+  }
+}
 
 const toAvailableScheduleSlot = (
   slot: MockScheduleBlock,
@@ -273,14 +320,140 @@ export const mockDataAdapter: DataAdapter = {
 
     return getTeacherOptions()
   },
+  async listStudioDashboardTeacherFilterOptions(organizationId) {
+    if (organizationId !== mockOrganizationId) {
+      return []
+    }
+
+    return teacherSummaries
+      .filter((teacher) => teacher.isActive)
+      .filter((teacher) => teacher.profileId == null)
+      .map(
+        (teacher): StudioDashboardTeacherFilterOption => ({
+          teacherId: teacher.id,
+          teacherName: teacher.displayName
+        })
+      )
+  },
+  async listStudioTeachers(organizationId) {
+    if (organizationId !== mockOrganizationId) {
+      return []
+    }
+
+    return teacherSummaries
+      .filter((teacher) => teacher.profileId == null)
+      .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))
+  },
+  async getStudioTeacherSeatSummary(organizationId) {
+    if (organizationId !== mockOrganizationId) {
+      return {
+        organizationId,
+        teacherSeatLimit: 3,
+        activeTeacherCount: 0,
+        remainingTeacherSeats: 3
+      }
+    }
+
+    return getTeacherSeatSummary()
+  },
+  async createStudioTeacher(input: CreateStudioTeacherInput) {
+    if (input.organizationId !== mockOrganizationId) {
+      throw new Error("teacher_not_found_or_forbidden")
+    }
+
+    const seatSummary = getTeacherSeatSummary()
+    if (seatSummary.activeTeacherCount >= seatSummary.teacherSeatLimit) {
+      throw new Error("teacher_seat_limit_reached")
+    }
+
+    const created: StudioTeacherSummary = {
+      id: `teacher-${teacherSummaries.length + 1}`,
+      profileId: null,
+      organizationId: input.organizationId,
+      displayName: input.displayName,
+      specialty: null,
+      intro: null,
+      careerYears: 0,
+      isActive: true,
+      createdAt: new Date().toISOString()
+    }
+
+    teacherSummaries.unshift(created)
+    teacherProfiles.push({
+      teacherId: created.id,
+      teacherName: created.displayName,
+      intro: created.intro,
+      specialty: created.specialty,
+      careerYears: created.careerYears
+    })
+
+    return created
+  },
+  async updateStudioTeacher(input: UpdateStudioTeacherInput) {
+    if (input.organizationId !== mockOrganizationId) {
+      throw new Error("teacher_not_found_or_forbidden")
+    }
+
+    const target = teacherSummaries.find(
+      (teacher) => teacher.id === input.teacherId && teacher.organizationId === input.organizationId
+    )
+
+    if (!target) {
+      throw new Error("teacher_not_found_or_forbidden")
+    }
+
+    if (target.profileId) {
+      throw new Error("teacher_not_found_or_forbidden")
+    }
+
+    target.displayName = input.displayName
+
+    const classItems = classes.filter((item) => item.teacherId === target.id)
+    for (const classItem of classItems) {
+      classItem.teacherDisplayName = input.displayName
+      classItem.teacherName = input.displayName
+    }
+
+    const teacherProfile = teacherProfiles.find((profile) => profile.teacherId === target.id)
+    if (teacherProfile) {
+      teacherProfile.teacherName = input.displayName
+    }
+
+    return target
+  },
+  async deactivateStudioTeacher(input: DeactivateStudioTeacherInput) {
+    if (input.organizationId !== mockOrganizationId) {
+      throw new Error("teacher_not_found_or_forbidden")
+    }
+
+    const target = teacherSummaries.find(
+      (teacher) => teacher.id === input.teacherId && teacher.organizationId === input.organizationId
+    )
+
+    if (!target) {
+      throw new Error("teacher_not_found_or_forbidden")
+    }
+
+    if (target.profileId) {
+      throw new Error("cannot_deactivate_linked_teacher")
+    }
+
+    target.isActive = false
+  },
   async upsertStudioClass(input) {
     if (input.organizationId !== mockOrganizationId) {
       throw new Error("studio_class_not_found_or_forbidden")
     }
 
-    const teacherOption = getTeacherOptions().find((item) => item.teacherId === input.teacherId)
-    if (!teacherOption) {
+    const teacherSummary = teacherSummaries.find(
+      (item) => item.id === input.teacherId && item.organizationId === input.organizationId
+    )
+    if (!teacherSummary) {
       throw new Error("invalid_teacher_for_organization")
+    }
+
+    if (!teacherSummary.isActive) {
+      throw new Error("inactive_teacher_for_class")
     }
 
     if (input.mode === "update" && !input.classId) {
@@ -297,8 +470,8 @@ export const mockDataAdapter: DataAdapter = {
       description: input.description,
       trialPrice: input.trialPrice,
       teacherId: input.teacherId,
-      teacherDisplayName: teacherOption.teacherName,
-      teacherName: teacherOption.teacherName,
+      teacherDisplayName: teacherSummary.displayName,
+      teacherName: teacherSummary.displayName,
       coverImageUrl: input.coverImageUrl,
       isActive: input.isActive
     }
@@ -510,12 +683,20 @@ export const mockDataAdapter: DataAdapter = {
       }))
       .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))
   },
-  async listStudioApplications(organizationId) {
+  async listStudioApplications(organizationId, options) {
     if (organizationId !== mockOrganizationId) {
       return []
     }
 
     return applications
+      .filter((item) => {
+        if (!options?.teacherId) {
+          return true
+        }
+
+        const classItem = classes.find((classRow) => classRow.id === item.classId)
+        return classItem?.teacherId === options.teacherId
+      })
       .map((item) => {
         const classItem = classes.find((classRow) => classRow.id === item.classId)
         const mapped: StudioApplicationSummary = {
