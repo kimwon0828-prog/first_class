@@ -278,7 +278,18 @@ const getAppliedCountForSlot = (slotId: string, slotStartAt: string, teacherId?:
 
 export const mockDataAdapter: DataAdapter = {
   async listClasses(options) {
-    return classes.filter((item) => {
+    const debugEnabled = process.env.NEXT_PUBLIC_DEBUG_DB === "1"
+    if (debugEnabled) {
+      console.info(
+        `[listClasses] ${JSON.stringify({
+          called: true,
+          adapter: "mock",
+          region: options?.region ?? null
+        })}`
+      )
+    }
+
+    const mapped = classes.filter((item) => {
       if (!item.isActive) {
         return false
       }
@@ -289,6 +300,16 @@ export const mockDataAdapter: DataAdapter = {
 
       return true
     })
+
+    if (debugEnabled) {
+      console.info(`[listClasses] ${JSON.stringify({ classesRows: mapped.length })}`)
+      console.info(
+        `[listClasses] ${JSON.stringify({ teacherIds: 0, teacherProfiles: 0 })}`
+      )
+      console.info(`[listClasses] ${JSON.stringify({ returned: mapped.length })}`)
+    }
+
+    return mapped
   },
   async getClassById(classId) {
     const found = classes.find((item) => item.id === classId) ?? null

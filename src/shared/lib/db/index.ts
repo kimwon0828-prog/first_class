@@ -8,5 +8,8 @@ const hasSupabaseEnv = Boolean(
 
 const adapterMode = process.env.NEXT_PUBLIC_DATA_SOURCE ?? (hasSupabaseEnv ? "supabase" : "mock")
 
+export const dataAdapterType: "supabase" | "mock" =
+  adapterMode === "supabase" ? "supabase" : "mock"
+
 export const dataAdapter: DataAdapter =
-  adapterMode === "supabase" ? supabaseDataAdapter : mockDataAdapter
+  dataAdapterType === "supabase" ? supabaseDataAdapter : mockDataAdapter

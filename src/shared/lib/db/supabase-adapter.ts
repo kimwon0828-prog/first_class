@@ -1,4 +1,5 @@
 import { getSupabaseServerClient } from "@/integrations/supabase/server"
+import { getPublicEnv } from "@/shared/config/env"
 import type { AcademyArea } from "@/shared/config/academy-areas"
 import type {
   ApplicationLogEntry,
@@ -53,6 +54,14 @@ type TeacherPublicProfileRow = {
   career_years: number
 }
 
+type EmbeddedClassRow = {
+  program_type?: ClassProgramType
+  title: string
+  subject?: string
+  region?: string
+  is_active?: boolean
+}
+
 type TrialApplicationRow = {
   id: string
   class_id: string
@@ -87,12 +96,7 @@ type TrialApplicationRow = {
   status: TrialApplicationSummary["status"]
   created_at: string
   updated_at: string
-  classes?: Array<{
-    program_type?: ClassProgramType
-    title: string
-    subject?: string
-    region?: string
-  }> | null
+  classes?: EmbeddedClassRow[] | EmbeddedClassRow | null
 }
 
 type ChildProfileRow = {
@@ -203,24 +207,40 @@ const mapClass = (
   }
 }
 
-const mapApplication = (row: TrialApplicationRow): TrialApplicationSummary => ({
-  id: row.id,
-  classId: row.class_id,
-  classTitle: row.classes?.[0]?.title ?? null,
-  classProgramType: row.classes?.[0]?.program_type ?? null,
-  parentId: row.parent_id,
-  childName: row.child_name,
-  childGrade: row.child_grade,
-  parentName: row.parent_name ?? null,
-  parentPhone: row.parent_phone ?? null,
-  requestedScheduleBlockId: row.requested_schedule_block_id ?? null,
-  requestedSlotAt: row.requested_slot_at,
-  confirmedSlotAt: row.confirmed_slot_at ?? null,
-  status: row.status,
-  goalType: row.goal_type ?? null,
-  createdAt: row.created_at,
-  updatedAt: row.updated_at
-})
+const getEmbeddedClass = (row: TrialApplicationRow): EmbeddedClassRow | null => {
+  if (!row.classes) {
+    return null
+  }
+
+  if (Array.isArray(row.classes)) {
+    return row.classes[0] ?? null
+  }
+
+  return row.classes
+}
+
+const mapApplication = (row: TrialApplicationRow): TrialApplicationSummary => {
+  const embeddedClass = getEmbeddedClass(row)
+
+  return {
+    id: row.id,
+    classId: row.class_id,
+    classTitle: embeddedClass?.title ?? null,
+    classProgramType: embeddedClass?.program_type ?? null,
+    parentId: row.parent_id,
+    childName: row.child_name,
+    childGrade: row.child_grade,
+    parentName: row.parent_name ?? null,
+    parentPhone: row.parent_phone ?? null,
+    requestedScheduleBlockId: row.requested_schedule_block_id ?? null,
+    requestedSlotAt: row.requested_slot_at,
+    confirmedSlotAt: row.confirmed_slot_at ?? null,
+    status: row.status,
+    goalType: row.goal_type ?? null,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at
+  }
+}
 
 const mapChildProfile = (row: ChildProfileRow): ChildProfile => ({
   id: row.id,
@@ -236,13 +256,17 @@ const mapChildProfile = (row: ChildProfileRow): ChildProfile => ({
   updatedAt: row.updated_at
 })
 
-const mapStudioApplication = (row: TrialApplicationRow): StudioApplicationSummary => ({
-  ...mapApplication(row),
-  classSubject: row.classes?.[0]?.subject ?? null,
-  classRegion: row.classes?.[0]?.region ?? null,
-  assignedTeacherId: row.assigned_teacher_id ?? null,
-  registrationStatus: row.registration_status ?? "undecided"
-})
+const mapStudioApplication = (row: TrialApplicationRow): StudioApplicationSummary => {
+  const embeddedClass = getEmbeddedClass(row)
+
+  return {
+    ...mapApplication(row),
+    classSubject: embeddedClass?.subject ?? null,
+    classRegion: embeddedClass?.region ?? null,
+    assignedTeacherId: row.assigned_teacher_id ?? null,
+    registrationStatus: row.registration_status ?? "undecided"
+  }
+}
 
 const mapApplicationLog = (
   row: ApplicationLogRow,
@@ -362,7 +386,13 @@ const getProfileNameMap = async (profileIds: string[]) => {
 }
 
 const getTeacherNamesByIds = async (teacherIds: string[]) => {
-  const teacherMap = await getTeacherProfilesMap(teacherIds)
+  let teacherMap = new Map<string, TeacherPublicProfile>()
+  try {
+    teacherMap = await getTeacherProfilesMap(teacherIds)
+  } catch {
+    teacherMap = new Map<string, TeacherPublicProfile>()
+  }
+
   return new Map<string, string>(
     teacherIds.map((teacherId) => [teacherId, teacherMap.get(teacherId)?.teacherName ?? "이름 미정"])
   )
@@ -521,6 +551,8 @@ const SCHEDULE_BLOCK_SELECT_FIELDS = "id, teacher_id, class_id, start_at, end_at
 const CHILD_SELECT_FIELDS =
   "id, parent_id, name, grade, school_name, notes, current_level, interest_subjects, goal_note, created_at, updated_at"
 
+const shouldDebugDb = () => process.env.NEXT_PUBLIC_DEBUG_DB === "1"
+
 const getTeacherProfilesMap = async (teacherIds: string[]) => {
   if (teacherIds.length === 0) {
     return new Map<string, TeacherPublicProfile>()
@@ -593,6 +625,18 @@ const getStudioTeacherSeatSummaryByOrganization = async (
 
 export const supabaseDataAdapter: DataAdapter = {
   async listClasses(options) {
+    const debugEnabled = shouldDebugDb()
+    if (debugEnabled) {
+      const { supabaseUrl } = getPublicEnv()
+      console.info(
+        `[listClasses] ${JSON.stringify({
+          called: true,
+          supabaseHost: new URL(supabaseUrl).host,
+          region: options?.region ?? null
+        })}`
+      )
+    }
+
     const supabase = await getSupabaseServerClient()
     let query = supabase
       .from("classes")
@@ -609,22 +653,52 @@ export const supabaseDataAdapter: DataAdapter = {
     const { data, error } = await query
 
     if (error) {
+      if (debugEnabled) {
+        console.error("[listClasses] classes query failed", {
+          message: error.message ?? null,
+          code: (error as { code?: string }).code ?? null,
+          details: (error as { details?: string }).details ?? null
+        })
+      }
       throw new Error("failed_to_fetch_classes")
     }
 
     const classRows = (data ?? []) as ClassRow[]
+    if (debugEnabled) {
+      console.info(
+        `[listClasses] ${JSON.stringify({ classesRows: classRows.length })}`
+      )
+    }
     const teacherIds = classRows
       .map((row) => row.teacher_id)
       .filter((id): id is string => Boolean(id))
-    const teacherMap = await getTeacherProfilesMap(teacherIds)
+    let teacherMap = new Map<string, TeacherPublicProfile>()
+    try {
+      teacherMap = await getTeacherProfilesMap(teacherIds)
+    } catch {
+      teacherMap = new Map<string, TeacherPublicProfile>()
+    }
+    if (debugEnabled) {
+      console.info(
+        `[listClasses] ${JSON.stringify({
+          teacherIds: teacherIds.length,
+          teacherProfiles: teacherMap.size
+        })}`
+      )
+    }
 
-    return classRows.map((row) => {
+    const mapped = classRows.map((row) => {
       const teacherName = row.teacher_id
         ? (teacherMap.get(row.teacher_id)?.teacherName ?? null)
         : null
 
       return mapClass(row, teacherName)
     })
+    if (debugEnabled) {
+      console.info(`[listClasses] ${JSON.stringify({ returned: mapped.length })}`)
+    }
+
+    return mapped
   },
   async getClassById(classId) {
     const supabase = await getSupabaseServerClient()
@@ -648,8 +722,12 @@ export const supabaseDataAdapter: DataAdapter = {
     const classRow = data as ClassRow
     let teacherProfile: TeacherPublicProfile | null = null
     if (classRow.teacher_id) {
-      const teacherMap = await getTeacherProfilesMap([classRow.teacher_id])
-      teacherProfile = teacherMap.get(classRow.teacher_id) ?? null
+      try {
+        const teacherMap = await getTeacherProfilesMap([classRow.teacher_id])
+        teacherProfile = teacherMap.get(classRow.teacher_id) ?? null
+      } catch {
+        teacherProfile = null
+      }
     }
 
     const detail: ClassDetail = {
@@ -660,6 +738,15 @@ export const supabaseDataAdapter: DataAdapter = {
     return detail
   },
   async listStudioClasses(organizationId) {
+    const debugEnabled = shouldDebugDb()
+    if (debugEnabled) {
+      const { supabaseUrl } = getPublicEnv()
+      console.info("[listStudioClasses] start", {
+        supabaseHost: new URL(supabaseUrl).host,
+        organizationId
+      })
+    }
+
     const supabase = await getSupabaseServerClient()
     const { data, error } = await supabase
       .from("classes")
@@ -670,18 +757,44 @@ export const supabaseDataAdapter: DataAdapter = {
       .order("created_at", { ascending: false })
 
     if (error) {
+      if (debugEnabled) {
+        console.error("[listStudioClasses] classes query failed", {
+          message: error.message ?? null,
+          code: (error as { code?: string }).code ?? null,
+          details: (error as { details?: string }).details ?? null
+        })
+      }
       throw new Error("failed_to_fetch_studio_classes")
     }
 
     const classRows = (data ?? []) as ClassRow[]
+    if (debugEnabled) {
+      console.info("[listStudioClasses] classes fetched", { rows: classRows.length })
+    }
     const teacherIds = Array.from(
       new Set(classRows.map((row) => row.teacher_id).filter((id): id is string => Boolean(id)))
     )
-    const teacherMap = await getTeacherProfilesMap(teacherIds)
+    let teacherMap = new Map<string, TeacherPublicProfile>()
+    try {
+      teacherMap = await getTeacherProfilesMap(teacherIds)
+    } catch {
+      teacherMap = new Map<string, TeacherPublicProfile>()
+    }
+    if (debugEnabled) {
+      console.info("[listStudioClasses] teacher profiles", {
+        teacherIds: teacherIds.length,
+        teacherProfiles: teacherMap.size
+      })
+    }
 
-    return classRows.map((row) =>
+    const mapped = classRows.map((row) =>
       mapClass(row, row.teacher_id ? (teacherMap.get(row.teacher_id)?.teacherName ?? null) : null)
     )
+    if (debugEnabled) {
+      console.info("[listStudioClasses] done", { returned: mapped.length })
+    }
+
+    return mapped
   },
   async listStudioTeacherOptions(organizationId) {
     const supabase = await getSupabaseServerClient()
@@ -1274,7 +1387,7 @@ export const supabaseDataAdapter: DataAdapter = {
     const { data, error } = await supabase
       .from("trial_applications")
       .select(
-        "id, class_id, parent_id, child_name, child_grade, parent_name, parent_phone, requested_schedule_block_id, requested_slot_at, confirmed_slot_at, goal_type, status, created_at, updated_at, classes(title, program_type)"
+        "id, class_id, parent_id, child_name, child_grade, parent_name, parent_phone, requested_schedule_block_id, requested_slot_at, confirmed_slot_at, goal_type, status, created_at, updated_at, classes(title, program_type, region)"
       )
       .eq("parent_id", parentId)
       .order("created_at", { ascending: false })
