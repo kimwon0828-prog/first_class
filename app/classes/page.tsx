@@ -3,13 +3,14 @@ import { redirect } from "next/navigation"
 import type { CSSProperties } from "react"
 
 import { AuthEntryButton } from "@/features/auth/ui/auth-entry-button"
-import { ClassesRegionSelect } from "@/features/classes/ui/classes-region-select"
+import { ClassesRegionSelect, ClassesSearchInput } from "@/features/classes/ui/classes-region-select"
 import { getPublicClasses } from "@/features/classes/queries/get-public-classes"
 import { normalizeAcademyArea } from "@/shared/config/academy-areas"
 
 type ClassesPageProps = {
   searchParams?: Promise<{
     region?: string
+    q?: string
   }>
 }
 
@@ -61,13 +62,25 @@ export default async function ClassesPage({ searchParams }: ClassesPageProps) {
   const resolvedSearchParams = searchParams ? await searchParams : undefined
   const rawRegion = typeof resolvedSearchParams?.region === "string" ? resolvedSearchParams.region : null
   const selectedRegion = normalizeAcademyArea(rawRegion)
+  const rawQuery = typeof resolvedSearchParams?.q === "string" ? resolvedSearchParams.q : ""
+  const selectedQuery = rawQuery.trim()
 
   if (rawRegion !== selectedRegion) {
-    redirect(`/classes?region=${encodeURIComponent(selectedRegion)}`)
+    const nextSearchParams = new URLSearchParams()
+    nextSearchParams.set("region", selectedRegion)
+    if (selectedQuery) {
+      nextSearchParams.set("q", selectedQuery)
+    }
+    redirect(`/classes?${nextSearchParams.toString()}`)
   }
 
-  const { data: classes, error } = await getPublicClasses(selectedRegion)
-  const classesHref = `/classes?region=${encodeURIComponent(selectedRegion)}`
+  const { data: classes, error } = await getPublicClasses(selectedRegion, selectedQuery || undefined)
+  const classesSearchParams = new URLSearchParams()
+  classesSearchParams.set("region", selectedRegion)
+  if (selectedQuery) {
+    classesSearchParams.set("q", selectedQuery)
+  }
+  const classesHref = `/classes?${classesSearchParams.toString()}`
 
   return (
     <main style={pageContainerStyle}>
@@ -84,17 +97,7 @@ export default async function ClassesPage({ searchParams }: ClassesPageProps) {
       <section style={{ ...sectionCardStyle, marginBottom: 14 }}>
         <p style={{ ...mutedTextStyle, marginBottom: 10, fontSize: 13 }}>지역 필터</p>
         <div style={{ display: "grid", gap: 8 }}>
-          <input
-            disabled
-            placeholder="과목, 지역으로 검색 (곧 제공)"
-            style={{
-              width: "100%",
-              padding: "10px 12px",
-              borderRadius: 10,
-              border: "1px solid #d1d5db",
-              backgroundColor: "#f9fafb"
-            }}
-          />
+          <ClassesSearchInput initialQuery={selectedQuery} />
           <ClassesRegionSelect selectedRegion={selectedRegion} />
         </div>
       </section>
@@ -114,7 +117,16 @@ export default async function ClassesPage({ searchParams }: ClassesPageProps) {
         </section>
       ) : null}
 
-      {!error && classes.length === 0 ? (
+      {!error && classes.length === 0 && selectedQuery ? (
+        <section style={sectionCardStyle}>
+          <p style={{ margin: "0 0 8px", fontSize: 15 }}>검색 결과가 없어요.</p>
+          <p style={mutedTextStyle}>
+            다른 키워드로 다시 검색하거나, 지역 필터를 바꿔보세요.
+          </p>
+        </section>
+      ) : null}
+
+      {!error && classes.length === 0 && !selectedQuery ? (
         <section style={sectionCardStyle}>
           <p style={{ margin: "0 0 8px", fontSize: 15 }}>
             {selectedRegion}에 현재 공개된 프로그램이 아직 없어요.
