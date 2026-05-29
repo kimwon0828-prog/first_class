@@ -19,7 +19,8 @@ const getSupabaseHost = () => {
 }
 
 export const getPublicClasses = async (
-  region: AcademyArea
+  region: AcademyArea,
+  query?: string
 ): Promise<QueryResult<ClassSummary[]>> => {
   try {
     if (shouldDebugDb()) {
@@ -27,12 +28,13 @@ export const getPublicClasses = async (
         `[classes-debug] ${JSON.stringify({
           supabaseHost: getSupabaseHost(),
           dataAdapter: dataAdapterType,
-          region
+          region,
+          query: query?.trim() ? query.trim() : null
         })}`
       )
     }
 
-    const data = await dataAdapter.listClasses({ region })
+    const data = await dataAdapter.listClasses({ region, query })
     if (shouldDebugDb()) {
       console.info(
         `[getPublicClasses] ${JSON.stringify({ region, returned: data.length })}`

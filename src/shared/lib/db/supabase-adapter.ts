@@ -54,6 +54,11 @@ type TeacherPublicProfileRow = {
   career_years: number
 }
 
+type OrganizationRow = {
+  id: string
+  name: string
+}
+
 type EmbeddedClassRow = {
   program_type?: ClassProgramType
   title: string
@@ -626,13 +631,15 @@ const getStudioTeacherSeatSummaryByOrganization = async (
 export const supabaseDataAdapter: DataAdapter = {
   async listClasses(options) {
     const debugEnabled = shouldDebugDb()
+    const searchTerm = options?.query?.trim() ? options.query.trim() : ""
     if (debugEnabled) {
       const { supabaseUrl } = getPublicEnv()
       console.info(
         `[listClasses] ${JSON.stringify({
           called: true,
           supabaseHost: new URL(supabaseUrl).host,
-          region: options?.region ?? null
+          region: options?.region ?? null,
+          query: searchTerm || null
         })}`
       )
     }
@@ -641,7 +648,7 @@ export const supabaseDataAdapter: DataAdapter = {
     let query = supabase
       .from("classes")
       .select(
-        "id, program_type, title, subject, region, target_age, description, trial_price, teacher_id, teacher_display_name, cover_image_url, is_active"
+        "id, organization_id, program_type, title, subject, region, target_age, description, trial_price, teacher_id, teacher_display_name, cover_image_url, is_active"
       )
       .eq("is_active", true)
       .order("created_at", { ascending: false })
@@ -687,13 +694,66 @@ export const supabaseDataAdapter: DataAdapter = {
       )
     }
 
-    const mapped = classRows.map((row) => {
-      const teacherName = row.teacher_id
-        ? (teacherMap.get(row.teacher_id)?.teacherName ?? null)
-        : null
+    const organizationIds = Array.from(
+      new Set(
+        classRows
+          .map((row) => row.organization_id)
+          .filter((id): id is string => typeof id === "string" && id.length > 0)
+      )
+    )
+    let organizationNameById = new Map<string, string>()
+    try {
+      if (organizationIds.length > 0) {
+        const { data: organizationData, error: organizationError } = await supabase
+          .from("organizations")
+          .select("id, name")
+          .in("id", organizationIds)
 
-      return mapClass(row, teacherName)
-    })
+        if (!organizationError) {
+          organizationNameById = new Map<string, string>(
+            ((organizationData ?? []) as OrganizationRow[]).map((row) => [row.id, row.name])
+          )
+        }
+      }
+    } catch {
+      organizationNameById = new Map<string, string>()
+    }
+
+    const normalizeText = (value: string | null | undefined) =>
+      (value ?? "").toString().trim().toLowerCase()
+
+    const needle = normalizeText(searchTerm)
+    const shouldFilterByQuery = Boolean(needle)
+
+    const mapped = classRows
+      .map((row) => {
+        const teacherName = row.teacher_id
+          ? (teacherMap.get(row.teacher_id)?.teacherName ?? null)
+          : null
+        const organizationName = row.organization_id
+          ? (organizationNameById.get(row.organization_id) ?? null)
+          : null
+
+        return {
+          mapped: mapClass(row, teacherName),
+          haystacks: [
+            row.title,
+            row.description,
+            row.subject,
+            row.teacher_display_name ?? null,
+            teacherName,
+            organizationName
+          ]
+        }
+      })
+      .filter(({ haystacks }) => {
+        if (!shouldFilterByQuery) {
+          return true
+        }
+
+        return haystacks.map(normalizeText).some((value) => value.includes(needle))
+      })
+      .map(({ mapped }) => mapped)
     if (debugEnabled) {
       console.info(`[listClasses] ${JSON.stringify({ returned: mapped.length })}`)
     }

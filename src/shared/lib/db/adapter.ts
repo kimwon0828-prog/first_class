@@ -350,6 +350,7 @@ export type CreateTeacherSignupRequestInput = {
 
 export type ListClassesOptions = {
   region?: AcademyArea
+  query?: string
 }
 
 export interface DataAdapter {

@@ -279,15 +279,22 @@ const getAppliedCountForSlot = (slotId: string, slotStartAt: string, teacherId?:
 export const mockDataAdapter: DataAdapter = {
   async listClasses(options) {
     const debugEnabled = process.env.NEXT_PUBLIC_DEBUG_DB === "1"
+    const searchTerm = options?.query?.trim() ? options.query.trim() : ""
     if (debugEnabled) {
       console.info(
         `[listClasses] ${JSON.stringify({
           called: true,
           adapter: "mock",
-          region: options?.region ?? null
+          region: options?.region ?? null,
+          query: searchTerm || null
         })}`
       )
     }
+
+    const normalizeText = (value: string | null | undefined) =>
+      (value ?? "").toString().trim().toLowerCase()
+    const needle = normalizeText(searchTerm)
+    const shouldFilterByQuery = Boolean(needle)
 
     const mapped = classes.filter((item) => {
       if (!item.isActive) {
@@ -296,6 +303,20 @@ export const mockDataAdapter: DataAdapter = {
 
       if (options?.region && item.region !== options.region) {
         return false
+      }
+
+      if (shouldFilterByQuery) {
+        const haystacks = [
+          item.title,
+          item.description,
+          item.subject,
+          item.teacherDisplayName ?? null,
+          item.teacherName ?? null
+        ].map(normalizeText)
+
+        if (!haystacks.some((value) => value.includes(needle))) {
+          return false
+        }
       }
 
       return true
