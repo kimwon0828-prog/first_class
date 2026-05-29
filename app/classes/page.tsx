@@ -1,45 +1,24 @@
 import Link from "next/link"
 import { redirect } from "next/navigation"
-import type { CSSProperties } from "react"
+import Image from "next/image"
 
-import { AuthEntryButton } from "@/features/auth/ui/auth-entry-button"
-import { ClassesRegionSelect, ClassesSearchInput } from "@/features/classes/ui/classes-region-select"
+import { getSession } from "@/features/auth/lib/session"
+import {
+  ClassesRegionInlineSelect,
+  ClassesSearchPill,
+  ClassesSubjectGrid
+} from "@/features/classes/ui/classes-region-select"
 import { getPublicClasses } from "@/features/classes/queries/get-public-classes"
 import { normalizeAcademyArea } from "@/shared/config/academy-areas"
+import styles from "./page.module.css"
+import { HeroBannerSlider } from "./hero-banner-slider"
 
 type ClassesPageProps = {
   searchParams?: Promise<{
     region?: string
     q?: string
+    subject?: string
   }>
-}
-
-const pageContainerStyle: CSSProperties = {
-  maxWidth: 640,
-  margin: "0 auto",
-  padding: "20px 16px 32px"
-}
-
-const sectionCardStyle: CSSProperties = {
-  backgroundColor: "#ffffff",
-  border: "1px solid #e5e7eb",
-  borderRadius: 12,
-  padding: 14
-}
-
-const mutedTextStyle: CSSProperties = {
-  margin: 0,
-  color: "#6b7280",
-  fontSize: 14
-}
-
-const chipStyle: CSSProperties = {
-  display: "inline-flex",
-  border: "1px solid #d1d5db",
-  borderRadius: 999,
-  padding: "4px 10px",
-  fontSize: 12,
-  color: "#374151"
 }
 
 const formatPrice = (price: number) => {
@@ -47,154 +26,303 @@ const formatPrice = (price: number) => {
     return "무료"
   }
 
-  return `신청비 ${price.toLocaleString("ko-KR")}원`
-}
-
-const formatProgramType = (value: string) => {
-  if (value === "level_test") {
-    return "레벨테스트"
-  }
-
-  return "체험수업"
+  return `${price.toLocaleString("ko-KR")}원`
 }
 
 export default async function ClassesPage({ searchParams }: ClassesPageProps) {
   const resolvedSearchParams = searchParams ? await searchParams : undefined
-  const rawRegion = typeof resolvedSearchParams?.region === "string" ? resolvedSearchParams.region : null
-  const selectedRegion = normalizeAcademyArea(rawRegion)
+  const rawRegionParam =
+    typeof resolvedSearchParams?.region === "string" ? resolvedSearchParams.region : null
+  const decodedRegion = (() => {
+    if (!rawRegionParam) return null
+    try {
+      return decodeURIComponent(rawRegionParam)
+    } catch {
+      return rawRegionParam
+    }
+  })()
+  const selectedRegion = normalizeAcademyArea(decodedRegion)
   const rawQuery = typeof resolvedSearchParams?.q === "string" ? resolvedSearchParams.q : ""
   const selectedQuery = rawQuery.trim()
+  const rawSubjectParam =
+    typeof resolvedSearchParams?.subject === "string" ? resolvedSearchParams.subject : ""
+  const decodedSubject = (() => {
+    if (!rawSubjectParam) return ""
+    try {
+      return decodeURIComponent(rawSubjectParam)
+    } catch {
+      return rawSubjectParam
+    }
+  })()
 
-  if (rawRegion !== selectedRegion) {
+  if (decodedRegion !== selectedRegion) {
     const nextSearchParams = new URLSearchParams()
     nextSearchParams.set("region", selectedRegion)
+    if (decodedSubject) {
+      nextSearchParams.set("subject", decodedSubject)
+    }
     if (selectedQuery) {
       nextSearchParams.set("q", selectedQuery)
     }
     redirect(`/classes?${nextSearchParams.toString()}`)
   }
 
-  const { data: classes, error } = await getPublicClasses(selectedRegion, selectedQuery || undefined)
+  const subjectCategories = [
+    { label: "국어", emoji: "📕" },
+    { label: "수학", emoji: "📐" },
+    { label: "영어", emoji: "🔤" },
+    { label: "사회", emoji: "🌍" },
+    { label: "과학", emoji: "🧪" },
+    { label: "코딩", emoji: "💻" },
+    { label: "미술", emoji: "🎨" },
+    { label: "체육", emoji: "⚽" },
+    { label: "음악", emoji: "🎵" },
+    { label: "기타과목", emoji: "🧩" }
+  ] as const
+
+  const selectedSubject = subjectCategories.some((item) => item.label === decodedSubject)
+    ? decodedSubject
+    : null
+
+  const { data: classes, error } = await getPublicClasses(selectedRegion, {
+    subject: selectedSubject ?? undefined,
+    query: selectedQuery || undefined
+  })
+  const session = await getSession()
   const classesSearchParams = new URLSearchParams()
   classesSearchParams.set("region", selectedRegion)
+  if (selectedSubject) {
+    classesSearchParams.set("subject", selectedSubject)
+  }
   if (selectedQuery) {
     classesSearchParams.set("q", selectedQuery)
   }
   const classesHref = `/classes?${classesSearchParams.toString()}`
+  const myHref = "/my"
+  const myEntryHref = session
+    ? myHref
+    : `/auth/sign-in?${new URLSearchParams({ returnTo: myHref }).toString()}`
+
+  const heroBanners = [{ id: "default" }, { id: "secondary" }, { id: "tertiary" }] as const
 
   return (
-    <main style={pageContainerStyle}>
-      <section style={{ marginBottom: 14 }}>
-        <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 12 }}>
-          <AuthEntryButton returnTo={classesHref} />
-        </div>
-        <h1 style={{ margin: "0 0 8px", fontSize: 24 }}>프로그램 찾기</h1>
-        <p style={mutedTextStyle}>
-          로그인 없이 프로그램 정보를 확인하고, 마음에 드는 프로그램을 골라보세요.
-        </p>
-      </section>
-
-      <section style={{ ...sectionCardStyle, marginBottom: 14 }}>
-        <p style={{ ...mutedTextStyle, marginBottom: 10, fontSize: 13 }}>지역 필터</p>
-        <div style={{ display: "grid", gap: 8 }}>
-          <ClassesSearchInput initialQuery={selectedQuery} />
-          <ClassesRegionSelect selectedRegion={selectedRegion} />
-        </div>
-      </section>
-
-      <section style={{ marginBottom: 10 }}>
-        <p style={{ margin: 0, color: "#374151", fontSize: 14 }}>
-          총 {classes.length}개의 프로그램
-        </p>
-      </section>
-
-      {error ? (
-        <section style={{ ...sectionCardStyle, borderColor: "#fecaca" }}>
-          <p style={{ margin: "0 0 10px", color: "#991b1b", fontSize: 14 }}>{error}</p>
-          <Link href={classesHref} style={{ color: "#2563eb", fontSize: 14 }}>
-            다시 불러오기
+    <main className={styles.page}>
+      <div className={styles.shell}>
+        <header className={styles.header}>
+          <Link href={classesHref} className={styles.brand}>
+            <Image
+              src="/images/first-class-logo.png"
+              alt="첫수업"
+              width={70}
+              height={23}
+              priority
+            />
           </Link>
+
+          <ClassesSearchPill
+            initialQuery={selectedQuery}
+            placeholder="우리 아이에게 맞는 첫수업 찾기"
+            className={styles.searchForm}
+            pillClassName={styles.searchPill}
+            inputClassName={styles.searchInput}
+          />
+
+          {session ? (
+            <Link href={myEntryHref} className={styles.userButton} aria-label="마이페이지">
+              <svg
+                width="22"
+                height="22"
+                viewBox="0 0 24 24"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+                aria-hidden="true"
+              >
+                <path
+                  d="M20 21a8 8 0 1 0-16 0"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+                <path
+                  d="M12 13a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </Link>
+          ) : (
+            <Link href={myEntryHref} className={styles.loginButton} aria-label="로그인">
+              로그인
+            </Link>
+          )}
+        </header>
+
+        <section className={styles.regionSection}>
+          <ClassesRegionInlineSelect
+            selectedRegion={selectedRegion}
+            rowClassName={styles.regionRow}
+            nameClassName={styles.regionName}
+            chevronWrapClassName={styles.regionChevronWrap}
+          />
         </section>
-      ) : null}
 
-      {!error && classes.length === 0 && selectedQuery ? (
-        <section style={sectionCardStyle}>
-          <p style={{ margin: "0 0 8px", fontSize: 15 }}>검색 결과가 없어요.</p>
-          <p style={mutedTextStyle}>
-            다른 키워드로 다시 검색하거나, 지역 필터를 바꿔보세요.
-          </p>
+        <HeroBannerSlider banners={[...heroBanners]} />
+
+        <section className={styles.categorySection} aria-label="과목 카테고리">
+          <ClassesSubjectGrid
+            items={subjectCategories}
+            selectedSubject={selectedSubject}
+            gridClassName={styles.subjectGrid}
+            itemClassName={styles.subjectItem}
+            itemActiveClassName={styles.subjectItemActive}
+            emojiClassName={styles.subjectEmoji}
+            labelClassName={styles.subjectLabel}
+          />
         </section>
-      ) : null}
 
-      {!error && classes.length === 0 && !selectedQuery ? (
-        <section style={sectionCardStyle}>
-          <p style={{ margin: "0 0 8px", fontSize: 15 }}>
-            {selectedRegion}에 현재 공개된 프로그램이 아직 없어요.
-          </p>
-          <p style={mutedTextStyle}>조금 뒤 다시 확인해 주세요.</p>
+        <section>
+          <div className={styles.sectionHeader}>
+            <h2 className={styles.sectionTitle}>우리 아이에게 딱! 맞는 첫수업</h2>
+            <Link href={classesHref} className={styles.sectionLink}>
+              전체보기
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+                aria-hidden="true"
+              >
+                <path
+                  d="M9 18l6-6-6-6"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </Link>
+          </div>
+
+          {error ? (
+            <div className={styles.stateCard}>
+              <p className={styles.stateTitle}>{error}</p>
+              <p className={styles.stateDesc}>잠시 후 다시 시도해 주세요.</p>
+              <Link href={classesHref} className={styles.retryLink}>
+                다시 불러오기
+              </Link>
+            </div>
+          ) : null}
+
+          {!error && classes.length === 0 && (selectedQuery || selectedSubject) ? (
+            <div className={styles.stateCard}>
+              <p className={styles.stateTitle}>검색 결과가 없어요.</p>
+              <p className={styles.stateDesc}>다른 검색어로 다시 찾아보세요.</p>
+            </div>
+          ) : null}
+
+          {!error && classes.length === 0 && !selectedQuery && !selectedSubject ? (
+            <div className={styles.stateCard}>
+              <p className={styles.stateTitle}>{selectedRegion}에 현재 공개된 수업이 아직 없어요.</p>
+              <p className={styles.stateDesc}>조금 뒤 다시 확인해 주세요.</p>
+            </div>
+          ) : null}
+
+          {!error && classes.length > 0 ? (
+            <ul className={styles.grid}>
+              {classes.map((item) => (
+                <li key={item.id}>
+                  <Link
+                    href={`/classes/${item.id}?region=${encodeURIComponent(selectedRegion)}`}
+                    className={styles.card}
+                  >
+                    <div className={styles.cardImage}>
+                      {item.coverImageUrl ? (
+                        <Image
+                          src={item.coverImageUrl}
+                          alt={`${item.title} 대표 이미지`}
+                          fill
+                          sizes="(max-width: 430px) 50vw, 215px"
+                          style={{ objectFit: "cover" }}
+                          unoptimized
+                        />
+                      ) : (
+                        <div
+                          className={styles.imagePlaceholder}
+                          role="img"
+                          aria-label="첫수업 준비 중인 수업 이미지입니다."
+                        >
+                          첫수업 준비 중인 수업 이미지입니다.
+                        </div>
+                      )}
+                    </div>
+
+                    <div className={styles.cardBody}>
+                      <h3 className={styles.cardTitle}>{item.title}</h3>
+                      <p className={styles.cardPrice}>{formatPrice(item.trialPrice)}</p>
+                      <div className={styles.cardMeta}>
+                        <span className={styles.star}>★</span>
+                        <span>{item.subject}</span>
+                        <span>·</span>
+                        <span>{item.targetAge}</span>
+                      </div>
+                    </div>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          ) : null}
         </section>
-      ) : null}
+      </div>
 
-      {!error && classes.length > 0 ? (
-        <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "grid", gap: 10 }}>
-          {classes.map((item) => (
-            <li key={item.id} style={sectionCardStyle}>
-              {item.coverImageUrl ? (
-                <>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={item.coverImageUrl}
-                    alt={`${item.title} 대표 이미지`}
-                    style={{
-                      display: "block",
-                      width: "100%",
-                      height: 180,
-                      objectFit: "cover",
-                      borderRadius: 10,
-                      marginBottom: 12
-                    }}
-                  />
-                </>
-              ) : null}
-              <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 8 }}>
-                <span style={chipStyle}>{formatProgramType(item.programType)}</span>
-                <span style={chipStyle}>{item.subject}</span>
-                <span style={chipStyle}>{item.region}</span>
-                <span style={chipStyle}>{item.targetAge}</span>
-              </div>
-
-              <h2 style={{ margin: "0 0 8px", fontSize: 18 }}>{item.title}</h2>
-              <p style={{ ...mutedTextStyle, marginBottom: 8 }}>{item.description}</p>
-              <p style={{ margin: "0 0 4px", fontSize: 14, color: "#111827" }}>
-                {formatPrice(item.trialPrice)}
-              </p>
-              <p style={{ margin: "0 0 12px", fontSize: 13, color: "#4b5563" }}>
-                {item.teacherDisplayName || item.teacherName
-                  ? `선생님 ${item.teacherDisplayName ?? item.teacherName}`
-                  : "선생님 정보 준비 중"}
-              </p>
-
-              <div style={{ display: "flex", gap: 8 }}>
-                <Link
-                  href={`/classes/${item.id}?region=${encodeURIComponent(selectedRegion)}`}
-                  style={{
-                    flex: 1,
-                    textAlign: "center",
-                    padding: "10px 12px",
-                    borderRadius: 10,
-                    backgroundColor: "#111827",
-                    color: "#ffffff",
-                    textDecoration: "none",
-                    fontSize: 14
-                  }}
-                >
-                  상세 보기
-                </Link>
-              </div>
-            </li>
-          ))}
-        </ul>
-      ) : null}
+      <nav className={styles.bottomNav} aria-label="하단 탭">
+        <Link href={classesHref} className={styles.navItem}>
+          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <path
+              d="M3 10.5L12 3l9 7.5V21a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1V10.5Z"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+          <span>홈</span>
+        </Link>
+        <Link href={classesHref} className={`${styles.navItem} ${styles.navItemActive}`}>
+          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <path
+              d="M10.5 18C14.6421 18 18 14.6421 18 10.5C18 6.35786 14.6421 3 10.5 3C6.35786 3 3 6.35786 3 10.5C3 14.6421 6.35786 18 10.5 18Z"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+            <path
+              d="M21 21L16.65 16.65"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+          <span>수업찾기</span>
+        </Link>
+        <Link href={myEntryHref} className={styles.navItem}>
+          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <path
+              d="M9 6h11M9 12h11M9 18h11M5 6h.01M5 12h.01M5 18h.01"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+          <span>내 신청</span>
+        </Link>
+      </nav>
     </main>
   )
 }
