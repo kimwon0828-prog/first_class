@@ -632,6 +632,7 @@ export const supabaseDataAdapter: DataAdapter = {
   async listClasses(options) {
     const debugEnabled = shouldDebugDb()
     const searchTerm = options?.query?.trim() ? options.query.trim() : ""
+    const subject = options?.subject?.trim() ? options.subject.trim() : ""
     if (debugEnabled) {
       const { supabaseUrl } = getPublicEnv()
       console.info(
@@ -639,6 +640,7 @@ export const supabaseDataAdapter: DataAdapter = {
           called: true,
           supabaseHost: new URL(supabaseUrl).host,
           region: options?.region ?? null,
+          subject: subject || null,
           query: searchTerm || null
         })}`
       )
@@ -655,6 +657,10 @@ export const supabaseDataAdapter: DataAdapter = {
 
     if (options?.region) {
       query = query.eq("region", options.region)
+    }
+
+    if (subject) {
+      query = query.eq("subject", subject)
     }
 
     const { data, error } = await query

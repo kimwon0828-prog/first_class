@@ -280,12 +280,14 @@ export const mockDataAdapter: DataAdapter = {
   async listClasses(options) {
     const debugEnabled = process.env.NEXT_PUBLIC_DEBUG_DB === "1"
     const searchTerm = options?.query?.trim() ? options.query.trim() : ""
+    const subject = options?.subject?.trim() ? options.subject.trim() : ""
     if (debugEnabled) {
       console.info(
         `[listClasses] ${JSON.stringify({
           called: true,
           adapter: "mock",
           region: options?.region ?? null,
+          subject: subject || null,
           query: searchTerm || null
         })}`
       )
@@ -302,6 +304,10 @@ export const mockDataAdapter: DataAdapter = {
       }
 
       if (options?.region && item.region !== options.region) {
+        return false
+      }
+
+      if (subject && item.subject !== subject) {
         return false
       }
 
