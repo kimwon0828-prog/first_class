@@ -1,0 +1,432 @@
+ .page {
+   background: #ffffff;
+   min-height: 100vh;
+ }
+ 
+ .shell {
+   width: 100%;
+   max-width: 430px;
+   margin: 0 auto;
+   min-height: 100vh;
+   background: #ffffff;
+   padding-bottom: 96px;
+ }
+ 
+ .header {
+   position: sticky;
+   top: 0;
+   z-index: 40;
+   display: flex;
+   align-items: center;
+   gap: 12px;
+   padding: 14px 24px 10px;
+   background: #ffffff;
+ }
+ 
+ .brand {
+  display: inline-flex;
+  align-items: center;
+   text-decoration: none;
+  color: #2aad38;
+   white-space: nowrap;
+ }
+ 
+ .searchForm {
+   flex: 1;
+   min-width: 0;
+ }
+ 
+ .searchPill {
+   display: flex;
+   align-items: center;
+   gap: 10px;
+   height: 40px;
+   border-radius: 999px;
+   background: #f1f1f1;
+   padding: 0 14px;
+   color: #8a8a8a;
+ }
+ 
+ .searchInput {
+   flex: 1;
+   min-width: 0;
+   border: 0;
+   outline: none;
+   background: transparent;
+   padding: 0;
+   font-size: 14px;
+   color: #111111;
+ }
+ 
+ .searchInput::placeholder {
+   color: #8a8a8a;
+ }
+ 
+ .userButton {
+   display: inline-flex;
+   align-items: center;
+   justify-content: center;
+   width: 32px;
+   height: 32px;
+   border-radius: 999px;
+   border: 0;
+   background: transparent;
+   color: #111111;
+   text-decoration: none;
+ }
+ 
+.loginButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 32px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid #eeeeee;
+  background: #ffffff;
+  color: #111111;
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+}
+
+ .regionSection {
+   padding: 0 24px;
+   margin-top: 2px;
+ }
+ 
+ .regionRow {
+   display: inline-flex;
+   align-items: center;
+   gap: 6px;
+   color: #111111;
+ }
+ 
+ .regionRow svg {
+   color: #d9d9d9;
+ }
+ 
+.regionName {
+  font-size: 14px;
+  font-weight: 700;
+  color: #111111;
+}
+
+.regionChevronWrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+}
+
+ .heroTrack {
+   display: flex;
+   gap: 12px;
+   overflow-x: auto;
+   padding: 18px 24px 0;
+   scroll-snap-type: x mandatory;
+   -webkit-overflow-scrolling: touch;
+  scroll-padding-left: 24px;
+  scroll-padding-right: 24px;
+  scroll-behavior: smooth;
+ }
+ 
+ .heroTrack::-webkit-scrollbar {
+   display: none;
+ }
+ 
+ .heroCard {
+   position: relative;
+   flex-shrink: 0;
+  width: calc(100% - 48px);
+   height: 220px;
+   border-radius: 24px;
+   overflow: hidden;
+   background: #111111;
+  scroll-snap-align: center;
+ }
+ 
+.heroDots {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px 24px 0;
+}
+
+.heroDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  border: 0;
+  background: #d9d9d9;
+  padding: 0;
+  cursor: pointer;
+}
+
+.heroDotActive {
+  background: #2aad38;
+}
+
+ .heroBg {
+   position: absolute;
+   inset: 0;
+   background: radial-gradient(140% 80% at 100% 0%, #2b2b2b 0%, #111111 60%, #0b0b0b 100%);
+ }
+ 
+ .heroOverlay {
+   position: absolute;
+   inset: 0;
+   background: linear-gradient(270deg, rgba(135, 134, 134, 0.2) 0%, rgba(0, 0, 0, 0.7) 78%);
+ }
+ 
+ .heroContent {
+   position: absolute;
+   inset: 0;
+   display: flex;
+   flex-direction: column;
+   justify-content: center;
+   gap: 14px;
+   padding: 20px;
+   color: #ffffff;
+ }
+ 
+ .heroBrand {
+   font-size: 22px;
+   font-weight: 800;
+   letter-spacing: -0.04em;
+   color: #2aad38;
+ }
+ 
+ .heroCopy {
+   margin: 0;
+   font-size: 14px;
+   line-height: 1.5;
+   letter-spacing: -0.02em;
+ }
+ 
+ .heroCopy strong {
+   font-weight: 800;
+ }
+ 
+ .categorySection {
+   padding: 18px 24px 0;
+ }
+ 
+ .subjectGrid {
+   display: grid;
+   grid-template-columns: repeat(5, 1fr);
+   row-gap: 26px;
+   padding: 8px 0 0;
+ }
+ 
+ .subjectItem {
+   display: flex;
+   flex-direction: column;
+   align-items: center;
+   justify-content: center;
+   gap: 6px;
+   border: 0;
+   background: transparent;
+   padding: 0;
+   cursor: pointer;
+   color: #111111;
+ }
+ 
+.subjectItemActive {
+  color: #2aad38;
+}
+
+.subjectItemActive .subjectLabel {
+  color: #2aad38;
+  font-weight: 700;
+}
+
+ .subjectEmoji {
+   font-size: 22px;
+   line-height: 1;
+ }
+ 
+ .subjectLabel {
+   font-size: 12px;
+   line-height: 1.1;
+   color: #111111;
+ }
+ 
+ .sectionHeader {
+   display: flex;
+   align-items: center;
+   justify-content: space-between;
+   padding: 20px 24px 12px;
+ }
+ 
+ .sectionTitle {
+   margin: 0;
+   font-size: 20px;
+   line-height: 1.25;
+   font-weight: 800;
+   letter-spacing: -0.04em;
+   color: #111111;
+ }
+ 
+ .sectionLink {
+   display: inline-flex;
+   align-items: center;
+   gap: 4px;
+   font-size: 13px;
+   color: #111111;
+   text-decoration: none;
+ }
+ 
+ .sectionLink svg {
+   width: 16px;
+   height: 16px;
+   color: #111111;
+ }
+ 
+ .grid {
+   display: grid;
+   grid-template-columns: repeat(2, minmax(0, 1fr));
+   gap: 20px 14px;
+   padding: 0 24px 24px;
+   margin: 0;
+   list-style: none;
+ }
+ 
+ .card {
+   display: block;
+   border-radius: 18px;
+   overflow: hidden;
+   background: #ffffff;
+   border: 1px solid #eeeeee;
+   text-decoration: none;
+   color: inherit;
+ }
+ 
+ .cardImage {
+   position: relative;
+   aspect-ratio: 4 / 3;
+   background: #f7f7f7;
+ }
+ 
+ .imagePlaceholder {
+   height: 100%;
+   display: flex;
+   align-items: center;
+   justify-content: center;
+   padding: 14px;
+   text-align: center;
+   font-size: 12px;
+   color: #8a8a8a;
+ }
+ 
+ .cardBody {
+   padding: 12px 12px 14px;
+   display: grid;
+   gap: 6px;
+ }
+ 
+ .cardTitle {
+   margin: 0;
+   font-size: 15px;
+   line-height: 1.35;
+   font-weight: 700;
+   letter-spacing: -0.03em;
+   color: #111111;
+ }
+ 
+ .cardPrice {
+   margin: 0;
+   font-size: 14px;
+   font-weight: 700;
+   color: #111111;
+ }
+ 
+ .cardMeta {
+   display: flex;
+   align-items: center;
+   gap: 6px;
+   font-size: 12px;
+   line-height: 1.2;
+   color: #666666;
+ }
+ 
+ .star {
+   color: #ffb020;
+ }
+ 
+ .stateCard {
+   margin: 12px 24px 0;
+   border-radius: 18px;
+   border: 1px solid #eeeeee;
+   background: #fafafa;
+   padding: 16px;
+ }
+ 
+ .stateTitle {
+   margin: 0 0 6px;
+   font-size: 15px;
+   font-weight: 700;
+   color: #111111;
+ }
+ 
+ .stateDesc {
+   margin: 0;
+   font-size: 13px;
+   line-height: 1.5;
+   color: #8a8a8a;
+ }
+ 
+ .retryLink {
+   display: inline-flex;
+   margin-top: 10px;
+   font-size: 13px;
+   font-weight: 700;
+   color: #2aad38;
+   text-decoration: none;
+ }
+ 
+ .bottomNav {
+   position: fixed;
+   bottom: 0;
+   left: 50%;
+   transform: translateX(-50%);
+   width: min(100%, 430px);
+   height: 76px;
+   background: #ffffff;
+   border-top: 1px solid #eeeeee;
+   z-index: 60;
+   display: flex;
+   align-items: center;
+   justify-content: space-between;
+   padding: 10px 24px 14px;
+ }
+ 
+ .navItem {
+   flex: 1;
+   display: flex;
+   flex-direction: column;
+   align-items: center;
+   justify-content: center;
+   gap: 6px;
+   text-decoration: none;
+   color: #111111;
+   font-size: 11px;
+ }
+ 
+ .navItem svg {
+   width: 22px;
+   height: 22px;
+ }
+ 
+ .navItemActive {
+   color: #2aad38;
+ }
+ 
+ .navItemActive svg {
+   color: #2aad38;
+ }
