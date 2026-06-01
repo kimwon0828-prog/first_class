@@ -1,0 +1,191 @@
+.page {
+  background: #ffffff;
+  min-height: 100vh;
+}
+
+.shell {
+  width: 100%;
+  max-width: 430px;
+  margin: 0 auto;
+  min-height: 100vh;
+  background: #ffffff;
+  padding: 14px 24px 110px;
+}
+
+.topBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 40px;
+}
+
+.iconButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  border: 1px solid #eeeeee;
+  background: #ffffff;
+  color: #111111;
+  text-decoration: none;
+  padding: 0;
+}
+
+.imageCard {
+  margin-top: 10px;
+  border-radius: 24px;
+  overflow: hidden;
+  background: #f7f7f7;
+  border: 1px solid #eeeeee;
+}
+
+.imageFrame {
+  position: relative;
+  aspect-ratio: 4 / 3;
+}
+
+.imagePlaceholder {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+  text-align: center;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #8a8a8a;
+}
+
+.titleBlock {
+  margin-top: 18px;
+}
+
+.badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: #f3fbf4;
+  color: #2aad38;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.title {
+  margin: 0;
+  font-size: 26px;
+  line-height: 1.25;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  color: #111111;
+}
+
+.price {
+  margin: 10px 0 0;
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: #111111;
+}
+
+.sections {
+  margin-top: 24px;
+  display: grid;
+  gap: 18px;
+}
+
+.section {
+  border-radius: 18px;
+  border: 1px solid #eeeeee;
+  background: #ffffff;
+  padding: 18px;
+}
+
+.sectionTitle {
+  margin: 0 0 10px;
+  font-size: 20px;
+  line-height: 1.25;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  color: #111111;
+}
+
+.bodyText {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.6;
+  color: #4a4a4a;
+  white-space: pre-wrap;
+}
+
+.mutedText {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.6;
+  color: #8a8a8a;
+}
+
+.infoGrid {
+  display: grid;
+  gap: 10px;
+}
+
+.infoRow {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.infoLabel {
+  font-size: 13px;
+  color: #8a8a8a;
+  flex-shrink: 0;
+}
+
+.infoValue {
+  font-size: 15px;
+  color: #111111;
+  text-align: right;
+}
+
+.fixedCta {
+  position: fixed;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(100%, 430px);
+  background: #ffffff;
+  border-top: 1px solid #eeeeee;
+  padding: 14px 24px 20px;
+  z-index: 60;
+}
+
+.ctaButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 52px;
+  border-radius: 12px;
+  background: #2aad38;
+  color: #ffffff;
+  font-size: 16px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.ctaButton:active {
+  background: #249b31;
+}

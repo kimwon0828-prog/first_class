@@ -1,10 +1,11 @@
 import Link from "next/link"
-import type { CSSProperties } from "react"
+import Image from "next/image"
 
-import { AuthEntryButton } from "@/features/auth/ui/auth-entry-button"
+import { getSession } from "@/features/auth/lib/session"
 import { getPublicClassDetail } from "@/features/classes/queries/get-public-class-detail"
 import { BookmarkButton } from "@/features/favorites/ui/bookmark-button"
 import { normalizeAcademyArea } from "@/shared/config/academy-areas"
+import styles from "./page.module.css"
 
 type ClassDetailPageProps = {
   params: Promise<{
@@ -15,211 +16,205 @@ type ClassDetailPageProps = {
   }>
 }
 
-const pageContainerStyle: CSSProperties = {
-  maxWidth: 640,
-  margin: "0 auto",
-  padding: "20px 16px 40px"
-}
-
-const sectionCardStyle: CSSProperties = {
-  backgroundColor: "#ffffff",
-  border: "1px solid #e5e7eb",
-  borderRadius: 12,
-  padding: 14
-}
-
-const chipStyle: CSSProperties = {
-  display: "inline-flex",
-  border: "1px solid #d1d5db",
-  borderRadius: 999,
-  padding: "4px 10px",
-  fontSize: 12,
-  color: "#374151"
-}
-
-const favoritesButtonStyle: CSSProperties = {
-  display: "inline-flex",
-  alignItems: "center",
-  justifyContent: "center",
-  gap: 8,
-  width: "100%",
-  padding: "12px 14px",
-  borderRadius: 10,
-  border: "1px solid #e5e7eb",
-  backgroundColor: "#ffffff",
-  color: "#111827",
-  fontSize: 14,
-  fontWeight: 700,
-  cursor: "pointer",
-  WebkitTapHighlightColor: "transparent"
-}
-
-const favoritesButtonActiveStyle: CSSProperties = {
-  borderColor: "rgba(42, 173, 56, 0.35)",
-  backgroundColor: "rgba(42, 173, 56, 0.08)",
-  color: "#2aad38"
-}
-
 const formatPrice = (price: number) => {
   if (price <= 0) {
     return "무료"
   }
 
-  return `신청비 ${price.toLocaleString("ko-KR")}원`
+  return `${price.toLocaleString("ko-KR")}원`
 }
 
-const formatProgramType = (value: string) => {
-  if (value === "level_test") {
-    return "레벨테스트"
-  }
-
-  return "체험수업"
-}
+const formatProgramType = (value: string) => (value === "level_test" ? "레벨테스트" : "체험수업")
 
 export default async function ClassDetailPage({ params, searchParams }: ClassDetailPageProps) {
   const resolvedParams = await params
   const resolvedSearchParams = searchParams ? await searchParams : undefined
-  const rawRegion = typeof resolvedSearchParams?.region === "string" ? resolvedSearchParams.region : null
-  const selectedRegion = normalizeAcademyArea(rawRegion)
+  const rawRegionParam =
+    typeof resolvedSearchParams?.region === "string" ? resolvedSearchParams.region : null
+  const decodedRegion = (() => {
+    if (!rawRegionParam) return null
+    try {
+      return decodeURIComponent(rawRegionParam)
+    } catch {
+      return rawRegionParam
+    }
+  })()
+  const selectedRegion = normalizeAcademyArea(decodedRegion)
   const classesHref = `/classes?region=${encodeURIComponent(selectedRegion)}`
-  const detailHref = `/classes/${resolvedParams.id}?region=${encodeURIComponent(selectedRegion)}`
   const { data: classItem, error } = await getPublicClassDetail(resolvedParams.id)
+  const session = await getSession()
+  const applyHref = `/classes/${resolvedParams.id}/apply`
+  const applyEntryHref = session
+    ? applyHref
+    : `/auth/sign-in?${new URLSearchParams({ returnTo: applyHref }).toString()}`
 
   return (
-    <main style={pageContainerStyle}>
-      <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 12 }}>
-        <AuthEntryButton returnTo={detailHref} />
-      </div>
-      <div style={{ marginBottom: 12 }}>
-        <Link href={classesHref} style={{ color: "#2563eb", fontSize: 14 }}>
-          ← 프로그램 목록으로
-        </Link>
-      </div>
-
-      {error ? (
-        <section style={{ ...sectionCardStyle, borderColor: "#fecaca" }}>
-          <p style={{ margin: "0 0 8px", color: "#991b1b", fontSize: 14 }}>{error}</p>
-          <Link href={classesHref} style={{ color: "#2563eb", fontSize: 14 }}>
-            목록으로 돌아가기
-          </Link>
-        </section>
-      ) : null}
-
-      {!error && !classItem ? (
-        <section style={sectionCardStyle}>
-          <h1 style={{ margin: "0 0 8px", fontSize: 20 }}>프로그램 정보를 찾을 수 없어요</h1>
-          <p style={{ margin: 0, color: "#6b7280", fontSize: 14 }}>
-            링크가 바뀌었거나 공개가 종료된 프로그램일 수 있습니다.
-          </p>
-        </section>
-      ) : null}
-
-      {!error && classItem ? (
-        <>
-          <section style={{ ...sectionCardStyle, marginBottom: 10 }}>
-            {classItem.coverImageUrl ? (
-              <>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={classItem.coverImageUrl}
-                  alt={`${classItem.title} 대표 이미지`}
-                  style={{
-                    display: "block",
-                    width: "100%",
-                    height: 220,
-                    objectFit: "cover",
-                    borderRadius: 10,
-                    marginBottom: 12
-                  }}
-                />
-              </>
-            ) : null}
-            <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 8 }}>
-              <span style={chipStyle}>{formatProgramType(classItem.programType)}</span>
-              <span style={chipStyle}>{classItem.subject}</span>
-              <span style={chipStyle}>{classItem.region}</span>
-              <span style={chipStyle}>{classItem.targetAge}</span>
-            </div>
-
-            <h1 style={{ margin: "0 0 10px", fontSize: 22 }}>{classItem.title}</h1>
-            <p style={{ margin: "0 0 6px", fontSize: 14, color: "#111827" }}>
-              {formatPrice(classItem.trialPrice)}
-            </p>
-            <p style={{ margin: 0, fontSize: 13, color: "#4b5563" }}>
-              {classItem.teacherDisplayName || classItem.teacherName
-                ? `담당 선생님 ${classItem.teacherDisplayName ?? classItem.teacherName}`
-                : "담당 선생님 정보 준비 중"}
-            </p>
-          </section>
-
-          <section style={{ ...sectionCardStyle, marginBottom: 10 }}>
-            <h2 style={{ margin: "0 0 8px", fontSize: 17 }}>프로그램 소개</h2>
-            <p style={{ margin: 0, lineHeight: 1.6, color: "#374151", fontSize: 14 }}>
-              {classItem.description}
-            </p>
-          </section>
-
-          <section style={{ ...sectionCardStyle, marginBottom: 14 }}>
-            <h2 style={{ margin: "0 0 8px", fontSize: 17 }}>선생님 공개 정보</h2>
-            {classItem.teacherProfile ? (
-              <div style={{ display: "grid", gap: 6 }}>
-                <p style={{ margin: 0, fontSize: 15, color: "#111827" }}>
-                  {classItem.teacherProfile.teacherName}
-                </p>
-                <p style={{ margin: 0, fontSize: 14, color: "#374151" }}>
-                  전문 분야:{" "}
-                  {classItem.teacherProfile.specialty
-                    ? classItem.teacherProfile.specialty
-                    : "준비 중"}
-                </p>
-                <p style={{ margin: 0, fontSize: 14, color: "#374151" }}>
-                  경력: {classItem.teacherProfile.careerYears}년
-                </p>
-                <p style={{ margin: 0, fontSize: 14, color: "#4b5563", lineHeight: 1.6 }}>
-                  {classItem.teacherProfile.intro
-                    ? classItem.teacherProfile.intro
-                    : "선생님 소개가 곧 추가될 예정입니다."}
-                </p>
-              </div>
-            ) : (
-              <p style={{ margin: 0, color: "#6b7280", fontSize: 14 }}>
-                현재 공개 가능한 선생님 정보가 없습니다.
-              </p>
-            )}
-          </section>
-
-          <section style={sectionCardStyle}>
-            <div style={{ display: "grid", gap: 10, marginBottom: 10 }}>
-              <BookmarkButton
-                classId={classItem.id}
-                showLabel
-                inactiveLabel="관심수업 추가"
-                activeLabel="관심수업 저장됨"
-                iconSize={18}
-                style={favoritesButtonStyle}
-                activeStyle={favoritesButtonActiveStyle}
-              />
-            </div>
-            <Link
-              href={`/classes/${classItem.id}/apply`}
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                justifyContent: "center",
-                width: "100%",
-                padding: "12px 14px",
-                borderRadius: 10,
-                border: "none",
-                backgroundColor: "#111827",
-                color: "#ffffff",
-                fontSize: 15,
-                textDecoration: "none"
-              }}
+    <main className={styles.page}>
+      <div className={styles.shell}>
+        <div className={styles.topBar}>
+          <Link href={classesHref} className={styles.iconButton} aria-label="뒤로가기">
+            <svg
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+              aria-hidden="true"
             >
-              {formatProgramType(classItem.programType)} 신청하기
+              <path
+                d="M15 18l-6-6 6-6"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </Link>
+
+          {classItem ? (
+            <BookmarkButton
+              classId={classItem.id}
+              className={styles.iconButton}
+              activeClassName={styles.iconButton}
+              iconSize={18}
+            />
+          ) : (
+            <div style={{ width: 32, height: 32 }} />
+          )}
+        </div>
+
+        {error ? (
+          <section className={styles.section}>
+            <p className={styles.sectionTitle}>{error}</p>
+            <p className={styles.mutedText}>잠시 후 다시 시도해 주세요.</p>
+            <div style={{ height: 12 }} />
+            <Link href={classesHref} className={styles.ctaButton}>
+              목록으로 돌아가기
             </Link>
           </section>
-        </>
+        ) : null}
+
+        {!error && !classItem ? (
+          <section className={styles.section}>
+            <h1 className={styles.sectionTitle}>수업 정보를 찾을 수 없어요</h1>
+            <p className={styles.mutedText}>
+              링크가 바뀌었거나 공개가 종료된 수업일 수 있습니다.
+            </p>
+          </section>
+        ) : null}
+
+        {!error && classItem ? (
+          <>
+            <section className={styles.imageCard}>
+              <div className={styles.imageFrame}>
+                {classItem.coverImageUrl ? (
+                  <Image
+                    src={classItem.coverImageUrl}
+                    alt={`${classItem.title} 대표 이미지`}
+                    fill
+                    sizes="(max-width: 430px) 100vw, 430px"
+                    style={{ objectFit: "cover" }}
+                    unoptimized
+                    priority
+                  />
+                ) : (
+                  <div
+                    className={styles.imagePlaceholder}
+                    role="img"
+                    aria-label="첫수업 준비 중인 수업 이미지입니다."
+                  >
+                    첫수업 준비 중인 수업 이미지입니다.
+                  </div>
+                )}
+              </div>
+            </section>
+
+            <div className={styles.titleBlock}>
+              <div className={styles.badges}>
+                <span className={styles.badge}>{formatProgramType(classItem.programType)}</span>
+                <span className={styles.badge}>{classItem.subject}</span>
+                <span className={styles.badge}>{classItem.region}</span>
+                <span className={styles.badge}>{classItem.targetAge}</span>
+              </div>
+
+              <h1 className={styles.title}>{classItem.title}</h1>
+              <p className={styles.price}>{formatPrice(classItem.trialPrice)}</p>
+            </div>
+
+            <div className={styles.sections}>
+              <section className={styles.section}>
+                <h2 className={styles.sectionTitle}>핵심 정보</h2>
+                <div className={styles.infoGrid}>
+                  <div className={styles.infoRow}>
+                    <span className={styles.infoLabel}>학원/선생님</span>
+                    <span className={styles.infoValue}>
+                      {classItem.teacherDisplayName ?? classItem.teacherName ?? "정보 준비 중"}
+                    </span>
+                  </div>
+                  <div className={styles.infoRow}>
+                    <span className={styles.infoLabel}>지역</span>
+                    <span className={styles.infoValue}>{classItem.region}</span>
+                  </div>
+                  <div className={styles.infoRow}>
+                    <span className={styles.infoLabel}>과목</span>
+                    <span className={styles.infoValue}>{classItem.subject}</span>
+                  </div>
+                  <div className={styles.infoRow}>
+                    <span className={styles.infoLabel}>대상 학년</span>
+                    <span className={styles.infoValue}>{classItem.targetAge}</span>
+                  </div>
+                  <div className={styles.infoRow}>
+                    <span className={styles.infoLabel}>수업 방식</span>
+                    <span className={styles.infoValue}>정보 준비 중</span>
+                  </div>
+                </div>
+              </section>
+
+              <section className={styles.section}>
+                <h2 className={styles.sectionTitle}>수업 소개</h2>
+                {classItem.description?.trim() ? (
+                  <p className={styles.bodyText}>{classItem.description}</p>
+                ) : (
+                  <p className={styles.mutedText}>수업 소개가 준비 중입니다.</p>
+                )}
+              </section>
+
+              <section className={styles.section}>
+                <h2 className={styles.sectionTitle}>이런 아이에게 추천해요</h2>
+                <p className={styles.mutedText}>추천 대상 정보가 준비 중입니다.</p>
+              </section>
+
+              <section className={styles.section}>
+                <h2 className={styles.sectionTitle}>이 수업에서 경험하는 것</h2>
+                <p className={styles.mutedText}>수업 경험 정보가 준비 중입니다.</p>
+              </section>
+
+              <section className={styles.section}>
+                <h2 className={styles.sectionTitle}>일정</h2>
+                <p className={styles.mutedText}>일정 선택은 신청 단계에서 진행돼요.</p>
+              </section>
+
+              {classItem.teacherProfile ? (
+                <section className={styles.section}>
+                  <h2 className={styles.sectionTitle}>선생님 소개</h2>
+                  <p className={styles.bodyText}>
+                    {classItem.teacherProfile.intro?.trim()
+                      ? classItem.teacherProfile.intro
+                      : "선생님 소개가 준비 중입니다."}
+                  </p>
+                </section>
+              ) : null}
+            </div>
+          </>
+        ) : null}
+      </div>
+
+      {!error && classItem ? (
+        <div className={styles.fixedCta}>
+          <Link href={applyEntryHref} className={styles.ctaButton}>
+            {session ? "첫수업 신청하기" : "로그인하고 신청하기"}
+          </Link>
+        </div>
       ) : null}
     </main>
   )
