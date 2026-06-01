@@ -1,6 +1,7 @@
  "use client"
  
-import { useMemo, useRef, useState } from "react"
+import Image from "next/image"
+import { useEffect, useMemo, useRef, useState } from "react"
  
  import styles from "./page.module.css"
  
@@ -14,8 +15,9 @@ import { useMemo, useRef, useState } from "react"
  
  export function HeroBannerSlider({ banners }: HeroBannerSliderProps) {
    const [activeIndex, setActiveIndex] = useState(0)
-  const [dragOffsetPercent, setDragOffsetPercent] = useState(0)
+  const [dragOffsetPx, setDragOffsetPx] = useState(0)
   const [isDragging, setIsDragging] = useState(false)
+  const [trackWidthPx, setTrackWidthPx] = useState(0)
   const trackRef = useRef<HTMLDivElement | null>(null)
   const dragRef = useRef<{
     pointerId: number | null
@@ -35,6 +37,27 @@ import { useMemo, useRef, useState } from "react"
  
    const bannerIds = useMemo(() => banners.map((b) => b.id), [banners])
   const maxIndex = Math.max(0, bannerIds.length - 1)
+  const gapPx = 5
+  const peekPx = 20
+  const slideWidthPx = Math.max(1, trackWidthPx - peekPx)
+  const stepPx = slideWidthPx + gapPx
+
+  useEffect(() => {
+    const track = trackRef.current
+    if (!track) {
+      return
+    }
+
+    const update = () => {
+      const nextWidth = track.getBoundingClientRect().width
+      setTrackWidthPx(nextWidth)
+    }
+
+    update()
+    const observer = new ResizeObserver(() => update())
+    observer.observe(track)
+    return () => observer.disconnect()
+  }, [])
  
    return (
      <section>
@@ -58,7 +81,7 @@ import { useMemo, useRef, useState } from "react"
             dragging: false
           }
 
-          setDragOffsetPercent(0)
+          setDragOffsetPx(0)
           setIsDragging(false)
           event.currentTarget.setPointerCapture(event.pointerId)
         }}
@@ -84,9 +107,8 @@ import { useMemo, useRef, useState } from "react"
             return
           }
 
-          const offset = (dx / dragRef.current.width) * 100
-          const clamped = Math.max(-100, Math.min(100, offset))
-          setDragOffsetPercent(clamped)
+          const clamped = Math.max(-dragRef.current.width, Math.min(dragRef.current.width, dx))
+          setDragOffsetPx(clamped)
         }}
         onPointerUp={(event) => {
           if (dragRef.current.pointerId !== event.pointerId) {
@@ -94,7 +116,7 @@ import { useMemo, useRef, useState } from "react"
           }
 
           const dx = event.clientX - dragRef.current.startX
-          const shouldChange = Math.abs(dx) >= 50
+          const shouldChange = Math.abs(dx) >= Math.min(60, Math.max(40, dragRef.current.width * 0.12))
 
           if (dragRef.current.dragging && shouldChange) {
             if (dx < 0) {
@@ -107,27 +129,38 @@ import { useMemo, useRef, useState } from "react"
           dragRef.current.pointerId = null
           dragRef.current.decided = false
           dragRef.current.dragging = false
-          setDragOffsetPercent(0)
+          setDragOffsetPx(0)
           setIsDragging(false)
         }}
         onPointerCancel={() => {
           dragRef.current.pointerId = null
           dragRef.current.decided = false
           dragRef.current.dragging = false
-          setDragOffsetPercent(0)
+          setDragOffsetPx(0)
           setIsDragging(false)
         }}
       >
         <div
           className={styles.heroTrackInner}
           style={{
-            transform: `translateX(calc(${-activeIndex * 100}% + ${dragOffsetPercent}%))`,
+            transform: `translateX(${-activeIndex * stepPx + dragOffsetPx}px)`,
             transition: isDragging ? "none" : undefined
           }}
         >
           {bannerIds.map((id) => (
-            <article key={id} className={styles.heroCard}>
-              <div className={styles.heroBg} />
+            <article
+              key={id}
+              className={styles.heroCard}
+              style={{ width: slideWidthPx }}
+            >
+              <Image
+                src="/images/hero-banner-bg.png"
+                alt="프로모션 배너"
+                fill
+                sizes="(max-width: 430px) 100vw, 430px"
+                style={{ objectFit: "cover" }}
+                priority={activeIndex === 0}
+              />
               <div className={styles.heroOverlay} />
               <div className={styles.heroContent}>
                 <div className={styles.heroBrand}>첫수업</div>
