@@ -9,6 +9,7 @@ import {
   ClassesSubjectGrid
 } from "@/features/classes/ui/classes-region-select"
 import { getPublicClasses } from "@/features/classes/queries/get-public-classes"
+import { BookmarkButton } from "@/features/favorites/ui/bookmark-button"
 import { normalizeAcademyArea } from "@/shared/config/academy-areas"
 import styles from "./page.module.css"
 import { HeroBannerSlider } from "./hero-banner-slider"
@@ -255,6 +256,11 @@ export default async function ClassesPage({ searchParams }: ClassesPageProps) {
                     href={`/classes/${item.id}?region=${selectedRegion}`}
                     className={styles.card}
                   >
+                    <BookmarkButton
+                      classId={item.id}
+                      className={styles.bookmarkButton}
+                      activeClassName={styles.bookmarkButtonActive}
+                    />
                     <div className={styles.cardImage}>
                       {item.coverImageUrl ? (
                         <Image
@@ -307,24 +313,16 @@ export default async function ClassesPage({ searchParams }: ClassesPageProps) {
           </svg>
           <span>홈</span>
         </Link>
-        <Link href={classesHref} className={styles.navItem}>
+        <Link href="/favorites" className={styles.navItem}>
           <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
             <path
-              d="M10.5 18C14.6421 18 18 14.6421 18 10.5C18 6.35786 14.6421 3 10.5 3C6.35786 3 3 6.35786 3 10.5C3 14.6421 6.35786 18 10.5 18Z"
+              d="M7 4h10a1 1 0 0 1 1 1v17l-6-3.6L6 22V5a1 1 0 0 1 1-1Z"
               stroke="currentColor"
               strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-            <path
-              d="M21 21L16.65 16.65"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
               strokeLinejoin="round"
             />
           </svg>
-          <span>수업찾기</span>
+          <span>관심수업</span>
         </Link>
         <Link href={myApplicationsEntryHref} className={styles.navItem}>
           <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">

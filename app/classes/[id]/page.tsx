@@ -3,6 +3,7 @@ import type { CSSProperties } from "react"
 
 import { AuthEntryButton } from "@/features/auth/ui/auth-entry-button"
 import { getPublicClassDetail } from "@/features/classes/queries/get-public-class-detail"
+import { BookmarkButton } from "@/features/favorites/ui/bookmark-button"
 import { normalizeAcademyArea } from "@/shared/config/academy-areas"
 
 type ClassDetailPageProps = {
@@ -34,6 +35,29 @@ const chipStyle: CSSProperties = {
   padding: "4px 10px",
   fontSize: 12,
   color: "#374151"
+}
+
+const favoritesButtonStyle: CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  gap: 8,
+  width: "100%",
+  padding: "12px 14px",
+  borderRadius: 10,
+  border: "1px solid #e5e7eb",
+  backgroundColor: "#ffffff",
+  color: "#111827",
+  fontSize: 14,
+  fontWeight: 700,
+  cursor: "pointer",
+  WebkitTapHighlightColor: "transparent"
+}
+
+const favoritesButtonActiveStyle: CSSProperties = {
+  borderColor: "rgba(42, 173, 56, 0.35)",
+  backgroundColor: "rgba(42, 173, 56, 0.08)",
+  color: "#2aad38"
 }
 
 const formatPrice = (price: number) => {
@@ -165,6 +189,17 @@ export default async function ClassDetailPage({ params, searchParams }: ClassDet
           </section>
 
           <section style={sectionCardStyle}>
+            <div style={{ display: "grid", gap: 10, marginBottom: 10 }}>
+              <BookmarkButton
+                classId={classItem.id}
+                showLabel
+                inactiveLabel="관심수업 추가"
+                activeLabel="관심수업 저장됨"
+                iconSize={18}
+                style={favoritesButtonStyle}
+                activeStyle={favoritesButtonActiveStyle}
+              />
+            </div>
             <Link
               href={`/classes/${classItem.id}/apply`}
               style={{

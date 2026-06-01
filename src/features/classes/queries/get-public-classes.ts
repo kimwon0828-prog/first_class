@@ -56,3 +56,42 @@ export const getPublicClasses = async (
     }
   }
 }
+
+export const getAllPublicClasses = async (options?: {
+  subject?: string
+  query?: string
+}): Promise<QueryResult<ClassSummary[]>> => {
+  try {
+    if (shouldDebugDb()) {
+      console.info(
+        `[classes-debug] ${JSON.stringify({
+          supabaseHost: getSupabaseHost(),
+          dataAdapter: dataAdapterType,
+          region: null,
+          subject: options?.subject ?? null,
+          query: options?.query?.trim() ? options.query.trim() : null
+        })}`
+      )
+    }
+
+    const data = await dataAdapter.listClasses({
+      subject: options?.subject,
+      query: options?.query
+    })
+
+    if (shouldDebugDb()) {
+      console.info(`[getAllPublicClasses] ${JSON.stringify({ returned: data.length })}`)
+    }
+
+    return { data, error: null }
+  } catch {
+    if (shouldDebugDb()) {
+      console.error(`[getAllPublicClasses] ${JSON.stringify({ ok: false })}`)
+    }
+
+    return {
+      data: [],
+      error: "수업 목록을 불러오지 못했어요. 잠시 후 다시 시도해 주세요."
+    }
+  }
+}
