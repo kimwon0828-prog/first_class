@@ -155,6 +155,26 @@ const formatAcademyAreaLabel = (value: AcademyArea) => {
   return value.replace(/학원가$/, " 학원가")
 }
 
+const escapeQueryValue = (value: string) =>
+  value
+    .replace(/%/g, "%25")
+    .replace(/&/g, "%26")
+    .replace(/=/g, "%3D")
+    .replace(/#/g, "%23")
+    .replace(/\?/g, "%3F")
+    .replace(/ /g, "%20")
+
+const buildHref = (
+  pathname: string,
+  params: { region?: string | null; subject?: string | null; q?: string | null }
+) => {
+  const parts: string[] = []
+  if (params.region) parts.push(`region=${escapeQueryValue(params.region)}`)
+  if (params.subject) parts.push(`subject=${escapeQueryValue(params.subject)}`)
+  if (params.q) parts.push(`q=${escapeQueryValue(params.q)}`)
+  return parts.length ? `${pathname}?${parts.join("&")}` : pathname
+}
+
 export function ClassesSearchInput({
   initialQuery,
   label = "검색",
@@ -174,14 +194,10 @@ export function ClassesSearchInput({
   }, [initialQuery])
 
   const applyQuery = (nextValue: string) => {
-    const nextSearchParams = new URLSearchParams(searchParams.toString())
     const normalized = nextValue.trim()
-    if (normalized) {
-      nextSearchParams.set("q", normalized)
-    } else {
-      nextSearchParams.delete("q")
-    }
-    router.replace(`${pathname}?${nextSearchParams.toString()}`)
+    const region = searchParams.get("region")
+    const subject = searchParams.get("subject")
+    router.replace(buildHref(pathname, { region, subject, q: normalized || null }))
   }
 
   const scheduleApply = (nextValue: string) => {
@@ -233,9 +249,9 @@ export function ClassesRegionSelect({
   const searchParams = useSearchParams()
 
   const handleChange = (nextRegion: AcademyArea) => {
-    const nextSearchParams = new URLSearchParams(searchParams.toString())
-    nextSearchParams.set("region", nextRegion)
-    router.push(`${pathname}?${nextSearchParams.toString()}`)
+    const subject = searchParams.get("subject")
+    const q = searchParams.get("q")
+    router.push(buildHref(pathname, { region: nextRegion, subject, q }))
   }
 
   return (
@@ -276,14 +292,10 @@ export function ClassesSearchPill({
   }, [initialQuery])
 
   const applyQuery = (nextValue: string) => {
-    const nextSearchParams = new URLSearchParams(searchParams.toString())
     const normalized = nextValue.trim()
-    if (normalized) {
-      nextSearchParams.set("q", normalized)
-    } else {
-      nextSearchParams.delete("q")
-    }
-    router.replace(`${pathname}?${nextSearchParams.toString()}`)
+    const region = searchParams.get("region")
+    const subject = searchParams.get("subject")
+    router.replace(buildHref(pathname, { region, subject, q: normalized || null }))
   }
 
   const scheduleApply = (nextValue: string) => {
@@ -353,9 +365,9 @@ export function ClassesRegionInlineSelect({
   }, [isOpen])
 
   const handleChange = (nextRegion: AcademyArea) => {
-    const nextSearchParams = new URLSearchParams(searchParams.toString())
-    nextSearchParams.set("region", nextRegion)
-    router.push(`${pathname}?${nextSearchParams.toString()}`)
+    const subject = searchParams.get("subject")
+    const q = searchParams.get("q")
+    router.push(buildHref(pathname, { region: nextRegion, subject, q }))
   }
 
   return (
@@ -472,14 +484,10 @@ export function ClassesSubjectGrid({
   const searchParams = useSearchParams()
 
   const handleToggle = (label: string) => {
-    const nextSearchParams = new URLSearchParams(searchParams.toString())
-    const current = nextSearchParams.get("subject")
-    if (current === label) {
-      nextSearchParams.delete("subject")
-    } else {
-      nextSearchParams.set("subject", label)
-    }
-    router.push(`${pathname}?${nextSearchParams.toString()}`)
+    const region = searchParams.get("region")
+    const q = searchParams.get("q")
+    const currentSubject = searchParams.get("subject")
+    router.push(buildHref(pathname, { region, q, subject: currentSubject === label ? null : label }))
   }
 
   return (
