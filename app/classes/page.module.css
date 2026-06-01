@@ -300,14 +300,28 @@
  }
  
  .grid {
-   display: grid;
-   grid-template-columns: repeat(2, minmax(0, 1fr));
-   gap: 20px 14px;
-   padding: 0 24px 24px;
-   margin: 0;
-   list-style: none;
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  padding: 0 24px 24px;
+  margin: 0;
+  list-style: none;
+  scroll-snap-type: x mandatory;
+  scroll-padding-left: 24px;
+  scroll-padding-right: 24px;
+  -webkit-overflow-scrolling: touch;
  }
  
+.grid::-webkit-scrollbar {
+  display: none;
+}
+
+.slideItem {
+  flex: 0 0 auto;
+  width: 230px;
+  scroll-snap-align: start;
+}
+
  .card {
   position: relative;
    display: block;
@@ -318,6 +332,10 @@
    text-decoration: none;
    color: inherit;
  }
+
+.sliderCard {
+  border-radius: 10px;
+}
 
 .bookmarkButton {
   position: absolute;
@@ -352,6 +370,11 @@
    background: #f7f7f7;
  }
  
+.sliderCard .cardImage {
+  height: 140px;
+  aspect-ratio: auto;
+}
+
  .imagePlaceholder {
    height: 100%;
    display: flex;
@@ -369,6 +392,11 @@
    gap: 6px;
  }
  
+.sliderCard .cardBody {
+  padding: 10px 10px 12px;
+  gap: 4px;
+}
+
  .cardTitle {
    margin: 0;
    font-size: 15px;
@@ -378,6 +406,12 @@
    color: #111111;
  }
  
+.sliderCard .cardTitle {
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+
  .cardPrice {
    margin: 0;
    font-size: 14px;
@@ -385,6 +419,12 @@
    color: #111111;
  }
  
+.sliderCard .cardPrice {
+  font-size: 13px;
+  font-weight: 500;
+  color: #111111;
+}
+
  .cardMeta {
    display: flex;
    align-items: center;
@@ -394,9 +434,12 @@
    color: #666666;
  }
  
- .star {
-   color: #ffb020;
- }
+.sliderCard .cardMeta {
+  gap: 4px;
+  font-size: 11px;
+  color: #43474f;
+}
+
  
  .stateCard {
    margin: 12px 24px 0;

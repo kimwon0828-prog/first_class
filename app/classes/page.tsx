@@ -251,10 +251,10 @@ export default async function ClassesPage({ searchParams }: ClassesPageProps) {
           {!error && classes.length > 0 ? (
             <ul className={styles.grid}>
               {classes.map((item) => (
-                <li key={item.id}>
+                <li key={item.id} className={styles.slideItem}>
                   <Link
                     href={`/classes/${item.id}?region=${selectedRegion}`}
-                    className={styles.card}
+                    className={`${styles.card} ${styles.sliderCard}`}
                   >
                     <BookmarkButton
                       classId={item.id}
@@ -286,7 +286,6 @@ export default async function ClassesPage({ searchParams }: ClassesPageProps) {
                       <h3 className={styles.cardTitle}>{item.title}</h3>
                       <p className={styles.cardPrice}>{formatPrice(item.trialPrice)}</p>
                       <div className={styles.cardMeta}>
-                        <span className={styles.star}>★</span>
                         <span>{item.subject}</span>
                         <span>·</span>
                         <span>{item.targetAge}</span>
