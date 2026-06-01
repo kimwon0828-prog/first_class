@@ -1,15 +1,15 @@
 .page {
   background: #ffffff;
-  min-height: 100vh;
+  min-height: 100dvh;
 }
 
 .shell {
   width: 100%;
   max-width: 430px;
   margin: 0 auto;
-  min-height: 100vh;
+  min-height: 100dvh;
   background: #ffffff;
-  padding: 14px 24px 110px;
+  padding: calc(14px + env(safe-area-inset-top)) 24px calc(110px + env(safe-area-inset-bottom));
 }
 
 .topBar {
@@ -77,23 +77,24 @@
   border-radius: 999px;
   background: #f3fbf4;
   color: #2aad38;
-  font-size: 13px;
+  font-size: clamp(12px, 3.3vw, 13px);
   font-weight: 700;
   letter-spacing: -0.02em;
 }
 
 .title {
   margin: 0;
-  font-size: 26px;
+  font-size: clamp(22px, 6.2vw, 26px);
   line-height: 1.25;
   font-weight: 800;
   letter-spacing: -0.04em;
   color: #111111;
+  overflow-wrap: anywhere;
 }
 
 .price {
   margin: 10px 0 0;
-  font-size: 18px;
+  font-size: clamp(16px, 4.6vw, 18px);
   font-weight: 800;
   letter-spacing: -0.02em;
   color: #111111;
@@ -114,7 +115,7 @@
 
 .sectionTitle {
   margin: 0 0 10px;
-  font-size: 20px;
+  font-size: clamp(18px, 5.2vw, 20px);
   line-height: 1.25;
   font-weight: 800;
   letter-spacing: -0.04em;
@@ -127,6 +128,7 @@
   line-height: 1.6;
   color: #4a4a4a;
   white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 
 .mutedText {
@@ -158,6 +160,7 @@
   font-size: 15px;
   color: #111111;
   text-align: right;
+  overflow-wrap: anywhere;
 }
 
 .fixedCta {
@@ -168,7 +171,7 @@
   width: min(100%, 430px);
   background: #ffffff;
   border-top: 1px solid #eeeeee;
-  padding: 14px 24px 20px;
+  padding: 14px 24px calc(20px + env(safe-area-inset-bottom));
   z-index: 60;
 }
 
@@ -177,6 +180,8 @@
   align-items: center;
   justify-content: center;
   width: 100%;
+  max-width: 350px;
+  margin: 0 auto;
   height: 52px;
   border-radius: 12px;
   background: #2aad38;
@@ -188,4 +193,24 @@
 
 .ctaButton:active {
   background: #249b31;
+}
+
+@media (max-width: 360px) {
+  .shell {
+    padding-left: 20px;
+    padding-right: 20px;
+  }
+
+  .section {
+    padding: 16px;
+  }
+
+  .infoRow {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .infoValue {
+    text-align: left;
+  }
 }
