@@ -29,6 +29,22 @@ const formatPrice = (price: number) => {
   return `${price.toLocaleString("ko-KR")}원`
 }
 
+const escapeQueryValue = (value: string) =>
+  value
+    .replace(/%/g, "%25")
+    .replace(/&/g, "%26")
+    .replace(/=/g, "%3D")
+    .replace(/#/g, "%23")
+    .replace(/\?/g, "%3F")
+    .replace(/ /g, "%20")
+
+const buildClassesHref = (params: { region: string; subject?: string | null; q?: string | null }) => {
+  const parts = [`region=${escapeQueryValue(params.region)}`]
+  if (params.subject) parts.push(`subject=${escapeQueryValue(params.subject)}`)
+  if (params.q) parts.push(`q=${escapeQueryValue(params.q)}`)
+  return `/classes?${parts.join("&")}`
+}
+
 export default async function ClassesPage({ searchParams }: ClassesPageProps) {
   const resolvedSearchParams = searchParams ? await searchParams : undefined
   const rawRegionParam =
@@ -42,8 +58,10 @@ export default async function ClassesPage({ searchParams }: ClassesPageProps) {
     }
   })()
   const selectedRegion = normalizeAcademyArea(decodedRegion)
-  const rawQuery = typeof resolvedSearchParams?.q === "string" ? resolvedSearchParams.q : ""
-  const selectedQuery = rawQuery.trim()
+  const selectedQuery =
+    typeof resolvedSearchParams?.q === "string" && resolvedSearchParams.q.trim().length > 0
+      ? resolvedSearchParams.q.trim()
+      : undefined
   const rawSubjectParam =
     typeof resolvedSearchParams?.subject === "string" ? resolvedSearchParams.subject : ""
   const decodedSubject = (() => {
@@ -56,15 +74,13 @@ export default async function ClassesPage({ searchParams }: ClassesPageProps) {
   })()
 
   if (decodedRegion !== selectedRegion) {
-    const nextSearchParams = new URLSearchParams()
-    nextSearchParams.set("region", selectedRegion)
-    if (decodedSubject) {
-      nextSearchParams.set("subject", decodedSubject)
-    }
-    if (selectedQuery) {
-      nextSearchParams.set("q", selectedQuery)
-    }
-    redirect(`/classes?${nextSearchParams.toString()}`)
+    redirect(
+      buildClassesHref({
+        region: selectedRegion,
+        subject: decodedSubject || null,
+        q: selectedQuery ?? null
+      })
+    )
   }
 
   const subjectCategories = [
@@ -86,22 +102,22 @@ export default async function ClassesPage({ searchParams }: ClassesPageProps) {
 
   const { data: classes, error } = await getPublicClasses(selectedRegion, {
     subject: selectedSubject ?? undefined,
-    query: selectedQuery || undefined
+    query: selectedQuery
   })
   const session = await getSession()
-  const classesSearchParams = new URLSearchParams()
-  classesSearchParams.set("region", selectedRegion)
-  if (selectedSubject) {
-    classesSearchParams.set("subject", selectedSubject)
-  }
-  if (selectedQuery) {
-    classesSearchParams.set("q", selectedQuery)
-  }
-  const classesHref = `/classes?${classesSearchParams.toString()}`
-  const myHref = "/my"
-  const myEntryHref = session
-    ? myHref
-    : `/auth/sign-in?${new URLSearchParams({ returnTo: myHref }).toString()}`
+  const classesHref = buildClassesHref({
+    region: selectedRegion,
+    subject: selectedSubject,
+    q: selectedQuery ?? null
+  })
+  const myPageHref = "/my"
+  const myApplicationsHref = "/my/applications"
+  const myPageEntryHref = session
+    ? myPageHref
+    : `/auth/sign-in?${new URLSearchParams({ returnTo: myPageHref }).toString()}`
+  const myApplicationsEntryHref = session
+    ? myApplicationsHref
+    : `/auth/sign-in?${new URLSearchParams({ returnTo: myApplicationsHref }).toString()}`
 
   const heroBanners = [{ id: "default" }, { id: "secondary" }, { id: "tertiary" }] as const
 
@@ -120,7 +136,7 @@ export default async function ClassesPage({ searchParams }: ClassesPageProps) {
           </Link>
 
           <ClassesSearchPill
-            initialQuery={selectedQuery}
+            initialQuery={selectedQuery ?? ""}
             placeholder="우리 아이에게 맞는 첫수업 찾기"
             className={styles.searchForm}
             pillClassName={styles.searchPill}
@@ -128,7 +144,7 @@ export default async function ClassesPage({ searchParams }: ClassesPageProps) {
           />
 
           {session ? (
-            <Link href={myEntryHref} className={styles.userButton} aria-label="마이페이지">
+            <Link href={myPageEntryHref} className={styles.userButton} aria-label="마이페이지">
               <svg
                 width="22"
                 height="22"
@@ -154,7 +170,7 @@ export default async function ClassesPage({ searchParams }: ClassesPageProps) {
               </svg>
             </Link>
           ) : (
-            <Link href={myEntryHref} className={styles.loginButton} aria-label="로그인">
+            <Link href={myPageEntryHref} className={styles.loginButton} aria-label="로그인">
               로그인
             </Link>
           )}
@@ -236,7 +252,7 @@ export default async function ClassesPage({ searchParams }: ClassesPageProps) {
               {classes.map((item) => (
                 <li key={item.id}>
                   <Link
-                    href={`/classes/${item.id}?region=${encodeURIComponent(selectedRegion)}`}
+                    href={`/classes/${item.id}?region=${selectedRegion}`}
                     className={styles.card}
                   >
                     <div className={styles.cardImage}>
@@ -279,7 +295,7 @@ export default async function ClassesPage({ searchParams }: ClassesPageProps) {
       </div>
 
       <nav className={styles.bottomNav} aria-label="하단 탭">
-        <Link href={classesHref} className={styles.navItem}>
+        <Link href={classesHref} className={`${styles.navItem} ${styles.navItemActive}`}>
           <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
             <path
               d="M3 10.5L12 3l9 7.5V21a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1V10.5Z"
@@ -291,7 +307,7 @@ export default async function ClassesPage({ searchParams }: ClassesPageProps) {
           </svg>
           <span>홈</span>
         </Link>
-        <Link href={classesHref} className={`${styles.navItem} ${styles.navItemActive}`}>
+        <Link href={classesHref} className={styles.navItem}>
           <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
             <path
               d="M10.5 18C14.6421 18 18 14.6421 18 10.5C18 6.35786 14.6421 3 10.5 3C6.35786 3 3 6.35786 3 10.5C3 14.6421 6.35786 18 10.5 18Z"
@@ -310,7 +326,7 @@ export default async function ClassesPage({ searchParams }: ClassesPageProps) {
           </svg>
           <span>수업찾기</span>
         </Link>
-        <Link href={myEntryHref} className={styles.navItem}>
+        <Link href={myApplicationsEntryHref} className={styles.navItem}>
           <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
             <path
               d="M9 6h11M9 12h11M9 18h11M5 6h.01M5 12h.01M5 18h.01"
