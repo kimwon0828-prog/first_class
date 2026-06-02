@@ -1,10 +1,17 @@
 .page {
   margin: 0 auto;
   width: 100%;
-  max-width: 393px;
+  max-width: 430px;
   min-height: 100dvh;
-  padding: 14px 22px 24px;
+  box-sizing: border-box;
+  overflow-x: hidden;
+  padding: calc(14px + env(safe-area-inset-top)) 24px
+    calc(24px + env(safe-area-inset-bottom));
   background: #fff;
+}
+
+.page * {
+  box-sizing: border-box;
 }
 
 .topBar {

@@ -32,7 +32,7 @@
 }
 
 .input:focus {
-  border-bottom-color: #87c122;
+  border-bottom-color: #2aad38;
 }
 
 .input:disabled {
@@ -76,7 +76,7 @@
   width: 100%;
   border: 0;
   border-radius: 10px;
-  background: #87c122;
+  background: #2aad38;
   color: #fff;
   font-size: 16px;
   line-height: 22px;
@@ -84,8 +84,18 @@
   padding: 14px 0;
 }
 
+.submitButton:active {
+  background: #249b31;
+}
+
 .submitButton:disabled {
   opacity: 0.75;
+}
+
+@supports (-webkit-touch-callout: none) {
+  .input {
+    font-size: 16px;
+  }
 }
 
 @media (max-width: 420px) {
