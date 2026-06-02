@@ -37,7 +37,18 @@ export default async function SignUpPage({ searchParams }: SignUpPageProps) {
   }
 
   return (
-    <main style={{ maxWidth: 420, margin: "0 auto", padding: "20px 16px" }}>
+    <main
+      style={{
+        background: "#ffffff",
+        margin: "0 auto",
+        width: "100%",
+        maxWidth: 430,
+        minHeight: "100dvh",
+        boxSizing: "border-box",
+        overflowX: "hidden",
+        padding: "calc(14px + env(safe-area-inset-top)) 24px calc(24px + env(safe-area-inset-bottom))"
+      }}
+    >
       <h1 style={{ marginTop: 0 }}>학부모 회원가입</h1>
       <p style={{ marginTop: 0, color: "#4b5563", fontSize: 14 }}>
         공개 회원가입은 학부모(parent) 계정만 가능합니다.

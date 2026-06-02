@@ -18,8 +18,22 @@ export default async function MyApplicationsPage() {
   const { data, error } = await getMyApplications()
 
   return (
-    <main className={styles.page}>
-      <div className={styles.shell}>
+    <main
+      className={styles.page}
+      style={{ background: "#ffffff", minHeight: "100dvh", width: "100%", overflowX: "hidden" }}
+    >
+      <div
+        className={styles.shell}
+        style={{
+          boxSizing: "border-box",
+          width: "100%",
+          maxWidth: 430,
+          margin: "0 auto",
+          minHeight: "100dvh",
+          background: "#ffffff",
+          padding: "calc(18px + env(safe-area-inset-top)) 24px calc(96px + env(safe-area-inset-bottom))"
+        }}
+      >
         <header className={styles.header}>
           <h1 className={styles.title}>내 신청</h1>
           <p className={styles.subtitle}>신청한 첫수업 진행 상태를 확인할 수 있어요.</p>

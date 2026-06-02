@@ -37,8 +37,22 @@ export default async function ClassApplyPage({ params }: ApplyPageProps) {
     ])
 
   return (
-    <main className={styles.page}>
-      <div className={styles.shell}>
+    <main
+      className={styles.page}
+      style={{ background: "#ffffff", minHeight: "100dvh", width: "100%", overflowX: "hidden" }}
+    >
+      <div
+        className={styles.shell}
+        style={{
+          boxSizing: "border-box",
+          width: "100%",
+          maxWidth: 430,
+          margin: "0 auto",
+          minHeight: "100dvh",
+          background: "#ffffff",
+          padding: "calc(14px + env(safe-area-inset-top)) 24px calc(110px + env(safe-area-inset-bottom))"
+        }}
+      >
         <header className={styles.topBar}>
           <Link
             href={`/classes/${resolvedParams.id}`}

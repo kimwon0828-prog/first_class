@@ -18,8 +18,22 @@ export default async function MyChildrenPage() {
   const { data, error } = await getMyChildren()
 
   return (
-    <main className={styles.page}>
-      <div className={styles.shell}>
+    <main
+      className={styles.page}
+      style={{ background: "#ffffff", minHeight: "100dvh", width: "100%", overflowX: "hidden" }}
+    >
+      <div
+        className={styles.shell}
+        style={{
+          boxSizing: "border-box",
+          width: "100%",
+          maxWidth: 430,
+          margin: "0 auto",
+          minHeight: "100dvh",
+          background: "#ffffff",
+          padding: "calc(18px + env(safe-area-inset-top)) 24px calc(40px + env(safe-area-inset-bottom))"
+        }}
+      >
         <header className={styles.header}>
           <div className={styles.headerRow}>
             <Link href="/my" aria-label="뒤로가기" className={styles.backButton}>

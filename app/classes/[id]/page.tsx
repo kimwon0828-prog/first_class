@@ -49,8 +49,22 @@ export default async function ClassDetailPage({ params, searchParams }: ClassDet
     : `/auth/sign-in?${new URLSearchParams({ returnTo: applyHref }).toString()}`
 
   return (
-    <main className={styles.page}>
-      <div className={styles.shell}>
+    <main
+      className={styles.page}
+      style={{ background: "#ffffff", minHeight: "100dvh", width: "100%", overflowX: "hidden" }}
+    >
+      <div
+        className={styles.shell}
+        style={{
+          boxSizing: "border-box",
+          width: "100%",
+          maxWidth: 430,
+          margin: "0 auto",
+          minHeight: "100dvh",
+          background: "#ffffff",
+          padding: "calc(14px + env(safe-area-inset-top)) 24px calc(110px + env(safe-area-inset-bottom))"
+        }}
+      >
         <div className={styles.topBar}>
           <Link href={classesHref} className={styles.iconButton} aria-label="뒤로가기">
             <svg

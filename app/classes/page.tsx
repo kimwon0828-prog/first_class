@@ -123,8 +123,22 @@ export default async function ClassesPage({ searchParams }: ClassesPageProps) {
   const heroBanners = [{ id: "default" }, { id: "secondary" }, { id: "tertiary" }] as const
 
   return (
-    <main className={styles.page}>
-      <div className={styles.shell}>
+    <main
+      className={styles.page}
+      style={{ background: "#ffffff", minHeight: "100dvh", width: "100%", overflowX: "hidden" }}
+    >
+      <div
+        className={styles.shell}
+        style={{
+          boxSizing: "border-box",
+          width: "100%",
+          maxWidth: 430,
+          margin: "0 auto",
+          minHeight: "100dvh",
+          background: "#ffffff",
+          paddingBottom: "calc(96px + env(safe-area-inset-bottom))"
+        }}
+      >
         <header className={styles.header}>
           <Link href={classesHref} className={styles.brand}>
             <Image

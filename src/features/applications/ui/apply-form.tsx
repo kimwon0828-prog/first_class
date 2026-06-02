@@ -237,79 +237,6 @@ export const ApplyForm = ({
         </div>
       </section>
 
-      <section className={styles.card}>
-        <h2 className={styles.cardTitle}>희망 일정</h2>
-
-        {slotsError ? <p className={styles.dangerText}>{slotsError}</p> : null}
-
-        {!slotsError && availableSlots.length === 0 ? (
-          <p className={styles.help}>현재 선택 가능한 예약 시간대가 없습니다.</p>
-        ) : null}
-
-        {!slotsError && availableSlots.length > 0 ? (
-          <div className={styles.scheduleList}>
-            {availableSlots.map((slot) => (
-              <label
-                key={slot.id}
-                className={`${styles.slotItem} ${slot.isClosed ? styles.slotItemDisabled : ""}`}
-              >
-                <input
-                  className={styles.radio}
-                  type="radio"
-                  name="selectedScheduleBlockId"
-                  value={slot.id}
-                  required={hasSelectableSlots}
-                  checked={selectedSlotId === slot.id}
-                  onChange={() => {
-                    setSelectedSlotId(slot.id)
-                  }}
-                  disabled={isPending || slot.isClosed}
-                />
-                <span className={styles.slotText}>
-                  {formatSlot(slot.startAt)}
-                  {slot.isClosed ? (
-                    <span className={styles.slotClosed}>마감</span>
-                  ) : (
-                    <span className={styles.slotMeta}>남은 {slot.remainingCount}자리</span>
-                  )}
-                </span>
-              </label>
-            ))}
-          </div>
-        ) : null}
-      </section>
-
-      <section className={styles.card}>
-        <h2 className={styles.cardTitle}>문의사항</h2>
-        <div className={styles.fieldStack}>
-          <div className={styles.field}>
-            <span className={styles.label}>남길 내용</span>
-            <textarea
-              name="memo"
-              rows={4}
-              maxLength={500}
-              disabled={isPending}
-              placeholder="아이의 현재 수준이나 궁금한 점을 남겨주세요."
-              className={styles.textarea}
-            />
-            <p className={styles.help}>학원/선생님이 수업 준비에 참고합니다.</p>
-          </div>
-        </div>
-      </section>
-
-      <section className={styles.card}>
-        <h2 className={styles.cardTitle}>개인정보 동의</h2>
-        <div className={styles.agreeRow}>
-          <input className={styles.checkbox} type="checkbox" name="privacyAgree" value="yes" />
-          <div>
-            <div className={styles.agreeText}>신청 진행을 위해 개인정보 제공에 동의합니다.</div>
-            <p className={styles.agreeSub}>
-              연락처/자녀 정보는 수업 안내 및 일정 확정을 위해 학원/선생님에게 전달될 수 있어요.
-            </p>
-          </div>
-        </div>
-      </section>
-
       <details className={styles.details}>
         <summary className={styles.detailsSummary}>선택 정보 추가 입력</summary>
         <div className={styles.detailsBody}>
@@ -427,6 +354,79 @@ export const ApplyForm = ({
           </div>
         </div>
       </details>
+
+      <section className={styles.card}>
+        <h2 className={styles.cardTitle}>희망 일정</h2>
+
+        {slotsError ? <p className={styles.dangerText}>{slotsError}</p> : null}
+
+        {!slotsError && availableSlots.length === 0 ? (
+          <p className={styles.help}>현재 선택 가능한 예약 시간대가 없습니다.</p>
+        ) : null}
+
+        {!slotsError && availableSlots.length > 0 ? (
+          <div className={styles.scheduleList}>
+            {availableSlots.map((slot) => (
+              <label
+                key={slot.id}
+                className={`${styles.slotItem} ${slot.isClosed ? styles.slotItemDisabled : ""}`}
+              >
+                <input
+                  className={styles.radio}
+                  type="radio"
+                  name="selectedScheduleBlockId"
+                  value={slot.id}
+                  required={hasSelectableSlots}
+                  checked={selectedSlotId === slot.id}
+                  onChange={() => {
+                    setSelectedSlotId(slot.id)
+                  }}
+                  disabled={isPending || slot.isClosed}
+                />
+                <span className={styles.slotText}>
+                  {formatSlot(slot.startAt)}
+                  {slot.isClosed ? (
+                    <span className={styles.slotClosed}>마감</span>
+                  ) : (
+                    <span className={styles.slotMeta}>남은 {slot.remainingCount}자리</span>
+                  )}
+                </span>
+              </label>
+            ))}
+          </div>
+        ) : null}
+      </section>
+
+      <section className={styles.card}>
+        <h2 className={styles.cardTitle}>문의사항</h2>
+        <div className={styles.fieldStack}>
+          <div className={styles.field}>
+            <span className={styles.label}>남길 내용</span>
+            <textarea
+              name="memo"
+              rows={4}
+              maxLength={500}
+              disabled={isPending}
+              placeholder="아이의 현재 수준이나 궁금한 점을 남겨주세요."
+              className={styles.textarea}
+            />
+            <p className={styles.help}>학원/선생님이 수업 준비에 참고합니다.</p>
+          </div>
+        </div>
+      </section>
+
+      <section className={styles.card}>
+        <h2 className={styles.cardTitle}>개인정보 동의</h2>
+        <div className={styles.agreeRow}>
+          <input className={styles.checkbox} type="checkbox" name="privacyAgree" value="yes" />
+          <div>
+            <div className={styles.agreeText}>신청 진행을 위해 개인정보 제공에 동의합니다.</div>
+            <p className={styles.agreeSub}>
+              연락처/자녀 정보는 수업 안내 및 일정 확정을 위해 학원/선생님에게 전달될 수 있어요.
+            </p>
+          </div>
+        </div>
+      </section>
 
       {state.message ? (
         <p className={state.status === "error" ? styles.dangerText : styles.noticeText}>

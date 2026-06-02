@@ -40,7 +40,19 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
   }
 
   return (
-    <main className={styles.page}>
+    <main
+      className={styles.page}
+      style={{
+        margin: "0 auto",
+        width: "100%",
+        maxWidth: 430,
+        minHeight: "100dvh",
+        boxSizing: "border-box",
+        overflowX: "hidden",
+        padding: "calc(14px + env(safe-area-inset-top)) 24px calc(24px + env(safe-area-inset-bottom))",
+        background: "#ffffff"
+      }}
+    >
       <div className={styles.topBar}>
         <Link href="/classes" className={styles.backButton} aria-label="뒤로가기">
           〈
