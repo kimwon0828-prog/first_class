@@ -5,6 +5,7 @@ import { getMyProfile } from "@/features/auth/lib/profile-sync"
 import { requireSession } from "@/features/auth/lib/session"
 import { getMyChildren } from "@/features/children/queries/get-my-children"
 import { MyChildrenManager } from "@/features/children/ui/my-children-manager"
+import styles from "./page.module.css"
 
 export default async function MyChildrenPage() {
   await requireSession("/auth/sign-in")
@@ -17,37 +18,52 @@ export default async function MyChildrenPage() {
   const { data, error } = await getMyChildren()
 
   return (
-    <main style={{ maxWidth: 640, margin: "0 auto", padding: "20px 16px 40px" }}>
-      <div style={{ marginBottom: 12 }}>
-        <Link href="/my" style={{ color: "#2563eb", fontSize: 14 }}>
-          ← 마이페이지로 돌아가기
-        </Link>
-      </div>
+    <main className={styles.page}>
+      <div className={styles.shell}>
+        <header className={styles.header}>
+          <div className={styles.headerRow}>
+            <Link href="/my" aria-label="뒤로가기" className={styles.backButton}>
+              <svg
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+                aria-hidden="true"
+              >
+                <path
+                  d="M15 18l-6-6 6-6"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </Link>
+            <div className={styles.headerSpacer} />
+          </div>
 
-      <header style={{ marginBottom: 16 }}>
-        <h1 style={{ margin: "0 0 8px", fontSize: 24 }}>자녀 관리</h1>
-        <p style={{ margin: 0, fontSize: 14, color: "#4b5563", lineHeight: 1.6 }}>
-          자녀 정보를 미리 등록해 두면 이후 체험수업이나 레벨테스트 신청 시 반복 입력을 줄일 수 있습니다.
-        </p>
-      </header>
+          <h1 className={styles.title}>자녀 관리</h1>
+          <p className={styles.subtitle}>자녀 정보를 등록해두면 첫수업 신청이 더 편해져요.</p>
+        </header>
 
-      {error ? (
-        <section
-          style={{
-            border: "1px solid #fecaca",
-            borderRadius: 12,
-            backgroundColor: "#fff",
-            padding: 14
-          }}
-        >
-          <p style={{ margin: "0 0 8px", color: "#991b1b", fontSize: 14 }}>{error}</p>
-          <Link href="/my" style={{ color: "#2563eb", fontSize: 14 }}>
-            마이페이지로 이동
-          </Link>
+        <section className={styles.noticeCard}>
+          <p className={styles.noticeText}>
+            자녀 정보를 미리 등록해두면 신청서 작성 시 아이 이름과 학년을 자동으로 불러올 수 있어요.
+          </p>
         </section>
-      ) : (
-        <MyChildrenManager items={data} />
-      )}
+
+        {error ? (
+          <section className={`${styles.card} ${styles.dangerCard}`}>
+            <p className={styles.dangerText}>{error}</p>
+            <Link href="/my" className={styles.link}>
+              마이페이지로 이동
+            </Link>
+          </section>
+        ) : (
+          <MyChildrenManager items={data} />
+        )}
+      </div>
     </main>
   )
 }

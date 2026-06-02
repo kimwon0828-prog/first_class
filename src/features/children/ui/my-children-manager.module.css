@@ -1,0 +1,165 @@
+.stack {
+  display: grid;
+  gap: 24px;
+}
+
+.listCard,
+.formCard {
+  border: 1px solid #eeeeee;
+  border-radius: 20px;
+  background: #ffffff;
+  padding: 20px;
+}
+
+.sectionHeader {
+  margin-bottom: 16px;
+}
+
+.sectionTitle {
+  margin: 0;
+  font-size: 20px;
+  line-height: 1.25;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  color: #111111;
+}
+
+.sectionDesc {
+  margin: 10px 0 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #8a8a8a;
+}
+
+.empty {
+  display: grid;
+  gap: 8px;
+}
+
+.emptyTitle {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: #111111;
+}
+
+.emptyDesc {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.6;
+  color: #666666;
+}
+
+.childList {
+  display: grid;
+  gap: 14px;
+}
+
+.childCard {
+  border: 1px solid #eeeeee;
+  border-radius: 20px;
+  background: #ffffff;
+  padding: 20px;
+}
+
+.childCardActive {
+  border-color: #2aad38;
+  box-shadow: 0 0 0 3px rgba(42, 173, 56, 0.12);
+}
+
+.childTop {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.childNameRow {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.childName {
+  font-size: 18px;
+  line-height: 1.35;
+  font-weight: 800;
+  color: #111111;
+  overflow-wrap: anywhere;
+}
+
+.gradeBadge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 6px 10px;
+  background: #f3fbf4;
+  color: #2aad38;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.editButton {
+  flex: 0 0 auto;
+  height: 36px;
+  padding: 0 12px;
+  border-radius: 10px;
+  border: 1px solid #eeeeee;
+  background: #fafafa;
+  color: #4a4a4a;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.editButton:active {
+  background: #f3fbf4;
+  border-color: #2aad38;
+  color: #2aad38;
+}
+
+.kvGrid {
+  margin-top: 14px;
+  display: grid;
+  gap: 10px;
+}
+
+.kvRow {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.kvLabel {
+  font-size: 13px;
+  color: #8a8a8a;
+  flex: 0 0 auto;
+}
+
+.kvValue {
+  font-size: 14px;
+  line-height: 1.5;
+  color: #111111;
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
+.childHint {
+  margin: 14px 0 0;
+  font-size: 14px;
+  line-height: 1.6;
+  color: #666666;
+}
+
+@media (max-width: 360px) {
+  .kvRow {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .kvValue {
+    text-align: left;
+  }
+}

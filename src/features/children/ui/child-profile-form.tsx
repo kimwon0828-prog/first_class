@@ -1,10 +1,9 @@
 "use client"
 
-import type { CSSProperties } from "react"
-
 import type { ChildProfile } from "@/shared/lib/db/adapter"
 
 import type { ChildProfileActionState } from "@/features/children/actions/create-child-profile"
+import styles from "./child-profile-form.module.css"
 
 type ChildProfileFormProps = {
   mode: "create" | "update"
@@ -15,13 +14,6 @@ type ChildProfileFormProps = {
   onCancelEdit?: () => void
 }
 
-const inputStyle = {
-  padding: 12,
-  borderRadius: 10,
-  border: "1px solid #d0d5dd",
-  fontSize: 14
-} satisfies CSSProperties
-
 export const ChildProfileForm = ({
   mode,
   formAction,
@@ -31,11 +23,11 @@ export const ChildProfileForm = ({
   onCancelEdit
 }: ChildProfileFormProps) => {
   return (
-    <form action={formAction} style={{ display: "grid", gap: 12 }}>
+    <form action={formAction} className={styles.form}>
       {mode === "update" && initialValue ? <input type="hidden" name="childId" value={initialValue.id} /> : null}
 
-      <label style={{ display: "grid", gap: 6 }}>
-        <span>학생명</span>
+      <label className={styles.field}>
+        <span className={styles.label}>자녀 이름</span>
         <input
           name="name"
           type="text"
@@ -44,12 +36,12 @@ export const ChildProfileForm = ({
           maxLength={30}
           defaultValue={initialValue?.name ?? ""}
           disabled={isPending}
-          style={inputStyle}
+          className={styles.input}
         />
       </label>
 
-      <label style={{ display: "grid", gap: 6 }}>
-        <span>학년/연령</span>
+      <label className={styles.field}>
+        <span className={styles.label}>학년</span>
         <input
           name="grade"
           type="text"
@@ -58,37 +50,30 @@ export const ChildProfileForm = ({
           defaultValue={initialValue?.grade ?? ""}
           disabled={isPending}
           placeholder="예: 초3, 7세"
-          style={inputStyle}
+          className={styles.input}
         />
       </label>
 
       <details
         open={mode === "update"}
-        style={{
-          border: "1px solid #e5e7eb",
-          borderRadius: 10,
-          padding: 12,
-          backgroundColor: "#fcfcfd"
-        }}
+        className={styles.details}
       >
-        <summary style={{ cursor: "pointer", fontWeight: 600, fontSize: 14 }}>
-          선택 정보 더 입력하기
-        </summary>
-        <div style={{ display: "grid", gap: 12, marginTop: 12 }}>
-          <label style={{ display: "grid", gap: 6 }}>
-            <span>학교</span>
+        <summary className={styles.summary}>선택 정보 더 입력하기</summary>
+        <div className={styles.detailsContent}>
+          <label className={styles.field}>
+            <span className={styles.label}>학교명</span>
             <input
               name="schoolName"
               type="text"
               maxLength={60}
               defaultValue={initialValue?.schoolName ?? ""}
               disabled={isPending}
-              style={inputStyle}
+              className={styles.input}
             />
           </label>
 
-          <label style={{ display: "grid", gap: 6 }}>
-            <span>특이사항</span>
+          <label className={styles.field}>
+            <span className={styles.label}>특이사항</span>
             <textarea
               name="notes"
               rows={3}
@@ -96,12 +81,12 @@ export const ChildProfileForm = ({
               defaultValue={initialValue?.notes ?? ""}
               disabled={isPending}
               placeholder="성향, 주의사항, 알레르기 등을 적어 주세요."
-              style={{ ...inputStyle, resize: "vertical" }}
+              className={styles.textarea}
             />
           </label>
 
-          <label style={{ display: "grid", gap: 6 }}>
-            <span>현재 수준</span>
+          <label className={styles.field}>
+            <span className={styles.label}>현재 수준</span>
             <input
               name="currentLevel"
               type="text"
@@ -109,12 +94,12 @@ export const ChildProfileForm = ({
               defaultValue={initialValue?.currentLevel ?? ""}
               disabled={isPending}
               placeholder="예: 입문 단계, 기초 개념 가능"
-              style={inputStyle}
+              className={styles.input}
             />
           </label>
 
-          <label style={{ display: "grid", gap: 6 }}>
-            <span>관심 과목</span>
+          <label className={styles.field}>
+            <span className={styles.label}>관심 과목</span>
             <input
               name="interestSubjects"
               type="text"
@@ -122,12 +107,12 @@ export const ChildProfileForm = ({
               defaultValue={initialValue?.interestSubjects ?? ""}
               disabled={isPending}
               placeholder="예: 수학, 과학"
-              style={inputStyle}
+              className={styles.input}
             />
           </label>
 
-          <label style={{ display: "grid", gap: 6 }}>
-            <span>목표/고민 메모</span>
+          <label className={styles.field}>
+            <span className={styles.label}>목표/고민 메모</span>
             <textarea
               name="goalNote"
               rows={4}
@@ -135,7 +120,7 @@ export const ChildProfileForm = ({
               defaultValue={initialValue?.goalNote ?? ""}
               disabled={isPending}
               placeholder="학습 목표나 상담 시 전달하고 싶은 내용을 적어 주세요."
-              style={{ ...inputStyle, resize: "vertical" }}
+              className={styles.textarea}
             />
           </label>
         </div>
@@ -143,36 +128,25 @@ export const ChildProfileForm = ({
 
       {state.message ? (
         <p
-          style={{
-            margin: 0,
-            color: state.status === "error" ? "#b42318" : "#1f2937",
-            fontSize: 14
-          }}
+          className={state.status === "error" ? styles.errorMessage : styles.infoMessage}
         >
           {state.message}
         </p>
       ) : null}
 
-      <div style={{ display: "grid", gap: 8 }}>
+      <div className={styles.buttonStack}>
         <button
           type="submit"
           disabled={isPending}
-          style={{
-            padding: "12px 14px",
-            borderRadius: 10,
-            border: "none",
-            backgroundColor: "#111827",
-            color: "#fff",
-            fontSize: 14
-          }}
+          className={styles.primaryButton}
         >
           {isPending
             ? mode === "create"
               ? "등록 중..."
-              : "수정 중..."
+              : "저장 중..."
             : mode === "create"
-              ? "자녀 등록"
-              : "자녀 정보 저장"}
+              ? "자녀 등록하기"
+              : "저장하기"}
         </button>
 
         {mode === "update" && onCancelEdit ? (
@@ -180,16 +154,9 @@ export const ChildProfileForm = ({
             type="button"
             onClick={onCancelEdit}
             disabled={isPending}
-            style={{
-              padding: "12px 14px",
-              borderRadius: 10,
-              border: "1px solid #d0d5dd",
-              backgroundColor: "#fff",
-              color: "#344054",
-              fontSize: 14
-            }}
+            className={styles.secondaryButton}
           >
-            수정 취소
+            취소
           </button>
         ) : null}
       </div>

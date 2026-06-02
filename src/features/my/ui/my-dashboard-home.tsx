@@ -92,22 +92,6 @@ export const MyDashboardHome = ({
           title="신청 내역"
           description="신청한 첫수업 진행 상태를 확인해요."
         />
-        <Divider />
-        <MenuItem
-          href="/favorites"
-          title="관심수업"
-          description="찜한 수업을 모아볼 수 있어요."
-          badge="준비중"
-          disabled
-        />
-        <Divider />
-        <MenuItem
-          href="/my/settings"
-          title="계정 설정"
-          description="회원 정보를 확인해요."
-          badge="준비중"
-          disabled
-        />
       </section>
 
       <section className={styles.accountCard}>

@@ -1,6 +1,5 @@
 "use client"
 
-import type { CSSProperties } from "react"
 import { useActionState, useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 
@@ -11,6 +10,7 @@ import {
 import { updateChildProfileAction } from "@/features/children/actions/update-child-profile"
 import { ChildProfileForm } from "@/features/children/ui/child-profile-form"
 import type { ChildProfile } from "@/shared/lib/db/adapter"
+import styles from "./my-children-manager.module.css"
 
 type MyChildrenManagerProps = {
   items: ChildProfile[]
@@ -20,13 +20,6 @@ const initialActionState: ChildProfileActionState = {
   status: "idle",
   message: ""
 }
-
-const cardStyle = {
-  border: "1px solid #e5e7eb",
-  borderRadius: 12,
-  backgroundColor: "#fff",
-  padding: 14
-} satisfies CSSProperties
 
 export const MyChildrenManager = ({ items }: MyChildrenManagerProps) => {
   const router = useRouter()
@@ -68,16 +61,70 @@ export const MyChildrenManager = ({ items }: MyChildrenManagerProps) => {
   const formKey = editingChild ? `update-${editingChild.id}-${editingChild.updatedAt}` : `create-${formVersion}`
 
   return (
-    <section style={{ display: "grid", gap: 12 }}>
-      <section style={cardStyle}>
-        <div style={{ display: "grid", gap: 4, marginBottom: 12 }}>
-          <h2 style={{ margin: 0, fontSize: 18 }}>
-            {editingChild ? "자녀 정보 수정" : "자녀 정보 등록"}
-          </h2>
-          <p style={{ margin: 0, fontSize: 14, color: "#4b5563" }}>
-            신청 전에 자녀 정보를 미리 등록해 두면 다음 단계에서 반복 입력을 줄일 수 있어요.
-          </p>
-        </div>
+    <section className={styles.stack}>
+      <section className={styles.listCard}>
+        <header className={styles.sectionHeader}>
+          <h2 className={styles.sectionTitle}>등록된 자녀</h2>
+          <p className={styles.sectionDesc}>총 {items.length}명의 자녀 정보가 등록되어 있어요.</p>
+        </header>
+
+        {items.length === 0 ? (
+          <div className={styles.empty}>
+            <p className={styles.emptyTitle}>아직 등록된 자녀가 없어요.</p>
+            <p className={styles.emptyDesc}>아래에서 첫 자녀 정보를 등록해보세요.</p>
+          </div>
+        ) : (
+          <div className={styles.childList}>
+            {items.map((item) => {
+              const isEditing = editingChildId === item.id
+              const infoRows = [
+                item.schoolName ? { label: "학교", value: item.schoolName } : null,
+                item.currentLevel ? { label: "현재 수준", value: item.currentLevel } : null,
+                item.notes ? { label: "메모", value: item.notes } : null,
+                item.goalNote ? { label: "목표/고민", value: item.goalNote } : null
+              ].filter(Boolean) as Array<{ label: string; value: string }>
+              const visibleRows = infoRows.slice(0, 3)
+
+              return (
+                <article key={item.id} className={`${styles.childCard} ${isEditing ? styles.childCardActive : ""}`}>
+                  <div className={styles.childTop}>
+                    <div className={styles.childNameRow}>
+                      <div className={styles.childName}>{item.name}</div>
+                      <span className={styles.gradeBadge}>{item.grade}</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setEditingChildId(item.id)}
+                      className={styles.editButton}
+                    >
+                      수정
+                    </button>
+                  </div>
+
+                  {visibleRows.length > 0 ? (
+                    <div className={styles.kvGrid}>
+                      {visibleRows.map((row) => (
+                        <div key={row.label} className={styles.kvRow}>
+                          <span className={styles.kvLabel}>{row.label}</span>
+                          <span className={styles.kvValue}>{row.value}</span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className={styles.childHint}>등록된 추가 정보가 없어요.</p>
+                  )}
+                </article>
+              )
+            })}
+          </div>
+        )}
+      </section>
+
+      <section className={styles.formCard}>
+        <header className={styles.sectionHeader}>
+          <h2 className={styles.sectionTitle}>{editingChild ? "자녀 정보 수정" : "자녀 등록"}</h2>
+          <p className={styles.sectionDesc}>등록해두면 첫수업 신청서 작성이 더 빨라져요.</p>
+        </header>
         <div key={formKey}>
           <ChildProfileForm
             mode={formMode}
@@ -88,64 +135,6 @@ export const MyChildrenManager = ({ items }: MyChildrenManagerProps) => {
             onCancelEdit={() => setEditingChildId(null)}
           />
         </div>
-      </section>
-
-      <section style={cardStyle}>
-        <div style={{ display: "grid", gap: 4, marginBottom: 12 }}>
-          <h2 style={{ margin: 0, fontSize: 18 }}>등록된 자녀</h2>
-          <p style={{ margin: 0, fontSize: 14, color: "#4b5563" }}>
-            총 {items.length}명의 자녀 정보가 등록되어 있습니다.
-          </p>
-        </div>
-
-        {items.length === 0 ? (
-          <p style={{ margin: 0, fontSize: 14, color: "#6b7280" }}>
-            아직 등록된 자녀가 없습니다. 아래 폼에서 첫 자녀 정보를 등록해 주세요.
-          </p>
-        ) : (
-          <div style={{ display: "grid", gap: 10 }}>
-            {items.map((item) => (
-              <article
-                key={item.id}
-                style={{
-                  border: editingChildId === item.id ? "1px solid #111827" : "1px solid #e5e7eb",
-                  borderRadius: 12,
-                  padding: 12,
-                  backgroundColor: "#fff"
-                }}
-              >
-                <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
-                  <div style={{ display: "grid", gap: 4 }}>
-                    <strong style={{ fontSize: 15 }}>{item.name}</strong>
-                    <span style={{ fontSize: 13, color: "#4b5563" }}>{item.grade}</span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setEditingChildId(item.id)}
-                    style={{
-                      padding: "8px 10px",
-                      borderRadius: 8,
-                      border: "1px solid #d0d5dd",
-                      backgroundColor: "#fff",
-                      color: "#344054",
-                      fontSize: 13
-                    }}
-                  >
-                    수정하기
-                  </button>
-                </div>
-
-                <div style={{ display: "grid", gap: 4, marginTop: 10, fontSize: 14, color: "#374151" }}>
-                  <p style={{ margin: 0 }}>학교: {item.schoolName ?? "-"}</p>
-                  <p style={{ margin: 0 }}>현재 수준: {item.currentLevel ?? "-"}</p>
-                  <p style={{ margin: 0 }}>관심 과목: {item.interestSubjects ?? "-"}</p>
-                  <p style={{ margin: 0 }}>특이사항: {item.notes ?? "-"}</p>
-                  <p style={{ margin: 0 }}>목표/고민 메모: {item.goalNote ?? "-"}</p>
-                </div>
-              </article>
-            ))}
-          </div>
-        )}
       </section>
     </section>
   )
