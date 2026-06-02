@@ -198,6 +198,10 @@
   text-decoration: none;
 }
 
+.fixedCta .ctaButton {
+  max-width: 382px;
+}
+
 .ctaButton:active {
   background: #249b31;
 }

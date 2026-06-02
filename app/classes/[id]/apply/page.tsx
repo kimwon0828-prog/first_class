@@ -1,5 +1,4 @@
 import Link from "next/link"
-import type { CSSProperties } from "react"
 
 import { getMyProfile } from "@/features/auth/lib/profile-sync"
 import { requireSession } from "@/features/auth/lib/session"
@@ -7,24 +6,12 @@ import { getClassAvailableSlots } from "@/features/applications/queries/get-clas
 import { getPublicClassDetail } from "@/features/classes/queries/get-public-class-detail"
 import { getMyChildren } from "@/features/children/queries/get-my-children"
 import { ApplyForm } from "@/features/applications/ui/apply-form"
+import styles from "./page.module.css"
 
 type ApplyPageProps = {
   params: Promise<{
     id: string
   }>
-}
-
-const pageContainerStyle: CSSProperties = {
-  maxWidth: 640,
-  margin: "0 auto",
-  padding: "20px 16px 40px"
-}
-
-const cardStyle: CSSProperties = {
-  border: "1px solid #e5e7eb",
-  borderRadius: 12,
-  backgroundColor: "#fff",
-  padding: 14
 }
 
 const formatPrice = (price: number) => {
@@ -50,74 +37,87 @@ export default async function ClassApplyPage({ params }: ApplyPageProps) {
     ])
 
   return (
-    <main style={pageContainerStyle}>
-      <div style={{ marginBottom: 12 }}>
-        <Link href={`/classes/${resolvedParams.id}`} style={{ color: "#2563eb", fontSize: 14 }}>
-          ← 뒤로가기
-        </Link>
-      </div>
-
-      <h1 style={{ margin: "0 0 12px", fontSize: 24 }}>프로그램 신청</h1>
-
-      {error ? (
-        <section style={{ ...cardStyle, borderColor: "#fecaca" }}>
-          <p style={{ margin: "0 0 8px", color: "#991b1b", fontSize: 14 }}>{error}</p>
-          <Link href="/classes" style={{ color: "#2563eb", fontSize: 14 }}>
-            프로그램 목록으로 이동
+    <main className={styles.page}>
+      <div className={styles.shell}>
+        <header className={styles.topBar}>
+          <Link
+            href={`/classes/${resolvedParams.id}`}
+            className={styles.iconButton}
+            aria-label="뒤로가기"
+          >
+            <svg
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+              aria-hidden="true"
+            >
+              <path
+                d="M15 18l-6-6 6-6"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
           </Link>
-        </section>
-      ) : null}
+          <h1 className={styles.pageTitle}>첫수업 신청</h1>
+        </header>
 
-      {!error && !classItem ? (
-        <section style={cardStyle}>
-          <p style={{ margin: 0, fontSize: 14, color: "#4b5563" }}>
-            신청할 프로그램 정보를 찾을 수 없습니다.
-          </p>
-        </section>
-      ) : null}
-
-      {!error && classItem ? (
-        <div style={{ display: "grid", gap: 12 }}>
-          {!profile || profile.role !== "parent" ? (
-            <section style={{ ...cardStyle, borderColor: "#fecaca" }}>
-              <p style={{ margin: "0 0 8px", color: "#991b1b", fontSize: 14 }}>
-                학부모(parent) 계정만 신청할 수 있습니다.
-              </p>
-              <Link href={`/classes/${resolvedParams.id}`} style={{ color: "#2563eb", fontSize: 14 }}>
-                프로그램 상세로 돌아가기
+        <div className={styles.stack}>
+          {error ? (
+            <section className={`${styles.card} ${styles.dangerCard}`}>
+              <p className={styles.dangerText}>{error}</p>
+              <Link href="/classes" className={styles.link}>
+                수업 목록으로 이동
               </Link>
             </section>
           ) : null}
 
-          <section style={cardStyle}>
-            <h2 style={{ margin: "0 0 8px", fontSize: 17 }}>프로그램 요약</h2>
-            <div style={{ display: "grid", gap: 4, fontSize: 14, color: "#374151" }}>
-              <p style={{ margin: 0 }}>프로그램명: {classItem.title}</p>
-              <p style={{ margin: 0 }}>과목: {classItem.subject}</p>
-              <p style={{ margin: 0 }}>지역: {classItem.region}</p>
-              <p style={{ margin: 0 }}>
-                선생님명:{" "}
-                {classItem.teacherDisplayName ?? classItem.teacherName ?? "정보 준비 중"}
-              </p>
-              <p style={{ margin: 0 }}>신청비: {formatPrice(classItem.trialPrice)}</p>
-            </div>
-          </section>
-
-          {profile?.role === "parent" ? (
-            <section style={cardStyle}>
-              <ApplyForm
-                classId={classItem.id}
-                availableSlots={slots}
-                slotsError={slotsError}
-                childProfiles={children}
-                childProfilesError={childrenError}
-                parentNameDefault={profile.name}
-                parentPhoneDefault={profile.phone}
-              />
+          {!error && !classItem ? (
+            <section className={styles.card}>
+              <p className={styles.summaryMeta}>신청할 수업 정보를 찾을 수 없습니다.</p>
             </section>
           ) : null}
+
+          {!error && classItem ? (
+            <>
+              {!profile || profile.role !== "parent" ? (
+                <section className={`${styles.card} ${styles.dangerCard}`}>
+                  <p className={styles.dangerText}>학부모(parent) 계정만 신청할 수 있습니다.</p>
+                  <Link href={`/classes/${resolvedParams.id}`} className={styles.link}>
+                    수업 상세로 돌아가기
+                  </Link>
+                </section>
+              ) : null}
+
+              <section className={styles.card}>
+                <h2 className={styles.cardTitle}>신청할 수업</h2>
+                <p className={styles.summaryName}>{classItem.title}</p>
+                <p className={styles.summaryMeta}>
+                  {classItem.teacherDisplayName ?? classItem.teacherName ?? "정보 준비 중"} ·{" "}
+                  {classItem.region}
+                </p>
+                <p className={styles.summaryMeta}>{classItem.subject}</p>
+                <p className={styles.summaryPrice}>{formatPrice(classItem.trialPrice)}</p>
+              </section>
+
+              {profile?.role === "parent" ? (
+                <ApplyForm
+                  classId={classItem.id}
+                  availableSlots={slots}
+                  slotsError={slotsError}
+                  childProfiles={children}
+                  childProfilesError={childrenError}
+                  parentNameDefault={profile.name}
+                  parentPhoneDefault={profile.phone}
+                />
+              ) : null}
+            </>
+          ) : null}
         </div>
-      ) : null}
+      </div>
     </main>
   )
 }

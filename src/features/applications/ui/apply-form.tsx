@@ -8,6 +8,7 @@ import {
   type CreateTrialApplicationActionState
 } from "@/features/applications/actions/create-trial-application"
 import type { AvailableScheduleSlot, ChildProfile } from "@/shared/lib/db/adapter"
+import styles from "./apply-form.module.css"
 
 type ApplyFormProps = {
   classId: string
@@ -118,149 +119,142 @@ export const ApplyForm = ({
   }, [router, state.redirectTo, state.status])
 
   return (
-    <form action={formAction} style={{ display: "grid", gap: 12 }}>
-      {childProfilesError ? (
-        <p style={{ margin: 0, color: "#b42318", fontSize: 14 }}>
-          {childProfilesError} 자녀를 선택하지 않고 직접 입력으로 신청할 수 있습니다.
-        </p>
-      ) : null}
+    <form action={formAction} className={styles.form}>
+      <section className={styles.card}>
+        <h2 className={styles.cardTitle}>보호자 정보</h2>
+        <div className={styles.fieldStack}>
+          <div className={styles.field}>
+            <span className={styles.label}>이름</span>
+            <input
+              name="parentName"
+              type="text"
+              required
+              minLength={2}
+              maxLength={30}
+              value={parentName}
+              onChange={(event) => {
+                setParentName(event.target.value)
+              }}
+              disabled={isPending}
+              className={styles.input}
+            />
+          </div>
 
-      {childProfiles.length > 0 ? (
-        <label style={{ display: "grid", gap: 6 }}>
-          <span>자녀 선택</span>
-          <select
-            name="childId"
-            value={selectedChildId}
-            disabled={isPending}
-            onChange={(event) => {
-              setSelectedChildId(event.target.value)
-            }}
-            style={{ padding: 10 }}
-          >
-            <option value="">직접 입력</option>
-            {childProfiles.map((child) => (
-              <option key={child.id} value={child.id}>
-                {child.name} / {child.grade}
-              </option>
-            ))}
-          </select>
-          <span style={{ fontSize: 13, color: "#4b5563" }}>
-            등록한 자녀를 선택하면 학생 정보를 자동으로 채워 드립니다.
-          </span>
-        </label>
-      ) : null}
+          <div className={styles.field}>
+            <span className={styles.label}>연락처</span>
+            <input
+              name="parentPhone"
+              type="tel"
+              required
+              minLength={8}
+              maxLength={20}
+              value={parentPhone}
+              onChange={(event) => {
+                setParentPhone(event.target.value)
+              }}
+              disabled={isPending}
+              placeholder="010-0000-0000"
+              className={styles.input}
+            />
+          </div>
+        </div>
+      </section>
 
-      <label style={{ display: "grid", gap: 6 }}>
-        <span>학생명</span>
-        <input
-          name="childName"
-          type="text"
-          required
-          minLength={2}
-          maxLength={30}
-          value={childName}
-          onChange={(event) => {
-            setChildName(event.target.value)
-          }}
-          disabled={isPending}
-          style={{ padding: 10 }}
-        />
-      </label>
+      <section className={styles.card}>
+        <h2 className={styles.cardTitle}>아이 정보</h2>
 
-      <label style={{ display: "grid", gap: 6 }}>
-        <span>학년/연령</span>
-        <input
-          name="childGrade"
-          type="text"
-          list="child-grade-options"
-          required
-          maxLength={30}
-          value={childGrade}
-          onChange={(event) => {
-            setChildGrade(event.target.value)
-          }}
-          disabled={isPending}
-          placeholder="예: 초3, 7세"
-          style={{ padding: 10 }}
-        />
-        <datalist id="child-grade-options">
-          {gradeOptions.map((option) => (
-            <option key={option} value={option} />
-          ))}
-        </datalist>
-      </label>
-
-      <label style={{ display: "grid", gap: 6 }}>
-        <span>보호자명</span>
-        <input
-          name="parentName"
-          type="text"
-          required
-          minLength={2}
-          maxLength={30}
-          value={parentName}
-          onChange={(event) => {
-            setParentName(event.target.value)
-          }}
-          disabled={isPending}
-          style={{ padding: 10 }}
-        />
-      </label>
-
-      <label style={{ display: "grid", gap: 6 }}>
-        <span>보호자 연락처</span>
-        <input
-          name="parentPhone"
-          type="tel"
-          required
-          minLength={8}
-          maxLength={20}
-          value={parentPhone}
-          onChange={(event) => {
-            setParentPhone(event.target.value)
-          }}
-          disabled={isPending}
-          placeholder="010-0000-0000"
-          style={{ padding: 10 }}
-        />
-      </label>
-
-      <fieldset
-        style={{
-          border: "1px solid #e5e7eb",
-          borderRadius: 10,
-          padding: 10,
-          display: "grid",
-          gap: 8
-        }}
-      >
-        <legend style={{ padding: "0 4px" }}>희망 시간대</legend>
-
-        {slotsError ? (
-          <p style={{ margin: 0, color: "#b42318", fontSize: 14 }}>{slotsError}</p>
-        ) : null}
-
-        {!slotsError && availableSlots.length === 0 ? (
-          <p style={{ margin: 0, color: "#6b7280", fontSize: 14 }}>
-            현재 선택 가능한 예약 시간대가 없습니다.
+        {childProfilesError ? (
+          <p className={styles.dangerText}>
+            {childProfilesError} 자녀를 선택하지 않고 직접 입력으로 신청할 수 있습니다.
           </p>
         ) : null}
 
-        {!slotsError && availableSlots.length > 0
-          ? availableSlots.map((slot) => (
+        <div className={styles.fieldStack}>
+          {childProfiles.length > 0 ? (
+            <div className={styles.field}>
+              <span className={styles.label}>자녀 선택</span>
+              <select
+                name="childId"
+                value={selectedChildId}
+                disabled={isPending}
+                onChange={(event) => {
+                  setSelectedChildId(event.target.value)
+                }}
+                className={styles.select}
+              >
+                <option value="">직접 입력</option>
+                {childProfiles.map((child) => (
+                  <option key={child.id} value={child.id}>
+                    {child.name} / {child.grade}
+                  </option>
+                ))}
+              </select>
+              <p className={styles.help}>
+                등록한 자녀를 선택하면 학생 정보를 자동으로 채워 드립니다.
+              </p>
+            </div>
+          ) : null}
+
+          <div className={styles.field}>
+            <span className={styles.label}>아이 이름</span>
+            <input
+              name="childName"
+              type="text"
+              required
+              minLength={2}
+              maxLength={30}
+              value={childName}
+              onChange={(event) => {
+                setChildName(event.target.value)
+              }}
+              disabled={isPending}
+              className={styles.input}
+            />
+          </div>
+
+          <div className={styles.field}>
+            <span className={styles.label}>학년</span>
+            <input
+              name="childGrade"
+              type="text"
+              list="child-grade-options"
+              required
+              maxLength={30}
+              value={childGrade}
+              onChange={(event) => {
+                setChildGrade(event.target.value)
+              }}
+              disabled={isPending}
+              placeholder="예: 초3, 7세"
+              className={styles.input}
+            />
+            <datalist id="child-grade-options">
+              {gradeOptions.map((option) => (
+                <option key={option} value={option} />
+              ))}
+            </datalist>
+          </div>
+        </div>
+      </section>
+
+      <section className={styles.card}>
+        <h2 className={styles.cardTitle}>희망 일정</h2>
+
+        {slotsError ? <p className={styles.dangerText}>{slotsError}</p> : null}
+
+        {!slotsError && availableSlots.length === 0 ? (
+          <p className={styles.help}>현재 선택 가능한 예약 시간대가 없습니다.</p>
+        ) : null}
+
+        {!slotsError && availableSlots.length > 0 ? (
+          <div className={styles.scheduleList}>
+            {availableSlots.map((slot) => (
               <label
                 key={slot.id}
-                style={{
-                  display: "flex",
-                  gap: 8,
-                  alignItems: "center",
-                  padding: "8px 6px",
-                  border: "1px solid #e5e7eb",
-                  borderRadius: 8,
-                  opacity: slot.isClosed ? 0.6 : 1
-                }}
+                className={`${styles.slotItem} ${slot.isClosed ? styles.slotItemDisabled : ""}`}
               >
                 <input
+                  className={styles.radio}
                   type="radio"
                   name="selectedScheduleBlockId"
                   value={slot.id}
@@ -271,33 +265,56 @@ export const ApplyForm = ({
                   }}
                   disabled={isPending || slot.isClosed}
                 />
-                <span style={{ fontSize: 14 }}>
-                  {formatSlot(slot.startAt)}{" "}
+                <span className={styles.slotText}>
+                  {formatSlot(slot.startAt)}
                   {slot.isClosed ? (
-                    <strong style={{ color: "#b42318" }}>마감</strong>
+                    <span className={styles.slotClosed}>마감</span>
                   ) : (
-                    <span style={{ color: "#4b5563" }}>남은 {slot.remainingCount}자리</span>
+                    <span className={styles.slotMeta}>남은 {slot.remainingCount}자리</span>
                   )}
                 </span>
               </label>
-            ))
-          : null}
-      </fieldset>
+            ))}
+          </div>
+        ) : null}
+      </section>
 
-      <details
-        style={{
-          border: "1px solid #e5e7eb",
-          borderRadius: 10,
-          padding: 10,
-          background: "#fcfcfd"
-        }}
-      >
-        <summary style={{ cursor: "pointer", fontSize: 14, fontWeight: 600 }}>
-          선택 정보 추가 입력
-        </summary>
-        <div style={{ display: "grid", gap: 12, marginTop: 12 }}>
-          <label style={{ display: "grid", gap: 6 }}>
-            <span>학교</span>
+      <section className={styles.card}>
+        <h2 className={styles.cardTitle}>문의사항</h2>
+        <div className={styles.fieldStack}>
+          <div className={styles.field}>
+            <span className={styles.label}>남길 내용</span>
+            <textarea
+              name="memo"
+              rows={4}
+              maxLength={500}
+              disabled={isPending}
+              placeholder="아이의 현재 수준이나 궁금한 점을 남겨주세요."
+              className={styles.textarea}
+            />
+            <p className={styles.help}>학원/선생님이 수업 준비에 참고합니다.</p>
+          </div>
+        </div>
+      </section>
+
+      <section className={styles.card}>
+        <h2 className={styles.cardTitle}>개인정보 동의</h2>
+        <div className={styles.agreeRow}>
+          <input className={styles.checkbox} type="checkbox" name="privacyAgree" value="yes" />
+          <div>
+            <div className={styles.agreeText}>신청 진행을 위해 개인정보 제공에 동의합니다.</div>
+            <p className={styles.agreeSub}>
+              연락처/자녀 정보는 수업 안내 및 일정 확정을 위해 학원/선생님에게 전달될 수 있어요.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <details className={styles.details}>
+        <summary className={styles.detailsSummary}>선택 정보 추가 입력</summary>
+        <div className={styles.detailsBody}>
+          <div className={styles.field}>
+            <span className={styles.label}>학교</span>
             <input
               name="childSchool"
               type="text"
@@ -307,12 +324,12 @@ export const ApplyForm = ({
                 setChildSchool(event.target.value)
               }}
               disabled={isPending}
-              style={{ padding: 10 }}
+              className={styles.input}
             />
-          </label>
+          </div>
 
-          <label style={{ display: "grid", gap: 6 }}>
-            <span>학생 특이사항</span>
+          <div className={styles.field}>
+            <span className={styles.label}>학생 특이사항</span>
             <textarea
               name="childNotes"
               rows={3}
@@ -323,38 +340,38 @@ export const ApplyForm = ({
               }}
               disabled={isPending}
               placeholder="알레르기, 성향, 주의사항이 있으면 적어 주세요."
-              style={{ padding: 10, resize: "vertical" }}
+              className={styles.textarea}
             />
-          </label>
+          </div>
 
-          <label style={{ display: "grid", gap: 6 }}>
-            <span>과목 경험 여부</span>
+          <div className={styles.field}>
+            <span className={styles.label}>과목 경험 여부</span>
             <select
               name="subjectExperienceYn"
               defaultValue=""
               disabled={isPending}
-              style={{ padding: 10 }}
+              className={styles.select}
             >
               <option value="">선택 안 함</option>
               <option value="yes">있음</option>
               <option value="no">없음</option>
             </select>
-          </label>
+          </div>
 
-          <label style={{ display: "grid", gap: 6 }}>
-            <span>경험 기간</span>
+          <div className={styles.field}>
+            <span className={styles.label}>경험 기간</span>
             <input
               name="subjectExperienceDuration"
               type="text"
               maxLength={60}
               disabled={isPending}
               placeholder="예: 6개월, 1년"
-              style={{ padding: 10 }}
+              className={styles.input}
             />
-          </label>
+          </div>
 
-          <label style={{ display: "grid", gap: 6 }}>
-            <span>현재 수준</span>
+          <div className={styles.field}>
+            <span className={styles.label}>현재 수준</span>
             <input
               name="currentLevel"
               type="text"
@@ -365,25 +382,25 @@ export const ApplyForm = ({
               }}
               disabled={isPending}
               placeholder="예: 기초 개념 가능, 입문 단계"
-              style={{ padding: 10 }}
+              className={styles.input}
             />
-          </label>
+          </div>
 
-          <label style={{ display: "grid", gap: 6 }}>
-            <span>실제 등록 시 선호 시간대</span>
+          <div className={styles.field}>
+            <span className={styles.label}>실제 등록 시 선호 시간대</span>
             <input
               name="preferredRegularSchedule"
               type="text"
               maxLength={120}
               disabled={isPending}
               placeholder="예: 평일 5시 이후, 토요일 오전"
-              style={{ padding: 10 }}
+              className={styles.input}
             />
-          </label>
+          </div>
 
-          <label style={{ display: "grid", gap: 6 }}>
-            <span>목표</span>
-            <select name="goalType" defaultValue="" disabled={isPending} style={{ padding: 10 }}>
+          <div className={styles.field}>
+            <span className={styles.label}>목표</span>
+            <select name="goalType" defaultValue="" disabled={isPending} className={styles.select}>
               <option value="">선택 안 함</option>
               <option value="영재원">영재원</option>
               <option value="고입">고입</option>
@@ -391,10 +408,10 @@ export const ApplyForm = ({
               <option value="대회">대회</option>
               <option value="흥미">흥미</option>
             </select>
-          </label>
+          </div>
 
-          <label style={{ display: "grid", gap: 6 }}>
-            <span>목표 상세</span>
+          <div className={styles.field}>
+            <span className={styles.label}>목표 상세</span>
             <textarea
               name="goalNote"
               rows={3}
@@ -405,39 +422,23 @@ export const ApplyForm = ({
               }}
               disabled={isPending}
               placeholder="목표나 상담 희망 내용을 자유롭게 적어 주세요."
-              style={{ padding: 10, resize: "vertical" }}
+              className={styles.textarea}
             />
-          </label>
+          </div>
         </div>
       </details>
 
-      <label style={{ display: "grid", gap: 6 }}>
-        <span>추가 메모</span>
-        <textarea
-          name="memo"
-          rows={4}
-          maxLength={500}
-          disabled={isPending}
-          placeholder="아이 성향, 요청 사항이 있으면 남겨 주세요."
-          style={{ padding: 10, resize: "vertical" }}
-        />
-      </label>
-
       {state.message ? (
-        <p
-          style={{
-            margin: 0,
-            color: state.status === "error" ? "#b42318" : "#1f2937",
-            fontSize: 14
-          }}
-        >
+        <p className={state.status === "error" ? styles.dangerText : styles.noticeText}>
           {state.message}
         </p>
       ) : null}
 
-      <button type="submit" disabled={isPending || !canSubmit} style={{ padding: "12px 14px" }}>
-        {isPending ? "신청 제출 중..." : "신청하기"}
-      </button>
+      <div className={styles.fixedCta}>
+        <button type="submit" disabled={isPending || !canSubmit} className={styles.ctaButton}>
+          {isPending ? "신청 제출 중..." : "신청 완료하기"}
+        </button>
+      </div>
     </form>
   )
 }
