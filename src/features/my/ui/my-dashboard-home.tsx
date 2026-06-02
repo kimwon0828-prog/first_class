@@ -1,21 +1,14 @@
 import Link from "next/link"
-import type { CSSProperties } from "react"
 
 import { ParentProfileForm } from "@/features/my/ui/parent-profile-form"
 import type { MyDashboardData, TrialApplicationSummary } from "@/shared/lib/db/adapter"
+import styles from "./my-dashboard-home.module.css"
 
 type MyDashboardHomeProps = {
   profileName: string
   profilePhone: string | null
   dashboard: MyDashboardData
 }
-
-const cardStyle = {
-  border: "1px solid #e5e7eb",
-  borderRadius: 12,
-  backgroundColor: "#fff",
-  padding: 14
-} satisfies CSSProperties
 
 const formatDateTime = (value: string) => {
   const date = new Date(value)
@@ -40,12 +33,18 @@ const formatProgramType = (value: TrialApplicationSummary["classProgramType"]) =
 }
 
 const statusLabelMap: Record<TrialApplicationSummary["status"], string> = {
-  new: "신규",
-  reviewing: "검토 중",
-  confirmed: "확정",
-  completed: "완료",
-  canceled: "취소"
+  new: "신청 완료",
+  reviewing: "상담 대기",
+  confirmed: "수업 확정",
+  completed: "수업 완료",
+  canceled: "신청 취소"
 }
+
+const resolveActiveCount = (dashboard: MyDashboardData) =>
+  dashboard.newApplicationCount + dashboard.reviewingApplicationCount + dashboard.confirmedApplicationCount
+
+const resolveDoneCount = (dashboard: MyDashboardData) =>
+  dashboard.completedApplicationCount + dashboard.canceledApplicationCount
 
 export const MyDashboardHome = ({
   profileName,
@@ -53,130 +52,122 @@ export const MyDashboardHome = ({
   dashboard
 }: MyDashboardHomeProps) => {
   return (
-    <section style={{ display: "grid", gap: 12 }}>
-      <section style={{ ...cardStyle, backgroundColor: "#f8fafc" }}>
-        <h1 style={{ margin: "0 0 8px", fontSize: 24 }}>{profileName}님, 안녕하세요</h1>
-        <p style={{ margin: 0, fontSize: 14, color: "#475467", lineHeight: 1.6 }}>
-          신청 현황과 자녀 정보를 한 번에 확인할 수 있어요. 자녀 정보를 미리 등록해 두면 다음 신청 단계에서 더 편하게 연결할 수 있습니다.
+    <section className={styles.stack}>
+      <section className={styles.greetingCard}>
+        <h2 className={styles.greetingTitle}>{profileName}님, 안녕하세요</h2>
+        <p className={styles.greetingDesc}>신청 현황과 자녀 정보를 한 번에 확인할 수 있어요.</p>
+        <p className={styles.greetingDesc}>
+          자녀 정보를 미리 등록해두면 신청할 때 더 편리해요.
         </p>
       </section>
 
-      <section style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 10 }}>
-        <article style={cardStyle}>
-          <p style={{ margin: "0 0 6px", fontSize: 13, color: "#667085" }}>전체 신청</p>
-          <strong style={{ fontSize: 22 }}>{dashboard.totalApplicationCount}</strong>
+      <section className={styles.statsGrid} aria-label="요약">
+        <article className={styles.statCard}>
+          <p className={styles.statLabel}>전체 신청</p>
+          <strong className={styles.statValue}>{dashboard.totalApplicationCount}</strong>
         </article>
-        <article style={cardStyle}>
-          <p style={{ margin: "0 0 6px", fontSize: 13, color: "#667085" }}>등록 자녀</p>
-          <strong style={{ fontSize: 22 }}>{dashboard.childrenCount}</strong>
+        <article className={styles.statCard}>
+          <p className={styles.statLabel}>등록 자녀</p>
+          <strong className={styles.statValue}>{dashboard.childrenCount}</strong>
         </article>
-        <article style={cardStyle}>
-          <p style={{ margin: "0 0 6px", fontSize: 13, color: "#667085" }}>진행 중</p>
-          <strong style={{ fontSize: 22 }}>
-            {dashboard.newApplicationCount +
-              dashboard.reviewingApplicationCount +
-              dashboard.confirmedApplicationCount}
-          </strong>
+        <article className={styles.statCard}>
+          <p className={styles.statLabel}>진행 중</p>
+          <strong className={styles.statValue}>{resolveActiveCount(dashboard)}</strong>
         </article>
-        <article style={cardStyle}>
-          <p style={{ margin: "0 0 6px", fontSize: 13, color: "#667085" }}>완료/취소</p>
-          <strong style={{ fontSize: 22 }}>
-            {dashboard.completedApplicationCount + dashboard.canceledApplicationCount}
-          </strong>
+        <article className={styles.statCard}>
+          <p className={styles.statLabel}>완료/취소</p>
+          <strong className={styles.statValue}>{resolveDoneCount(dashboard)}</strong>
         </article>
       </section>
 
-      <section style={cardStyle}>
-        <div>
-          <h2 style={{ margin: "0 0 4px", fontSize: 18 }}>보호자 기본 정보</h2>
-          <p style={{ margin: 0, fontSize: 14, color: "#4b5563", lineHeight: "20px" }}>
+      <section className={styles.menuCard} aria-label="빠른 메뉴">
+        <MenuItem
+          href="/my/children"
+          title="자녀 관리"
+          description="아이 정보를 등록하고 수정해요."
+        />
+        <Divider />
+        <MenuItem
+          href="/my/applications"
+          title="신청 내역"
+          description="신청한 첫수업 진행 상태를 확인해요."
+        />
+        <Divider />
+        <MenuItem
+          href="/favorites"
+          title="관심수업"
+          description="찜한 수업을 모아볼 수 있어요."
+          badge="준비중"
+          disabled
+        />
+        <Divider />
+        <MenuItem
+          href="/my/settings"
+          title="계정 설정"
+          description="회원 정보를 확인해요."
+          badge="준비중"
+          disabled
+        />
+      </section>
+
+      <section className={styles.accountCard}>
+        <header className={styles.sectionHeader}>
+          <h3 className={styles.sectionTitle}>계정 정보</h3>
+          <p className={styles.sectionDesc}>
             저장한 보호자명과 연락처는 다음 신청 폼의 기본값으로 사용됩니다.
           </p>
-        </div>
+        </header>
         <ParentProfileForm initialName={profileName} initialPhone={profilePhone} />
       </section>
 
-      <section style={cardStyle}>
-        <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center" }}>
+      <section className={styles.recentCard}>
+        <header className={styles.sectionHeaderRow}>
           <div>
-            <h2 style={{ margin: "0 0 4px", fontSize: 18 }}>바로가기</h2>
-            <p style={{ margin: 0, fontSize: 14, color: "#4b5563" }}>
-              자녀 관리와 신청 내역을 빠르게 확인하세요.
-            </p>
+            <h3 className={styles.sectionTitle}>최근 신청 내역</h3>
+            <p className={styles.sectionDesc}>최근 신청한 첫수업을 확인해보세요.</p>
           </div>
-        </div>
-        <div style={{ display: "grid", gap: 10, marginTop: 12 }}>
-          <Link
-            href="/my/children"
-            style={{
-              display: "block",
-              borderRadius: 10,
-              border: "1px solid #d0d5dd",
-              padding: 12,
-              color: "#111827",
-              textDecoration: "none"
-            }}
-          >
-            자녀 관리 바로가기
-          </Link>
-          <Link
-            href="/my/applications"
-            style={{
-              display: "block",
-              borderRadius: 10,
-              border: "1px solid #d0d5dd",
-              padding: 12,
-              color: "#111827",
-              textDecoration: "none"
-            }}
-          >
-            신청 내역 바로가기
-          </Link>
-        </div>
-      </section>
-
-      <section style={cardStyle}>
-        <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center" }}>
-          <div>
-            <h2 style={{ margin: "0 0 4px", fontSize: 18 }}>최근 신청 내역</h2>
-            <p style={{ margin: 0, fontSize: 14, color: "#4b5563" }}>
-              최근 5건까지 보여드립니다.
-            </p>
-          </div>
-          <Link href="/my/applications" style={{ fontSize: 14, color: "#2563eb" }}>
+          <Link href="/my/applications" className={styles.moreLink}>
             전체 보기
           </Link>
-        </div>
+        </header>
 
         {dashboard.recentApplications.length === 0 ? (
-          <div style={{ marginTop: 12 }}>
-            <p style={{ margin: "0 0 8px", fontSize: 14, color: "#6b7280" }}>
-              아직 신청한 내역이 없습니다.
-            </p>
-            <Link href="/classes" style={{ fontSize: 14, color: "#2563eb" }}>
-              프로그램 보러가기
+          <div className={styles.emptyState}>
+            <p className={styles.emptyText}>아직 신청한 내역이 없습니다.</p>
+            <Link href="/classes" className={styles.moreLink}>
+              수업 보러가기
             </Link>
           </div>
         ) : (
-          <div style={{ display: "grid", gap: 10, marginTop: 12 }}>
+          <div className={styles.recentList}>
             {dashboard.recentApplications.map((item) => (
-              <article
-                key={item.id}
-                style={{
-                  border: "1px solid #e5e7eb",
-                  borderRadius: 10,
-                  padding: 12
-                }}
-              >
-                <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
-                  <strong style={{ fontSize: 15 }}>{item.classTitle ?? "프로그램 정보 없음"}</strong>
-                  <span style={{ fontSize: 12, color: "#475467" }}>{statusLabelMap[item.status]}</span>
+              <article key={item.id} className={styles.recentItem}>
+                <div className={styles.recentTop}>
+                  <div className={styles.recentTitle}>
+                    {item.classTitle ?? "프로그램 정보 없음"}
+                  </div>
+                  <span className={`${styles.badge} ${styles[`badge_${item.status}`]}`}>
+                    {statusLabelMap[item.status]}
+                  </span>
                 </div>
-                <div style={{ display: "grid", gap: 4, marginTop: 8, fontSize: 14, color: "#374151" }}>
-                  <p style={{ margin: 0 }}>유형: {formatProgramType(item.classProgramType)}</p>
-                  <p style={{ margin: 0 }}>학생명: {item.childName}</p>
-                  <p style={{ margin: 0 }}>예약 시간: {formatDateTime(item.requestedSlotAt)}</p>
-                  <p style={{ margin: 0 }}>신청일: {formatDateTime(item.createdAt)}</p>
+
+                <div className={styles.kvGrid}>
+                  <div className={styles.kvRow}>
+                    <span className={styles.kvLabel}>유형</span>
+                    <span className={styles.kvValue}>{formatProgramType(item.classProgramType)}</span>
+                  </div>
+                  <div className={styles.kvRow}>
+                    <span className={styles.kvLabel}>학생명</span>
+                    <span className={styles.kvValue}>{item.childName}</span>
+                  </div>
+                  <div className={styles.kvRow}>
+                    <span className={styles.kvLabel}>예약 시간</span>
+                    <span className={styles.kvValue}>{formatDateTime(item.requestedSlotAt)}</span>
+                  </div>
+                  <div className={styles.kvRow}>
+                    <span className={styles.kvLabel}>신청일</span>
+                    <span className={styles.kvValue}>{formatDateTime(item.createdAt)}</span>
+                  </div>
                 </div>
               </article>
             ))}
@@ -186,3 +177,43 @@ export const MyDashboardHome = ({
     </section>
   )
 }
+
+type MenuItemProps = {
+  href: string
+  title: string
+  description: string
+  badge?: string
+  disabled?: boolean
+}
+
+const MenuItem = ({ href, title, description, badge, disabled }: MenuItemProps) => {
+  const content = (
+    <>
+      <div className={styles.menuIcon} aria-hidden="true" />
+      <div className={styles.menuMain}>
+        <div className={styles.menuTitleRow}>
+          <div className={styles.menuTitle}>{title}</div>
+          {badge ? <span className={styles.menuBadge}>{badge}</span> : null}
+        </div>
+        <div className={styles.menuDesc}>{description}</div>
+      </div>
+      <div className={styles.menuChevron} aria-hidden="true" />
+    </>
+  )
+
+  if (disabled) {
+    return (
+      <div className={`${styles.menuItem} ${styles.menuItemDisabled}`} aria-disabled="true">
+        {content}
+      </div>
+    )
+  }
+
+  return (
+    <Link href={href} className={styles.menuItem}>
+      {content}
+    </Link>
+  )
+}
+
+const Divider = () => <div className={styles.divider} aria-hidden="true" />

@@ -1,0 +1,83 @@
+.page {
+  background: #ffffff;
+  min-height: 100dvh;
+  width: 100%;
+  overflow-x: hidden;
+}
+
+.shell {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 430px;
+  margin: 0 auto;
+  min-height: 100dvh;
+  background: #ffffff;
+  padding: calc(18px + env(safe-area-inset-top)) 24px calc(40px + env(safe-area-inset-bottom));
+}
+
+.shell * {
+  box-sizing: border-box;
+}
+
+.header {
+  margin-bottom: 24px;
+}
+
+.title {
+  margin: 0;
+  font-size: 28px;
+  line-height: 1.25;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  color: #111111;
+}
+
+.card {
+  border: 1px solid #eeeeee;
+  border-radius: 20px;
+  background: #ffffff;
+  padding: 20px;
+}
+
+.dangerCard {
+  border-color: #fecaca;
+}
+
+.dangerText {
+  margin: 0 0 10px;
+  color: #991b1b;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.link {
+  color: #2aad38;
+  font-size: 14px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.logoutSection {
+  margin-top: 28px;
+}
+
+.logoutButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 52px;
+  border-radius: 12px;
+  border: 1px solid #eeeeee;
+  background: #fafafa;
+  color: #4a4a4a;
+  font-size: 15px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+@media (max-width: 360px) {
+  .shell {
+    padding-left: 20px;
+    padding-right: 20px;
+  }
+}

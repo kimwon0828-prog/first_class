@@ -5,6 +5,7 @@ import { getMyProfile } from "@/features/auth/lib/profile-sync"
 import { requireSession } from "@/features/auth/lib/session"
 import { getMyDashboard } from "@/features/my/queries/get-my-dashboard"
 import { MyDashboardHome } from "@/features/my/ui/my-dashboard-home"
+import styles from "./page.module.css"
 
 export default async function MyPage() {
   await requireSession("/auth/sign-in")
@@ -17,28 +18,29 @@ export default async function MyPage() {
   const { data, error } = await getMyDashboard()
 
   return (
-    <main style={{ maxWidth: 640, margin: "0 auto", padding: "20px 16px 40px" }}>
-      {error ? (
-        <section
-          style={{
-            border: "1px solid #fecaca",
-            borderRadius: 12,
-            backgroundColor: "#fff",
-            padding: 14
-          }}
-        >
-          <p style={{ margin: "0 0 8px", color: "#991b1b", fontSize: 14 }}>{error}</p>
-          <Link href="/classes" style={{ color: "#2563eb", fontSize: 14 }}>
-            프로그램 보러가기
+    <main className={styles.page}>
+      <div className={styles.shell}>
+        <header className={styles.header}>
+          <h1 className={styles.title}>마이페이지</h1>
+        </header>
+
+        {error ? (
+          <section className={`${styles.card} ${styles.dangerCard}`}>
+            <p className={styles.dangerText}>{error}</p>
+            <Link href="/classes" className={styles.link}>
+              수업 찾으러 가기
+            </Link>
+          </section>
+        ) : (
+          <MyDashboardHome profileName={profile.name} profilePhone={profile.phone} dashboard={data} />
+        )}
+
+        <section className={styles.logoutSection}>
+          <Link href="/auth/sign-out" className={styles.logoutButton}>
+            로그아웃
           </Link>
         </section>
-      ) : (
-        <MyDashboardHome
-          profileName={profile.name}
-          profilePhone={profile.phone}
-          dashboard={data}
-        />
-      )}
+      </div>
     </main>
   )
 }
