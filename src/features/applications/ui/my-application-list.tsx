@@ -1,15 +1,26 @@
+import Link from "next/link"
+
 import type { TrialApplicationSummary } from "@/shared/lib/db/adapter"
+import styles from "./my-application-list.module.css"
 
 type MyApplicationListProps = {
   items: TrialApplicationSummary[]
 }
 
 const statusLabelMap: Record<TrialApplicationSummary["status"], string> = {
-  new: "신규",
-  reviewing: "검토 중",
-  confirmed: "확정",
-  completed: "완료",
-  canceled: "취소"
+  new: "신청 완료",
+  reviewing: "상담 대기",
+  confirmed: "수업 확정",
+  completed: "수업 완료",
+  canceled: "신청 취소"
+}
+
+const statusHelpMap: Record<TrialApplicationSummary["status"], string> = {
+  new: "신청이 접수되었어요. 학원에서 확인 후 연락드릴 예정이에요.",
+  reviewing: "상담 일정 확인이 필요해요.",
+  confirmed: "첫수업 일정이 확정되었어요.",
+  completed: "첫수업이 완료되었어요.",
+  canceled: "취소된 신청이에요."
 }
 
 const formatProgramType = (value: TrialApplicationSummary["classProgramType"]) => {
@@ -35,47 +46,66 @@ const formatDateTime = (value: string) => {
   })
 }
 
+const resolveScheduleLabel = (item: TrialApplicationSummary) => {
+  if (item.confirmedSlotAt) {
+    return { label: "확정 일정", value: formatDateTime(item.confirmedSlotAt) }
+  }
+
+  return { label: "희망 일정", value: formatDateTime(item.requestedSlotAt) }
+}
+
 export const MyApplicationList = ({ items }: MyApplicationListProps) => {
   return (
-    <section style={{ display: "grid", gap: 10 }}>
-      {items.map((item) => (
-        <article
-          key={item.id}
-          style={{
-            border: "1px solid #e5e7eb",
-            borderRadius: 12,
-            padding: 14,
-            backgroundColor: "#fff"
-          }}
-        >
-          <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
-            <div style={{ display: "grid", gap: 4 }}>
-              <span style={{ fontSize: 12, color: "#667085" }}>
-                {formatProgramType(item.classProgramType)}
+    <section className={styles.list} aria-label="신청 내역">
+      {items.map((item) => {
+        const schedule = resolveScheduleLabel(item)
+        const classTitle = item.classTitle ?? "수업 정보 없음"
+        const statusLabel = statusLabelMap[item.status]
+        const statusHelp = statusHelpMap[item.status]
+
+        return (
+          <article key={item.id} className={styles.card}>
+            <header className={styles.cardHeader}>
+              <span className={`${styles.badge} ${styles[`badge_${item.status}`]}`}>
+                {statusLabel}
               </span>
-              <h2 style={{ margin: 0, fontSize: 16 }}>{item.classTitle ?? "수업 정보 없음"}</h2>
+              <Link href={`/classes/${item.classId}`} className={styles.classLink}>
+                수업 보기
+              </Link>
+            </header>
+
+            <h2 className={styles.classTitle}>{classTitle}</h2>
+            <p className={styles.metaLine}>{formatProgramType(item.classProgramType)}</p>
+
+            <div className={styles.metaGrid}>
+              <div className={styles.metaRow}>
+                <span className={styles.metaLabel}>학원/선생님</span>
+                <span className={styles.metaValue}>정보 준비 중</span>
+              </div>
+              <div className={styles.metaRow}>
+                <span className={styles.metaLabel}>지역</span>
+                <span className={styles.metaValue}>정보 준비 중</span>
+              </div>
+              <div className={styles.metaRow}>
+                <span className={styles.metaLabel}>아이</span>
+                <span className={styles.metaValue}>
+                  {item.childName} · {item.childGrade}
+                </span>
+              </div>
+              <div className={styles.metaRow}>
+                <span className={styles.metaLabel}>{schedule.label}</span>
+                <span className={styles.metaValue}>{schedule.value}</span>
+              </div>
+              <div className={styles.metaRow}>
+                <span className={styles.metaLabel}>신청일</span>
+                <span className={styles.metaValue}>{formatDateTime(item.createdAt)}</span>
+              </div>
             </div>
-            <span
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                borderRadius: 999,
-                padding: "2px 10px",
-                border: "1px solid #d1d5db",
-                fontSize: 12,
-                color: "#374151"
-              }}
-            >
-              {statusLabelMap[item.status]}
-            </span>
-          </div>
-          <div style={{ marginTop: 8, display: "grid", gap: 4, fontSize: 14, color: "#374151" }}>
-            <p style={{ margin: 0 }}>학생명: {item.childName}</p>
-            <p style={{ margin: 0 }}>예약 시간: {formatDateTime(item.requestedSlotAt)}</p>
-            <p style={{ margin: 0 }}>신청일: {formatDateTime(item.createdAt)}</p>
-          </div>
-        </article>
-      ))}
+
+            <p className={styles.helpText}>{statusHelp}</p>
+          </article>
+        )
+      })}
     </section>
   )
 }

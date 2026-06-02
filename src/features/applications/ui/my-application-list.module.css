@@ -1,0 +1,126 @@
+.list {
+  display: grid;
+  gap: 18px;
+}
+
+.card {
+  border: 1px solid #eeeeee;
+  border-radius: 20px;
+  background: #ffffff;
+  padding: 20px;
+}
+
+.cardHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 6px 10px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.badge_new {
+  background: #f3fbf4;
+  color: #2aad38;
+}
+
+.badge_reviewing {
+  background: #fffbeb;
+  color: #b45309;
+}
+
+.badge_confirmed {
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+.badge_completed {
+  background: #f3f4f6;
+  color: #6b7280;
+}
+
+.badge_canceled {
+  background: #fef2f2;
+  color: #dc2626;
+}
+
+.classLink {
+  font-size: 13px;
+  font-weight: 700;
+  color: #2aad38;
+  text-decoration: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.classTitle {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 800;
+  line-height: 1.35;
+  letter-spacing: -0.03em;
+  color: #111111;
+  overflow-wrap: anywhere;
+}
+
+.metaLine {
+  margin: 8px 0 0;
+  font-size: 14px;
+  line-height: 1.5;
+  color: #666666;
+}
+
+.metaGrid {
+  margin-top: 14px;
+  display: grid;
+  gap: 10px;
+}
+
+.metaRow {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: baseline;
+}
+
+.metaLabel {
+  font-size: 13px;
+  color: #8a8a8a;
+  flex: 0 0 auto;
+}
+
+.metaValue {
+  font-size: 14px;
+  line-height: 1.45;
+  color: #111111;
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
+.helpText {
+  margin: 16px 0 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #666666;
+  background: #f7f7f7;
+  border-radius: 14px;
+  padding: 12px 12px;
+}
+
+@media (max-width: 360px) {
+  .metaRow {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .metaValue {
+    text-align: left;
+  }
+}

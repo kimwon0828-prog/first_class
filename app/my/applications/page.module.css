@@ -1,0 +1,161 @@
+.page {
+  background: #ffffff;
+  min-height: 100dvh;
+  width: 100%;
+  overflow-x: hidden;
+}
+
+.shell {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 430px;
+  margin: 0 auto;
+  min-height: 100dvh;
+  background: #ffffff;
+  padding: calc(18px + env(safe-area-inset-top)) 24px
+    calc(96px + env(safe-area-inset-bottom));
+}
+
+.shell * {
+  box-sizing: border-box;
+}
+
+.header {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 28px;
+}
+
+.title {
+  margin: 0;
+  font-size: 28px;
+  line-height: 1.25;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  color: #111111;
+}
+
+.subtitle {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.6;
+  color: #8a8a8a;
+}
+
+.card {
+  border: 1px solid #eeeeee;
+  border-radius: 20px;
+  background: #ffffff;
+  padding: 20px;
+}
+
+.dangerCard {
+  border-color: #fecaca;
+}
+
+.dangerText {
+  margin: 0 0 10px;
+  color: #991b1b;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.link {
+  color: #2aad38;
+  font-size: 14px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.emptyCard {
+  border: 1px solid #eeeeee;
+  border-radius: 20px;
+  background: #ffffff;
+  padding: 24px 20px;
+  text-align: center;
+}
+
+.emptyTitle {
+  margin: 0;
+  font-size: 18px;
+  line-height: 1.35;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: #111111;
+}
+
+.emptyDesc {
+  margin: 10px 0 18px;
+  font-size: 14px;
+  line-height: 1.6;
+  color: #666666;
+}
+
+.primaryButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 52px;
+  border-radius: 12px;
+  background: #2aad38;
+  color: #ffffff;
+  font-size: 16px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.primaryButton:active {
+  background: #249b31;
+}
+
+.bottomNav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  width: 100%;
+  max-width: 430px;
+  margin: 0 auto;
+  min-height: 76px;
+  background: #ffffff;
+  border-top: 1px solid #eeeeee;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 24px calc(14px + env(safe-area-inset-bottom));
+}
+
+.navItem {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  text-decoration: none;
+  color: #111111;
+  font-size: 11px;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.navItem svg {
+  width: 22px;
+  height: 22px;
+}
+
+.navItemActive {
+  color: #2aad38;
+}
+
+.navItemActive svg {
+  color: #2aad38;
+}
+
+@media (max-width: 360px) {
+  .shell {
+    padding-left: 20px;
+    padding-right: 20px;
+  }
+}
