@@ -1,4 +1,6 @@
 import { redirect } from "next/navigation"
+import Link from "next/link"
+import Image from "next/image"
 
 import { getMyProfile } from "@/features/auth/queries/get-my-profile"
 import { resolvePostAuthRedirect } from "@/features/auth/lib/redirect"
@@ -36,24 +38,125 @@ export default async function SignUpPage({ searchParams }: SignUpPageProps) {
     redirect("/classes")
   }
 
+  const signInHref = returnTo ? `/auth/sign-in?returnTo=${encodeURIComponent(returnTo)}` : "/auth/sign-in"
+
   return (
     <main
       style={{
         background: "#ffffff",
-        margin: "0 auto",
+        width: "100%",
+        minHeight: "100dvh",
+        overflowX: "hidden"
+      }}
+    >
+      <div
+        style={{
+          background: "#ffffff",
+          margin: "0 auto",
         width: "100%",
         maxWidth: 430,
         minHeight: "100dvh",
         boxSizing: "border-box",
-        overflowX: "hidden",
-        padding: "calc(14px + env(safe-area-inset-top)) 24px calc(24px + env(safe-area-inset-bottom))"
+          overflowX: "hidden",
+          padding:
+            "calc(14px + env(safe-area-inset-top)) 24px calc(110px + env(safe-area-inset-bottom))"
       }}
     >
-      <h1 style={{ marginTop: 0 }}>학부모 회원가입</h1>
-      <p style={{ marginTop: 0, color: "#4b5563", fontSize: 14 }}>
-        공개 회원가입은 학부모(parent) 계정만 가능합니다.
-      </p>
-      <SignUpForm returnTo={returnTo ?? undefined} />
+        <header style={{ display: "grid", gap: 16 }}>
+          <div style={{ display: "flex", alignItems: "center", minHeight: 44 }}>
+            <Link
+              href={signInHref}
+              aria-label="뒤로가기"
+              style={{
+                width: 44,
+                height: 44,
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                borderRadius: 999,
+                textDecoration: "none",
+                color: "#111111",
+                WebkitTapHighlightColor: "transparent"
+              }}
+            >
+              <svg
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+                aria-hidden="true"
+              >
+                <path
+                  d="M15 18l-6-6 6-6"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </Link>
+            <h1
+              style={{
+                margin: 0,
+                marginLeft: 6,
+                fontSize: 26,
+                lineHeight: 1.25,
+                fontWeight: 800,
+                letterSpacing: "-0.04em",
+                color: "#111111"
+              }}
+            >
+              회원가입
+            </h1>
+          </div>
+        </header>
+
+        <section style={{ marginTop: 28 }}>
+          <Image
+            src="/images/first-class-logo.png"
+            alt="첫수업"
+            width={93}
+            height={30}
+            priority
+            style={{ display: "block" }}
+          />
+          <p
+            style={{
+              margin: "18px 0 0",
+              fontSize: 24,
+              lineHeight: 1.35,
+              fontWeight: 800,
+              letterSpacing: "-0.04em",
+              color: "#111111"
+            }}
+          >
+            첫수업에서
+            <br />
+            우리 아이에게 맞는 수업을 찾아보세요.
+          </p>
+          <p style={{ margin: "12px 0 0", fontSize: 15, lineHeight: 1.6, color: "#666666" }}>
+            간단한 정보만 입력하면 첫수업 신청을 시작할 수 있어요.
+          </p>
+          <div
+            style={{
+              marginTop: 18,
+              borderRadius: 16,
+              background: "#f7f7f7",
+              padding: "14px 14px",
+              fontSize: 13,
+              lineHeight: 1.55,
+              color: "#666666"
+            }}
+          >
+            공개 회원가입은 학부모 계정만 가능합니다.
+          </div>
+        </section>
+
+        <div style={{ marginTop: 32 }}>
+          <SignUpForm returnTo={returnTo ?? undefined} />
+        </div>
+      </div>
     </main>
   )
 }

@@ -1,0 +1,123 @@
+.form {
+  display: grid;
+  gap: 20px;
+}
+
+.card {
+  border: 1px solid #eeeeee;
+  border-radius: 20px;
+  background: #ffffff;
+  padding: 24px;
+  display: grid;
+  gap: 20px;
+}
+
+.fieldStack {
+  display: grid;
+  gap: 20px;
+}
+
+.field {
+  display: grid;
+  gap: 10px;
+}
+
+.label {
+  font-size: 14px;
+  font-weight: 700;
+  color: #111111;
+}
+
+.input {
+  width: 100%;
+  height: 52px;
+  border: 1px solid #d9d9d9;
+  border-radius: 12px;
+  padding: 0 14px;
+  background: #ffffff;
+  font-size: 15px;
+  line-height: 1.2;
+  color: #111111;
+}
+
+.input:focus {
+  outline: none;
+  border-color: #2aad38;
+  box-shadow: 0 0 0 3px rgba(42, 173, 56, 0.12);
+}
+
+.message {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.errorMessage {
+  color: #ef4444;
+}
+
+.infoMessage {
+  color: #4a4a4a;
+}
+
+.loginRow {
+  margin-top: 2px;
+  text-align: center;
+  font-size: 14px;
+  line-height: 1.55;
+  color: #666666;
+}
+
+.loginLink {
+  color: #111111;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.loginLink:active {
+  color: #249b31;
+}
+
+.fixedBar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: #ffffff;
+  border-top: 1px solid #eeeeee;
+  padding: 14px 0 calc(20px + env(safe-area-inset-bottom));
+  z-index: 60;
+}
+
+.fixedBarInner {
+  width: 100%;
+  max-width: 430px;
+  margin: 0 auto;
+  padding: 0 24px;
+  box-sizing: border-box;
+}
+
+.submitButton {
+  width: 100%;
+  height: 52px;
+  border: 0;
+  border-radius: 12px;
+  background: #2aad38;
+  color: #ffffff;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.submitButton:active {
+  background: #249b31;
+}
+
+.submitButton:disabled {
+  opacity: 0.6;
+}
+
+@supports (-webkit-touch-callout: none) {
+  .input {
+    font-size: 16px;
+  }
+}
