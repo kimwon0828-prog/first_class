@@ -3,6 +3,7 @@ import { getStudioDashboardTeacherOptions } from "@/features/studio/queries/get-
 import { getStudioDashboardSummary } from "@/features/studio/queries/get-studio-dashboard-summary"
 import { StudioDashboardSummaryView } from "@/features/studio/ui/studio-dashboard-summary"
 import { StudioTeacherFilter } from "@/features/studio/ui/studio-teacher-filter"
+import Link from "next/link"
 
 const uuidPattern =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
@@ -49,13 +50,61 @@ export default async function StudioIndexPage({ searchParams }: StudioIndexPageP
         <p style={{ margin: "12px 0 0", fontSize: 14, lineHeight: "20px", color: "#4b5563" }}>
           선생님별 운영 현황을 필터링해서 요약합니다.
         </p>
-        <div style={{ marginTop: 16, display: "flex", justifyContent: "space-between", gap: 12 }}>
+        <div
+          style={{
+            marginTop: 16,
+            display: "flex",
+            justifyContent: "space-between",
+            gap: 12,
+            alignItems: "center"
+          }}
+        >
           <StudioTeacherFilter options={filterOptions} selectedTeacherId={selectedTeacherId} />
-          {filterError ? (
-            <p style={{ margin: 0, color: "#b42318", fontSize: 13, lineHeight: "18px" }}>
-              {filterError}
-            </p>
-          ) : null}
+          <div style={{ display: "inline-flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+            {filterError ? (
+              <p style={{ margin: 0, color: "#b42318", fontSize: 13, lineHeight: "18px" }}>
+                {filterError}
+              </p>
+            ) : null}
+            <Link
+              href="/classes"
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                height: 34,
+                padding: "0 12px",
+                borderRadius: 999,
+                border: "1px solid #e5e7eb",
+                background: "#ffffff",
+                color: "#111827",
+                textDecoration: "none",
+                fontSize: 13,
+                fontWeight: 600
+              }}
+            >
+              학부모 화면 보기
+            </Link>
+            <Link
+              href="/studio/sign-out"
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                height: 34,
+                padding: "0 12px",
+                borderRadius: 999,
+                border: "1px solid #e5e7eb",
+                background: "#ffffff",
+                color: "#111827",
+                textDecoration: "none",
+                fontSize: 13,
+                fontWeight: 600
+              }}
+            >
+              로그아웃
+            </Link>
+          </div>
         </div>
       </header>
 
