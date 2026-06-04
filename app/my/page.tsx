@@ -11,8 +11,12 @@ export default async function MyPage() {
   await requireSession("/auth/sign-in")
   const profile = await getMyProfile()
 
-  if (!profile || profile.role !== "parent") {
-    redirect("/")
+  if (!profile) {
+    redirect("/classes")
+  }
+
+  if (profile.role !== "parent") {
+    redirect("/studio")
   }
 
   const { data, error } = await getMyDashboard()

@@ -1,13 +1,34 @@
 import { getSupabaseServerClient } from "@/integrations/supabase/server"
 
-export type ProfileRole = "parent" | "teacher"
+export type DbProfileRole = "parent" | "teacher" | "operator" | "academy" | "admin"
+
+export type ProfileRole = "parent" | "academy" | "admin"
 
 export type AuthProfile = {
   id: string
   role: ProfileRole
+  dbRole: DbProfileRole
   name: string
   phone: string | null
   organizationId: string | null
+}
+
+export const normalizeProfileRole = (
+  role: unknown
+): { role: ProfileRole; dbRole: DbProfileRole } | null => {
+  if (role === "parent") {
+    return { role: "parent", dbRole: "parent" }
+  }
+
+  if (role === "teacher" || role === "academy") {
+    return { role: "academy", dbRole: role }
+  }
+
+  if (role === "operator" || role === "admin") {
+    return { role: "admin", dbRole: role }
+  }
+
+  return null
 }
 
 const getFallbackName = (email: string | undefined): string => {
@@ -43,13 +64,15 @@ export const getMyProfile = async (): Promise<AuthProfile | null> => {
     return null
   }
 
-  if (data.role !== "parent" && data.role !== "teacher") {
+  const normalizedRole = normalizeProfileRole(data.role)
+  if (!normalizedRole) {
     return null
   }
 
   return {
     id: data.id,
-    role: data.role,
+    role: normalizedRole.role,
+    dbRole: normalizedRole.dbRole,
     name: data.name,
     phone: data.phone ?? null,
     organizationId: data.organization_id

@@ -99,10 +99,18 @@ export async function createTrialApplicationAction(
   const session = await requireSession("/auth/sign-in")
   const profile = await getMyProfile()
 
-  if (!profile || profile.role !== "parent") {
+  if (!profile) {
     return {
       status: "error",
-      message: "학부모 계정만 신청할 수 있습니다."
+      message: "신청 권한을 확인할 수 없습니다. 잠시 후 다시 시도해 주세요."
+    }
+  }
+
+  if (profile.role !== "parent") {
+    return {
+      status: "error",
+      message: "학원 계정은 체험수업을 신청할 수 없어요. 수업 관리는 스튜디오에서 진행해주세요.",
+      redirectTo: "/studio"
     }
   }
 

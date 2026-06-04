@@ -75,7 +75,7 @@ export async function studioSignInAction(
     if (error || !data.user || !data.session?.access_token) {
       return {
         status: "error",
-        message: "teacher 계정의 이메일 또는 비밀번호를 확인해 주세요."
+        message: "학원 계정의 이메일 또는 비밀번호를 확인해 주세요."
       }
     }
 
@@ -102,7 +102,7 @@ export async function studioSignInAction(
       const adapterMode = process.env.NEXT_PUBLIC_DATA_SOURCE ?? "mock(default)"
       return {
         status: "error",
-        message: `teacher 프로필 조회 실패: ${formatSupabaseError(profileError)} (data_source=${adapterMode})`
+        message: `studio 프로필 조회 실패: ${formatSupabaseError(profileError)} (data_source=${adapterMode})`
       }
     }
 
@@ -133,40 +133,49 @@ export async function studioSignInAction(
       await supabase.auth.signOut()
       return {
         status: "error",
-        message: "등록된 선생님 계정이 아닙니다. 가입을 먼저 진행해 주세요."
+        message: "등록된 학원 계정이 아닙니다. 가입을 먼저 진행해 주세요."
       }
     }
 
-    if (profile.role !== "teacher" || !profile.organization_id) {
+    const normalizedRole =
+      profile.role === "teacher" || profile.role === "academy"
+        ? "academy"
+        : profile.role === "operator" || profile.role === "admin"
+          ? "admin"
+          : null
+
+    if (!normalizedRole || !profile.organization_id) {
       await supabase.auth.signOut()
       return {
         status: "error",
         message: !profile.organization_id
-          ? "teacher 프로필에 organization_id가 없습니다. 승인/연결 상태를 확인해 주세요."
-          : "teacher 프로필의 role이 올바르지 않습니다. 승인/권한 상태를 확인해 주세요."
+          ? "studio 프로필에 organization_id가 없습니다. 승인/연결 상태를 확인해 주세요."
+          : "studio 프로필의 role이 올바르지 않습니다. 승인/권한 상태를 확인해 주세요."
       }
     }
 
-    const { data: teacherRow, error: teacherError } = await tokenClient
-      .from("teachers")
-      .select("id")
-      .eq("profile_id", data.user.id)
-      .maybeSingle()
+    if (normalizedRole === "academy") {
+      const { data: teacherRow, error: teacherError } = await tokenClient
+        .from("teachers")
+        .select("id")
+        .eq("profile_id", data.user.id)
+        .maybeSingle()
 
-    if (teacherError) {
-      await supabase.auth.signOut()
-      return {
-        status: "error",
-        message: `teachers 매핑을 확인하지 못했습니다: ${formatSupabaseError(teacherError)}`
+      if (teacherError) {
+        await supabase.auth.signOut()
+        return {
+          status: "error",
+          message: `teachers 매핑을 확인하지 못했습니다: ${formatSupabaseError(teacherError)}`
+        }
       }
-    }
 
-    if (!teacherRow) {
-      await supabase.auth.signOut()
-      return {
-        status: "error",
-        message:
-          "teachers 매핑이 없습니다. 승인 처리 시 teachers.profile_id 연결이 생성되었는지 확인해 주세요."
+      if (!teacherRow) {
+        await supabase.auth.signOut()
+        return {
+          status: "error",
+          message:
+            "teachers 매핑이 없습니다. 승인 처리 시 teachers.profile_id 연결이 생성되었는지 확인해 주세요."
+        }
       }
     }
 

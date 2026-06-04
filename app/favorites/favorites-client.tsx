@@ -10,7 +10,11 @@ import type { ClassSummary } from "@/shared/lib/db/adapter"
 
 import styles from "../classes/page.module.css"
 
-export function FavoritesClient(props: { allClasses: ClassSummary[] }) {
+export function FavoritesClient(props: {
+  allClasses: ClassSummary[]
+  favoritesEnabled: boolean
+  myApplicationsEntryHref: string
+}) {
   const [favoriteIds, setFavoriteIds] = useState<string[]>([])
 
   const formatPrice = (price: number) => {
@@ -21,6 +25,11 @@ export function FavoritesClient(props: { allClasses: ClassSummary[] }) {
   }
 
   useEffect(() => {
+    if (!props.favoritesEnabled) {
+      setFavoriteIds([])
+      return
+    }
+
     const update = () => setFavoriteIds(getFavoriteClassIds())
     update()
     window.addEventListener("firstclass_favorites_updated", update)
@@ -29,7 +38,7 @@ export function FavoritesClient(props: { allClasses: ClassSummary[] }) {
       window.removeEventListener("firstclass_favorites_updated", update)
       window.removeEventListener("storage", update)
     }
-  }, [])
+  }, [props.favoritesEnabled])
 
   const favoriteIdSet = useMemo(() => new Set(favoriteIds), [favoriteIds])
   const favoriteClasses = useMemo(
@@ -44,7 +53,15 @@ export function FavoritesClient(props: { allClasses: ClassSummary[] }) {
           <h1 style={{ margin: 0, fontSize: 24, color: "#111111" }}>관심수업</h1>
         </section>
 
-        {favoriteIds.length === 0 || favoriteClasses.length === 0 ? (
+        {!props.favoritesEnabled ? (
+          <section className={styles.stateCard}>
+            <p className={styles.stateTitle}>학원 계정은 관심수업 기능을 사용할 수 없어요.</p>
+            <p className={styles.stateDesc}>수업 관리는 스튜디오에서 진행해주세요.</p>
+            <Link href="/studio" className={styles.retryLink}>
+              스튜디오로 이동
+            </Link>
+          </section>
+        ) : favoriteIds.length === 0 || favoriteClasses.length === 0 ? (
           <section className={styles.stateCard}>
             <p className={styles.stateTitle}>아직 관심수업이 없어요.</p>
             <p className={styles.stateDesc}>
@@ -60,16 +77,18 @@ export function FavoritesClient(props: { allClasses: ClassSummary[] }) {
               {favoriteClasses.map((item) => (
                 <li key={item.id}>
                   <Link href={`/classes/${item.id}`} className={styles.card}>
-                    <BookmarkButton
-                      classId={item.id}
-                      className={styles.bookmarkButton}
-                      activeClassName={styles.bookmarkButtonActive}
-                      onChange={(nextIsFavorite) => {
-                        if (!nextIsFavorite) {
-                          setFavoriteIds((prev) => prev.filter((id) => id !== item.id))
-                        }
-                      }}
-                    />
+                    {props.favoritesEnabled ? (
+                      <BookmarkButton
+                        classId={item.id}
+                        className={styles.bookmarkButton}
+                        activeClassName={styles.bookmarkButtonActive}
+                        onChange={(nextIsFavorite) => {
+                          if (!nextIsFavorite) {
+                            setFavoriteIds((prev) => prev.filter((id) => id !== item.id))
+                          }
+                        }}
+                      />
+                    ) : null}
                     <div className={styles.cardImage}>
                       {item.coverImageUrl ? (
                         <Image
@@ -133,7 +152,7 @@ export function FavoritesClient(props: { allClasses: ClassSummary[] }) {
           </svg>
           <span>관심수업</span>
         </Link>
-        <Link href="/my/applications" className={styles.navItem}>
+        <Link href={props.myApplicationsEntryHref} className={styles.navItem}>
           <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
             <path
               d="M9 6h11M9 12h11M9 18h11M5 6h.01M5 12h.01M5 18h.01"

@@ -97,11 +97,20 @@ export default async function ClassApplyPage({ params }: ApplyPageProps) {
 
           {!error && classItem ? (
             <>
-              {!profile || profile.role !== "parent" ? (
+              {!profile ? (
                 <section className={`${styles.card} ${styles.dangerCard}`}>
-                  <p className={styles.dangerText}>학부모(parent) 계정만 신청할 수 있습니다.</p>
+                  <p className={styles.dangerText}>신청 권한을 확인할 수 없습니다.</p>
                   <Link href={`/classes/${resolvedParams.id}`} className={styles.link}>
                     수업 상세로 돌아가기
+                  </Link>
+                </section>
+              ) : profile.role === "academy" || profile.role === "admin" ? (
+                <section className={`${styles.card} ${styles.dangerCard}`}>
+                  <p className={styles.dangerText}>
+                    학원 계정은 체험수업을 신청할 수 없어요. 수업 관리는 스튜디오에서 진행해주세요.
+                  </p>
+                  <Link href="/studio" className={styles.link}>
+                    스튜디오로 이동
                   </Link>
                 </section>
               ) : null}

@@ -12,7 +12,7 @@ export default async function StudioPendingPage() {
   }
 
   const profile = await getMyProfile()
-  if (profile?.role === "teacher") {
+  if (profile?.role === "academy" || profile?.role === "admin") {
     redirect("/studio/applications")
   }
 

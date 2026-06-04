@@ -11,7 +11,7 @@ export default async function StudioSignUpPage() {
   const session = await getSession()
   if (session) {
     const profile = await getMyProfile()
-    if (profile?.role === "teacher") {
+    if (profile?.role === "academy" || profile?.role === "admin") {
       redirect("/studio/applications")
     }
     if (profile?.role === "parent") {

@@ -1,6 +1,7 @@
 import Link from "next/link"
 import Image from "next/image"
 
+import { getMyProfile } from "@/features/auth/lib/profile-sync"
 import { getSession } from "@/features/auth/lib/session"
 import { getPublicClassDetail } from "@/features/classes/queries/get-public-class-detail"
 import { BookmarkButton } from "@/features/favorites/ui/bookmark-button"
@@ -43,6 +44,9 @@ export default async function ClassDetailPage({ params, searchParams }: ClassDet
   const classesHref = `/classes?region=${encodeURIComponent(selectedRegion)}`
   const { data: classItem, error } = await getPublicClassDetail(resolvedParams.id)
   const session = await getSession()
+  const profile = session ? await getMyProfile() : null
+  const favoritesEnabled = !session || profile?.role === "parent"
+  const parentSession = !!session && profile?.role === "parent"
   const applyHref = `/classes/${resolvedParams.id}/apply`
   const applyEntryHref = session
     ? applyHref
@@ -85,16 +89,28 @@ export default async function ClassDetailPage({ params, searchParams }: ClassDet
             </svg>
           </Link>
 
-          {classItem ? (
-            <BookmarkButton
-              classId={classItem.id}
-              className={styles.iconButton}
-              activeClassName={styles.iconButton}
-              iconSize={18}
-            />
-          ) : (
-            <div style={{ width: 32, height: 32 }} />
-          )}
+          <div style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+            {session && !parentSession ? (
+              <Link
+                href="/studio"
+                className={styles.iconButton}
+                style={{ width: "auto", padding: "0 12px", fontSize: 13, fontWeight: 700 }}
+              >
+                스튜디오
+              </Link>
+            ) : null}
+
+            {classItem && favoritesEnabled ? (
+              <BookmarkButton
+                classId={classItem.id}
+                className={styles.iconButton}
+                activeClassName={styles.iconButton}
+                iconSize={18}
+              />
+            ) : (
+              <div style={{ width: 32, height: 32 }} />
+            )}
+          </div>
         </div>
 
         {error ? (

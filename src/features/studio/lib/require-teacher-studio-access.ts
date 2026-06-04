@@ -31,7 +31,7 @@ export const requireTeacherStudioAccess = async (): Promise<TeacherStudioAccess>
     redirect("/studio/sign-in")
   }
 
-  if (profile.role !== "teacher") {
+  if (profile.role !== "academy" && profile.role !== "admin") {
     redirect("/classes")
   }
 
@@ -40,13 +40,44 @@ export const requireTeacherStudioAccess = async (): Promise<TeacherStudioAccess>
   }
 
   const supabase = await getSupabaseServerClient()
-  const { data: teacherRow, error: teacherError } = await supabase
-    .from("teachers")
-    .select("id")
-    .eq("profile_id", profile.id)
-    .maybeSingle()
+  const { data: teacherRow, error: teacherError } =
+    profile.role === "academy"
+      ? await supabase
+          .from("teachers")
+          .select("id")
+          .eq("profile_id", profile.id)
+          .maybeSingle()
+      : await supabase
+          .from("teachers")
+          .select("id")
+          .eq("organization_id", profile.organizationId)
+          .eq("is_active", true)
+          .order("created_at", { ascending: true })
+          .limit(1)
+          .maybeSingle()
 
   if (teacherError || !teacherRow) {
+    if (profile.role === "admin") {
+      const { data: fallbackTeacherRow, error: fallbackTeacherError } = await supabase
+        .from("teachers")
+        .select("id")
+        .eq("organization_id", profile.organizationId)
+        .order("created_at", { ascending: true })
+        .limit(1)
+        .maybeSingle()
+
+      if (fallbackTeacherError || !fallbackTeacherRow) {
+        redirect("/studio/teachers")
+      }
+
+      return {
+        id: profile.id,
+        teacherId: fallbackTeacherRow.id,
+        name: profile.name,
+        organizationId: profile.organizationId
+      }
+    }
+
     redirect("/studio/sign-in")
   }
 

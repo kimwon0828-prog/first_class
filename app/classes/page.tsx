@@ -2,6 +2,7 @@ import Link from "next/link"
 import { redirect } from "next/navigation"
 import Image from "next/image"
 
+import { getMyProfile } from "@/features/auth/lib/profile-sync"
 import { getSession } from "@/features/auth/lib/session"
 import {
   ClassesRegionInlineSelect,
@@ -106,6 +107,9 @@ export default async function ClassesPage({ searchParams }: ClassesPageProps) {
     query: selectedQuery
   })
   const session = await getSession()
+  const profile = session ? await getMyProfile() : null
+  const favoritesEnabled = !session || profile?.role === "parent"
+  const parentSession = !!session && profile?.role === "parent"
   const classesHref = buildClassesHref({
     region: selectedRegion,
     subject: selectedSubject,
@@ -114,10 +118,14 @@ export default async function ClassesPage({ searchParams }: ClassesPageProps) {
   const myPageHref = "/my"
   const myApplicationsHref = "/my/applications"
   const myPageEntryHref = session
-    ? myPageHref
+    ? parentSession
+      ? myPageHref
+      : "/studio"
     : `/auth/sign-in?${new URLSearchParams({ returnTo: myPageHref }).toString()}`
   const myApplicationsEntryHref = session
-    ? myApplicationsHref
+    ? parentSession
+      ? myApplicationsHref
+      : "/studio"
     : `/auth/sign-in?${new URLSearchParams({ returnTo: myApplicationsHref }).toString()}`
 
   const heroBanners = [{ id: "default" }, { id: "secondary" }, { id: "tertiary" }] as const
@@ -159,31 +167,37 @@ export default async function ClassesPage({ searchParams }: ClassesPageProps) {
           />
 
           {session ? (
-            <Link href={myPageEntryHref} className={styles.userButton} aria-label="마이페이지">
-              <svg
-                width="22"
-                height="22"
-                viewBox="0 0 24 24"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
-                aria-hidden="true"
-              >
-                <path
-                  d="M20 21a8 8 0 1 0-16 0"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-                <path
-                  d="M12 13a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-            </Link>
+            parentSession ? (
+              <Link href={myPageEntryHref} className={styles.userButton} aria-label="마이페이지">
+                <svg
+                  width="22"
+                  height="22"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                  aria-hidden="true"
+                >
+                  <path
+                    d="M20 21a8 8 0 1 0-16 0"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                  <path
+                    d="M12 13a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </Link>
+            ) : (
+              <Link href="/studio" className={styles.loginButton} aria-label="스튜디오로 이동">
+                스튜디오
+              </Link>
+            )
           ) : (
             <Link href={myPageEntryHref} className={styles.loginButton} aria-label="로그인">
               로그인
@@ -270,11 +284,13 @@ export default async function ClassesPage({ searchParams }: ClassesPageProps) {
                     href={`/classes/${item.id}?region=${selectedRegion}`}
                     className={`${styles.card} ${styles.sliderCard}`}
                   >
-                    <BookmarkButton
-                      classId={item.id}
-                      className={styles.bookmarkButton}
-                      activeClassName={styles.bookmarkButtonActive}
-                    />
+                    {favoritesEnabled ? (
+                      <BookmarkButton
+                        classId={item.id}
+                        className={styles.bookmarkButton}
+                        activeClassName={styles.bookmarkButtonActive}
+                      />
+                    ) : null}
                     <div className={styles.cardImage}>
                       {item.coverImageUrl ? (
                         <Image

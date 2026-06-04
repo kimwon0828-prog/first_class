@@ -3,6 +3,7 @@
 import { createClient } from "@supabase/supabase-js"
 
 import { resolvePostAuthRedirect } from "@/features/auth/lib/redirect"
+import { normalizeProfileRole } from "@/features/auth/lib/profile-sync"
 import { getSupabaseServerClient } from "@/integrations/supabase/server"
 import { getPublicEnv } from "@/shared/config/env"
 
@@ -97,10 +98,19 @@ export async function signInAction(
     }
 
     if (existingProfile) {
+      const normalizedRole = normalizeProfileRole(existingProfile.role)
+      if (!normalizedRole) {
+        await supabase.auth.signOut()
+        return {
+          status: "error",
+          message: "프로필 권한 정보를 확인할 수 없습니다. 관리자에게 문의해 주세요."
+        }
+      }
+
       return {
         status: "success",
         message: "로그인되었습니다.",
-        redirectTo: returnTo ?? resolvePostAuthRedirect(existingProfile.role)
+        redirectTo: returnTo ?? resolvePostAuthRedirect(normalizedRole.role)
       }
     }
 
