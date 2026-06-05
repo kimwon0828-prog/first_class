@@ -79,16 +79,16 @@ export default async function StudioIndexPage({ searchParams }: StudioIndexPageP
 
           <div className={styles.welcomeRight}>
             <div className={styles.welcomeActions}>
-              <Link href="/studio/applications" className={styles.buttonPrimary}>
+              <Link href="/studio/applications" prefetch={false} className={styles.buttonPrimary}>
                 신청 관리
               </Link>
-              <Link href="/studio/classes" className={styles.buttonSecondary}>
+              <Link href="/studio/classes" prefetch={false} className={styles.buttonSecondary}>
                 수업 관리
               </Link>
-              <Link href="/studio/schedule" className={styles.buttonSecondary}>
+              <Link href="/studio/schedule" prefetch={false} className={styles.buttonSecondary}>
                 일정 관리
               </Link>
-              <Link href="/studio/sign-out" className={styles.buttonGhost}>
+              <Link href="/studio/sign-out" prefetch={false} className={styles.buttonGhost}>
                 로그아웃
               </Link>
             </div>

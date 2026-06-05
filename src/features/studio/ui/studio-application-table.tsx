@@ -64,7 +64,7 @@ export const StudioApplicationTable = ({ items }: StudioApplicationTableProps) =
               <td style={bodyCellStyle}>{item.goalType ?? "-"}</td>
               <td style={bodyCellStyle}>{formatDateTime(item.createdAt)}</td>
               <td style={bodyCellStyle}>
-                <Link href={`/studio/applications/${item.id}`} style={linkStyle}>
+                <Link href={`/studio/applications/${item.id}`} prefetch={false} style={linkStyle}>
                   상세 보기
                 </Link>
               </td>

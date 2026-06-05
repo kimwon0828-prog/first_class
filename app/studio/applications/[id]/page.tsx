@@ -46,7 +46,7 @@ export default async function StudioApplicationDetailPage({
       }}
     >
       <div style={{ marginBottom: 20 }}>
-        <Link href="/studio/applications" style={{ color: "#2563eb", textDecoration: "none" }}>
+        <Link href="/studio/applications" prefetch={false} style={{ color: "#2563eb", textDecoration: "none" }}>
           신청함으로 돌아가기
         </Link>
       </div>

@@ -246,7 +246,7 @@ export const StudioDashboardSummaryView = ({
                   </dl>
 
                   <div className={styles.applicationActions}>
-                    <Link href={`/studio/applications/${item.id}`} className={styles.buttonSecondary}>
+                    <Link href={`/studio/applications/${item.id}`} prefetch={false} className={styles.buttonSecondary}>
                       관리
                     </Link>
                   </div>
@@ -263,7 +263,7 @@ export const StudioDashboardSummaryView = ({
             <h2 className={styles.sectionTitle}>최근 신청 현황</h2>
             <p className={styles.sectionDescription}>최근 신청 5건을 요약해 보여줍니다.</p>
           </div>
-          <Link href="/studio/applications" className={styles.buttonGhost}>
+          <Link href="/studio/applications" prefetch={false} className={styles.buttonGhost}>
             신청함 전체 보기
           </Link>
         </header>
@@ -310,7 +310,11 @@ export const StudioDashboardSummaryView = ({
                         </td>
                         <td className={styles.td}>{formatDateTime(getScheduledAt(item))}</td>
                         <td className={styles.tdRight}>
-                          <Link href={`/studio/applications/${item.id}`} className={styles.buttonSecondarySm}>
+                          <Link
+                            href={`/studio/applications/${item.id}`}
+                            prefetch={false}
+                            className={styles.buttonSecondarySm}
+                          >
                             관리
                           </Link>
                         </td>
@@ -350,7 +354,7 @@ export const StudioDashboardSummaryView = ({
                       </div>
                     </dl>
                     <div className={styles.mobileActions}>
-                      <Link href={`/studio/applications/${item.id}`} className={styles.buttonSecondary}>
+                      <Link href={`/studio/applications/${item.id}`} prefetch={false} className={styles.buttonSecondary}>
                         관리
                       </Link>
                     </div>
@@ -370,7 +374,7 @@ export const StudioDashboardSummaryView = ({
 
         <div className={styles.quickGrid}>
           {quickLinks.map((item) => (
-            <Link key={item.href} href={item.href} className={styles.quickCard}>
+            <Link key={item.href} href={item.href} prefetch={false} className={styles.quickCard}>
               <div className={styles.quickCardTop}>
                 <span className={styles.quickIcon} aria-hidden="true" />
                 <strong className={styles.quickTitle}>{item.title}</strong>
