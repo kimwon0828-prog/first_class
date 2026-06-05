@@ -15,6 +15,7 @@ export async function middleware(request: NextRequest) {
   const { supabase, response } = getSupabaseMiddlewareClient(request)
   let session: Awaited<ReturnType<typeof supabase.auth.getSession>>["data"]["session"] = null
   let profileRole: "parent" | "teacher" | "academy" | "admin" | "operator" | null = null
+  const hasCookieHeader = Boolean(request.headers.get("cookie"))
   try {
     const result = await supabase.auth.getSession()
     session = result.data.session ?? null
@@ -45,12 +46,30 @@ export async function middleware(request: NextRequest) {
     session = null
   }
 
+  if (pathname.startsWith(studioPrefix)) {
+    const normalizedRole = profileRole === "operator" ? "admin" : profileRole
+    console.log("[middleware studio check]", {
+      pathname,
+      hasCookieHeader,
+      hasSession: Boolean(session),
+      userId: session?.user?.id,
+      email: session?.user?.email,
+      role: profileRole,
+      normalizedRole
+    })
+  }
+
   const requiresParentSession =
     authRequiredExactPaths.includes(pathname) ||
     parentProtectedPrefixes.some((prefix) => pathname.startsWith(prefix)) ||
     applyPathPattern.test(pathname)
 
   if (requiresParentSession && !session) {
+    console.log("[middleware redirect]", {
+      pathname,
+      reason: "requires_parent_session_no_session",
+      to: "/auth/sign-in"
+    })
     const url = request.nextUrl.clone()
     const returnTo = `${request.nextUrl.pathname}${request.nextUrl.search}`
     url.pathname = "/auth/sign-in"
@@ -67,6 +86,7 @@ export async function middleware(request: NextRequest) {
     (pathname.startsWith("/my") || pathname.startsWith("/applications")) &&
     (profileRole === "teacher" || profileRole === "academy" || profileRole === "admin" || profileRole === "operator")
   ) {
+    console.log("[middleware redirect]", { pathname, reason: "studio_role_blocked_from_parent_area", to: "/studio" })
     const url = request.nextUrl.clone()
     url.pathname = "/studio"
     url.search = ""
@@ -75,6 +95,7 @@ export async function middleware(request: NextRequest) {
 
   if (pathname.startsWith(studioPrefix)) {
     if (!session && !isStudioPublicPath) {
+      console.log("[middleware redirect]", { pathname, reason: "studio_requires_session", to: "/studio/sign-in" })
       const url = request.nextUrl.clone()
       const returnTo = `${request.nextUrl.pathname}${request.nextUrl.search}`
       url.pathname = studioPublicPaths[0]
@@ -92,6 +113,7 @@ export async function middleware(request: NextRequest) {
         .maybeSingle()
 
       if (data) {
+        console.log("[middleware redirect]", { pathname, reason: "studio_public_pending_request", to: "/studio/pending" })
         const url = request.nextUrl.clone()
         url.pathname = "/studio/pending"
         url.search = ""
@@ -107,6 +129,7 @@ export async function middleware(request: NextRequest) {
         .maybeSingle()
 
       if (data) {
+        console.log("[middleware redirect]", { pathname, reason: "studio_private_pending_request", to: "/studio/pending" })
         const url = request.nextUrl.clone()
         url.pathname = "/studio/pending"
         url.search = ""
@@ -115,6 +138,7 @@ export async function middleware(request: NextRequest) {
     }
 
     if (isStudioPublicPath && profileRole === "parent") {
+      console.log("[middleware redirect]", { pathname, reason: "parent_accessing_studio_public", to: "/classes" })
       const url = request.nextUrl.clone()
       url.pathname = "/classes"
       url.search = ""
@@ -128,6 +152,7 @@ export async function middleware(request: NextRequest) {
       profileRole &&
       !studioRoleSet.has(profileRole)
     ) {
+      console.log("[middleware redirect]", { pathname, reason: "non_studio_role_accessing_studio", to: "/classes" })
       const url = request.nextUrl.clone()
       url.pathname = "/classes"
       url.search = ""
