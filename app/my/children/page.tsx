@@ -8,7 +8,7 @@ import { MyChildrenManager } from "@/features/children/ui/my-children-manager"
 import styles from "./page.module.css"
 
 export default async function MyChildrenPage() {
-  await requireSession("/auth/sign-in")
+  await requireSession(`/auth/sign-in?returnTo=${encodeURIComponent("/my/children")}`)
   const profile = await getMyProfile()
 
   if (!profile) {

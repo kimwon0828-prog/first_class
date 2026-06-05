@@ -8,7 +8,7 @@ import { MyApplicationList } from "@/features/applications/ui/my-application-lis
 import styles from "./page.module.css"
 
 export default async function MyApplicationsPage() {
-  await requireSession("/auth/sign-in")
+  await requireSession(`/auth/sign-in?returnTo=${encodeURIComponent("/my/applications")}`)
   const profile = await getMyProfile()
 
   if (!profile) {

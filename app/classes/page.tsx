@@ -121,7 +121,7 @@ export default async function ClassesPage({ searchParams }: ClassesPageProps) {
     ? parentSession
       ? myPageHref
       : "/studio"
-    : `/auth/sign-in?${new URLSearchParams({ returnTo: myPageHref }).toString()}`
+    : "/auth/sign-in"
   const myApplicationsEntryHref = session
     ? parentSession
       ? myApplicationsHref

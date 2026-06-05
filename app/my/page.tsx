@@ -8,7 +8,7 @@ import { MyDashboardHome } from "@/features/my/ui/my-dashboard-home"
 import styles from "./page.module.css"
 
 export default async function MyPage() {
-  await requireSession("/auth/sign-in")
+  await requireSession(`/auth/sign-in?returnTo=${encodeURIComponent("/my")}`)
   const profile = await getMyProfile()
 
   if (!profile) {
