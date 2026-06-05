@@ -1,54 +1,259 @@
 .page {
   min-height: 100dvh;
-  background: #f3f4f6;
-  padding: 40px 24px;
+  background: #fafafa;
+  color: #111111;
+  position: relative;
+  overflow-x: hidden;
 }
 
-.container {
-  width: 100%;
-  max-width: 440px;
-  margin: 80px auto 0;
-  border: 1px solid #e5e7eb;
-  border-radius: 20px;
-  background: #fff;
-  padding: 32px;
-  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.06);
+.page::before {
+  content: "";
+  position: absolute;
+  inset: -120px -120px auto auto;
+  width: 520px;
+  height: 520px;
+  border-radius: 999px;
+  background: radial-gradient(circle at 30% 30%, #eaf8ec 0%, rgba(234, 248, 236, 0) 62%);
+  filter: blur(2px);
+  pointer-events: none;
 }
 
-.eyebrow {
-  margin: 0 0 8px;
+.page::after {
+  content: "";
+  position: absolute;
+  inset: 120px auto auto -160px;
+  width: 460px;
+  height: 460px;
+  border-radius: 999px;
+  background: radial-gradient(circle at 60% 50%, #f3fbf4 0%, rgba(243, 251, 244, 0) 62%);
+  filter: blur(4px);
+  pointer-events: none;
+}
+
+.shell {
+  position: relative;
+  z-index: 1;
+  max-width: 1080px;
+  min-height: 100dvh;
+  margin: 0 auto;
+  padding: 48px 24px;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 22px;
+  align-content: center;
+}
+
+.brand {
+  display: grid;
+  gap: 14px;
+}
+
+.logo {
+  display: block;
+  height: auto;
+  width: auto;
+}
+
+.kicker {
+  margin: 0;
   font-size: 13px;
   line-height: 18px;
-  color: #4f46e5;
+  font-weight: 800;
+  color: #2aad38;
+}
+
+.headline {
+  margin: 0;
+  font-size: 30px;
+  line-height: 38px;
+  letter-spacing: -0.04em;
+  font-weight: 800;
+  color: #111111;
+}
+
+.subcopy {
+  margin: 0;
+  font-size: 14px;
+  line-height: 22px;
+  color: #666666;
+  max-width: 56ch;
+}
+
+.points {
+  margin: 6px 0 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 10px;
+}
+
+.point {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 600;
+  color: #4a4a4a;
+}
+
+.pointIcon {
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  background: #eaf8ec;
+  border: 1px solid #d9f3dc;
+  position: relative;
+  flex: 0 0 auto;
+}
+
+.pointIcon::after {
+  content: "";
+  position: absolute;
+  inset: 5px;
+  border-radius: 999px;
+  background: #2aad38;
+}
+
+.card {
+  width: 100%;
+  max-width: 420px;
+  justify-self: center;
+  background: #ffffff;
+  border: 1px solid #eeeeee;
+  border-radius: 24px;
+  padding: 28px 24px;
+  box-shadow: 0 12px 30px rgba(17, 17, 17, 0.06);
+  display: grid;
+  gap: 18px;
+}
+
+.cardHeader {
+  display: grid;
+  gap: 10px;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 28px;
+  width: fit-content;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid #eaf8ec;
+  background: #f3fbf4;
+  color: #2aad38;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+.cardTitle {
+  margin: 0;
+  font-size: 22px;
+  line-height: 28px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: #111111;
+}
+
+.cardDescription {
+  margin: 0;
+  font-size: 14px;
+  line-height: 22px;
+  color: #666666;
+}
+
+.formArea {
+  display: grid;
+  gap: 14px;
+}
+
+.card :where(input[type="email"], input[type="password"]) {
+  height: 52px;
+  border-radius: 12px;
+  border: 1px solid #d9d9d9;
+  padding: 0 14px;
+  font-size: 15px;
+  line-height: 20px;
+  color: #111111;
+}
+
+.card :where(input[type="email"], input[type="password"]):focus {
+  outline: none;
+  border-color: #2aad38;
+  box-shadow: 0 0 0 3px rgba(42, 173, 56, 0.16);
+}
+
+.card :where(button[type="submit"]) {
+  width: 100%;
+  height: 52px;
+  border-radius: 12px;
+  background: #2aad38;
+  border: 1px solid #2aad38;
+  color: #ffffff;
+  font-size: 15px;
   font-weight: 700;
 }
 
-.title {
-  margin: 0;
-  font-size: 28px;
-  line-height: 34px;
-  color: #111827;
+.card :where(button[type="submit"]:hover) {
+  background: #249b31;
+  border-color: #249b31;
 }
 
-.description {
-  margin: 12px 0 24px;
+.formArea [data-role="form-message"] {
+  border-radius: 12px;
+  padding: 12px 14px;
   font-size: 14px;
   line-height: 20px;
-  color: #4b5563;
 }
 
-@media (max-width: 640px) {
-  .page {
-    padding: 20px 16px;
+.formArea [data-role="form-message"][data-tone="error"] {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #dc2626;
+}
+
+.formArea [data-role="form-message"][data-tone="success"] {
+  background: #f3fbf4;
+  border: 1px solid #d9f3dc;
+  color: #2aad38;
+}
+
+.notice {
+  margin: 0;
+  font-size: 13px;
+  line-height: 18px;
+  color: #8a8a8a;
+  text-align: center;
+}
+
+@media (min-width: 960px) {
+  .shell {
+    grid-template-columns: 1.15fr 0.85fr;
+    align-items: center;
+    gap: 36px;
+    padding: 64px 32px;
   }
 
-  .container {
-    margin-top: 24px;
+  .card {
+    justify-self: end;
+    padding: 32px;
+  }
+}
+
+@media (max-width: 480px) {
+  .shell {
+    padding: 24px;
+  }
+
+  .headline {
+    font-size: 26px;
+    line-height: 34px;
+  }
+
+  .card {
     padding: 24px 20px;
-  }
-
-  .title {
-    font-size: 24px;
-    line-height: 30px;
   }
 }

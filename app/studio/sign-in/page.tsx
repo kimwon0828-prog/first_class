@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation"
+import Image from "next/image"
 
 import { getMyProfile } from "@/features/auth/queries/get-my-profile"
 import { getSession } from "@/features/auth/lib/session"
@@ -41,15 +42,64 @@ export default async function StudioSignInPage({ searchParams }: StudioSignInPag
 
   return (
     <main className={styles.page}>
-      <section className={styles.container}>
-        <p className={styles.eyebrow}>FIRST CLASS STUDIO</p>
-        <h1 className={styles.title}>teacher 로그인</h1>
-        <p className={styles.description}>
-          본인 organization 범위의 체험 신청을 확인하고 상태를 처리하는 studio 진입 화면입니다.
-        </p>
+      <div className={styles.shell}>
+        <section className={styles.brand}>
+          <Image
+            src="/images/first-class-logo.png"
+            alt="첫수업"
+            width={132}
+            height={44}
+            priority
+            className={styles.logo}
+          />
+          <p className={styles.kicker}>첫수업 운영보드</p>
+          <h1 className={styles.headline}>
+            체험수업 신청부터 상담,
+            <br />
+            등록 전환까지 한 곳에서 관리하세요.
+          </h1>
+          <p className={styles.subcopy}>
+            학원에 들어온 첫수업 신청을 빠르게 확인하고 상담 상태를 놓치지 않도록 도와드려요.
+          </p>
 
-        <StudioSignInForm returnTo={returnTo ?? undefined} />
-      </section>
+          <ul className={styles.points}>
+            <li className={styles.point}>
+              <span className={styles.pointIcon} aria-hidden="true" />
+              신규 신청 확인
+            </li>
+            <li className={styles.point}>
+              <span className={styles.pointIcon} aria-hidden="true" />
+              상담 메모 관리
+            </li>
+            <li className={styles.point}>
+              <span className={styles.pointIcon} aria-hidden="true" />
+              수업 일정 확인
+            </li>
+            <li className={styles.point}>
+              <span className={styles.pointIcon} aria-hidden="true" />
+              등록 전환 관리
+            </li>
+          </ul>
+        </section>
+
+        <section className={styles.card} aria-label="선생님 로그인">
+          <header className={styles.cardHeader}>
+            <span className={styles.badge}>Teacher Studio</span>
+            <h2 className={styles.cardTitle}>선생님 로그인</h2>
+            <p className={styles.cardDescription}>
+              첫수업 운영보드에 로그인해 신청 현황을 확인하세요.
+            </p>
+          </header>
+
+          <div className={styles.formArea}>
+            <StudioSignInForm returnTo={returnTo ?? undefined} />
+          </div>
+
+          <p className={styles.notice}>
+            운영자 계정은 첫수업에 등록된 학원/선생님만 사용할 수 있어요.
+          </p>
+        </section>
+      </div>
     </main>
   )
 }

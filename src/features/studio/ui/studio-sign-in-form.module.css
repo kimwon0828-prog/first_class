@@ -61,3 +61,41 @@
   opacity: 0.7;
   cursor: default;
 }
+
+.links {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  align-items: center;
+  font-size: 13px;
+  line-height: 18px;
+  color: #8a8a8a;
+}
+
+.separator {
+  color: #d9d9d9;
+}
+
+.footer {
+  margin-top: 4px;
+  display: grid;
+  gap: 10px;
+}
+
+.footerText {
+  margin: 0;
+  text-align: center;
+  font-size: 13px;
+  line-height: 18px;
+  color: #8a8a8a;
+}
+
+.footerLink {
+  color: #2aad38;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.footerLink:hover {
+  color: #249b31;
+}

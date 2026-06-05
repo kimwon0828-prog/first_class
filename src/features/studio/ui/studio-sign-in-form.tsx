@@ -58,7 +58,11 @@ export const StudioSignInForm = ({ returnTo }: StudioSignInFormProps) => {
       </label>
 
       {state.message ? (
-        <p className={`${styles.message} ${state.status === "error" ? styles.error : styles.info}`}>
+        <p
+          data-role="form-message"
+          data-tone={state.status}
+          className={`${styles.message} ${state.status === "error" ? styles.error : styles.info}`}
+        >
           {state.message}
         </p>
       ) : null}
@@ -70,15 +74,24 @@ export const StudioSignInForm = ({ returnTo }: StudioSignInFormProps) => {
       </div>
 
       <button type="submit" disabled={isPending} className={styles.submitButton}>
-        {isPending ? "로그인 중..." : "선생님 로그인"}
+        {isPending ? "로그인 중..." : "운영보드 로그인"}
       </button>
 
-      <div style={{ marginTop: 24, textAlign: "center", fontSize: 13, color: "#6b7280" }}>
-        아직 계정이 없으신가요?{" "}
-        <Link href="/studio/sign-up" style={{ color: "#2563eb", textDecoration: "none" }}>
-          학원 계정 신청
-        </Link>
+      <div className={styles.footer}>
+        <p className={styles.footerText}>
+          아직 계정이 없으신가요?{" "}
+          <Link href="/studio/sign-up" className={styles.footerLink}>
+            학원 계정 신청
+          </Link>
+        </p>
+        <p className={styles.footerText}>
+          학부모이신가요?{" "}
+          <Link href="/auth/sign-in" className={styles.footerLink}>
+            학부모 로그인
+          </Link>
+        </p>
       </div>
+
     </form>
   )
 }
