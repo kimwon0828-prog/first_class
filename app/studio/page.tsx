@@ -3,7 +3,12 @@ import { getStudioDashboardTeacherOptions } from "@/features/studio/queries/get-
 import { getStudioDashboardSummary } from "@/features/studio/queries/get-studio-dashboard-summary"
 import { StudioDashboardSummaryView } from "@/features/studio/ui/studio-dashboard-summary"
 import { StudioTeacherFilter } from "@/features/studio/ui/studio-teacher-filter"
+import { dataAdapter } from "@/shared/lib/db"
+import type { StudioApplicationSummary } from "@/shared/lib/db/adapter"
+import Image from "next/image"
 import Link from "next/link"
+
+import styles from "@/features/studio/ui/studio-dashboard.module.css"
 
 const uuidPattern =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
@@ -11,6 +16,9 @@ const uuidPattern =
 type StudioIndexPageProps = {
   searchParams?: Promise<{ teacherId?: string }>
 }
+
+const formatToday = () =>
+  new Intl.DateTimeFormat("ko-KR", { dateStyle: "full" }).format(new Date())
 
 export default async function StudioIndexPage({ searchParams }: StudioIndexPageProps) {
   const teacher = await requireTeacherStudioAccess()
@@ -25,103 +33,89 @@ export default async function StudioIndexPage({ searchParams }: StudioIndexPageP
       ? teacherIdParam
       : null
   const selectedTeacherId = validatedTeacherId ?? "all"
+  const selectedTeacherName =
+    selectedTeacherId !== "all"
+      ? (filterOptions.find((option) => option.teacherId === selectedTeacherId)?.teacherName ?? null)
+      : null
 
   const { data, error } = await getStudioDashboardSummary(teacher.organizationId, {
     teacherId: validatedTeacherId
   })
 
-  return (
-    <main
-      style={{
-        maxWidth: 1280,
-        margin: "0 auto",
-        padding: "32px 24px 48px",
-        background: "#f9fafb",
-        minHeight: "100dvh"
-      }}
-    >
-      <header style={{ marginBottom: 24 }}>
-        <p style={{ margin: "0 0 8px", fontSize: 13, lineHeight: "18px", color: "#4f46e5" }}>
-          FIRST CLASS STUDIO
-        </p>
-        <h1 style={{ margin: 0, fontSize: 28, lineHeight: "34px", color: "#111827" }}>
-          운영 대시보드
-        </h1>
-        <p style={{ margin: "12px 0 0", fontSize: 14, lineHeight: "20px", color: "#4b5563" }}>
-          선생님별 운영 현황을 필터링해서 요약합니다.
-        </p>
-        <div
-          style={{
-            marginTop: 16,
-            display: "flex",
-            justifyContent: "space-between",
-            gap: 12,
-            alignItems: "center"
-          }}
-        >
-          <StudioTeacherFilter options={filterOptions} selectedTeacherId={selectedTeacherId} />
-          <div style={{ display: "inline-flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-            {filterError ? (
-              <p style={{ margin: 0, color: "#b42318", fontSize: 13, lineHeight: "18px" }}>
-                {filterError}
-              </p>
-            ) : null}
-            <Link
-              href="/classes"
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                justifyContent: "center",
-                height: 34,
-                padding: "0 12px",
-                borderRadius: 999,
-                border: "1px solid #e5e7eb",
-                background: "#ffffff",
-                color: "#111827",
-                textDecoration: "none",
-                fontSize: 13,
-                fontWeight: 600
-              }}
-            >
-              학부모 화면 보기
-            </Link>
-            <Link
-              href="/studio/sign-out"
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                justifyContent: "center",
-                height: 34,
-                padding: "0 12px",
-                borderRadius: 999,
-                border: "1px solid #e5e7eb",
-                background: "#ffffff",
-                color: "#111827",
-                textDecoration: "none",
-                fontSize: 13,
-                fontWeight: 600
-              }}
-            >
-              로그아웃
-            </Link>
-          </div>
-        </div>
-      </header>
+  let applications: StudioApplicationSummary[] = []
+  let applicationsError: string | null = null
+  try {
+    applications = await dataAdapter.listStudioApplications(teacher.organizationId, {
+      teacherId: validatedTeacherId
+    })
+  } catch {
+    applicationsError = "신청 목록을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요."
+  }
 
-      {error ? (
-        <section
-          style={{
-            border: "1px solid #fecaca",
-            borderRadius: 16,
-            background: "#fff",
-            padding: 20
-          }}
-        >
-          <p style={{ margin: 0, color: "#991b1b", fontSize: 14, lineHeight: "20px" }}>{error}</p>
-        </section>
-      ) : (
-        <StudioDashboardSummaryView summary={data} />
-      )}
+  return (
+    <main className={styles.page}>
+      <div className={styles.container}>
+        <header className={styles.welcomeCard}>
+          <div className={styles.welcomeLeft}>
+            <div className={styles.brandKicker}>
+              <Image
+                src="/images/first-class-logo.png"
+                alt="첫수업"
+                width={120}
+                height={40}
+                className={styles.brandLogo}
+                priority
+              />
+            </div>
+            <h1 className={styles.pageTitle}>안녕하세요, {teacher.name} 선생님</h1>
+            <p className={styles.pageDescription}>오늘의 첫수업 신청 현황을 확인해보세요.</p>
+            <div className={styles.metaRow}>
+              <span className={styles.metaPill}>{formatToday()}</span>
+              {selectedTeacherName ? (
+                <span className={styles.metaPill}>{selectedTeacherName} 기준</span>
+              ) : null}
+            </div>
+          </div>
+
+          <div className={styles.welcomeRight}>
+            <div className={styles.welcomeActions}>
+              <Link href="/studio/applications" className={styles.buttonPrimary}>
+                신청 관리
+              </Link>
+              <Link href="/studio/classes" className={styles.buttonSecondary}>
+                수업 관리
+              </Link>
+              <Link href="/studio/schedule" className={styles.buttonSecondary}>
+                일정 관리
+              </Link>
+              <Link href="/studio/sign-out" className={styles.buttonGhost}>
+                로그아웃
+              </Link>
+            </div>
+
+            <div className={styles.welcomeTools}>
+              <StudioTeacherFilter options={filterOptions} selectedTeacherId={selectedTeacherId} />
+              {filterError ? (
+                <div className={styles.alertDanger}>
+                  <p className={styles.alertText}>{filterError}</p>
+                </div>
+              ) : null}
+            </div>
+          </div>
+        </header>
+
+        {error ? (
+          <section className={styles.alertDanger}>
+            <p className={styles.alertText}>{error}</p>
+          </section>
+        ) : (
+          <StudioDashboardSummaryView
+            summary={data}
+            applications={applications}
+            applicationsError={applicationsError}
+          />
+        )}
+      </div>
     </main>
   )
 }

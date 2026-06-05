@@ -4,6 +4,7 @@ import { useRouter, useSearchParams } from "next/navigation"
 import { useMemo } from "react"
 
 import type { StudioDashboardTeacherFilterOption } from "@/shared/lib/db/adapter"
+import styles from "@/features/studio/ui/studio-dashboard.module.css"
 
 type StudioTeacherFilterProps = {
   options: StudioDashboardTeacherFilterOption[]
@@ -35,17 +36,12 @@ export const StudioTeacherFilter = ({
   }
 
   return (
-    <label style={{ display: "grid", gap: 6, maxWidth: 360 }}>
-      <span style={{ fontSize: 13, lineHeight: "18px", color: "#4b5563" }}>선생님 필터</span>
+    <label className={styles.teacherFilter}>
+      <span className={styles.teacherFilterLabel}>선생님 필터</span>
       <select
         value={selectedTeacherId}
         onChange={(event) => handleChange(event.target.value)}
-        style={{
-          padding: 10,
-          borderRadius: 10,
-          border: "1px solid #d1d5db",
-          background: "#fff"
-        }}
+        className={styles.select}
       >
         <option value="all">전체</option>
         {sortedOptions.map((option) => (
@@ -54,7 +50,7 @@ export const StudioTeacherFilter = ({
           </option>
         ))}
       </select>
-      <span style={{ fontSize: 12, lineHeight: "16px", color: "#6b7280" }}>
+      <span className={styles.teacherFilterHelp}>
         학원 계정(로그인 계정)은 제외하고, active 내부 선생님 프로필만 표시합니다.
       </span>
     </label>
