@@ -1,10 +1,12 @@
 "use client"
 
-import { useState } from "react"
+import Link from "next/link"
+import { useMemo, useState } from "react"
 
 import { submitToggleStudioClassActiveAction } from "@/features/studio/actions/toggle-studio-class-active"
 import { StudioClassForm } from "@/features/studio/ui/studio-class-form"
 import type { ClassSummary, StudioTeacherOption } from "@/shared/lib/db/adapter"
+import styles from "@/features/studio/ui/studio-classes-manager.module.css"
 
 type StudioClassesManagerProps = {
   items: ClassSummary[]
@@ -33,105 +35,303 @@ export const StudioClassesManager = ({
   teacherOptionsError
 }: StudioClassesManagerProps) => {
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive">("all")
+  const [query, setQuery] = useState("")
   const selectedItem = items.find((item) => item.id === selectedId) ?? null
+  const totalCount = items.length
+  const activeCount = items.filter((item) => item.isActive).length
+  const inactiveCount = totalCount - activeCount
+  const teacherCount = useMemo(() => {
+    const unique = new Set<string>()
+    items.forEach((item) => {
+      if (item.teacherId) {
+        unique.add(item.teacherId)
+        return
+      }
+
+      const fallback = (item.teacherDisplayName ?? item.teacherName ?? "").trim()
+      if (fallback) {
+        unique.add(fallback)
+      }
+    })
+    return unique.size
+  }, [items])
+
+  const filteredItems = useMemo(() => {
+    const needle = query.trim().toLowerCase()
+
+    return items.filter((item) => {
+      if (statusFilter === "active" && !item.isActive) {
+        return false
+      }
+
+      if (statusFilter === "inactive" && item.isActive) {
+        return false
+      }
+
+      if (!needle) {
+        return true
+      }
+
+      const haystacks = [
+        item.title,
+        item.teacherDisplayName,
+        item.teacherName,
+        PROGRAM_TYPE_LABELS[item.programType],
+        item.subject,
+        item.region,
+        item.targetAge
+      ]
+        .filter((value): value is string => typeof value === "string" && value.length > 0)
+        .map((value) => value.toLowerCase())
+
+      return haystacks.some((value) => value.includes(needle))
+    })
+  }, [items, query, statusFilter])
 
   return (
-    <div
-      style={{
-        display: "grid",
-        gap: 16,
-        alignItems: "start",
-        gridTemplateColumns: "repeat(auto-fit, minmax(360px, 1fr))"
-      }}
-    >
-      <section style={cardStyle}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-          <div>
-            <h2 style={titleStyle}>프로그램 목록</h2>
-            <p style={descriptionStyle}>같은 organization에 속한 프로그램만 조회하고 관리합니다.</p>
+    <div className={styles.root}>
+      <section className={styles.metrics} aria-label="수업 요약 지표">
+        <div className={styles.metricCard}>
+          <div className={styles.metricTop}>
+            <p className={styles.metricLabel}>전체 수업</p>
+            <span className={styles.metricAccent} aria-hidden="true" />
           </div>
-          <button type="button" onClick={() => setSelectedId(null)} style={secondaryButtonStyle}>
-            신규 등록
-          </button>
+          <p className={styles.metricValue}>{totalCount}</p>
+          <p className={styles.metricDescription}>등록된 수업 전체</p>
         </div>
-
-        {items.length === 0 ? (
-          <p style={{ margin: 0, color: "#4b5563", fontSize: 14, lineHeight: "20px" }}>
-            아직 등록된 프로그램이 없습니다.
-          </p>
-        ) : (
-          <div style={{ display: "grid", gap: 12 }}>
-            {items.map((item) => (
-              <article
-                key={item.id}
-                style={{
-                  border: selectedId === item.id ? "1px solid #111827" : "1px solid #e5e7eb",
-                  borderRadius: 14,
-                  background: "#fff",
-                  padding: 16
-                }}
-              >
-                <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
-                  <div style={{ display: "grid", gap: 12, gridTemplateColumns: item.coverImageUrl ? "120px 1fr" : "1fr" }}>
-                    {item.coverImageUrl ? (
-                      <>
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                          src={item.coverImageUrl}
-                          alt={`${item.title} 대표 이미지`}
-                          style={{
-                            width: 120,
-                            height: 90,
-                            borderRadius: 12,
-                            objectFit: "cover",
-                            border: "1px solid #e5e7eb"
-                          }}
-                        />
-                      </>
-                    ) : null}
-                    <div style={{ display: "grid", gap: 6 }}>
-                    <strong style={{ color: "#111827", fontSize: 16, lineHeight: "22px" }}>{item.title}</strong>
-                    <p style={{ margin: 0, color: "#4b5563", fontSize: 14, lineHeight: "20px" }}>
-                      {PROGRAM_TYPE_LABELS[item.programType]} / {item.subject} / {item.region} / {item.targetAge}
-                    </p>
-                    <p style={{ margin: 0, color: "#4b5563", fontSize: 14, lineHeight: "20px" }}>
-                      담당: {item.teacherDisplayName ?? item.teacherName ?? "미지정"} / 체험비: {formatPrice(item.trialPrice)}
-                    </p>
-                    </div>
-                  </div>
-                  <div style={{ display: "grid", gap: 8, justifyItems: "end" }}>
-                    <span
-                      style={{
-                        borderRadius: 999,
-                        padding: "4px 10px",
-                        background: item.isActive ? "#dcfce7" : "#f3f4f6",
-                        color: item.isActive ? "#166534" : "#4b5563",
-                        fontSize: 12,
-                        lineHeight: "18px",
-                        fontWeight: 600
-                      }}
-                    >
-                      {item.isActive ? "공개" : "비공개"}
-                    </span>
-                    <button type="button" onClick={() => setSelectedId(item.id)} style={secondaryButtonStyle}>
-                      수정
-                    </button>
-                    <ToggleClassActiveButton classId={item.id} isActive={item.isActive} />
-                  </div>
-                </div>
-              </article>
-            ))}
+        <div className={styles.metricCard}>
+          <div className={styles.metricTop}>
+            <p className={styles.metricLabel}>공개 중</p>
+            <span className={styles.metricAccent} aria-hidden="true" />
           </div>
-        )}
+          <p className={styles.metricValue}>{activeCount}</p>
+          <p className={styles.metricDescription}>학부모에게 노출 중인 수업</p>
+        </div>
+        <div className={styles.metricCard}>
+          <div className={styles.metricTop}>
+            <p className={styles.metricLabel}>비공개</p>
+            <span className={styles.metricAccentMuted} aria-hidden="true" />
+          </div>
+          <p className={styles.metricValue}>{inactiveCount}</p>
+          <p className={styles.metricDescription}>노출되지 않는 수업</p>
+        </div>
+        <div className={styles.metricCard}>
+          <div className={styles.metricTop}>
+            <p className={styles.metricLabel}>담당 선생님</p>
+            <span className={styles.metricAccent} aria-hidden="true" />
+          </div>
+          <p className={styles.metricValue}>{teacherCount}</p>
+          <p className={styles.metricDescription}>배정된 담당 수</p>
+        </div>
       </section>
 
-      <StudioClassForm
-        key={selectedId ?? "create"}
-        currentTeacherId={currentTeacherId}
-        teacherOptions={teacherOptions}
-        teacherOptionsError={teacherOptionsError}
-        initialItem={selectedItem}
-      />
+      <section className={styles.toolbar} aria-label="필터 및 검색">
+        <div className={styles.searchWrap}>
+          <input
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="수업명 / 선생님명 / 과목 / 지역 검색"
+            className={styles.search}
+            aria-label="수업 검색"
+          />
+        </div>
+        <div className={styles.pills} role="tablist" aria-label="상태 필터">
+          <button
+            type="button"
+            onClick={() => setStatusFilter("all")}
+            className={`${styles.pill} ${statusFilter === "all" ? styles.pillActive : ""}`}
+          >
+            전체
+          </button>
+          <button
+            type="button"
+            onClick={() => setStatusFilter("active")}
+            className={`${styles.pill} ${statusFilter === "active" ? styles.pillActive : ""}`}
+          >
+            공개
+          </button>
+          <button
+            type="button"
+            onClick={() => setStatusFilter("inactive")}
+            className={`${styles.pill} ${statusFilter === "inactive" ? styles.pillActive : ""}`}
+          >
+            비공개
+          </button>
+        </div>
+      </section>
+
+      <div className={styles.grid}>
+        <section className={styles.listCard} aria-label="수업 목록">
+          <header className={styles.listHeader}>
+            <div>
+              <h2 className={styles.listTitle}>수업 목록</h2>
+              <p className={styles.listDescription}>같은 organization에 속한 수업만 조회하고 관리합니다.</p>
+            </div>
+          </header>
+
+          {teacherOptionsError ? (
+            <div className={styles.alertWarning}>
+              <p className={styles.alertText}>{teacherOptionsError}</p>
+            </div>
+          ) : null}
+
+          {items.length === 0 ? (
+            <div className={styles.empty}>
+              <div className={styles.emptyIcon} aria-hidden="true" />
+              <p className={styles.emptyTitle}>아직 등록된 수업이 없어요.</p>
+              <p className={styles.emptyDescription}>
+                첫 수업을 등록하면 학부모가 수업을 확인하고 신청할 수 있어요.
+              </p>
+              <a href="#studio-class-form" className={styles.primaryButton}>
+                수업 등록하기
+              </a>
+            </div>
+          ) : (
+            <>
+              <div className={styles.ctaCard}>
+                <div className={styles.ctaLeft}>
+                  <div className={styles.ctaIcon} aria-hidden="true">
+                    +
+                  </div>
+                  <div className={styles.ctaText}>
+                    <p className={styles.ctaTitle}>새 프로그램을 등록해보세요</p>
+                    <p className={styles.ctaDescription}>
+                      체험수업, 레벨테스트, 정규 수업 정보를 등록하면 학부모가 바로 신청할 수 있어요.
+                    </p>
+                  </div>
+                </div>
+                <a href="#studio-class-form" onClick={() => setSelectedId(null)} className={styles.ctaButton}>
+                  새 프로그램 등록
+                </a>
+              </div>
+
+              {filteredItems.length === 0 ? (
+                <div className={styles.emptySoft}>
+                  <p className={styles.emptyTitle}>검색 결과가 없어요.</p>
+                  <p className={styles.emptyDescription}>다른 키워드로 다시 검색해보세요.</p>
+                </div>
+              ) : (
+                <div className={styles.cards}>
+                  {filteredItems.map((item) => (
+                    <article
+                      key={item.id}
+                      className={`${styles.classCard} ${selectedId === item.id ? styles.classCardActive : ""}`}
+                    >
+                      <div className={styles.cardTop}>
+                        <div
+                          className={styles.cover}
+                          style={
+                            item.coverImageUrl
+                              ? undefined
+                              : {
+                                  background: "#f3fbf4",
+                                  border: "1px solid #eaf8ec"
+                                }
+                          }
+                        >
+                          {item.coverImageUrl ? (
+                            <>
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img
+                                src={item.coverImageUrl}
+                                alt={`${item.title} 대표 이미지`}
+                                className={styles.coverImage}
+                              />
+                            </>
+                          ) : (
+                            <div className={styles.coverPlaceholder}>
+                              <span className={styles.coverMark}>첫수업</span>
+                            </div>
+                          )}
+                        </div>
+
+                        <div className={styles.cardBody}>
+                          <div className={styles.badgeRow}>
+                            <span
+                              className={`${styles.badge} ${item.isActive ? styles.badgeActive : styles.badgeInactive}`}
+                            >
+                              {item.isActive ? "공개 중" : "비공개"}
+                            </span>
+                            <span className={styles.programPill}>{PROGRAM_TYPE_LABELS[item.programType]}</span>
+                          </div>
+
+                          <p className={styles.classTitle}>{item.title}</p>
+
+                          <p className={styles.subtitle}>
+                            {item.targetAge} · {item.subject} · {item.region}
+                          </p>
+
+                          <dl className={styles.metaGrid}>
+                            <div className={styles.metaItem}>
+                              <dt className={styles.metaLabel}>담당</dt>
+                              <dd className={styles.metaValue}>
+                                {item.teacherDisplayName ?? item.teacherName ?? "미지정"}
+                              </dd>
+                            </div>
+                            <div className={styles.metaItem}>
+                              <dt className={styles.metaLabel}>대상</dt>
+                              <dd className={styles.metaValue}>{item.targetAge}</dd>
+                            </div>
+                            <div className={styles.metaItem}>
+                              <dt className={styles.metaLabel}>유형</dt>
+                              <dd className={styles.metaValue}>{PROGRAM_TYPE_LABELS[item.programType]}</dd>
+                            </div>
+                            <div className={styles.metaItem}>
+                              <dt className={styles.metaLabel}>지역</dt>
+                              <dd className={styles.metaValue}>{item.region}</dd>
+                            </div>
+                            <div className={styles.metaItem}>
+                              <dt className={styles.metaLabel}>과목</dt>
+                              <dd className={styles.metaValue}>{item.subject}</dd>
+                            </div>
+                            <div className={styles.metaItem}>
+                              <dt className={styles.metaLabel}>체험비</dt>
+                              <dd className={styles.metaValue}>{formatPrice(item.trialPrice)}</dd>
+                            </div>
+                          </dl>
+                        </div>
+                      </div>
+
+                      <div className={styles.cardFooter}>
+                        <div className={styles.footerLeft}>
+                          {item.isActive ? (
+                            <Link href={`/classes/${item.id}`} className={styles.secondaryButtonSm}>
+                              미리보기
+                            </Link>
+                          ) : (
+                            <span className={styles.footerHint}>비공개 수업은 미리보기를 숨깁니다.</span>
+                          )}
+                        </div>
+                        <div className={styles.footerRight}>
+                          <ToggleClassActiveButton classId={item.id} isActive={item.isActive} />
+                          <button
+                            type="button"
+                            onClick={() => setSelectedId(item.id)}
+                            className={styles.primaryButtonSm}
+                          >
+                            수정하기
+                          </button>
+                        </div>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+        </section>
+
+        <div className={styles.formCard}>
+          <StudioClassForm
+            key={selectedId ?? "create"}
+            currentTeacherId={currentTeacherId}
+            teacherOptions={teacherOptions}
+            teacherOptionsError={teacherOptionsError}
+            initialItem={selectedItem}
+          />
+        </div>
+      </div>
     </div>
   )
 }
@@ -141,41 +341,9 @@ const ToggleClassActiveButton = ({ classId, isActive }: { classId: string; isAct
     <form action={submitToggleStudioClassActiveAction}>
       <input type="hidden" name="classId" value={classId} />
       <input type="hidden" name="nextIsActive" value={String(!isActive)} />
-      <button type="submit" style={secondaryButtonStyle}>
+      <button type="submit" className={styles.secondaryButtonSm}>
         {isActive ? "비공개 전환" : "공개 전환"}
       </button>
     </form>
   )
-}
-
-const cardStyle = {
-  border: "1px solid #e5e7eb",
-  borderRadius: 16,
-  background: "#fff",
-  padding: 20
-}
-
-const titleStyle = {
-  margin: "0 0 8px",
-  fontSize: 18,
-  lineHeight: "24px",
-  color: "#111827"
-}
-
-const descriptionStyle = {
-  margin: 0,
-  fontSize: 14,
-  lineHeight: "20px",
-  color: "#4b5563"
-}
-
-const secondaryButtonStyle = {
-  border: "1px solid #d1d5db",
-  borderRadius: 10,
-  background: "#fff",
-  color: "#111827",
-  fontSize: 13,
-  lineHeight: "18px",
-  padding: "8px 12px",
-  cursor: "pointer"
 }

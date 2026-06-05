@@ -123,6 +123,17 @@ export const StudioClassForm = ({
     setScheduleSlots((current) => [...current, createEmptyScheduleSlotDraft()])
   }
 
+  const duplicateScheduleSlot = (slotId: string) => {
+    setScheduleSlots((current) => {
+      const source = current.find((slot) => slot.id === slotId)
+      if (!source) {
+        return current
+      }
+
+      return [...current, { ...source, id: createEmptyScheduleSlotDraft().id }]
+    })
+  }
+
   const removeScheduleSlot = (slotId: string) => {
     setScheduleSlots((current) =>
       current.length > 1 ? current.filter((slot) => slot.id !== slotId) : current
@@ -130,11 +141,19 @@ export const StudioClassForm = ({
   }
 
   return (
-    <section style={cardStyle}>
-      <h2 style={titleStyle}>{selectedClassId ? "프로그램 수정" : "새 프로그램 등록"}</h2>
-      <p style={descriptionStyle}>
-        같은 organization에 등록된 담당 선생님을 선택해 저장합니다. create 모드에서만 예약 가능 시간을 함께 만들고, update 모드는 이번 단계에서 기본 정보만 수정합니다.
-      </p>
+    <section id="studio-class-form" style={cardStyle}>
+      <div style={heroStyle}>
+        <div style={heroIconStyle} aria-hidden="true">
+          +
+        </div>
+        <div style={{ display: "grid", gap: 6 }}>
+          <p style={heroBadgeStyle}>NEW PROGRAM</p>
+          <h2 style={titleStyle}>{selectedClassId ? "프로그램 수정" : "새 프로그램 등록"}</h2>
+          <p style={descriptionStyle}>
+            같은 organization에 등록된 담당 선생님을 선택해 저장합니다. create 모드에서만 예약 가능 시간을 함께 만들고, update 모드는 이번 단계에서 기본 정보만 수정합니다.
+          </p>
+        </div>
+      </div>
 
       <form action={formAction} encType="multipart/form-data" style={{ display: "grid", gap: 12 }}>
         <input type="hidden" name="mode" value={mode} />
@@ -156,9 +175,9 @@ export const StudioClassForm = ({
                   disabled={isPending}
                   style={{
                     ...chipButtonStyle,
-                    borderColor: isSelected ? "#111827" : "#d1d5db",
-                    background: isSelected ? "#111827" : "#fff",
-                    color: isSelected ? "#fff" : "#111827"
+                    borderColor: isSelected ? "#2aad38" : "#d9d9d9",
+                    background: isSelected ? "#2aad38" : "#fff",
+                    color: isSelected ? "#fff" : "#111111"
                   }}
                 >
                   {option.label}
@@ -200,9 +219,9 @@ export const StudioClassForm = ({
                   disabled={isPending}
                   style={{
                     ...chipButtonStyle,
-                    borderColor: isSelected ? "#111827" : "#d1d5db",
-                    background: isSelected ? "#111827" : "#fff",
-                    color: isSelected ? "#fff" : "#111827"
+                    borderColor: isSelected ? "#2aad38" : "#d9d9d9",
+                    background: isSelected ? "#2aad38" : "#fff",
+                    color: isSelected ? "#fff" : "#111111"
                   }}
                 >
                   {option}
@@ -273,7 +292,7 @@ export const StudioClassForm = ({
             minLength={10}
             rows={5}
             disabled={isPending}
-            style={{ ...inputStyle, resize: "vertical" }}
+            style={textareaStyle}
           />
         </label>
 
@@ -339,7 +358,7 @@ export const StudioClassForm = ({
             type="file"
             accept="image/jpeg,image/png,image/webp"
             disabled={isPending}
-            style={inputStyle}
+            style={fileInputStyle}
             onChange={(event) => {
               const file = event.target.files?.[0]
               if (!file) {
@@ -385,16 +404,38 @@ export const StudioClassForm = ({
             <div style={{ display: "grid", gap: 12 }}>
               {scheduleSlots.map((slot, index) => (
                 <div key={slot.id} style={slotRowStyle}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <strong style={{ fontSize: 14, color: "#111827" }}>시간 {index + 1}</strong>
-                    <button
-                      type="button"
-                      onClick={() => removeScheduleSlot(slot.id)}
-                      disabled={isPending || scheduleSlots.length === 1}
-                      style={tertiaryButtonStyle}
-                    >
-                      제거
-                    </button>
+                  <div style={slotHeaderStyle}>
+                    <div style={{ display: "grid", gap: 4 }}>
+                      <strong style={{ fontSize: 14, color: "#111827" }}>시간 {index + 1}</strong>
+                      <p style={{ margin: 0, color: "#8a8a8a", fontSize: 12, lineHeight: "16px" }}>
+                        {(slot.date || slot.startTime || slot.endTime || slot.capacity) ? (
+                          <>
+                            {(slot.date || "-")} · {(slot.startTime || "--:--")}~{(slot.endTime || "--:--")} · 정원{" "}
+                            {(slot.capacity || "-")}
+                          </>
+                        ) : (
+                          <>날짜/시간을 입력해 주세요.</>
+                        )}
+                      </p>
+                    </div>
+                    <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                      <button
+                        type="button"
+                        onClick={() => duplicateScheduleSlot(slot.id)}
+                        disabled={isPending}
+                        style={tertiaryButtonStyle}
+                      >
+                        복사
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => removeScheduleSlot(slot.id)}
+                        disabled={isPending || scheduleSlots.length === 1}
+                        style={tertiaryButtonStyle}
+                      >
+                        제거
+                      </button>
+                    </div>
                   </div>
 
                   <div style={slotGridStyle}>
@@ -464,9 +505,19 @@ export const StudioClassForm = ({
               ))}
             </div>
 
-            <button type="button" onClick={addScheduleSlot} disabled={isPending} style={secondaryButtonStyle}>
-              + 시간 추가
-            </button>
+            <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+              <p style={{ ...helperTextStyle, margin: 0 }}>
+                여러 시간대를 등록해두면 학부모와 상담할 때 선택지가 늘어납니다.
+              </p>
+              <button
+                type="button"
+                onClick={addScheduleSlot}
+                disabled={isPending}
+                style={secondaryButtonStyle}
+              >
+                + 시간 추가
+              </button>
+            </div>
           </section>
         ) : (
           <section style={slotSectionStyle}>
@@ -509,24 +560,62 @@ export const StudioClassForm = ({
 }
 
 const cardStyle = {
-  border: "1px solid #e5e7eb",
-  borderRadius: 16,
+  border: "1px solid #eeeeee",
+  borderRadius: 22,
   background: "#fff",
-  padding: 20
+  padding: 22,
+  boxShadow: "0 12px 30px rgba(17, 17, 17, 0.06)"
 }
 
 const titleStyle = {
-  margin: "0 0 8px",
+  margin: 0,
   fontSize: 18,
   lineHeight: "24px",
-  color: "#111827"
+  color: "#111111",
+  fontWeight: 800,
+  letterSpacing: "-0.02em"
 }
 
 const descriptionStyle = {
-  margin: "0 0 16px",
+  margin: 0,
   fontSize: 14,
-  lineHeight: "20px",
-  color: "#4b5563"
+  lineHeight: "22px",
+  color: "#666666"
+}
+
+const heroStyle = {
+  display: "flex",
+  gap: 14,
+  alignItems: "flex-start",
+  padding: 18,
+  borderRadius: 18,
+  background: "#f3fbf4",
+  border: "1px solid #d8f0dc",
+  marginBottom: 16,
+  flexWrap: "wrap" as const
+}
+
+const heroIconStyle = {
+  width: 48,
+  height: 48,
+  borderRadius: 16,
+  background: "#ffffff",
+  border: "1px solid #eaf8ec",
+  color: "#2aad38",
+  display: "grid",
+  placeItems: "center",
+  fontSize: 22,
+  fontWeight: 900,
+  lineHeight: 1
+}
+
+const heroBadgeStyle = {
+  margin: 0,
+  fontSize: 12,
+  lineHeight: "16px",
+  fontWeight: 800,
+  letterSpacing: "0.12em",
+  color: "#2aad38"
 }
 
 const fieldStyle = {
@@ -535,13 +624,33 @@ const fieldStyle = {
 }
 
 const inputStyle = {
+  padding: "0 14px",
+  height: 48,
+  borderRadius: 12,
+  border: "1px solid #d9d9d9",
+  background: "#ffffff",
+  color: "#111111",
+  fontSize: 15,
+  lineHeight: "20px"
+}
+
+const textareaStyle = {
+  ...inputStyle,
+  padding: 14,
+  height: "auto",
+  minHeight: 120,
+  lineHeight: "22px",
+  resize: "vertical" as const
+}
+
+const fileInputStyle = {
+  ...inputStyle,
   padding: 10,
-  borderRadius: 10,
-  border: "1px solid #d1d5db"
+  height: "auto"
 }
 
 const helperTextStyle = {
-  color: "#6b7280",
+  color: "#8a8a8a",
   fontSize: 13,
   lineHeight: "18px"
 }
@@ -553,44 +662,44 @@ const chipGroupStyle = {
 }
 
 const chipButtonStyle = {
-  border: "1px solid #d1d5db",
+  border: "1px solid #d9d9d9",
   borderRadius: 999,
   background: "#fff",
-  color: "#111827",
+  color: "#111111",
   fontSize: 13,
   lineHeight: "18px",
-  fontWeight: 600,
+  fontWeight: 700,
   padding: "8px 12px",
   cursor: "pointer"
 }
 
 const buttonStyle = {
-  border: 0,
-  borderRadius: 10,
-  background: "#111827",
+  border: "1px solid #2aad38",
+  borderRadius: 12,
+  background: "#2aad38",
   color: "#fff",
-  fontSize: 14,
+  fontSize: 15,
   lineHeight: "20px",
-  fontWeight: 600,
-  padding: "12px 16px",
+  fontWeight: 800,
+  padding: "14px 16px",
   cursor: "pointer"
 }
 
 const secondaryButtonStyle = {
-  border: "1px solid #d1d5db",
-  borderRadius: 10,
+  border: "1px solid #d9d9d9",
+  borderRadius: 12,
   background: "#fff",
-  color: "#111827",
-  fontSize: 13,
+  color: "#111111",
+  fontSize: 14,
   lineHeight: "18px",
-  fontWeight: 600,
+  fontWeight: 700,
   padding: "10px 14px",
   cursor: "pointer"
 }
 
 const tertiaryButtonStyle = {
-  border: "1px solid #e5e7eb",
-  borderRadius: 8,
+  border: "1px solid #eeeeee",
+  borderRadius: 10,
   background: "#fff",
   color: "#4b5563",
   fontSize: 12,
@@ -603,31 +712,39 @@ const slotSectionStyle = {
   display: "grid",
   gap: 12,
   padding: 16,
-  border: "1px solid #e5e7eb",
-  borderRadius: 12,
-  background: "#fcfcfd"
+  border: "1px solid #eeeeee",
+  borderRadius: 16,
+  background: "#fafafa"
+}
+
+const slotHeaderStyle = {
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "flex-start",
+  gap: 12,
+  flexWrap: "wrap" as const
 }
 
 const slotRowStyle = {
   display: "grid",
   gap: 12,
   padding: 12,
-  border: "1px solid #e5e7eb",
-  borderRadius: 12,
+  border: "1px solid #eeeeee",
+  borderRadius: 16,
   background: "#fff"
 }
 
 const slotGridStyle = {
   display: "grid",
   gap: 10,
-  gridTemplateColumns: "repeat(4, minmax(0, 1fr))"
+  gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))"
 }
 
 const previewWrapperStyle = {
-  border: "1px solid #e5e7eb",
-  borderRadius: 12,
+  border: "1px solid #eeeeee",
+  borderRadius: 16,
   overflow: "hidden",
-  background: "#f9fafb"
+  background: "#fafafa"
 }
 
 const previewImageStyle = {

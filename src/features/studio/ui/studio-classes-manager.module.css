@@ -1,0 +1,641 @@
+.root {
+  display: grid;
+  gap: 24px;
+}
+
+.metrics {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(1, minmax(0, 1fr));
+}
+
+.metricCard {
+  background: #ffffff;
+  border: 1px solid #eeeeee;
+  border-radius: 18px;
+  padding: 18px 20px;
+  display: grid;
+  gap: 8px;
+}
+
+.metricTop {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: center;
+}
+
+.metricLabel {
+  margin: 0;
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 800;
+  color: #666666;
+}
+
+.metricAccent {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: #2aad38;
+}
+
+.metricAccentMuted {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: #d9d9d9;
+}
+
+.metricValue {
+  margin: 0;
+  font-size: 34px;
+  line-height: 38px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: #111111;
+}
+
+.metricDescription {
+  margin: 0;
+  font-size: 13px;
+  line-height: 18px;
+  color: #8a8a8a;
+}
+
+.toolbar {
+  background: #ffffff;
+  border: 1px solid #eeeeee;
+  border-radius: 18px;
+  padding: 16px;
+  display: grid;
+  gap: 12px;
+}
+
+.searchWrap {
+  width: 100%;
+}
+
+.search {
+  width: 100%;
+  height: 48px;
+  border-radius: 12px;
+  border: 1px solid #d9d9d9;
+  padding: 0 14px;
+  font-size: 15px;
+  line-height: 20px;
+  color: #111111;
+  background: #ffffff;
+}
+
+.search:focus {
+  outline: none;
+  border-color: #2aad38;
+  box-shadow: 0 0 0 3px rgba(42, 173, 56, 0.16);
+}
+
+.pills {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.pill {
+  height: 40px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid #d9d9d9;
+  background: #ffffff;
+  color: #4a4a4a;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.pillActive {
+  border-color: #d9f3dc;
+  background: #f3fbf4;
+  color: #2aad38;
+}
+
+.grid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: 1fr;
+  align-items: start;
+}
+
+.listCard {
+  background: #ffffff;
+  border: 1px solid #eeeeee;
+  border-radius: 18px;
+  padding: 20px;
+  display: grid;
+  gap: 14px;
+}
+
+.listHeader {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  align-items: flex-end;
+}
+
+.listTitle {
+  margin: 0;
+  font-size: 18px;
+  line-height: 24px;
+  font-weight: 800;
+  color: #111111;
+}
+
+.listDescription {
+  margin: 8px 0 0;
+  font-size: 13px;
+  line-height: 18px;
+  color: #8a8a8a;
+}
+
+.cards {
+  display: grid;
+  gap: 16px;
+}
+
+.ctaCard {
+  background: #f3fbf4;
+  border: 1px solid #d8f0dc;
+  border-radius: 22px;
+  padding: 22px 20px;
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.ctaLeft {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  flex: 1 1 360px;
+  min-width: 240px;
+}
+
+.ctaIcon {
+  width: 48px;
+  height: 48px;
+  border-radius: 16px;
+  background: #ffffff;
+  border: 1px solid #eaf8ec;
+  color: #2aad38;
+  display: grid;
+  place-items: center;
+  font-size: 22px;
+  font-weight: 900;
+  line-height: 1;
+  flex: 0 0 auto;
+}
+
+.ctaText {
+  display: grid;
+  gap: 6px;
+}
+
+.ctaTitle {
+  margin: 0;
+  font-size: 16px;
+  line-height: 22px;
+  font-weight: 800;
+  color: #111111;
+}
+
+.ctaDescription {
+  margin: 0;
+  font-size: 13px;
+  line-height: 18px;
+  color: #666666;
+}
+
+.ctaButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 44px;
+  padding: 0 18px;
+  border-radius: 12px;
+  background: #2aad38;
+  border: 1px solid #2aad38;
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 800;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.ctaButton:hover {
+  background: #249b31;
+  border-color: #249b31;
+}
+
+@media (max-width: 480px) {
+  .ctaCard {
+    align-items: stretch;
+  }
+
+  .ctaLeft {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .ctaButton {
+    width: 100%;
+  }
+}
+
+.classCard {
+  border: 1px solid #eeeeee;
+  border-radius: 22px;
+  background: #ffffff;
+  padding: 18px;
+  display: grid;
+  gap: 14px;
+  transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+}
+
+.classCard:hover {
+  border-color: #d9f3dc;
+  box-shadow: 0 10px 26px rgba(17, 17, 17, 0.06);
+}
+
+.classCardActive {
+  border-color: #2aad38;
+  box-shadow: 0 0 0 3px rgba(42, 173, 56, 0.12);
+}
+
+.cardTop {
+  display: grid;
+  gap: 14px;
+}
+
+.cover {
+  width: 100%;
+  height: 140px;
+  border-radius: 16px;
+  border: 1px solid #eeeeee;
+  background: #f7f7f7;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+}
+
+.coverImage {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.coverPlaceholder {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  place-items: center;
+}
+
+.coverMark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 34px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: #eaf8ec;
+  border: 1px solid #d9f3dc;
+  font-size: 13px;
+  font-weight: 800;
+  color: #2aad38;
+}
+
+.cardBody {
+  display: grid;
+  gap: 10px;
+}
+
+.badgeRow {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.classTitle {
+  margin: 0;
+  font-size: 17px;
+  line-height: 25px;
+  font-weight: 800;
+  color: #111111;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.badge {
+  border-radius: 999px;
+  padding: 6px 10px;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 14px;
+}
+
+.badgeActive {
+  background: #eaf8ec;
+  color: #2aad38;
+  border: 1px solid #d9f3dc;
+}
+
+.badgeInactive {
+  background: #f2f2f2;
+  color: #4a4a4a;
+  border: 1px solid #eeeeee;
+}
+
+.programPill {
+  border-radius: 999px;
+  padding: 6px 10px;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 14px;
+  background: #ffffff;
+  border: 1px solid #eaf8ec;
+  color: #1f1f1f;
+}
+
+.subtitle {
+  margin: 0;
+  font-size: 13px;
+  line-height: 18px;
+  color: #666666;
+}
+
+.metaGrid {
+  margin: 0;
+  display: grid;
+  gap: 8px;
+  grid-template-columns: 1fr;
+}
+
+.metaItem {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.metaLabel {
+  font-size: 12px;
+  line-height: 18px;
+  color: #8a8a8a;
+}
+
+.metaValue {
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 700;
+  color: #1f1f1f;
+  text-align: right;
+}
+
+.cardFooter {
+  padding-top: 14px;
+  border-top: 1px solid #eeeeee;
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.footerLeft {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.footerRight {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.footerHint {
+  font-size: 12px;
+  line-height: 16px;
+  color: #8a8a8a;
+  font-weight: 600;
+}
+
+.primaryButtonSm {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 38px;
+  padding: 0 12px;
+  border-radius: 12px;
+  background: #2aad38;
+  border: 1px solid #2aad38;
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.primaryButtonSm:hover {
+  background: #249b31;
+  border-color: #249b31;
+}
+
+.primaryButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 48px;
+  padding: 0 16px;
+  border-radius: 12px;
+  background: #2aad38;
+  border: 1px solid #2aad38;
+  color: #ffffff;
+  font-size: 15px;
+  font-weight: 800;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.primaryButton:hover {
+  background: #249b31;
+  border-color: #249b31;
+}
+
+.secondaryButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 44px;
+  padding: 0 14px;
+  border-radius: 12px;
+  background: #ffffff;
+  border: 1px solid #d9d9d9;
+  color: #111111;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.secondaryButton:hover {
+  background: #fafafa;
+}
+
+.secondaryButtonSm {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 36px;
+  padding: 0 12px;
+  border-radius: 10px;
+  background: #ffffff;
+  border: 1px solid #d9d9d9;
+  color: #111111;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.secondaryButtonSm:hover {
+  background: #fafafa;
+}
+
+.ghostButtonSm {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 36px;
+  padding: 0 12px;
+  border-radius: 10px;
+  background: transparent;
+  border: 1px solid transparent;
+  color: #4a4a4a;
+  font-size: 13px;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.ghostButtonSm:hover {
+  background: #f7f7f7;
+  border-color: #eeeeee;
+}
+
+.alertWarning {
+  background: #ffffff;
+  border: 1px solid #ffe4b8;
+  border-radius: 14px;
+  padding: 12px 14px;
+}
+
+.alertText {
+  margin: 0;
+  font-size: 13px;
+  line-height: 18px;
+  color: #8a8a8a;
+  font-weight: 600;
+}
+
+.empty {
+  border: 1px dashed #d9d9d9;
+  border-radius: 18px;
+  padding: 28px 20px;
+  display: grid;
+  gap: 10px;
+  justify-items: center;
+  text-align: center;
+}
+
+.emptyIcon {
+  width: 44px;
+  height: 44px;
+  border-radius: 18px;
+  background: #f3fbf4;
+  border: 1px solid #eaf8ec;
+}
+
+.emptySoft {
+  border: 1px solid #eeeeee;
+  border-radius: 18px;
+  padding: 22px 20px;
+  display: grid;
+  gap: 6px;
+  text-align: center;
+}
+
+.emptyTitle {
+  margin: 0;
+  font-size: 16px;
+  line-height: 22px;
+  font-weight: 800;
+  color: #111111;
+}
+
+.emptyDescription {
+  margin: 0;
+  font-size: 13px;
+  line-height: 20px;
+  color: #8a8a8a;
+}
+
+.formCard {
+  display: block;
+}
+
+@media (min-width: 640px) {
+  .metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .toolbar {
+    grid-template-columns: 1fr auto;
+    align-items: center;
+  }
+
+  .ctaCard {
+    padding: 22px 24px;
+  }
+
+  .cardTop {
+    grid-template-columns: 160px 1fr;
+    align-items: start;
+  }
+
+  .cover {
+    height: 120px;
+  }
+
+  .metaGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 960px) {
+  .metrics {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .grid {
+    grid-template-columns: 1.15fr 0.85fr;
+    gap: 18px;
+  }
+}
