@@ -16,11 +16,8 @@ export async function middleware(request: NextRequest) {
   let session: Awaited<ReturnType<typeof supabase.auth.getSession>>["data"]["session"] = null
   let profileRole: "parent" | "teacher" | "academy" | "admin" | "operator" | null = null
   try {
-    const result = await Promise.race([
-      supabase.auth.getSession(),
-      new Promise<null>((resolve) => setTimeout(() => resolve(null), 3000))
-    ])
-    session = result?.data.session ?? null
+    const result = await supabase.auth.getSession()
+    session = result.data.session ?? null
 
     if (
       session &&
@@ -128,7 +125,8 @@ export async function middleware(request: NextRequest) {
       !isStudioPublicPath &&
       pathname !== "/studio/pending" &&
       session &&
-      (!profileRole || !studioRoleSet.has(profileRole))
+      profileRole &&
+      !studioRoleSet.has(profileRole)
     ) {
       const url = request.nextUrl.clone()
       url.pathname = "/classes"

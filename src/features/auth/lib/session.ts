@@ -2,26 +2,13 @@ import { redirect } from "next/navigation"
 
 import { getSupabaseServerClient } from "@/integrations/supabase/server"
 
-const SESSION_FETCH_TIMEOUT_MS = 4000
-
 export const getSession = async () => {
   try {
     const supabase = await getSupabaseServerClient()
-    const sessionResult = await Promise.race([
-      supabase.auth.getSession(),
-      new Promise<null>((resolve) => {
-        setTimeout(() => resolve(null), SESSION_FETCH_TIMEOUT_MS)
-      })
-    ])
-
-    if (!sessionResult) {
-      return null
-    }
-
     const {
       data: { session },
       error
-    } = sessionResult
+    } = await supabase.auth.getSession()
 
     if (error) {
       return null
