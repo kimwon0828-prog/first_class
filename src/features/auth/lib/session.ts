@@ -2,7 +2,7 @@ import { redirect } from "next/navigation"
 
 import { getSupabaseServerClient } from "@/integrations/supabase/server"
 
-const SESSION_FETCH_TIMEOUT_MS = 1500
+const SESSION_FETCH_TIMEOUT_MS = 4000
 
 export const getSession = async () => {
   try {

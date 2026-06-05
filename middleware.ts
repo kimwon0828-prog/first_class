@@ -8,16 +8,17 @@ const authRequiredExactPaths = ["/applications/complete"]
 const applyPathPattern = /^\/classes\/[^/]+\/apply$/
 const studioPrefix = "/studio"
 const studioPublicPaths = ["/studio/sign-in", "/studio/sign-up"]
+const studioRoleSet = new Set(["teacher", "academy", "admin", "operator"])
 
 export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname
   const { supabase, response } = getSupabaseMiddlewareClient(request)
   let session: Awaited<ReturnType<typeof supabase.auth.getSession>>["data"]["session"] = null
-  let profileRole: "parent" | "academy" | "admin" | null = null
+  let profileRole: "parent" | "teacher" | "academy" | "admin" | "operator" | null = null
   try {
     const result = await Promise.race([
       supabase.auth.getSession(),
-      new Promise<null>((resolve) => setTimeout(() => resolve(null), 1200))
+      new Promise<null>((resolve) => setTimeout(() => resolve(null), 3000))
     ])
     session = result?.data.session ?? null
 
@@ -35,13 +36,13 @@ export async function middleware(request: NextRequest) {
         .maybeSingle()
 
       profileRole =
-        data?.role === "parent"
-          ? "parent"
-          : data?.role === "teacher" || data?.role === "academy"
-            ? "academy"
-            : data?.role === "operator" || data?.role === "admin"
-              ? "admin"
-              : null
+        data?.role === "parent" ||
+        data?.role === "teacher" ||
+        data?.role === "academy" ||
+        data?.role === "admin" ||
+        data?.role === "operator"
+          ? data.role
+          : null
     }
   } catch {
     session = null
@@ -67,7 +68,7 @@ export async function middleware(request: NextRequest) {
     !pathname.startsWith(studioPrefix) &&
     session &&
     (pathname.startsWith("/my") || pathname.startsWith("/applications")) &&
-    (profileRole === "academy" || profileRole === "admin")
+    (profileRole === "teacher" || profileRole === "academy" || profileRole === "admin" || profileRole === "operator")
   ) {
     const url = request.nextUrl.clone()
     url.pathname = "/studio"
@@ -82,13 +83,6 @@ export async function middleware(request: NextRequest) {
       url.pathname = studioPublicPaths[0]
       url.search = ""
       url.searchParams.set("returnTo", returnTo)
-      return NextResponse.redirect(url)
-    }
-
-    if (isStudioPublicPath && (profileRole === "academy" || profileRole === "admin")) {
-      const url = request.nextUrl.clone()
-      url.pathname = "/studio/applications"
-      url.search = ""
       return NextResponse.redirect(url)
     }
 
@@ -134,8 +128,7 @@ export async function middleware(request: NextRequest) {
       !isStudioPublicPath &&
       pathname !== "/studio/pending" &&
       session &&
-      profileRole !== "academy" &&
-      profileRole !== "admin"
+      (!profileRole || !studioRoleSet.has(profileRole))
     ) {
       const url = request.nextUrl.clone()
       url.pathname = "/classes"

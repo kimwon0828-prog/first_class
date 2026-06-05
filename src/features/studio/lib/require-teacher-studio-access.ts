@@ -13,6 +13,8 @@ export type TeacherStudioAccess = {
   organizationId: string
 }
 
+const STUDIO_ROLES = ["teacher", "academy", "admin"] as const
+
 export const requireTeacherStudioAccess = async (): Promise<TeacherStudioAccess> => {
   const session = await getSession()
   if (!session) {
@@ -31,7 +33,9 @@ export const requireTeacherStudioAccess = async (): Promise<TeacherStudioAccess>
     redirect("/studio/sign-in")
   }
 
-  if (profile.role !== "academy" && profile.role !== "admin") {
+  const isStudioRole =
+    (STUDIO_ROLES as readonly string[]).includes(profile.dbRole) || profile.dbRole === "operator"
+  if (!isStudioRole) {
     redirect("/classes")
   }
 
@@ -41,7 +45,7 @@ export const requireTeacherStudioAccess = async (): Promise<TeacherStudioAccess>
 
   const supabase = await getSupabaseServerClient()
   const { data: teacherRow, error: teacherError } =
-    profile.role === "academy"
+    profile.dbRole === "teacher" || profile.dbRole === "academy"
       ? await supabase
           .from("teachers")
           .select("id")
@@ -57,7 +61,7 @@ export const requireTeacherStudioAccess = async (): Promise<TeacherStudioAccess>
           .maybeSingle()
 
   if (teacherError || !teacherRow) {
-    if (profile.role === "admin") {
+    if (profile.dbRole === "admin" || profile.dbRole === "operator") {
       const { data: fallbackTeacherRow, error: fallbackTeacherError } = await supabase
         .from("teachers")
         .select("id")
