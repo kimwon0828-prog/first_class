@@ -67,9 +67,9 @@ export const SignInForm = ({ returnTo }: SignInFormProps) => {
       ) : null}
 
       <div className={styles.links}>
-        <span>아이디 찾기</span>
+        <Link href="/auth/find-email">이메일 찾기</Link>
         <span className={styles.separator}>|</span>
-        <span>비밀번호 찾기</span>
+        <Link href="/auth/reset-password">비밀번호 찾기</Link>
         <span className={styles.separator}>|</span>
         <Link href={signUpHref}>회원가입</Link>
       </div>

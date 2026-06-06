@@ -72,6 +72,15 @@
   color: #8a8a8a;
 }
 
+.links a {
+  color: #8a8a8a;
+  text-decoration: none;
+}
+
+.links a:hover {
+  color: #6b7280;
+}
+
 .separator {
   color: #d9d9d9;
 }

@@ -68,9 +68,9 @@ export const StudioSignInForm = ({ returnTo }: StudioSignInFormProps) => {
       ) : null}
 
       <div className={styles.links}>
-        <span>아이디 찾기</span>
+        <Link href="/auth/find-email?type=academy">이메일 찾기</Link>
         <span className={styles.separator}>|</span>
-        <span>비밀번호 찾기</span>
+        <Link href="/auth/reset-password?type=academy">비밀번호 찾기</Link>
       </div>
 
       <button type="submit" disabled={isPending} className={styles.submitButton}>
