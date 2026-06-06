@@ -52,7 +52,7 @@ export default async function StudioSignInPage({ searchParams }: StudioSignInPag
             priority
             className={styles.logo}
           />
-          <p className={styles.kicker}>첫수업 운영보드</p>
+          <p className={styles.kicker}>운영자 센터</p>
           <h1 className={styles.headline}>
             체험수업 신청부터 상담,
             <br />
@@ -73,7 +73,7 @@ export default async function StudioSignInPage({ searchParams }: StudioSignInPag
             </li>
             <li className={styles.point}>
               <span className={styles.pointIcon} aria-hidden="true" />
-              수업 일정 확인
+              체험수업, 레벨테스트 일정 확인
             </li>
             <li className={styles.point}>
               <span className={styles.pointIcon} aria-hidden="true" />
@@ -84,7 +84,7 @@ export default async function StudioSignInPage({ searchParams }: StudioSignInPag
 
         <section className={styles.card} aria-label="선생님 로그인">
           <header className={styles.cardHeader}>
-            <span className={styles.badge}>Teacher Studio</span>
+            <span className={styles.badge}>운영자 센터</span>
             <h2 className={styles.cardTitle}>선생님 로그인</h2>
             <p className={styles.cardDescription}>
               첫수업 운영보드에 로그인해 신청 현황을 확인하세요.

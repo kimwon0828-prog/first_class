@@ -19,7 +19,7 @@ export default async function StudioSchedulePage() {
       <header className={styles.header}>
         <div className={styles.headerTop}>
           <div>
-            <p className={styles.brandKicker}>첫수업 운영보드</p>
+            <p className={styles.brandKicker}>운영자 센터</p>
             <h1 className={styles.title}>일정 관리</h1>
             <p className={styles.subtitle}>체험수업/레벨테스트 예약 가능 시간과 확정된 일정을 한눈에 확인해요.</p>
           </div>
