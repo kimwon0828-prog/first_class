@@ -175,6 +175,11 @@ export async function upsertStudioClassAction(
     const targetAgeEnd = String(formData.get("targetAgeEnd") ?? "").trim()
     const regionRaw = String(formData.get("region") ?? "").trim()
     const description = String(formData.get("description") ?? "").trim()
+    const classFormatRaw = String(formData.get("classFormat") ?? "").trim()
+    const recommendedForRaw = String(formData.get("recommendedFor") ?? "").trim()
+    const experiencePointsRaw = String(formData.get("experiencePoints") ?? "").trim()
+    const curriculumRaw = String(formData.get("curriculum") ?? "").trim()
+    const teacherIntroRaw = String(formData.get("teacherIntro") ?? "").trim()
     const selectedTeacherId = String(formData.get("teacherId") ?? "").trim()
     const trialPriceRaw = String(formData.get("trialPrice") ?? "").trim()
     const coverImageFileEntry = formData.get("coverImageFile")
@@ -190,6 +195,11 @@ export async function upsertStudioClassAction(
       startOrder != null && endOrder != null && targetAgeStart === targetAgeEnd
         ? targetAgeStart
         : `${targetAgeStart}~${targetAgeEnd}`
+    const classFormat = classFormatRaw ? classFormatRaw : null
+    const recommendedFor = recommendedForRaw ? recommendedForRaw : null
+    const experiencePoints = experiencePointsRaw ? experiencePointsRaw : null
+    const curriculum = curriculumRaw ? curriculumRaw : null
+    const teacherIntro = teacherIntroRaw ? teacherIntroRaw : null
 
     if (!mode) {
       return { ok: false, message: "저장 모드를 확인할 수 없습니다. 다시 시도해 주세요." }
@@ -335,6 +345,11 @@ export async function upsertStudioClassAction(
       targetAge,
       region: regionRaw,
       description,
+      classFormat,
+      recommendedFor,
+      experiencePoints,
+      curriculum,
+      teacherIntro,
       trialPrice,
       teacherId: selectedTeacher.teacherId,
       teacherDisplayName: selectedTeacher.teacherName,

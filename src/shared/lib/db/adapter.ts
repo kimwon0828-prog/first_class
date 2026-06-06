@@ -41,7 +41,12 @@ export type ClassSummary = {
   subject: string
   region: AcademyArea
   targetAge: string
+  classFormat: string | null
   description: string
+  recommendedFor: string | null
+  experiencePoints: string | null
+  curriculum: string | null
+  teacherIntro: string | null
   trialPrice: number
   teacherId: string | null
   teacherDisplayName: string | null
@@ -136,6 +141,11 @@ export type StudioClassInput = {
   targetAge: string
   region: AcademyArea
   description: string
+  classFormat: string | null
+  recommendedFor: string | null
+  experiencePoints: string | null
+  curriculum: string | null
+  teacherIntro: string | null
   trialPrice: number
   teacherId: string
   teacherDisplayName: string

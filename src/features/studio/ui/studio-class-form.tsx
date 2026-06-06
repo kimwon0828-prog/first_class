@@ -284,6 +284,18 @@ export const StudioClassForm = ({
         </label>
 
         <label style={fieldStyle}>
+          <span>수업 방식</span>
+          <input
+            name="classFormat"
+            defaultValue={initialItem?.classFormat ?? ""}
+            disabled={isPending}
+            placeholder="예: 오프라인 소그룹 / 1:1 / 온라인"
+            style={inputStyle}
+          />
+          <span style={helperTextStyle}>학부모 상세페이지의 “수업 방식”에 표시됩니다.</span>
+        </label>
+
+        <label style={fieldStyle}>
           <span>프로그램 소개</span>
           <textarea
             name="description"
@@ -292,6 +304,55 @@ export const StudioClassForm = ({
             minLength={10}
             rows={5}
             disabled={isPending}
+            placeholder="파이썬 기초 문법을 배우고 간단한 프로그램을 만들어보는 체험수업입니다."
+            style={textareaStyle}
+          />
+        </label>
+
+        <label style={fieldStyle}>
+          <span>이런 아이에게 추천해요</span>
+          <textarea
+            name="recommendedFor"
+            defaultValue={initialItem?.recommendedFor ?? ""}
+            rows={5}
+            disabled={isPending}
+            placeholder="코딩을 처음 시작하는 아이, 파이썬을 배워보고 싶은 아이, 논리적으로 문제를 해결하는 활동을 좋아하는 아이에게 추천해요."
+            style={textareaStyle}
+          />
+        </label>
+
+        <label style={fieldStyle}>
+          <span>이 수업에서 경험하는 것</span>
+          <textarea
+            name="experiencePoints"
+            defaultValue={initialItem?.experiencePoints ?? ""}
+            rows={5}
+            disabled={isPending}
+            placeholder="변수와 출력문을 사용해보고, 간단한 조건문으로 나만의 미니 프로그램을 만들어봅니다."
+            style={textareaStyle}
+          />
+        </label>
+
+        <label style={fieldStyle}>
+          <span>커리큘럼</span>
+          <textarea
+            name="curriculum"
+            defaultValue={initialItem?.curriculum ?? ""}
+            rows={6}
+            disabled={isPending}
+            placeholder={"1단계: 파이썬이 무엇인지 알아보기\n2단계: 변수와 출력문 사용해보기\n3단계: 조건문으로 간단한 프로그램 만들기\n4단계: 나만의 미니 프로젝트 완성하기"}
+            style={textareaStyle}
+          />
+        </label>
+
+        <label style={fieldStyle}>
+          <span>선생님 소개</span>
+          <textarea
+            name="teacherIntro"
+            defaultValue={initialItem?.teacherIntro ?? ""}
+            rows={5}
+            disabled={isPending}
+            placeholder="아이의 수준에 맞춰 개념을 쉽게 설명하고, 직접 만들어보는 활동을 중심으로 수업합니다."
             style={textareaStyle}
           />
         </label>

@@ -38,7 +38,12 @@ type ClassRow = {
   subject: string
   region: AcademyArea
   target_age: string
+  class_format?: string | null
   description: string
+  recommended_for?: string | null
+  experience_points?: string | null
+  curriculum?: string | null
+  teacher_intro?: string | null
   trial_price: number
   teacher_id: string | null
   teacher_display_name?: string | null
@@ -202,7 +207,12 @@ const mapClass = (
     subject: row.subject,
     region: row.region,
     targetAge: row.target_age,
+    classFormat: row.class_format ?? null,
     description: row.description,
+    recommendedFor: row.recommended_for ?? null,
+    experiencePoints: row.experience_points ?? null,
+    curriculum: row.curriculum ?? null,
+    teacherIntro: row.teacher_intro ?? null,
     trialPrice: row.trial_price,
     teacherId: row.teacher_id,
     teacherDisplayName: resolvedTeacherName,
@@ -550,7 +560,7 @@ const normalizeStudioClassId = (value: string | undefined) => {
 }
 
 const CLASS_SELECT_FIELDS =
-  "id, organization_id, program_type, title, subject, region, target_age, description, trial_price, teacher_id, teacher_display_name, cover_image_url, is_active"
+  "id, organization_id, program_type, title, subject, region, target_age, class_format, description, recommended_for, experience_points, curriculum, teacher_intro, trial_price, teacher_id, teacher_display_name, cover_image_url, is_active"
 
 const SCHEDULE_BLOCK_SELECT_FIELDS = "id, teacher_id, class_id, start_at, end_at, capacity, type"
 const CHILD_SELECT_FIELDS =
@@ -649,9 +659,7 @@ export const supabaseDataAdapter: DataAdapter = {
     const supabase = await getSupabaseServerClient()
     let query = supabase
       .from("classes")
-      .select(
-        "id, organization_id, program_type, title, subject, region, target_age, description, trial_price, teacher_id, teacher_display_name, cover_image_url, is_active"
-      )
+      .select(CLASS_SELECT_FIELDS)
       .eq("is_active", true)
       .order("created_at", { ascending: false })
 
@@ -770,9 +778,7 @@ export const supabaseDataAdapter: DataAdapter = {
     const supabase = await getSupabaseServerClient()
     const { data, error } = await supabase
       .from("classes")
-      .select(
-        "id, program_type, title, subject, region, target_age, description, trial_price, teacher_id, teacher_display_name, cover_image_url, is_active"
-      )
+      .select(CLASS_SELECT_FIELDS)
       .eq("id", classId)
       .eq("is_active", true)
       .maybeSingle()
@@ -816,9 +822,7 @@ export const supabaseDataAdapter: DataAdapter = {
     const supabase = await getSupabaseServerClient()
     const { data, error } = await supabase
       .from("classes")
-      .select(
-        "id, organization_id, program_type, title, subject, region, target_age, description, trial_price, teacher_id, teacher_display_name, cover_image_url, is_active"
-      )
+      .select(CLASS_SELECT_FIELDS)
       .eq("organization_id", organizationId)
       .order("created_at", { ascending: false })
 
@@ -1065,6 +1069,11 @@ export const supabaseDataAdapter: DataAdapter = {
       target_age: input.targetAge,
       region: input.region,
       description: input.description,
+      class_format: input.classFormat,
+      recommended_for: input.recommendedFor,
+      experience_points: input.experiencePoints,
+      curriculum: input.curriculum,
+      teacher_intro: input.teacherIntro,
       trial_price: input.trialPrice,
       teacher_id: input.teacherId,
       teacher_display_name: teacherDisplayName,

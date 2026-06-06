@@ -195,7 +195,9 @@ export default async function ClassDetailPage({ params, searchParams }: ClassDet
                   </div>
                   <div className={styles.infoRow}>
                     <span className={styles.infoLabel}>수업 방식</span>
-                    <span className={styles.infoValue}>정보 준비 중</span>
+                    <span className={styles.infoValue}>
+                      {classItem.classFormat?.trim() ? classItem.classFormat : "정보 준비 중"}
+                    </span>
                   </div>
                 </div>
               </section>
@@ -211,29 +213,41 @@ export default async function ClassDetailPage({ params, searchParams }: ClassDet
 
               <section className={styles.section}>
                 <h2 className={styles.sectionTitle}>이런 아이에게 추천해요</h2>
-                <p className={styles.mutedText}>추천 대상 정보가 준비 중입니다.</p>
+                {classItem.recommendedFor?.trim() ? (
+                  <p className={styles.bodyText}>{classItem.recommendedFor}</p>
+                ) : (
+                  <p className={styles.mutedText}>추천 대상 정보가 준비 중입니다.</p>
+                )}
               </section>
 
               <section className={styles.section}>
                 <h2 className={styles.sectionTitle}>이 수업에서 경험하는 것</h2>
-                <p className={styles.mutedText}>수업 경험 정보가 준비 중입니다.</p>
+                {classItem.experiencePoints?.trim() ? (
+                  <p className={styles.bodyText}>{classItem.experiencePoints}</p>
+                ) : (
+                  <p className={styles.mutedText}>수업 경험 정보가 준비 중입니다.</p>
+                )}
               </section>
 
               <section className={styles.section}>
-                <h2 className={styles.sectionTitle}>일정</h2>
-                <p className={styles.mutedText}>일정 선택은 신청 단계에서 진행돼요.</p>
+                <h2 className={styles.sectionTitle}>커리큘럼</h2>
+                {classItem.curriculum?.trim() ? (
+                  <p className={styles.bodyText}>{classItem.curriculum}</p>
+                ) : (
+                  <p className={styles.mutedText}>커리큘럼 정보가 준비 중입니다.</p>
+                )}
               </section>
 
-              {classItem.teacherProfile ? (
-                <section className={styles.section}>
-                  <h2 className={styles.sectionTitle}>선생님 소개</h2>
-                  <p className={styles.bodyText}>
-                    {classItem.teacherProfile.intro?.trim()
+              <section className={styles.section}>
+                <h2 className={styles.sectionTitle}>선생님 소개</h2>
+                <p className={styles.bodyText}>
+                  {classItem.teacherIntro?.trim()
+                    ? classItem.teacherIntro
+                    : classItem.teacherProfile?.intro?.trim()
                       ? classItem.teacherProfile.intro
                       : "선생님 소개가 준비 중입니다."}
-                  </p>
-                </section>
-              ) : null}
+                </p>
+              </section>
             </div>
           </>
         ) : null}
