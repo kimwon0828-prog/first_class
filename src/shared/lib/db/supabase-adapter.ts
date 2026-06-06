@@ -559,8 +559,21 @@ const normalizeStudioClassId = (value: string | undefined) => {
   return uuidPattern.test(normalized) ? normalized : null
 }
 
-const CLASS_SELECT_FIELDS =
-  "id, organization_id, program_type, title, subject, region, target_age, class_format, description, recommended_for, experience_points, curriculum, teacher_intro, trial_price, teacher_id, teacher_display_name, cover_image_url, is_active"
+const CLASS_BASE_SELECT_FIELDS =
+  "id, organization_id, program_type, title, subject, region, target_age, description, trial_price, teacher_id, teacher_display_name, cover_image_url, is_active"
+
+const CLASS_DETAIL_SELECT_FIELDS =
+  `${CLASS_BASE_SELECT_FIELDS}, class_format, recommended_for, experience_points, curriculum, teacher_intro`
+
+const isMissingColumnError = (error: { code?: string; message?: string } | null) => {
+  if (!error) {
+    return false
+  }
+
+  const code = typeof error.code === "string" ? error.code : ""
+  const message = typeof error.message === "string" ? error.message : ""
+  return code === "42703" || message.includes("does not exist")
+}
 
 const SCHEDULE_BLOCK_SELECT_FIELDS = "id, teacher_id, class_id, start_at, end_at, capacity, type"
 const CHILD_SELECT_FIELDS =
@@ -659,7 +672,7 @@ export const supabaseDataAdapter: DataAdapter = {
     const supabase = await getSupabaseServerClient()
     let query = supabase
       .from("classes")
-      .select(CLASS_SELECT_FIELDS)
+      .select(CLASS_BASE_SELECT_FIELDS)
       .eq("is_active", true)
       .order("created_at", { ascending: false })
 
@@ -778,10 +791,45 @@ export const supabaseDataAdapter: DataAdapter = {
     const supabase = await getSupabaseServerClient()
     const { data, error } = await supabase
       .from("classes")
-      .select(CLASS_SELECT_FIELDS)
+      .select(CLASS_DETAIL_SELECT_FIELDS)
       .eq("id", classId)
       .eq("is_active", true)
       .maybeSingle()
+
+    if (isMissingColumnError(error)) {
+      const retry = await supabase
+        .from("classes")
+        .select(CLASS_BASE_SELECT_FIELDS)
+        .eq("id", classId)
+        .eq("is_active", true)
+        .maybeSingle()
+
+      if (retry.error) {
+        throw new Error("failed_to_fetch_class")
+      }
+
+      if (!retry.data) {
+        return null
+      }
+
+      const classRow = retry.data as ClassRow
+      let teacherProfile: TeacherPublicProfile | null = null
+      if (classRow.teacher_id) {
+        try {
+          const teacherMap = await getTeacherProfilesMap([classRow.teacher_id])
+          teacherProfile = teacherMap.get(classRow.teacher_id) ?? null
+        } catch {
+          teacherProfile = null
+        }
+      }
+
+      const detail: ClassDetail = {
+        ...mapClass(classRow, teacherProfile?.teacherName ?? null),
+        teacherProfile
+      }
+
+      return detail
+    }
 
     if (error) {
       throw new Error("failed_to_fetch_class")
@@ -822,9 +870,50 @@ export const supabaseDataAdapter: DataAdapter = {
     const supabase = await getSupabaseServerClient()
     const { data, error } = await supabase
       .from("classes")
-      .select(CLASS_SELECT_FIELDS)
+      .select(CLASS_DETAIL_SELECT_FIELDS)
       .eq("organization_id", organizationId)
       .order("created_at", { ascending: false })
+
+    if (isMissingColumnError(error)) {
+      const retry = await supabase
+        .from("classes")
+        .select(CLASS_BASE_SELECT_FIELDS)
+        .eq("organization_id", organizationId)
+        .order("created_at", { ascending: false })
+
+      if (retry.error) {
+        throw new Error("failed_to_fetch_studio_classes")
+      }
+
+      const classRows = (retry.data ?? []) as ClassRow[]
+      if (debugEnabled) {
+        console.info("[listStudioClasses] classes fetched (fallback)", { rows: classRows.length })
+      }
+      const teacherIds = Array.from(
+        new Set(classRows.map((row) => row.teacher_id).filter((id): id is string => Boolean(id)))
+      )
+      let teacherMap = new Map<string, TeacherPublicProfile>()
+      try {
+        teacherMap = await getTeacherProfilesMap(teacherIds)
+      } catch {
+        teacherMap = new Map<string, TeacherPublicProfile>()
+      }
+      if (debugEnabled) {
+        console.info("[listStudioClasses] teacher profiles (fallback)", {
+          teacherIds: teacherIds.length,
+          teacherProfiles: teacherMap.size
+        })
+      }
+
+      const mapped = classRows.map((row) =>
+        mapClass(row, row.teacher_id ? (teacherMap.get(row.teacher_id)?.teacherName ?? null) : null)
+      )
+      if (debugEnabled) {
+        console.info("[listStudioClasses] done (fallback)", { returned: mapped.length })
+      }
+
+      return mapped
+    }
 
     if (error) {
       if (debugEnabled) {
@@ -1095,7 +1184,7 @@ export const supabaseDataAdapter: DataAdapter = {
             .eq("organization_id", input.organizationId)
         : supabase.from("classes").insert(payload)
 
-    const { data, error } = await query.select(CLASS_SELECT_FIELDS).maybeSingle()
+    const { data, error } = await query.select(CLASS_BASE_SELECT_FIELDS).maybeSingle()
 
     if (error) {
       throw new Error(
@@ -1123,7 +1212,7 @@ export const supabaseDataAdapter: DataAdapter = {
       if (input.mode === "create") {
         const { data: fallbackRow, error: fallbackError } = await supabase
           .from("classes")
-          .select(CLASS_SELECT_FIELDS)
+          .select(CLASS_BASE_SELECT_FIELDS)
           .eq("organization_id", input.organizationId)
           .eq("teacher_id", input.teacherId)
           .eq("title", input.title)
