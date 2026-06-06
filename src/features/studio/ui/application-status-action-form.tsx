@@ -8,6 +8,8 @@ import {
 } from "@/features/studio/actions/update-application-status"
 import type { ApplicationStatus } from "@/shared/lib/db/adapter"
 
+import styles from "./application-status-action-form.module.css"
+
 const initialState: UpdateApplicationStatusActionState = {
   status: "idle",
   message: ""
@@ -24,11 +26,14 @@ const STATUS_ACTION_LABELS: Record<ApplicationStatus, string> = {
 type ApplicationStatusActionFormProps = {
   applicationId: string
   nextStatus: ApplicationStatus | null
+  currentStatus: ApplicationStatus
+  registrationStatus: string
 }
 
 export const ApplicationStatusActionForm = ({
   applicationId,
-  nextStatus
+  nextStatus,
+  currentStatus
 }: ApplicationStatusActionFormProps) => {
   const action =
     nextStatus == null
@@ -36,71 +41,49 @@ export const ApplicationStatusActionForm = ({
       : updateApplicationStatusAction.bind(null, applicationId, nextStatus)
   const [state, formAction, isPending] = useActionState(action, initialState)
 
-  if (!nextStatus) {
-    return (
-      <section style={cardStyle}>
-        <h2 style={titleStyle}>상태 액션</h2>
-        <p style={descriptionStyle}>현재 상태에서는 추가 상태 변경이 필요하지 않습니다.</p>
-      </section>
-    )
-  }
+  const statusLabel =
+    currentStatus === "new"
+      ? "신규 신청"
+      : currentStatus === "reviewing"
+        ? "검토 중"
+        : currentStatus === "confirmed"
+          ? "수업 확정"
+          : currentStatus === "completed"
+            ? "수업 완료"
+            : "취소"
 
   return (
-    <section style={cardStyle}>
-      <h2 style={titleStyle}>상태 액션</h2>
-      <p style={descriptionStyle}>허용된 다음 단계만 처리할 수 있습니다.</p>
+    <section className={styles.card} aria-label="상태 관리">
+      <div className={styles.header}>
+        <div>
+          <h2 className={styles.title}>상태 관리</h2>
+          <p className={styles.description}>허용된 다음 단계만 처리할 수 있어요.</p>
+        </div>
+      </div>
 
-      <form action={formAction} style={{ display: "grid", gap: 12 }}>
-        {state.message ? (
-          <p
-            style={{
-              margin: 0,
-              color: state.status === "error" ? "#b42318" : "#1f2937",
-              fontSize: 14,
-              lineHeight: "20px"
-            }}
-          >
-            {state.message}
-          </p>
-        ) : null}
+      <div className={styles.currentRow}>
+        <span className={styles.currentLabel}>현재 상태</span>
+        <span className={styles.currentValue}>{statusLabel}</span>
+      </div>
 
-        <button type="submit" disabled={isPending} style={buttonStyle}>
-          {isPending ? "처리 중..." : STATUS_ACTION_LABELS[nextStatus]}
-        </button>
-      </form>
+      {!nextStatus ? (
+        <div className={styles.empty}>
+          <p className={styles.emptyTitle}>추가 상태 변경이 필요하지 않아요.</p>
+          <p className={styles.emptyDescription}>취소/완료 상태이거나, 이미 최종 단계입니다.</p>
+        </div>
+      ) : (
+        <form action={formAction} className={styles.form}>
+          {state.message ? (
+            <div className={`${styles.message} ${state.status === "error" ? styles.messageError : ""}`}>
+              {state.message}
+            </div>
+          ) : null}
+
+          <button type="submit" disabled={isPending} className={styles.primaryButton}>
+            {isPending ? "처리 중..." : STATUS_ACTION_LABELS[nextStatus]}
+          </button>
+        </form>
+      )}
     </section>
   )
-}
-
-const cardStyle = {
-  border: "1px solid #e5e7eb",
-  borderRadius: 16,
-  background: "#fff",
-  padding: 20
-}
-
-const titleStyle = {
-  margin: "0 0 8px",
-  fontSize: 18,
-  lineHeight: "24px",
-  color: "#111827"
-}
-
-const descriptionStyle = {
-  margin: "0 0 16px",
-  fontSize: 14,
-  lineHeight: "20px",
-  color: "#4b5563"
-}
-
-const buttonStyle = {
-  border: 0,
-  borderRadius: 10,
-  background: "#111827",
-  color: "#fff",
-  fontSize: 14,
-  lineHeight: "20px",
-  fontWeight: 600,
-  padding: "12px 16px",
-  cursor: "pointer"
 }

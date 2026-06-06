@@ -1,0 +1,173 @@
+.card {
+  border: 1px solid #eeeeee;
+  background: #ffffff;
+  border-radius: 18px;
+  padding: 20px;
+  box-shadow: 0 1px 0 rgba(17, 17, 17, 0.02);
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+
+.title {
+  margin: 0;
+  font-size: 16px;
+  line-height: 22px;
+  font-weight: 900;
+  color: #111111;
+}
+
+.description {
+  margin: 10px 0 0;
+  font-size: 14px;
+  line-height: 22px;
+  color: #8a8a8a;
+}
+
+.form {
+  margin-top: 14px;
+  display: grid;
+  gap: 12px;
+}
+
+.currentRow {
+  margin-top: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  border: 1px solid #eeeeee;
+  background: #ffffff;
+}
+
+.currentLabel {
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 900;
+  color: #8a8a8a;
+}
+
+.currentValue {
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 900;
+  color: #111111;
+}
+
+.message {
+  border: 1px solid #eeeeee;
+  background: #fafafa;
+  border-radius: 12px;
+  padding: 12px 14px;
+  font-size: 14px;
+  line-height: 20px;
+  color: #111111;
+  font-weight: 700;
+}
+
+.messageError {
+  border-color: #fecaca;
+  background: #fef2f2;
+  color: #dc2626;
+}
+
+.primaryButton {
+  width: 100%;
+  height: 48px;
+  border: 0;
+  border-radius: 12px;
+  background: #2aad38;
+  color: #ffffff;
+  font-size: 15px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.primaryButton:hover {
+  background: #249b31;
+}
+
+.primaryButton:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.empty {
+  margin-top: 14px;
+  border: 1px dashed #d9d9d9;
+  border-radius: 14px;
+  padding: 14px;
+  background: #ffffff;
+}
+
+.emptyTitle {
+  margin: 0;
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 900;
+  color: #111111;
+}
+
+.emptyDescription {
+  margin: 8px 0 0;
+  font-size: 13px;
+  line-height: 20px;
+  color: #8a8a8a;
+}
+
+.badge {
+  border-radius: 999px;
+  padding: 6px 10px;
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 900;
+  border: 1px solid transparent;
+  white-space: nowrap;
+}
+
+.badge_successSoft {
+  background: #eaf8ec;
+  color: #2aad38;
+  border-color: #d8f0dc;
+}
+
+.badge_warningSoft {
+  background: #fff6df;
+  color: #b45309;
+  border-color: #ffe3a6;
+}
+
+.badge_infoSoft {
+  background: #eff6ff;
+  color: #1d4ed8;
+  border-color: #dbeafe;
+}
+
+.badge_neutralSoft {
+  background: #f2f2f2;
+  color: #666666;
+  border-color: #eeeeee;
+}
+
+.badge_dangerSoft {
+  background: #fef2f2;
+  color: #dc2626;
+  border-color: #fecaca;
+}
+
+.badge_darkSolid {
+  background: #111111;
+  color: #ffffff;
+}
+
+.badge_successSolid {
+  background: #2aad38;
+  color: #ffffff;
+}

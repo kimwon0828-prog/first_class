@@ -13,6 +13,8 @@ import type {
   StudioApplicationDetail
 } from "@/shared/lib/db/adapter"
 
+import styles from "./application-outcome-form.module.css"
+
 const initialState: UpdateApplicationOutcomeActionState = {
   status: "idle",
   message: ""
@@ -53,109 +55,141 @@ export const ApplicationOutcomeForm = ({ item }: ApplicationOutcomeFormProps) =>
   )
 
   return (
-    <section style={cardStyle}>
-      <h2 style={titleStyle}>운영 기록 및 등록 전환</h2>
-      <p style={descriptionStyle}>상담, 결과, 추천 과정과 등록 전환 상태를 함께 저장합니다.</p>
-
-      <form action={formAction} style={{ display: "grid", gap: 16 }}>
-        {state.message ? (
-          <p
-            style={{
-              margin: 0,
-              color: state.status === "error" ? "#b42318" : "#1f2937",
-              fontSize: 14,
-              lineHeight: "20px"
-            }}
-          >
-            {state.message}
+    <section className={styles.card} aria-label="상담 메모 및 등록 전환">
+      <header className={styles.header}>
+        <div>
+          <h2 className={styles.title}>상담 메모</h2>
+          <p className={styles.description}>
+            상담 내용, 학부모 요청사항, 수업 후 피드백을 기록해 주세요.
           </p>
+        </div>
+        <span className={styles.tip}>완료 처리된 신청만 저장할 수 있어요.</span>
+      </header>
+
+      <form action={formAction} className={styles.form}>
+        {state.message ? (
+          <div className={`${styles.message} ${state.status === "error" ? styles.messageError : ""}`}>
+            {state.message}
+          </div>
         ) : null}
 
-        <Field label="상담 메모">
+        <div className={styles.section}>
+          <h3 className={styles.sectionTitle}>상담 메모</h3>
           <textarea
             name="consultationNote"
             defaultValue={item.consultationNote ?? ""}
-            rows={4}
-            style={textareaStyle}
+            rows={6}
+            className={styles.textarea}
+            placeholder="예: 파이썬 경험은 없지만 수학적 사고력이 좋음. 체험 후 정규반 상담 예정."
+            disabled={isPending}
           />
-        </Field>
-
-        <Field label="체험/레벨테스트 결과 메모">
-          <textarea
-            name="trialFeedback"
-            defaultValue={item.trialFeedback ?? ""}
-            rows={4}
-            style={textareaStyle}
-          />
-        </Field>
-
-        <div style={gridStyle}>
-          <Field label="추천 과정">
-            <input
-              name="registeredCourse"
-              defaultValue={item.registeredCourse ?? ""}
-              style={inputStyle}
-            />
-          </Field>
-
-          <Field label="확정 레벨">
-            <input name="finalLevel" defaultValue={item.finalLevel ?? ""} style={inputStyle} />
-          </Field>
         </div>
 
-        <Field label="확정 수업 시간">
-          <input name="finalSchedule" defaultValue={item.finalSchedule ?? ""} style={inputStyle} />
-        </Field>
+        <div className={styles.section}>
+          <h3 className={styles.sectionTitle}>등록 전환</h3>
+          <div className={styles.grid2}>
+            <Field label="등록 상태">
+              <select
+                name="registrationStatus"
+                defaultValue={item.registrationStatus}
+                onChange={(event) =>
+                  setRegistrationStatus(event.target.value as ApplicationRegistrationStatus)
+                }
+                className={styles.input}
+                disabled={isPending}
+              >
+                {REGISTRATION_STATUS_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </Field>
 
-        <Field label="후속 조치 메모">
-          <textarea
-            name="followUpNote"
-            defaultValue={item.followUpNote ?? ""}
-            rows={3}
-            style={textareaStyle}
-          />
-        </Field>
-
-        <div style={gridStyle}>
-          <Field label="등록 상태">
-            <select
-              name="registrationStatus"
-              defaultValue={item.registrationStatus}
-              onChange={(event) =>
-                setRegistrationStatus(event.target.value as ApplicationRegistrationStatus)
-              }
-              style={inputStyle}
-            >
-              {REGISTRATION_STATUS_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </Field>
-
-          <Field label="미등록 사유">
-            <select
-              name="unregisteredReason"
-              defaultValue={item.unregisteredReason ?? ""}
-              disabled={registrationStatus !== "not_enrolled"}
-              style={{
-                ...inputStyle,
-                opacity: registrationStatus === "not_enrolled" ? 1 : 0.6
-              }}
-            >
-              <option value="">선택 안 함</option>
-              {UNREGISTERED_REASON_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </Field>
+            <Field label="미등록 사유">
+              <select
+                name="unregisteredReason"
+                defaultValue={item.unregisteredReason ?? ""}
+                disabled={isPending || registrationStatus !== "not_enrolled"}
+                className={`${styles.input} ${
+                  registrationStatus === "not_enrolled" ? "" : styles.inputDisabledLook
+                }`}
+              >
+                <option value="">선택 안 함</option>
+                {UNREGISTERED_REASON_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </Field>
+          </div>
         </div>
 
-        <button type="submit" disabled={isPending} style={buttonStyle}>
-          {isPending ? "저장 중..." : "운영 기록 저장"}
+        <details className={styles.details}>
+          <summary className={styles.detailsSummary}>추가 운영 기록(선택)</summary>
+          <div className={styles.detailsBody}>
+            <div className={styles.section}>
+              <h3 className={styles.sectionTitle}>체험/레벨테스트 결과</h3>
+              <Field label="결과 메모">
+                <textarea
+                  name="trialFeedback"
+                  defaultValue={item.trialFeedback ?? ""}
+                  rows={4}
+                  className={styles.textarea}
+                  placeholder="아이 반응, 결과 요약, 다음 액션 등을 기록해 주세요."
+                  disabled={isPending}
+                />
+              </Field>
+            </div>
+
+            <div className={styles.section}>
+              <h3 className={styles.sectionTitle}>추천/확정</h3>
+              <div className={styles.grid2}>
+                <Field label="추천 과정">
+                  <input
+                    name="registeredCourse"
+                    defaultValue={item.registeredCourse ?? ""}
+                    className={styles.input}
+                    disabled={isPending}
+                  />
+                </Field>
+
+                <Field label="확정 레벨">
+                  <input
+                    name="finalLevel"
+                    defaultValue={item.finalLevel ?? ""}
+                    className={styles.input}
+                    disabled={isPending}
+                  />
+                </Field>
+              </div>
+
+              <Field label="확정 수업 시간">
+                <input
+                  name="finalSchedule"
+                  defaultValue={item.finalSchedule ?? ""}
+                  className={styles.input}
+                  disabled={isPending}
+                />
+              </Field>
+
+              <Field label="후속 조치 메모">
+                <textarea
+                  name="followUpNote"
+                  defaultValue={item.followUpNote ?? ""}
+                  rows={3}
+                  className={styles.textarea}
+                  placeholder="다음 연락 시점, 안내 사항 등을 기록해 주세요."
+                  disabled={isPending}
+                />
+              </Field>
+            </div>
+          </div>
+        </details>
+
+        <button type="submit" disabled={isPending} className={styles.primaryButton}>
+          {isPending ? "저장 중..." : "메모 저장"}
         </button>
       </form>
     </section>
@@ -169,70 +203,9 @@ type FieldProps = {
 
 const Field = ({ label, children }: FieldProps) => {
   return (
-    <label style={{ display: "grid", gap: 6 }}>
-      <span style={labelStyle}>{label}</span>
+    <label className={styles.field}>
+      <span className={styles.label}>{label}</span>
       {children}
     </label>
   )
-}
-
-const cardStyle = {
-  border: "1px solid #e5e7eb",
-  borderRadius: 16,
-  background: "#fff",
-  padding: 20
-}
-
-const titleStyle = {
-  margin: "0 0 8px",
-  fontSize: 18,
-  lineHeight: "24px",
-  color: "#111827"
-}
-
-const descriptionStyle = {
-  margin: "0 0 16px",
-  fontSize: 14,
-  lineHeight: "20px",
-  color: "#4b5563"
-}
-
-const labelStyle = {
-  fontSize: 13,
-  lineHeight: "18px",
-  color: "#374151"
-}
-
-const gridStyle = {
-  display: "grid",
-  gap: 16,
-  gridTemplateColumns: "repeat(2, minmax(0, 1fr))"
-}
-
-const inputStyle = {
-  width: "100%",
-  border: "1px solid #d1d5db",
-  borderRadius: 10,
-  padding: "10px 12px",
-  fontSize: 14,
-  lineHeight: "20px",
-  color: "#111827",
-  background: "#fff"
-}
-
-const textareaStyle = {
-  ...inputStyle,
-  resize: "vertical" as const
-}
-
-const buttonStyle = {
-  border: 0,
-  borderRadius: 10,
-  background: "#111827",
-  color: "#fff",
-  fontSize: 14,
-  lineHeight: "20px",
-  fontWeight: 600,
-  padding: "12px 16px",
-  cursor: "pointer"
 }

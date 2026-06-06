@@ -1,8 +1,10 @@
 import type { ApplicationLogEntry } from "@/shared/lib/db/adapter"
 
+import styles from "./application-log-list.module.css"
+
 const formatDateTime = (value: string) =>
   new Intl.DateTimeFormat("ko-KR", {
-    dateStyle: "short",
+    dateStyle: "medium",
     timeStyle: "short"
   }).format(new Date(value))
 
@@ -28,74 +30,31 @@ type ApplicationLogListProps = {
 
 export const ApplicationLogList = ({ items }: ApplicationLogListProps) => {
   return (
-    <section style={cardStyle}>
-      <h2 style={titleStyle}>처리 로그</h2>
+    <section className={styles.card} aria-label="처리 이력">
+      <header className={styles.header}>
+        <h2 className={styles.title}>처리 이력</h2>
+        <p className={styles.description}>상태 변경과 운영 기록 저장 이력을 확인해요.</p>
+      </header>
 
       {items.length === 0 ? (
-        <p style={emptyStyle}>아직 기록된 처리 로그가 없습니다.</p>
+        <div className={styles.empty}>
+          <p className={styles.emptyTitle}>아직 기록된 처리 이력이 없어요.</p>
+          <p className={styles.emptyDescription}>상태 변경 또는 운영 기록 저장 시 이곳에 기록됩니다.</p>
+        </div>
       ) : (
-        <div style={{ display: "grid", gap: 12 }}>
+        <div className={styles.list}>
           {items.map((item) => (
-            <article
-              key={item.id}
-              style={{
-                border: "1px solid #f3f4f6",
-                borderRadius: 12,
-                padding: 14,
-                background: "#fcfcfd"
-              }}
-            >
-              <p style={metaStyle}>{formatDateTime(item.createdAt)} / {getLogTitle(item)}</p>
-              <p style={bodyStyle}>{item.note ?? "상태 변경 기록"}</p>
-              <p style={subtleStyle}>
-                actor: {item.actorName ?? "확인 불가"} / id: {item.actorId}
-              </p>
+            <article key={item.id} className={styles.logCard}>
+              <div className={styles.logTop}>
+                <p className={styles.meta}>{formatDateTime(item.createdAt)}</p>
+                <span className={styles.logTitle}>{getLogTitle(item)}</span>
+              </div>
+              <p className={styles.body}>{item.note ?? "상태 변경 기록"}</p>
+              {item.actorName ? <p className={styles.subtle}>{item.actorName}</p> : null}
             </article>
           ))}
         </div>
       )}
     </section>
   )
-}
-
-const cardStyle = {
-  border: "1px solid #e5e7eb",
-  borderRadius: 16,
-  background: "#fff",
-  padding: 20
-}
-
-const titleStyle = {
-  margin: "0 0 16px",
-  fontSize: 18,
-  lineHeight: "24px",
-  color: "#111827"
-}
-
-const emptyStyle = {
-  margin: 0,
-  fontSize: 14,
-  lineHeight: "20px",
-  color: "#6b7280"
-}
-
-const metaStyle = {
-  margin: "0 0 6px",
-  fontSize: 13,
-  lineHeight: "18px",
-  color: "#4b5563"
-}
-
-const bodyStyle = {
-  margin: "0 0 6px",
-  fontSize: 14,
-  lineHeight: "20px",
-  color: "#111827"
-}
-
-const subtleStyle = {
-  margin: 0,
-  fontSize: 12,
-  lineHeight: "18px",
-  color: "#6b7280"
 }

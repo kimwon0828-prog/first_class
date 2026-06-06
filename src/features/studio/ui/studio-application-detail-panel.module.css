@@ -1,0 +1,157 @@
+.stack {
+  display: grid;
+  gap: 16px;
+}
+
+.card {
+  border: 1px solid #eeeeee;
+  background: #ffffff;
+  border-radius: 18px;
+  padding: 20px;
+  box-shadow: 0 1px 0 rgba(17, 17, 17, 0.02);
+}
+
+.cardHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+
+.cardHeaderRight {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.cardTitle {
+  margin: 0;
+  font-size: 16px;
+  line-height: 22px;
+  font-weight: 900;
+  color: #111111;
+}
+
+.cardDescription {
+  margin: 10px 0 0;
+  font-size: 14px;
+  line-height: 22px;
+  color: #8a8a8a;
+}
+
+.statusText {
+  border-radius: 999px;
+  padding: 6px 10px;
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 900;
+  background: #f3fbf4;
+  color: #2aad38;
+  border: 1px solid #d8f0dc;
+  white-space: nowrap;
+}
+
+.grid {
+  margin: 0;
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.infoRow {
+  border: 1px solid #f2f2f2;
+  border-radius: 16px;
+  padding: 14px;
+  background: #fafafa;
+}
+
+.infoLabel {
+  margin: 0 0 6px;
+  font-size: 12px;
+  line-height: 16px;
+  color: #8a8a8a;
+  font-weight: 900;
+}
+
+.infoValue {
+  margin: 0;
+  font-size: 14px;
+  line-height: 20px;
+  color: #111111;
+  font-weight: 800;
+}
+
+.infoValueEmphasize {
+  font-size: 15px;
+  font-weight: 900;
+}
+
+.infoBlock {
+  margin-top: 12px;
+  border: 1px solid #f2f2f2;
+  border-radius: 16px;
+  padding: 14px;
+  background: #fafafa;
+}
+
+.memo {
+  margin: 0;
+  font-size: 14px;
+  line-height: 22px;
+  color: #111111;
+  white-space: pre-wrap;
+}
+
+.actionRow {
+  display: inline-flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.actionButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 36px;
+  padding: 0 12px;
+  border-radius: 10px;
+  border: 1px solid #d9d9d9;
+  background: #ffffff;
+  color: #111111;
+  font-size: 13px;
+  font-weight: 900;
+  text-decoration: none;
+}
+
+.actionButton:hover {
+  border-color: #bdbdbd;
+}
+
+.linkButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 36px;
+  padding: 0 12px;
+  border-radius: 10px;
+  background: #f3fbf4;
+  border: 1px solid #d8f0dc;
+  color: #2aad38;
+  font-size: 13px;
+  font-weight: 900;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.linkButton:hover {
+  background: #eaf8ec;
+}
+
+@media (max-width: 720px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+}
