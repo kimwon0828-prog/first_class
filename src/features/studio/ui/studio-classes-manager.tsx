@@ -1,7 +1,8 @@
 "use client"
 
 import Link from "next/link"
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
 
 import { submitToggleStudioClassActiveAction } from "@/features/studio/actions/toggle-studio-class-active"
 import { StudioClassForm } from "@/features/studio/ui/studio-class-form"
@@ -34,9 +35,12 @@ export const StudioClassesManager = ({
   teacherOptions,
   teacherOptionsError
 }: StudioClassesManagerProps) => {
+  const router = useRouter()
+  const searchParams = useSearchParams()
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive">("all")
   const [query, setQuery] = useState("")
+  const [toastOpen, setToastOpen] = useState(false)
   const selectedItem = items.find((item) => item.id === selectedId) ?? null
   const totalCount = items.length
   const activeCount = items.filter((item) => item.isActive).length
@@ -89,8 +93,50 @@ export const StudioClassesManager = ({
     })
   }, [items, query, statusFilter])
 
+  useEffect(() => {
+    const success = searchParams.get("success")
+    const created = searchParams.get("created")
+
+    if (success !== "created" && created !== "1") {
+      return
+    }
+
+    setToastOpen(true)
+
+    const url = new URL(window.location.href)
+    url.searchParams.delete("success")
+    url.searchParams.delete("created")
+    window.history.replaceState({}, "", url.toString())
+  }, [searchParams])
+
+  useEffect(() => {
+    if (!toastOpen) {
+      return
+    }
+
+    const timeoutId = window.setTimeout(() => setToastOpen(false), 4500)
+    return () => window.clearTimeout(timeoutId)
+  }, [toastOpen])
+
   return (
     <div className={styles.root}>
+      {toastOpen ? (
+        <div className={styles.toastWrap} role="status" aria-live="polite">
+          <div className={styles.toast}>
+            <div className={styles.toastIcon} aria-hidden="true" />
+            <div className={styles.toastBody}>
+              <p className={styles.toastTitle}>새 프로그램이 등록되었습니다.</p>
+              <p className={styles.toastDescription}>
+                수업 목록에서 공개 상태와 노출 정보를 확인해 주세요.
+              </p>
+            </div>
+            <button type="button" className={styles.toastClose} onClick={() => setToastOpen(false)}>
+              닫기
+            </button>
+          </div>
+        </div>
+      ) : null}
+
       <section className={styles.metrics} aria-label="수업 요약 지표">
         <div className={styles.metricCard}>
           <div className={styles.metricTop}>
@@ -329,6 +375,11 @@ export const StudioClassesManager = ({
             teacherOptions={teacherOptions}
             teacherOptionsError={teacherOptionsError}
             initialItem={selectedItem}
+            onCreated={() => {
+              setSelectedId(null)
+              setToastOpen(true)
+              router.refresh()
+            }}
           />
         </div>
       </div>

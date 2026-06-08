@@ -1,6 +1,6 @@
 "use client"
 
-import { useActionState, useEffect, useMemo, useState } from "react"
+import { useActionState, useEffect, useMemo, useRef, useState } from "react"
 
 import { academyAreaOptions, normalizeAcademyArea } from "@/shared/config/academy-areas"
 import {
@@ -20,6 +20,7 @@ type StudioClassFormProps = {
   teacherOptions: StudioTeacherOption[]
   teacherOptionsError: string | null
   initialItem?: ClassSummary | null
+  onCreated?: () => void
 }
 
 const initialState: UpsertStudioClassActionState = {
@@ -47,7 +48,8 @@ export const StudioClassForm = ({
   currentTeacherId,
   teacherOptions,
   teacherOptionsError,
-  initialItem
+  initialItem,
+  onCreated
 }: StudioClassFormProps) => {
   const [selectedClassId, setSelectedClassId] = useState(initialItem?.id ?? "")
   const [selectedProgramType, setSelectedProgramType] = useState(initialItem?.programType ?? "trial_class")
@@ -88,6 +90,7 @@ export const StudioClassForm = ({
     initialItem?.teacherId && fallbackTeacherOption && !teacherOptionIds.has(initialItem.teacherId)
   )
   const mode = selectedClassId ? "update" : "create"
+  const previousOkRef = useRef(false)
 
   useEffect(() => {
     setSelectedClassId(initialItem?.id ?? "")
@@ -100,6 +103,15 @@ export const StudioClassForm = ({
     setCoverImageFilePreviewUrl("")
     setScheduleSlots([createEmptyScheduleSlotDraft()])
   }, [initialItem?.coverImageUrl, initialItem?.id, initialItem?.programType, initialItem?.subject])
+
+  useEffect(() => {
+    const previousOk = previousOkRef.current
+    previousOkRef.current = state.ok
+
+    if (!previousOk && state.ok && mode === "create") {
+      onCreated?.()
+    }
+  }, [mode, onCreated, state.ok])
 
   useEffect(() => {
     return () => {
