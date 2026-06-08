@@ -1150,7 +1150,7 @@ export const supabaseDataAdapter: DataAdapter = {
     const teacherDisplayName = teacherNames.get(input.teacherId) ?? input.teacherDisplayName
 
     const supabase = await getSupabaseServerClient()
-    const payload = {
+    const basePayload = {
       organization_id: input.organizationId,
       program_type: input.programType,
       title: input.title,
@@ -1158,11 +1158,6 @@ export const supabaseDataAdapter: DataAdapter = {
       target_age: input.targetAge,
       region: input.region,
       description: input.description,
-      class_format: input.classFormat,
-      recommended_for: input.recommendedFor,
-      experience_points: input.experiencePoints,
-      curriculum: input.curriculum,
-      teacher_intro: input.teacherIntro,
       trial_price: input.trialPrice,
       teacher_id: input.teacherId,
       teacher_display_name: teacherDisplayName,
@@ -1170,12 +1165,20 @@ export const supabaseDataAdapter: DataAdapter = {
       is_active: input.isActive,
       updated_at: new Date().toISOString()
     }
+    const detailPayload = {
+      ...basePayload,
+      class_format: input.classFormat,
+      recommended_for: input.recommendedFor,
+      experience_points: input.experiencePoints,
+      curriculum: input.curriculum,
+      teacher_intro: input.teacherIntro
+    }
 
     if (input.mode === "update" && !normalizedClassId) {
       throw new Error("invalid_class_id_for_update")
     }
 
-    const query =
+    const buildQuery = (payload: typeof basePayload | typeof detailPayload) =>
       input.mode === "update"
         ? supabase
             .from("classes")
@@ -1184,7 +1187,10 @@ export const supabaseDataAdapter: DataAdapter = {
             .eq("organization_id", input.organizationId)
         : supabase.from("classes").insert(payload)
 
-    const { data, error } = await query.select(CLASS_BASE_SELECT_FIELDS).maybeSingle()
+    const initialResult = await buildQuery(detailPayload).select(CLASS_BASE_SELECT_FIELDS).maybeSingle()
+    const { data, error } = isMissingColumnError(initialResult.error)
+      ? await buildQuery(basePayload).select(CLASS_BASE_SELECT_FIELDS).maybeSingle()
+      : initialResult
 
     if (error) {
       throw new Error(
