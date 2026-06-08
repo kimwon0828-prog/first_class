@@ -51,6 +51,7 @@ export const StudioClassForm = ({
   initialItem,
   onCreated
 }: StudioClassFormProps) => {
+  const safeTeacherOptions = Array.isArray(teacherOptions) ? teacherOptions : []
   const [selectedClassId, setSelectedClassId] = useState(initialItem?.id ?? "")
   const [selectedProgramType, setSelectedProgramType] = useState(initialItem?.programType ?? "trial_class")
   const [selectedSubject, setSelectedSubject] = useState(
@@ -58,13 +59,19 @@ export const StudioClassForm = ({
       ? initialItem?.subject
       : ""
   )
+  const [description, setDescription] = useState(initialItem?.description ?? "")
+  const [recommendedFor, setRecommendedFor] = useState(initialItem?.recommendedFor ?? "")
+  const [experiencePoints, setExperiencePoints] = useState(initialItem?.experiencePoints ?? "")
+  const [curriculum, setCurriculum] = useState(initialItem?.curriculum ?? "")
+  const [teacherIntro, setTeacherIntro] = useState(initialItem?.teacherIntro ?? "")
+  const [classFormat, setClassFormat] = useState(initialItem?.classFormat ?? "")
   const [coverImageFilePreviewUrl, setCoverImageFilePreviewUrl] = useState("")
   const [scheduleSlots, setScheduleSlots] = useState<ScheduleSlotDraft[]>([createEmptyScheduleSlotDraft()])
   const action = useMemo(() => upsertStudioClassAction, [])
   const [state, formAction, isPending] = useActionState(action, initialState)
   const targetAgeRange = parseStudioClassTargetAgeRange(initialItem?.targetAge)
   const selectedRegion = normalizeAcademyArea(initialItem?.region)
-  const teacherOptionIds = new Set(teacherOptions.map((option) => option.teacherId))
+  const teacherOptionIds = new Set(safeTeacherOptions.map((option) => option.teacherId))
   const fallbackTeacherOption =
     initialItem?.teacherId &&
     !teacherOptionIds.has(initialItem.teacherId) &&
@@ -75,8 +82,8 @@ export const StudioClassForm = ({
         }
       : null
   const mergedTeacherOptions = fallbackTeacherOption
-    ? [fallbackTeacherOption, ...teacherOptions]
-    : teacherOptions
+    ? [fallbackTeacherOption, ...safeTeacherOptions]
+    : safeTeacherOptions
   const mergedTeacherOptionIds = new Set(mergedTeacherOptions.map((option) => option.teacherId))
   const selectedTeacherId =
     initialItem?.teacherId && mergedTeacherOptionIds.has(initialItem.teacherId)
@@ -85,7 +92,7 @@ export const StudioClassForm = ({
         ? currentTeacherId
         : (mergedTeacherOptions[0]?.teacherId ?? "")
   const isTeacherOptionUnavailable = mergedTeacherOptions.length === 0
-  const hasNoActiveTeacherOption = teacherOptions.length === 0
+  const hasNoActiveTeacherOption = safeTeacherOptions.length === 0
   const isTeacherSelectionLockedToInactive = Boolean(
     initialItem?.teacherId && fallbackTeacherOption && !teacherOptionIds.has(initialItem.teacherId)
   )
@@ -100,9 +107,26 @@ export const StudioClassForm = ({
         ? (initialItem?.subject ?? "")
         : ""
     )
+    setDescription(initialItem?.description ?? "")
+    setRecommendedFor(initialItem?.recommendedFor ?? "")
+    setExperiencePoints(initialItem?.experiencePoints ?? "")
+    setCurriculum(initialItem?.curriculum ?? "")
+    setTeacherIntro(initialItem?.teacherIntro ?? "")
+    setClassFormat(initialItem?.classFormat ?? "")
     setCoverImageFilePreviewUrl("")
     setScheduleSlots([createEmptyScheduleSlotDraft()])
-  }, [initialItem?.coverImageUrl, initialItem?.id, initialItem?.programType, initialItem?.subject])
+  }, [
+    initialItem?.coverImageUrl,
+    initialItem?.id,
+    initialItem?.programType,
+    initialItem?.subject,
+    initialItem?.description,
+    initialItem?.recommendedFor,
+    initialItem?.experiencePoints,
+    initialItem?.curriculum,
+    initialItem?.teacherIntro,
+    initialItem?.classFormat
+  ])
 
   useEffect(() => {
     const previousOk = previousOkRef.current
@@ -299,7 +323,8 @@ export const StudioClassForm = ({
           <span>수업 방식</span>
           <input
             name="classFormat"
-            defaultValue={initialItem?.classFormat ?? ""}
+            value={classFormat}
+            onChange={(event) => setClassFormat(event.target.value)}
             disabled={isPending}
             placeholder="예: 오프라인 소그룹 / 1:1 / 온라인"
             style={inputStyle}
@@ -311,7 +336,8 @@ export const StudioClassForm = ({
           <span>프로그램 소개</span>
           <textarea
             name="description"
-            defaultValue={initialItem?.description ?? ""}
+            value={description}
+            onChange={(event) => setDescription(event.target.value)}
             required
             minLength={10}
             rows={5}
@@ -325,7 +351,8 @@ export const StudioClassForm = ({
           <span>이런 아이에게 추천해요</span>
           <textarea
             name="recommendedFor"
-            defaultValue={initialItem?.recommendedFor ?? ""}
+            value={recommendedFor}
+            onChange={(event) => setRecommendedFor(event.target.value)}
             rows={5}
             disabled={isPending}
             placeholder="코딩을 처음 시작하는 아이, 파이썬을 배워보고 싶은 아이, 논리적으로 문제를 해결하는 활동을 좋아하는 아이에게 추천해요."
@@ -337,7 +364,8 @@ export const StudioClassForm = ({
           <span>이 수업에서 경험하는 것</span>
           <textarea
             name="experiencePoints"
-            defaultValue={initialItem?.experiencePoints ?? ""}
+            value={experiencePoints}
+            onChange={(event) => setExperiencePoints(event.target.value)}
             rows={5}
             disabled={isPending}
             placeholder="변수와 출력문을 사용해보고, 간단한 조건문으로 나만의 미니 프로그램을 만들어봅니다."
@@ -349,7 +377,8 @@ export const StudioClassForm = ({
           <span>커리큘럼</span>
           <textarea
             name="curriculum"
-            defaultValue={initialItem?.curriculum ?? ""}
+            value={curriculum}
+            onChange={(event) => setCurriculum(event.target.value)}
             rows={6}
             disabled={isPending}
             placeholder={"1단계: 파이썬이 무엇인지 알아보기\n2단계: 변수와 출력문 사용해보기\n3단계: 조건문으로 간단한 프로그램 만들기\n4단계: 나만의 미니 프로젝트 완성하기"}
@@ -361,7 +390,8 @@ export const StudioClassForm = ({
           <span>선생님 소개</span>
           <textarea
             name="teacherIntro"
-            defaultValue={initialItem?.teacherIntro ?? ""}
+            value={teacherIntro}
+            onChange={(event) => setTeacherIntro(event.target.value)}
             rows={5}
             disabled={isPending}
             placeholder="아이의 수준에 맞춰 개념을 쉽게 설명하고, 직접 만들어보는 활동을 중심으로 수업합니다."
@@ -385,7 +415,7 @@ export const StudioClassForm = ({
 
         <label style={fieldStyle}>
           <span>담당 선생님</span>
-          {teacherOptions.length > 0 ? (
+          {safeTeacherOptions.length > 0 ? (
             <select
               name="teacherId"
               defaultValue={selectedTeacherId}
