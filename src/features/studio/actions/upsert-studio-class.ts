@@ -16,6 +16,7 @@ import type { ClassProgramType, StudioClassScheduleSlotInput } from "@/shared/li
 export type UpsertStudioClassActionState = {
   ok: boolean
   message: string
+  debugMessage?: string
 }
 
 const defaultState: UpsertStudioClassActionState = {
@@ -72,7 +73,7 @@ const isValidUuid = (value: string | null | undefined) => {
   return Boolean(value && uuidPattern.test(value))
 }
 
-const normalizeMode = (value: FormDataEntryValue | null) => {
+const normalizeMode = (value: FormDataEntryValue | null): "create" | "update" | null => {
   const rawMode = String(value ?? "").trim()
   if (rawMode === "create" || rawMode === "update") {
     return rawMode
@@ -159,6 +160,24 @@ export async function upsertStudioClassAction(
   formData: FormData
 ): Promise<UpsertStudioClassActionState> {
   void previousState
+  const safeError = (message: string, debugMessage?: string): UpsertStudioClassActionState => ({
+    ok: false,
+    message,
+    debugMessage
+  })
+
+  const parseSupabaseErrorSummary = (raw: string) => {
+    const readValue = (key: string) => {
+      const match = raw.match(new RegExp(`${key}=([^|]*)`))
+      return match?.[1]?.trim() ?? null
+    }
+
+    const code = readValue("code")
+    const details = readValue("details")
+    const hint = readValue("hint")
+
+    return { code, details, hint }
+  }
 
   try {
     const teacher = await requireTeacherStudioAccess()
@@ -202,59 +221,71 @@ export async function upsertStudioClassAction(
     const teacherIntro = teacherIntroRaw ? teacherIntroRaw : null
 
     if (!mode) {
-      return { ok: false, message: "저장 모드를 확인할 수 없습니다. 다시 시도해 주세요." }
+      return safeError("저장 모드를 확인할 수 없습니다. 다시 시도해 주세요.")
     }
 
     if (mode === "update" && !isValidUuid(classId)) {
-      return { ok: false, message: "수정할 프로그램 정보를 확인할 수 없습니다." }
+      return safeError("수정할 프로그램 정보를 확인할 수 없습니다.")
     }
 
     if (!programType) {
-      return { ok: false, message: "프로그램 유형을 선택해 주세요." }
+      return safeError("프로그램 유형을 선택해 주세요.")
     }
 
     if (title.length < 2) {
-      return { ok: false, message: "프로그램명은 2자 이상 입력해 주세요." }
+      return safeError("프로그램명은 2자 이상 입력해 주세요.")
     }
 
     if (!subject) {
-      return { ok: false, message: "과목을 선택해 주세요." }
+      return safeError("과목을 선택해 주세요.")
     }
 
     if (!studioClassSubjectSet.has(subject)) {
-      return { ok: false, message: "과목 칩에서 과목을 다시 선택해 주세요." }
+      return safeError("과목 칩에서 과목을 다시 선택해 주세요.")
     }
 
     if (startOrder == null || endOrder == null) {
-      return { ok: false, message: "대상 학년/연령 범위를 선택해 주세요." }
+      return safeError("대상 학년/연령 범위를 선택해 주세요.")
     }
 
     if (endOrder < startOrder) {
-      return { ok: false, message: "끝 학년/연령은 시작 값보다 앞설 수 없습니다." }
+      return safeError("끝 학년/연령은 시작 값보다 앞설 수 없습니다.")
     }
 
     if (!isAcademyArea(regionRaw)) {
-      return { ok: false, message: "학원가를 다시 선택해 주세요." }
+      return safeError("학원가를 다시 선택해 주세요.")
     }
 
     if (description.length < 10) {
-      return { ok: false, message: "프로그램 소개는 10자 이상 입력해 주세요." }
+      return safeError("프로그램 소개는 10자 이상 입력해 주세요.")
     }
 
     if (trialPrice == null || trialPrice < 0) {
-      return { ok: false, message: "신청비는 0원 이상의 숫자로 입력해 주세요." }
+      return safeError("신청비는 0원 이상의 숫자로 입력해 주세요.")
     }
 
     if (!organizationId) {
-      return { ok: false, message: "소속 기관 정보를 확인할 수 없습니다." }
+      return safeError("소속 기관 정보를 확인할 수 없습니다.")
     }
 
     if (!selectedTeacherId || !isValidUuid(selectedTeacherId)) {
-      return { ok: false, message: "담당 선생님을 다시 선택해 주세요." }
+      return safeError("담당 선생님을 선택해주세요.")
     }
 
-    const studioClasses =
-      mode === "update" && classId ? await dataAdapter.listStudioClasses(organizationId) : []
+    const studioClasses = await (async () => {
+      if (!(mode === "update" && classId)) {
+        return []
+      }
+      try {
+        return await dataAdapter.listStudioClasses(organizationId)
+      } catch (error) {
+        console.error("[upsertStudioClass] failed to load studio classes", {
+          organizationId,
+          message: error instanceof Error ? error.message : "unknown_error"
+        })
+        return []
+      }
+    })()
     const existingClass =
       mode === "update" && classId ? studioClasses.find((item) => item.id === classId) : null
 
@@ -262,7 +293,17 @@ export async function upsertStudioClassAction(
       return { ok: false, message: "프로그램 정보를 찾을 수 없거나 수정 권한이 없습니다." }
     }
 
-    const teacherOptions = await dataAdapter.listStudioTeacherOptions(organizationId)
+    const teacherOptions = await (async () => {
+      try {
+        return await dataAdapter.listStudioTeacherOptions(organizationId)
+      } catch (error) {
+        console.error("[upsertStudioClass] failed to load teacher options", {
+          organizationId,
+          message: error instanceof Error ? error.message : "unknown_error"
+        })
+        return []
+      }
+    })()
     let selectedTeacher = teacherOptions.find((option) => option.teacherId === selectedTeacherId)
 
     if (!selectedTeacher && existingClass && existingClass.teacherId === selectedTeacherId) {
@@ -273,7 +314,9 @@ export async function upsertStudioClassAction(
     }
 
     if (!selectedTeacher) {
-      return { ok: false, message: "active 상태의 담당 선생님만 새로 선택할 수 있습니다." }
+      return safeError(
+        "등록 가능한 선생님 프로필이 없어요. 먼저 선생님 프로필을 추가해주세요."
+      )
     }
 
     let coverImageUrl = existingClass?.coverImageUrl ?? null
@@ -332,10 +375,10 @@ export async function upsertStudioClassAction(
 
     const parsedSlots = parseScheduleSlots(formData, mode)
     if (!parsedSlots.ok) {
-      return { ok: false, message: parsedSlots.message }
+      return safeError(parsedSlots.message)
     }
 
-    const savedClass = await dataAdapter.upsertStudioClass({
+    const payload = {
       mode,
       classId: classId ?? undefined,
       organizationId,
@@ -356,7 +399,23 @@ export async function upsertStudioClassAction(
       coverImageUrl,
       isActive,
       scheduleSlots: parsedSlots.slots
-    })
+    }
+
+    let savedClass: Awaited<ReturnType<typeof dataAdapter.upsertStudioClass>>
+    try {
+      savedClass = await dataAdapter.upsertStudioClass(payload)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "unknown_error"
+      const summary = parseSupabaseErrorSummary(message)
+      console.error("[upsertStudioClass failed]", {
+        message,
+        code: summary.code,
+        details: summary.details,
+        hint: summary.hint,
+        payload
+      })
+      return safeError("수업을 저장하지 못했어요. 잠시 후 다시 시도해주세요.", message)
+    }
 
     revalidatePath("/studio")
     revalidatePath("/studio/classes")
@@ -372,13 +431,16 @@ export async function upsertStudioClassAction(
   } catch (error) {
     const message = error instanceof Error ? error.message : "unknown_error"
     if (message.includes("invalid_teacher_for_organization")) {
-      return { ok: false, message: "프로그램 저장 권한을 확인할 수 없습니다." }
+      console.error("[upsertStudioClass failed]", { message })
+      return safeError("프로그램 저장 권한을 확인할 수 없습니다.", message)
     }
 
     if (message.includes("studio_class_not_found_or_forbidden")) {
-      return { ok: false, message: "프로그램 정보를 찾을 수 없거나 수정 권한이 없습니다." }
+      console.error("[upsertStudioClass failed]", { message })
+      return safeError("프로그램 정보를 찾을 수 없거나 수정 권한이 없습니다.", message)
     }
 
-    return { ok: false, message: "프로그램 저장에 실패했습니다. 잠시 후 다시 시도해 주세요." }
+    console.error("[upsertStudioClass failed]", { message })
+    return safeError("프로그램 저장에 실패했습니다. 잠시 후 다시 시도해 주세요.", message)
   }
 }

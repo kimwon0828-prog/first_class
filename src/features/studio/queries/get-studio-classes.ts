@@ -8,7 +8,11 @@ export const getStudioClasses = async (
   try {
     const data = await dataAdapter.listStudioClasses(organizationId)
     return { data, error: null }
-  } catch {
+  } catch (error) {
+    console.error("[getStudioClasses failed]", {
+      organizationId,
+      message: error instanceof Error ? error.message : "unknown_error"
+    })
     return {
       data: [],
       error: "수업 목록을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요."
