@@ -78,13 +78,27 @@ export const StudioClassForm = ({
     (initialItem.teacherDisplayName || initialItem.teacherName)
       ? {
           teacherId: initialItem.teacherId,
-          teacherName: initialItem.teacherDisplayName ?? initialItem.teacherName ?? "이름 미정"
+          teacherName: initialItem.teacherDisplayName ?? initialItem.teacherName ?? "선생님"
         }
       : null
   const mergedTeacherOptions = fallbackTeacherOption
     ? [fallbackTeacherOption, ...safeTeacherOptions]
     : safeTeacherOptions
   const mergedTeacherOptionIds = new Set(mergedTeacherOptions.map((option) => option.teacherId))
+  const resolveTeacherLabel = (option: StudioTeacherOption | (StudioTeacherOption & Record<string, unknown>)) => {
+    const candidate = option as unknown as {
+      displayName?: unknown
+      teacherName?: unknown
+      name?: unknown
+    }
+    const raw =
+      (typeof candidate.displayName === "string" ? candidate.displayName : null) ??
+      (typeof candidate.teacherName === "string" ? candidate.teacherName : null) ??
+      (typeof candidate.name === "string" ? candidate.name : null) ??
+      ""
+    const normalized = raw.trim()
+    return normalized || "선생님"
+  }
   const selectedTeacherId =
     initialItem?.teacherId && mergedTeacherOptionIds.has(initialItem.teacherId)
       ? initialItem.teacherId
@@ -424,7 +438,7 @@ export const StudioClassForm = ({
             >
               {mergedTeacherOptions.map((option) => (
                 <option key={option.teacherId} value={option.teacherId}>
-                  {option.teacherName}
+                  {resolveTeacherLabel(option)}
                   {fallbackTeacherOption?.teacherId === option.teacherId
                     ? " (현재 비활성 선생님)"
                     : ""}
