@@ -275,24 +275,28 @@ export const StudioClassForm = ({
       })
 
       if (uploadError) {
+        const uploadErrorAny = uploadError as unknown as {
+          message?: unknown
+          name?: unknown
+          statusCode?: unknown
+          status?: unknown
+        }
+        const errorMessage =
+          typeof uploadErrorAny.message === "string" && uploadErrorAny.message.trim().length > 0
+            ? uploadErrorAny.message
+            : "알 수 없는 오류"
+        const statusCode = uploadErrorAny.statusCode ?? uploadErrorAny.status ?? "unknown"
+
         console.error("[cover upload failed]", {
-          message: (uploadError as unknown as { message?: unknown }).message,
-          name: (uploadError as unknown as { name?: unknown }).name,
-          statusCode: (uploadError as unknown as { statusCode?: unknown }).statusCode,
+          message: uploadErrorAny.message,
+          name: uploadErrorAny.name,
+          statusCode,
           cause: uploadError,
           organizationId,
           path: objectName
         })
 
-        const debug =
-          process.env.NODE_ENV === "development"
-            ? `: ${
-                typeof (uploadError as unknown as { message?: unknown }).message === "string"
-                  ? (uploadError as unknown as { message: string }).message
-                  : "알 수 없는 오류"
-              }`
-            : ""
-        setCoverImageUploadError(`이미지 업로드에 실패했어요. 관리자에게 문의해주세요${debug}`)
+        setCoverImageUploadError(`이미지 업로드 실패: ${errorMessage} / status: ${String(statusCode)}`)
         return
       }
 
@@ -301,27 +305,24 @@ export const StudioClassForm = ({
       } = supabase.storage.from("class-covers").getPublicUrl(objectName)
 
       if (!publicUrl) {
-        const debug = process.env.NODE_ENV === "development" ? `: publicUrl이 비어있습니다` : ""
-        setCoverImageUploadError(`이미지 업로드에 실패했어요. 관리자에게 문의해주세요${debug}`)
+        setCoverImageUploadError("이미지 업로드 실패: publicUrl이 비어있습니다 / status: unknown")
         return
       }
 
       setCoverImageUrl(publicUrl)
     } catch (error) {
+      const statusCode = (error as unknown as { statusCode?: unknown })?.statusCode ?? "unknown"
       console.error("[cover upload failed]", {
         message: error instanceof Error ? error.message : undefined,
         name: error instanceof Error ? error.name : undefined,
-        statusCode: (error as unknown as { statusCode?: unknown })?.statusCode,
+        statusCode,
         cause: error,
         organizationId,
         path: `${organizationId}/(generated).${extension}`
       })
 
-      const debug =
-        process.env.NODE_ENV === "development"
-          ? `: ${error instanceof Error ? error.message : "알 수 없는 오류"}`
-          : ""
-      setCoverImageUploadError(`이미지 업로드에 실패했어요. 관리자에게 문의해주세요${debug}`)
+      const errorMessage = error instanceof Error ? error.message : "알 수 없는 오류"
+      setCoverImageUploadError(`이미지 업로드 실패: ${errorMessage} / status: ${String(statusCode)}`)
     } finally {
       setIsUploadingCoverImage(false)
     }
