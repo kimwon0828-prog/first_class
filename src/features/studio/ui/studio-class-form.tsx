@@ -259,7 +259,27 @@ export const StudioClassForm = ({
         return
       }
 
-      console.log("[supabase url]", process.env.NEXT_PUBLIC_SUPABASE_URL)
+      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+      const supabaseAnonKey =
+        process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+      if (!supabaseUrl || !supabaseAnonKey) {
+        console.error("[cover upload failed]", {
+          message: "Supabase 클라이언트 환경변수가 설정되지 않았습니다.",
+          name: "missing_supabase_public_env",
+          statusCode: "unknown",
+          cause: {
+            hasSupabaseUrl: Boolean(supabaseUrl),
+            hasSupabaseAnonKey: Boolean(supabaseAnonKey)
+          },
+          organizationId,
+          path: objectName
+        })
+        setCoverImageUploadError("Supabase 클라이언트 환경변수가 설정되지 않았습니다. / status: unknown")
+        return
+      }
+
+      console.log("[supabase url]", supabaseUrl)
       console.log("[cover upload start]", {
         organizationId,
         fileName: file.name,
