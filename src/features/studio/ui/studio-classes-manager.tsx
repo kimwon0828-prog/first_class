@@ -11,6 +11,7 @@ import styles from "@/features/studio/ui/studio-classes-manager.module.css"
 
 type StudioClassesManagerProps = {
   items: ClassSummary[]
+  organizationId: string
   currentTeacherId: string
   teacherOptions: StudioTeacherOption[]
   teacherOptionsError: string | null
@@ -31,6 +32,7 @@ const PROGRAM_TYPE_LABELS: Record<ClassSummary["programType"], string> = {
 
 export const StudioClassesManager = ({
   items,
+  organizationId,
   currentTeacherId,
   teacherOptions,
   teacherOptionsError
@@ -371,6 +373,7 @@ export const StudioClassesManager = ({
         <div className={styles.formCard}>
           <StudioClassForm
             key={selectedId ?? "create"}
+            organizationId={organizationId}
             currentTeacherId={currentTeacherId}
             teacherOptions={teacherOptions}
             teacherOptionsError={teacherOptionsError}

@@ -13,9 +13,11 @@ import {
   studioClassGradeAgeOptions,
   studioClassSubjectOptions
 } from "@/features/studio/lib/studio-class-options"
+import { getSupabaseBrowserClient } from "@/integrations/supabase/client"
 import type { ClassSummary, StudioTeacherOption } from "@/shared/lib/db/adapter"
 
 type StudioClassFormProps = {
+  organizationId: string
   currentTeacherId: string
   teacherOptions: StudioTeacherOption[]
   teacherOptionsError: string | null
@@ -45,6 +47,7 @@ const createEmptyScheduleSlotDraft = (): ScheduleSlotDraft => ({
 })
 
 export const StudioClassForm = ({
+  organizationId,
   currentTeacherId,
   teacherOptions,
   teacherOptionsError,
@@ -66,6 +69,9 @@ export const StudioClassForm = ({
   const [teacherIntro, setTeacherIntro] = useState(initialItem?.teacherIntro ?? "")
   const [classFormat, setClassFormat] = useState(initialItem?.classFormat ?? "")
   const [coverImageFilePreviewUrl, setCoverImageFilePreviewUrl] = useState("")
+  const [coverImageUrl, setCoverImageUrl] = useState(initialItem?.coverImageUrl ?? "")
+  const [coverImageUploadError, setCoverImageUploadError] = useState<string | null>(null)
+  const [isUploadingCoverImage, setIsUploadingCoverImage] = useState(false)
   const [scheduleSlots, setScheduleSlots] = useState<ScheduleSlotDraft[]>([createEmptyScheduleSlotDraft()])
   const action = useMemo(() => upsertStudioClassAction, [])
   const [state, formAction, isPending] = useActionState(action, initialState)
@@ -128,6 +134,9 @@ export const StudioClassForm = ({
     setTeacherIntro(initialItem?.teacherIntro ?? "")
     setClassFormat(initialItem?.classFormat ?? "")
     setCoverImageFilePreviewUrl("")
+    setCoverImageUrl(initialItem?.coverImageUrl ?? "")
+    setCoverImageUploadError(null)
+    setIsUploadingCoverImage(false)
     setScheduleSlots([createEmptyScheduleSlotDraft()])
   }, [
     initialItem?.coverImageUrl,
@@ -190,6 +199,102 @@ export const StudioClassForm = ({
     )
   }
 
+  const handleCoverImageChange = async (file: File | null) => {
+    setCoverImageUploadError(null)
+
+    if (coverImageFilePreviewUrl) {
+      URL.revokeObjectURL(coverImageFilePreviewUrl)
+    }
+
+    if (!file) {
+      setCoverImageFilePreviewUrl("")
+      if (mode === "create") {
+        setCoverImageUrl("")
+      }
+      return
+    }
+
+    const allowedMimeTypes = new Set(["image/jpeg", "image/png", "image/webp"])
+    if (!allowedMimeTypes.has(file.type)) {
+      setCoverImageFilePreviewUrl("")
+      setCoverImageUploadError("이미지 업로드에 실패했어요. 파일 형식과 용량을 확인한 뒤 다시 시도해주세요.")
+      return
+    }
+
+    const maxFileSize = 5 * 1024 * 1024
+    if (file.size > maxFileSize) {
+      setCoverImageFilePreviewUrl("")
+      setCoverImageUploadError("이미지 업로드에 실패했어요. 파일 형식과 용량을 확인한 뒤 다시 시도해주세요.")
+      return
+    }
+
+    if (!organizationId) {
+      setCoverImageFilePreviewUrl("")
+      setCoverImageUploadError("학원 정보를 확인하지 못해 이미지를 업로드할 수 없어요.")
+      return
+    }
+
+    const previewUrl = URL.createObjectURL(file)
+    setCoverImageFilePreviewUrl(previewUrl)
+
+    const extension =
+      file.type === "image/jpeg"
+        ? "jpg"
+        : file.type === "image/png"
+          ? "png"
+          : file.type === "image/webp"
+            ? "webp"
+            : null
+
+    if (!extension) {
+      setCoverImageUploadError("이미지 업로드에 실패했어요. 파일 형식과 용량을 확인한 뒤 다시 시도해주세요.")
+      return
+    }
+
+    setIsUploadingCoverImage(true)
+    try {
+      const objectName = `${organizationId}/${crypto.randomUUID()}.${extension}`
+      const supabase = getSupabaseBrowserClient()
+      const { error: uploadError } = await supabase.storage.from("class-covers").upload(objectName, file, {
+        contentType: file.type,
+        upsert: false
+      })
+
+      if (uploadError) {
+        console.error("[class cover upload failed]", {
+          message: uploadError.message,
+          name: uploadError.name
+        })
+        setCoverImageUploadError(
+          "이미지 업로드에 실패했어요. 파일 형식과 용량을 확인한 뒤 다시 시도해주세요."
+        )
+        return
+      }
+
+      const {
+        data: { publicUrl }
+      } = supabase.storage.from("class-covers").getPublicUrl(objectName)
+
+      if (!publicUrl) {
+        setCoverImageUploadError(
+          "이미지 업로드에 실패했어요. 파일 형식과 용량을 확인한 뒤 다시 시도해주세요."
+        )
+        return
+      }
+
+      setCoverImageUrl(publicUrl)
+    } catch (error) {
+      console.error("[class cover upload failed]", {
+        message: error instanceof Error ? error.message : "unknown_error"
+      })
+      setCoverImageUploadError(
+        "이미지 업로드에 실패했어요. 파일 형식과 용량을 확인한 뒤 다시 시도해주세요."
+      )
+    } finally {
+      setIsUploadingCoverImage(false)
+    }
+  }
+
   return (
     <section id="studio-class-form" style={cardStyle}>
       <div style={heroStyle}>
@@ -205,11 +310,12 @@ export const StudioClassForm = ({
         </div>
       </div>
 
-      <form action={formAction} encType="multipart/form-data" style={{ display: "grid", gap: 12 }}>
+      <form action={formAction} style={{ display: "grid", gap: 12 }}>
         <input type="hidden" name="mode" value={mode} />
         {mode === "update" ? <input type="hidden" name="classId" value={selectedClassId} /> : null}
         <input type="hidden" name="programType" value={selectedProgramType} />
         <input type="hidden" name="subject" value={selectedSubject} />
+        <input type="hidden" name="coverImageUrl" value={coverImageUrl ?? ""} />
 
         <label style={fieldStyle}>
           <span>프로그램 유형</span>
@@ -471,23 +577,21 @@ export const StudioClassForm = ({
         <label style={fieldStyle}>
           <span>대표 이미지</span>
           <input
-            name="coverImageFile"
             type="file"
             accept="image/jpeg,image/png,image/webp"
-            disabled={isPending}
+            disabled={isPending || isUploadingCoverImage}
             style={fileInputStyle}
             onChange={(event) => {
               const file = event.target.files?.[0]
-              if (!file) {
-                setCoverImageFilePreviewUrl("")
-                return
-              }
-
-              setCoverImageFilePreviewUrl(URL.createObjectURL(file))
+              void handleCoverImageChange(file ?? null)
             }}
           />
           <span style={helperTextStyle}>JPEG/PNG/WEBP 파일, 5MB 이하만 업로드할 수 있습니다.</span>
         </label>
+
+        {coverImageUploadError ? (
+          <p style={{ margin: 0, color: "#b42318", fontSize: 14 }}>{coverImageUploadError}</p>
+        ) : null}
 
         {coverImageFilePreviewUrl ? (
           <div style={previewWrapperStyle}>
@@ -498,11 +602,11 @@ export const StudioClassForm = ({
               style={previewImageStyle}
             />
           </div>
-        ) : initialItem?.coverImageUrl ? (
+        ) : coverImageUrl ? (
           <div style={previewWrapperStyle}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src={initialItem.coverImageUrl}
+              src={coverImageUrl}
               alt={`${initialItem?.title ?? "프로그램"} 기존 대표 이미지`}
               style={previewImageStyle}
             />
@@ -655,18 +759,22 @@ export const StudioClassForm = ({
           <span>공개 상태로 저장</span>
         </label>
 
-        {state.message || teacherOptionsError || isTeacherOptionUnavailable ? (
+        {state.message || teacherOptionsError || isTeacherOptionUnavailable || isUploadingCoverImage ? (
           <p style={{ margin: 0, color: state.ok ? "#111827" : "#b42318", fontSize: 14 }}>
             {teacherOptionsError ??
               (isTeacherOptionUnavailable
                 ? "담당 선생님 목록이 비어 있어 프로그램을 저장할 수 없습니다."
-                : state.message)}
+                : isUploadingCoverImage
+                  ? "이미지 업로드 중입니다. 잠시만 기다려주세요."
+                  : state.message)}
           </p>
         ) : null}
 
         <button
           type="submit"
-          disabled={isPending || isTeacherOptionUnavailable || Boolean(teacherOptionsError)}
+          disabled={
+            isPending || isUploadingCoverImage || isTeacherOptionUnavailable || Boolean(teacherOptionsError)
+          }
           style={buttonStyle}
         >
           {isPending ? "저장 중..." : mode === "update" ? "프로그램 수정" : "프로그램 등록"}

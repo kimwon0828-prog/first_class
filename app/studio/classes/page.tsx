@@ -30,6 +30,7 @@ export default async function StudioClassesPage() {
         ) : (
           <StudioClassesManager
             items={classes}
+            organizationId={teacher.organizationId}
             currentTeacherId={teacher.teacherId}
             teacherOptions={teacherOptions}
             teacherOptionsError={teacherOptionsError}

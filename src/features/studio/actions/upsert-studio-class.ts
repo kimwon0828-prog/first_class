@@ -9,7 +9,6 @@ import {
   studioClassSubjectOptions
 } from "@/features/studio/lib/studio-class-options"
 import { requireTeacherStudioAccess } from "@/features/studio/lib/require-teacher-studio-access"
-import { getSupabaseServerClient } from "@/integrations/supabase/server"
 import { dataAdapter } from "@/shared/lib/db"
 import type { ClassProgramType, StudioClassScheduleSlotInput } from "@/shared/lib/db/adapter"
 
@@ -48,22 +47,6 @@ const normalizeClassId = (value: FormDataEntryValue | null) => {
   }
 
   return rawClassId
-}
-
-const MAX_COVER_IMAGE_FILE_SIZE = 5 * 1024 * 1024
-const ALLOWED_COVER_IMAGE_MIME_TYPES = new Set(["image/jpeg", "image/png", "image/webp"])
-
-const getCoverImageExtension = (mimeType: string) => {
-  switch (mimeType) {
-    case "image/jpeg":
-      return "jpg"
-    case "image/png":
-      return "png"
-    case "image/webp":
-      return "webp"
-    default:
-      return null
-  }
 }
 
 const uuidPattern =
@@ -201,11 +184,9 @@ export async function upsertStudioClassAction(
     const teacherIntroRaw = String(formData.get("teacherIntro") ?? "").trim()
     const selectedTeacherId = String(formData.get("teacherId") ?? "").trim()
     const trialPriceRaw = String(formData.get("trialPrice") ?? "").trim()
-    const coverImageFileEntry = formData.get("coverImageFile")
+    const coverImageUrlRaw = String(formData.get("coverImageUrl") ?? "").trim()
     const isActive = String(formData.get("isActive") ?? "") === "on"
     const organizationId = teacher.organizationId
-    const coverImageFile =
-      coverImageFileEntry instanceof File && coverImageFileEntry.size > 0 ? coverImageFileEntry : null
 
     const startOrder = studioClassGradeAgeOrder.get(targetAgeStart)
     const endOrder = studioClassGradeAgeOrder.get(targetAgeEnd)
@@ -321,56 +302,9 @@ export async function upsertStudioClassAction(
 
     let coverImageUrl = existingClass?.coverImageUrl ?? null
     if (mode === "create") {
-      coverImageUrl = null
-    }
-
-    if (coverImageFile) {
-      if (!ALLOWED_COVER_IMAGE_MIME_TYPES.has(coverImageFile.type)) {
-        return {
-          ok: false,
-          message: "대표 이미지는 JPEG, PNG, WEBP 파일만 업로드할 수 있습니다."
-        }
-      }
-
-      if (coverImageFile.size > MAX_COVER_IMAGE_FILE_SIZE) {
-        return { ok: false, message: "대표 이미지는 5MB 이하 파일만 업로드할 수 있습니다." }
-      }
-
-      const extension = getCoverImageExtension(coverImageFile.type)
-      if (!extension) {
-        return {
-          ok: false,
-          message: "대표 이미지 파일 형식을 확인할 수 없습니다. 다른 파일로 다시 시도해 주세요."
-        }
-      }
-
-      const objectName = `${organizationId}/${crypto.randomUUID()}.${extension}`
-      const supabase = await getSupabaseServerClient()
-      const { error: uploadError } = await supabase.storage
-        .from("class-covers")
-        .upload(objectName, coverImageFile, {
-          contentType: coverImageFile.type,
-          upsert: false
-        })
-
-      if (uploadError) {
-        return {
-          ok: false,
-          message: "대표 이미지 업로드에 실패했습니다. 잠시 후 다시 시도해 주세요."
-        }
-      }
-
-      const {
-        data: { publicUrl }
-      } = supabase.storage.from("class-covers").getPublicUrl(objectName)
-
-      coverImageUrl = publicUrl ?? null
-      if (!coverImageUrl) {
-        return {
-          ok: false,
-          message: "대표 이미지 URL을 생성하지 못했습니다. 잠시 후 다시 시도해 주세요."
-        }
-      }
+      coverImageUrl = coverImageUrlRaw ? coverImageUrlRaw : null
+    } else if (coverImageUrlRaw) {
+      coverImageUrl = coverImageUrlRaw
     }
 
     const parsedSlots = parseScheduleSlots(formData, mode)
