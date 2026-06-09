@@ -217,14 +217,14 @@ export const StudioClassForm = ({
     const allowedMimeTypes = new Set(["image/jpeg", "image/png", "image/webp"])
     if (!allowedMimeTypes.has(file.type)) {
       setCoverImageFilePreviewUrl("")
-      setCoverImageUploadError("이미지 업로드에 실패했어요. 파일 형식과 용량을 확인한 뒤 다시 시도해주세요.")
+      setCoverImageUploadError("jpg, png, webp 파일만 업로드할 수 있어요.")
       return
     }
 
     const maxFileSize = 5 * 1024 * 1024
     if (file.size > maxFileSize) {
       setCoverImageFilePreviewUrl("")
-      setCoverImageUploadError("이미지 업로드에 실패했어요. 파일 형식과 용량을 확인한 뒤 다시 시도해주세요.")
+      setCoverImageUploadError("이미지는 5MB 이하만 업로드할 수 있어요.")
       return
     }
 
@@ -247,13 +247,27 @@ export const StudioClassForm = ({
             : null
 
     if (!extension) {
-      setCoverImageUploadError("이미지 업로드에 실패했어요. 파일 형식과 용량을 확인한 뒤 다시 시도해주세요.")
+      setCoverImageUploadError("jpg, png, webp 파일만 업로드할 수 있어요.")
       return
     }
 
     setIsUploadingCoverImage(true)
     try {
       const objectName = `${organizationId}/${crypto.randomUUID()}.${extension}`
+      if (!objectName || objectName.includes("undefined") || objectName.includes("null")) {
+        setCoverImageUploadError(`이미지 저장 경로가 올바르지 않아요: ${objectName}`)
+        return
+      }
+
+      console.log("[supabase url]", process.env.NEXT_PUBLIC_SUPABASE_URL)
+      console.log("[cover upload start]", {
+        organizationId,
+        fileName: file.name,
+        fileType: file.type,
+        fileSize: file.size,
+        path: objectName
+      })
+
       const supabase = getSupabaseBrowserClient()
       const { error: uploadError } = await supabase.storage.from("class-covers").upload(objectName, file, {
         contentType: file.type,
@@ -261,13 +275,24 @@ export const StudioClassForm = ({
       })
 
       if (uploadError) {
-        console.error("[class cover upload failed]", {
-          message: uploadError.message,
-          name: uploadError.name
+        console.error("[cover upload failed]", {
+          message: (uploadError as unknown as { message?: unknown }).message,
+          name: (uploadError as unknown as { name?: unknown }).name,
+          statusCode: (uploadError as unknown as { statusCode?: unknown }).statusCode,
+          cause: uploadError,
+          organizationId,
+          path: objectName
         })
-        setCoverImageUploadError(
-          "이미지 업로드에 실패했어요. 파일 형식과 용량을 확인한 뒤 다시 시도해주세요."
-        )
+
+        const debug =
+          process.env.NODE_ENV === "development"
+            ? `: ${
+                typeof (uploadError as unknown as { message?: unknown }).message === "string"
+                  ? (uploadError as unknown as { message: string }).message
+                  : "알 수 없는 오류"
+              }`
+            : ""
+        setCoverImageUploadError(`이미지 업로드에 실패했어요. 관리자에게 문의해주세요${debug}`)
         return
       }
 
@@ -276,20 +301,27 @@ export const StudioClassForm = ({
       } = supabase.storage.from("class-covers").getPublicUrl(objectName)
 
       if (!publicUrl) {
-        setCoverImageUploadError(
-          "이미지 업로드에 실패했어요. 파일 형식과 용량을 확인한 뒤 다시 시도해주세요."
-        )
+        const debug = process.env.NODE_ENV === "development" ? `: publicUrl이 비어있습니다` : ""
+        setCoverImageUploadError(`이미지 업로드에 실패했어요. 관리자에게 문의해주세요${debug}`)
         return
       }
 
       setCoverImageUrl(publicUrl)
     } catch (error) {
-      console.error("[class cover upload failed]", {
-        message: error instanceof Error ? error.message : "unknown_error"
+      console.error("[cover upload failed]", {
+        message: error instanceof Error ? error.message : undefined,
+        name: error instanceof Error ? error.name : undefined,
+        statusCode: (error as unknown as { statusCode?: unknown })?.statusCode,
+        cause: error,
+        organizationId,
+        path: `${organizationId}/(generated).${extension}`
       })
-      setCoverImageUploadError(
-        "이미지 업로드에 실패했어요. 파일 형식과 용량을 확인한 뒤 다시 시도해주세요."
-      )
+
+      const debug =
+        process.env.NODE_ENV === "development"
+          ? `: ${error instanceof Error ? error.message : "알 수 없는 오류"}`
+          : ""
+      setCoverImageUploadError(`이미지 업로드에 실패했어요. 관리자에게 문의해주세요${debug}`)
     } finally {
       setIsUploadingCoverImage(false)
     }
