@@ -1,0 +1,152 @@
+.form {
+  display: grid;
+  gap: 18px;
+}
+
+.field {
+  display: grid;
+  gap: 8px;
+}
+
+.label {
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 900;
+  color: #111111;
+}
+
+.input {
+  width: 100%;
+  height: 52px;
+  border-radius: 12px;
+  border: 1px solid #d9d9d9;
+  background: #ffffff;
+  padding: 0 14px;
+  font-size: 15px;
+  line-height: 20px;
+  color: #111111;
+  outline: none;
+}
+
+.input:focus {
+  border-color: #2aad38;
+  box-shadow: 0 0 0 3px rgba(42, 173, 56, 0.16);
+}
+
+.successCard {
+  border: 1px solid #d8f0dc;
+  background: #f3fbf4;
+  border-radius: 20px;
+  padding: 16px 16px;
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.successIcon {
+  width: 34px;
+  height: 34px;
+  border-radius: 12px;
+  background: #ffffff;
+  border: 1px solid #d8f0dc;
+  position: relative;
+  flex: 0 0 auto;
+}
+
+.successIcon::after {
+  content: "";
+  position: absolute;
+  left: 9px;
+  top: 14px;
+  width: 14px;
+  height: 8px;
+  border-left: 3px solid #2aad38;
+  border-bottom: 3px solid #2aad38;
+  transform: rotate(-45deg);
+}
+
+.successBody {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.successTitle {
+  margin: 0;
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 900;
+  color: #111111;
+}
+
+.successDescription {
+  margin: 0;
+  font-size: 13px;
+  line-height: 20px;
+  color: #4a4a4a;
+  font-weight: 700;
+}
+
+.inlineLink {
+  color: #2aad38;
+  text-decoration: none;
+  font-weight: 900;
+}
+
+.inlineLink:hover {
+  text-decoration: underline;
+}
+
+.errorMessage {
+  margin: 0;
+  border: 1px solid #fecaca;
+  background: #fef2f2;
+  border-radius: 14px;
+  padding: 12px 14px;
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 800;
+  color: #dc2626;
+}
+
+.infoMessage {
+  margin: 0;
+  border: 1px solid #eeeeee;
+  background: #fafafa;
+  border-radius: 14px;
+  padding: 12px 14px;
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 800;
+  color: #111111;
+}
+
+.submitButton {
+  width: 100%;
+  height: 52px;
+  border: 0;
+  border-radius: 12px;
+  background: #2aad38;
+  color: #ffffff;
+  font-size: 15px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.submitButton:hover {
+  background: #249b31;
+}
+
+.submitButton:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.bottomHint {
+  margin: 0;
+  text-align: center;
+  font-size: 13px;
+  line-height: 18px;
+  color: #8a8a8a;
+  font-weight: 700;
+}
