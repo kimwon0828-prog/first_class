@@ -1,5 +1,4 @@
 import { getMyProfile } from "@/features/auth/lib/profile-sync"
-import { requireSession } from "@/features/auth/lib/session"
 import { dataAdapter } from "@/shared/lib/db"
 import type { MyDashboardData } from "@/shared/lib/db/adapter"
 import type { QueryResult } from "@/shared/queries"
@@ -16,7 +15,6 @@ const emptyDashboard: MyDashboardData = {
 }
 
 export const getMyDashboard = async (): Promise<QueryResult<MyDashboardData>> => {
-  await requireSession("/auth/sign-in")
   const profile = await getMyProfile()
 
   if (!profile) {

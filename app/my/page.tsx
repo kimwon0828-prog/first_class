@@ -1,23 +1,12 @@
 import Link from "next/link"
-import { redirect } from "next/navigation"
 
-import { getMyProfile } from "@/features/auth/lib/profile-sync"
-import { requireSession } from "@/features/auth/lib/session"
+import { requireParentAccess } from "@/features/my/lib/require-parent-access"
 import { getMyDashboard } from "@/features/my/queries/get-my-dashboard"
 import { MyDashboardHome } from "@/features/my/ui/my-dashboard-home"
 import styles from "./page.module.css"
 
 export default async function MyPage() {
-  await requireSession(`/auth/sign-in?returnTo=${encodeURIComponent("/my")}`)
-  const profile = await getMyProfile()
-
-  if (!profile) {
-    redirect("/classes")
-  }
-
-  if (profile.role !== "parent") {
-    redirect("/studio")
-  }
+  const profile = await requireParentAccess({ returnTo: "/my" })
 
   const { data, error } = await getMyDashboard()
 

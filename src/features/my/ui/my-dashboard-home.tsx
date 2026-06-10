@@ -110,7 +110,7 @@ export const MyDashboardHome = ({
             <h3 className={styles.sectionTitle}>최근 신청 내역</h3>
             <p className={styles.sectionDesc}>최근 신청한 첫수업을 확인해보세요.</p>
           </div>
-          <Link href="/my/applications" className={styles.moreLink}>
+          <Link href="/my/applications" className={styles.moreLink} prefetch={false}>
             전체 보기
           </Link>
         </header>
@@ -194,7 +194,7 @@ const MenuItem = ({ href, title, description, badge, disabled }: MenuItemProps) 
   }
 
   return (
-    <Link href={href} className={styles.menuItem}>
+    <Link href={href} className={styles.menuItem} prefetch={false}>
       {content}
     </Link>
   )

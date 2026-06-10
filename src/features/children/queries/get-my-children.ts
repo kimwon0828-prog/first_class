@@ -1,11 +1,9 @@
 import { getMyProfile } from "@/features/auth/lib/profile-sync"
-import { requireSession } from "@/features/auth/lib/session"
 import { dataAdapter } from "@/shared/lib/db"
 import type { ChildProfile } from "@/shared/lib/db/adapter"
 import type { QueryResult } from "@/shared/queries"
 
 export const getMyChildren = async (): Promise<QueryResult<ChildProfile[]>> => {
-  await requireSession("/auth/sign-in")
   const profile = await getMyProfile()
 
   if (!profile) {

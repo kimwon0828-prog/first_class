@@ -1,23 +1,12 @@
 import Link from "next/link"
-import { redirect } from "next/navigation"
 
-import { getMyProfile } from "@/features/auth/lib/profile-sync"
-import { requireSession } from "@/features/auth/lib/session"
 import { getMyApplications } from "@/features/applications/queries/get-my-applications"
 import { MyApplicationList } from "@/features/applications/ui/my-application-list"
+import { requireParentAccess } from "@/features/my/lib/require-parent-access"
 import styles from "./page.module.css"
 
 export default async function MyApplicationsPage() {
-  await requireSession(`/auth/sign-in?returnTo=${encodeURIComponent("/my/applications")}`)
-  const profile = await getMyProfile()
-
-  if (!profile) {
-    redirect("/classes")
-  }
-
-  if (profile.role !== "parent") {
-    redirect("/studio")
-  }
+  await requireParentAccess({ returnTo: "/my/applications" })
 
   const { data, error } = await getMyApplications()
 
