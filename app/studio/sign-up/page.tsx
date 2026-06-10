@@ -30,9 +30,6 @@ export default async function StudioSignUpPage() {
     <main className={styles.page}>
       <div className={styles.container}>
         <header className={styles.topBar}>
-          <Link href="/studio/sign-in" className={styles.backLink}>
-            운영보드 로그인으로
-          </Link>
           <Image
             src="/images/first-class-logo.png"
             alt="첫수업"
