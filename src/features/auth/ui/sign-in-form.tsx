@@ -1,67 +1,117 @@
 "use client"
 
 import Link from "next/link"
-import { useActionState, useEffect } from "react"
+import { useEffect, useState, type FormEvent } from "react"
 
-import {
-  signInAction,
-  type SignInActionState
-} from "@/features/auth/actions/sign-in"
+import { ensureParentProfileAfterAuthAction } from "@/features/auth/actions/sign-in"
+import { getSupabaseBrowserClient } from "@/integrations/supabase/client"
 import styles from "@/features/auth/ui/sign-in-form.module.css"
-
-const initialState: SignInActionState = {
-  status: "idle",
-  message: ""
-}
 
 type SignInFormProps = {
   returnTo?: string
 }
 
 export const SignInForm = ({ returnTo }: SignInFormProps) => {
-  const [state, formAction, isPending] = useActionState(signInAction, initialState)
+  const [email, setEmail] = useState("")
+  const [password, setPassword] = useState("")
+  const [message, setMessage] = useState("")
+  const [status, setStatus] = useState<"idle" | "pending" | "error">("idle")
+  const isPending = status === "pending"
   const signUpHref = returnTo
     ? `/auth/sign-up?returnTo=${encodeURIComponent(returnTo)}`
     : "/auth/sign-up"
 
   useEffect(() => {
-    if (state.status === "success" && state.redirectTo) {
-      window.location.href = state.redirectTo
+    setMessage("")
+  }, [])
+
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    if (isPending) {
+      return
     }
-  }, [state.redirectTo, state.status])
+
+    const normalizedEmail = email.trim().toLowerCase()
+    if (!normalizedEmail || !normalizedEmail.includes("@")) {
+      setStatus("error")
+      setMessage("올바른 이메일을 입력해 주세요.")
+      return
+    }
+
+    if (!password) {
+      setStatus("error")
+      setMessage("비밀번호를 입력해 주세요.")
+      return
+    }
+
+    setStatus("pending")
+    setMessage("")
+
+    try {
+      const supabase = getSupabaseBrowserClient()
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: normalizedEmail,
+        password
+      })
+
+      if (error || !data.user) {
+        setStatus("error")
+        setMessage("이메일 또는 비밀번호를 확인해 주세요.")
+        return
+      }
+
+      if (process.env.NEXT_PUBLIC_DEBUG_AUTH === "1") {
+        console.log("[auth cookies after login]", document.cookie)
+      }
+
+      const ensured = await ensureParentProfileAfterAuthAction()
+      const target =
+        returnTo && ensured.role === "parent"
+          ? returnTo
+          : ensured.role === "parent"
+            ? "/classes"
+            : "/studio"
+
+      window.location.href = target
+    } catch (caught) {
+      setStatus("error")
+      setMessage(caught instanceof Error ? caught.message : "로그인 처리 중 오류가 발생했습니다.")
+    } finally {
+      setStatus((current) => (current === "pending" ? "idle" : current))
+    }
+  }
 
   return (
-    <form action={formAction} className={styles.form}>
-      {returnTo ? <input type="hidden" name="returnTo" value={returnTo} /> : null}
+    <form onSubmit={handleSubmit} className={styles.form}>
       <label className={styles.field}>
         <span className={styles.label}>아이디</span>
         <input
-          name="email"
           type="email"
           required
           autoComplete="email"
           placeholder=""
           disabled={isPending}
           className={styles.input}
+          value={email}
+          onChange={(event) => setEmail(event.target.value)}
         />
       </label>
 
       <label className={styles.field}>
         <span className={styles.label}>비밀번호</span>
         <input
-          name="password"
           type="password"
           required
           autoComplete="current-password"
           disabled={isPending}
           className={styles.input}
+          value={password}
+          onChange={(event) => setPassword(event.target.value)}
         />
       </label>
 
-      {state.message ? (
-        <p className={state.status === "error" ? styles.errorMessage : styles.infoMessage}>
-          {state.message}
-        </p>
+      {message ? (
+        <p className={status === "error" ? styles.errorMessage : styles.infoMessage}>{message}</p>
       ) : null}
 
       <div className={styles.links}>

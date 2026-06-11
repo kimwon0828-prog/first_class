@@ -3,7 +3,7 @@
 import { createClient } from "@supabase/supabase-js"
 
 import { resolvePostAuthRedirect } from "@/features/auth/lib/redirect"
-import { normalizeProfileRole } from "@/features/auth/lib/profile-sync"
+import { ensureParentProfile, normalizeProfileRole } from "@/features/auth/lib/profile-sync"
 import { getSupabaseServerClient } from "@/integrations/supabase/server"
 import { getPublicEnv } from "@/shared/config/env"
 
@@ -204,5 +204,51 @@ export async function signInAction(
       status: "error",
       message: `로그인 처리 중 오류: ${message}`
     }
+  }
+}
+
+export async function ensureParentProfileAfterAuthAction(
+  preferredName?: string,
+  preferredPhone?: string | null
+): Promise<{
+  ok: boolean
+  role: "parent" | "academy" | "admin" | null
+  message?: string
+}> {
+  try {
+    const supabase = await getSupabaseServerClient()
+    const {
+      data: { user },
+      error: userError
+    } = await supabase.auth.getUser()
+
+    if (userError || !user) {
+      return { ok: false, role: null, message: userError?.message ?? "no_user" }
+    }
+
+    const metadataRole = user.user_metadata?.role
+    const signupIntent = user.user_metadata?.signup_intent
+    const isExplicitTeacherMetadata =
+      metadataRole === "teacher" ||
+      signupIntent === "teacher_invite" ||
+      signupIntent === "staff_invite" ||
+      signupIntent === "teacher_public"
+    if (isExplicitTeacherMetadata) {
+      return { ok: true, role: "academy" }
+    }
+
+    const profile = await ensureParentProfile({
+      allowCreateParentIfMissing: true,
+      preferredName,
+      preferredPhone
+    })
+
+    if (!profile) {
+      return { ok: false, role: null, message: "failed_to_sync_profile" }
+    }
+
+    return { ok: true, role: profile.role }
+  } catch (error) {
+    return { ok: false, role: null, message: error instanceof Error ? error.message : "unknown_error" }
   }
 }
