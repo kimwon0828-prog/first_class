@@ -2,14 +2,58 @@
 
 import { redirect } from "next/navigation"
 
-import { getMyProfile } from "@/features/auth/lib/profile-sync"
 import { getSupabaseServerClient } from "@/integrations/supabase/server"
 
 type RequireParentAccessOptions = {
   returnTo: string
 }
 
-export const requireParentAccess = async ({ returnTo }: RequireParentAccessOptions) => {
+type ParentAccessState =
+  | {
+      status: "ok"
+      currentPath: string
+      userId: string
+      profile: {
+        id: string
+        role: "parent"
+        name: string
+        phone: string | null
+      }
+    }
+  | {
+      status: "no_user"
+      currentPath: string
+      userId: null
+      userError: string | null
+    }
+  | {
+      status: "profile_error"
+      currentPath: string
+      userId: string
+      profileError: string
+      profileErrorCode: string | null
+    }
+  | {
+      status: "role_mismatch"
+      currentPath: string
+      userId: string
+      profileRole: string | null
+    }
+
+const getFallbackName = (email: string | undefined): string => {
+  if (!email) {
+    return "학부모"
+  }
+
+  const localPart = email.split("@")[0]?.trim()
+  if (!localPart) {
+    return "학부모"
+  }
+
+  return localPart.slice(0, 30)
+}
+
+export const getParentAccessState = async (currentPath: string): Promise<ParentAccessState> => {
   const supabase = await getSupabaseServerClient()
   const {
     data: { user },
@@ -18,31 +62,87 @@ export const requireParentAccess = async ({ returnTo }: RequireParentAccessOptio
 
   if (process.env.NEXT_PUBLIC_DEBUG_AUTH === "1") {
     console.log("[requireParentAccess] getUser", {
-      returnTo,
+      currentPath,
       userId: user?.id ?? null,
       userError: userError?.message ?? null
     })
   }
 
   if (userError || !user) {
+    return {
+      status: "no_user",
+      currentPath,
+      userId: null,
+      userError: userError?.message ?? null
+    }
+  }
+
+  const { data: profile, error: profileError } = await supabase
+    .from("profiles")
+    .select("id, role, name, phone")
+    .eq("id", user.id)
+    .maybeSingle()
+
+  if (process.env.NEXT_PUBLIC_DEBUG_AUTH === "1") {
+    console.log("[requireParentAccess] profile", {
+      currentPath,
+      userId: user.id,
+      role: (profile as { role?: unknown } | null)?.role ?? null,
+      profileError: profileError?.message ?? null
+    })
+  }
+
+  if (profileError) {
+    return {
+      status: "profile_error",
+      currentPath,
+      userId: user.id,
+      profileError: profileError.message,
+      profileErrorCode: typeof (profileError as { code?: unknown }).code === "string" ? (profileError as { code: string }).code : null
+    }
+  }
+
+  const profileRole = profile?.role != null ? String(profile.role) : null
+  if (!profile || profileRole !== "parent") {
+    return {
+      status: "role_mismatch",
+      currentPath,
+      userId: user.id,
+      profileRole
+    }
+  }
+
+  const rawName = typeof profile.name === "string" ? profile.name.trim() : ""
+  const name = rawName || getFallbackName(user.email)
+  const phone = typeof profile.phone === "string" && profile.phone.trim().length > 0 ? profile.phone.trim() : null
+
+  return {
+    status: "ok",
+    currentPath,
+    userId: user.id,
+    profile: {
+      id: profile.id,
+      role: "parent",
+      name,
+      phone
+    }
+  }
+}
+
+export const requireParentAccess = async ({ returnTo }: RequireParentAccessOptions) => {
+  const state = await getParentAccessState(returnTo)
+
+  if (state.status === "no_user") {
     redirect(`/auth/sign-in?returnTo=${encodeURIComponent(returnTo)}`)
   }
 
-  const profile = await getMyProfile()
-  if (process.env.NEXT_PUBLIC_DEBUG_AUTH === "1") {
-    console.log("[requireParentAccess] profile", {
-      returnTo,
-      userId: user.id,
-      role: profile?.role ?? null
-    })
-  }
-  if (!profile) {
+  if (state.status === "profile_error") {
     redirect("/classes")
   }
 
-  if (profile.role !== "parent") {
+  if (state.status === "role_mismatch") {
     redirect("/studio")
   }
 
-  return profile
+  return state.profile
 }

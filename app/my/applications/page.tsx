@@ -4,7 +4,7 @@ import { unstable_noStore as noStore } from "next/cache"
 import { getMyApplications } from "@/features/applications/queries/get-my-applications"
 import { MyApplicationList } from "@/features/applications/ui/my-application-list"
 import type { ApplicationStatus, TrialApplicationSummary } from "@/shared/lib/db/adapter"
-import { requireParentAccess } from "@/features/my/lib/require-parent-access"
+import { getParentAccessState } from "@/features/my/lib/require-parent-access"
 import styles from "./page.module.css"
 
 export const dynamic = "force-dynamic"
@@ -63,9 +63,59 @@ const resolvePageCopy = (statusFilter: string | undefined) => {
 
 export default async function MyApplicationsPage({ searchParams }: MyApplicationsPageProps) {
   noStore()
-  await requireParentAccess({ returnTo: "/my/applications" })
   const resolvedSearchParams = searchParams ? await searchParams : undefined
   const statusFilter = resolvedSearchParams?.status
+  const currentPath = statusFilter ? `/my/applications?status=${statusFilter}` : "/my/applications"
+  const access = await getParentAccessState(currentPath)
+  if (access.status !== "ok") {
+    return (
+      <main
+        className={styles.page}
+        style={{ background: "#ffffff", minHeight: "100dvh", width: "100%", overflowX: "hidden" }}
+      >
+        <div
+          className={styles.shell}
+          style={{
+            boxSizing: "border-box",
+            width: "100%",
+            maxWidth: 430,
+            margin: "0 auto",
+            minHeight: "100dvh",
+            background: "#ffffff",
+            padding: "calc(18px + env(safe-area-inset-top)) 24px calc(96px + env(safe-area-inset-bottom))"
+          }}
+        >
+          <header className={styles.header}>
+            <h1 className={styles.title}>내 신청</h1>
+            <p className={styles.subtitle}>세션을 확인하지 못했어요.</p>
+          </header>
+
+          <section className={`${styles.card} ${styles.dangerCard}`}>
+            <pre className={styles.dangerText} style={{ whiteSpace: "pre-wrap" }}>
+              {[
+                `status: ${access.status}`,
+                `path: ${access.currentPath}`,
+                `userError: ${"userError" in access ? access.userError ?? "null" : "-"}`,
+                `profileError: ${"profileError" in access ? access.profileError : "-"}`,
+                `profileRole: ${"profileRole" in access ? access.profileRole ?? "null" : "-"}`
+              ].join("\n")}
+            </pre>
+            <div style={{ display: "grid", gap: 10 }}>
+              <Link
+                href={`/auth/sign-in?returnTo=${encodeURIComponent(currentPath)}`}
+                className={styles.link}
+              >
+                다시 로그인하기
+              </Link>
+              <Link href="/classes" className={styles.link}>
+                수업 목록으로 이동
+              </Link>
+            </div>
+          </section>
+        </div>
+      </main>
+    )
+  }
   const pageCopy = resolvePageCopy(statusFilter)
 
   const { data, error } = await getMyApplications()
