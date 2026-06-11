@@ -55,6 +55,15 @@ const getFallbackName = (email: string | undefined): string => {
 
 export const getParentAccessState = async (currentPath: string): Promise<ParentAccessState> => {
   const supabase = await getSupabaseServerClient()
+  const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
+  if (process.env.NEXT_PUBLIC_DEBUG_AUTH === "1") {
+    console.log("[parent access session debug]", {
+      currentPath,
+      hasSession: Boolean(sessionData.session),
+      sessionError: sessionError?.message ?? null
+    })
+  }
+
   const {
     data: { user },
     error: userError

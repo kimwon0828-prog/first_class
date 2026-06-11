@@ -20,18 +20,49 @@ const extractProjectRefFromAuthCookieName = (cookieName: string): string | null 
   return match?.[1]?.toLowerCase() ?? null
 }
 
+const parseCookieHeader = (rawCookieHeader: string): Array<{ name: string; value: string }> => {
+  if (!rawCookieHeader) {
+    return []
+  }
+
+  return rawCookieHeader
+    .split(";")
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .map((part) => {
+      const index = part.indexOf("=")
+      if (index <= 0) {
+        return { name: part, value: "" }
+      }
+
+      return {
+        name: part.slice(0, index),
+        value: part.slice(index + 1)
+      }
+    })
+}
+
 export const getSupabaseServerClient = async (): Promise<SupabaseClient> => {
   const cookieStore = await cookies()
   const { supabaseUrl, supabasePublishableKey } = getPublicEnv()
+  const requestHeaders = await headers()
+  const rawCookieHeader = requestHeaders.get("cookie") ?? ""
+  const cookiesFromHeader = parseCookieHeader(rawCookieHeader)
+  const cookiesFromStore = cookieStore.getAll().map((cookie) => ({ name: cookie.name, value: cookie.value }))
+  const cookieJar = cookiesFromHeader.length > 0 ? cookiesFromHeader : cookiesFromStore
 
   if (process.env.NEXT_PUBLIC_DEBUG_AUTH === "1") {
     const refFromUrl = extractProjectRefFromSupabaseUrl(supabaseUrl)
-    const requestHeaders = await headers()
-    const rawCookieHeader = requestHeaders.get("cookie") ?? ""
-    const cookieRefs = Array.from(
+    const cookieRefsFromStore = Array.from(
       new Set(
-        cookieStore
-          .getAll()
+        cookiesFromStore
+          .map((cookie) => extractProjectRefFromAuthCookieName(cookie.name))
+          .filter((value): value is string => Boolean(value))
+      )
+    )
+    const cookieRefsFromHeader = Array.from(
+      new Set(
+        cookiesFromHeader
           .map((cookie) => extractProjectRefFromAuthCookieName(cookie.name))
           .filter((value): value is string => Boolean(value))
       )
@@ -39,16 +70,19 @@ export const getSupabaseServerClient = async (): Promise<SupabaseClient> => {
 
     console.log("[server supabase env]", {
       refFromUrl,
-      cookieRefs,
+      cookieRefsFromStore,
+      cookieRefsFromHeader,
       hasSbCookieInHeader: rawCookieHeader.includes("sb-"),
-      cookieHeaderLength: rawCookieHeader.length
+      cookieHeaderLength: rawCookieHeader.length,
+      cookieCountFromStore: cookiesFromStore.length,
+      cookieCountFromHeader: cookiesFromHeader.length
     })
   }
 
   return createServerClient(supabaseUrl, supabasePublishableKey, {
     cookies: {
       getAll() {
-        return cookieStore.getAll()
+        return cookieJar
       },
       setAll(
         cookiesToSet: Array<{
