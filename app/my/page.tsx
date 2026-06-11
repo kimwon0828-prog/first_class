@@ -48,9 +48,11 @@ export default async function MyPage() {
         )}
 
         <section className={styles.logoutSection}>
-          <Link href="/auth/sign-out" className={styles.logoutButton}>
-            로그아웃
-          </Link>
+          <form method="post" action="/auth/sign-out">
+            <button type="submit" className={styles.logoutButton}>
+              로그아웃
+            </button>
+          </form>
         </section>
       </div>
     </main>
