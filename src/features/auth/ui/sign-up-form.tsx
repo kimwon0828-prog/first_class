@@ -1,7 +1,6 @@
 "use client"
 
 import Link from "next/link"
-import { useRouter } from "next/navigation"
 import { useActionState, useEffect } from "react"
 
 import {
@@ -20,7 +19,6 @@ type SignUpFormProps = {
 }
 
 export const SignUpForm = ({ returnTo }: SignUpFormProps) => {
-  const router = useRouter()
   const [state, formAction, isPending] = useActionState(signUpParentAction, initialState)
   const signInHref = returnTo
     ? `/auth/sign-in?returnTo=${encodeURIComponent(returnTo)}`
@@ -28,9 +26,9 @@ export const SignUpForm = ({ returnTo }: SignUpFormProps) => {
 
   useEffect(() => {
     if (state.status === "success" && state.redirectTo) {
-      router.replace(state.redirectTo)
+      window.location.href = state.redirectTo
     }
-  }, [router, state.redirectTo, state.status])
+  }, [state.redirectTo, state.status])
 
   return (
     <form action={formAction} className={styles.form}>

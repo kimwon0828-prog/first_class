@@ -61,46 +61,34 @@ export const MyDashboardHome = ({
       </section>
 
       <section className={styles.statsGrid} aria-label="요약">
-        <Link
-          href="/my/applications"
-          className={styles.statCard}
-          prefetch={false}
-          aria-label="전체 신청 내역 보기"
-        >
+        <a href="/my/applications" className={styles.statCard} aria-label="전체 신청 내역 보기">
           <p className={styles.statLabel}>전체 신청</p>
           <strong className={styles.statValue}>{dashboard.totalApplicationCount}</strong>
           <span className={styles.statArrow} aria-hidden="true" />
-        </Link>
-        <Link
-          href="/my/children"
-          className={styles.statCard}
-          prefetch={false}
-          aria-label="등록 자녀 관리하기"
-        >
+        </a>
+        <a href="/my/children" className={styles.statCard} aria-label="등록 자녀 관리하기">
           <p className={styles.statLabel}>등록 자녀</p>
           <strong className={styles.statValue}>{dashboard.childrenCount}</strong>
           <span className={styles.statArrow} aria-hidden="true" />
-        </Link>
-        <Link
+        </a>
+        <a
           href="/my/applications?status=active"
           className={styles.statCard}
-          prefetch={false}
           aria-label="진행 중 신청 보기"
         >
           <p className={styles.statLabel}>진행 중</p>
           <strong className={styles.statValue}>{resolveActiveCount(dashboard)}</strong>
           <span className={styles.statArrow} aria-hidden="true" />
-        </Link>
-        <Link
+        </a>
+        <a
           href="/my/applications?status=closed"
           className={styles.statCard}
-          prefetch={false}
           aria-label="완료 및 취소 신청 보기"
         >
           <p className={styles.statLabel}>완료/취소</p>
           <strong className={styles.statValue}>{resolveDoneCount(dashboard)}</strong>
           <span className={styles.statArrow} aria-hidden="true" />
-        </Link>
+        </a>
       </section>
 
       <section className={styles.recentCard}>

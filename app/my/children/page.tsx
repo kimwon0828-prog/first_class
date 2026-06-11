@@ -1,5 +1,6 @@
 import Link from "next/link"
 import { unstable_noStore as noStore } from "next/cache"
+import { redirect } from "next/navigation"
 
 import { getMyChildren } from "@/features/children/queries/get-my-children"
 import { MyChildrenManager } from "@/features/children/ui/my-children-manager"
@@ -13,6 +14,18 @@ export default async function MyChildrenPage() {
   noStore()
   const access = await getParentAccessState("/my/children")
   if (access.status !== "ok") {
+    if (process.env.NEXT_PUBLIC_DEBUG_AUTH !== "1") {
+      if (access.status === "no_user") {
+        redirect(`/auth/sign-in?returnTo=${encodeURIComponent("/my/children")}`)
+      }
+
+      if (access.status === "profile_error") {
+        redirect("/classes")
+      }
+
+      redirect("/studio")
+    }
+
     return (
       <main
         className={styles.page}

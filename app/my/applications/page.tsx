@@ -1,5 +1,6 @@
 import Link from "next/link"
 import { unstable_noStore as noStore } from "next/cache"
+import { redirect } from "next/navigation"
 
 import { getMyApplications } from "@/features/applications/queries/get-my-applications"
 import { MyApplicationList } from "@/features/applications/ui/my-application-list"
@@ -68,6 +69,18 @@ export default async function MyApplicationsPage({ searchParams }: MyApplication
   const currentPath = statusFilter ? `/my/applications?status=${statusFilter}` : "/my/applications"
   const access = await getParentAccessState(currentPath)
   if (access.status !== "ok") {
+    if (process.env.NEXT_PUBLIC_DEBUG_AUTH !== "1") {
+      if (access.status === "no_user") {
+        redirect(`/auth/sign-in?returnTo=${encodeURIComponent(currentPath)}`)
+      }
+
+      if (access.status === "profile_error") {
+        redirect("/classes")
+      }
+
+      redirect("/studio")
+    }
+
     return (
       <main
         className={styles.page}
