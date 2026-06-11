@@ -12,14 +12,30 @@ type RequireParentAccessOptions = {
 export const requireParentAccess = async ({ returnTo }: RequireParentAccessOptions) => {
   const supabase = await getSupabaseServerClient()
   const {
-    data: { user }
+    data: { user },
+    error: userError
   } = await supabase.auth.getUser()
 
-  if (!user) {
+  if (process.env.NEXT_PUBLIC_DEBUG_AUTH === "1") {
+    console.log("[requireParentAccess] getUser", {
+      returnTo,
+      userId: user?.id ?? null,
+      userError: userError?.message ?? null
+    })
+  }
+
+  if (userError || !user) {
     redirect(`/auth/sign-in?returnTo=${encodeURIComponent(returnTo)}`)
   }
 
   const profile = await getMyProfile()
+  if (process.env.NEXT_PUBLIC_DEBUG_AUTH === "1") {
+    console.log("[requireParentAccess] profile", {
+      returnTo,
+      userId: user.id,
+      role: profile?.role ?? null
+    })
+  }
   if (!profile) {
     redirect("/classes")
   }
@@ -30,4 +46,3 @@ export const requireParentAccess = async ({ returnTo }: RequireParentAccessOptio
 
   return profile
 }
-

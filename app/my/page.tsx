@@ -1,11 +1,16 @@
 import Link from "next/link"
+import { unstable_noStore as noStore } from "next/cache"
 
 import { requireParentAccess } from "@/features/my/lib/require-parent-access"
 import { getMyDashboard } from "@/features/my/queries/get-my-dashboard"
 import { MyDashboardHome } from "@/features/my/ui/my-dashboard-home"
 import styles from "./page.module.css"
 
+export const dynamic = "force-dynamic"
+export const revalidate = 0
+
 export default async function MyPage() {
+  noStore()
   const profile = await requireParentAccess({ returnTo: "/my" })
 
   const { data, error } = await getMyDashboard()

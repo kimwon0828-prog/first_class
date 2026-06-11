@@ -1,11 +1,16 @@
 import Link from "next/link"
+import { unstable_noStore as noStore } from "next/cache"
 
 import { getMyChildren } from "@/features/children/queries/get-my-children"
 import { MyChildrenManager } from "@/features/children/ui/my-children-manager"
 import { requireParentAccess } from "@/features/my/lib/require-parent-access"
 import styles from "./page.module.css"
 
+export const dynamic = "force-dynamic"
+export const revalidate = 0
+
 export default async function MyChildrenPage() {
+  noStore()
   await requireParentAccess({ returnTo: "/my/children" })
 
   const { data, error } = await getMyChildren()

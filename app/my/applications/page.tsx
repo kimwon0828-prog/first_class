@@ -1,10 +1,14 @@
 import Link from "next/link"
+import { unstable_noStore as noStore } from "next/cache"
 
 import { getMyApplications } from "@/features/applications/queries/get-my-applications"
 import { MyApplicationList } from "@/features/applications/ui/my-application-list"
 import type { ApplicationStatus, TrialApplicationSummary } from "@/shared/lib/db/adapter"
 import { requireParentAccess } from "@/features/my/lib/require-parent-access"
 import styles from "./page.module.css"
+
+export const dynamic = "force-dynamic"
+export const revalidate = 0
 
 type MyApplicationsPageProps = {
   searchParams?: Promise<{
@@ -58,6 +62,7 @@ const resolvePageCopy = (statusFilter: string | undefined) => {
 }
 
 export default async function MyApplicationsPage({ searchParams }: MyApplicationsPageProps) {
+  noStore()
   await requireParentAccess({ returnTo: "/my/applications" })
   const resolvedSearchParams = searchParams ? await searchParams : undefined
   const statusFilter = resolvedSearchParams?.status
