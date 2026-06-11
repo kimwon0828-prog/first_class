@@ -2,7 +2,7 @@
 
 import { redirect } from "next/navigation"
 
-import { getSupabaseServerClient } from "@/integrations/supabase/server"
+import { getSupabaseServerClient, getUserFromSupabaseAuthCookieFallback } from "@/integrations/supabase/server"
 
 type RequireParentAccessOptions = {
   returnTo: string
@@ -68,6 +68,69 @@ export const getParentAccessState = async (currentPath: string): Promise<ParentA
     data: { user },
     error: userError
   } = await supabase.auth.getUser()
+
+  const shouldTryFallback =
+    !sessionData.session &&
+    (!user ||
+      (typeof userError?.message === "string" && userError.message.toLowerCase().includes("auth session missing")))
+
+  if (shouldTryFallback) {
+    const fallback = await getUserFromSupabaseAuthCookieFallback()
+    if (process.env.NEXT_PUBLIC_DEBUG_AUTH === "1") {
+      console.log("[parent auth fallback debug]", {
+        currentPath,
+        hasSession: Boolean(sessionData.session),
+        userError: userError?.message ?? null,
+        hasAuthCookie: fallback.hasAuthCookie,
+        hasAccessToken: fallback.hasAccessToken,
+        fallbackUserId: fallback.user?.id ?? null
+      })
+    }
+
+    if (fallback.user) {
+      const { data: profile, error: profileError } = await supabase
+        .from("profiles")
+        .select("id, role, name, phone")
+        .eq("id", fallback.user.id)
+        .maybeSingle()
+
+      if (profileError) {
+        return {
+          status: "profile_error",
+          currentPath,
+          userId: fallback.user.id,
+          profileError: profileError.message,
+          profileErrorCode: typeof (profileError as { code?: unknown }).code === "string" ? (profileError as { code: string }).code : null
+        }
+      }
+
+      const profileRole = profile?.role != null ? String(profile.role) : null
+      if (!profile || profileRole !== "parent") {
+        return {
+          status: "role_mismatch",
+          currentPath,
+          userId: fallback.user.id,
+          profileRole
+        }
+      }
+
+      const rawName = typeof profile.name === "string" ? profile.name.trim() : ""
+      const name = rawName || getFallbackName(fallback.user.email)
+      const phone = typeof profile.phone === "string" && profile.phone.trim().length > 0 ? profile.phone.trim() : null
+
+      return {
+        status: "ok",
+        currentPath,
+        userId: fallback.user.id,
+        profile: {
+          id: profile.id,
+          role: "parent",
+          name,
+          phone
+        }
+      }
+    }
+  }
 
   if (process.env.NEXT_PUBLIC_DEBUG_AUTH === "1") {
     console.log("[requireParentAccess] getUser", {

@@ -1,5 +1,5 @@
 import { createServerClient } from "@supabase/ssr"
-import type { SupabaseClient } from "@supabase/supabase-js"
+import { createClient, type SupabaseClient } from "@supabase/supabase-js"
 import { cookies, headers } from "next/headers"
 
 import { getPublicEnv } from "@/shared/config/env"
@@ -20,6 +20,20 @@ const extractProjectRefFromAuthCookieName = (cookieName: string): string | null 
   return match?.[1]?.toLowerCase() ?? null
 }
 
+const safeDecodeCookieValue = (rawValue: string): string => {
+  const trimmed = rawValue.trim()
+  const unquoted =
+    trimmed.length >= 2 && trimmed.startsWith("\"") && trimmed.endsWith("\"")
+      ? trimmed.slice(1, -1)
+      : trimmed
+
+  try {
+    return decodeURIComponent(unquoted)
+  } catch {
+    return unquoted
+  }
+}
+
 const parseCookieHeader = (rawCookieHeader: string): Array<{ name: string; value: string }> => {
   if (!rawCookieHeader) {
     return []
@@ -37,9 +51,114 @@ const parseCookieHeader = (rawCookieHeader: string): Array<{ name: string; value
 
       return {
         name: part.slice(0, index),
-        value: part.slice(index + 1)
+        value: safeDecodeCookieValue(part.slice(index + 1))
       }
     })
+}
+
+const decodeBase64UrlToString = (raw: string): string => {
+  const normalized = raw.replace(/-/g, "+").replace(/_/g, "/")
+  const padding = normalized.length % 4 === 0 ? "" : "=".repeat(4 - (normalized.length % 4))
+  return Buffer.from(`${normalized}${padding}`, "base64").toString("utf8")
+}
+
+const extractSupabaseAuthCookieValue = (rawCookieHeader: string, projectRef: string): string | null => {
+  const cookiesFromHeader = parseCookieHeader(rawCookieHeader)
+  const baseName = `sb-${projectRef}-auth-token`
+  const chunks = cookiesFromHeader
+    .map((cookie) => {
+      if (cookie.name === baseName) {
+        return { index: -1, value: cookie.value }
+      }
+
+      const match = cookie.name.match(new RegExp(`^${baseName}\\.([0-9]+)$`, "i"))
+      if (!match) {
+        return null
+      }
+
+      const chunkIndex = Number(match[1])
+      if (!Number.isFinite(chunkIndex)) {
+        return null
+      }
+
+      return { index: chunkIndex, value: cookie.value }
+    })
+    .filter((value): value is { index: number; value: string } => Boolean(value))
+
+  const numberedChunks = chunks.filter((chunk) => chunk.index >= 0).sort((a, b) => a.index - b.index)
+  if (numberedChunks.length > 0) {
+    return numberedChunks.map((chunk) => chunk.value).join("")
+  }
+
+  const baseChunk = chunks.find((chunk) => chunk.index === -1)
+  return baseChunk?.value ?? null
+}
+
+export const getUserFromSupabaseAuthCookieFallback = async (): Promise<{
+  user: { id: string; email?: string } | null
+  hasAuthCookie: boolean
+  hasAccessToken: boolean
+}> => {
+  const { supabaseUrl, supabasePublishableKey } = getPublicEnv()
+  const requestHeaders = await headers()
+  const rawCookieHeader = requestHeaders.get("cookie") ?? ""
+  const projectRef = extractProjectRefFromSupabaseUrl(supabaseUrl)
+
+  if (!projectRef) {
+    return { user: null, hasAuthCookie: false, hasAccessToken: false }
+  }
+
+  const rawCookieValue = extractSupabaseAuthCookieValue(rawCookieHeader, projectRef)
+  if (!rawCookieValue) {
+    return { user: null, hasAuthCookie: false, hasAccessToken: false }
+  }
+
+  const combined = rawCookieValue.startsWith("base64-") ? rawCookieValue.slice("base64-".length) : rawCookieValue
+  let jsonText: string
+  try {
+    jsonText = decodeBase64UrlToString(combined)
+  } catch {
+    return { user: null, hasAuthCookie: true, hasAccessToken: false }
+  }
+
+  let payload: unknown
+  try {
+    payload = JSON.parse(jsonText)
+  } catch {
+    return { user: null, hasAuthCookie: true, hasAccessToken: false }
+  }
+
+  const accessToken =
+    typeof (payload as { access_token?: unknown }).access_token === "string"
+      ? ((payload as { access_token: string }).access_token as string)
+      : null
+
+  if (!accessToken) {
+    return { user: null, hasAuthCookie: true, hasAccessToken: false }
+  }
+
+  const tokenClient = createClient(supabaseUrl, supabasePublishableKey, {
+    global: {
+      headers: {
+        Authorization: `Bearer ${accessToken}`
+      }
+    },
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false
+    }
+  })
+
+  const { data, error } = await tokenClient.auth.getUser()
+  if (error || !data.user) {
+    return { user: null, hasAuthCookie: true, hasAccessToken: true }
+  }
+
+  return {
+    user: { id: data.user.id, email: data.user.email ?? undefined },
+    hasAuthCookie: true,
+    hasAccessToken: true
+  }
 }
 
 export const getSupabaseServerClient = async (): Promise<SupabaseClient> => {
@@ -49,7 +168,6 @@ export const getSupabaseServerClient = async (): Promise<SupabaseClient> => {
   const rawCookieHeader = requestHeaders.get("cookie") ?? ""
   const cookiesFromHeader = parseCookieHeader(rawCookieHeader)
   const cookiesFromStore = cookieStore.getAll().map((cookie) => ({ name: cookie.name, value: cookie.value }))
-  const cookieJar = cookiesFromHeader.length > 0 ? cookiesFromHeader : cookiesFromStore
 
   if (process.env.NEXT_PUBLIC_DEBUG_AUTH === "1") {
     const refFromUrl = extractProjectRefFromSupabaseUrl(supabaseUrl)
@@ -82,7 +200,7 @@ export const getSupabaseServerClient = async (): Promise<SupabaseClient> => {
   return createServerClient(supabaseUrl, supabasePublishableKey, {
     cookies: {
       getAll() {
-        return cookieJar
+        return cookieStore.getAll()
       },
       setAll(
         cookiesToSet: Array<{
