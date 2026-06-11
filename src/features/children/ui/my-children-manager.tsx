@@ -14,6 +14,7 @@ import styles from "./my-children-manager.module.css"
 
 type MyChildrenManagerProps = {
   items: ChildProfile[]
+  onSaved?: () => void | Promise<void>
 }
 
 const initialActionState: ChildProfileActionState = {
@@ -21,7 +22,7 @@ const initialActionState: ChildProfileActionState = {
   message: ""
 }
 
-export const MyChildrenManager = ({ items }: MyChildrenManagerProps) => {
+export const MyChildrenManager = ({ items, onSaved }: MyChildrenManagerProps) => {
   const router = useRouter()
   const [editingChildId, setEditingChildId] = useState<string | null>(null)
   const [formVersion, setFormVersion] = useState(0)
@@ -42,17 +43,25 @@ export const MyChildrenManager = ({ items }: MyChildrenManagerProps) => {
   useEffect(() => {
     if (createState.status === "success") {
       setFormVersion((value) => value + 1)
-      router.refresh()
+      if (onSaved) {
+        void onSaved()
+      } else {
+        router.refresh()
+      }
     }
-  }, [createState.status, router])
+  }, [createState.status, onSaved, router])
 
   useEffect(() => {
     if (updateState.status === "success") {
       setEditingChildId(null)
       setFormVersion((value) => value + 1)
-      router.refresh()
+      if (onSaved) {
+        void onSaved()
+      } else {
+        router.refresh()
+      }
     }
-  }, [router, updateState.status])
+  }, [onSaved, router, updateState.status])
 
   const formMode = editingChild ? "update" : "create"
   const activeState = editingChild ? updateState : createState
