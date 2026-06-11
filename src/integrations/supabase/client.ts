@@ -7,7 +7,7 @@ import { getPublicEnv } from "@/shared/config/env"
 
 let browserClient: SupabaseClient | null = null
 
-export const getSupabaseBrowserClient = (): SupabaseClient => {
+export const createSupabaseBrowserClient = (): SupabaseClient => {
   if (browserClient) {
     return browserClient
   }
@@ -16,3 +16,5 @@ export const getSupabaseBrowserClient = (): SupabaseClient => {
   browserClient = createBrowserClient(supabaseUrl, supabasePublishableKey)
   return browserClient
 }
+
+export const getSupabaseBrowserClient = (): SupabaseClient => createSupabaseBrowserClient()

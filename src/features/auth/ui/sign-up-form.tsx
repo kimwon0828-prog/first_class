@@ -4,7 +4,7 @@ import Link from "next/link"
 import { useEffect, useState, type FormEvent } from "react"
 
 import { ensureParentProfileAfterAuthAction } from "@/features/auth/actions/sign-in"
-import { getSupabaseBrowserClient } from "@/integrations/supabase/client"
+import { createSupabaseBrowserClient } from "@/integrations/supabase/client"
 import styles from "./sign-up-form.module.css"
 
 type SignUpFormProps = {
@@ -87,7 +87,7 @@ export const SignUpForm = ({ returnTo }: SignUpFormProps) => {
     setMessage("")
 
     try {
-      const supabase = getSupabaseBrowserClient()
+      const supabase = createSupabaseBrowserClient()
       const { data, error } = await supabase.auth.signUp({
         email: normalizedEmail,
         password,

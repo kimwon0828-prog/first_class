@@ -4,7 +4,7 @@ import Link from "next/link"
 import { useEffect, useState, type FormEvent } from "react"
 
 import { ensureParentProfileAfterAuthAction } from "@/features/auth/actions/sign-in"
-import { getSupabaseBrowserClient } from "@/integrations/supabase/client"
+import { createSupabaseBrowserClient } from "@/integrations/supabase/client"
 import styles from "@/features/auth/ui/sign-in-form.module.css"
 
 type SignInFormProps = {
@@ -48,7 +48,7 @@ export const SignInForm = ({ returnTo }: SignInFormProps) => {
     setMessage("")
 
     try {
-      const supabase = getSupabaseBrowserClient()
+      const supabase = createSupabaseBrowserClient()
       const { data, error } = await supabase.auth.signInWithPassword({
         email: normalizedEmail,
         password
@@ -60,9 +60,15 @@ export const SignInForm = ({ returnTo }: SignInFormProps) => {
         return
       }
 
-      if (process.env.NEXT_PUBLIC_DEBUG_AUTH === "1") {
-        console.log("[auth cookies after login]", document.cookie)
-      }
+      console.log("[after login cookie]", {
+        hasSbCookie: document.cookie.includes("sb-"),
+        cookieLength: document.cookie.length
+      })
+      const { data: sessionData } = await supabase.auth.getSession()
+      console.log("[after login session]", {
+        hasSession: Boolean(sessionData.session),
+        userId: sessionData.session?.user?.id ?? null
+      })
 
       const ensured = await ensureParentProfileAfterAuthAction()
       const target =
