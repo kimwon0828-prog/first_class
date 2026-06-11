@@ -13,6 +13,8 @@ type PendingSignupRequestRow = {
   organization_name: string
   academy_area: string
   branch_name: string | null
+  address: string | null
+  address_detail: string | null
   teacher_name: string
   teacher_phone: string | null
   status: string
@@ -46,6 +48,8 @@ export default async function AdminAcademyApprovalsPage() {
     organizationName: row.organization_name,
     academyArea: row.academy_area,
     branchName: row.branch_name,
+    address: row.address,
+    addressDetail: row.address_detail,
     teacherName: row.teacher_name,
     teacherPhone: row.teacher_phone,
     status: row.status,
@@ -116,6 +120,7 @@ export default async function AdminAcademyApprovalsPage() {
                 <th style={{ padding: "10px 8px" }}>학원</th>
                 <th style={{ padding: "10px 8px" }}>지역</th>
                 <th style={{ padding: "10px 8px" }}>지점</th>
+                <th style={{ padding: "10px 8px" }}>주소</th>
                 <th style={{ padding: "10px 8px" }}>가입 이메일</th>
                 <th style={{ padding: "10px 8px" }}>신청일</th>
                 <th style={{ padding: "10px 8px" }}>상태</th>
@@ -134,6 +139,18 @@ export default async function AdminAcademyApprovalsPage() {
                   </td>
                   <td style={{ padding: "10px 8px" }}>{row.academyArea}</td>
                   <td style={{ padding: "10px 8px" }}>{row.branchName ?? "-"}</td>
+                  <td style={{ padding: "10px 8px", minWidth: 220 }}>
+                    {row.address ? (
+                      <>
+                        <div>{row.address}</div>
+                        {row.addressDetail ? (
+                          <div style={{ color: "#666", marginTop: 4 }}>{row.addressDetail}</div>
+                        ) : null}
+                      </>
+                    ) : (
+                      "-"
+                    )}
+                  </td>
                   <td style={{ padding: "10px 8px" }}>{row.signupEmail ?? "-"}</td>
                   <td style={{ padding: "10px 8px" }}>
                     {new Date(row.createdAt).toLocaleString("ko-KR")}
@@ -186,4 +203,3 @@ export default async function AdminAcademyApprovalsPage() {
     </main>
   )
 }
-

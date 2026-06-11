@@ -20,6 +20,7 @@ import type {
   StudioTeacherOption,
   TeacherPublicProfile,
   TeacherSignupRequest,
+  OrganizationLocationInfo,
   UpdateChildProfileInput,
   UpdateStudioTeacherInput,
   TrialApplicationInput,
@@ -38,6 +39,12 @@ type MockApplicationRecord = StudioApplicationDetail & {
 
 const mockOrganizationId = "org-1"
 const mockTeacherProfileId = "teacher-profile-1"
+const mockOrganizationLocation: OrganizationLocationInfo = {
+  name: "첫수업 강남학원",
+  branchName: "강남점",
+  address: "경기도 고양시 일산서구 중앙로 1234",
+  addressDetail: "5층 501호"
+}
 
 const teacherProfiles: TeacherPublicProfile[] = [
   {
@@ -369,7 +376,8 @@ export const mockDataAdapter: DataAdapter = {
 
     const detail: ClassDetail = {
       ...found,
-      teacherProfile
+      teacherProfile,
+      organization: mockOrganizationLocation
     }
 
     return detail
@@ -1008,6 +1016,8 @@ export const mockDataAdapter: DataAdapter = {
       organizationName: input.organizationName,
       academyArea: input.academyArea,
       branchName: input.branchName,
+      address: input.address,
+      addressDetail: input.addressDetail,
       organizationPhone: input.organizationPhone,
       requestNote: input.requestNote,
       createdAt: new Date().toISOString()

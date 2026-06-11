@@ -5,6 +5,7 @@ import { getMyProfile } from "@/features/auth/lib/profile-sync"
 import { getSession } from "@/features/auth/lib/session"
 import { getPublicClassDetail } from "@/features/classes/queries/get-public-class-detail"
 import { BookmarkButton } from "@/features/favorites/ui/bookmark-button"
+import { NaverMapByAddress } from "@/features/maps/ui/naver-map-by-address"
 import { normalizeAcademyArea } from "@/shared/config/academy-areas"
 import styles from "./page.module.css"
 
@@ -51,6 +52,13 @@ export default async function ClassDetailPage({ params, searchParams }: ClassDet
   const applyEntryHref = session
     ? applyHref
     : `/auth/sign-in?${new URLSearchParams({ returnTo: applyHref }).toString()}`
+  const organization = classItem?.organization ?? null
+  const fullAddress = `${organization?.address ?? ""} ${organization?.addressDetail ?? ""}`.trim()
+  const hasLocation = Boolean(organization?.address?.trim())
+  const naverMapUrl = `https://map.naver.com/p/search/${encodeURIComponent(fullAddress)}`
+  const organizationLabel = organization
+    ? [organization.name, organization.branchName].filter(Boolean).join(" ")
+    : ""
 
   return (
     <main
@@ -248,6 +256,31 @@ export default async function ClassDetailPage({ params, searchParams }: ClassDet
                       : "선생님 소개가 준비 중입니다."}
                 </p>
               </section>
+
+              {hasLocation ? (
+                <section className={styles.section}>
+                  <h2 className={styles.sectionTitle}>위치</h2>
+                  <div className={styles.locationStack}>
+                    <div className={styles.locationTextBlock}>
+                      <p className={styles.locationName}>{organizationLabel || "학원 위치"}</p>
+                      <p className={styles.bodyText}>{fullAddress}</p>
+                    </div>
+                    <NaverMapByAddress
+                      address={fullAddress}
+                      markerLabel={organizationLabel || classItem.title}
+                      height={260}
+                    />
+                    <a
+                      href={naverMapUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className={styles.mapLinkButton}
+                    >
+                      네이버 지도에서 보기
+                    </a>
+                  </div>
+                </section>
+              ) : null}
             </div>
           </>
         ) : null}

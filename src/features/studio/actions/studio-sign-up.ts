@@ -17,6 +17,8 @@ const validateSignUpForm = (formData: FormData) => {
   const organizationName = String(formData.get("organizationName") ?? "").trim()
   const academyArea = String(formData.get("academyArea") ?? "").trim()
   const branchName = String(formData.get("branchName") ?? "").trim()
+  const address = String(formData.get("address") ?? "").trim()
+  const addressDetail = String(formData.get("addressDetail") ?? "").trim()
   const email = String(formData.get("email") ?? "").trim().toLowerCase()
   const password = String(formData.get("password") ?? "")
 
@@ -26,6 +28,10 @@ const validateSignUpForm = (formData: FormData) => {
 
   if (!isAcademyArea(academyArea)) {
     return { ok: false as const, message: "학원가를 선택해 주세요." }
+  }
+
+  if (!address) {
+    return { ok: false as const, message: "학원 주소를 입력해 주세요." }
   }
 
   if (!email || !email.includes("@")) {
@@ -41,6 +47,8 @@ const validateSignUpForm = (formData: FormData) => {
     organizationName,
     academyArea,
     branchName: branchName || null,
+    address,
+    addressDetail: addressDetail || null,
     email,
     password
   }
@@ -73,6 +81,8 @@ export async function studioSignUpAction(
         organization_name: validated.organizationName,
         academy_area: validated.academyArea,
         branch_name: validated.branchName,
+        address: validated.address,
+        address_detail: validated.addressDetail,
         organization_phone: null,
         request_note: null
       }

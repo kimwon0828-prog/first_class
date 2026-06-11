@@ -85,6 +85,35 @@ export const StudioSignUpForm = () => {
       </label>
 
       <label className={styles.field}>
+        <span className={styles.label}>학원 주소</span>
+        <input
+          name="address"
+          type="text"
+          required
+          maxLength={120}
+          disabled={isPending}
+          className={styles.input}
+          placeholder="예: 경기도 고양시 일산서구 ..."
+        />
+      </label>
+
+      <label className={styles.field}>
+        <span className={styles.label}>상세주소 (선택)</span>
+        <input
+          name="addressDetail"
+          type="text"
+          maxLength={120}
+          disabled={isPending}
+          className={styles.input}
+          placeholder="예: 5층 501호"
+        />
+      </label>
+
+      <p className={styles.bottomHint}>
+        입력한 주소는 학부모가 수업 상세 페이지에서 학원 위치를 확인할 때 사용됩니다.
+      </p>
+
+      <label className={styles.field}>
         <span className={styles.label}>이메일 (아이디)</span>
         <input
           name="email"

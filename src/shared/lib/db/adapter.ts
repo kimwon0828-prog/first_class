@@ -55,8 +55,16 @@ export type ClassSummary = {
   isActive: boolean
 }
 
+export type OrganizationLocationInfo = {
+  name: string
+  branchName: string | null
+  address: string | null
+  addressDetail: string | null
+}
+
 export type ClassDetail = ClassSummary & {
   teacherProfile: TeacherPublicProfile | null
+  organization: OrganizationLocationInfo | null
 }
 
 export type AvailableScheduleSlot = {
@@ -342,6 +350,8 @@ export type TeacherSignupRequest = {
   organizationName: string
   academyArea: AcademyArea
   branchName: string | null
+  address: string | null
+  addressDetail: string | null
   organizationPhone: string | null
   requestNote: string | null
   createdAt: string
@@ -354,6 +364,8 @@ export type CreateTeacherSignupRequestInput = {
   organizationName: string
   academyArea: AcademyArea
   branchName: string | null
+  address: string
+  addressDetail: string | null
   organizationPhone: string | null
   requestNote: string | null
 }

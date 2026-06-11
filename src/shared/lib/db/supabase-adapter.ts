@@ -13,6 +13,7 @@ import type {
   ClassSummary,
   DataAdapter,
   MyDashboardData,
+  OrganizationLocationInfo,
   StudioApplicationDetail,
   StudioApplicationSummary,
   StudioScheduleBlockSummary,
@@ -49,6 +50,7 @@ type ClassRow = {
   teacher_display_name?: string | null
   cover_image_url?: string | null
   is_active: boolean
+  organizations?: OrganizationLocationRow[] | OrganizationLocationRow | null
 }
 
 type TeacherPublicProfileRow = {
@@ -62,6 +64,13 @@ type TeacherPublicProfileRow = {
 type OrganizationRow = {
   id: string
   name: string
+}
+
+type OrganizationLocationRow = {
+  name: string
+  branch_name?: string | null
+  address?: string | null
+  address_detail?: string | null
 }
 
 type EmbeddedClassRow = {
@@ -152,6 +161,8 @@ type TeacherSignupRequestRow = {
   organization_name: string
   academy_area: AcademyArea
   branch_name: string | null
+  address: string | null
+  address_detail: string | null
   organization_phone: string | null
   request_note: string | null
   created_at: string
@@ -219,6 +230,31 @@ const mapClass = (
     teacherName: resolvedTeacherName,
     coverImageUrl: row.cover_image_url ?? null,
     isActive: row.is_active
+  }
+}
+
+const getEmbeddedOrganization = (row: ClassRow): OrganizationLocationRow | null => {
+  if (!row.organizations) {
+    return null
+  }
+
+  if (Array.isArray(row.organizations)) {
+    return row.organizations[0] ?? null
+  }
+
+  return row.organizations
+}
+
+const mapOrganizationLocation = (row: OrganizationLocationRow | null): OrganizationLocationInfo | null => {
+  if (!row) {
+    return null
+  }
+
+  return {
+    name: row.name,
+    branchName: row.branch_name ?? null,
+    address: row.address ?? null,
+    addressDetail: row.address_detail ?? null
   }
 }
 
@@ -351,6 +387,8 @@ const mapTeacherSignupRequest = (row: TeacherSignupRequestRow): TeacherSignupReq
   organizationName: row.organization_name,
   academyArea: row.academy_area,
   branchName: row.branch_name,
+  address: row.address,
+  addressDetail: row.address_detail,
   organizationPhone: row.organization_phone,
   requestNote: row.request_note,
   createdAt: row.created_at
@@ -562,8 +600,13 @@ const normalizeStudioClassId = (value: string | undefined) => {
 const CLASS_BASE_SELECT_FIELDS =
   "id, organization_id, program_type, title, subject, region, target_age, description, trial_price, teacher_id, teacher_display_name, cover_image_url, is_active"
 
+const ORGANIZATION_LOCATION_SELECT_FIELDS = "organizations(name, branch_name, address, address_detail)"
+const ORGANIZATION_BASE_SELECT_FIELDS = "organizations(name, branch_name)"
+
 const CLASS_DETAIL_SELECT_FIELDS =
-  `${CLASS_BASE_SELECT_FIELDS}, class_format, recommended_for, experience_points, curriculum, teacher_intro`
+  `${CLASS_BASE_SELECT_FIELDS}, class_format, recommended_for, experience_points, curriculum, teacher_intro, ${ORGANIZATION_LOCATION_SELECT_FIELDS}`
+
+const CLASS_BASE_FALLBACK_SELECT_FIELDS = `${CLASS_BASE_SELECT_FIELDS}, ${ORGANIZATION_BASE_SELECT_FIELDS}`
 
 const isMissingColumnError = (error: { code?: string; message?: string } | null) => {
   if (!error) {
@@ -799,7 +842,7 @@ export const supabaseDataAdapter: DataAdapter = {
     if (isMissingColumnError(error)) {
       const retry = await supabase
         .from("classes")
-        .select(CLASS_BASE_SELECT_FIELDS)
+        .select(CLASS_BASE_FALLBACK_SELECT_FIELDS)
         .eq("id", classId)
         .eq("is_active", true)
         .maybeSingle()
@@ -825,7 +868,8 @@ export const supabaseDataAdapter: DataAdapter = {
 
       const detail: ClassDetail = {
         ...mapClass(classRow, teacherProfile?.teacherName ?? null),
-        teacherProfile
+        teacherProfile,
+        organization: mapOrganizationLocation(getEmbeddedOrganization(classRow))
       }
 
       return detail
@@ -852,7 +896,8 @@ export const supabaseDataAdapter: DataAdapter = {
 
     const detail: ClassDetail = {
       ...mapClass(classRow, teacherProfile?.teacherName ?? null),
-      teacherProfile
+      teacherProfile,
+      organization: mapOrganizationLocation(getEmbeddedOrganization(classRow))
     }
 
     return detail
@@ -1888,7 +1933,7 @@ export const supabaseDataAdapter: DataAdapter = {
     const supabase = await getSupabaseServerClient()
     const { data, error } = await supabase
       .from("teacher_signup_requests")
-      .select("id, user_id, status, teacher_name, teacher_phone, organization_name, academy_area, branch_name, organization_phone, request_note, created_at")
+      .select("id, user_id, status, teacher_name, teacher_phone, organization_name, academy_area, branch_name, address, address_detail, organization_phone, request_note, created_at")
       .eq("user_id", userId)
       .eq("status", "pending")
       .maybeSingle()
@@ -1930,10 +1975,12 @@ export const supabaseDataAdapter: DataAdapter = {
         organization_name: input.organizationName,
         academy_area: input.academyArea,
         branch_name: input.branchName,
+        address: input.address,
+        address_detail: input.addressDetail,
         organization_phone: input.organizationPhone,
         request_note: input.requestNote
       })
-      .select("id, user_id, status, teacher_name, teacher_phone, organization_name, academy_area, branch_name, organization_phone, request_note, created_at")
+      .select("id, user_id, status, teacher_name, teacher_phone, organization_name, academy_area, branch_name, address, address_detail, organization_phone, request_note, created_at")
       .single()
 
     if (error || !data) {
