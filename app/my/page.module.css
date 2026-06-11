@@ -12,7 +12,7 @@
   margin: 0 auto;
   min-height: 100dvh;
   background: #ffffff;
-  padding: calc(18px + env(safe-area-inset-top)) 24px calc(40px + env(safe-area-inset-bottom));
+  padding: calc(18px + env(safe-area-inset-top)) 24px calc(96px + env(safe-area-inset-bottom));
 }
 
 .shell * {
@@ -76,8 +76,56 @@
   cursor: pointer;
 }
 
+.bottomNav {
+  position: fixed;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(100%, 430px);
+  box-sizing: border-box;
+  min-height: 76px;
+  background: #ffffff;
+  border-top: 1px solid #eeeeee;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 24px calc(14px + env(safe-area-inset-bottom));
+}
+
+.navItem {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  text-decoration: none;
+  color: #111111;
+  font-size: 11px;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.navItem svg {
+  width: 22px;
+  height: 22px;
+}
+
+.navItemActive {
+  color: #2aad38;
+}
+
+.navItemActive svg {
+  color: #2aad38;
+}
+
 @media (max-width: 360px) {
   .shell {
+    padding-left: 20px;
+    padding-right: 20px;
+  }
+
+  .bottomNav {
     padding-left: 20px;
     padding-right: 20px;
   }
