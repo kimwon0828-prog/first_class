@@ -1,12 +1,10 @@
 import Link from "next/link"
 
-import { ParentProfileForm } from "@/features/my/ui/parent-profile-form"
 import type { MyDashboardData, TrialApplicationSummary } from "@/shared/lib/db/adapter"
 import styles from "./my-dashboard-home.module.css"
 
 type MyDashboardHomeProps = {
   profileName: string
-  profilePhone: string | null
   dashboard: MyDashboardData
 }
 
@@ -48,13 +46,14 @@ const resolveDoneCount = (dashboard: MyDashboardData) =>
 
 export const MyDashboardHome = ({
   profileName,
-  profilePhone,
   dashboard
 }: MyDashboardHomeProps) => {
+  const greetingName = profileName.trim() || "학부모"
+
   return (
     <section className={styles.stack}>
       <section className={styles.greetingCard}>
-        <h2 className={styles.greetingTitle}>{profileName}님, 안녕하세요</h2>
+        <h2 className={styles.greetingTitle}>{greetingName}님, 안녕하세요</h2>
         <p className={styles.greetingDesc}>신청 현황과 자녀 정보를 한 번에 확인할 수 있어요.</p>
         <p className={styles.greetingDesc}>
           자녀 정보를 미리 등록해두면 신청할 때 더 편리해요.
@@ -62,46 +61,46 @@ export const MyDashboardHome = ({
       </section>
 
       <section className={styles.statsGrid} aria-label="요약">
-        <article className={styles.statCard}>
+        <Link
+          href="/my/applications"
+          className={styles.statCard}
+          prefetch={false}
+          aria-label="전체 신청 내역 보기"
+        >
           <p className={styles.statLabel}>전체 신청</p>
           <strong className={styles.statValue}>{dashboard.totalApplicationCount}</strong>
-        </article>
-        <article className={styles.statCard}>
+          <span className={styles.statArrow} aria-hidden="true" />
+        </Link>
+        <Link
+          href="/my/children"
+          className={styles.statCard}
+          prefetch={false}
+          aria-label="등록 자녀 관리하기"
+        >
           <p className={styles.statLabel}>등록 자녀</p>
           <strong className={styles.statValue}>{dashboard.childrenCount}</strong>
-        </article>
-        <article className={styles.statCard}>
+          <span className={styles.statArrow} aria-hidden="true" />
+        </Link>
+        <Link
+          href="/my/applications?status=active"
+          className={styles.statCard}
+          prefetch={false}
+          aria-label="진행 중 신청 보기"
+        >
           <p className={styles.statLabel}>진행 중</p>
           <strong className={styles.statValue}>{resolveActiveCount(dashboard)}</strong>
-        </article>
-        <article className={styles.statCard}>
+          <span className={styles.statArrow} aria-hidden="true" />
+        </Link>
+        <Link
+          href="/my/applications?status=closed"
+          className={styles.statCard}
+          prefetch={false}
+          aria-label="완료 및 취소 신청 보기"
+        >
           <p className={styles.statLabel}>완료/취소</p>
           <strong className={styles.statValue}>{resolveDoneCount(dashboard)}</strong>
-        </article>
-      </section>
-
-      <section className={styles.menuCard} aria-label="빠른 메뉴">
-        <MenuItem
-          href="/my/children"
-          title="자녀 관리"
-          description="아이 정보를 등록하고 수정해요."
-        />
-        <Divider />
-        <MenuItem
-          href="/my/applications"
-          title="신청 내역"
-          description="신청한 첫수업 진행 상태를 확인해요."
-        />
-      </section>
-
-      <section className={styles.accountCard}>
-        <header className={styles.sectionHeader}>
-          <h3 className={styles.sectionTitle}>계정 정보</h3>
-          <p className={styles.sectionDesc}>
-            저장한 보호자명과 연락처는 다음 신청 폼의 기본값으로 사용됩니다.
-          </p>
-        </header>
-        <ParentProfileForm initialName={profileName} initialPhone={profilePhone} />
+          <span className={styles.statArrow} aria-hidden="true" />
+        </Link>
       </section>
 
       <section className={styles.recentCard}>
@@ -161,43 +160,3 @@ export const MyDashboardHome = ({
     </section>
   )
 }
-
-type MenuItemProps = {
-  href: string
-  title: string
-  description: string
-  badge?: string
-  disabled?: boolean
-}
-
-const MenuItem = ({ href, title, description, badge, disabled }: MenuItemProps) => {
-  const content = (
-    <>
-      <div className={styles.menuIcon} aria-hidden="true" />
-      <div className={styles.menuMain}>
-        <div className={styles.menuTitleRow}>
-          <div className={styles.menuTitle}>{title}</div>
-          {badge ? <span className={styles.menuBadge}>{badge}</span> : null}
-        </div>
-        <div className={styles.menuDesc}>{description}</div>
-      </div>
-      <div className={styles.menuChevron} aria-hidden="true" />
-    </>
-  )
-
-  if (disabled) {
-    return (
-      <div className={`${styles.menuItem} ${styles.menuItemDisabled}`} aria-disabled="true">
-        {content}
-      </div>
-    )
-  }
-
-  return (
-    <Link href={href} className={styles.menuItem} prefetch={false}>
-      {content}
-    </Link>
-  )
-}
-
-const Divider = () => <div className={styles.divider} aria-hidden="true" />

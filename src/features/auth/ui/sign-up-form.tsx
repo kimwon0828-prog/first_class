@@ -38,21 +38,6 @@ export const SignUpForm = ({ returnTo }: SignUpFormProps) => {
       <section className={styles.card} aria-label="회원가입 정보 입력">
         <div className={styles.fieldStack}>
           <label className={styles.field}>
-            <span className={styles.label}>이름</span>
-            <input
-              name="name"
-              type="text"
-              required
-              minLength={2}
-              maxLength={30}
-              disabled={isPending}
-              className={styles.input}
-              placeholder="보호자 이름"
-              autoComplete="name"
-            />
-          </label>
-
-          <label className={styles.field}>
             <span className={styles.label}>이메일</span>
             <input
               name="email"
@@ -78,7 +63,92 @@ export const SignUpForm = ({ returnTo }: SignUpFormProps) => {
               placeholder="8자 이상"
             />
           </label>
+
+          <label className={styles.field}>
+            <span className={styles.label}>비밀번호 확인</span>
+            <input
+              name="passwordConfirm"
+              type="password"
+              required
+              minLength={8}
+              autoComplete="new-password"
+              disabled={isPending}
+              className={styles.input}
+              placeholder="비밀번호를 한 번 더 입력해 주세요"
+            />
+          </label>
+
+          <label className={styles.field}>
+            <span className={styles.label}>보호자명</span>
+            <input
+              name="name"
+              type="text"
+              required
+              minLength={2}
+              maxLength={30}
+              disabled={isPending}
+              className={styles.input}
+              placeholder="보호자 이름"
+              autoComplete="name"
+            />
+          </label>
+
+          <label className={styles.field}>
+            <span className={styles.label}>보호자 연락처</span>
+            <input
+              name="phone"
+              type="tel"
+              required
+              minLength={8}
+              maxLength={20}
+              autoComplete="tel"
+              placeholder="010-0000-0000"
+              disabled={isPending}
+              className={styles.input}
+            />
+          </label>
         </div>
+
+        <div className={styles.agreementStack}>
+          <label className={styles.checkRow}>
+            <input
+              name="agreeToTerms"
+              type="checkbox"
+              value="yes"
+              required
+              disabled={isPending}
+              className={styles.checkbox}
+            />
+            <span className={styles.checkText}>서비스 이용약관에 동의합니다. (필수)</span>
+          </label>
+
+          <label className={styles.checkRow}>
+            <input
+              name="agreeToPrivacy"
+              type="checkbox"
+              value="yes"
+              required
+              disabled={isPending}
+              className={styles.checkbox}
+            />
+            <span className={styles.checkText}>개인정보 수집 및 이용에 동의합니다. (필수)</span>
+          </label>
+
+          <label className={styles.checkRow}>
+            <input
+              name="agreeToMarketing"
+              type="checkbox"
+              value="yes"
+              disabled={isPending}
+              className={styles.checkbox}
+            />
+            <span className={styles.checkText}>마케팅 정보 수신에 동의합니다. (선택)</span>
+          </label>
+        </div>
+
+        <p className={styles.helperText}>
+          자녀 정보는 가입 후 마이페이지의 자녀 관리에서 등록하거나, 첫수업 신청 과정에서 직접 입력할 수 있어요.
+        </p>
 
         {state.message ? (
           <p

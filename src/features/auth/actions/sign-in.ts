@@ -85,7 +85,7 @@ export async function signInAction(
 
     const { data: existingProfile, error: existingProfileError } = await tokenClient
       .from("profiles")
-      .select("id, role, name")
+      .select("id, role, name, phone")
       .eq("id", data.user.id)
       .maybeSingle()
 
@@ -98,6 +98,20 @@ export async function signInAction(
     }
 
     if (existingProfile) {
+      const phoneFromMetadata =
+        typeof data.user.user_metadata?.phone === "string" && data.user.user_metadata.phone.trim()
+          ? data.user.user_metadata.phone.trim()
+          : null
+      if (!existingProfile.phone && phoneFromMetadata) {
+        await tokenClient
+          .from("profiles")
+          .update({
+            phone: phoneFromMetadata,
+            updated_at: new Date().toISOString()
+          })
+          .eq("id", data.user.id)
+      }
+
       const normalizedRole = normalizeProfileRole(existingProfile.role)
       if (!normalizedRole) {
         await supabase.auth.signOut()
@@ -135,11 +149,16 @@ export async function signInAction(
       typeof data.user.user_metadata?.name === "string" && data.user.user_metadata.name.trim()
         ? data.user.user_metadata.name.trim()
         : data.user.email?.split("@")[0] ?? "학부모"
+    const phoneFromMetadata =
+      typeof data.user.user_metadata?.phone === "string" && data.user.user_metadata.phone.trim()
+        ? data.user.user_metadata.phone.trim()
+        : null
 
     const { error: insertError } = await tokenClient.from("profiles").insert({
       id: data.user.id,
       role: "parent",
       name: fallbackName.slice(0, 30),
+      phone: phoneFromMetadata,
       organization_id: null
     })
 

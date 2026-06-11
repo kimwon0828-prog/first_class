@@ -39,7 +39,7 @@ export default async function MyPage() {
             </Link>
           </section>
         ) : (
-          <MyDashboardHome profileName={profile.name} profilePhone={profile.phone} dashboard={data} />
+          <MyDashboardHome profileName={profile.name} dashboard={data} />
         )}
 
         <section className={styles.logoutSection}>

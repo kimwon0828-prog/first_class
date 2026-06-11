@@ -2,13 +2,69 @@ import Link from "next/link"
 
 import { getMyApplications } from "@/features/applications/queries/get-my-applications"
 import { MyApplicationList } from "@/features/applications/ui/my-application-list"
+import type { ApplicationStatus, TrialApplicationSummary } from "@/shared/lib/db/adapter"
 import { requireParentAccess } from "@/features/my/lib/require-parent-access"
 import styles from "./page.module.css"
 
-export default async function MyApplicationsPage() {
+type MyApplicationsPageProps = {
+  searchParams?: Promise<{
+    status?: string
+  }>
+}
+
+const ACTIVE_STATUSES: ApplicationStatus[] = ["new", "reviewing", "confirmed"]
+const CLOSED_STATUSES: ApplicationStatus[] = ["completed", "canceled"]
+
+const filterItemsByStatus = (
+  items: TrialApplicationSummary[],
+  statusFilter: string | undefined
+) => {
+  if (statusFilter === "active") {
+    return items.filter((item) => ACTIVE_STATUSES.includes(item.status))
+  }
+
+  if (statusFilter === "closed") {
+    return items.filter((item) => CLOSED_STATUSES.includes(item.status))
+  }
+
+  return items
+}
+
+const resolvePageCopy = (statusFilter: string | undefined) => {
+  if (statusFilter === "active") {
+    return {
+      title: "진행 중 신청",
+      subtitle: "접수 이후 진행 중인 첫수업 신청만 모아볼 수 있어요.",
+      emptyTitle: "진행 중인 신청이 없어요.",
+      emptyDesc: "새 체험수업을 신청하거나 전체 신청 내역을 확인해보세요."
+    }
+  }
+
+  if (statusFilter === "closed") {
+    return {
+      title: "완료/취소 신청",
+      subtitle: "완료되었거나 취소된 첫수업 신청을 확인할 수 있어요.",
+      emptyTitle: "완료 또는 취소된 신청이 없어요.",
+      emptyDesc: "진행 중인 신청은 전체 신청 내역에서 확인할 수 있어요."
+    }
+  }
+
+  return {
+    title: "내 신청",
+    subtitle: "신청한 첫수업 진행 상태를 확인할 수 있어요.",
+    emptyTitle: "아직 신청한 첫수업이 없어요.",
+    emptyDesc: "우리 아이에게 맞는 수업을 찾아보세요."
+  }
+}
+
+export default async function MyApplicationsPage({ searchParams }: MyApplicationsPageProps) {
   await requireParentAccess({ returnTo: "/my/applications" })
+  const resolvedSearchParams = searchParams ? await searchParams : undefined
+  const statusFilter = resolvedSearchParams?.status
+  const pageCopy = resolvePageCopy(statusFilter)
 
   const { data, error } = await getMyApplications()
+  const filteredItems = filterItemsByStatus(data, statusFilter)
 
   return (
     <main
@@ -28,8 +84,8 @@ export default async function MyApplicationsPage() {
         }}
       >
         <header className={styles.header}>
-          <h1 className={styles.title}>내 신청</h1>
-          <p className={styles.subtitle}>신청한 첫수업 진행 상태를 확인할 수 있어요.</p>
+          <h1 className={styles.title}>{pageCopy.title}</h1>
+          <p className={styles.subtitle}>{pageCopy.subtitle}</p>
         </header>
 
         {error ? (
@@ -41,17 +97,17 @@ export default async function MyApplicationsPage() {
           </section>
         ) : null}
 
-        {!error && data.length === 0 ? (
+        {!error && filteredItems.length === 0 ? (
           <section className={styles.emptyCard}>
-            <h2 className={styles.emptyTitle}>아직 신청한 첫수업이 없어요.</h2>
-            <p className={styles.emptyDesc}>우리 아이에게 맞는 수업을 찾아보세요.</p>
+            <h2 className={styles.emptyTitle}>{pageCopy.emptyTitle}</h2>
+            <p className={styles.emptyDesc}>{pageCopy.emptyDesc}</p>
             <Link href="/classes" className={styles.primaryButton}>
               수업 찾으러 가기
             </Link>
           </section>
         ) : null}
 
-        {!error && data.length > 0 ? <MyApplicationList items={data} /> : null}
+        {!error && filteredItems.length > 0 ? <MyApplicationList items={filteredItems} /> : null}
       </div>
 
       <nav className={styles.bottomNav} aria-label="Bottom tabs">

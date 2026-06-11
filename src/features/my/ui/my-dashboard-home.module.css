@@ -33,10 +33,36 @@
 }
 
 .statCard {
+  position: relative;
+  display: block;
   border: 1px solid #eeeeee;
   border-radius: 18px;
   background: #ffffff;
   padding: 18px;
+  text-decoration: none;
+  color: inherit;
+  min-height: 108px;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    transform 0.16s ease,
+    box-shadow 0.16s ease,
+    border-color 0.16s ease,
+    background-color 0.16s ease;
+}
+
+.statCard:hover {
+  border-color: #d7ead9;
+  box-shadow: 0 12px 28px rgba(17, 17, 17, 0.06);
+}
+
+.statCard:active {
+  transform: translateY(1px) scale(0.99);
+  background: #f8fcf8;
+}
+
+.statCard:focus-visible {
+  outline: 2px solid #2aad38;
+  outline-offset: 2px;
 }
 
 .statLabel {
@@ -51,84 +77,16 @@
   color: #111111;
 }
 
-.menuCard {
-  border: 1px solid #eeeeee;
-  border-radius: 20px;
-  background: #ffffff;
-  overflow: hidden;
-}
-
-.menuItem {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  padding: 16px 18px;
-  min-height: 64px;
-  text-decoration: none;
-  color: inherit;
-  -webkit-tap-highlight-color: transparent;
-}
-
-.menuItemDisabled {
-  opacity: 0.6;
-}
-
-.menuIcon {
-  width: 36px;
-  height: 36px;
-  border-radius: 12px;
-  background: #f7f7f7;
-  flex: 0 0 auto;
-}
-
-.menuMain {
-  min-width: 0;
-  flex: 1 1 auto;
-}
-
-.menuTitleRow {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.menuTitle {
-  font-size: 16px;
-  font-weight: 700;
-  color: #111111;
-}
-
-.menuBadge {
-  display: inline-flex;
-  align-items: center;
-  border-radius: 999px;
-  padding: 4px 8px;
-  font-size: 12px;
-  background: #f7f7f7;
-  color: #8a8a8a;
-  font-weight: 700;
-}
-
-.menuDesc {
-  margin-top: 6px;
-  font-size: 13px;
-  line-height: 1.5;
-  color: #8a8a8a;
-}
-
-.menuChevron {
+.statArrow {
+  position: absolute;
+  right: 16px;
+  bottom: 16px;
   width: 18px;
   height: 18px;
-  flex: 0 0 auto;
   color: #8a8a8a;
   background: currentColor;
   -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none'%3E%3Cpath d='M9 18l6-6-6-6' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
   mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none'%3E%3Cpath d='M9 18l6-6-6-6' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
-}
-
-.divider {
-  height: 1px;
-  background: #eeeeee;
 }
 
 .accountCard,

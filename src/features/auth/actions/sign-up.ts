@@ -30,11 +30,21 @@ const resolveSafeReturnTo = (formData: FormData): string | null => {
 
 const validateSignUpForm = (formData: FormData) => {
   const name = String(formData.get("name") ?? "").trim()
+  const phoneRaw = String(formData.get("phone") ?? "").trim()
+  const phone = phoneRaw.length > 0 ? phoneRaw : null
   const email = String(formData.get("email") ?? "").trim().toLowerCase()
   const password = String(formData.get("password") ?? "")
+  const passwordConfirm = String(formData.get("passwordConfirm") ?? "")
+  const agreeToTerms = String(formData.get("agreeToTerms") ?? "") === "yes"
+  const agreeToPrivacy = String(formData.get("agreeToPrivacy") ?? "") === "yes"
+  const agreeToMarketing = String(formData.get("agreeToMarketing") ?? "") === "yes"
 
   if (!name || name.length < 2) {
-    return { ok: false as const, message: "이름은 2자 이상 입력해 주세요." }
+    return { ok: false as const, message: "보호자명은 2자 이상 입력해 주세요." }
+  }
+
+  if (!phone || phone.length < 8) {
+    return { ok: false as const, message: "보호자 연락처를 올바르게 입력해 주세요." }
   }
 
   if (!email || !email.includes("@")) {
@@ -45,7 +55,28 @@ const validateSignUpForm = (formData: FormData) => {
     return { ok: false as const, message: "비밀번호는 8자 이상이어야 합니다." }
   }
 
-  return { ok: true as const, name, email, password }
+  if (password !== passwordConfirm) {
+    return { ok: false as const, message: "비밀번호 확인이 일치하지 않습니다." }
+  }
+
+  if (!agreeToTerms) {
+    return { ok: false as const, message: "서비스 이용약관 동의가 필요합니다." }
+  }
+
+  if (!agreeToPrivacy) {
+    return { ok: false as const, message: "개인정보 수집 및 이용 동의가 필요합니다." }
+  }
+
+  return {
+    ok: true as const,
+    name,
+    phone,
+    email,
+    password,
+    agreeToTerms,
+    agreeToPrivacy,
+    agreeToMarketing
+  }
 }
 
 export async function signUpParentAction(
@@ -66,6 +97,10 @@ export async function signUpParentAction(
     options: {
       data: {
         name: validated.name,
+        phone: validated.phone,
+        agreed_to_terms: validated.agreeToTerms,
+        agreed_to_privacy: validated.agreeToPrivacy,
+        agreed_to_marketing: validated.agreeToMarketing,
         signup_intent: "parent_public",
         role: "parent"
       }
@@ -88,7 +123,8 @@ export async function signUpParentAction(
 
   const profile = await ensureParentProfile({
     allowCreateParentIfMissing: true,
-    preferredName: validated.name
+    preferredName: validated.name,
+    preferredPhone: validated.phone
   })
 
   if (!profile) {

@@ -73,7 +73,7 @@ export const getMyProfile = async (): Promise<AuthProfile | null> => {
     id: data.id,
     role: normalizedRole.role,
     dbRole: normalizedRole.dbRole,
-    name: data.name,
+    name: typeof data.name === "string" && data.name.trim().length > 0 ? data.name.trim() : getFallbackName(user.email),
     phone: data.phone ?? null,
     organizationId: data.organization_id
   }
@@ -82,6 +82,7 @@ export const getMyProfile = async (): Promise<AuthProfile | null> => {
 type EnsureParentProfileOptions = {
   allowCreateParentIfMissing: boolean
   preferredName?: string
+  preferredPhone?: string | null
 }
 
 export const ensureParentProfile = async (
@@ -98,6 +99,49 @@ export const ensureParentProfile = async (
 
   const existing = await getMyProfile()
   if (existing) {
+    const nextName = existing.name.trim()
+    const nextPhone = existing.phone
+    const preferredPhone =
+      typeof options.preferredPhone === "string" && options.preferredPhone.trim().length > 0
+        ? options.preferredPhone.trim()
+        : typeof user.user_metadata?.phone === "string" && user.user_metadata.phone.trim().length > 0
+          ? user.user_metadata.phone.trim()
+          : null
+
+    if (!nextPhone && preferredPhone) {
+      await supabase
+        .from("profiles")
+        .update({
+          phone: preferredPhone,
+          updated_at: new Date().toISOString()
+        })
+        .eq("id", existing.id)
+    }
+
+    if (!nextName) {
+      await supabase
+        .from("profiles")
+        .update({
+          name: getFallbackName(user.email),
+          updated_at: new Date().toISOString()
+        })
+        .eq("id", existing.id)
+    }
+
+    if (!nextPhone && preferredPhone) {
+      return {
+        ...existing,
+        phone: preferredPhone
+      }
+    }
+
+    if (!nextName) {
+      return {
+        ...existing,
+        name: getFallbackName(user.email)
+      }
+    }
+
     return existing
   }
 
@@ -118,12 +162,16 @@ export const ensureParentProfile = async (
 
   const nameFromMetadata =
     typeof user.user_metadata?.name === "string" ? user.user_metadata.name : undefined
+  const phoneFromMetadata =
+    typeof user.user_metadata?.phone === "string" ? user.user_metadata.phone : undefined
   const insertName = (options.preferredName ?? nameFromMetadata ?? "").trim()
+  const insertPhone = (options.preferredPhone ?? phoneFromMetadata ?? "").trim()
 
   const { error } = await supabase.from("profiles").insert({
     id: user.id,
     role: "parent",
     name: insertName || getFallbackName(user.email),
+    phone: insertPhone || null,
     organization_id: null
   })
 
