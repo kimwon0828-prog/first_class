@@ -70,6 +70,38 @@ const loadNaverMapScript = async (clientId: string) => {
   })
 }
 
+const waitForNaverGeocoder = async (timeoutMs = 3000) => {
+  if (typeof window === "undefined") {
+    throw new Error("window_unavailable")
+  }
+
+  await new Promise<void>((resolve, reject) => {
+    const start = Date.now()
+
+    const check = () => {
+      const naver = window.naver
+
+      if (
+        naver?.maps &&
+        naver.maps.Service &&
+        typeof naver.maps.Service.geocode === "function"
+      ) {
+        resolve()
+        return
+      }
+
+      if (Date.now() - start > timeoutMs) {
+        reject(new Error("naver_geocoder_timeout"))
+        return
+      }
+
+      window.setTimeout(check, 50)
+    }
+
+    check()
+  })
+}
+
 export const NaverMapByAddress = ({
   address,
   addressDetail,
@@ -95,13 +127,16 @@ export const NaverMapByAddress = ({
       try {
         setStatus("loading")
         await loadNaverMapScript(naverMapClientId)
+        await waitForNaverGeocoder()
 
         const service = window.naver?.maps?.Service
         const mapApi = window.naver?.maps
         if (!service || !mapApi) {
           console.warn("[naver map] geocoder unavailable", {
-            hasService: Boolean(service),
-            hasMapApi: Boolean(mapApi)
+            hasNaver: Boolean(window.naver),
+            hasMaps: Boolean(window.naver?.maps),
+            hasService: Boolean(window.naver?.maps?.Service),
+            hasGeocode: typeof window.naver?.maps?.Service?.geocode
           })
           throw new Error("naver_map_unavailable")
         }
@@ -111,8 +146,9 @@ export const NaverMapByAddress = ({
 
           service.geocode({ query: geocodeAddress }, (geocodeStatus, response) => {
             const successStatus = service.Status?.OK ?? "OK"
-            const firstAddress = response.v2?.addresses?.[0]
-            const resultCount = response.v2?.addresses?.length ?? 0
+            const addresses = response?.v2?.addresses ?? []
+            const firstAddress = addresses[0]
+            const resultCount = addresses.length
 
             console.warn("[naver map] geocode result", {
               status: geocodeStatus,
@@ -158,6 +194,14 @@ export const NaverMapByAddress = ({
           setStatus("ready")
         }
       } catch (error) {
+        if (error instanceof Error && error.message === "naver_geocoder_timeout") {
+          console.warn("[naver map] geocoder unavailable", {
+            hasNaver: Boolean(window.naver),
+            hasMaps: Boolean(window.naver?.maps),
+            hasService: Boolean(window.naver?.maps?.Service),
+            hasGeocode: typeof window.naver?.maps?.Service?.geocode
+          })
+        }
         console.warn("[naver map] map init failed", {
           message: error instanceof Error ? error.message : "unknown_error"
         })
