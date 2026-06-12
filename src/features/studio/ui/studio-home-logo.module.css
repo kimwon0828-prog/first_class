@@ -1,0 +1,12 @@
+.link {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  text-decoration: none;
+}
+
+.logo {
+  display: block;
+  width: auto;
+  height: auto;
+}

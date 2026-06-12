@@ -1,6 +1,7 @@
 import Link from "next/link"
 import { redirect } from "next/navigation"
 
+import { StudioHomeLogo } from "@/features/studio/ui/studio-home-logo"
 import { getSupabaseServerClient } from "@/integrations/supabase/server"
 
 type StudioAccessPageProps = {
@@ -78,6 +79,9 @@ export default async function StudioAccessPage({ searchParams }: StudioAccessPag
       }}
     >
       <header style={{ marginBottom: 18 }}>
+        <div style={{ marginBottom: 12 }}>
+          <StudioHomeLogo />
+        </div>
         <p style={{ margin: "0 0 8px", fontSize: 13, lineHeight: "18px", color: "#4f46e5" }}>
           FIRST CLASS STUDIO
         </p>
@@ -164,4 +168,3 @@ export default async function StudioAccessPage({ searchParams }: StudioAccessPag
     </main>
   )
 }
-

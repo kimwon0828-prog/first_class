@@ -1,6 +1,7 @@
 import { requireTeacherStudioAccess } from "@/features/studio/lib/require-teacher-studio-access"
 import { getStudioClassFormOptions } from "@/features/studio/queries/get-studio-class-form-options"
 import { getStudioClasses } from "@/features/studio/queries/get-studio-classes"
+import { StudioHomeLogo } from "@/features/studio/ui/studio-home-logo"
 import { StudioClassesManager } from "@/features/studio/ui/studio-classes-manager"
 import styles from "./page.module.css"
 
@@ -17,6 +18,7 @@ export default async function StudioClassesPage() {
       <div className={styles.container}>
         <header className={styles.header}>
           <div className={styles.headerLeft}>
+            <StudioHomeLogo />
             <p className={styles.kicker}>FIRST CLASS STUDIO</p>
             <h1 className={styles.title}>수업 관리</h1>
             <p className={styles.description}>학부모에게 노출되는 첫수업 정보를 등록하고 관리해요.</p>

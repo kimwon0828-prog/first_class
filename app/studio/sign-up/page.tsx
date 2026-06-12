@@ -1,9 +1,9 @@
 import Link from "next/link"
-import Image from "next/image"
 import { redirect } from "next/navigation"
 
 import { getMyProfile } from "@/features/auth/queries/get-my-profile"
 import { getSession } from "@/features/auth/lib/session"
+import { StudioHomeLogo } from "@/features/studio/ui/studio-home-logo"
 import { StudioSignUpForm } from "@/features/studio/ui/studio-sign-up-form"
 import styles from "./page.module.css"
 
@@ -30,14 +30,7 @@ export default async function StudioSignUpPage() {
     <main className={styles.page}>
       <div className={styles.container}>
         <header className={styles.topBar}>
-          <Image
-            src="/images/first-class-logo.png"
-            alt="첫수업"
-            width={93}
-            height={30}
-            className={styles.logo}
-            priority
-          />
+          <StudioHomeLogo logoClassName={styles.logo} priority />
         </header>
 
         <div className={styles.grid}>

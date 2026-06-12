@@ -2,10 +2,10 @@ import { requireTeacherStudioAccess } from "@/features/studio/lib/require-teache
 import { getStudioDashboardTeacherOptions } from "@/features/studio/queries/get-studio-dashboard-teacher-options"
 import { getStudioDashboardSummary } from "@/features/studio/queries/get-studio-dashboard-summary"
 import { StudioDashboardSummaryView } from "@/features/studio/ui/studio-dashboard-summary"
+import { StudioHomeLogo } from "@/features/studio/ui/studio-home-logo"
 import { StudioTeacherFilter } from "@/features/studio/ui/studio-teacher-filter"
 import { dataAdapter } from "@/shared/lib/db"
 import type { StudioApplicationSummary } from "@/shared/lib/db/adapter"
-import Image from "next/image"
 import Link from "next/link"
 
 import styles from "@/features/studio/ui/studio-dashboard.module.css"
@@ -57,16 +57,7 @@ export default async function StudioIndexPage({ searchParams }: StudioIndexPageP
       <div className={styles.container}>
         <header className={styles.welcomeCard}>
           <div className={styles.welcomeLeft}>
-            <div className={styles.brandKicker}>
-              <Image
-                src="/images/first-class-logo.png"
-                alt="첫수업"
-                width={120}
-                height={40}
-                className={styles.brandLogo}
-                priority
-              />
-            </div>
+            <StudioHomeLogo className={styles.brandKicker} logoClassName={styles.brandLogo} width={120} height={40} priority />
             <h1 className={styles.pageTitle}>안녕하세요, {teacher.name} 선생님</h1>
             <p className={styles.pageDescription}>오늘의 첫수업 신청 현황을 확인해보세요.</p>
             <div className={styles.metaRow}>

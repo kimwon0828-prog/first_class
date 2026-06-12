@@ -5,6 +5,7 @@ import { requireTeacherStudioAccess } from "@/features/studio/lib/require-teache
 import { getStudioApplicationDetail } from "@/features/studio/queries/get-studio-application-detail"
 import { ApplicationOutcomeForm } from "@/features/studio/ui/application-outcome-form"
 import { ApplicationLogList } from "@/features/studio/ui/application-log-list"
+import { StudioHomeLogo } from "@/features/studio/ui/studio-home-logo"
 import { ApplicationStatusActionForm } from "@/features/studio/ui/application-status-action-form"
 import { StudioApplicationDetailPanel } from "@/features/studio/ui/studio-application-detail-panel"
 import type { ApplicationStatus } from "@/shared/lib/db/adapter"
@@ -122,6 +123,7 @@ export default async function StudioApplicationDetailPage({
 
         <div className={styles.headerTitleRow}>
           <div>
+            <StudioHomeLogo />
             <p className={styles.kicker}>운영자 센터</p>
             <h1 className={styles.title}>체험신청 상세</h1>
             <p className={styles.subtitle}>신청 정보를 확인하고 상담 상태를 관리해요.</p>

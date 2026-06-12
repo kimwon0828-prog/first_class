@@ -1,8 +1,8 @@
 import { redirect } from "next/navigation"
-import Image from "next/image"
 
 import { getMyProfile } from "@/features/auth/queries/get-my-profile"
 import { getSession } from "@/features/auth/lib/session"
+import { StudioHomeLogo } from "@/features/studio/ui/studio-home-logo"
 import { StudioSignInForm } from "@/features/studio/ui/studio-sign-in-form"
 import styles from "./page.module.css"
 
@@ -44,14 +44,7 @@ export default async function StudioSignInPage({ searchParams }: StudioSignInPag
     <main className={styles.page}>
       <div className={styles.shell}>
         <section className={styles.brand}>
-          <Image
-            src="/images/first-class-logo.png"
-            alt="첫수업"
-            width={132}
-            height={44}
-            priority
-            className={styles.logo}
-          />
+          <StudioHomeLogo width={132} height={44} priority logoClassName={styles.logo} />
           <p className={styles.kicker}>운영자 센터</p>
           <h1 className={styles.headline}>
             체험수업 신청부터 상담,

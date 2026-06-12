@@ -1,6 +1,7 @@
 import { requireTeacherStudioAccess } from "@/features/studio/lib/require-teacher-studio-access"
 import { getStudioClasses } from "@/features/studio/queries/get-studio-classes"
 import { getStudioScheduleBlocks } from "@/features/studio/queries/get-studio-schedule-blocks"
+import { StudioHomeLogo } from "@/features/studio/ui/studio-home-logo"
 import { StudioScheduleManager } from "@/features/studio/ui/studio-schedule-manager"
 import Link from "next/link"
 
@@ -19,6 +20,7 @@ export default async function StudioSchedulePage() {
       <header className={styles.header}>
         <div className={styles.headerTop}>
           <div>
+            <StudioHomeLogo />
             <p className={styles.brandKicker}>운영자 센터</p>
             <h1 className={styles.title}>일정 관리</h1>
             <p className={styles.subtitle}>체험수업/레벨테스트 예약 가능 시간과 확정된 일정을 한눈에 확인해요.</p>

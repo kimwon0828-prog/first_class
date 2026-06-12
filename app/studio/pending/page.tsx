@@ -3,6 +3,7 @@ import { redirect } from "next/navigation"
 
 import { getMyProfile } from "@/features/auth/queries/get-my-profile"
 import { getSession } from "@/features/auth/lib/session"
+import { StudioHomeLogo } from "@/features/studio/ui/studio-home-logo"
 
 export default async function StudioPendingPage() {
   const session = await getSession()
@@ -25,6 +26,9 @@ export default async function StudioPendingPage() {
 
   return (
     <main style={{ maxWidth: 480, margin: "0 auto", padding: "60px 24px", textAlign: "center" }}>
+      <div style={{ marginBottom: 18, display: "flex", justifyContent: "center" }}>
+        <StudioHomeLogo />
+      </div>
       <h1 style={{ fontSize: 24, margin: "0 0 16px" }}>학원 계정 승인 대기 중입니다</h1>
       
       <p style={{ fontSize: 16, color: "#4b5563", lineHeight: "24px", marginBottom: 32 }}>
