@@ -1,11 +1,12 @@
 "use client"
 
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 
 import { getPublicEnv } from "@/shared/config/env"
 
 type NaverMapByAddressProps = {
   address: string
+  addressDetail?: string | null
   markerLabel?: string | null
   height?: number | string
 }
@@ -71,25 +72,22 @@ const loadNaverMapScript = async (clientId: string) => {
 
 export const NaverMapByAddress = ({
   address,
+  addressDetail,
   markerLabel,
   height = 260
 }: NaverMapByAddressProps) => {
   const containerRef = useRef<HTMLDivElement | null>(null)
   const [status, setStatus] = useState<MapStatus>("idle")
-  const fullAddress = address.trim()
+  const geocodeAddress = address.trim()
+  const displayAddress = `${address ?? ""} ${addressDetail ?? ""}`.trim()
   const mapHeight = typeof height === "number" ? `${height}px` : height
   const { naverMapClientId } = getPublicEnv()
-
-  const naverMapUrl = useMemo(
-    () => `https://map.naver.com/p/search/${encodeURIComponent(fullAddress)}`,
-    [fullAddress]
-  )
 
   useEffect(() => {
     let cancelled = false
 
     const boot = async () => {
-      if (!fullAddress || !containerRef.current || !naverMapClientId) {
+      if (!geocodeAddress || !containerRef.current || !naverMapClientId) {
         setStatus("error")
         return
       }
@@ -101,13 +99,25 @@ export const NaverMapByAddress = ({
         const service = window.naver?.maps?.Service
         const mapApi = window.naver?.maps
         if (!service || !mapApi) {
+          console.warn("[naver map] geocoder unavailable", {
+            hasService: Boolean(service),
+            hasMapApi: Boolean(mapApi)
+          })
           throw new Error("naver_map_unavailable")
         }
 
         await new Promise<void>((resolve, reject) => {
-          service.geocode({ query: fullAddress }, (geocodeStatus, response) => {
+          console.warn("[naver map] geocode query", { address: geocodeAddress })
+
+          service.geocode({ query: geocodeAddress }, (geocodeStatus, response) => {
             const successStatus = service.Status?.OK ?? "OK"
             const firstAddress = response.v2?.addresses?.[0]
+            const resultCount = response.v2?.addresses?.length ?? 0
+
+            console.warn("[naver map] geocode result", {
+              status: geocodeStatus,
+              resultCount
+            })
 
             if (geocodeStatus !== successStatus || !firstAddress) {
               reject(new Error("geocode_failed"))
@@ -118,6 +128,11 @@ export const NaverMapByAddress = ({
             const lng = Number(firstAddress.x)
 
             if (!Number.isFinite(lat) || !Number.isFinite(lng) || !containerRef.current) {
+              console.warn("[naver map] map init failed", {
+                lat,
+                lng,
+                hasContainer: Boolean(containerRef.current)
+              })
               reject(new Error("invalid_geocode_result"))
               return
             }
@@ -132,7 +147,7 @@ export const NaverMapByAddress = ({
             new mapApi.Marker({
               position,
               map,
-              title: markerLabel ?? fullAddress
+              title: markerLabel ?? (displayAddress || geocodeAddress)
             })
 
             resolve()
@@ -142,7 +157,10 @@ export const NaverMapByAddress = ({
         if (!cancelled) {
           setStatus("ready")
         }
-      } catch {
+      } catch (error) {
+        console.warn("[naver map] map init failed", {
+          message: error instanceof Error ? error.message : "unknown_error"
+        })
         if (!cancelled) {
           setStatus("error")
         }
@@ -154,7 +172,7 @@ export const NaverMapByAddress = ({
     return () => {
       cancelled = true
     }
-  }, [fullAddress, markerLabel, naverMapClientId])
+  }, [addressDetail, displayAddress, geocodeAddress, markerLabel, naverMapClientId])
 
   if (status === "error") {
     return (
@@ -167,30 +185,11 @@ export const NaverMapByAddress = ({
         }}
       >
         <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: "#111111" }}>
-          지도를 불러오지 못했어요.
+          지도를 불러오지 못했어요. 네이버 지도에서 위치를 확인해 주세요.
         </p>
-        <p style={{ margin: "8px 0 0", fontSize: 14, lineHeight: 1.6, color: "#4a4a4a" }}>{fullAddress}</p>
-        <a
-          href={naverMapUrl}
-          target="_blank"
-          rel="noreferrer"
-          style={{
-            marginTop: 12,
-            display: "inline-flex",
-            alignItems: "center",
-            justifyContent: "center",
-            minHeight: 40,
-            borderRadius: 10,
-            background: "#2aad38",
-            color: "#ffffff",
-            fontSize: 14,
-            fontWeight: 700,
-            textDecoration: "none",
-            padding: "0 14px"
-          }}
-        >
-          네이버 지도에서 보기
-        </a>
+        <p style={{ margin: "8px 0 0", fontSize: 14, lineHeight: 1.6, color: "#4a4a4a" }}>
+          {displayAddress || geocodeAddress}
+        </p>
       </div>
     )
   }

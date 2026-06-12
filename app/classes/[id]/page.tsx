@@ -55,7 +55,8 @@ export default async function ClassDetailPage({ params, searchParams }: ClassDet
   const organization = classItem?.organization ?? null
   const fullAddress = `${organization?.address ?? ""} ${organization?.addressDetail ?? ""}`.trim()
   const hasLocation = Boolean(organization?.address?.trim())
-  const naverMapUrl = `https://map.naver.com/p/search/${encodeURIComponent(fullAddress)}`
+  const searchQuery = fullAddress || organization?.address?.trim() || ""
+  const naverMapUrl = `https://map.naver.com/p/search/${encodeURIComponent(searchQuery)}`
   const organizationLabel = organization
     ? [organization.name, organization.branchName].filter(Boolean).join(" ")
     : ""
@@ -266,7 +267,8 @@ export default async function ClassDetailPage({ params, searchParams }: ClassDet
                       <p className={styles.bodyText}>{fullAddress}</p>
                     </div>
                     <NaverMapByAddress
-                      address={fullAddress}
+                      address={organization?.address ?? ""}
+                      addressDetail={organization?.addressDetail ?? null}
                       markerLabel={organizationLabel || classItem.title}
                       height={260}
                     />
