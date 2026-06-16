@@ -267,8 +267,7 @@ export default async function ClassDetailPage({ params, searchParams }: ClassDet
                       <p className={styles.bodyText}>{fullAddress}</p>
                     </div>
                     <NaverMapByAddress
-                      address={organization?.address ?? ""}
-                      addressDetail={organization?.addressDetail ?? null}
+                      address={fullAddress}
                       markerLabel={organizationLabel || classItem.title}
                       height={260}
                     />

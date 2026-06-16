@@ -211,7 +211,8 @@
   background: #ffffff;
   border-top: 1px solid #eeeeee;
   padding: 14px 24px calc(20px + env(safe-area-inset-bottom));
-  z-index: 60;
+  z-index: 1000;
+  isolation: isolate;
 }
 
 .ctaButton {
