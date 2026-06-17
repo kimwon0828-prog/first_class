@@ -29,7 +29,7 @@ const validateForm = (formData: FormData) => {
   const preferredRegularScheduleRaw = String(formData.get("preferredRegularSchedule") ?? "").trim()
   const goalTypeRaw = String(formData.get("goalType") ?? "").trim()
   const goalNoteRaw = String(formData.get("goalNote") ?? "").trim()
-  const selectedScheduleBlockId = String(formData.get("selectedScheduleBlockId") ?? "").trim()
+  const selectedScheduleOptionId = String(formData.get("selectedScheduleOptionId") ?? "").trim()
   const memoRaw = String(formData.get("memo") ?? "").trim()
   const childSchool = childSchoolRaw.length > 0 ? childSchoolRaw : null
   const childNotes = childNotesRaw.length > 0 ? childNotesRaw : null
@@ -65,7 +65,7 @@ const validateForm = (formData: FormData) => {
     return { ok: false as const, message: "보호자 연락처를 입력해 주세요." }
   }
 
-  if (!selectedScheduleBlockId) {
+  if (!selectedScheduleOptionId) {
     return { ok: false as const, message: "예약 가능 시간대를 선택해 주세요." }
   }
 
@@ -84,7 +84,7 @@ const validateForm = (formData: FormData) => {
     preferredRegularSchedule,
     goalType,
     goalNote,
-    selectedScheduleBlockId,
+    selectedScheduleOptionId,
     memo
   }
 }
@@ -146,7 +146,7 @@ export async function createTrialApplicationAction(
 
     const availableSlots = await dataAdapter.listAvailableScheduleSlotsByClassId(classId)
     const selectedSlot =
-      availableSlots.find((slot) => slot.id === validated.selectedScheduleBlockId) ?? null
+      availableSlots.find((slot) => slot.optionId === validated.selectedScheduleOptionId) ?? null
 
     if (!selectedSlot) {
       return {
@@ -178,7 +178,7 @@ export async function createTrialApplicationAction(
       preferredRegularSchedule: validated.preferredRegularSchedule,
       goalType: validated.goalType,
       goalNote: validated.goalNote,
-      selectedScheduleBlockId: validated.selectedScheduleBlockId,
+      selectedScheduleOptionId: validated.selectedScheduleOptionId,
       memo: validated.memo
     })
   } catch (error) {

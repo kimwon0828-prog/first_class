@@ -327,8 +327,13 @@ const toAvailableScheduleSlot = (
 
   return {
     id: slot.id,
+    source: "schedule_block",
+    optionId: `schedule_block:${slot.id}`,
+    classScheduleId: null,
+    scheduleBlockId: slot.id,
     teacherId: slot.teacherId,
     classId: slot.classId,
+    label: formatConcreteOccurrenceLabel(slot.startAt, slot.endAt),
     startAt: slot.startAt,
     endAt: slot.endAt,
     capacity: slot.capacity,
@@ -336,6 +341,197 @@ const toAvailableScheduleSlot = (
     remainingCount,
     isClosed: remainingCount <= 0
   }
+}
+
+const WEEKDAY_LABELS = [
+  "일요일",
+  "월요일",
+  "화요일",
+  "수요일",
+  "목요일",
+  "금요일",
+  "토요일"
+] as const
+
+const WEEKLY_OCCURRENCE_COUNT = 4
+
+const formatTimeText = (value: string) => {
+  const trimmed = value.trim()
+  return trimmed.length >= 5 ? trimmed.slice(0, 5) : trimmed
+}
+
+const formatConcreteOccurrenceLabel = (startAt: string, endAt: string) => {
+  const startDate = new Date(startAt)
+  const endDate = new Date(endAt)
+
+  if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) {
+    return startAt
+  }
+
+  return `${startDate.getFullYear()}.${String(startDate.getMonth() + 1).padStart(2, "0")}.${String(
+    startDate.getDate()
+  ).padStart(2, "0")} ${WEEKDAY_LABELS[startDate.getDay()]} ${String(startDate.getHours()).padStart(
+    2,
+    "0"
+  )}:${String(startDate.getMinutes()).padStart(2, "0")}~${String(endDate.getHours()).padStart(2, "0")}:${String(
+    endDate.getMinutes()
+  ).padStart(2, "0")}`
+}
+
+const buildOccurrenceRange = (dateText: string, startTime: string, endTime: string) => {
+  const startDate = new Date(`${dateText}T${startTime}`)
+  const endDate = new Date(`${dateText}T${endTime}`)
+
+  if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime()) || endDate <= startDate) {
+    return null
+  }
+
+  return {
+    startAt: startDate.toISOString(),
+    endAt: endDate.toISOString()
+  }
+}
+
+const generateUpcomingClassScheduleOccurrences = (
+  schedule: StudioClassScheduleItem,
+  now: Date = new Date()
+): Array<{ startAt: string; endAt: string; label: string }> => {
+  const startTime = formatTimeText(schedule.startTime)
+  const endTime = formatTimeText(schedule.endTime)
+
+  if (schedule.scheduleType === "one_time") {
+    if (!schedule.specificDate) {
+      return []
+    }
+
+    const occurrence = buildOccurrenceRange(schedule.specificDate, startTime, endTime)
+    if (!occurrence || new Date(occurrence.startAt) <= now) {
+      return []
+    }
+
+    return [{ ...occurrence, label: schedule.displayLabel?.trim() || formatConcreteOccurrenceLabel(occurrence.startAt, occurrence.endAt) }]
+  }
+
+  if (schedule.dayOfWeek == null || schedule.dayOfWeek < 0 || schedule.dayOfWeek > 6) {
+    return []
+  }
+
+  const occurrences: Array<{ startAt: string; endAt: string; label: string }> = []
+  const baseDate = new Date(now)
+  baseDate.setHours(0, 0, 0, 0)
+
+  for (let dayOffset = 0; dayOffset < 56 && occurrences.length < WEEKLY_OCCURRENCE_COUNT; dayOffset += 1) {
+    const candidate = new Date(baseDate)
+    candidate.setDate(baseDate.getDate() + dayOffset)
+
+    if (candidate.getDay() !== schedule.dayOfWeek) {
+      continue
+    }
+
+    const dateText = `${candidate.getFullYear()}-${String(candidate.getMonth() + 1).padStart(2, "0")}-${String(
+      candidate.getDate()
+    ).padStart(2, "0")}`
+    const occurrence = buildOccurrenceRange(dateText, startTime, endTime)
+
+    if (!occurrence || new Date(occurrence.startAt) <= now) {
+      continue
+    }
+
+    occurrences.push({
+      ...occurrence,
+      label: schedule.displayLabel?.trim() || formatConcreteOccurrenceLabel(occurrence.startAt, occurrence.endAt)
+    })
+  }
+
+  return occurrences
+}
+
+const toAvailableClassScheduleSlot = (input: {
+  schedule: StudioClassScheduleItem
+  teacherId: string
+  classId: string
+  startAt: string
+  endAt: string
+  label: string
+  capacity: number
+  appliedCount: number
+  scheduleBlockId: string | null
+  isClosed?: boolean
+}): AvailableScheduleSlot => {
+  const remainingCount = Math.max(0, input.capacity - input.appliedCount)
+  return {
+    id: `class_schedule:${input.schedule.id}:${input.startAt}`,
+    source: "class_schedule",
+    optionId: `class_schedule:${input.schedule.id}:${input.startAt}`,
+    classScheduleId: input.schedule.id,
+    scheduleBlockId: input.scheduleBlockId,
+    teacherId: input.teacherId,
+    classId: input.classId,
+    label: input.label,
+    startAt: input.startAt,
+    endAt: input.endAt,
+    capacity: input.capacity,
+    appliedCount: input.appliedCount,
+    remainingCount,
+    isClosed: input.isClosed ?? remainingCount <= 0
+  }
+}
+
+const parseSelectedScheduleOptionId = (value: string | undefined) => {
+  const normalized = value?.trim()
+  if (!normalized) {
+    return null
+  }
+
+  if (normalized.startsWith("schedule_block:")) {
+    const scheduleBlockId = normalized.slice("schedule_block:".length).trim()
+    return scheduleBlockId ? ({ source: "schedule_block", scheduleBlockId } as const) : null
+  }
+
+  if (normalized.startsWith("class_schedule:")) {
+    const [, classScheduleId, ...startAtParts] = normalized.split(":")
+    const occurrenceStartAt = startAtParts.join(":").trim()
+    if (!classScheduleId || !occurrenceStartAt) {
+      return null
+    }
+
+    return { source: "class_schedule", classScheduleId, occurrenceStartAt } as const
+  }
+
+  return null
+}
+
+const buildRequestedOccurrenceEndAt = (
+  requestedSlotAt: string,
+  schedule: Pick<StudioClassScheduleItem, "startTime" | "endTime">
+) => {
+  const startDate = new Date(requestedSlotAt)
+  if (Number.isNaN(startDate.getTime())) {
+    return null
+  }
+
+  const startTimeText = formatTimeText(schedule.startTime)
+  const endTimeText = formatTimeText(schedule.endTime)
+  const startHour = Number(startTimeText.slice(0, 2))
+  const startMinute = Number(startTimeText.slice(3, 5))
+  const endHour = Number(endTimeText.slice(0, 2))
+  const endMinute = Number(endTimeText.slice(3, 5))
+
+  if ([startHour, startMinute, endHour, endMinute].some((value) => Number.isNaN(value))) {
+    return null
+  }
+
+  if (startDate.getHours() !== startHour || startDate.getMinutes() !== startMinute) {
+    return null
+  }
+
+  const endDate = new Date(startDate)
+  endDate.setHours(endHour, endMinute, 0, 0)
+  if (endDate <= startDate) {
+    return null
+  }
+
+  return endDate.toISOString()
 }
 
 const getAppliedCountForSlot = (slotId: string, slotStartAt: string, teacherId?: string) => {
@@ -767,6 +963,46 @@ export const mockDataAdapter: DataAdapter = {
     const teacherId = classItem.teacherId
 
     const nowMs = Date.now()
+    if (classItem.schedules && classItem.schedules.length > 0) {
+      const existingBlocks = scheduleBlocks.filter((slot) => slot.classId === classId)
+
+      return classItem.schedules
+        .flatMap((schedule) =>
+          generateUpcomingClassScheduleOccurrences(schedule).map((occurrence) => {
+            const matchedBlock =
+              existingBlocks.find(
+                (slot) => slot.startAt === occurrence.startAt && slot.endAt === occurrence.endAt && slot.type === "available"
+              ) ??
+              existingBlocks.find((slot) => slot.startAt === occurrence.startAt && slot.endAt === occurrence.endAt) ??
+              null
+            const appliedCount =
+              matchedBlock && matchedBlock.type === "available"
+                ? applications.filter(
+                    (application) =>
+                      application.classId === classId &&
+                      application.requestedScheduleBlockId === matchedBlock.id &&
+                      ACTIVE_APPLICATION_STATUSES.includes(application.status)
+                  ).length
+                : 0
+            const capacity = matchedBlock?.capacity ?? Math.max(1, schedule.capacity ?? 1)
+
+            return toAvailableClassScheduleSlot({
+              schedule,
+              teacherId,
+              classId,
+              startAt: occurrence.startAt,
+              endAt: occurrence.endAt,
+              label: occurrence.label,
+              capacity,
+              appliedCount,
+              scheduleBlockId: matchedBlock?.type === "available" ? matchedBlock.id : null,
+              isClosed: matchedBlock != null && matchedBlock.type !== "available" ? true : undefined
+            })
+          })
+        )
+        .sort((a, b) => (a.startAt > b.startAt ? 1 : -1))
+    }
+
     const primarySlots = scheduleBlocks
       .filter((slot) => slot.classId === classId)
       .filter((slot) => slot.type === "available")
@@ -916,12 +1152,57 @@ export const mockDataAdapter: DataAdapter = {
     target.updatedAt = new Date().toISOString()
 
     if (input.nextStatus === "confirmed") {
-      if (!target.requestedScheduleBlockId) {
+      if (target.requestedScheduleBlockId) {
+        target.confirmedSlotAt = target.requestedSlotAt
+        target.confirmedScheduleBlockId = target.requestedScheduleBlockId
+      } else if (target.classScheduleId) {
+        const classItem = classes.find((item) => item.id === target.classId)
+        const schedule = classItem?.schedules?.find((item) => item.id === target.classScheduleId) ?? null
+
+        if (!classItem?.teacherId || !schedule) {
+          throw new Error("failed_to_prepare_application_status_update")
+        }
+
+        const requestedEndAt = buildRequestedOccurrenceEndAt(target.requestedSlotAt, schedule)
+        if (!requestedEndAt) {
+          throw new Error("invalid_requested_class_schedule_occurrence")
+        }
+
+        const existingBlocks = scheduleBlocks.filter(
+          (slot) =>
+            slot.classId === target.classId &&
+            slot.startAt === target.requestedSlotAt &&
+            slot.endAt === requestedEndAt
+        )
+        const availableBlock = existingBlocks.find((slot) => slot.type === "available") ?? null
+
+        if (!availableBlock && existingBlocks.length > 0) {
+          throw new Error("schedule_block_conflict_for_requested_occurrence")
+        }
+
+        let resolvedBlock = availableBlock
+        if (!resolvedBlock) {
+          resolvedBlock = {
+            id: `slot-${scheduleBlocks.length + 1}`,
+            teacherId: classItem.teacherId,
+            classId: target.classId,
+            type: "available",
+            startAt: target.requestedSlotAt,
+            endAt: requestedEndAt,
+            capacity: Math.max(1, schedule.capacity ?? 1),
+            appliedCount: 0,
+            remainingCount: Math.max(1, schedule.capacity ?? 1),
+            isClosed: false
+          }
+          scheduleBlocks.push(resolvedBlock)
+        }
+
+        target.requestedScheduleBlockId = resolvedBlock.id
+        target.confirmedSlotAt = target.requestedSlotAt
+        target.confirmedScheduleBlockId = resolvedBlock.id
+      } else {
         throw new Error("missing_requested_schedule_block")
       }
-
-      target.confirmedSlotAt = target.requestedSlotAt
-      target.confirmedScheduleBlockId = target.requestedScheduleBlockId
     }
 
     applicationLogs.unshift({
@@ -964,12 +1245,20 @@ export const mockDataAdapter: DataAdapter = {
     })
   },
   async createTrialApplication(input: TrialApplicationInput) {
-    if (!input.selectedScheduleBlockId) {
+    const parsedScheduleOption = parseSelectedScheduleOptionId(
+      input.selectedScheduleOptionId ??
+        (input.selectedScheduleBlockId ? `schedule_block:${input.selectedScheduleBlockId}` : undefined)
+    )
+
+    if (!parsedScheduleOption) {
       throw new Error("invalid_schedule_slot")
     }
 
     const available = await this.listAvailableScheduleSlotsByClassId(input.classId)
-    const matchedSlot = available.find((slot) => slot.id === input.selectedScheduleBlockId)
+    const matchedSlot = available.find((slot) => slot.optionId === input.selectedScheduleOptionId) ??
+      (parsedScheduleOption.source === "schedule_block"
+        ? available.find((slot) => slot.scheduleBlockId === parsedScheduleOption.scheduleBlockId)
+        : available.find((slot) => slot.optionId === `class_schedule:${parsedScheduleOption.classScheduleId}:${parsedScheduleOption.occurrenceStartAt}`))
 
     if (!matchedSlot) {
       throw new Error("invalid_schedule_slot")
@@ -1003,7 +1292,10 @@ export const mockDataAdapter: DataAdapter = {
       childGrade: input.childGrade,
       parentName: input.parentName,
       parentPhone: input.parentPhone,
-      requestedScheduleBlockId: matchedSlot.id,
+      classScheduleId: matchedSlot.classScheduleId,
+      requestedScheduleBlockId:
+        matchedSlot.source === "schedule_block" ? matchedSlot.scheduleBlockId ?? null : null,
+      selectedScheduleLabel: matchedSlot.label,
       requestedSlotAt: matchedSlot.startAt,
       confirmedSlotAt: null,
       status: "new",

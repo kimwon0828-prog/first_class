@@ -102,7 +102,9 @@ type TrialApplicationRow = {
   goal_type?: string | null
   goal_note?: string | null
   requested_slot_at: string
+  class_schedule_id?: string | null
   requested_schedule_block_id?: string | null
+  selected_schedule_label?: string | null
   confirmed_slot_at?: string | null
   confirmed_schedule_block_id?: string | null
   assigned_teacher_id?: string | null
@@ -349,7 +351,9 @@ const mapApplication = (row: TrialApplicationRow): TrialApplicationSummary => {
     childGrade: row.child_grade,
     parentName: row.parent_name ?? null,
     parentPhone: row.parent_phone ?? null,
+    classScheduleId: row.class_schedule_id ?? null,
     requestedScheduleBlockId: row.requested_schedule_block_id ?? null,
+    selectedScheduleLabel: row.selected_schedule_label ?? null,
     requestedSlotAt: row.requested_slot_at,
     confirmedSlotAt: row.confirmed_slot_at ?? null,
     status: row.status,
@@ -401,8 +405,13 @@ const mapApplicationLog = (
 
 const mapAvailableSlot = (row: ScheduleBlockRow): AvailableScheduleSlot => ({
   id: row.id,
+  source: "schedule_block",
+  optionId: `schedule_block:${row.id}`,
+  classScheduleId: null,
+  scheduleBlockId: row.id,
   teacherId: row.teacher_id,
   classId: row.class_id ?? null,
+  label: formatConcreteOccurrenceLabel(row.start_at, row.end_at),
   startAt: row.start_at,
   endAt: row.end_at,
   capacity: row.capacity,
@@ -410,6 +419,36 @@ const mapAvailableSlot = (row: ScheduleBlockRow): AvailableScheduleSlot => ({
   remainingCount: row.capacity,
   isClosed: false
 })
+
+const mapClassScheduleOccurrenceSlot = (input: {
+  row: ClassScheduleRow
+  teacherId: string
+  startAt: string
+  endAt: string
+  label: string
+  capacity: number
+  appliedCount: number
+  scheduleBlockId: string | null
+  isClosed?: boolean
+}): AvailableScheduleSlot => {
+  const remainingCount = Math.max(0, input.capacity - input.appliedCount)
+  return {
+    id: `class_schedule:${input.row.id}:${input.startAt}`,
+    source: "class_schedule",
+    optionId: `class_schedule:${input.row.id}:${input.startAt}`,
+    classScheduleId: input.row.id,
+    scheduleBlockId: input.scheduleBlockId,
+    teacherId: input.teacherId,
+    classId: input.row.class_id,
+    label: input.label,
+    startAt: input.startAt,
+    endAt: input.endAt,
+    capacity: input.capacity,
+    appliedCount: input.appliedCount,
+    remainingCount,
+    isClosed: input.isClosed ?? remainingCount <= 0
+  }
+}
 
 const mapScheduleBlockType = (value: string | undefined): StudioScheduleBlockType => {
   if (
@@ -481,6 +520,186 @@ const ACTIVE_APPLICATION_STATUSES: TrialApplicationSummary["status"][] = [
   "reviewing",
   "confirmed"
 ]
+
+const WEEKDAY_LABELS = [
+  "일요일",
+  "월요일",
+  "화요일",
+  "수요일",
+  "목요일",
+  "금요일",
+  "토요일"
+] as const
+
+const WEEKLY_OCCURRENCE_COUNT = 4
+
+const formatTimeText = (value: string) => {
+  const trimmed = value.trim()
+  return trimmed.length >= 5 ? trimmed.slice(0, 5) : trimmed
+}
+
+const formatConcreteOccurrenceLabel = (startAt: string, endAt: string) => {
+  const startDate = new Date(startAt)
+  const endDate = new Date(endAt)
+
+  if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) {
+    return startAt
+  }
+
+  const dateText = `${startDate.getFullYear()}.${String(startDate.getMonth() + 1).padStart(2, "0")}.${String(
+    startDate.getDate()
+  ).padStart(2, "0")}`
+  const weekdayText = WEEKDAY_LABELS[startDate.getDay()]
+  const timeText = `${String(startDate.getHours()).padStart(2, "0")}:${String(
+    startDate.getMinutes()
+  ).padStart(2, "0")}~${String(endDate.getHours()).padStart(2, "0")}:${String(
+    endDate.getMinutes()
+  ).padStart(2, "0")}`
+
+  return `${dateText} ${weekdayText} ${timeText}`
+}
+
+const buildOccurrenceRange = (dateText: string, startTime: string, endTime: string) => {
+  const startDate = new Date(`${dateText}T${startTime}`)
+  const endDate = new Date(`${dateText}T${endTime}`)
+
+  if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime()) || endDate <= startDate) {
+    return null
+  }
+
+  return {
+    startAt: startDate.toISOString(),
+    endAt: endDate.toISOString()
+  }
+}
+
+const formatClassScheduleDefaultLabel = (row: ClassScheduleRow, startAt: string, endAt: string) => {
+  if (row.display_label?.trim()) {
+    return row.display_label.trim()
+  }
+
+  return formatConcreteOccurrenceLabel(startAt, endAt)
+}
+
+const generateUpcomingClassScheduleOccurrences = (
+  row: ClassScheduleRow,
+  now: Date = new Date()
+): Array<{ startAt: string; endAt: string; label: string }> => {
+  const startTime = formatTimeText(row.start_time)
+  const endTime = formatTimeText(row.end_time)
+
+  if (row.schedule_type === "one_time") {
+    if (!row.specific_date) {
+      return []
+    }
+
+    const occurrence = buildOccurrenceRange(row.specific_date, startTime, endTime)
+    if (!occurrence) {
+      return []
+    }
+
+    return new Date(occurrence.startAt) > now
+      ? [{ ...occurrence, label: formatClassScheduleDefaultLabel(row, occurrence.startAt, occurrence.endAt) }]
+      : []
+  }
+
+  if (row.day_of_week == null || row.day_of_week < 0 || row.day_of_week > 6) {
+    return []
+  }
+
+  const occurrences: Array<{ startAt: string; endAt: string; label: string }> = []
+  const baseDate = new Date(now)
+  baseDate.setHours(0, 0, 0, 0)
+
+  for (let dayOffset = 0; dayOffset < 56 && occurrences.length < WEEKLY_OCCURRENCE_COUNT; dayOffset += 1) {
+    const candidate = new Date(baseDate)
+    candidate.setDate(baseDate.getDate() + dayOffset)
+
+    if (candidate.getDay() !== row.day_of_week) {
+      continue
+    }
+
+    const dateText = `${candidate.getFullYear()}-${String(candidate.getMonth() + 1).padStart(2, "0")}-${String(
+      candidate.getDate()
+    ).padStart(2, "0")}`
+    const occurrence = buildOccurrenceRange(dateText, startTime, endTime)
+    if (!occurrence) {
+      continue
+    }
+
+    if (new Date(occurrence.startAt) <= now) {
+      continue
+    }
+
+    occurrences.push({
+      ...occurrence,
+      label: formatClassScheduleDefaultLabel(row, occurrence.startAt, occurrence.endAt)
+    })
+  }
+
+  return occurrences
+}
+
+const parseSelectedScheduleOptionId = (value: string | undefined) => {
+  const normalized = value?.trim()
+  if (!normalized) {
+    return null
+  }
+
+  if (normalized.startsWith("schedule_block:")) {
+    const scheduleBlockId = normalized.slice("schedule_block:".length).trim()
+    return scheduleBlockId ? ({ source: "schedule_block", scheduleBlockId } as const) : null
+  }
+
+  if (normalized.startsWith("class_schedule:")) {
+    const [, classScheduleId, ...startAtParts] = normalized.split(":")
+    const occurrenceStartAt = startAtParts.join(":").trim()
+    if (!classScheduleId || !occurrenceStartAt) {
+      return null
+    }
+
+    return { source: "class_schedule", classScheduleId, occurrenceStartAt } as const
+  }
+
+  return null
+}
+
+const buildRequestedOccurrenceEndAt = (
+  requestedSlotAt: string,
+  classScheduleRow: Pick<ClassScheduleRow, "start_time" | "end_time">
+) => {
+  const startDate = new Date(requestedSlotAt)
+  if (Number.isNaN(startDate.getTime())) {
+    return null
+  }
+
+  const startTimeText = formatTimeText(classScheduleRow.start_time)
+  const endTimeText = formatTimeText(classScheduleRow.end_time)
+  const startHour = Number(startTimeText.slice(0, 2))
+  const startMinute = Number(startTimeText.slice(3, 5))
+  const endHour = Number(endTimeText.slice(0, 2))
+  const endMinute = Number(endTimeText.slice(3, 5))
+
+  if ([startHour, startMinute, endHour, endMinute].some((value) => Number.isNaN(value))) {
+    return null
+  }
+
+  if (
+    startDate.getHours() !== startHour ||
+    startDate.getMinutes() !== startMinute
+  ) {
+    return null
+  }
+
+  const endDate = new Date(startDate)
+  endDate.setHours(endHour, endMinute, 0, 0)
+
+  if (endDate <= startDate) {
+    return null
+  }
+
+  return endDate.toISOString()
+}
 
 const TEACHER_SELECT_FIELDS =
   "id, profile_id, organization_id, display_name, specialty, intro, career_years, is_active, created_at"
@@ -1610,6 +1829,70 @@ export const supabaseDataAdapter: DataAdapter = {
     }
 
     const nowIso = new Date().toISOString()
+    const { data: classScheduleData, error: classScheduleError } = await supabase
+      .from("class_schedules")
+      .select(CLASS_SCHEDULE_SELECT_FIELDS)
+      .eq("class_id", classId)
+      .order("sort_order", { ascending: true })
+      .order("created_at", { ascending: true })
+
+    if (classScheduleError) {
+      throw new Error("failed_to_fetch_available_schedule_slots")
+    }
+
+    const classScheduleRows = (classScheduleData ?? []) as ClassScheduleRow[]
+
+    if (classScheduleRows.length > 0) {
+      const { data: existingBlockData, error: existingBlockError } = await supabase
+        .from("schedule_blocks")
+        .select(SCHEDULE_BLOCK_SELECT_FIELDS)
+        .eq("class_id", classId)
+        .gt("end_at", nowIso)
+        .order("start_at", { ascending: true })
+
+      if (existingBlockError) {
+        throw new Error("failed_to_fetch_available_schedule_slots")
+      }
+
+      const existingBlocks = (existingBlockData ?? []) as ScheduleBlockRow[]
+      const availableBlocks = existingBlocks.filter((row) => row.type === "available")
+      const appliedCountBySlotId = await getAppliedCountByClassScheduleBlockId(classId, availableBlocks)
+      const blockByRange = new Map<string, ScheduleBlockRow>()
+
+      for (const block of existingBlocks) {
+        const key = `${block.start_at}|${block.end_at}`
+        const current = blockByRange.get(key)
+        if (!current || current.type !== "available") {
+          blockByRange.set(key, block)
+        }
+      }
+
+      return classScheduleRows
+        .flatMap((row) => {
+          return generateUpcomingClassScheduleOccurrences(row).map((occurrence) => {
+            const key = `${occurrence.startAt}|${occurrence.endAt}`
+            const matchedBlock = blockByRange.get(key) ?? null
+            const isAvailableBlock = matchedBlock?.type === "available"
+            const capacity = matchedBlock?.capacity ?? Math.max(1, row.capacity ?? 1)
+            const appliedCount =
+              matchedBlock && isAvailableBlock ? (appliedCountBySlotId.get(matchedBlock.id) ?? 0) : 0
+
+            return mapClassScheduleOccurrenceSlot({
+              row,
+              teacherId: classData.teacher_id,
+              startAt: occurrence.startAt,
+              endAt: occurrence.endAt,
+              label: occurrence.label,
+              capacity,
+              appliedCount,
+              scheduleBlockId: isAvailableBlock ? matchedBlock?.id ?? null : null,
+              isClosed: matchedBlock != null && !isAvailableBlock ? true : undefined
+            })
+          })
+        })
+        .sort((a, b) => a.startAt.localeCompare(b.startAt))
+    }
+
     const { data: primaryData, error: primaryError } = await supabase
       .from("schedule_blocks")
       .select("id, teacher_id, class_id, start_at, end_at, capacity")
@@ -1765,6 +2048,7 @@ export const supabaseDataAdapter: DataAdapter = {
     const updatePayload: {
       status: TrialApplicationSummary["status"]
       updated_at: string
+      requested_schedule_block_id?: string | null
       confirmed_slot_at?: string | null
       confirmed_schedule_block_id?: string | null
     } = {
@@ -1775,7 +2059,7 @@ export const supabaseDataAdapter: DataAdapter = {
     if (input.nextStatus === "confirmed") {
       const { data: currentRow, error: currentError } = await supabase
         .from("trial_applications")
-        .select("requested_slot_at, requested_schedule_block_id")
+        .select("class_id, requested_slot_at, requested_schedule_block_id, class_schedule_id")
         .eq("id", input.applicationId)
         .maybeSingle()
 
@@ -1783,12 +2067,89 @@ export const supabaseDataAdapter: DataAdapter = {
         throw new Error("failed_to_prepare_application_status_update")
       }
 
-      if (!currentRow.requested_schedule_block_id) {
+      if (currentRow.requested_schedule_block_id) {
+        updatePayload.confirmed_slot_at = currentRow.requested_slot_at
+        updatePayload.confirmed_schedule_block_id = currentRow.requested_schedule_block_id
+      } else if (currentRow.class_schedule_id) {
+        const { data: classScheduleData, error: classScheduleError } = await supabase
+          .from("class_schedules")
+          .select("id, class_id, start_time, end_time, capacity")
+          .eq("id", currentRow.class_schedule_id)
+          .eq("class_id", currentRow.class_id)
+          .maybeSingle()
+
+        if (classScheduleError || !classScheduleData) {
+          throw new Error("failed_to_prepare_application_status_update")
+        }
+
+        const requestedSlotAt = currentRow.requested_slot_at
+        const requestedEndAt = buildRequestedOccurrenceEndAt(
+          requestedSlotAt,
+          classScheduleData as Pick<ClassScheduleRow, "start_time" | "end_time">
+        )
+
+        if (!requestedEndAt) {
+          throw new Error("invalid_requested_class_schedule_occurrence")
+        }
+
+        const { data: existingBlockData, error: existingBlockError } = await supabase
+          .from("schedule_blocks")
+          .select("id, teacher_id, class_id, start_at, end_at, capacity, type")
+          .eq("class_id", currentRow.class_id)
+          .eq("start_at", requestedSlotAt)
+          .eq("end_at", requestedEndAt)
+
+        if (existingBlockError) {
+          throw new Error("failed_to_prepare_application_status_update")
+        }
+
+        const existingBlocks = (existingBlockData ?? []) as ScheduleBlockRow[]
+        const availableBlock = existingBlocks.find((row) => row.type === "available") ?? null
+
+        if (!availableBlock && existingBlocks.length > 0) {
+          throw new Error("schedule_block_conflict_for_requested_occurrence")
+        }
+
+        let resolvedBlock = availableBlock
+        if (!resolvedBlock) {
+          const { data: classData, error: classError } = await supabase
+            .from("classes")
+            .select("teacher_id")
+            .eq("id", currentRow.class_id)
+            .maybeSingle()
+
+          if (classError || !classData?.teacher_id) {
+            throw new Error("failed_to_prepare_application_status_update")
+          }
+
+          const capacity = Math.max(1, Number(classScheduleData.capacity ?? 1))
+          const { data: createdBlock, error: createBlockError } = await supabase
+            .from("schedule_blocks")
+            .insert({
+              teacher_id: classData.teacher_id,
+              class_id: currentRow.class_id,
+              type: "available",
+              start_at: requestedSlotAt,
+              end_at: requestedEndAt,
+              capacity,
+              updated_at: new Date().toISOString()
+            })
+            .select("id, teacher_id, class_id, start_at, end_at, capacity, type")
+            .single()
+
+          if (createBlockError || !createdBlock) {
+            throw new Error("failed_to_create_schedule_block_for_confirmation")
+          }
+
+          resolvedBlock = createdBlock as ScheduleBlockRow
+        }
+
+        updatePayload.requested_schedule_block_id = resolvedBlock.id
+        updatePayload.confirmed_slot_at = requestedSlotAt
+        updatePayload.confirmed_schedule_block_id = resolvedBlock.id
+      } else {
         throw new Error("missing_requested_schedule_block")
       }
-
-      updatePayload.confirmed_slot_at = currentRow.requested_slot_at
-      updatePayload.confirmed_schedule_block_id = currentRow.requested_schedule_block_id
     }
 
     const { data, error } = await supabase
@@ -1879,7 +2240,12 @@ export const supabaseDataAdapter: DataAdapter = {
   },
   async createTrialApplication(input: TrialApplicationInput) {
     const supabase = await getSupabaseServerClient()
-    if (!input.selectedScheduleBlockId) {
+    const parsedScheduleOption = parseSelectedScheduleOptionId(
+      input.selectedScheduleOptionId ??
+        (input.selectedScheduleBlockId ? `schedule_block:${input.selectedScheduleBlockId}` : undefined)
+    )
+
+    if (!parsedScheduleOption) {
       throw new Error("invalid_schedule_slot")
     }
 
@@ -1895,33 +2261,92 @@ export const supabaseDataAdapter: DataAdapter = {
     }
 
     const nowIso = new Date().toISOString()
-    const { data: slotData, error: slotError } = await supabase
-      .from("schedule_blocks")
-      .select("id, teacher_id, class_id, start_at, end_at, capacity, type")
-      .eq("id", input.selectedScheduleBlockId)
-      .eq("type", "available")
-      .gt("start_at", nowIso)
-      .maybeSingle()
+    let matchedSlot: AvailableScheduleSlot | null = null
+    let requestedScheduleBlockId: string | null = null
+    let requestedSlotAt = ""
+    let classScheduleId: string | null = null
+    let selectedScheduleLabel: string | null = null
 
-    if (slotError || !slotData) {
+    if (parsedScheduleOption.source === "schedule_block") {
+      const { data: slotData, error: slotError } = await supabase
+        .from("schedule_blocks")
+        .select("id, teacher_id, class_id, start_at, end_at, capacity, type")
+        .eq("id", parsedScheduleOption.scheduleBlockId)
+        .eq("type", "available")
+        .gt("start_at", nowIso)
+        .maybeSingle()
+
+      if (slotError || !slotData) {
+        throw new Error("invalid_schedule_slot")
+      }
+
+      matchedSlot = mapAvailableSlot(slotData as ScheduleBlockRow)
+      const isLinkedClassSlot = matchedSlot.classId === input.classId
+      const isLegacyTeacherFallbackSlot =
+        matchedSlot.classId == null && matchedSlot.teacherId === classData.teacher_id
+
+      if (!isLinkedClassSlot && !isLegacyTeacherFallbackSlot) {
+        throw new Error("invalid_schedule_slot")
+      }
+
+      const appliedCountBySlotId = isLegacyTeacherFallbackSlot
+        ? await getAppliedCountByTeacherScheduleBlockId(classData.teacher_id, [slotData as ScheduleBlockRow])
+        : await getAppliedCountByClassScheduleBlockId(input.classId, [slotData as ScheduleBlockRow])
+      const appliedCount = appliedCountBySlotId.get(matchedSlot.scheduleBlockId ?? matchedSlot.id) ?? 0
+
+      matchedSlot = {
+        ...matchedSlot,
+        appliedCount,
+        remainingCount: Math.max(0, matchedSlot.capacity - appliedCount),
+        isClosed: appliedCount >= matchedSlot.capacity
+      }
+      requestedScheduleBlockId = matchedSlot.scheduleBlockId
+      requestedSlotAt = matchedSlot.startAt
+      selectedScheduleLabel = matchedSlot.label
+    } else {
+      const { data: classScheduleData, error: classScheduleError } = await supabase
+        .from("class_schedules")
+        .select(CLASS_SCHEDULE_SELECT_FIELDS)
+        .eq("id", parsedScheduleOption.classScheduleId)
+        .eq("class_id", input.classId)
+        .maybeSingle()
+
+      if (classScheduleError || !classScheduleData) {
+        throw new Error("invalid_schedule_slot")
+      }
+
+      const classScheduleRow = classScheduleData as ClassScheduleRow
+      const occurrence = generateUpcomingClassScheduleOccurrences(classScheduleRow).find(
+        (item) => item.startAt === parsedScheduleOption.occurrenceStartAt
+      )
+
+      if (!occurrence) {
+        throw new Error("invalid_schedule_slot")
+      }
+      matchedSlot = mapClassScheduleOccurrenceSlot({
+        row: classScheduleRow,
+        teacherId: classData.teacher_id,
+        startAt: occurrence.startAt,
+        endAt: occurrence.endAt,
+        label: occurrence.label,
+        capacity: Math.max(1, classScheduleRow.capacity ?? 1),
+        appliedCount: 0,
+        scheduleBlockId: null
+      })
+      requestedSlotAt = occurrence.startAt
+      classScheduleId = classScheduleRow.id
+      selectedScheduleLabel = occurrence.label
+    }
+
+    if (!matchedSlot || !requestedSlotAt) {
       throw new Error("invalid_schedule_slot")
     }
 
-    const matchedSlot = mapAvailableSlot(slotData as ScheduleBlockRow)
-    const isLinkedClassSlot = matchedSlot.classId === input.classId
-    const isLegacyTeacherFallbackSlot =
-      matchedSlot.classId == null && matchedSlot.teacherId === classData.teacher_id
-
-    if (!isLinkedClassSlot && !isLegacyTeacherFallbackSlot) {
+    if (parsedScheduleOption.source === "schedule_block" && !requestedScheduleBlockId) {
       throw new Error("invalid_schedule_slot")
     }
 
-    const appliedCountBySlotId = isLegacyTeacherFallbackSlot
-      ? await getAppliedCountByTeacherScheduleBlockId(classData.teacher_id, [slotData as ScheduleBlockRow])
-      : await getAppliedCountByClassScheduleBlockId(input.classId, [slotData as ScheduleBlockRow])
-    const appliedCount = appliedCountBySlotId.get(matchedSlot.id) ?? 0
-
-    if (appliedCount >= matchedSlot.capacity) {
+    if (matchedSlot.appliedCount >= matchedSlot.capacity) {
       throw new Error("slot_capacity_reached")
     }
 
@@ -1931,7 +2356,7 @@ export const supabaseDataAdapter: DataAdapter = {
       .eq("parent_id", input.parentId)
       .eq("class_id", input.classId)
       .eq("child_name", input.childName)
-      .eq("requested_slot_at", matchedSlot.startAt)
+      .eq("requested_slot_at", requestedSlotAt)
       .in("status", ACTIVE_APPLICATION_STATUSES)
       .maybeSingle()
 
@@ -1961,13 +2386,15 @@ export const supabaseDataAdapter: DataAdapter = {
         preferred_regular_schedule: input.preferredRegularSchedule,
         goal_type: input.goalType,
         goal_note: input.goalNote,
-        requested_schedule_block_id: matchedSlot.id,
-        requested_slot_at: matchedSlot.startAt,
+        class_schedule_id: classScheduleId,
+        requested_schedule_block_id: requestedScheduleBlockId,
+        requested_slot_at: requestedSlotAt,
+        selected_schedule_label: selectedScheduleLabel,
         memo: input.memo,
         status: "new"
       })
       .select(
-        "id, class_id, parent_id, child_name, child_grade, parent_name, parent_phone, requested_schedule_block_id, requested_slot_at, confirmed_slot_at, goal_type, status, created_at, updated_at, classes(title, program_type)"
+        "id, class_id, parent_id, child_name, child_grade, parent_name, parent_phone, class_schedule_id, requested_schedule_block_id, selected_schedule_label, requested_slot_at, confirmed_slot_at, goal_type, status, created_at, updated_at, classes(title, program_type)"
       )
       .single()
 

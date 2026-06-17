@@ -68,7 +68,7 @@ export const ApplyForm = ({
   const boundAction = createTrialApplicationAction.bind(null, classId)
   const [state, formAction, isPending] = useActionState(boundAction, initialState)
   const [selectedChildId, setSelectedChildId] = useState("")
-  const [selectedSlotId, setSelectedSlotId] = useState("")
+  const [selectedOptionId, setSelectedOptionId] = useState("")
   const [childName, setChildName] = useState("")
   const [childGrade, setChildGrade] = useState("")
   const [childSchool, setChildSchool] = useState("")
@@ -79,8 +79,8 @@ export const ApplyForm = ({
   const [parentPhone, setParentPhone] = useState(parentPhoneDefault ?? "")
 
   const selectedSlot = useMemo(
-    () => availableSlots.find((slot) => slot.id === selectedSlotId) ?? null,
-    [availableSlots, selectedSlotId]
+    () => availableSlots.find((slot) => slot.optionId === selectedOptionId) ?? null,
+    [availableSlots, selectedOptionId]
   )
   const selectedChild = useMemo(
     () => childProfiles.find((child) => child.id === selectedChildId) ?? null,
@@ -95,9 +95,22 @@ export const ApplyForm = ({
 
   useEffect(() => {
     if (selectedSlot?.isClosed) {
-      setSelectedSlotId("")
+      setSelectedOptionId("")
     }
   }, [selectedSlot?.isClosed])
+
+  useEffect(() => {
+    const selectableSlots = availableSlots.filter((slot) => !slot.isClosed)
+
+    if (selectableSlots.length === 1) {
+      setSelectedOptionId(selectableSlots[0].optionId)
+      return
+    }
+
+    setSelectedOptionId((current) =>
+      availableSlots.some((slot) => slot.optionId === current && !slot.isClosed) ? current : ""
+    )
+  }, [availableSlots])
 
   useEffect(() => {
     if (!selectedChild) {
@@ -374,17 +387,17 @@ export const ApplyForm = ({
                 <input
                   className={styles.radio}
                   type="radio"
-                  name="selectedScheduleBlockId"
-                  value={slot.id}
+                  name="selectedScheduleOptionId"
+                  value={slot.optionId}
                   required={hasSelectableSlots}
-                  checked={selectedSlotId === slot.id}
+                  checked={selectedOptionId === slot.optionId}
                   onChange={() => {
-                    setSelectedSlotId(slot.id)
+                    setSelectedOptionId(slot.optionId)
                   }}
                   disabled={isPending || slot.isClosed}
                 />
                 <span className={styles.slotText}>
-                  {formatSlot(slot.startAt)}
+                  {slot.label || formatSlot(slot.startAt)}
                   {slot.isClosed ? (
                     <span className={styles.slotClosed}>마감</span>
                   ) : (

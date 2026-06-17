@@ -84,8 +84,13 @@ export type ClassDetail = ClassSummary & {
 
 export type AvailableScheduleSlot = {
   id: string
+  source: "class_schedule" | "schedule_block"
+  optionId: string
+  classScheduleId: string | null
+  scheduleBlockId: string | null
   teacherId: string
   classId: string | null
+  label: string
   startAt: string
   endAt: string
   capacity: number
@@ -229,6 +234,7 @@ export type TrialApplicationInput = {
   goalType: string | null
   goalNote: string | null
   requestedSlotAt?: string
+  selectedScheduleOptionId?: string
   selectedScheduleBlockId?: string
   memo: string | null
 }
@@ -272,7 +278,9 @@ export type TrialApplicationSummary = {
   childGrade: string
   parentName: string | null
   parentPhone: string | null
+  classScheduleId?: string | null
   requestedScheduleBlockId: string | null
+  selectedScheduleLabel?: string | null
   requestedSlotAt: string
   confirmedSlotAt: string | null
   status: ApplicationStatus
