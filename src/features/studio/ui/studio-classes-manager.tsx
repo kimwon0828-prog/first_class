@@ -120,6 +120,27 @@ export const StudioClassesManager = ({
     return () => window.clearTimeout(timeoutId)
   }, [toastOpen])
 
+  const scrollToForm = () => {
+    if (typeof window === "undefined") {
+      return
+    }
+
+    window.requestAnimationFrame(() => {
+      const formElement = document.getElementById("studio-class-form")
+      formElement?.scrollIntoView({ behavior: "smooth", block: "start" })
+    })
+  }
+
+  const handleCreateClick = () => {
+    setSelectedId(null)
+    scrollToForm()
+  }
+
+  const handleEditClick = (classId: string) => {
+    setSelectedId(classId)
+    scrollToForm()
+  }
+
   return (
     <div className={styles.root}>
       {toastOpen ? (
@@ -231,7 +252,7 @@ export const StudioClassesManager = ({
               <p className={styles.emptyDescription}>
                 첫 수업을 등록하면 학부모가 수업을 확인하고 신청할 수 있어요.
               </p>
-              <a href="#studio-class-form" className={styles.primaryButton}>
+              <a href="#studio-class-form" onClick={handleCreateClick} className={styles.primaryButton}>
                 수업 등록하기
               </a>
             </div>
@@ -249,7 +270,7 @@ export const StudioClassesManager = ({
                     </p>
                   </div>
                 </div>
-                <a href="#studio-class-form" onClick={() => setSelectedId(null)} className={styles.ctaButton}>
+                <a href="#studio-class-form" onClick={handleCreateClick} className={styles.ctaButton}>
                   새 프로그램 등록
                 </a>
               </div>
@@ -302,6 +323,9 @@ export const StudioClassesManager = ({
                               {item.isActive ? "공개 중" : "비공개"}
                             </span>
                             <span className={styles.programPill}>{PROGRAM_TYPE_LABELS[item.programType]}</span>
+                            {selectedId === item.id ? (
+                              <span className={`${styles.badge} ${styles.badgeActive}`}>수정 중</span>
+                            ) : null}
                           </div>
 
                           <p className={styles.classTitle}>{item.title}</p>
@@ -355,7 +379,7 @@ export const StudioClassesManager = ({
                           <ToggleClassActiveButton classId={item.id} isActive={item.isActive} />
                           <button
                             type="button"
-                            onClick={() => setSelectedId(item.id)}
+                            onClick={() => handleEditClick(item.id)}
                             className={styles.primaryButtonSm}
                           >
                             수정하기
@@ -371,8 +395,21 @@ export const StudioClassesManager = ({
         </section>
 
         <div className={styles.formCard}>
+          <div
+            role="status"
+            aria-live="polite"
+            style={{
+              marginBottom: 12,
+              fontSize: 13,
+              lineHeight: "18px",
+              fontWeight: 700,
+              color: "#2aad38"
+            }}
+          >
+            {selectedItem ? `현재 "${selectedItem.title}" 수업을 수정 중입니다.` : "새 프로그램 등록 모드입니다."}
+          </div>
           <StudioClassForm
-            key={selectedId ?? "create"}
+            key={selectedId ?? "new"}
             organizationId={organizationId}
             currentTeacherId={currentTeacherId}
             teacherOptions={teacherOptions}

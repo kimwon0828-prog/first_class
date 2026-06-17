@@ -34,6 +34,20 @@ export type TeacherPublicProfile = {
   careerYears: number
 }
 
+export type StudioClassScheduleType = "weekly" | "one_time"
+
+export type StudioClassScheduleItem = {
+  id: string
+  scheduleType: StudioClassScheduleType
+  dayOfWeek: number | null
+  specificDate: string | null
+  startTime: string
+  endTime: string
+  capacity: number | null
+  displayLabel: string | null
+  sortOrder: number
+}
+
 export type ClassSummary = {
   id: string
   programType: ClassProgramType
@@ -53,6 +67,7 @@ export type ClassSummary = {
   teacherName: string | null
   coverImageUrl: string | null
   isActive: boolean
+  schedules?: StudioClassScheduleItem[]
 }
 
 export type OrganizationLocationInfo = {

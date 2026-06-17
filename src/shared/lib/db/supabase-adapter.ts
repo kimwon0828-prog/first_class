@@ -16,8 +16,10 @@ import type {
   OrganizationLocationInfo,
   StudioApplicationDetail,
   StudioApplicationSummary,
+  StudioClassScheduleItem,
   StudioScheduleBlockSummary,
   StudioScheduleBlockType,
+  StudioClassScheduleType,
   StudioDashboardTeacherFilterOption,
   StudioTeacherSeatSummary,
   StudioTeacherSummary,
@@ -51,6 +53,7 @@ type ClassRow = {
   cover_image_url?: string | null
   is_active: boolean
   organizations?: OrganizationLocationRow[] | OrganizationLocationRow | null
+  class_schedules?: ClassScheduleRow[] | null
 }
 
 type TeacherPublicProfileRow = {
@@ -152,6 +155,20 @@ type ScheduleBlockRow = {
   type?: string
 }
 
+type ClassScheduleRow = {
+  id: string
+  class_id: string
+  schedule_type: StudioClassScheduleType
+  day_of_week?: number | null
+  specific_date?: string | null
+  start_time: string
+  end_time: string
+  capacity?: number | null
+  display_label?: string | null
+  sort_order?: number | null
+  created_at?: string
+}
+
 type TeacherSignupRequestRow = {
   id: string
   user_id: string
@@ -229,8 +246,57 @@ const mapClass = (
     teacherDisplayName: resolvedTeacherName,
     teacherName: resolvedTeacherName,
     coverImageUrl: row.cover_image_url ?? null,
-    isActive: row.is_active
+    isActive: row.is_active,
+    schedules: (row.class_schedules ?? []).map(mapClassSchedule)
   }
+}
+
+const mapClassSchedule = (row: ClassScheduleRow): StudioClassScheduleItem => ({
+  id: row.id,
+  scheduleType: row.schedule_type,
+  dayOfWeek: row.day_of_week ?? null,
+  specificDate: row.specific_date ?? null,
+  startTime: row.start_time,
+  endTime: row.end_time,
+  capacity: row.capacity ?? null,
+  displayLabel: row.display_label ?? null,
+  sortOrder: row.sort_order ?? 0
+})
+
+const CLASS_SCHEDULE_SELECT_FIELDS =
+  "id, class_id, schedule_type, day_of_week, specific_date, start_time, end_time, capacity, display_label, sort_order, created_at"
+
+const attachClassSchedulesToRows = async (
+  supabase: Awaited<ReturnType<typeof getSupabaseServerClient>>,
+  rows: ClassRow[]
+) => {
+  const classIds = rows.map((row) => row.id)
+  if (classIds.length === 0) {
+    return rows.map((row) => ({ ...row, class_schedules: [] as ClassScheduleRow[] }))
+  }
+
+  const { data, error } = await supabase
+    .from("class_schedules")
+    .select(CLASS_SCHEDULE_SELECT_FIELDS)
+    .in("class_id", classIds)
+    .order("sort_order", { ascending: true })
+    .order("created_at", { ascending: true })
+
+  if (error) {
+    throw new Error("failed_to_fetch_studio_class_schedules")
+  }
+
+  const schedulesByClassId = new Map<string, ClassScheduleRow[]>()
+  for (const row of (data ?? []) as ClassScheduleRow[]) {
+    const current = schedulesByClassId.get(row.class_id) ?? []
+    current.push(row)
+    schedulesByClassId.set(row.class_id, current)
+  }
+
+  return rows.map((row) => ({
+    ...row,
+    class_schedules: schedulesByClassId.get(row.id) ?? []
+  }))
 }
 
 const getEmbeddedOrganization = (row: ClassRow): OrganizationLocationRow | null => {
@@ -931,11 +997,12 @@ export const supabaseDataAdapter: DataAdapter = {
       }
 
       const classRows = (retry.data ?? []) as ClassRow[]
+      const classRowsWithSchedules = await attachClassSchedulesToRows(supabase, classRows)
       if (debugEnabled) {
         console.info("[listStudioClasses] classes fetched (fallback)", { rows: classRows.length })
       }
       const teacherIds = Array.from(
-        new Set(classRows.map((row) => row.teacher_id).filter((id): id is string => Boolean(id)))
+        new Set(classRowsWithSchedules.map((row) => row.teacher_id).filter((id): id is string => Boolean(id)))
       )
       let teacherMap = new Map<string, TeacherPublicProfile>()
       try {
@@ -950,7 +1017,7 @@ export const supabaseDataAdapter: DataAdapter = {
         })
       }
 
-      const mapped = classRows.map((row) =>
+      const mapped = classRowsWithSchedules.map((row) =>
         mapClass(row, row.teacher_id ? (teacherMap.get(row.teacher_id)?.teacherName ?? null) : null)
       )
       if (debugEnabled) {
@@ -971,7 +1038,7 @@ export const supabaseDataAdapter: DataAdapter = {
       throw new Error("failed_to_fetch_studio_classes")
     }
 
-    const classRows = (data ?? []) as ClassRow[]
+    const classRows = await attachClassSchedulesToRows(supabase, (data ?? []) as ClassRow[])
     if (debugEnabled) {
       console.info("[listStudioClasses] classes fetched", { rows: classRows.length })
     }

@@ -10,7 +10,19 @@ import {
 } from "@/features/studio/lib/studio-class-options"
 import { requireTeacherStudioAccess } from "@/features/studio/lib/require-teacher-studio-access"
 import { dataAdapter } from "@/shared/lib/db"
-import type { ClassProgramType, StudioClassScheduleSlotInput } from "@/shared/lib/db/adapter"
+import type { ClassProgramType } from "@/shared/lib/db/adapter"
+
+type StudioClassScheduleInput = {
+  id?: string
+  scheduleType: "weekly" | "one_time"
+  dayOfWeek: number | null
+  specificDate: string | null
+  startTime: string
+  endTime: string
+  capacity: number | null
+  displayLabel: string | null
+  sortOrder: number
+}
 
 export type UpsertStudioClassActionState = {
   ok: boolean
@@ -65,73 +77,183 @@ const normalizeMode = (value: FormDataEntryValue | null): "create" | "update" | 
   return null
 }
 
-const buildLocalIso = (date: string, time: string) => {
-  const value = new Date(`${date}T${time}`)
-  if (Number.isNaN(value.getTime())) {
+const isValidDateString = (value: string) => {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return false
+  }
+
+  return !Number.isNaN(new Date(`${value}T00:00:00`).getTime())
+}
+
+const isValidTimeString = (value: string) => /^([01]\d|2[0-3]):[0-5]\d$/.test(value)
+
+const weekdayLabels = ["일요일", "월요일", "화요일", "수요일", "목요일", "금요일", "토요일"] as const
+
+const formatSpecificDateLabel = (value: string) => {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return value
+  }
+
+  const [year, month, day] = value.split("-")
+  return `${year}.${month}.${day}`
+}
+
+const buildDefaultDisplayLabel = (slot: {
+  scheduleType: "weekly" | "one_time"
+  dayOfWeek: number | null
+  specificDate: string | null
+  startTime: string
+  endTime: string
+}) => {
+  if (slot.scheduleType === "weekly") {
+    const weekdayLabel =
+      slot.dayOfWeek != null && weekdayLabels[slot.dayOfWeek] ? weekdayLabels[slot.dayOfWeek] : null
+
+    if (!weekdayLabel) {
+      return null
+    }
+
+    return `매주 ${weekdayLabel} ${slot.startTime}~${slot.endTime}`
+  }
+
+  if (!slot.specificDate) {
     return null
   }
 
-  return value.toISOString()
+  return `${formatSpecificDateLabel(slot.specificDate)} ${slot.startTime}~${slot.endTime}`
 }
 
 const parseScheduleSlots = (
-  formData: FormData,
-  mode: "create" | "update"
+  formData: FormData
 ):
-  | { ok: true; slots: StudioClassScheduleSlotInput[] }
+  | { ok: true; slots: StudioClassScheduleInput[] }
   | { ok: false; message: string } => {
-  if (mode === "update") {
-    return { ok: true, slots: [] }
-  }
-
-  const dates = formData.getAll("slotDate").map((value) => String(value ?? "").trim())
+  const ids = formData.getAll("slotId").map((value) => String(value ?? "").trim())
+  const scheduleTypes = formData
+    .getAll("slotScheduleType")
+    .map((value) => String(value ?? "").trim())
+  const dayOfWeeks = formData.getAll("slotDayOfWeek").map((value) => String(value ?? "").trim())
+  const specificDates = formData
+    .getAll("slotSpecificDate")
+    .map((value) => String(value ?? "").trim())
   const startTimes = formData.getAll("slotStartTime").map((value) => String(value ?? "").trim())
   const endTimes = formData.getAll("slotEndTime").map((value) => String(value ?? "").trim())
   const capacities = formData.getAll("slotCapacity").map((value) => String(value ?? "").trim())
+  const displayLabels = formData
+    .getAll("slotDisplayLabel")
+    .map((value) => String(value ?? "").trim())
 
   if (
-    dates.length === 0 ||
-    startTimes.length !== dates.length ||
-    endTimes.length !== dates.length ||
-    capacities.length !== dates.length
+    ids.length === 0 &&
+    scheduleTypes.length === 0 &&
+    dayOfWeeks.length === 0 &&
+    specificDates.length === 0 &&
+    startTimes.length === 0 &&
+    endTimes.length === 0 &&
+    capacities.length === 0 &&
+    displayLabels.length === 0
   ) {
-    return { ok: false, message: "예약 가능 시간을 1개 이상 정확히 입력해 주세요." }
+    return { ok: true, slots: [] }
   }
 
-  const slots: StudioClassScheduleSlotInput[] = []
-  for (let index = 0; index < dates.length; index += 1) {
-    const date = dates[index]
+  if (
+    ids.length !== scheduleTypes.length ||
+    dayOfWeeks.length !== scheduleTypes.length ||
+    specificDates.length !== scheduleTypes.length ||
+    startTimes.length !== scheduleTypes.length ||
+    endTimes.length !== scheduleTypes.length ||
+    capacities.length !== scheduleTypes.length ||
+    displayLabels.length !== scheduleTypes.length
+  ) {
+    return { ok: false, message: "예약 가능 시간 입력값을 다시 확인해 주세요." }
+  }
+
+  const slots: StudioClassScheduleInput[] = []
+  for (let index = 0; index < scheduleTypes.length; index += 1) {
+    const id = ids[index]
+    const scheduleType = scheduleTypes[index]
+    const dayOfWeekRaw = dayOfWeeks[index]
+    const specificDateRaw = specificDates[index]
     const startTime = startTimes[index]
     const endTime = endTimes[index]
     const capacityRaw = capacities[index]
+    const displayLabelRaw = displayLabels[index]
 
-    if (!date || !startTime || !endTime || !capacityRaw) {
-      return { ok: false, message: `예약 가능 시간 ${index + 1}의 날짜, 시간, 정원을 모두 입력해 주세요.` }
+    if (scheduleType !== "weekly" && scheduleType !== "one_time") {
+      return { ok: false, message: `예약 가능 시간 ${index + 1}의 유형을 선택해 주세요.` }
     }
 
-    const capacity = parsePositiveInt(capacityRaw)
-    if (capacity == null || capacity < 1) {
-      return { ok: false, message: `예약 가능 시간 ${index + 1}의 정원은 1명 이상이어야 합니다.` }
+    if (!startTime || !endTime || !isValidTimeString(startTime) || !isValidTimeString(endTime)) {
+      return { ok: false, message: `예약 가능 시간 ${index + 1}의 시작/종료 시간을 정확히 입력해 주세요.` }
     }
 
-    const startAt = buildLocalIso(date, startTime)
-    const endAt = buildLocalIso(date, endTime)
-    if (!startAt || !endAt) {
-      return { ok: false, message: `예약 가능 시간 ${index + 1}의 날짜 또는 시간이 올바르지 않습니다.` }
-    }
-
-    if (new Date(endAt).getTime() <= new Date(startAt).getTime()) {
+    if (endTime <= startTime) {
       return { ok: false, message: `예약 가능 시간 ${index + 1}의 종료 시간은 시작 시간보다 뒤여야 합니다.` }
     }
 
-    if (new Date(startAt).getTime() <= Date.now()) {
-      return { ok: false, message: `예약 가능 시간 ${index + 1}에 과거 시간대는 저장할 수 없습니다.` }
+    let capacity: number | null = null
+    if (capacityRaw) {
+      capacity = parsePositiveInt(capacityRaw)
+      if (capacity == null || capacity < 1) {
+        return { ok: false, message: `예약 가능 시간 ${index + 1}의 정원은 1명 이상이어야 합니다.` }
+      }
+    }
+
+    if (scheduleType === "weekly") {
+      if (!/^\d+$/.test(dayOfWeekRaw)) {
+        return { ok: false, message: `예약 가능 시간 ${index + 1}의 요일을 선택해 주세요.` }
+      }
+
+      const dayOfWeek = Number(dayOfWeekRaw)
+      if (dayOfWeek < 0 || dayOfWeek > 6) {
+        return { ok: false, message: `예약 가능 시간 ${index + 1}의 요일을 다시 선택해 주세요.` }
+      }
+
+      slots.push({
+        id: isValidUuid(id) ? id : undefined,
+        scheduleType,
+        dayOfWeek,
+        specificDate: null,
+        startTime,
+        endTime,
+        capacity,
+        displayLabel:
+          displayLabelRaw ||
+          buildDefaultDisplayLabel({
+            scheduleType,
+            dayOfWeek,
+            specificDate: null,
+            startTime,
+            endTime
+          }),
+        sortOrder: index
+      })
+
+      continue
+    }
+
+    if (!specificDateRaw || !isValidDateString(specificDateRaw)) {
+      return { ok: false, message: `예약 가능 시간 ${index + 1}의 날짜를 정확히 입력해 주세요.` }
     }
 
     slots.push({
-      startAt,
-      endAt,
-      capacity
+      id: isValidUuid(id) ? id : undefined,
+      scheduleType,
+      dayOfWeek: null,
+      specificDate: specificDateRaw,
+      startTime,
+      endTime,
+      capacity,
+      displayLabel:
+        displayLabelRaw ||
+        buildDefaultDisplayLabel({
+          scheduleType,
+          dayOfWeek: null,
+          specificDate: specificDateRaw,
+          startTime,
+          endTime
+        }),
+      sortOrder: index
     })
   }
 
@@ -307,7 +429,7 @@ export async function upsertStudioClassAction(
       coverImageUrl = coverImageUrlRaw
     }
 
-    const parsedSlots = parseScheduleSlots(formData, mode)
+    const parsedSlots = parseScheduleSlots(formData)
     if (!parsedSlots.ok) {
       return safeError(parsedSlots.message)
     }
@@ -337,7 +459,9 @@ export async function upsertStudioClassAction(
 
     let savedClass: Awaited<ReturnType<typeof dataAdapter.upsertStudioClass>>
     try {
-      savedClass = await dataAdapter.upsertStudioClass(payload)
+      savedClass = await dataAdapter.upsertStudioClass(
+        payload as unknown as Parameters<typeof dataAdapter.upsertStudioClass>[0]
+      )
     } catch (error) {
       const message = error instanceof Error ? error.message : "unknown_error"
       const summary = parseSupabaseErrorSummary(message)

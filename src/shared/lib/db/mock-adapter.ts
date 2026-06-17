@@ -13,6 +13,7 @@ import type {
   MyDashboardData,
   StudioApplicationDetail,
   StudioApplicationSummary,
+  StudioClassScheduleItem,
   StudioScheduleBlockSummary,
   StudioDashboardTeacherFilterOption,
   StudioTeacherSeatSummary,
@@ -234,6 +235,59 @@ const teacherSignupRequests =
   globalMockStore.__firstClassMockTeacherSignupRequests__ ??
   (globalMockStore.__firstClassMockTeacherSignupRequests__ = [])
 
+const cloneClassSummary = (item: ClassSummary): ClassSummary => ({
+  ...item,
+  schedules: item.schedules?.map((schedule) => ({ ...schedule }))
+})
+
+const toMockClassSchedules = (input: {
+  classId: string
+  scheduleSlots?: unknown[]
+}): StudioClassScheduleItem[] => {
+  return (input.scheduleSlots ?? [])
+    .map((slot, index) => {
+      if (!slot || typeof slot !== "object") {
+        return null
+      }
+
+      const candidate = slot as {
+        id?: unknown
+        scheduleType?: unknown
+        dayOfWeek?: unknown
+        specificDate?: unknown
+        startTime?: unknown
+        endTime?: unknown
+        capacity?: unknown
+        displayLabel?: unknown
+        sortOrder?: unknown
+      }
+
+      if (candidate.scheduleType !== "weekly" && candidate.scheduleType !== "one_time") {
+        return null
+      }
+
+      if (typeof candidate.startTime !== "string" || typeof candidate.endTime !== "string") {
+        return null
+      }
+
+      return {
+        id:
+          typeof candidate.id === "string" && candidate.id
+            ? candidate.id
+            : `${input.classId}-schedule-${index + 1}`,
+        scheduleType: candidate.scheduleType,
+        dayOfWeek: typeof candidate.dayOfWeek === "number" ? candidate.dayOfWeek : null,
+        specificDate: typeof candidate.specificDate === "string" ? candidate.specificDate : null,
+        startTime: candidate.startTime,
+        endTime: candidate.endTime,
+        capacity: typeof candidate.capacity === "number" ? candidate.capacity : null,
+        displayLabel: typeof candidate.displayLabel === "string" ? candidate.displayLabel : null,
+        sortOrder: typeof candidate.sortOrder === "number" ? candidate.sortOrder : index
+      } satisfies StudioClassScheduleItem
+    })
+    .filter((schedule): schedule is StudioClassScheduleItem => Boolean(schedule))
+}
+
 const ACTIVE_APPLICATION_STATUSES: TrialApplicationSummary["status"][] = [
   "new",
   "reviewing",
@@ -387,7 +441,7 @@ export const mockDataAdapter: DataAdapter = {
       return []
     }
 
-    return [...classes].sort((a, b) => (a.title > b.title ? 1 : -1))
+    return [...classes].map(cloneClassSummary).sort((a, b) => (a.title > b.title ? 1 : -1))
   },
   async listStudioTeacherOptions(organizationId) {
     if (organizationId !== mockOrganizationId) {
@@ -554,7 +608,11 @@ export const mockDataAdapter: DataAdapter = {
       teacherDisplayName: teacherSummary.displayName,
       teacherName: teacherSummary.displayName,
       coverImageUrl: input.coverImageUrl,
-      isActive: input.isActive
+      isActive: input.isActive,
+      schedules: toMockClassSchedules({
+        classId: input.classId ?? `class-${classes.length + 1}`,
+        scheduleSlots: input.scheduleSlots as unknown[]
+      })
     }
 
     const existingIndex = input.classId ? classes.findIndex((item) => item.id === input.classId) : -1
