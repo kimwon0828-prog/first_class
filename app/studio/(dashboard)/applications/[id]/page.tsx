@@ -36,7 +36,11 @@ const formatDateTime = (value: string) => {
   }).format(date)
 }
 
-const resolveScheduleSummary = (requestedSlotAt: string, confirmedSlotAt: string | null, selectedLabel?: string | null) => {
+const resolveScheduleSummary = (
+  requestedSlotAt: string,
+  confirmedSlotAt: string | null,
+  selectedLabel?: string | null
+) => {
   const confirmedAt = confirmedSlotAt ? formatDateTime(confirmedSlotAt) : null
   const requestedAt = requestedSlotAt ? formatDateTime(requestedSlotAt) : null
   const normalizedSelectedLabel = selectedLabel?.trim() ? selectedLabel.trim() : null
@@ -131,22 +135,17 @@ const Badge = ({
   return <span className={`${styles.badge} ${styles[`badge_${tone}`]}`}>{label}</span>
 }
 
-export default async function StudioApplicationDetailPage({
-  params
-}: StudioApplicationDetailPageProps) {
+export default async function StudioApplicationDetailPage({ params }: StudioApplicationDetailPageProps) {
   const teacher = await requireTeacherStudioAccess()
   const resolvedParams = await params
-  const { data, error } = await getStudioApplicationDetail(
-    resolvedParams.id,
-    teacher.organizationId
-  )
+  const { data, error } = await getStudioApplicationDetail(resolvedParams.id, teacher.organizationId)
 
   if (!error && !data) {
     notFound()
   }
 
   return (
-    <main className={styles.page}>
+    <div className={styles.page}>
       <header className={styles.header}>
         <div className={styles.headerTopRow}>
           <Link href="/studio/applications" prefetch={false} className={styles.backLink}>
@@ -188,18 +187,13 @@ export default async function StudioApplicationDetailPage({
           {data ? (
             <div className={styles.headerMeta}>
               <div className={styles.badgeRow}>
-                <Badge
-                  label={getStatusBadge(data.status).label}
-                  tone={getStatusBadge(data.status).tone}
-                />
+                <Badge label={getStatusBadge(data.status).label} tone={getStatusBadge(data.status).tone} />
                 <Badge
                   label={getRegistrationBadge(data.registrationStatus, data.status).label}
                   tone={getRegistrationBadge(data.registrationStatus, data.status).tone}
                 />
               </div>
-              <div className={styles.metaLine}>
-                신청일 {formatDateTime(data.createdAt) ?? "-"}
-              </div>
+              <div className={styles.metaLine}>신청일 {formatDateTime(data.createdAt) ?? "-"}</div>
             </div>
           ) : null}
         </div>
@@ -221,51 +215,54 @@ export default async function StudioApplicationDetailPage({
             )
 
             return (
-          <section className={styles.summaryCard} aria-label="신청 요약">
-            <div className={styles.summaryTop}>
-              <div>
-                <h2 className={styles.summaryTitle}>
-                  {data.childName} 학생의{" "}
-                  {data.classProgramType === "trial_class"
-                    ? "체험신청"
-                    : data.classProgramType === "level_test"
-                      ? "레벨테스트"
-                      : "신청"}
-                </h2>
-                <p className={styles.summarySubtitle}>{data.classTitle ?? "수업 정보 미연결"}</p>
-              </div>
-            </div>
+              <section className={styles.summaryCard} aria-label="신청 요약">
+                <div className={styles.summaryTop}>
+                  <div>
+                    <h2 className={styles.summaryTitle}>
+                      {data.childName} 학생의{" "}
+                      {data.classProgramType === "trial_class"
+                        ? "체험신청"
+                        : data.classProgramType === "level_test"
+                          ? "레벨테스트"
+                          : "신청"}
+                    </h2>
+                    <p className={styles.summarySubtitle}>{data.classTitle ?? "수업 정보 미연결"}</p>
+                  </div>
+                </div>
 
-            <dl className={styles.summaryGrid}>
-              <div className={styles.summaryRow}>
-                <dt className={styles.summaryLabel}>
-                  {data.confirmedSlotAt ? "대표 일정" : "희망 일정"}
-                </dt>
-                <dd className={styles.summaryValue}>
-                  {scheduleSummary.primary}
-                  {scheduleSummary.secondary ? <><br />{scheduleSummary.secondary}</> : null}
-                </dd>
-              </div>
-              <div className={styles.summaryRow}>
-                <dt className={styles.summaryLabel}>신청 유형</dt>
-                <dd className={styles.summaryValue}>
-                  {data.classProgramType === "trial_class"
-                    ? "체험수업"
-                    : data.classProgramType === "level_test"
-                      ? "레벨테스트"
-                      : "미확인"}
-                </dd>
-              </div>
-              <div className={styles.summaryRow}>
-                <dt className={styles.summaryLabel}>보호자 연락처</dt>
-                <dd className={styles.summaryValueStrong}>{data.parentPhone ?? "연락처 미기록"}</dd>
-              </div>
-              <div className={styles.summaryRow}>
-                <dt className={styles.summaryLabel}>현재 상태</dt>
-                <dd className={styles.summaryValue}>{getStatusBadge(data.status).label}</dd>
-              </div>
-            </dl>
-          </section>
+                <dl className={styles.summaryGrid}>
+                  <div className={styles.summaryRow}>
+                    <dt className={styles.summaryLabel}>{data.confirmedSlotAt ? "대표 일정" : "희망 일정"}</dt>
+                    <dd className={styles.summaryValue}>
+                      {scheduleSummary.primary}
+                      {scheduleSummary.secondary ? (
+                        <>
+                          <br />
+                          {scheduleSummary.secondary}
+                        </>
+                      ) : null}
+                    </dd>
+                  </div>
+                  <div className={styles.summaryRow}>
+                    <dt className={styles.summaryLabel}>신청 유형</dt>
+                    <dd className={styles.summaryValue}>
+                      {data.classProgramType === "trial_class"
+                        ? "체험수업"
+                        : data.classProgramType === "level_test"
+                          ? "레벨테스트"
+                          : "미확인"}
+                    </dd>
+                  </div>
+                  <div className={styles.summaryRow}>
+                    <dt className={styles.summaryLabel}>보호자 연락처</dt>
+                    <dd className={styles.summaryValueStrong}>{data.parentPhone ?? "연락처 미기록"}</dd>
+                  </div>
+                  <div className={styles.summaryRow}>
+                    <dt className={styles.summaryLabel}>현재 상태</dt>
+                    <dd className={styles.summaryValue}>{getStatusBadge(data.status).label}</dd>
+                  </div>
+                </dl>
+              </section>
             )
           })()}
 
@@ -314,7 +311,11 @@ export default async function StudioApplicationDetailPage({
                     />
                     <div className={styles.memoFooter}>
                       <p className={styles.memoHelp}>완료 처리된 신청만 메모를 저장할 수 있어요.</p>
-                      <button type="button" className={`${styles.secondaryButton} ${styles.disabledButton}`} disabled>
+                      <button
+                        type="button"
+                        className={`${styles.secondaryButton} ${styles.disabledButton}`}
+                        disabled
+                      >
                         메모 저장
                       </button>
                     </div>
@@ -357,6 +358,7 @@ export default async function StudioApplicationDetailPage({
           </div>
         </>
       ) : null}
-    </main>
+    </div>
   )
 }
+

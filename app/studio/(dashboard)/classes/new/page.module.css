@@ -1,0 +1,143 @@
+.page {
+  display: grid;
+  gap: 24px;
+}
+
+.header {
+  background: #ffffff;
+  border: 1px solid #eeeeee;
+  border-radius: 22px;
+  padding: 24px;
+}
+
+.headerTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+
+.backLink {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 40px;
+  padding: 0 12px;
+  border-radius: 12px;
+  border: 1px solid #d9d9d9;
+  background: #ffffff;
+  color: #111111;
+  font-size: 13px;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.backLink:hover {
+  border-color: #bdbdbd;
+}
+
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.secondaryButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 40px;
+  padding: 0 12px;
+  border-radius: 12px;
+  border: 1px solid #d9d9d9;
+  background: #ffffff;
+  color: #111111;
+  font-size: 13px;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.secondaryButton:hover {
+  border-color: #bdbdbd;
+}
+
+.kicker {
+  margin: 0 0 8px;
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  color: #2aad38;
+}
+
+.title {
+  margin: 0;
+  font-size: 28px;
+  line-height: 1.2;
+  font-weight: 900;
+  letter-spacing: -0.04em;
+  color: #111111;
+}
+
+.description {
+  margin: 10px 0 0;
+  font-size: 14px;
+  line-height: 22px;
+  color: #666666;
+}
+
+.guideCard {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  padding: 22px 24px;
+  border-radius: 22px;
+  border: 1px solid #d8f0dc;
+  background: #f3fbf4;
+}
+
+.guideIcon {
+  flex: 0 0 auto;
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border-radius: 14px;
+  background: #ffffff;
+  border: 1px solid #d8f0dc;
+  color: #2aad38;
+  font-weight: 800;
+}
+
+.guideBody {
+  display: grid;
+  gap: 6px;
+}
+
+.guideTitle {
+  margin: 0;
+  font-size: 16px;
+  line-height: 1.5;
+  font-weight: 700;
+  color: #111111;
+}
+
+.guideDescription {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.6;
+  color: #666666;
+}
+
+@media (max-width: 719px) {
+  .header {
+    padding: 20px;
+  }
+
+  .guideCard {
+    padding: 18px;
+  }
+}
+

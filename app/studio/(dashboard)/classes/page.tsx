@@ -14,7 +14,7 @@ export default async function StudioClassesPage() {
     ])
 
   return (
-    <main className={styles.page}>
+    <div className={styles.page}>
       <div className={styles.container}>
         <header className={styles.header}>
           <div className={styles.headerLeft}>
@@ -39,6 +39,7 @@ export default async function StudioClassesPage() {
           />
         )}
       </div>
-    </main>
+    </div>
   )
 }
+

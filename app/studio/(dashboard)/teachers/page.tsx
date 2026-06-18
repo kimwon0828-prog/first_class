@@ -9,7 +9,7 @@ export default async function StudioTeachersPage() {
   const { data, error } = await getStudioTeachers(teacher.organizationId)
 
   return (
-    <main className={styles.page}>
+    <div className={styles.page}>
       <div className={styles.container}>
         <header className={styles.header}>
           <div>
@@ -28,6 +28,7 @@ export default async function StudioTeachersPage() {
           <StudioTeachersManager items={data.teachers} seatSummary={data.seatSummary} />
         )}
       </div>
-    </main>
+    </div>
   )
 }
+

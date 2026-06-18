@@ -4,6 +4,7 @@ import { getStudioDashboardSummary } from "@/features/studio/queries/get-studio-
 import { StudioDashboardSummaryView } from "@/features/studio/ui/studio-dashboard-summary"
 import { StudioHomeLogo } from "@/features/studio/ui/studio-home-logo"
 import { StudioTeacherFilter } from "@/features/studio/ui/studio-teacher-filter"
+import { getSupabaseServerClient } from "@/integrations/supabase/server"
 import { dataAdapter } from "@/shared/lib/db"
 import type { StudioApplicationSummary } from "@/shared/lib/db/adapter"
 import Link from "next/link"
@@ -29,7 +30,10 @@ export default async function StudioIndexPage({ searchParams }: StudioIndexPageP
   )
   const availableTeacherIdSet = new Set(filterOptions.map((option) => option.teacherId))
   const validatedTeacherId =
-    teacherIdParam && teacherIdParam !== "all" && uuidPattern.test(teacherIdParam) && availableTeacherIdSet.has(teacherIdParam)
+    teacherIdParam &&
+    teacherIdParam !== "all" &&
+    uuidPattern.test(teacherIdParam) &&
+    availableTeacherIdSet.has(teacherIdParam)
       ? teacherIdParam
       : null
   const selectedTeacherId = validatedTeacherId ?? "all"
@@ -37,6 +41,22 @@ export default async function StudioIndexPage({ searchParams }: StudioIndexPageP
     selectedTeacherId !== "all"
       ? (filterOptions.find((option) => option.teacherId === selectedTeacherId)?.teacherName ?? null)
       : null
+  let organizationName = "학원"
+
+  if (!selectedTeacherName) {
+    const supabase = await getSupabaseServerClient()
+    const { data: organizationRow } = await supabase
+      .from("organizations")
+      .select("name")
+      .eq("id", teacher.organizationId)
+      .maybeSingle()
+
+    organizationName = organizationRow?.name?.trim() || "학원"
+  }
+
+  const greetingTitle = selectedTeacherName
+    ? `안녕하세요, ${selectedTeacherName} 선생님`
+    : `안녕하세요, ${organizationName} 관리자님`
 
   const { data, error } = await getStudioDashboardSummary(teacher.organizationId, {
     teacherId: validatedTeacherId
@@ -53,32 +73,27 @@ export default async function StudioIndexPage({ searchParams }: StudioIndexPageP
   }
 
   return (
-    <main className={styles.page}>
+    <div className={styles.page}>
       <div className={styles.container}>
         <header className={styles.welcomeCard}>
           <div className={styles.welcomeLeft}>
-            <StudioHomeLogo className={styles.brandKicker} logoClassName={styles.brandLogo} width={120} height={40} priority />
-            <h1 className={styles.pageTitle}>안녕하세요, {teacher.name} 선생님</h1>
+            <StudioHomeLogo
+              className={styles.brandKicker}
+              logoClassName={styles.brandLogo}
+              width={120}
+              height={40}
+              priority
+            />
+            <h1 className={styles.pageTitle}>{greetingTitle}</h1>
             <p className={styles.pageDescription}>오늘의 첫수업 신청 현황을 확인해보세요.</p>
             <div className={styles.metaRow}>
               <span className={styles.metaPill}>{formatToday()}</span>
-              {selectedTeacherName ? (
-                <span className={styles.metaPill}>{selectedTeacherName} 기준</span>
-              ) : null}
+              {selectedTeacherName ? <span className={styles.metaPill}>{selectedTeacherName} 기준</span> : null}
             </div>
           </div>
 
           <div className={styles.welcomeRight}>
             <div className={styles.welcomeActions}>
-              <Link href="/studio/applications" prefetch={false} className={styles.buttonPrimary}>
-                신청 관리
-              </Link>
-              <Link href="/studio/classes" prefetch={false} className={styles.buttonSecondary}>
-                수업 관리
-              </Link>
-              <Link href="/studio/schedule" prefetch={false} className={styles.buttonSecondary}>
-                일정 관리
-              </Link>
               <Link href="/studio/sign-out" prefetch={false} className={styles.buttonGhost}>
                 로그아웃
               </Link>
@@ -107,6 +122,6 @@ export default async function StudioIndexPage({ searchParams }: StudioIndexPageP
           />
         )}
       </div>
-    </main>
+    </div>
   )
 }

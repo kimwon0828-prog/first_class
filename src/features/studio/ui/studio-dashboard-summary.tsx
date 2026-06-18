@@ -115,31 +115,36 @@ export const StudioDashboardSummaryView = ({
       key: "total",
       label: "전체 신청",
       value: totalApplications,
-      description: "선택한 조건 기준 전체 신청 수"
+      description: "선택한 조건 기준 전체 신청 수",
+      hasAlert: false
     },
     {
       key: "new",
       label: "신규 신청",
       value: summary.newApplicationCount,
-      description: "확인이 필요한 신규 신청"
+      description: "확인이 필요한 신규 신청",
+      hasAlert: summary.newApplicationCount > 0
     },
     {
       key: "pending",
       label: "상담 대기",
       value: summary.pendingConfirmationCount,
-      description: "상담/확정 전 상태"
+      description: "상담/확정 전 상태",
+      hasAlert: summary.pendingConfirmationCount > 0
     },
     {
       key: "registered",
       label: "등록 완료",
       value: summary.registeredCount,
-      description: "등록 처리 완료 건수"
+      description: "등록 처리 완료 건수",
+      hasAlert: false
     },
     {
       key: "conversion",
       label: "등록전환율",
       value: `${summary.enrollmentRate}%`,
-      description: "등록 완료 / 전체 신청"
+      description: "등록 완료 / 전체 신청",
+      hasAlert: false
     }
   ] as const
 
@@ -157,29 +162,6 @@ export const StudioDashboardSummaryView = ({
 
   const recentItems = applications.slice(0, 5)
 
-  const quickLinks = [
-    {
-      href: "/studio/applications",
-      title: "신청/상담 관리",
-      description: "신규 신청과 상담 상태를 관리해요."
-    },
-    {
-      href: "/studio/classes",
-      title: "수업 관리",
-      description: "수업 공개 상태와 담당 선생님을 관리해요."
-    },
-    {
-      href: "/studio/schedule",
-      title: "일정 관리",
-      description: "예약 가능 시간과 blocked 상태를 관리해요."
-    },
-    {
-      href: "/studio/teachers",
-      title: "선생님 관리",
-      description: "내부 선생님 프로필과 active 상태를 관리해요."
-    }
-  ] as const
-
   return (
     <div className={styles.dashboard}>
       {applicationsError ? (
@@ -193,7 +175,7 @@ export const StudioDashboardSummaryView = ({
           <div key={card.key} className={styles.metricCard}>
             <div className={styles.metricTop}>
               <p className={styles.metricLabel}>{card.label}</p>
-              <span className={styles.metricAccent} />
+              {card.hasAlert ? <span className={styles.metricAccent} aria-hidden="true" /> : null}
             </div>
             <p className={styles.metricValue}>{card.value}</p>
             <p className={styles.metricDescription}>{card.description}</p>
@@ -366,24 +348,6 @@ export const StudioDashboardSummaryView = ({
         )}
       </section>
 
-      <section className={styles.section}>
-        <header className={styles.sectionHeader}>
-          <h2 className={styles.sectionTitle}>빠른 메뉴</h2>
-          <p className={styles.sectionDescription}>자주 사용하는 운영 메뉴로 바로 이동하세요.</p>
-        </header>
-
-        <div className={styles.quickGrid}>
-          {quickLinks.map((item) => (
-            <Link key={item.href} href={item.href} prefetch={false} className={styles.quickCard}>
-              <div className={styles.quickCardTop}>
-                <span className={styles.quickIcon} aria-hidden="true" />
-                <strong className={styles.quickTitle}>{item.title}</strong>
-              </div>
-              <p className={styles.quickDescription}>{item.description}</p>
-            </Link>
-          ))}
-        </div>
-      </section>
     </div>
   )
 }

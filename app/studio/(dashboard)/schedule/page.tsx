@@ -16,7 +16,7 @@ export default async function StudioSchedulePage() {
   const myClasses = classes.filter((item) => item.teacherId === teacher.teacherId)
 
   return (
-    <main className={styles.page}>
+    <div className={styles.page}>
       <header className={styles.header}>
         <div className={styles.headerTop}>
           <div>
@@ -43,6 +43,7 @@ export default async function StudioSchedulePage() {
       ) : (
         <StudioScheduleManager items={scheduleBlocks} classes={myClasses} />
       )}
-    </main>
+    </div>
   )
 }
+

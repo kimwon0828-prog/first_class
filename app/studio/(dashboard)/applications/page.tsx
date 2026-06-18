@@ -54,7 +54,7 @@ export default async function StudioApplicationsPage() {
   ] as const
 
   return (
-    <main className={styles.page}>
+    <div className={styles.page}>
       <header className={styles.header}>
         <div className={styles.headerTop}>
           <div>
@@ -123,6 +123,7 @@ export default async function StudioApplicationsPage() {
           </section>
         </>
       ) : null}
-    </main>
+    </div>
   )
 }
+

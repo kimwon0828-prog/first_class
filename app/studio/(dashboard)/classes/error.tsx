@@ -12,13 +12,12 @@ export default function StudioClassesError({
   void error
 
   return (
-    <main
+    <div
       style={{
         maxWidth: 1280,
         margin: "0 auto",
         padding: "32px 24px 48px",
-        background: "#f9fafb",
-        minHeight: "100dvh"
+        background: "#f9fafb"
       }}
     >
       <section
@@ -97,7 +96,7 @@ export default function StudioClassesError({
           </Link>
         </div>
       </section>
-    </main>
+    </div>
   )
 }
 

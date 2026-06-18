@@ -1,0 +1,182 @@
+.shell {
+  min-height: 100dvh;
+  background: #f7f7f7;
+  display: flex;
+}
+
+.sidebar {
+  width: 260px;
+  flex: 0 0 auto;
+  background: #ffffff;
+  border-right: 1px solid #eeeeee;
+  padding: 18px 16px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  position: sticky;
+  top: 0;
+  height: 100dvh;
+}
+
+.sidebarTop {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 6px 6px 10px;
+}
+
+.logoLink {
+  align-items: center;
+}
+
+.logoLabel {
+  margin: 0;
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  color: #2aad38;
+}
+
+.nav {
+  display: grid;
+  gap: 6px;
+  padding: 4px;
+}
+
+.navItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  color: #4a4a4a;
+  text-decoration: none;
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 700;
+  border: 1px solid transparent;
+}
+
+.navItem:hover {
+  background: #fafafa;
+  border-color: #eeeeee;
+  color: #111111;
+}
+
+.navItemActive {
+  background: #f3fbf4;
+  border-color: #d8f0dc;
+  color: #111111;
+}
+
+.navDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: #d9d9d9;
+}
+
+.navItemActive .navDot {
+  background: #2aad38;
+}
+
+.sidebarBottom {
+  margin-top: auto;
+  padding: 4px;
+}
+
+.accountCard {
+  border: 1px solid #eeeeee;
+  border-radius: 18px;
+  padding: 14px 14px;
+  background: #ffffff;
+  display: grid;
+  gap: 10px;
+}
+
+.accountLabel {
+  margin: 0;
+  font-size: 13px;
+  line-height: 18px;
+  color: #8a8a8a;
+  font-weight: 700;
+}
+
+.accountActions {
+  display: flex;
+  gap: 12px;
+}
+
+.accountLink {
+  color: #4a4a4a;
+  text-decoration: none;
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 700;
+}
+
+.accountLink:hover {
+  color: #111111;
+}
+
+.main {
+  min-width: 0;
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.content {
+  flex: 1 1 auto;
+  padding: 0;
+}
+
+@media (max-width: 840px) {
+  .sidebar {
+    width: 220px;
+  }
+}
+
+@media (max-width: 719px) {
+  .shell {
+    flex-direction: column;
+  }
+
+  .sidebar {
+    width: 100%;
+    height: auto;
+    position: static;
+    border-right: none;
+    border-bottom: 1px solid #eeeeee;
+    flex-direction: row;
+    align-items: flex-start;
+    gap: 14px;
+    overflow-x: auto;
+  }
+
+  .sidebarTop {
+    flex: 0 0 auto;
+    padding: 0;
+    gap: 6px;
+  }
+
+  .logoLabel {
+    display: none;
+  }
+
+  .nav {
+    grid-auto-flow: column;
+    grid-auto-columns: max-content;
+    gap: 8px;
+    padding: 0;
+  }
+
+  .sidebarBottom {
+    display: none;
+  }
+
+  .content {
+    padding: 20px;
+  }
+}

@@ -50,9 +50,6 @@ export const StudioTeacherFilter = ({
           </option>
         ))}
       </select>
-      <span className={styles.teacherFilterHelp}>
-        학원 계정(로그인 계정)은 제외하고, active 내부 선생님 프로필만 표시합니다.
-      </span>
     </label>
   )
 }
