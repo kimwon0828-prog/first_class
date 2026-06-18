@@ -9,13 +9,54 @@ import styles from "./studio-application-table.module.css"
 
 const formatDateTime = (value: string | null) => {
   if (!value) {
-    return "-"
+    return null
+  }
+
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) {
+    return null
   }
 
   return new Intl.DateTimeFormat("ko-KR", {
     dateStyle: "short",
     timeStyle: "short"
-  }).format(new Date(value))
+  }).format(date)
+}
+
+const resolveScheduleDisplay = (application: StudioApplicationSummary) => {
+  const confirmedAt = formatDateTime(application.confirmedSlotAt)
+  const requestedAt = formatDateTime(application.requestedSlotAt)
+  const selectedLabel = application.selectedScheduleLabel?.trim()
+    ? application.selectedScheduleLabel.trim()
+    : null
+
+  if (confirmedAt) {
+    return {
+      primary: confirmedAt,
+      secondary:
+        selectedLabel && selectedLabel !== confirmedAt ? `선택 시간: ${selectedLabel}` : null
+    }
+  }
+
+  if (requestedAt) {
+    return {
+      primary: requestedAt,
+      secondary:
+        selectedLabel && selectedLabel !== requestedAt ? `선택 시간: ${selectedLabel}` : null
+    }
+  }
+
+  if (selectedLabel) {
+    return {
+      primary: selectedLabel,
+      secondary: null
+    }
+  }
+
+  return {
+    primary: "일정 협의 필요",
+    secondary: null
+  }
 }
 
 const getStatusBadge = (application: StudioApplicationSummary) => {
@@ -210,6 +251,7 @@ export const StudioApplicationTable = ({ items }: StudioApplicationTableProps) =
                 {filteredItems.map((item) => {
                   const primaryBadge = getStatusBadge(item)
                   const secondaryBadge = getSecondaryBadge(item)
+                  const schedule = resolveScheduleDisplay(item)
                   return (
                     <tr key={item.id} className={styles.tr}>
                       <td className={styles.td}>
@@ -233,7 +275,12 @@ export const StudioApplicationTable = ({ items }: StudioApplicationTableProps) =
                           {[item.classSubject, item.classRegion].filter(Boolean).join(" · ") || "-"}
                         </div>
                       </td>
-                      <td className={styles.td}>{formatDateTime(item.requestedSlotAt)}</td>
+                      <td className={styles.td}>
+                        <div className={styles.primaryText}>{schedule.primary}</div>
+                        {schedule.secondary ? (
+                          <div className={styles.subLine}>{schedule.secondary}</div>
+                        ) : null}
+                      </td>
                       <td className={styles.td}>{item.parentName ?? "-"}</td>
                       <td className={styles.td}>{item.parentPhone ?? "-"}</td>
                       <td className={styles.tdRight}>
@@ -259,6 +306,7 @@ export const StudioApplicationTable = ({ items }: StudioApplicationTableProps) =
           {filteredItems.map((item) => {
             const primaryBadge = getStatusBadge(item)
             const secondaryBadge = getSecondaryBadge(item)
+            const schedule = resolveScheduleDisplay(item)
             return (
               <article key={item.id} className={styles.applicationCard}>
                 <div className={styles.cardTop}>
@@ -277,7 +325,12 @@ export const StudioApplicationTable = ({ items }: StudioApplicationTableProps) =
                 <dl className={styles.metaGrid}>
                   <div className={styles.metaRow}>
                     <dt className={styles.metaLabel}>희망 일정</dt>
-                    <dd className={styles.metaValue}>{formatDateTime(item.requestedSlotAt)}</dd>
+                    <dd className={styles.metaValue}>
+                      {schedule.primary}
+                      {schedule.secondary ? (
+                        <span className={styles.subLine}>{schedule.secondary}</span>
+                      ) : null}
+                    </dd>
                   </div>
                   <div className={styles.metaRow}>
                     <dt className={styles.metaLabel}>지역</dt>
@@ -294,7 +347,7 @@ export const StudioApplicationTable = ({ items }: StudioApplicationTableProps) =
                 </dl>
 
                 <div className={styles.cardFooter}>
-                  <div className={styles.footerHint}>{formatDateTime(item.createdAt)} 접수</div>
+                  <div className={styles.footerHint}>{formatDateTime(item.createdAt) ?? "-"} 접수</div>
                   <Link
                     href={`/studio/applications/${item.id}`}
                     prefetch={false}

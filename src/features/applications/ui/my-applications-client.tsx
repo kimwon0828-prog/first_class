@@ -37,8 +37,10 @@ type TrialApplicationRow = {
   child_grade: string
   parent_name: string | null
   parent_phone: string | null
+  class_schedule_id: string | null
   requested_schedule_block_id: string | null
-  requested_slot_at: string
+  selected_schedule_label: string | null
+  requested_slot_at: string | null
   confirmed_slot_at: string | null
   goal_type: string | null
   status: ApplicationStatus
@@ -75,8 +77,10 @@ const mapApplication = (row: TrialApplicationRow): TrialApplicationSummary => {
     childGrade: row.child_grade,
     parentName: row.parent_name ?? null,
     parentPhone: row.parent_phone ?? null,
+    classScheduleId: row.class_schedule_id ?? null,
     requestedScheduleBlockId: row.requested_schedule_block_id ?? null,
-    requestedSlotAt: row.requested_slot_at,
+    selectedScheduleLabel: row.selected_schedule_label ?? null,
+    requestedSlotAt: row.requested_slot_at ?? "",
     confirmedSlotAt: row.confirmed_slot_at ?? null,
     status: row.status,
     goalType: row.goal_type ?? null,
@@ -177,7 +181,7 @@ export const MyApplicationsClient = () => {
     const { data, error } = await supabase
       .from("trial_applications")
       .select(
-        "id, class_id, parent_id, child_name, child_grade, parent_name, parent_phone, requested_schedule_block_id, requested_slot_at, confirmed_slot_at, goal_type, status, created_at, updated_at, classes(title, program_type, region)"
+        "id, class_id, parent_id, child_name, child_grade, parent_name, parent_phone, class_schedule_id, requested_schedule_block_id, selected_schedule_label, requested_slot_at, confirmed_slot_at, goal_type, status, created_at, updated_at, classes(title, program_type, region)"
       )
       .eq("parent_id", user.id)
       .order("created_at", { ascending: false })

@@ -34,7 +34,7 @@ const formatProgramType = (value: TrialApplicationSummary["classProgramType"]) =
 const formatDateTime = (value: string) => {
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) {
-    return "-"
+    return null
   }
 
   return date.toLocaleString("ko-KR", {
@@ -47,11 +47,41 @@ const formatDateTime = (value: string) => {
 }
 
 const resolveScheduleLabel = (item: TrialApplicationSummary) => {
+  const confirmedAt = item.confirmedSlotAt ? formatDateTime(item.confirmedSlotAt) : null
+  const requestedAt = item.requestedSlotAt ? formatDateTime(item.requestedSlotAt) : null
+  const selectedLabel = item.selectedScheduleLabel?.trim() ? item.selectedScheduleLabel.trim() : null
+
   if (item.confirmedSlotAt) {
-    return { label: "확정 일정", value: formatDateTime(item.confirmedSlotAt) }
+    return {
+      label: "확정 일정",
+      primaryValue: confirmedAt ?? selectedLabel ?? "일정 협의 필요",
+      secondaryValue:
+        confirmedAt && selectedLabel && confirmedAt !== selectedLabel ? `선택 시간: ${selectedLabel}` : null
+    }
   }
 
-  return { label: "희망 일정", value: formatDateTime(item.requestedSlotAt) }
+  if (requestedAt) {
+    return {
+      label: "희망 일정",
+      primaryValue: requestedAt,
+      secondaryValue:
+        selectedLabel && selectedLabel !== requestedAt ? `선택 시간: ${selectedLabel}` : null
+    }
+  }
+
+  if (selectedLabel) {
+    return {
+      label: "희망 일정",
+      primaryValue: selectedLabel,
+      secondaryValue: null
+    }
+  }
+
+  return {
+    label: "희망 일정",
+    primaryValue: "일정 협의 필요",
+    secondaryValue: null
+  }
 }
 
 export const MyApplicationList = ({ items }: MyApplicationListProps) => {
@@ -94,11 +124,14 @@ export const MyApplicationList = ({ items }: MyApplicationListProps) => {
               </div>
               <div className={styles.metaRow}>
                 <span className={styles.metaLabel}>{schedule.label}</span>
-                <span className={styles.metaValue}>{schedule.value}</span>
+                <span className={styles.metaValue}>{schedule.primaryValue}</span>
+                {schedule.secondaryValue ? (
+                  <span className={styles.metaLine}>{schedule.secondaryValue}</span>
+                ) : null}
               </div>
               <div className={styles.metaRow}>
                 <span className={styles.metaLabel}>신청일</span>
-                <span className={styles.metaValue}>{formatDateTime(item.createdAt)}</span>
+                <span className={styles.metaValue}>{formatDateTime(item.createdAt) ?? "-"}</span>
               </div>
             </div>
 

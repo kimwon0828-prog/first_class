@@ -4,13 +4,17 @@ import type { StudioApplicationDetail } from "@/shared/lib/db/adapter"
 
 import styles from "./studio-application-detail-panel.module.css"
 
-const formatDateTime = (value: string) =>
-  new Intl.DateTimeFormat("ko-KR", {
+const formatDateTime = (value: string) => {
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) {
+    return null
+  }
+
+  return new Intl.DateTimeFormat("ko-KR", {
     dateStyle: "medium",
     timeStyle: "short"
-  }).format(new Date(value))
-
-const formatOptionalDateTime = (value: string | null) => (value ? formatDateTime(value) : null)
+  }).format(date)
+}
 
 const normalizeText = (value: string | null | undefined) => {
   if (value == null) {
@@ -49,8 +53,10 @@ export const StudioApplicationDetailPanel = ({ item }: StudioApplicationDetailPa
   const classTitle = normalizeText(item.classTitle)
   const classSubject = normalizeText(item.classSubject)
   const classRegion = normalizeText(item.classRegion)
-
-  const confirmedAt = formatOptionalDateTime(item.confirmedSlotAt)
+  const confirmedAt = item.confirmedSlotAt ? formatDateTime(item.confirmedSlotAt) : null
+  const requestedAt = item.requestedSlotAt ? formatDateTime(item.requestedSlotAt) : null
+  const selectedScheduleLabel = normalizeText(item.selectedScheduleLabel)
+  const requestedScheduleValue = requestedAt ?? selectedScheduleLabel ?? "일정 협의 필요"
 
   return (
     <div className={styles.stack}>
@@ -135,8 +141,9 @@ export const StudioApplicationDetailPanel = ({ item }: StudioApplicationDetailPa
         </header>
 
         <dl className={styles.grid}>
-          <InfoRow label="희망 일정" value={formatDateTime(item.requestedSlotAt)} />
+          <InfoRow label="희망 일정" value={requestedScheduleValue} />
           <InfoRow label="신청 유형" value={programTypeLabel} />
+          {selectedScheduleLabel ? <InfoRow label="선택 시간 라벨" value={selectedScheduleLabel} /> : null}
           {confirmedAt ? <InfoRow label="확정 일정" value={confirmedAt} /> : null}
         </dl>
       </section>

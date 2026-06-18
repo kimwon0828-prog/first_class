@@ -24,11 +24,55 @@ const NEXT_STATUS_BY_CURRENT: Partial<Record<ApplicationStatus, ApplicationStatu
   confirmed: "completed"
 }
 
-const formatDateTime = (value: string) =>
-  new Intl.DateTimeFormat("ko-KR", {
+const formatDateTime = (value: string) => {
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) {
+    return null
+  }
+
+  return new Intl.DateTimeFormat("ko-KR", {
     dateStyle: "medium",
     timeStyle: "short"
-  }).format(new Date(value))
+  }).format(date)
+}
+
+const resolveScheduleSummary = (requestedSlotAt: string, confirmedSlotAt: string | null, selectedLabel?: string | null) => {
+  const confirmedAt = confirmedSlotAt ? formatDateTime(confirmedSlotAt) : null
+  const requestedAt = requestedSlotAt ? formatDateTime(requestedSlotAt) : null
+  const normalizedSelectedLabel = selectedLabel?.trim() ? selectedLabel.trim() : null
+
+  if (confirmedAt) {
+    return {
+      primary: confirmedAt,
+      secondary:
+        normalizedSelectedLabel && normalizedSelectedLabel !== confirmedAt
+          ? `선택 시간: ${normalizedSelectedLabel}`
+          : null
+    }
+  }
+
+  if (requestedAt) {
+    return {
+      primary: requestedAt,
+      secondary:
+        normalizedSelectedLabel && normalizedSelectedLabel !== requestedAt
+          ? `선택 시간: ${normalizedSelectedLabel}`
+          : null
+    }
+  }
+
+  if (normalizedSelectedLabel) {
+    return {
+      primary: normalizedSelectedLabel,
+      secondary: null
+    }
+  }
+
+  return {
+    primary: "일정 협의 필요",
+    secondary: null
+  }
+}
 
 const getStatusBadge = (status: ApplicationStatus) => {
   if (status === "new") {
@@ -154,7 +198,7 @@ export default async function StudioApplicationDetailPage({
                 />
               </div>
               <div className={styles.metaLine}>
-                신청일 {formatDateTime(data.createdAt)}
+                신청일 {formatDateTime(data.createdAt) ?? "-"}
               </div>
             </div>
           ) : null}
@@ -169,6 +213,14 @@ export default async function StudioApplicationDetailPage({
 
       {data ? (
         <>
+          {(() => {
+            const scheduleSummary = resolveScheduleSummary(
+              data.requestedSlotAt,
+              data.confirmedSlotAt,
+              data.selectedScheduleLabel
+            )
+
+            return (
           <section className={styles.summaryCard} aria-label="신청 요약">
             <div className={styles.summaryTop}>
               <div>
@@ -186,8 +238,13 @@ export default async function StudioApplicationDetailPage({
 
             <dl className={styles.summaryGrid}>
               <div className={styles.summaryRow}>
-                <dt className={styles.summaryLabel}>희망 일정</dt>
-                <dd className={styles.summaryValue}>{formatDateTime(data.requestedSlotAt)}</dd>
+                <dt className={styles.summaryLabel}>
+                  {data.confirmedSlotAt ? "대표 일정" : "희망 일정"}
+                </dt>
+                <dd className={styles.summaryValue}>
+                  {scheduleSummary.primary}
+                  {scheduleSummary.secondary ? <><br />{scheduleSummary.secondary}</> : null}
+                </dd>
               </div>
               <div className={styles.summaryRow}>
                 <dt className={styles.summaryLabel}>신청 유형</dt>
@@ -209,6 +266,8 @@ export default async function StudioApplicationDetailPage({
               </div>
             </dl>
           </section>
+            )
+          })()}
 
           <div className={styles.body}>
             <section className={styles.side} aria-label="상태 및 빠른 액션">

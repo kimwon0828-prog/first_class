@@ -1952,7 +1952,7 @@ export const supabaseDataAdapter: DataAdapter = {
     const { data, error } = await supabase
       .from("trial_applications")
       .select(
-        "id, class_id, parent_id, child_name, child_grade, parent_name, parent_phone, requested_schedule_block_id, requested_slot_at, confirmed_slot_at, goal_type, status, created_at, updated_at, classes(title, program_type, region)"
+        "id, class_id, parent_id, child_name, child_grade, parent_name, parent_phone, class_schedule_id, requested_schedule_block_id, selected_schedule_label, requested_slot_at, confirmed_slot_at, goal_type, status, created_at, updated_at, classes(title, program_type, region)"
       )
       .eq("parent_id", parentId)
       .order("created_at", { ascending: false })
@@ -1968,7 +1968,7 @@ export const supabaseDataAdapter: DataAdapter = {
     let query = supabase
       .from("trial_applications")
       .select(
-        "id, class_id, parent_id, child_name, child_grade, parent_name, parent_phone, requested_schedule_block_id, requested_slot_at, confirmed_slot_at, assigned_teacher_id, goal_type, registration_status, status, created_at, updated_at, classes!inner(title, subject, region, organization_id, program_type, teacher_id)"
+        "id, class_id, parent_id, child_name, child_grade, parent_name, parent_phone, class_schedule_id, requested_schedule_block_id, selected_schedule_label, requested_slot_at, confirmed_slot_at, assigned_teacher_id, goal_type, registration_status, status, created_at, updated_at, classes!inner(title, subject, region, organization_id, program_type, teacher_id)"
       )
       .eq("classes.organization_id", organizationId)
 
@@ -1989,7 +1989,7 @@ export const supabaseDataAdapter: DataAdapter = {
     const { data, error } = await supabase
       .from("trial_applications")
       .select(
-        "id, class_id, parent_id, child_name, child_grade, parent_name, parent_phone, child_school, child_notes, subject_experience_yn, subject_experience_duration, current_level, preferred_regular_schedule, goal_type, goal_note, requested_slot_at, requested_schedule_block_id, confirmed_slot_at, confirmed_schedule_block_id, assigned_teacher_id, consultation_note, trial_feedback, final_level, final_schedule, registration_status, registered_course, unregistered_reason, follow_up_note, memo, status, created_at, updated_at, classes!inner(title, subject, region, organization_id, program_type)"
+        "id, class_id, parent_id, child_name, child_grade, parent_name, parent_phone, child_school, child_notes, subject_experience_yn, subject_experience_duration, current_level, preferred_regular_schedule, goal_type, goal_note, class_schedule_id, requested_slot_at, requested_schedule_block_id, selected_schedule_label, confirmed_slot_at, confirmed_schedule_block_id, assigned_teacher_id, consultation_note, trial_feedback, final_level, final_schedule, registration_status, registered_course, unregistered_reason, follow_up_note, memo, status, created_at, updated_at, classes!inner(title, subject, region, organization_id, program_type)"
       )
       .eq("id", applicationId)
       .eq("classes.organization_id", organizationId)
