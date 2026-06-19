@@ -77,7 +77,8 @@
 }
 
 .welcomeRight {
-  flex: 1 1 360px;
+  flex: 0 1 320px;
+  width: min(100%, 320px);
   display: grid;
   gap: 12px;
   align-content: start;
@@ -93,7 +94,7 @@
 .welcomeTools {
   display: grid;
   gap: 10px;
-  justify-items: end;
+  justify-items: stretch;
 }
 
 .dashboard {
@@ -612,9 +613,9 @@
 .teacherFilter {
   display: grid;
   gap: 6px;
-  justify-items: end;
+  justify-items: start;
   width: 100%;
-  max-width: 360px;
+  max-width: 320px;
 }
 
 .teacherFilterLabel {
@@ -622,15 +623,15 @@
   line-height: 18px;
   color: #666666;
   font-weight: 700;
-  justify-self: end;
+  justify-self: start;
 }
 
 .teacherFilterHelp {
   font-size: 12px;
   line-height: 16px;
   color: #8a8a8a;
-  justify-self: end;
-  text-align: right;
+  justify-self: start;
+  text-align: left;
 }
 
 .select {

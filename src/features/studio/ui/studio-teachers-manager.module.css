@@ -277,6 +277,7 @@
   justify-content: space-between;
   gap: 16px;
   align-items: flex-start;
+  flex-wrap: wrap;
 }
 
 .teacherIdentity {
@@ -356,12 +357,14 @@
   gap: 8px;
   flex-wrap: wrap;
   justify-content: flex-end;
+  margin-left: auto;
+  align-self: flex-start;
 }
 
 .metaGrid {
   display: grid;
   gap: 12px;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(140px, 1fr));
 }
 
 .metaItem {
@@ -369,6 +372,10 @@
   border-radius: 16px;
   background: #fafafa;
   padding: 14px;
+}
+
+.metaItem:first-child:last-child {
+  grid-column: 1 / -1;
 }
 
 .metaLabel {
@@ -669,5 +676,6 @@
 
   .actions {
     justify-content: flex-start;
+    margin-left: 0;
   }
 }

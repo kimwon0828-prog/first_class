@@ -7,7 +7,6 @@ import { StudioTeacherFilter } from "@/features/studio/ui/studio-teacher-filter"
 import { getSupabaseServerClient } from "@/integrations/supabase/server"
 import { dataAdapter } from "@/shared/lib/db"
 import type { StudioApplicationSummary } from "@/shared/lib/db/adapter"
-import Link from "next/link"
 
 import styles from "@/features/studio/ui/studio-dashboard.module.css"
 
@@ -93,12 +92,6 @@ export default async function StudioIndexPage({ searchParams }: StudioIndexPageP
           </div>
 
           <div className={styles.welcomeRight}>
-            <div className={styles.welcomeActions}>
-              <Link href="/studio/sign-out" prefetch={false} className={styles.buttonGhost}>
-                로그아웃
-              </Link>
-            </div>
-
             <div className={styles.welcomeTools}>
               <StudioTeacherFilter options={filterOptions} selectedTeacherId={selectedTeacherId} />
               {filterError ? (

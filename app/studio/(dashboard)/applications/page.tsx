@@ -61,18 +61,7 @@ export default async function StudioApplicationsPage() {
             <StudioHomeLogo />
             <p className={styles.brandKicker}>첫수업 운영보드</p>
             <h1 className={styles.title}>신청/상담 관리</h1>
-            <p className={styles.subtitle}>
-              들어온 신청을 확인하고 상담부터 등록까지 관리해요. · {teacher.name} 선생님이 처리할 수 있는 같은
-              organization 신청만 표시합니다.
-            </p>
-          </div>
-          <div className={styles.headerActions}>
-            <a className={styles.secondaryButton} href="/studio/classes">
-              수업 관리
-            </a>
-            <a className={styles.secondaryButton} href="/studio/schedule">
-              일정 관리
-            </a>
+            <p className={styles.subtitle}>들어온 신청을 확인하고 상담부터 등록까지 관리해요.</p>
           </div>
         </div>
       </header>
@@ -126,4 +115,3 @@ export default async function StudioApplicationsPage() {
     </div>
   )
 }
-

@@ -269,18 +269,6 @@ export const StudioTeachersManager = ({
                   </article>
                 )
               })}
-
-              {canCreateTeacher ? (
-                <button type="button" onClick={handleCreateClick} className={styles.addCard}>
-                  <span className={styles.addCardIcon} aria-hidden="true">
-                    +
-                  </span>
-                  <span className={styles.addCardTitle}>선생님을 추가해보세요</span>
-                  <span className={styles.addCardDescription}>
-                    수업에 연결할 선생님 정보를 등록할 수 있어요.
-                  </span>
-                </button>
-              ) : null}
             </div>
           )}
         </section>
