@@ -1,25 +1,14 @@
 "use client"
 
 import Link from "next/link"
-import { useMemo, useState, useActionState } from "react"
+import { useMemo, useState } from "react"
 
-import {
-  createScheduleBlockAction,
-  type CreateScheduleBlockActionState
-} from "@/features/studio/actions/create-schedule-block"
-import { submitUpdateScheduleBlockTypeAction } from "@/features/studio/actions/update-schedule-block-type"
-import type { ClassSummary, StudioScheduleBlockSummary } from "@/shared/lib/db/adapter"
+import type { ApplicationStatus, StudioApplicationSummary } from "@/shared/lib/db/adapter"
 
 import styles from "./studio-schedule-manager.module.css"
 
 type StudioScheduleManagerProps = {
-  items: StudioScheduleBlockSummary[]
-  classes: ClassSummary[]
-}
-
-const initialCreateState: CreateScheduleBlockActionState = {
-  status: "idle",
-  message: ""
+  items: StudioApplicationSummary[]
 }
 
 const toLocalYmd = (date: Date) => {
@@ -31,151 +20,238 @@ const toLocalYmd = (date: Date) => {
 
 const startOfLocalDay = (ymd: string) => new Date(`${ymd}T00:00:00`)
 
+const startOfMonth = (date: Date) => new Date(date.getFullYear(), date.getMonth(), 1)
+
+const endOfMonth = (date: Date) => new Date(date.getFullYear(), date.getMonth() + 1, 0)
+
 const formatTime = (value: string) =>
   new Intl.DateTimeFormat("ko-KR", {
     timeStyle: "short"
   }).format(new Date(value))
 
-const formatDateLabel = (date: Date) =>
+const formatMonthLabel = (date: Date) =>
   new Intl.DateTimeFormat("ko-KR", {
-    month: "numeric",
-    day: "numeric"
+    year: "numeric",
+    month: "long"
   }).format(date)
+
+const formatSelectedDateLabel = (ymd: string) =>
+  new Intl.DateTimeFormat("ko-KR", {
+    month: "long",
+    day: "numeric",
+    weekday: "long"
+  }).format(startOfLocalDay(ymd))
 
 const weekdayLabels = ["일", "월", "화", "수", "목", "금", "토"] as const
 
-const getTypeBadge = (block: StudioScheduleBlockSummary) => {
-  if (block.type === "trial_booked") {
-    return { label: "예약 확정", tone: "infoSoft" as const }
-  }
-
-  if (block.type === "available") {
-    return { label: "예약 가능", tone: "successSoft" as const }
-  }
-
-  if (block.type === "blocked") {
-    return { label: "차단됨", tone: "neutralSoft" as const }
-  }
-
-  if (block.type === "regular") {
-    return { label: "정규", tone: "neutralSoft" as const }
-  }
-
-  return { label: block.type, tone: "neutralSoft" as const }
-}
-
-const getClosedBadge = (block: StudioScheduleBlockSummary) => {
-  if (!block.isClosed) {
-    return null
-  }
-
-  return { label: "마감", tone: "darkSolid" as const }
-}
-
-const PROGRAM_TYPE_LABELS: Record<ClassSummary["programType"], string> = {
+const PROGRAM_TYPE_LABELS: Record<NonNullable<StudioApplicationSummary["classProgramType"]>, string> = {
   trial_class: "체험수업",
   level_test: "레벨테스트"
 }
 
-export const StudioScheduleManager = ({ items, classes }: StudioScheduleManagerProps) => {
-  const [state, formAction, isPending] = useActionState(createScheduleBlockAction, initialCreateState)
-  const classById = useMemo(() => new Map(classes.map((item) => [item.id, item])), [classes])
-  const todayKey = useMemo(() => toLocalYmd(new Date()), [])
+const getBoardDateValue = (item: StudioApplicationSummary) =>
+  item.confirmedSlotAt ?? item.requestedSlotAt ?? null
+
+const hasVisibleDate = (item: StudioApplicationSummary) => Boolean(getBoardDateValue(item))
+
+const isPendingStatus = (status: ApplicationStatus) => status === "new" || status === "reviewing"
+
+const getStatusBadge = (status: ApplicationStatus) => {
+  if (status === "confirmed") {
+    return { label: "확정", tone: "infoSoft" as const }
+  }
+
+  if (status === "completed") {
+    return { label: "완료", tone: "successSoft" as const }
+  }
+
+  return { label: "검토 중", tone: "warningSoft" as const }
+}
+
+const normalizeText = (value: string | null | undefined) => {
+  const trimmed = value?.trim()
+  return trimmed ? trimmed : null
+}
+
+const formatPhone = (value: string | null) => (value?.trim() ? value : "-")
+
+const getSecondaryScheduleLabel = (item: StudioApplicationSummary) => {
+  const selectedLabel = normalizeText(item.selectedScheduleLabel)
+  if (!selectedLabel) {
+    return null
+  }
+
+  if (item.requestedSlotAt) {
+    return `선택 시간: ${selectedLabel}`
+  }
+
+  return selectedLabel
+}
+
+const compareScheduledAt = (left: StudioApplicationSummary, right: StudioApplicationSummary) => {
+  const leftValue = getBoardDateValue(left)
+  const rightValue = getBoardDateValue(right)
+
+  if (!leftValue || !rightValue) {
+    return 0
+  }
+
+  return leftValue.localeCompare(rightValue)
+}
+
+const buildMonthDays = (baseDate: Date) => {
+  const firstDay = startOfMonth(baseDate)
+  const lastDay = endOfMonth(baseDate)
+  const startDate = new Date(firstDay)
+  startDate.setDate(firstDay.getDate() - firstDay.getDay())
+  const endDate = new Date(lastDay)
+  endDate.setDate(lastDay.getDate() + (6 - lastDay.getDay()))
+
+  const days: { key: string; date: Date; isCurrentMonth: boolean }[] = []
+  const cursor = new Date(startDate)
+  while (cursor <= endDate) {
+    const date = new Date(cursor)
+    days.push({
+      key: toLocalYmd(date),
+      date,
+      isCurrentMonth: date.getMonth() === baseDate.getMonth()
+    })
+    cursor.setDate(cursor.getDate() + 1)
+  }
+
+  return days
+}
+
+type DaySummary = {
+  total: number
+  pendingCount: number
+  confirmedCount: number
+  completedCount: number
+}
+
+export const StudioScheduleManager = ({ items }: StudioScheduleManagerProps) => {
+  const today = useMemo(() => new Date(), [])
+  const todayKey = useMemo(() => toLocalYmd(today), [today])
   const [selectedDateKey, setSelectedDateKey] = useState(todayKey)
-  const [typeFilter, setTypeFilter] = useState<
-    "all" | StudioScheduleBlockSummary["type"] | "closed"
-  >("all")
+  const [visibleMonthDate, setVisibleMonthDate] = useState(() => startOfMonth(today))
 
-  const weekDates = useMemo(() => {
-    const today = new Date()
-    const day = today.getDay()
-    const mondayOffset = (day + 6) % 7
-    const monday = new Date(today)
-    monday.setDate(today.getDate() - mondayOffset)
-
-    const result: { key: string; date: Date; weekday: string; label: string }[] = []
-    for (let i = 0; i < 7; i += 1) {
-      const date = new Date(monday)
-      date.setDate(monday.getDate() + i)
-      const key = toLocalYmd(date)
-      result.push({
-        key,
-        date,
-        weekday: weekdayLabels[date.getDay()],
-        label: formatDateLabel(date)
-      })
-    }
-    return result
-  }, [])
-
-  const normalizedItems = useMemo(() => {
-    return [...items].sort((a, b) => a.startAt.localeCompare(b.startAt))
+  const visibleItems = useMemo(() => {
+    return items
+      .filter((item) => item.status !== "canceled")
+      .filter(hasVisibleDate)
+      .sort(compareScheduledAt)
   }, [items])
+
+  const daySummaryMap = useMemo(() => {
+    const summary = new Map<string, DaySummary>()
+
+    for (const item of visibleItems) {
+      const scheduledAt = getBoardDateValue(item)
+      if (!scheduledAt) {
+        continue
+      }
+
+      const key = toLocalYmd(new Date(scheduledAt))
+      const current = summary.get(key) ?? {
+        total: 0,
+        pendingCount: 0,
+        confirmedCount: 0,
+        completedCount: 0
+      }
+
+      current.total += 1
+      if (isPendingStatus(item.status)) {
+        current.pendingCount += 1
+      } else if (item.status === "confirmed") {
+        current.confirmedCount += 1
+      } else if (item.status === "completed") {
+        current.completedCount += 1
+      }
+
+      summary.set(key, current)
+    }
+
+    return summary
+  }, [visibleItems])
+
+  const monthDays = useMemo(() => buildMonthDays(visibleMonthDate), [visibleMonthDate])
+
+  const monthMetrics = useMemo(() => {
+    const monthStart = startOfMonth(visibleMonthDate)
+    const monthEnd = new Date(monthStart)
+    monthEnd.setMonth(monthEnd.getMonth() + 1)
+
+    const monthItems = visibleItems.filter((item) => {
+      const scheduledAt = getBoardDateValue(item)
+      if (!scheduledAt) {
+        return false
+      }
+
+      const date = new Date(scheduledAt)
+      return date >= monthStart && date < monthEnd
+    })
+
+    return {
+      monthlyScheduled: monthItems.length,
+      pending: monthItems.filter((item) => isPendingStatus(item.status)).length,
+      confirmed: monthItems.filter((item) => item.status === "confirmed").length
+    }
+  }, [visibleItems, visibleMonthDate])
 
   const itemsForToday = useMemo(() => {
     const start = startOfLocalDay(todayKey)
     const end = new Date(start)
     end.setDate(start.getDate() + 1)
-    return normalizedItems.filter((item) => {
-      const date = new Date(item.startAt)
+    return visibleItems.filter((item) => {
+      const scheduledAt = getBoardDateValue(item)
+      if (!scheduledAt) {
+        return false
+      }
+
+      const date = new Date(scheduledAt)
       return date >= start && date < end
     })
-  }, [normalizedItems, todayKey])
+  }, [visibleItems, todayKey])
 
   const itemsForSelectedDay = useMemo(() => {
     const start = startOfLocalDay(selectedDateKey)
     const end = new Date(start)
     end.setDate(start.getDate() + 1)
-    const filteredByDate = normalizedItems.filter((item) => {
-      const date = new Date(item.startAt)
+    return visibleItems.filter((item) => {
+      const scheduledAt = getBoardDateValue(item)
+      if (!scheduledAt) {
+        return false
+      }
+
+      const date = new Date(scheduledAt)
       return date >= start && date < end
     })
+  }, [visibleItems, selectedDateKey])
 
-    if (typeFilter === "all") {
-      return filteredByDate
-    }
+  const selectedDateSummary = daySummaryMap.get(selectedDateKey)
 
-    if (typeFilter === "closed") {
-      return filteredByDate.filter((item) => item.isClosed)
-    }
+  const goToToday = () => {
+    setVisibleMonthDate(startOfMonth(today))
+    setSelectedDateKey(todayKey)
+  }
 
-    return filteredByDate.filter((item) => item.type === typeFilter)
-  }, [normalizedItems, selectedDateKey, typeFilter])
+  const moveMonth = (offset: number) => {
+    const nextMonth = startOfMonth(
+      new Date(visibleMonthDate.getFullYear(), visibleMonthDate.getMonth() + offset, 1)
+    )
+    setVisibleMonthDate(nextMonth)
+    setSelectedDateKey(toLocalYmd(nextMonth))
+  }
 
-  const todayBookedItems = useMemo(
-    () => itemsForToday.filter((item) => item.type === "trial_booked"),
-    [itemsForToday]
-  )
-
-  const todayProgramSummary = useMemo(() => {
-    const trialCount = todayBookedItems.filter((item) => {
-      const classItem = item.classId ? classById.get(item.classId) : null
-      return classItem?.programType === "trial_class"
-    }).length
-
-    const levelTestCount = todayBookedItems.filter((item) => {
-      const classItem = item.classId ? classById.get(item.classId) : null
-      return classItem?.programType === "level_test"
-    }).length
-
-    return {
-      trialCount,
-      levelTestCount
-    }
-  }, [todayBookedItems, classById])
-
-  const todayMetrics = useMemo(() => {
-    const total = itemsForToday.length
-    const booked = itemsForToday.filter((item) => item.type === "trial_booked").length
-    const available = itemsForToday.filter((item) => item.type === "available").length
-    const blocked = itemsForToday.filter((item) => item.type === "blocked").length
-    const closed = itemsForToday.filter((item) => item.isClosed).length
-    return { total, booked, available, blocked, closed }
-  }, [itemsForToday])
+  const handleSelectDate = (date: Date) => {
+    const normalized = startOfMonth(date)
+    setVisibleMonthDate(normalized)
+    setSelectedDateKey(toLocalYmd(date))
+  }
 
   return (
     <div className={styles.layout}>
-      <aside className={styles.side}>
+      <section className={styles.main}>
         <section className={styles.todayCard} aria-label="오늘 일정 요약">
           <div className={styles.todayHeader}>
             <div className={styles.todayHeaderLeft}>
@@ -183,290 +259,219 @@ export const StudioScheduleManager = ({ items, classes }: StudioScheduleManagerP
                 +
               </div>
               <div>
-                <p className={styles.todayKicker}>TODAY</p>
-                <h2 className={styles.todayTitle}>오늘 일정</h2>
+                <p className={styles.todayKicker}>{formatMonthLabel(visibleMonthDate)}</p>
+                <h2 className={styles.todayTitle}>이번 달 일정 요약</h2>
               </div>
             </div>
             <div className={styles.todayCount}>
-              <span className={styles.todayCountValue}>{todayMetrics.booked}</span>
+              <span className={styles.todayCountValue}>{monthMetrics.monthlyScheduled}</span>
               <span className={styles.todayCountUnit}>건</span>
             </div>
           </div>
 
           <p className={styles.todayDescription}>
-            {todayProgramSummary.trialCount}건 체험수업 · {todayProgramSummary.levelTestCount}건 레벨테스트 ·
-            예약 가능 {todayMetrics.available} · 차단 {todayMetrics.blocked}
+            월간 캘린더에서 확정된 체험수업과 검토 중인 신청 일정을 함께 확인해요.
           </p>
 
           <div className={styles.todayMetaRow}>
             <div className={styles.todayMetaItem}>
-              <span className={styles.todayMetaLabel}>오늘 전체 슬롯</span>
-              <span className={styles.todayMetaValue}>{todayMetrics.total}</span>
+              <span className={styles.todayMetaLabel}>이번 달 체험수업</span>
+              <span className={styles.todayMetaValue}>{monthMetrics.monthlyScheduled}</span>
             </div>
             <div className={styles.todayMetaItem}>
-              <span className={styles.todayMetaLabel}>마감</span>
-              <span className={styles.todayMetaValue}>{todayMetrics.closed}</span>
+              <span className={styles.todayMetaLabel}>오늘 일정 수</span>
+              <span className={styles.todayMetaValue}>{itemsForToday.length}</span>
             </div>
-          </div>
-
-          <div className={styles.todayActions}>
-            <Link href="/studio/applications" prefetch={false} className={styles.buttonSecondary}>
-              신청/상담 관리로 이동
-            </Link>
+            <div className={styles.todayMetaItem}>
+              <span className={styles.todayMetaLabel}>검토 중 신청 수</span>
+              <span className={styles.todayMetaValue}>{monthMetrics.pending}</span>
+            </div>
+            <div className={styles.todayMetaItem}>
+              <span className={styles.todayMetaLabel}>확정 일정</span>
+              <span className={styles.todayMetaValue}>{monthMetrics.confirmed}</span>
+            </div>
           </div>
         </section>
 
-        <section className={styles.card}>
-          <div className={styles.cardHeader}>
-            <div>
-              <h2 className={styles.cardTitle}>예약 가능 시간대 생성</h2>
-              <p className={styles.cardDescription}>
-                프로그램과 날짜/시간/정원을 입력해 `available` 슬롯을 생성합니다.
-              </p>
-            </div>
-          </div>
-
-          <form action={formAction} className={styles.form}>
-            <label className={styles.field}>
-              <span className={styles.label}>연결할 프로그램</span>
-              <select
-                name="classId"
-                required
-                disabled={isPending || classes.length === 0}
-                className={styles.input}
-                defaultValue=""
-              >
-                <option value="" disabled>
-                  프로그램을 선택해 주세요
-                </option>
-                {classes.map((item) => (
-                  <option key={item.id} value={item.id}>
-                    {item.title} ({PROGRAM_TYPE_LABELS[item.programType]})
-                  </option>
-                ))}
-              </select>
-              {classes.length === 0 ? (
-                <span className={styles.helperText}>먼저 /studio/classes에서 프로그램을 등록해 주세요.</span>
-              ) : null}
-            </label>
-
-            <div className={styles.fieldGrid}>
-              <label className={styles.field}>
-                <span className={styles.label}>날짜</span>
-                <input name="date" type="date" required disabled={isPending} className={styles.input} />
-              </label>
-
-              <label className={styles.field}>
-                <span className={styles.label}>시작</span>
-                <input name="startTime" type="time" required disabled={isPending} className={styles.input} />
-              </label>
-
-              <label className={styles.field}>
-                <span className={styles.label}>종료</span>
-                <input name="endTime" type="time" required disabled={isPending} className={styles.input} />
-              </label>
-
-              <label className={styles.field}>
-                <span className={styles.label}>정원</span>
-                <input
-                  name="capacity"
-                  type="number"
-                  min={1}
-                  defaultValue={1}
-                  required
-                  disabled={isPending}
-                  className={styles.input}
-                />
-              </label>
-            </div>
-
-            {state.message ? (
-              <div className={`${styles.formMessage} ${state.status === "error" ? styles.formMessageError : ""}`}>
-                {state.message}
-              </div>
-            ) : null}
-
-            <button type="submit" disabled={isPending} className={styles.buttonPrimary}>
-              {isPending ? "생성 중..." : "예약 가능 슬롯 생성"}
-            </button>
-          </form>
-        </section>
-      </aside>
-
-      <section className={styles.main}>
         <div className={styles.boardHeader}>
           <div>
-            <h2 className={styles.boardTitle}>일정 보드</h2>
-            <p className={styles.boardDescription}>주간 날짜를 선택해 해당 날짜의 슬롯을 확인하고 상태를 관리해요.</p>
+            <h2 className={styles.boardTitle}>월간 체험수업 캘린더</h2>
+            <p className={styles.boardDescription}>
+              날짜별 일정 건수를 보고, 선택한 날짜의 상세 일정을 아래에서 확인해요.
+            </p>
           </div>
           <div className={styles.boardHeaderRight}>
-            <button
-              type="button"
-              className={styles.buttonGhost}
-              onClick={() => setSelectedDateKey(todayKey)}
-            >
+            <button type="button" className={styles.buttonGhost} onClick={goToToday}>
               오늘로 이동
             </button>
           </div>
         </div>
 
-        <section className={styles.toolbar} aria-label="날짜 선택">
-          <div className={styles.datePills} role="tablist" aria-label="이번 주 날짜">
-            {weekDates.map((day) => {
+        <section className={styles.calendarCard} aria-label="월간 캘린더">
+          <div className={styles.calendarHeader}>
+            <div>
+              <h3 className={styles.calendarTitle}>{formatMonthLabel(visibleMonthDate)}</h3>
+              <p className={styles.calendarSubtitle}>확정, 검토 중, 완료 상태를 날짜별로 볼 수 있어요.</p>
+            </div>
+            <div className={styles.calendarNav}>
+              <button type="button" className={styles.buttonGhost} onClick={() => moveMonth(-1)}>
+                이전 달
+              </button>
+              <button type="button" className={styles.buttonGhost} onClick={() => moveMonth(1)}>
+                다음 달
+              </button>
+            </div>
+          </div>
+
+          <div className={styles.weekdayRow} aria-hidden="true">
+            {weekdayLabels.map((label) => (
+              <span key={label} className={styles.weekdayCell}>
+                {label}
+              </span>
+            ))}
+          </div>
+
+          <div className={styles.monthGrid}>
+            {monthDays.map((day) => {
+              const summary = daySummaryMap.get(day.key)
               const isSelected = day.key === selectedDateKey
               const isToday = day.key === todayKey
+
               return (
                 <button
                   key={day.key}
                   type="button"
-                  onClick={() => setSelectedDateKey(day.key)}
-                  className={`${styles.datePill} ${isSelected ? styles.datePillActive : ""}`}
+                  onClick={() => handleSelectDate(day.date)}
+                  className={[
+                    styles.monthDay,
+                    !day.isCurrentMonth ? styles.monthDayMuted : "",
+                    isSelected ? styles.monthDaySelected : "",
+                    isToday ? styles.monthDayToday : ""
+                  ].join(" ")}
                 >
-                  <span className={styles.datePillTop}>
-                    {day.weekday}
-                    {isToday && !isSelected ? <span className={styles.todayMark}>오늘</span> : null}
+                  <span className={styles.monthDayTop}>
+                    <span className={styles.monthDayNumber}>{day.date.getDate()}</span>
+                    {summary?.total ? <span className={styles.monthTotal}>{summary.total}건</span> : null}
                   </span>
-                  <span className={styles.datePillBottom}>{day.label}</span>
+                  <span className={styles.dayStats}>
+                    {summary?.pendingCount ? (
+                      <span className={`${styles.dayStat} ${styles.dayStatPending}`}>
+                        검토 {summary.pendingCount}
+                      </span>
+                    ) : null}
+                    {summary?.confirmedCount ? (
+                      <span className={`${styles.dayStat} ${styles.dayStatConfirmed}`}>
+                        확정 {summary.confirmedCount}
+                      </span>
+                    ) : null}
+                    {summary?.completedCount ? (
+                      <span className={`${styles.dayStat} ${styles.dayStatCompleted}`}>
+                        완료 {summary.completedCount}
+                      </span>
+                    ) : null}
+                  </span>
                 </button>
               )
             })}
           </div>
         </section>
 
-        <section className={styles.toolbar} aria-label="필터">
-          <div className={styles.pills} role="tablist" aria-label="일정 유형 필터">
-            <button
-              type="button"
-              onClick={() => setTypeFilter("all")}
-              className={`${styles.pill} ${typeFilter === "all" ? styles.pillActive : ""}`}
-            >
-              전체
-            </button>
-            <button
-              type="button"
-              onClick={() => setTypeFilter("trial_booked")}
-              className={`${styles.pill} ${typeFilter === "trial_booked" ? styles.pillActive : ""}`}
-            >
-              예약 확정
-            </button>
-            <button
-              type="button"
-              onClick={() => setTypeFilter("available")}
-              className={`${styles.pill} ${typeFilter === "available" ? styles.pillActive : ""}`}
-            >
-              예약 가능
-            </button>
-            <button
-              type="button"
-              onClick={() => setTypeFilter("blocked")}
-              className={`${styles.pill} ${typeFilter === "blocked" ? styles.pillActive : ""}`}
-            >
-              차단
-            </button>
-            <button
-              type="button"
-              onClick={() => setTypeFilter("closed")}
-              className={`${styles.pill} ${typeFilter === "closed" ? styles.pillActive : ""}`}
-            >
-              마감
-            </button>
+        <section className={styles.detailSection}>
+          <div className={styles.detailHeader}>
+            <div>
+              <h3 className={styles.detailTitle}>{formatSelectedDateLabel(selectedDateKey)} 일정</h3>
+              <p className={styles.boardDescription}>
+                {selectedDateSummary?.total ?? 0}건의 신청/확정 일정을 시간순으로 보여줍니다.
+              </p>
+            </div>
+            <div className={styles.detailCount}>표시 {itemsForSelectedDay.length}건</div>
           </div>
-          <div className={styles.filteredCount}>표시 {itemsForSelectedDay.length}건</div>
+
+          {itemsForSelectedDay.length === 0 ? (
+            <section className={styles.emptyCard} aria-label="빈 상태">
+              <div className={styles.emptyIcon} aria-hidden="true">
+                +
+              </div>
+              <p className={styles.emptyTitle}>선택한 날짜에 등록된 일정이 없어요.</p>
+              <p className={styles.emptyDescription}>
+                신청을 확정하면 이곳에서 일정을 확인할 수 있습니다.
+              </p>
+            </section>
+          ) : (
+            <div className={styles.timeline} aria-label="일정 목록">
+              {itemsForSelectedDay.map((item) => {
+                const scheduledAt = getBoardDateValue(item)
+                if (!scheduledAt) {
+                  return null
+                }
+
+                const statusBadge = getStatusBadge(item.status)
+                const selectedLabel = getSecondaryScheduleLabel(item)
+                const programLabel = item.classProgramType
+                  ? PROGRAM_TYPE_LABELS[item.classProgramType]
+                  : null
+                const timeLabel = formatTime(scheduledAt)
+                const timeMeta = item.confirmedSlotAt ? "확정 일정" : "희망 일정"
+
+                return (
+                  <article key={item.id} className={styles.timelineItem}>
+                    <div className={styles.timeCol}>
+                      <div className={styles.timeText}>{timeLabel}</div>
+                      <div className={styles.timeSub}>{timeMeta}</div>
+                    </div>
+
+                    <div className={styles.eventCard}>
+                      <div className={styles.eventTop}>
+                        <div className={styles.badgeRow}>
+                          <Badge label={statusBadge.label} tone={statusBadge.tone} />
+                          {programLabel ? <span className={styles.programPill}>{programLabel}</span> : null}
+                        </div>
+                      </div>
+
+                      <div className={styles.eventBody}>
+                        <strong className={styles.eventTitle}>{item.childName}</strong>
+                        <p className={styles.eventSubtitle}>
+                          {item.classTitle} · {item.childGrade}
+                        </p>
+                        {selectedLabel ? <p className={styles.eventNote}>{selectedLabel}</p> : null}
+
+                        <div className={styles.metaGrid}>
+                          <div className={styles.metaRow}>
+                            <span className={styles.metaLabel}>시간</span>
+                            <span className={styles.metaValue}>{timeLabel}</span>
+                          </div>
+                          <div className={styles.metaRow}>
+                            <span className={styles.metaLabel}>상태</span>
+                            <span className={styles.metaValue}>{statusBadge.label}</span>
+                          </div>
+                          <div className={styles.metaRow}>
+                            <span className={styles.metaLabel}>수업명</span>
+                            <span className={styles.metaValue}>{item.classTitle}</span>
+                          </div>
+                          <div className={styles.metaRow}>
+                            <span className={styles.metaLabel}>보호자 연락처</span>
+                            <span className={styles.metaValue}>{formatPhone(item.parentPhone)}</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className={styles.eventFooter}>
+                        <div className={styles.footerHint}>{item.parentName} 보호자 신청</div>
+                        <Link
+                          href={`/studio/applications/${item.id}`}
+                          prefetch={false}
+                          className={styles.linkButton}
+                        >
+                          신청 상세 보기
+                        </Link>
+                      </div>
+                    </div>
+                  </article>
+                )
+              })}
+            </div>
+          )}
         </section>
-
-        {itemsForSelectedDay.length === 0 ? (
-          <section className={styles.emptyCard} aria-label="빈 상태">
-            <div className={styles.emptyIcon} aria-hidden="true">
-              +
-            </div>
-            <p className={styles.emptyTitle}>선택한 날짜에 등록된 일정이 없어요.</p>
-            <p className={styles.emptyDescription}>
-              예약 가능 시간대를 추가하거나, 신청 관리에서 확정된 일정을 확인해 주세요.
-            </p>
-            <div className={styles.emptyActions}>
-              <Link href="/studio/applications" prefetch={false} className={styles.buttonPrimaryInline}>
-                신청 관리로 이동
-              </Link>
-            </div>
-          </section>
-        ) : (
-          <div className={styles.timeline} aria-label="일정 목록">
-            {itemsForSelectedDay.map((item) => {
-              const classItem = item.classId ? classById.get(item.classId) : null
-              const typeBadge = getTypeBadge(item)
-              const closedBadge = getClosedBadge(item)
-              const programLabel = classItem ? PROGRAM_TYPE_LABELS[classItem.programType] : null
-
-              return (
-                <article key={item.id} className={styles.timelineItem}>
-                  <div className={styles.timeCol}>
-                    <div className={styles.timeText}>{formatTime(item.startAt)}</div>
-                    <div className={styles.timeSub}>~ {formatTime(item.endAt)}</div>
-                  </div>
-
-                  <div className={styles.eventCard}>
-                    <div className={styles.eventTop}>
-                      <div className={styles.badgeRow}>
-                        <Badge label={typeBadge.label} tone={typeBadge.tone} />
-                        {closedBadge ? <Badge label={closedBadge.label} tone={closedBadge.tone} /> : null}
-                        {programLabel ? <span className={styles.programPill}>{programLabel}</span> : null}
-                      </div>
-                      <div className={styles.eventActions}>
-                        {item.type === "trial_booked" ? null : (
-                          <form action={submitUpdateScheduleBlockTypeAction}>
-                            <input type="hidden" name="scheduleBlockId" value={item.id} />
-                            <input
-                              type="hidden"
-                              name="nextType"
-                              value={item.type === "available" ? "blocked" : "available"}
-                            />
-                            <button type="submit" className={styles.smallButton} disabled={isPending}>
-                              {item.type === "available" ? "차단" : "복원"}
-                            </button>
-                          </form>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className={styles.eventBody}>
-                      <strong className={styles.eventTitle}>
-                        {classItem?.title ?? "미연결 슬롯"}
-                      </strong>
-
-                      <div className={styles.metaGrid}>
-                        <div className={styles.metaRow}>
-                          <span className={styles.metaLabel}>신청</span>
-                          <span className={styles.metaValue}>{item.appliedCount}명</span>
-                        </div>
-                        <div className={styles.metaRow}>
-                          <span className={styles.metaLabel}>남은</span>
-                          <span className={styles.metaValue}>{item.remainingCount}명</span>
-                        </div>
-                        <div className={styles.metaRow}>
-                          <span className={styles.metaLabel}>정원</span>
-                          <span className={styles.metaValue}>{item.capacity}명</span>
-                        </div>
-                        <div className={styles.metaRow}>
-                          <span className={styles.metaLabel}>지역</span>
-                          <span className={styles.metaValue}>{classItem?.region ?? "-"}</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className={styles.eventFooter}>
-                      <div className={styles.footerHint}>
-                        {item.classId ? "프로그램 연결됨" : "legacy(미연결)"} · 슬롯 ID {item.id.slice(0, 6)}
-                      </div>
-                      <Link href="/studio/applications" prefetch={false} className={styles.linkButton}>
-                        신청 보기
-                      </Link>
-                    </div>
-                  </div>
-                </article>
-              )
-            })}
-          </div>
-        )}
       </section>
     </div>
   )
