@@ -2,19 +2,14 @@
 
 import Link from "next/link"
 import { useEffect, useMemo, useState } from "react"
-import { useRouter, useSearchParams } from "next/navigation"
+import { useSearchParams } from "next/navigation"
 
 import { submitToggleStudioClassActiveAction } from "@/features/studio/actions/toggle-studio-class-active"
-import { StudioClassForm } from "@/features/studio/ui/studio-class-form"
-import type { ClassSummary, StudioTeacherOption } from "@/shared/lib/db/adapter"
+import type { ClassSummary } from "@/shared/lib/db/adapter"
 import styles from "@/features/studio/ui/studio-classes-manager.module.css"
 
 type StudioClassesManagerProps = {
   items: ClassSummary[]
-  organizationId: string
-  currentTeacherId: string
-  teacherOptions: StudioTeacherOption[]
-  teacherOptionsError: string | null
 }
 
 const formatPrice = (price: number) => {
@@ -30,20 +25,11 @@ const PROGRAM_TYPE_LABELS: Record<ClassSummary["programType"], string> = {
   level_test: "레벨테스트"
 }
 
-export const StudioClassesManager = ({
-  items,
-  organizationId,
-  currentTeacherId,
-  teacherOptions,
-  teacherOptionsError
-}: StudioClassesManagerProps) => {
-  const router = useRouter()
+export const StudioClassesManager = ({ items }: StudioClassesManagerProps) => {
   const searchParams = useSearchParams()
-  const [selectedId, setSelectedId] = useState<string | null>(null)
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive">("all")
   const [query, setQuery] = useState("")
-  const [toastOpen, setToastOpen] = useState(false)
-  const selectedItem = items.find((item) => item.id === selectedId) ?? null
+  const [toastState, setToastState] = useState<null | "created" | "updated">(null)
   const totalCount = items.length
   const activeCount = items.filter((item) => item.isActive).length
   const inactiveCount = totalCount - activeCount
@@ -97,13 +83,14 @@ export const StudioClassesManager = ({
 
   useEffect(() => {
     const success = searchParams.get("success")
-    const created = searchParams.get("created")
+    const normalized =
+      success === "updated" ? "updated" : success === "created" || searchParams.get("created") === "1" ? "created" : null
 
-    if (success !== "created" && created !== "1") {
+    if (!normalized) {
       return
     }
 
-    setToastOpen(true)
+    setToastState(normalized)
 
     const url = new URL(window.location.href)
     url.searchParams.delete("success")
@@ -112,48 +99,31 @@ export const StudioClassesManager = ({
   }, [searchParams])
 
   useEffect(() => {
-    if (!toastOpen) {
+    if (!toastState) {
       return
     }
 
-    const timeoutId = window.setTimeout(() => setToastOpen(false), 4500)
+    const timeoutId = window.setTimeout(() => setToastState(null), 4500)
     return () => window.clearTimeout(timeoutId)
-  }, [toastOpen])
-
-  const scrollToForm = () => {
-    if (typeof window === "undefined") {
-      return
-    }
-
-    window.requestAnimationFrame(() => {
-      const formElement = document.getElementById("studio-class-form")
-      formElement?.scrollIntoView({ behavior: "smooth", block: "start" })
-    })
-  }
-
-  const handleCreateClick = () => {
-    setSelectedId(null)
-    scrollToForm()
-  }
-
-  const handleEditClick = (classId: string) => {
-    setSelectedId(classId)
-    scrollToForm()
-  }
+  }, [toastState])
 
   return (
     <div className={styles.root}>
-      {toastOpen ? (
+      {toastState ? (
         <div className={styles.toastWrap} role="status" aria-live="polite">
           <div className={styles.toast}>
             <div className={styles.toastIcon} aria-hidden="true" />
             <div className={styles.toastBody}>
-              <p className={styles.toastTitle}>새 프로그램이 등록되었습니다.</p>
+              <p className={styles.toastTitle}>
+                {toastState === "updated" ? "수업 정보가 수정되었습니다." : "새 프로그램이 등록되었습니다."}
+              </p>
               <p className={styles.toastDescription}>
-                수업 목록에서 공개 상태와 노출 정보를 확인해 주세요.
+                {toastState === "updated"
+                  ? "수업 목록에서 최신 공개 상태와 예약 시간을 다시 확인해 주세요."
+                  : "수업 목록에서 공개 상태와 노출 정보를 확인해 주세요."}
               </p>
             </div>
-            <button type="button" className={styles.toastClose} onClick={() => setToastOpen(false)}>
+            <button type="button" className={styles.toastClose} onClick={() => setToastState(null)}>
               닫기
             </button>
           </div>
@@ -239,12 +209,6 @@ export const StudioClassesManager = ({
             </div>
           </header>
 
-          {teacherOptionsError ? (
-            <div className={styles.alertWarning}>
-              <p className={styles.alertText}>{teacherOptionsError}</p>
-            </div>
-          ) : null}
-
           {items.length === 0 ? (
             <div className={styles.empty}>
               <div className={styles.emptyIcon} aria-hidden="true" />
@@ -252,9 +216,9 @@ export const StudioClassesManager = ({
               <p className={styles.emptyDescription}>
                 첫 수업을 등록하면 학부모가 수업을 확인하고 신청할 수 있어요.
               </p>
-              <a href="#studio-class-form" onClick={handleCreateClick} className={styles.primaryButton}>
+              <Link href="/studio/classes/new" className={styles.primaryButton} prefetch={false}>
                 수업 등록하기
-              </a>
+              </Link>
             </div>
           ) : (
             <>
@@ -270,9 +234,9 @@ export const StudioClassesManager = ({
                     </p>
                   </div>
                 </div>
-                <a href="#studio-class-form" onClick={handleCreateClick} className={styles.ctaButton}>
+                <Link href="/studio/classes/new" className={styles.ctaButton} prefetch={false}>
                   새 프로그램 등록
-                </a>
+                </Link>
               </div>
 
               {filteredItems.length === 0 ? (
@@ -283,10 +247,7 @@ export const StudioClassesManager = ({
               ) : (
                 <div className={styles.cards}>
                   {filteredItems.map((item) => (
-                    <article
-                      key={item.id}
-                      className={`${styles.classCard} ${selectedId === item.id ? styles.classCardActive : ""}`}
-                    >
+                    <article key={item.id} className={styles.classCard}>
                       <div className={styles.cardTop}>
                         <div
                           className={styles.cover}
@@ -323,9 +284,6 @@ export const StudioClassesManager = ({
                               {item.isActive ? "공개 중" : "비공개"}
                             </span>
                             <span className={styles.programPill}>{PROGRAM_TYPE_LABELS[item.programType]}</span>
-                            {selectedId === item.id ? (
-                              <span className={`${styles.badge} ${styles.badgeActive}`}>수정 중</span>
-                            ) : null}
                           </div>
 
                           <p className={styles.classTitle}>{item.title}</p>
@@ -361,6 +319,12 @@ export const StudioClassesManager = ({
                               <dt className={styles.metaLabel}>체험비</dt>
                               <dd className={styles.metaValue}>{formatPrice(item.trialPrice)}</dd>
                             </div>
+                            <div className={styles.metaItem}>
+                              <dt className={styles.metaLabel}>예약 시간</dt>
+                              <dd className={styles.metaValue}>
+                                {item.schedules?.length ? `${item.schedules.length}개 설정됨` : "미설정"}
+                              </dd>
+                            </div>
                           </dl>
                         </div>
                       </div>
@@ -377,13 +341,13 @@ export const StudioClassesManager = ({
                         </div>
                         <div className={styles.footerRight}>
                           <ToggleClassActiveButton classId={item.id} isActive={item.isActive} />
-                          <button
-                            type="button"
-                            onClick={() => handleEditClick(item.id)}
+                          <Link
+                            href={`/studio/classes/${item.id}/edit`}
                             className={styles.primaryButtonSm}
+                            prefetch={false}
                           >
                             수정하기
-                          </button>
+                          </Link>
                         </div>
                       </div>
                     </article>
@@ -393,35 +357,6 @@ export const StudioClassesManager = ({
             </>
           )}
         </section>
-
-        <div className={styles.formCard}>
-          <div
-            role="status"
-            aria-live="polite"
-            style={{
-              marginBottom: 12,
-              fontSize: 13,
-              lineHeight: "18px",
-              fontWeight: 700,
-              color: "#2aad38"
-            }}
-          >
-            {selectedItem ? `현재 "${selectedItem.title}" 수업을 수정 중입니다.` : "새 프로그램 등록 모드입니다."}
-          </div>
-          <StudioClassForm
-            key={selectedId ?? "new"}
-            organizationId={organizationId}
-            currentTeacherId={currentTeacherId}
-            teacherOptions={teacherOptions}
-            teacherOptionsError={teacherOptionsError}
-            initialItem={selectedItem}
-            onCreated={() => {
-              setSelectedId(null)
-              setToastOpen(true)
-              router.refresh()
-            }}
-          />
-        </div>
       </div>
     </div>
   )

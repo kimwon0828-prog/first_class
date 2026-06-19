@@ -1,5 +1,6 @@
+import Link from "next/link"
+
 import { requireTeacherStudioAccess } from "@/features/studio/lib/require-teacher-studio-access"
-import { getStudioClassFormOptions } from "@/features/studio/queries/get-studio-class-form-options"
 import { getStudioClasses } from "@/features/studio/queries/get-studio-classes"
 import { StudioHomeLogo } from "@/features/studio/ui/studio-home-logo"
 import { StudioClassesManager } from "@/features/studio/ui/studio-classes-manager"
@@ -7,11 +8,7 @@ import styles from "./page.module.css"
 
 export default async function StudioClassesPage() {
   const teacher = await requireTeacherStudioAccess()
-  const [{ data: classes, error }, { data: teacherOptions, error: teacherOptionsError }] =
-    await Promise.all([
-      getStudioClasses(teacher.organizationId),
-      getStudioClassFormOptions(teacher.organizationId)
-    ])
+  const { data: classes, error } = await getStudioClasses(teacher.organizationId)
 
   return (
     <div className={styles.page}>
@@ -23,6 +20,11 @@ export default async function StudioClassesPage() {
             <h1 className={styles.title}>수업 관리</h1>
             <p className={styles.description}>학부모에게 노출되는 첫수업 정보를 등록하고 관리해요.</p>
           </div>
+          <div className={styles.headerRight}>
+            <Link href="/studio/classes/new" className={styles.primaryButton} prefetch={false}>
+              새 수업 등록
+            </Link>
+          </div>
         </header>
 
         {error ? (
@@ -30,16 +32,9 @@ export default async function StudioClassesPage() {
             <p className={styles.alertText}>{error}</p>
           </section>
         ) : (
-          <StudioClassesManager
-            items={classes}
-            organizationId={teacher.organizationId}
-            currentTeacherId={teacher.teacherId}
-            teacherOptions={teacherOptions}
-            teacherOptionsError={teacherOptionsError}
-          />
+          <StudioClassesManager items={classes} />
         )}
       </div>
     </div>
   )
 }
-

@@ -29,9 +29,11 @@ type StudioClassFormProps = {
   teacherOptionsError: string | null
   initialItem?: ClassSummary | null
   onCreated?: () => void
+  onUpdated?: () => void
   variant?: "default" | "standalone"
   formId?: string
   createSuccessHref?: string
+  updateSuccessHref?: string
 }
 
 const initialState: UpsertStudioClassActionState = {
@@ -154,9 +156,11 @@ export const StudioClassForm = ({
   teacherOptionsError,
   initialItem,
   onCreated,
+  onUpdated,
   variant = "default",
   formId,
-  createSuccessHref
+  createSuccessHref,
+  updateSuccessHref
 }: StudioClassFormProps) => {
   const router = useRouter()
   const safeTeacherOptions = Array.isArray(teacherOptions) ? teacherOptions : []
@@ -278,9 +282,17 @@ export const StudioClassForm = ({
         }
       }
 
+      if (mode === "update") {
+        onUpdated?.()
+        if (variant === "standalone" && updateSuccessHref) {
+          window.location.assign(updateSuccessHref)
+          return
+        }
+      }
+
       router.refresh()
     }
-  }, [createSuccessHref, mode, onCreated, router, state.ok, variant])
+  }, [createSuccessHref, mode, onCreated, onUpdated, router, state.ok, updateSuccessHref, variant])
 
   useEffect(() => {
     return () => {
