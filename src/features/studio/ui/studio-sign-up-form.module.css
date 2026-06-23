@@ -33,6 +33,19 @@
   box-shadow: 0 0 0 3px rgba(42, 173, 56, 0.16);
 }
 
+.fileInput {
+  height: auto;
+  padding: 12px 14px;
+}
+
+.fieldHint {
+  margin: 0;
+  font-size: 12px;
+  line-height: 18px;
+  color: #666666;
+  font-weight: 700;
+}
+
 .successCard {
   border: 1px solid #d8f0dc;
   background: #f3fbf4;

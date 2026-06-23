@@ -27,7 +27,7 @@ export const StudioSignUpForm = () => {
   }, [router, state.status])
 
   return (
-    <form action={formAction} className={styles.form}>
+    <form action={formAction} className={styles.form} encType="multipart/form-data">
       {state.status === "needs_email_confirm" ? (
         <div className={styles.successCard} role="status" aria-live="polite">
           <div className={styles.successIcon} aria-hidden="true" />
@@ -85,9 +85,74 @@ export const StudioSignUpForm = () => {
       </label>
 
       <label className={styles.field}>
-        <span className={styles.label}>학원 주소</span>
+        <span className={styles.label}>대표자명</span>
         <input
-          name="address"
+          name="representativeName"
+          type="text"
+          required
+          minLength={2}
+          maxLength={40}
+          disabled={isPending}
+          className={styles.input}
+          placeholder="예: 홍길동"
+        />
+      </label>
+
+      <label className={styles.field}>
+        <span className={styles.label}>사업자등록번호</span>
+        <input
+          name="businessRegistrationNumber"
+          type="text"
+          required
+          maxLength={20}
+          disabled={isPending}
+          className={styles.input}
+          placeholder="예: 123-45-67890"
+        />
+      </label>
+
+      <label className={styles.field}>
+        <span className={styles.label}>학원 대표 전화번호</span>
+        <input
+          name="academyPhone"
+          type="tel"
+          required
+          maxLength={20}
+          disabled={isPending}
+          className={styles.input}
+          placeholder="예: 02-1234-5678"
+        />
+      </label>
+
+      <label className={styles.field}>
+        <span className={styles.label}>담당자 전화번호</span>
+        <input
+          name="contactPhone"
+          type="tel"
+          required
+          maxLength={20}
+          disabled={isPending}
+          className={styles.input}
+          placeholder="예: 010-1234-5678"
+        />
+      </label>
+
+      <label className={styles.field}>
+        <span className={styles.label}>우편번호 (선택)</span>
+        <input
+          name="postalCode"
+          type="text"
+          maxLength={20}
+          disabled={isPending}
+          className={styles.input}
+          placeholder="예: 12345"
+        />
+      </label>
+
+      <label className={styles.field}>
+        <span className={styles.label}>기본 주소</span>
+        <input
+          name="addressLine1"
           type="text"
           required
           maxLength={120}
@@ -98,9 +163,9 @@ export const StudioSignUpForm = () => {
       </label>
 
       <label className={styles.field}>
-        <span className={styles.label}>상세주소 (선택)</span>
+        <span className={styles.label}>상세 주소 (선택)</span>
         <input
-          name="addressDetail"
+          name="addressLine2"
           type="text"
           maxLength={120}
           disabled={isPending}
@@ -109,9 +174,20 @@ export const StudioSignUpForm = () => {
         />
       </label>
 
-      <p className={styles.bottomHint}>
-        입력한 주소는 학부모가 수업 상세 페이지에서 학원 위치를 확인할 때 사용됩니다.
-      </p>
+      <label className={styles.field}>
+        <span className={styles.label}>사업자등록증 이미지</span>
+        <input
+          name="businessRegistrationFile"
+          type="file"
+          required
+          accept="image/jpeg,image/png,image/webp"
+          disabled={isPending}
+          className={`${styles.input} ${styles.fileInput}`}
+        />
+        <p className={styles.fieldHint}>JPG, PNG, WEBP 파일만 업로드할 수 있으며 최대 5MB까지 지원합니다.</p>
+      </label>
+
+      <p className={styles.bottomHint}>입력한 주소와 연락처는 가입 심사 및 학원 공식 정보 검토에 사용됩니다.</p>
 
       <label className={styles.field}>
         <span className={styles.label}>이메일 (아이디)</span>
