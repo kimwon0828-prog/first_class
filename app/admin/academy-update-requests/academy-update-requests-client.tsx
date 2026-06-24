@@ -4,6 +4,7 @@ import Link from "next/link"
 import { useMemo, useState, type FormEvent } from "react"
 
 import type { AcademyUpdateRequestView } from "@/features/admin/queries/get-academy-update-requests"
+import { AdminApprovalNav } from "../_components/admin-approval-nav"
 import { ReviewSubmitButton } from "./review-submit-button"
 import styles from "./academy-update-requests.module.css"
 
@@ -173,11 +174,10 @@ export function AcademyUpdateRequestsClient({
             <Link href="/admin/academy-update-requests" prefetch={false} className={styles.buttonSecondary}>
               새로고침
             </Link>
-            <Link href="/admin/academy-approvals" prefetch={false} className={styles.buttonGhost}>
-              가입 승인 화면
-            </Link>
           </div>
         </header>
+
+        <AdminApprovalNav currentPath="/admin/academy-update-requests" />
 
         {actionError ? (
           <section className={styles.alert}>

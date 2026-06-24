@@ -3,6 +3,7 @@
 import Link from "next/link"
 import { useMemo, useState, type FormEvent } from "react"
 
+import { AdminApprovalNav } from "../_components/admin-approval-nav"
 import { ApprovalSubmitButton } from "./approval-submit-button"
 import styles from "./academy-approvals.module.css"
 
@@ -280,6 +281,8 @@ export function AcademyApprovalsClient({
             </Link>
           </div>
         </header>
+
+        <AdminApprovalNav currentPath="/admin/academy-approvals" />
 
         {actionError ? (
           <section className={styles.alert}>
