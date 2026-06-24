@@ -60,16 +60,12 @@ const resolveScheduleDisplay = (application: StudioApplicationSummary) => {
 }
 
 const getStatusBadge = (application: StudioApplicationSummary) => {
-  if (application.registrationStatus === "enrolled") {
-    return { label: "등록 완료", tone: "successSolid" as const }
-  }
-
   if (application.status === "new") {
     return { label: "신규 신청", tone: "successSoft" as const }
   }
 
   if (application.status === "reviewing") {
-    return { label: "상담 대기", tone: "warningSoft" as const }
+    return { label: "상담/확인 중", tone: "warningSoft" as const }
   }
 
   if (application.status === "confirmed") {
@@ -80,10 +76,18 @@ const getStatusBadge = (application: StudioApplicationSummary) => {
     return { label: "수업 완료", tone: "neutralSoft" as const }
   }
 
-  return { label: "신청 취소", tone: "dangerSoft" as const }
+  if (application.noShowAt) {
+    return { label: "노쇼", tone: "dangerSoft" as const }
+  }
+
+  return { label: "취소", tone: "dangerSoft" as const }
 }
 
 const getSecondaryBadge = (application: StudioApplicationSummary) => {
+  if (application.registrationStatus === "enrolled") {
+    return { label: "등록 완료", tone: "successSolid" as const }
+  }
+
   if (application.registrationStatus === "pending") {
     return { label: "등록 보류", tone: "warningSoft" as const }
   }
@@ -199,7 +203,7 @@ export const StudioApplicationTable = ({ items }: StudioApplicationTableProps) =
             onClick={() => setStatusFilter("reviewing")}
             className={`${styles.pill} ${statusFilter === "reviewing" ? styles.pillActive : ""}`}
           >
-            상담 대기
+            상담/확인 중
           </button>
           <button
             type="button"
@@ -227,7 +231,7 @@ export const StudioApplicationTable = ({ items }: StudioApplicationTableProps) =
             onClick={() => setStatusFilter("canceled")}
             className={`${styles.pill} ${statusFilter === "canceled" ? styles.pillActive : ""}`}
           >
-            취소
+            취소/노쇼
           </button>
         </div>
         <p className={styles.filteredCount}>표시 {filteredItems.length}건</p>

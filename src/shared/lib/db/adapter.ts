@@ -295,6 +295,13 @@ export type TrialApplicationSummary = {
   updatedAt: string
 }
 
+export type ApplicationStatusActionType =
+  | "move_to_reviewing"
+  | "move_to_confirmed"
+  | "move_to_completed"
+  | "cancel"
+  | "no_show"
+
 export type MyDashboardData = {
   childrenCount: number
   totalApplicationCount: number
@@ -322,6 +329,12 @@ export type StudioApplicationSummary = TrialApplicationSummary & {
   classRegion: string | null
   assignedTeacherId: string | null
   assignedTeacherName: string | null
+  contactedAt: string | null
+  scheduledAt: string | null
+  completedAt: string | null
+  canceledAt: string | null
+  noShowAt: string | null
+  enrolledAt: string | null
   registrationStatus: ApplicationRegistrationStatus
 }
 
@@ -349,6 +362,7 @@ export type StudioApplicationDetail = StudioApplicationSummary & {
 export type UpdateStudioApplicationStatusInput = {
   applicationId: string
   currentStatus: ApplicationStatus
+  actionType: ApplicationStatusActionType
   nextStatus: ApplicationStatus
   actorId: string
   note: string

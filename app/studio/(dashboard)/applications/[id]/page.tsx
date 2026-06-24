@@ -10,7 +10,7 @@ import { ApplicationLogList } from "@/features/studio/ui/application-log-list"
 import { StudioHomeLogo } from "@/features/studio/ui/studio-home-logo"
 import { ApplicationStatusActionForm } from "@/features/studio/ui/application-status-action-form"
 import { StudioApplicationDetailPanel } from "@/features/studio/ui/studio-application-detail-panel"
-import type { ApplicationStatus } from "@/shared/lib/db/adapter"
+import type { ApplicationStatus, StudioApplicationSummary } from "@/shared/lib/db/adapter"
 
 import styles from "./page.module.css"
 
@@ -18,12 +18,6 @@ type StudioApplicationDetailPageProps = {
   params: Promise<{
     id: string
   }>
-}
-
-const NEXT_STATUS_BY_CURRENT: Partial<Record<ApplicationStatus, ApplicationStatus>> = {
-  new: "reviewing",
-  reviewing: "confirmed",
-  confirmed: "completed"
 }
 
 const formatDateTime = (value: string) => {
@@ -80,21 +74,25 @@ const resolveScheduleSummary = (
   }
 }
 
-const getStatusBadge = (status: ApplicationStatus) => {
-  if (status === "new") {
+const getStatusBadge = (application: Pick<StudioApplicationSummary, "status" | "noShowAt">) => {
+  if (application.status === "new") {
     return { label: "신규 신청", tone: "successSoft" as const }
   }
 
-  if (status === "reviewing") {
-    return { label: "검토 중", tone: "warningSoft" as const }
+  if (application.status === "reviewing") {
+    return { label: "상담/확인 중", tone: "warningSoft" as const }
   }
 
-  if (status === "confirmed") {
+  if (application.status === "confirmed") {
     return { label: "수업 확정", tone: "infoSoft" as const }
   }
 
-  if (status === "completed") {
+  if (application.status === "completed") {
     return { label: "수업 완료", tone: "neutralSoft" as const }
+  }
+
+  if (application.noShowAt) {
+    return { label: "노쇼", tone: "dangerSoft" as const }
   }
 
   return { label: "취소", tone: "dangerSoft" as const }
@@ -192,7 +190,7 @@ export default async function StudioApplicationDetailPage({ params }: StudioAppl
           {data ? (
             <div className={styles.headerMeta}>
               <div className={styles.badgeRow}>
-                <Badge label={getStatusBadge(data.status).label} tone={getStatusBadge(data.status).tone} />
+                <Badge label={getStatusBadge(data).label} tone={getStatusBadge(data).tone} />
                 <Badge
                   label={getRegistrationBadge(data.registrationStatus, data.status).label}
                   tone={getRegistrationBadge(data.registrationStatus, data.status).tone}
@@ -264,7 +262,7 @@ export default async function StudioApplicationDetailPage({ params }: StudioAppl
                   </div>
                   <div className={styles.summaryRow}>
                     <dt className={styles.summaryLabel}>현재 상태</dt>
-                    <dd className={styles.summaryValue}>{getStatusBadge(data.status).label}</dd>
+                    <dd className={styles.summaryValue}>{getStatusBadge(data).label}</dd>
                   </div>
                   <div className={styles.summaryRow}>
                     <dt className={styles.summaryLabel}>담당 선생님</dt>
@@ -288,9 +286,7 @@ export default async function StudioApplicationDetailPage({ params }: StudioAppl
 
                 <ApplicationStatusActionForm
                   applicationId={data.id}
-                  nextStatus={NEXT_STATUS_BY_CURRENT[data.status] ?? null}
                   currentStatus={data.status}
-                  registrationStatus={data.registrationStatus}
                 />
 
                 <section className={styles.card}>

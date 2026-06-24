@@ -58,6 +58,12 @@ export const StudioApplicationDetailPanel = ({ item }: StudioApplicationDetailPa
   const requestedAt = item.requestedSlotAt ? formatDateTime(item.requestedSlotAt) : null
   const selectedScheduleLabel = normalizeText(item.selectedScheduleLabel)
   const requestedScheduleValue = requestedAt ?? selectedScheduleLabel ?? "일정 협의 필요"
+  const contactedAt = item.contactedAt ? formatDateTime(item.contactedAt) : null
+  const scheduledAt = item.scheduledAt ? formatDateTime(item.scheduledAt) : null
+  const completedAt = item.completedAt ? formatDateTime(item.completedAt) : null
+  const canceledAt = item.canceledAt ? formatDateTime(item.canceledAt) : null
+  const noShowAt = item.noShowAt ? formatDateTime(item.noShowAt) : null
+  const enrolledAt = item.enrolledAt ? formatDateTime(item.enrolledAt) : null
 
   return (
     <div className={styles.stack}>
@@ -127,7 +133,7 @@ export const StudioApplicationDetailPanel = ({ item }: StudioApplicationDetailPa
             {classTitle ? <InfoRow label="수업명" value={classTitle} /> : null}
             {classSubject ? <InfoRow label="과목" value={classSubject} /> : null}
             {classRegion ? <InfoRow label="지역" value={classRegion} /> : null}
-          {assignedTeacherName ? <InfoRow label="담당 선생님" value={assignedTeacherName} /> : null}
+            {assignedTeacherName ? <InfoRow label="담당 선생님" value={assignedTeacherName} /> : null}
           </dl>
         ) : (
           <InfoBlock label="안내" value="수업 정보가 연결되지 않았어요." emptyLabel="-" />
@@ -147,6 +153,24 @@ export const StudioApplicationDetailPanel = ({ item }: StudioApplicationDetailPa
           <InfoRow label="신청 유형" value={programTypeLabel} />
           {selectedScheduleLabel ? <InfoRow label="선택 시간 라벨" value={selectedScheduleLabel} /> : null}
           {confirmedAt ? <InfoRow label="확정 일정" value={confirmedAt} /> : null}
+        </dl>
+      </section>
+
+      <section className={styles.card} aria-label="처리 이력">
+        <header className={styles.cardHeader}>
+          <div>
+            <h2 className={styles.cardTitle}>처리 이력</h2>
+            <p className={styles.cardDescription}>상태 전이와 등록 전환 시점을 확인해요.</p>
+          </div>
+        </header>
+
+        <dl className={styles.grid}>
+          <InfoRow label="첫 연락 시각" value={contactedAt ?? "-"} />
+          <InfoRow label="일정 확정 시각" value={scheduledAt ?? "-"} />
+          <InfoRow label="체험 완료 시각" value={completedAt ?? "-"} />
+          <InfoRow label="취소 처리 시각" value={canceledAt ?? "-"} />
+          <InfoRow label="노쇼 처리 시각" value={noShowAt ?? "-"} />
+          <InfoRow label="등록 완료 시각" value={enrolledAt ?? "-"} />
         </dl>
       </section>
     </div>

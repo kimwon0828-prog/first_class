@@ -109,6 +109,12 @@ type TrialApplicationRow = {
   confirmed_slot_at?: string | null
   confirmed_schedule_block_id?: string | null
   assigned_teacher_id?: string | null
+  contacted_at?: string | null
+  scheduled_at?: string | null
+  completed_at?: string | null
+  enrolled_at?: string | null
+  canceled_at?: string | null
+  no_show_at?: string | null
   consultation_note?: string | null
   trial_feedback?: string | null
   final_level?: string | null
@@ -400,6 +406,12 @@ const mapStudioApplication = (
     assignedTeacherName: row.assigned_teacher_id
       ? teacherNameById.get(row.assigned_teacher_id) ?? null
       : null,
+    contactedAt: row.contacted_at ?? null,
+    scheduledAt: row.scheduled_at ?? null,
+    completedAt: row.completed_at ?? null,
+    canceledAt: row.canceled_at ?? null,
+    noShowAt: row.no_show_at ?? null,
+    enrolledAt: row.enrolled_at ?? null,
     registrationStatus: row.registration_status ?? "undecided"
   }
 }
@@ -2022,7 +2034,7 @@ export const supabaseDataAdapter: DataAdapter = {
     let query = supabase
       .from("trial_applications")
       .select(
-        "id, class_id, parent_id, child_name, child_grade, parent_name, parent_phone, class_schedule_id, requested_schedule_block_id, selected_schedule_label, requested_slot_at, confirmed_slot_at, assigned_teacher_id, goal_type, registration_status, status, created_at, updated_at, classes!inner(title, subject, region, organization_id, program_type)"
+        "id, class_id, parent_id, child_name, child_grade, parent_name, parent_phone, class_schedule_id, requested_schedule_block_id, selected_schedule_label, requested_slot_at, confirmed_slot_at, assigned_teacher_id, contacted_at, scheduled_at, completed_at, enrolled_at, canceled_at, no_show_at, goal_type, registration_status, status, created_at, updated_at, classes!inner(title, subject, region, organization_id, program_type)"
       )
       .eq("classes.organization_id", organizationId)
 
@@ -2050,7 +2062,7 @@ export const supabaseDataAdapter: DataAdapter = {
     const { data, error } = await supabase
       .from("trial_applications")
       .select(
-        "id, class_id, parent_id, child_name, child_grade, parent_name, parent_phone, child_school, child_notes, subject_experience_yn, subject_experience_duration, current_level, preferred_regular_schedule, goal_type, goal_note, class_schedule_id, requested_slot_at, requested_schedule_block_id, selected_schedule_label, confirmed_slot_at, confirmed_schedule_block_id, assigned_teacher_id, consultation_note, trial_feedback, final_level, final_schedule, registration_status, registered_course, unregistered_reason, follow_up_note, memo, status, created_at, updated_at, classes!inner(title, subject, region, organization_id, program_type)"
+        "id, class_id, parent_id, child_name, child_grade, parent_name, parent_phone, child_school, child_notes, subject_experience_yn, subject_experience_duration, current_level, preferred_regular_schedule, goal_type, goal_note, class_schedule_id, requested_slot_at, requested_schedule_block_id, selected_schedule_label, confirmed_slot_at, confirmed_schedule_block_id, assigned_teacher_id, contacted_at, scheduled_at, completed_at, enrolled_at, canceled_at, no_show_at, consultation_note, trial_feedback, final_level, final_schedule, registration_status, registered_course, unregistered_reason, follow_up_note, memo, status, created_at, updated_at, classes!inner(title, subject, region, organization_id, program_type)"
       )
       .eq("id", applicationId)
       .eq("classes.organization_id", organizationId)
@@ -2167,18 +2179,29 @@ export const supabaseDataAdapter: DataAdapter = {
   },
   async updateStudioApplicationStatus(input: UpdateStudioApplicationStatusInput) {
     const supabase = await getSupabaseServerClient()
+    const nowIso = new Date().toISOString()
     const updatePayload: {
       status: TrialApplicationSummary["status"]
       updated_at: string
       requested_schedule_block_id?: string | null
       confirmed_slot_at?: string | null
       confirmed_schedule_block_id?: string | null
+      contacted_at?: string | null
+      scheduled_at?: string | null
+      completed_at?: string | null
+      canceled_at?: string | null
+      no_show_at?: string | null
     } = {
       status: input.nextStatus,
-      updated_at: new Date().toISOString()
+      updated_at: nowIso
     }
 
-    if (input.nextStatus === "confirmed") {
+    if (input.actionType === "move_to_reviewing") {
+      updatePayload.contacted_at = nowIso
+    }
+
+    if (input.actionType === "move_to_confirmed") {
+      updatePayload.scheduled_at = nowIso
       const { data: currentRow, error: currentError } = await supabase
         .from("trial_applications")
         .select("class_id, requested_slot_at, requested_schedule_block_id, class_schedule_id")
@@ -2274,6 +2297,22 @@ export const supabaseDataAdapter: DataAdapter = {
       }
     }
 
+    if (input.actionType === "move_to_completed") {
+      updatePayload.completed_at = nowIso
+    }
+
+    if (input.actionType === "cancel") {
+      updatePayload.confirmed_slot_at = null
+      updatePayload.confirmed_schedule_block_id = null
+      updatePayload.canceled_at = nowIso
+    }
+
+    if (input.actionType === "no_show") {
+      updatePayload.confirmed_slot_at = null
+      updatePayload.confirmed_schedule_block_id = null
+      updatePayload.no_show_at = nowIso
+    }
+
     const { data, error } = await supabase
       .from("trial_applications")
       .update(updatePayload)
@@ -2311,6 +2350,7 @@ export const supabaseDataAdapter: DataAdapter = {
   },
   async updateStudioApplicationOutcome(input: UpdateStudioApplicationOutcomeInput) {
     const supabase = await getSupabaseServerClient()
+    const nowIso = new Date().toISOString()
     const { data, error } = await supabase
       .from("trial_applications")
       .update({
@@ -2321,8 +2361,9 @@ export const supabaseDataAdapter: DataAdapter = {
         final_schedule: input.finalSchedule,
         follow_up_note: input.followUpNote,
         registration_status: input.registrationStatus,
+        enrolled_at: input.registrationStatus === "enrolled" ? nowIso : null,
         unregistered_reason: input.unregisteredReason,
-        updated_at: new Date().toISOString()
+        updated_at: nowIso
       })
       .eq("id", input.applicationId)
       .eq("status", input.currentStatus)

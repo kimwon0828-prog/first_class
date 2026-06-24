@@ -1127,6 +1127,12 @@ export const mockDataAdapter: DataAdapter = {
       assignedTeacherId: "assignedTeacherId" in application ? application.assignedTeacherId : null,
       assignedTeacherName:
         application.assignedTeacherName ?? getTeacherDisplayNameById(application.assignedTeacherId),
+      contactedAt: "contactedAt" in application ? application.contactedAt ?? null : null,
+      scheduledAt: "scheduledAt" in application ? application.scheduledAt ?? null : null,
+      completedAt: "completedAt" in application ? application.completedAt ?? null : null,
+      canceledAt: "canceledAt" in application ? application.canceledAt ?? null : null,
+      noShowAt: "noShowAt" in application ? application.noShowAt ?? null : null,
+      enrolledAt: "enrolledAt" in application ? application.enrolledAt ?? null : null,
       confirmedScheduleBlockId:
         "confirmedScheduleBlockId" in application ? application.confirmedScheduleBlockId : null,
       childSchool: "childSchool" in application ? application.childSchool ?? null : null,
@@ -1195,10 +1201,13 @@ export const mockDataAdapter: DataAdapter = {
       throw new Error("application_status_conflict")
     }
 
-    target.status = input.nextStatus
-    target.updatedAt = new Date().toISOString()
+    const nowIso = new Date().toISOString()
+    if (input.actionType === "move_to_reviewing") {
+      target.contactedAt = nowIso
+    }
 
-    if (input.nextStatus === "confirmed") {
+    if (input.actionType === "move_to_confirmed") {
+      target.scheduledAt = nowIso
       if (target.requestedScheduleBlockId) {
         target.confirmedSlotAt = target.requestedSlotAt
         target.confirmedScheduleBlockId = target.requestedScheduleBlockId
@@ -1252,6 +1261,25 @@ export const mockDataAdapter: DataAdapter = {
       }
     }
 
+    if (input.actionType === "move_to_completed") {
+      target.completedAt = nowIso
+    }
+
+    if (input.actionType === "cancel") {
+      target.confirmedSlotAt = null
+      target.confirmedScheduleBlockId = null
+      target.canceledAt = nowIso
+    }
+
+    if (input.actionType === "no_show") {
+      target.confirmedSlotAt = null
+      target.confirmedScheduleBlockId = null
+      target.noShowAt = nowIso
+    }
+
+    target.status = input.nextStatus
+    target.updatedAt = nowIso
+
     applicationLogs.unshift({
       id: `log-${applicationLogs.length + 1}`,
       applicationId: input.applicationId,
@@ -1277,6 +1305,7 @@ export const mockDataAdapter: DataAdapter = {
     target.finalSchedule = input.finalSchedule
     target.followUpNote = input.followUpNote
     target.registrationStatus = input.registrationStatus
+    target.enrolledAt = input.registrationStatus === "enrolled" ? new Date().toISOString() : null
     target.unregisteredReason = input.unregisteredReason
     target.updatedAt = new Date().toISOString()
 
@@ -1372,6 +1401,12 @@ export const mockDataAdapter: DataAdapter = {
       registeredCourse: null,
       unregisteredReason: null as ApplicationUnregisteredReason | null,
       followUpNote: null,
+      contactedAt: null,
+      scheduledAt: null,
+      completedAt: null,
+      canceledAt: null,
+      noShowAt: null,
+      enrolledAt: null,
       confirmedScheduleBlockId: null,
       memo: input.memo,
       logs: []
