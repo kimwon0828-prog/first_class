@@ -143,7 +143,8 @@ export const StudioApplicationTable = ({ items }: StudioApplicationTableProps) =
         item.classTitle ?? "",
         item.goalType ?? "",
         item.classRegion ?? "",
-        item.classSubject ?? ""
+        item.classSubject ?? "",
+        item.assignedTeacherName ?? ""
       ]
         .join(" ")
         .toLowerCase()
@@ -173,7 +174,7 @@ export const StudioApplicationTable = ({ items }: StudioApplicationTableProps) =
           <input
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="학생명 / 보호자 / 수업명 / 연락처 검색"
+            placeholder="학생명 / 보호자 / 수업명 / 담당 선생님 / 연락처 검색"
             className={styles.search}
             aria-label="신청 검색"
           />
@@ -242,6 +243,7 @@ export const StudioApplicationTable = ({ items }: StudioApplicationTableProps) =
                   <th className={styles.th}>학생</th>
                   <th className={styles.th}>수업</th>
                   <th className={styles.th}>희망 일정</th>
+                  <th className={styles.th}>담당 선생님</th>
                   <th className={styles.th}>보호자</th>
                   <th className={styles.th}>연락처</th>
                   <th className={styles.thRight}>관리</th>
@@ -281,6 +283,7 @@ export const StudioApplicationTable = ({ items }: StudioApplicationTableProps) =
                           <div className={styles.subLine}>{schedule.secondary}</div>
                         ) : null}
                       </td>
+                      <td className={styles.td}>{item.assignedTeacherName ?? "미배정"}</td>
                       <td className={styles.td}>{item.parentName ?? "-"}</td>
                       <td className={styles.td}>{item.parentPhone ?? "-"}</td>
                       <td className={styles.tdRight}>
@@ -339,6 +342,10 @@ export const StudioApplicationTable = ({ items }: StudioApplicationTableProps) =
                   <div className={styles.metaRow}>
                     <dt className={styles.metaLabel}>보호자</dt>
                     <dd className={styles.metaValue}>{item.parentName ?? "-"}</dd>
+                  </div>
+                  <div className={styles.metaRow}>
+                    <dt className={styles.metaLabel}>담당 선생님</dt>
+                    <dd className={styles.metaValue}>{item.assignedTeacherName ?? "미배정"}</dd>
                   </div>
                   <div className={styles.metaRow}>
                     <dt className={styles.metaLabel}>연락처</dt>

@@ -2,7 +2,9 @@ import Link from "next/link"
 import { notFound } from "next/navigation"
 
 import { requireTeacherStudioAccess } from "@/features/studio/lib/require-teacher-studio-access"
+import { getStudioApplicationAssigneeOptions } from "@/features/studio/queries/get-studio-application-assignee-options"
 import { getStudioApplicationDetail } from "@/features/studio/queries/get-studio-application-detail"
+import { ApplicationAssigneeForm } from "@/features/studio/ui/application-assignee-form"
 import { ApplicationOutcomeForm } from "@/features/studio/ui/application-outcome-form"
 import { ApplicationLogList } from "@/features/studio/ui/application-log-list"
 import { StudioHomeLogo } from "@/features/studio/ui/studio-home-logo"
@@ -139,6 +141,9 @@ export default async function StudioApplicationDetailPage({ params }: StudioAppl
   const teacher = await requireTeacherStudioAccess()
   const resolvedParams = await params
   const { data, error } = await getStudioApplicationDetail(resolvedParams.id, teacher.organizationId)
+  const assigneeOptionsResult = data
+    ? await getStudioApplicationAssigneeOptions(teacher.organizationId)
+    : { data: [], error: null }
 
   if (!error && !data) {
     notFound()
@@ -261,6 +266,10 @@ export default async function StudioApplicationDetailPage({ params }: StudioAppl
                     <dt className={styles.summaryLabel}>현재 상태</dt>
                     <dd className={styles.summaryValue}>{getStatusBadge(data.status).label}</dd>
                   </div>
+                  <div className={styles.summaryRow}>
+                    <dt className={styles.summaryLabel}>담당 선생님</dt>
+                    <dd className={styles.summaryValue}>{data.assignedTeacherName ?? "미배정"}</dd>
+                  </div>
                 </dl>
               </section>
             )
@@ -269,6 +278,14 @@ export default async function StudioApplicationDetailPage({ params }: StudioAppl
           <div className={styles.body}>
             <section className={styles.side} aria-label="상태 및 빠른 액션">
               <div className={styles.sticky}>
+                <ApplicationAssigneeForm
+                  applicationId={data.id}
+                  currentAssignedTeacherId={data.assignedTeacherId}
+                  currentAssignedTeacherName={data.assignedTeacherName}
+                  options={assigneeOptionsResult.data}
+                  optionsError={assigneeOptionsResult.error}
+                />
+
                 <ApplicationStatusActionForm
                   applicationId={data.id}
                   nextStatus={NEXT_STATUS_BY_CURRENT[data.status] ?? null}
@@ -344,6 +361,12 @@ export default async function StudioApplicationDetailPage({ params }: StudioAppl
                       <dd className={styles.systemInfoValue}>{data.confirmedScheduleBlockId}</dd>
                     </div>
                   ) : null}
+                  {data.assignedTeacherId ? (
+                    <div className={styles.systemInfoRow}>
+                      <dt className={styles.systemInfoLabel}>담당 선생님 ID</dt>
+                      <dd className={styles.systemInfoValue}>{data.assignedTeacherId}</dd>
+                    </div>
+                  ) : null}
                   <div className={styles.systemInfoRow}>
                     <dt className={styles.systemInfoLabel}>생성일</dt>
                     <dd className={styles.systemInfoValue}>{formatDateTime(data.createdAt)}</dd>
@@ -361,4 +384,3 @@ export default async function StudioApplicationDetailPage({ params }: StudioAppl
     </div>
   )
 }
-

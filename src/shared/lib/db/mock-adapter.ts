@@ -26,6 +26,7 @@ import type {
   UpdateStudioTeacherInput,
   TrialApplicationInput,
   TrialApplicationSummary,
+  UpdateStudioApplicationAssigneeInput,
   UpdateStudioApplicationOutcomeInput,
   UpdateStudioApplicationStatusInput
 } from "@/shared/lib/db/adapter"
@@ -557,6 +558,15 @@ const getAppliedCountForSlot = (slotId: string, slotStartAt: string, teacherId?:
   }).length
 }
 
+const getTeacherDisplayNameById = (teacherId: string | null | undefined) => {
+  if (!teacherId) {
+    return null
+  }
+
+  const teacher = teacherSummaries.find((item) => item.id === teacherId) ?? null
+  return teacher?.displayName ?? null
+}
+
 export const mockDataAdapter: DataAdapter = {
   async listClasses(options) {
     const debugEnabled = process.env.NEXT_PUBLIC_DEBUG_DB === "1"
@@ -1077,8 +1087,7 @@ export const mockDataAdapter: DataAdapter = {
           return true
         }
 
-        const classItem = classes.find((classRow) => classRow.id === item.classId)
-        return classItem?.teacherId === options.teacherId
+        return item.assignedTeacherId === options.teacherId
       })
       .map((item) => {
         const classItem = classes.find((classRow) => classRow.id === item.classId)
@@ -1086,7 +1095,8 @@ export const mockDataAdapter: DataAdapter = {
           ...item,
           classSubject: classItem?.subject ?? null,
           classRegion: classItem?.region ?? null,
-          assignedTeacherId: classItem?.teacherId ?? null,
+          assignedTeacherId: item.assignedTeacherId ?? null,
+          assignedTeacherName: getTeacherDisplayNameById(item.assignedTeacherId),
           registrationStatus:
             "registrationStatus" in item ? item.registrationStatus ?? "undecided" : "undecided"
         }
@@ -1114,8 +1124,9 @@ export const mockDataAdapter: DataAdapter = {
       ...application,
       classSubject: "classSubject" in application ? application.classSubject : classItem?.subject ?? null,
       classRegion: "classRegion" in application ? application.classRegion : classItem?.region ?? null,
-      assignedTeacherId:
-        "assignedTeacherId" in application ? application.assignedTeacherId : classItem?.teacherId ?? null,
+      assignedTeacherId: "assignedTeacherId" in application ? application.assignedTeacherId : null,
+      assignedTeacherName:
+        application.assignedTeacherName ?? getTeacherDisplayNameById(application.assignedTeacherId),
       confirmedScheduleBlockId:
         "confirmedScheduleBlockId" in application ? application.confirmedScheduleBlockId : null,
       childSchool: "childSchool" in application ? application.childSchool ?? null : null,
@@ -1146,6 +1157,34 @@ export const mockDataAdapter: DataAdapter = {
     }
 
     return detail
+  },
+  async updateStudioApplicationAssignee(input: UpdateStudioApplicationAssigneeInput) {
+    if (input.organizationId !== mockOrganizationId) {
+      throw new Error("application_not_found_or_forbidden")
+    }
+
+    const target = applications.find((item) => item.id === input.applicationId)
+    if (!target) {
+      throw new Error("application_not_found_or_forbidden")
+    }
+
+    if (input.assignedTeacherId) {
+      const matchedTeacher = teacherSummaries.find(
+        (teacher) =>
+          teacher.id === input.assignedTeacherId &&
+          teacher.organizationId === input.organizationId &&
+          teacher.isActive &&
+          teacher.profileId == null
+      )
+
+      if (!matchedTeacher) {
+        throw new Error("invalid_teacher_for_application_organization")
+      }
+    }
+
+    target.assignedTeacherId = input.assignedTeacherId
+    target.assignedTeacherName = getTeacherDisplayNameById(input.assignedTeacherId)
+    target.updatedAt = new Date().toISOString()
   },
   async updateStudioApplicationStatus(input: UpdateStudioApplicationStatusInput) {
     const target = applications.find(
@@ -1317,6 +1356,7 @@ export const mockDataAdapter: DataAdapter = {
       classSubject: classItem?.subject ?? null,
       classRegion: classItem?.region ?? null,
       assignedTeacherId: classItem?.teacherId ?? null,
+      assignedTeacherName: classItem?.teacherDisplayName ?? classItem?.teacherName ?? null,
       childSchool: input.childSchool,
       childNotes: input.childNotes,
       subjectExperienceYn: input.subjectExperienceYn,

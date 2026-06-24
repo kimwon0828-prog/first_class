@@ -29,6 +29,7 @@ import type {
   TrialApplicationInput,
   TrialApplicationSummary,
   UpdateChildProfileInput,
+  UpdateStudioApplicationAssigneeInput,
   UpdateStudioApplicationOutcomeInput,
   UpdateStudioApplicationStatusInput
 } from "@/shared/lib/db/adapter"
@@ -206,6 +207,12 @@ type StudioDashboardTeacherFilterRow = {
   display_name: string
 }
 
+type TeacherDisplayRow = {
+  id: string
+  display_name: string | null
+  profile_id: string | null
+}
+
 type OrganizationTeacherSeatRow = {
   id: string
   teacher_seat_limit: number | null
@@ -379,7 +386,10 @@ const mapChildProfile = (row: ChildProfileRow): ChildProfile => ({
   updatedAt: row.updated_at
 })
 
-const mapStudioApplication = (row: TrialApplicationRow): StudioApplicationSummary => {
+const mapStudioApplication = (
+  row: TrialApplicationRow,
+  teacherNameById: Map<string, string> = new Map()
+): StudioApplicationSummary => {
   const embeddedClass = getEmbeddedClass(row)
 
   return {
@@ -387,6 +397,9 @@ const mapStudioApplication = (row: TrialApplicationRow): StudioApplicationSummar
     classSubject: embeddedClass?.subject ?? null,
     classRegion: embeddedClass?.region ?? null,
     assignedTeacherId: row.assigned_teacher_id ?? null,
+    assignedTeacherName: row.assigned_teacher_id
+      ? teacherNameById.get(row.assigned_teacher_id) ?? null
+      : null,
     registrationStatus: row.registration_status ?? "undecided"
   }
 }
@@ -724,6 +737,39 @@ const getProfileNameMap = async (profileIds: string[]) => {
     ((data ?? []) as ProfileNameRow[])
       .filter((row): row is ProfileNameRow & { name: string } => typeof row.name === "string")
       .map((row) => [row.id, row.name])
+  )
+}
+
+const getStudioTeacherDisplayNameMap = async (teacherIds: string[]) => {
+  const uniqueTeacherIds = Array.from(new Set(teacherIds.filter(Boolean)))
+  if (uniqueTeacherIds.length === 0) {
+    return new Map<string, string>()
+  }
+
+  const supabase = await getSupabaseServerClient()
+  const { data, error } = await supabase
+    .from("teachers")
+    .select("id, display_name, profile_id")
+    .in("id", uniqueTeacherIds)
+
+  if (error) {
+    throw new Error("failed_to_fetch_assigned_teacher_names")
+  }
+
+  const teacherRows = (data ?? []) as TeacherDisplayRow[]
+  const profileNameById = await getProfileNameMap(
+    teacherRows
+      .map((row) => row.profile_id)
+      .filter((profileId): profileId is string => Boolean(profileId))
+  )
+
+  return new Map<string, string>(
+    teacherRows.map((row) => [
+      row.id,
+      row.display_name?.trim() ||
+        (row.profile_id ? profileNameById.get(row.profile_id) : null) ||
+        "이름 미등록 선생님"
+    ])
   )
 }
 
@@ -1976,12 +2022,12 @@ export const supabaseDataAdapter: DataAdapter = {
     let query = supabase
       .from("trial_applications")
       .select(
-        "id, class_id, parent_id, child_name, child_grade, parent_name, parent_phone, class_schedule_id, requested_schedule_block_id, selected_schedule_label, requested_slot_at, confirmed_slot_at, assigned_teacher_id, goal_type, registration_status, status, created_at, updated_at, classes!inner(title, subject, region, organization_id, program_type, teacher_id)"
+        "id, class_id, parent_id, child_name, child_grade, parent_name, parent_phone, class_schedule_id, requested_schedule_block_id, selected_schedule_label, requested_slot_at, confirmed_slot_at, assigned_teacher_id, goal_type, registration_status, status, created_at, updated_at, classes!inner(title, subject, region, organization_id, program_type)"
       )
       .eq("classes.organization_id", organizationId)
 
     if (options?.teacherId) {
-      query = query.eq("classes.teacher_id", options.teacherId)
+      query = query.eq("assigned_teacher_id", options.teacherId)
     }
 
     const { data, error } = await query.order("created_at", { ascending: false })
@@ -1990,7 +2036,14 @@ export const supabaseDataAdapter: DataAdapter = {
       throw new Error("failed_to_fetch_studio_applications")
     }
 
-    return ((data ?? []) as TrialApplicationRow[]).map(mapStudioApplication)
+    const rows = (data ?? []) as TrialApplicationRow[]
+    const teacherNameById = await getStudioTeacherDisplayNameMap(
+      rows
+        .map((row) => row.assigned_teacher_id)
+        .filter((teacherId): teacherId is string => Boolean(teacherId))
+    )
+
+    return rows.map((row) => mapStudioApplication(row, teacherNameById))
   },
   async getStudioApplicationDetail(applicationId, organizationId) {
     const supabase = await getSupabaseServerClient()
@@ -2011,6 +2064,12 @@ export const supabaseDataAdapter: DataAdapter = {
       return null
     }
 
+    const teacherNameById = await getStudioTeacherDisplayNameMap(
+      (data as TrialApplicationRow).assigned_teacher_id
+        ? [(data as TrialApplicationRow).assigned_teacher_id as string]
+        : []
+    )
+
     const { data: logData, error: logError } = await supabase
       .from("application_logs")
       .select("id, application_id, from_status, to_status, actor_id, note, created_at")
@@ -2026,7 +2085,7 @@ export const supabaseDataAdapter: DataAdapter = {
     const actorNameById = await getActorNameMap(actorIds)
 
     const detail: StudioApplicationDetail = {
-      ...mapStudioApplication(data as TrialApplicationRow),
+      ...mapStudioApplication(data as TrialApplicationRow, teacherNameById),
       confirmedScheduleBlockId: (data as TrialApplicationRow).confirmed_schedule_block_id ?? null,
       childSchool: (data as TrialApplicationRow).child_school ?? null,
       childNotes: (data as TrialApplicationRow).child_notes ?? null,
@@ -2050,6 +2109,61 @@ export const supabaseDataAdapter: DataAdapter = {
     }
 
     return detail
+  },
+  async updateStudioApplicationAssignee(input: UpdateStudioApplicationAssigneeInput) {
+    const supabase = await getSupabaseServerClient()
+
+    const { data: applicationData, error: applicationError } = await supabase
+      .from("trial_applications")
+      .select("id, classes!inner(organization_id)")
+      .eq("id", input.applicationId)
+      .eq("classes.organization_id", input.organizationId)
+      .maybeSingle()
+
+    if (applicationError) {
+      throw new Error("failed_to_update_application_assignee")
+    }
+
+    if (!applicationData) {
+      throw new Error("application_not_found_or_forbidden")
+    }
+
+    if (input.assignedTeacherId) {
+      const { data: teacherData, error: teacherError } = await supabase
+        .from("teachers")
+        .select("id, organization_id, is_active, profile_id")
+        .eq("id", input.assignedTeacherId)
+        .eq("organization_id", input.organizationId)
+        .eq("is_active", true)
+        .is("profile_id", null)
+        .maybeSingle()
+
+      if (teacherError) {
+        throw new Error("failed_to_update_application_assignee")
+      }
+
+      if (!teacherData) {
+        throw new Error("invalid_teacher_for_application_organization")
+      }
+    }
+
+    const { data: updatedData, error: updateError } = await supabase
+      .from("trial_applications")
+      .update({
+        assigned_teacher_id: input.assignedTeacherId,
+        updated_at: new Date().toISOString()
+      })
+      .eq("id", input.applicationId)
+      .select("id")
+      .maybeSingle()
+
+    if (updateError) {
+      throw new Error("failed_to_update_application_assignee")
+    }
+
+    if (!updatedData) {
+      throw new Error("application_not_found_or_forbidden")
+    }
   },
   async updateStudioApplicationStatus(input: UpdateStudioApplicationStatusInput) {
     const supabase = await getSupabaseServerClient()
@@ -2381,6 +2495,7 @@ export const supabaseDataAdapter: DataAdapter = {
       .insert({
         parent_id: input.parentId,
         class_id: input.classId,
+        assigned_teacher_id: classData.teacher_id,
         child_id: input.childId ?? null,
         child_name: input.childName,
         child_grade: input.childGrade,

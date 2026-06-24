@@ -53,6 +53,7 @@ export const StudioApplicationDetailPanel = ({ item }: StudioApplicationDetailPa
   const classTitle = normalizeText(item.classTitle)
   const classSubject = normalizeText(item.classSubject)
   const classRegion = normalizeText(item.classRegion)
+  const assignedTeacherName = normalizeText(item.assignedTeacherName)
   const confirmedAt = item.confirmedSlotAt ? formatDateTime(item.confirmedSlotAt) : null
   const requestedAt = item.requestedSlotAt ? formatDateTime(item.requestedSlotAt) : null
   const selectedScheduleLabel = normalizeText(item.selectedScheduleLabel)
@@ -126,6 +127,7 @@ export const StudioApplicationDetailPanel = ({ item }: StudioApplicationDetailPa
             {classTitle ? <InfoRow label="수업명" value={classTitle} /> : null}
             {classSubject ? <InfoRow label="과목" value={classSubject} /> : null}
             {classRegion ? <InfoRow label="지역" value={classRegion} /> : null}
+          {assignedTeacherName ? <InfoRow label="담당 선생님" value={assignedTeacherName} /> : null}
           </dl>
         ) : (
           <InfoBlock label="안내" value="수업 정보가 연결되지 않았어요." emptyLabel="-" />

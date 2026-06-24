@@ -321,6 +321,7 @@ export type StudioApplicationSummary = TrialApplicationSummary & {
   classSubject: string | null
   classRegion: string | null
   assignedTeacherId: string | null
+  assignedTeacherName: string | null
   registrationStatus: ApplicationRegistrationStatus
 }
 
@@ -366,6 +367,13 @@ export type UpdateStudioApplicationOutcomeInput = {
   registrationStatus: ApplicationRegistrationStatus
   unregisteredReason: ApplicationUnregisteredReason | null
   note: string
+}
+
+export type UpdateStudioApplicationAssigneeInput = {
+  applicationId: string
+  organizationId: string
+  actorId: string
+  assignedTeacherId: string | null
 }
 
 export type TeacherSignupRequestStatus = "pending" | "approved" | "rejected"
@@ -441,6 +449,7 @@ export interface DataAdapter {
     applicationId: string,
     organizationId: string
   ): Promise<StudioApplicationDetail | null>
+  updateStudioApplicationAssignee(input: UpdateStudioApplicationAssigneeInput): Promise<void>
   updateStudioApplicationStatus(input: UpdateStudioApplicationStatusInput): Promise<void>
   updateStudioApplicationOutcome(input: UpdateStudioApplicationOutcomeInput): Promise<void>
   createTrialApplication(
