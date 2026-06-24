@@ -1,4 +1,5 @@
 import { requireTeacherStudioAccess } from "@/features/studio/lib/require-teacher-studio-access"
+import { getStudioApplicationFilterCount } from "@/features/studio/lib/application-filters"
 import { getStudioApplications } from "@/features/studio/queries/get-studio-applications"
 import { StudioHomeLogo } from "@/features/studio/ui/studio-home-logo"
 import { StudioApplicationTable } from "@/features/studio/ui/studio-application-table"
@@ -8,11 +9,6 @@ import styles from "./page.module.css"
 export default async function StudioApplicationsPage() {
   const teacher = await requireTeacherStudioAccess()
   const { data, error } = await getStudioApplications(teacher.organizationId)
-
-  const eligibleApplications = data.filter((item) => item.status !== "canceled")
-  const enrolledCount = eligibleApplications.filter((item) => item.registrationStatus === "enrolled").length
-  const conversionRate =
-    eligibleApplications.length > 0 ? Math.round((enrolledCount / eligibleApplications.length) * 100) : 0
 
   const metrics = [
     {
@@ -24,32 +20,44 @@ export default async function StudioApplicationsPage() {
     {
       key: "new",
       label: "신규 신청",
-      value: data.filter((item) => item.status === "new").length,
+      value: getStudioApplicationFilterCount(data, "new"),
       description: "확인이 필요한 신규 신청"
     },
     {
-      key: "pending",
-      label: "상담 대기",
-      value: data.filter((item) => item.status === "reviewing" || item.status === "new").length,
-      description: "상담/확정 전 상태"
+      key: "reviewing",
+      label: "상담/확인 중",
+      value: getStudioApplicationFilterCount(data, "reviewing"),
+      description: "상담 진행 및 일정 조율 중"
     },
     {
       key: "confirmed",
-      label: "수업 확정",
-      value: data.filter((item) => item.status === "confirmed").length,
-      description: "일정 확정 후 진행 예정"
+      label: "일정 확정",
+      value: getStudioApplicationFilterCount(data, "confirmed"),
+      description: "체험 일정이 확정된 신청"
+    },
+    {
+      key: "completed",
+      label: "체험 완료",
+      value: getStudioApplicationFilterCount(data, "completed"),
+      description: "체험을 마친 신청"
+    },
+    {
+      key: "no_show",
+      label: "노쇼",
+      value: getStudioApplicationFilterCount(data, "no_show"),
+      description: "확정 일정 후 미방문 처리"
     },
     {
       key: "enrolled",
       label: "등록 완료",
-      value: enrolledCount,
-      description: "등록 처리 완료 건수"
+      value: getStudioApplicationFilterCount(data, "enrolled"),
+      description: "등록 전환이 완료된 신청"
     },
     {
-      key: "conversion",
-      label: "등록전환율",
-      value: `${conversionRate}%`,
-      description: "등록 완료 / (취소 제외 신청)"
+      key: "not_enrolled",
+      label: "미등록",
+      value: getStudioApplicationFilterCount(data, "not_enrolled"),
+      description: "체험 후 미등록 처리된 신청"
     }
   ] as const
 
@@ -103,7 +111,7 @@ export default async function StudioApplicationsPage() {
               <div>
                 <h2 className={styles.sectionTitle}>신청 목록</h2>
                 <p className={styles.sectionDescription}>
-                  상태/키워드로 빠르게 필터링하고, 상담이 필요한 신청을 놓치지 않도록 관리해요.
+                  상태별로 빠르게 나눠 보고, 신청일·확정 일정·담당 선생님을 한눈에 확인해요.
                 </p>
               </div>
               <p className={styles.countText}>총 {data.length}건</p>

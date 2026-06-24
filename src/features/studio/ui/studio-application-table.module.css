@@ -46,6 +46,9 @@
   border: 1px solid #d9d9d9;
   background: #ffffff;
   color: #4a4a4a;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   font-size: 13px;
   line-height: 18px;
   font-weight: 700;
@@ -64,12 +67,54 @@
   color: #111111;
 }
 
+.pillCount {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: #f4f4f5;
+  color: #666666;
+  font-size: 11px;
+  line-height: 14px;
+  font-weight: 800;
+}
+
+.pillActive .pillCount {
+  background: #2aad38;
+  color: #ffffff;
+}
+
 .filteredCount {
   margin: 0;
   font-size: 13px;
   line-height: 18px;
   color: #8a8a8a;
   font-weight: 700;
+}
+
+.emptyState {
+  border: 1px dashed #d9d9d9;
+  background: #ffffff;
+  border-radius: 18px;
+  padding: 18px 16px;
+}
+
+.emptyTitle {
+  margin: 0 0 6px;
+  font-size: 16px;
+  line-height: 22px;
+  font-weight: 800;
+  color: #111111;
+}
+
+.emptyDescription {
+  margin: 0;
+  font-size: 13px;
+  line-height: 18px;
+  color: #8a8a8a;
 }
 
 .tableCard {
@@ -154,6 +199,13 @@
   font-size: 13px;
   line-height: 18px;
   color: #8a8a8a;
+}
+
+.metaKicker {
+  font-size: 12px;
+  line-height: 16px;
+  color: #8a8a8a;
+  font-weight: 800;
 }
 
 .manageButton {
