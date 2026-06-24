@@ -1,9 +1,16 @@
-import { dataAdapter, dataAdapterType } from "@/shared/lib/db"
+import "server-only"
+
 import type { AcademyArea } from "@/shared/config/academy-areas"
 import type { ClassSummary } from "@/shared/lib/db/adapter"
 import type { QueryResult } from "@/shared/queries"
+import { listPublicClassesWithSafeProjection } from "@/features/classes/queries/public-class-safe-projection"
 
 const shouldDebugDb = () => process.env.NEXT_PUBLIC_DEBUG_DB === "1"
+const hasSupabaseEnv = Boolean(
+  process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+)
+const publicClassDataSource =
+  process.env.NEXT_PUBLIC_DATA_SOURCE ?? (hasSupabaseEnv ? "supabase" : "mock")
 
 const getSupabaseHost = () => {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -27,7 +34,7 @@ export const getPublicClasses = async (
       console.info(
         `[classes-debug] ${JSON.stringify({
           supabaseHost: getSupabaseHost(),
-          dataAdapter: dataAdapterType,
+          dataAdapter: publicClassDataSource,
           region,
           subject: options?.subject ?? null,
           query: options?.query?.trim() ? options.query.trim() : null
@@ -35,11 +42,18 @@ export const getPublicClasses = async (
       )
     }
 
-    const data = await dataAdapter.listClasses({
-      region,
-      subject: options?.subject,
-      query: options?.query
-    })
+    const data =
+      publicClassDataSource === "supabase"
+        ? await listPublicClassesWithSafeProjection({
+            region,
+            subject: options?.subject,
+            query: options?.query
+          })
+        : await (await import("@/shared/lib/db")).dataAdapter.listClasses({
+            region,
+            subject: options?.subject,
+            query: options?.query
+          })
     if (shouldDebugDb()) {
       console.info(
         `[getPublicClasses] ${JSON.stringify({ region, returned: data.length })}`
@@ -66,7 +80,7 @@ export const getAllPublicClasses = async (options?: {
       console.info(
         `[classes-debug] ${JSON.stringify({
           supabaseHost: getSupabaseHost(),
-          dataAdapter: dataAdapterType,
+          dataAdapter: publicClassDataSource,
           region: null,
           subject: options?.subject ?? null,
           query: options?.query?.trim() ? options.query.trim() : null
@@ -74,10 +88,16 @@ export const getAllPublicClasses = async (options?: {
       )
     }
 
-    const data = await dataAdapter.listClasses({
-      subject: options?.subject,
-      query: options?.query
-    })
+    const data =
+      publicClassDataSource === "supabase"
+        ? await listPublicClassesWithSafeProjection({
+            subject: options?.subject,
+            query: options?.query
+          })
+        : await (await import("@/shared/lib/db")).dataAdapter.listClasses({
+            subject: options?.subject,
+            query: options?.query
+          })
 
     if (shouldDebugDb()) {
       console.info(`[getAllPublicClasses] ${JSON.stringify({ returned: data.length })}`)

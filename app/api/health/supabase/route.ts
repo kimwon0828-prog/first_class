@@ -10,8 +10,9 @@ export async function GET() {
 
     const { error: authError } = await supabase.auth.getSession()
     const { error: dbError } = await supabase
-      .from("teacher_public_profiles")
-      .select("teacher_id", { count: "exact", head: true })
+      .from("classes")
+      .select("id", { count: "exact", head: true })
+      .eq("is_active", true)
 
     const ok = !authError && !dbError
 
