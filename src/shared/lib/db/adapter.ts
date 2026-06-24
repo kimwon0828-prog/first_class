@@ -128,6 +128,8 @@ export type StudioTeacherSummary = {
   profileId: string | null
   organizationId: string
   displayName: string
+  phone: string | null
+  smsEnabled: boolean
   specialty: string | null
   intro: string | null
   careerYears: number
@@ -145,12 +147,16 @@ export type StudioTeacherSeatSummary = {
 export type CreateStudioTeacherInput = {
   organizationId: string
   displayName: string
+  phone: string | null
+  smsEnabled: boolean
 }
 
 export type UpdateStudioTeacherInput = {
   teacherId: string
   organizationId: string
   displayName: string
+  phone: string | null
+  smsEnabled: boolean
 }
 
 export type DeactivateStudioTeacherInput = {

@@ -505,6 +505,42 @@
   gap: 8px;
 }
 
+.checkboxField {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  border: 1px solid #eeeeee;
+  border-radius: 16px;
+  background: #fafafa;
+  padding: 14px;
+}
+
+.checkbox {
+  width: 18px;
+  height: 18px;
+  margin-top: 2px;
+  accent-color: #2aad38;
+  flex: 0 0 auto;
+}
+
+.checkboxBody {
+  display: grid;
+  gap: 4px;
+}
+
+.checkboxLabel {
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 800;
+  color: #111111;
+}
+
+.checkboxDescription {
+  font-size: 13px;
+  line-height: 18px;
+  color: #666666;
+}
+
 .label {
   font-size: 14px;
   line-height: 20px;
@@ -557,6 +593,14 @@
   line-height: 18px;
   color: #b7791f;
   font-weight: 700;
+}
+
+.formHintNeutral {
+  margin: 0;
+  font-size: 13px;
+  line-height: 18px;
+  color: #666666;
+  font-weight: 600;
 }
 
 .primaryButton,

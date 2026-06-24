@@ -70,6 +70,8 @@ const teacherSummaries: StudioTeacherSummary[] = [
     profileId: mockTeacherProfileId,
     organizationId: mockOrganizationId,
     displayName: "김지은 선생님",
+    phone: "010-1234-5678",
+    smsEnabled: true,
     specialty: "초등 창의 미술",
     intro: "아이 눈높이에 맞춘 체험형 수업을 진행합니다.",
     careerYears: 6,
@@ -81,6 +83,8 @@ const teacherSummaries: StudioTeacherSummary[] = [
     profileId: null,
     organizationId: mockOrganizationId,
     displayName: "박서현 선생님",
+    phone: null,
+    smsEnabled: false,
     specialty: "초등 과학 탐구",
     intro: "실험과 토론 중심으로 과학 개념을 쉽게 전달합니다.",
     careerYears: 8,
@@ -697,6 +701,8 @@ export const mockDataAdapter: DataAdapter = {
       profileId: null,
       organizationId: input.organizationId,
       displayName: input.displayName,
+      phone: input.phone,
+      smsEnabled: input.smsEnabled,
       specialty: null,
       intro: null,
       careerYears: 0,
@@ -733,6 +739,8 @@ export const mockDataAdapter: DataAdapter = {
     }
 
     target.displayName = input.displayName
+    target.phone = input.phone
+    target.smsEnabled = input.smsEnabled
 
     const classItems = classes.filter((item) => item.teacherId === target.id)
     for (const classItem of classItems) {

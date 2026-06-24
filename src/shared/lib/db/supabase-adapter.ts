@@ -192,6 +192,8 @@ type TeacherRow = {
   profile_id: string | null
   organization_id: string
   display_name: string
+  phone: string | null
+  sms_enabled: boolean
   specialty: string | null
   intro: string | null
   career_years: number
@@ -508,6 +510,8 @@ const mapStudioTeacher = (
   organizationId: row.organization_id,
   displayName:
     row.display_name?.trim() || (row.profile_id ? profileNameById.get(row.profile_id) : null) || "이름 미등록 선생님",
+  phone: row.phone?.trim() ? row.phone.trim() : null,
+  smsEnabled: Boolean(row.sms_enabled),
   specialty: row.specialty,
   intro: row.intro,
   careerYears: row.career_years,
@@ -702,7 +706,7 @@ const buildRequestedOccurrenceEndAt = (
 }
 
 const TEACHER_SELECT_FIELDS =
-  "id, profile_id, organization_id, display_name, specialty, intro, career_years, is_active, created_at"
+  "id, profile_id, organization_id, display_name, phone, sms_enabled, specialty, intro, career_years, is_active, created_at"
 
 const getProfileNameMap = async (profileIds: string[]) => {
   if (profileIds.length === 0) {
@@ -1372,6 +1376,8 @@ export const supabaseDataAdapter: DataAdapter = {
         profile_id: null,
         organization_id: input.organizationId,
         display_name: input.displayName,
+        phone: input.phone,
+        sms_enabled: input.smsEnabled,
         specialty: null,
         intro: null,
         career_years: 0,
@@ -1396,6 +1402,8 @@ export const supabaseDataAdapter: DataAdapter = {
       .from("teachers")
       .update({
         display_name: input.displayName,
+        phone: input.phone,
+        sms_enabled: input.smsEnabled,
         updated_at: new Date().toISOString()
       })
       .eq("id", input.teacherId)

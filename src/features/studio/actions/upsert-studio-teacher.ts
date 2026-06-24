@@ -28,6 +28,15 @@ const normalizeTeacherId = (value: FormDataEntryValue | null) => {
   return uuidPattern.test(raw) ? raw : null
 }
 
+const normalizeOptionalPhone = (value: FormDataEntryValue | null) => {
+  const raw = String(value ?? "").trim()
+  if (!raw) {
+    return null
+  }
+
+  return raw
+}
+
 export async function upsertStudioTeacherAction(
   previousState: UpsertStudioTeacherActionState = defaultState,
   formData: FormData
@@ -39,6 +48,8 @@ export async function upsertStudioTeacherAction(
     const mode = normalizeMode(formData.get("mode"))
     const teacherId = normalizeTeacherId(formData.get("teacherId"))
     const displayName = String(formData.get("displayName") ?? "").trim()
+    const phone = normalizeOptionalPhone(formData.get("phone"))
+    const smsEnabled = formData.get("smsEnabled") === "on"
 
     if (!mode) {
       return { ok: false, message: "요청 모드를 확인할 수 없습니다." }
@@ -52,16 +63,24 @@ export async function upsertStudioTeacherAction(
       return { ok: false, message: "선생님 이름은 2자 이상 30자 이하로 입력해 주세요." }
     }
 
+    if (phone && !/^[0-9-+\s()]{9,20}$/.test(phone)) {
+      return { ok: false, message: "전화번호 형식이 올바르지 않습니다. 예: 010-1234-5678" }
+    }
+
     if (mode === "create") {
       await dataAdapter.createStudioTeacher({
         organizationId: teacher.organizationId,
-        displayName
+        displayName,
+        phone,
+        smsEnabled
       })
     } else {
       await dataAdapter.updateStudioTeacher({
         teacherId: teacherId as string,
         organizationId: teacher.organizationId,
-        displayName
+        displayName,
+        phone,
+        smsEnabled
       })
     }
 

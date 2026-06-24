@@ -28,6 +28,7 @@ const formatCreatedAt = (value: string) =>
   }).format(new Date(value))
 
 const getInitials = (value: string) => value.trim().slice(0, 2) || "선생"
+const formatPhone = (value: string | null) => (value?.trim() ? value : "미입력")
 
 export const StudioTeachersManager = ({
   items,
@@ -60,7 +61,7 @@ export const StudioTeachersManager = ({
         return true
       }
 
-      return [item.displayName, item.specialty, item.intro]
+      return [item.displayName, item.phone, item.specialty, item.intro]
         .filter((value): value is string => typeof value === "string" && value.length > 0)
         .some((value) => value.toLowerCase().includes(needle))
     })
@@ -82,7 +83,8 @@ export const StudioTeachersManager = ({
             선생님 소개는 학부모가 수업을 신청할 때 신뢰를 판단하는 중요한 정보예요.
           </p>
           <p className={styles.guideDescription}>
-            담당 과목, 수업 스타일, 경력 정보를 간단히 정리해 주세요.
+            담당 과목, 수업 스타일, 경력 정보를 간단히 정리해 주세요. 문자 발송 기능은 추후 연동 예정이며,
+            전화번호와 수신 동의가 있는 선생님에게만 일정 알림 문자가 발송됩니다.
           </p>
         </div>
         <button
@@ -245,6 +247,14 @@ export const StudioTeachersManager = ({
                     </div>
 
                     <div className={styles.metaGrid}>
+                      <div className={styles.metaItem}>
+                        <p className={styles.metaLabel}>전화번호</p>
+                        <p className={styles.metaValue}>{formatPhone(item.phone)}</p>
+                      </div>
+                      <div className={styles.metaItem}>
+                        <p className={styles.metaLabel}>문자 수신</p>
+                        <p className={styles.metaValue}>{item.smsEnabled ? "수신 동의" : "수신 안 함"}</p>
+                      </div>
                       {item.specialty ? (
                         <div className={styles.metaItem}>
                           <p className={styles.metaLabel}>담당 분야</p>
@@ -295,8 +305,11 @@ const StudioTeacherForm = ({
 }) => {
   const action = useMemo(() => upsertStudioTeacherAction, [])
   const [state, formAction, isPending] = useActionState(action, initialState)
+  const [phone, setPhone] = useState(initialItem?.phone ?? "")
+  const [smsEnabled, setSmsEnabled] = useState(initialItem?.smsEnabled ?? false)
   const isCreateMode = !initialItem
   const isCreateDisabled = isCreateMode && seatSummary.activeTeacherCount >= seatSummary.teacherSeatLimit
+  const hasPhone = phone.trim().length > 0
 
   return (
     <section id="studio-teacher-form" className={styles.formCard}>
@@ -304,7 +317,7 @@ const StudioTeacherForm = ({
         <div>
           <h2 className={styles.sectionTitle}>{isCreateMode ? "선생님 등록" : "선생님 정보 수정"}</h2>
           <p className={styles.sectionDescription}>
-            선생님 이름만 관리합니다. 선생님 개별 로그인 계정 생성은 이번 MVP 범위에 포함하지 않습니다.
+            선생님 이름, 전화번호, 문자 수신 여부를 관리합니다. 선생님 개별 로그인 계정 생성은 이번 MVP 범위에 포함하지 않습니다.
           </p>
         </div>
         {!isCreateMode ? (
@@ -331,6 +344,43 @@ const StudioTeacherForm = ({
             placeholder="예: 이태경 선생님"
           />
         </label>
+
+        <label className={styles.field}>
+          <span className={styles.label}>전화번호</span>
+          <input
+            name="phone"
+            type="tel"
+            value={phone}
+            onChange={(event) => setPhone(event.target.value)}
+            disabled={isPending}
+            className={styles.input}
+            placeholder="예: 010-1234-5678"
+          />
+        </label>
+
+        <label className={styles.checkboxField}>
+          <input
+            name="smsEnabled"
+            type="checkbox"
+            checked={smsEnabled}
+            onChange={(event) => setSmsEnabled(event.target.checked)}
+            disabled={isPending}
+            className={styles.checkbox}
+          />
+          <div className={styles.checkboxBody}>
+            <span className={styles.checkboxLabel}>체험수업 일정 알림 문자 받기</span>
+            <span className={styles.checkboxDescription}>
+              문자 발송 기능은 추후 연동 예정입니다.
+            </span>
+          </div>
+        </label>
+
+        <p className={styles.formHintNeutral}>
+          전화번호와 수신 동의가 있는 선생님에게만 일정 알림 문자가 발송됩니다.
+          {!hasPhone && smsEnabled
+            ? " 현재 저장된 전화번호가 없어 실제 발송 대상이 될 수 없습니다."
+            : ""}
+        </p>
 
         {state.message ? (
           <p className={`${styles.formMessage} ${state.ok ? styles.formMessageSuccess : styles.formMessageError}`}>
