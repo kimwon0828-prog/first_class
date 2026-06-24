@@ -21,7 +21,8 @@ const NAV_ITEMS: NavItem[] = [
   { href: "/studio/applications", label: "신청 관리" },
   { href: "/studio/classes", label: "수업 관리" },
   { href: "/studio/schedule", label: "일정 관리" },
-  { href: "/studio/teachers", label: "선생님 관리" }
+  { href: "/studio/teachers", label: "선생님 관리" },
+  { href: "/studio/settings", label: "학원 설정" }
 ]
 
 const isActivePath = (pathname: string, href: string) => {

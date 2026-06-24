@@ -1,13 +1,15 @@
 import { revalidatePath } from "next/cache"
-import Link from "next/link"
 import { redirect } from "next/navigation"
+
+import { AcademyApprovalsClient } from "./academy-approvals-client"
 
 import { getMyProfile } from "@/features/auth/lib/profile-sync"
 import { requireSession } from "@/features/auth/lib/session"
+import { getSupabaseServiceRoleClient } from "@/integrations/supabase/service-role"
 import { getSupabaseServerClient } from "@/integrations/supabase/server"
 
-type PendingSignupRequestRow = {
-  request_id: string
+type SignupRequestRow = {
+  id: string
   user_id: string
   signup_email: string | null
   organization_name: string
@@ -17,8 +19,74 @@ type PendingSignupRequestRow = {
   address_detail: string | null
   teacher_name: string
   teacher_phone: string | null
+  organization_phone: string | null
   status: string
   created_at: string
+  representative_name: string | null
+  business_registration_number: string | null
+  business_registration_file_path: string | null
+  academy_phone: string | null
+  contact_phone: string | null
+  postal_code: string | null
+  address_line1: string | null
+  address_line2: string | null
+  admin_note: string | null
+  reviewed_by: string | null
+  reviewed_at: string | null
+  approved_organization_id: string | null
+  approved_teacher_id: string | null
+}
+
+type SignupRequestView = {
+  requestId: string
+  signupEmail: string | null
+  organizationName: string
+  academyArea: string
+  branchName: string | null
+  address: string | null
+  addressDetail: string | null
+  teacherName: string
+  teacherPhone: string | null
+  organizationPhone: string | null
+  status: string
+  createdAt: string
+  representativeName: string | null
+  businessRegistrationNumber: string | null
+  businessRegistrationFilePath: string | null
+  academyPhone: string | null
+  contactPhone: string | null
+  postalCode: string | null
+  addressLine1: string | null
+  addressLine2: string | null
+  adminNote: string | null
+  reviewedBy: string | null
+  reviewedAt: string | null
+  businessRegistrationSignedUrl: string | null
+  businessRegistrationSignedUrlError: string | null
+}
+
+type ReviewedSignupRequestRow = {
+  id: string
+  reviewed_at: string | null
+}
+
+type ApprovedSignupRequestRow = {
+  id: string
+  status: string
+  approved_organization_id: string | null
+  approved_teacher_id: string | null
+  representative_name: string | null
+  business_registration_number: string | null
+  business_registration_file_path: string | null
+  academy_phone: string | null
+  contact_phone: string | null
+  postal_code: string | null
+  address_line1: string | null
+  address_line2: string | null
+  address: string | null
+  address_detail: string | null
+  organization_phone: string | null
+  teacher_phone: string | null
 }
 
 const requireAdmin = async () => {
@@ -36,29 +104,232 @@ const requireAdmin = async () => {
   return profile
 }
 
-export default async function AdminAcademyApprovalsPage() {
+const BUSINESS_REGISTRATION_SIGNED_URL_TTL_SECONDS = 60 * 5
+
+const getSignupRequests = async (): Promise<SignupRequestView[]> => {
+  const serviceRoleClient = getSupabaseServiceRoleClient()
+  const { data, error } = await serviceRoleClient
+    .from("teacher_signup_requests")
+    .select(
+      [
+        "id",
+        "user_id",
+        "signup_email",
+        "organization_name",
+        "academy_area",
+        "branch_name",
+        "address",
+        "address_detail",
+        "teacher_name",
+        "teacher_phone",
+        "organization_phone",
+        "status",
+        "created_at",
+        "representative_name",
+        "business_registration_number",
+        "business_registration_file_path",
+        "academy_phone",
+        "contact_phone",
+        "postal_code",
+        "address_line1",
+        "address_line2",
+        "admin_note",
+        "reviewed_by",
+        "reviewed_at",
+        "approved_organization_id",
+        "approved_teacher_id"
+      ].join(", ")
+    )
+    .order("created_at", { ascending: false })
+
+  if (error) {
+    throw error
+  }
+
+  const rows = (data ?? []) as unknown as SignupRequestRow[]
+
+  return Promise.all(
+    rows.map(async (row) => {
+      let businessRegistrationSignedUrl: string | null = null
+      let businessRegistrationSignedUrlError: string | null = null
+      const filePath = row.business_registration_file_path?.trim() ?? null
+
+      if (filePath) {
+        const { data: signedUrlData, error: signedUrlError } = await serviceRoleClient.storage
+          .from("academy-documents")
+          .createSignedUrl(filePath, BUSINESS_REGISTRATION_SIGNED_URL_TTL_SECONDS)
+
+        if (signedUrlError) {
+          businessRegistrationSignedUrlError = signedUrlError.message
+        } else {
+          businessRegistrationSignedUrl = signedUrlData.signedUrl
+        }
+      }
+
+      return {
+        requestId: row.id,
+        signupEmail: row.signup_email,
+        organizationName: row.organization_name,
+        academyArea: row.academy_area,
+        branchName: row.branch_name,
+        address: row.address,
+        addressDetail: row.address_detail,
+        teacherName: row.teacher_name,
+        teacherPhone: row.teacher_phone,
+        organizationPhone: row.organization_phone,
+        status: row.status,
+        createdAt: row.created_at,
+        representativeName: row.representative_name,
+        businessRegistrationNumber: row.business_registration_number,
+        businessRegistrationFilePath: filePath,
+        academyPhone: row.academy_phone,
+        contactPhone: row.contact_phone,
+        postalCode: row.postal_code,
+        addressLine1: row.address_line1,
+        addressLine2: row.address_line2,
+        adminNote: row.admin_note,
+        reviewedBy: row.reviewed_by,
+        reviewedAt: row.reviewed_at,
+        businessRegistrationSignedUrl,
+        businessRegistrationSignedUrlError
+      }
+    })
+  )
+}
+
+const syncRequestReviewMetadata = async (requestId: string, reviewedBy: string) => {
+  const serviceRoleClient = getSupabaseServiceRoleClient()
+  const { data, error } = await serviceRoleClient
+    .from("teacher_signup_requests")
+    .select("id, reviewed_at")
+    .eq("id", requestId)
+    .maybeSingle()
+
+  if (error || !data) {
+    throw new Error("failed_to_fetch_reviewed_teacher_signup_request")
+  }
+
+  const reviewedRequest = data as unknown as ReviewedSignupRequestRow
+
+  const updatePayload: {
+    reviewed_by: string
+    reviewed_at?: string
+  } = {
+    reviewed_by: reviewedBy
+  }
+
+  if (!reviewedRequest.reviewed_at) {
+    updatePayload.reviewed_at = new Date().toISOString()
+  }
+
+  const { error: updateError } = await serviceRoleClient
+    .from("teacher_signup_requests")
+    .update(updatePayload)
+    .eq("id", requestId)
+
+  if (updateError) {
+    throw new Error(`failed_to_update_teacher_signup_review_metadata:${updateError.message}`)
+  }
+}
+
+const syncApprovedOrganizationFields = async (requestId: string) => {
+  const serviceRoleClient = getSupabaseServiceRoleClient()
+  const { data, error } = await serviceRoleClient
+    .from("teacher_signup_requests")
+    .select(
+      [
+        "id",
+        "status",
+        "approved_organization_id",
+        "approved_teacher_id",
+        "representative_name",
+        "business_registration_number",
+        "business_registration_file_path",
+        "academy_phone",
+        "contact_phone",
+        "postal_code",
+        "address_line1",
+        "address_line2",
+        "address",
+        "address_detail",
+        "organization_phone",
+        "teacher_phone"
+      ].join(", ")
+    )
+    .eq("id", requestId)
+    .maybeSingle()
+
+  if (error || !data) {
+    throw new Error("failed_to_fetch_approved_teacher_signup_request")
+  }
+
+  const approvedRequest = data as unknown as ApprovedSignupRequestRow
+
+  if (approvedRequest.status !== "approved") {
+    throw new Error("teacher_signup_request_not_approved")
+  }
+
+  if (!approvedRequest.approved_organization_id) {
+    throw new Error("missing_approved_organization_id")
+  }
+
+  const { error: organizationUpdateError } = await serviceRoleClient
+    .from("organizations")
+    .update({
+      representative_name: approvedRequest.representative_name,
+      business_registration_number: approvedRequest.business_registration_number,
+      business_registration_file_path: approvedRequest.business_registration_file_path,
+      academy_phone: approvedRequest.academy_phone,
+      contact_phone: approvedRequest.contact_phone,
+      postal_code: approvedRequest.postal_code,
+      address_line1: approvedRequest.address_line1,
+      address_line2: approvedRequest.address_line2,
+      address: approvedRequest.address,
+      address_detail: approvedRequest.address_detail
+    })
+    .eq("id", approvedRequest.approved_organization_id)
+
+  if (organizationUpdateError) {
+    throw new Error(`failed_to_update_organization_with_signup_request:${organizationUpdateError.message}`)
+  }
+
+  if (approvedRequest.approved_teacher_id) {
+    const { error: teacherUpdateError } = await serviceRoleClient
+      .from("teachers")
+      .update({
+        phone: approvedRequest.teacher_phone ?? approvedRequest.contact_phone ?? null,
+        updated_at: new Date().toISOString()
+      })
+      .eq("id", approvedRequest.approved_teacher_id)
+
+    if (teacherUpdateError) {
+      throw new Error(`failed_to_update_teacher_phone_from_signup_request:${teacherUpdateError.message}`)
+    }
+  }
+}
+
+export default async function AdminAcademyApprovalsPage({
+  searchParams
+}: {
+  searchParams?: Promise<{
+    error?: string
+  }>
+}) {
   await requireAdmin()
+  const resolvedSearchParams = searchParams ? await searchParams : undefined
+  const actionError = resolvedSearchParams?.error
+  let requests: SignupRequestView[] = []
+  let listError: string | null = null
 
-  const supabase = await getSupabaseServerClient()
-  const { data, error } = await supabase.rpc("list_pending_teacher_signup_requests")
-
-  const pending = ((data ?? []) as PendingSignupRequestRow[]).map((row) => ({
-    requestId: row.request_id,
-    signupEmail: row.signup_email,
-    organizationName: row.organization_name,
-    academyArea: row.academy_area,
-    branchName: row.branch_name,
-    address: row.address,
-    addressDetail: row.address_detail,
-    teacherName: row.teacher_name,
-    teacherPhone: row.teacher_phone,
-    status: row.status,
-    createdAt: row.created_at
-  }))
+  try {
+    requests = await getSignupRequests()
+  } catch (error) {
+    listError = error instanceof Error ? error.message : "unknown_error"
+  }
 
   const approve = async (formData: FormData) => {
     "use server"
-    await requireAdmin()
+    const admin = await requireAdmin()
     const requestId = String(formData.get("requestId") ?? "")
     if (!requestId) return
 
@@ -68,12 +339,20 @@ export default async function AdminAcademyApprovalsPage() {
       redirect(`/admin/academy-approvals?error=${encodeURIComponent(error.message)}`)
     }
 
+    try {
+      await syncApprovedOrganizationFields(requestId)
+      await syncRequestReviewMetadata(requestId, admin.id)
+    } catch (syncError) {
+      const message = syncError instanceof Error ? syncError.message : "failed_to_sync_approved_teacher_signup_request"
+      redirect(`/admin/academy-approvals?error=${encodeURIComponent(message)}`)
+    }
+
     revalidatePath("/admin/academy-approvals")
   }
 
   const reject = async (formData: FormData) => {
     "use server"
-    await requireAdmin()
+    const admin = await requireAdmin()
     const requestId = String(formData.get("requestId") ?? "")
     if (!requestId) return
 
@@ -83,123 +362,23 @@ export default async function AdminAcademyApprovalsPage() {
       redirect(`/admin/academy-approvals?error=${encodeURIComponent(error.message)}`)
     }
 
+    try {
+      await syncRequestReviewMetadata(requestId, admin.id)
+    } catch (syncError) {
+      const message = syncError instanceof Error ? syncError.message : "failed_to_sync_rejected_teacher_signup_request"
+      redirect(`/admin/academy-approvals?error=${encodeURIComponent(message)}`)
+    }
+
     revalidatePath("/admin/academy-approvals")
   }
 
   return (
-    <main style={{ maxWidth: 1000, margin: "0 auto", padding: "24px 16px" }}>
-      <header style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between" }}>
-        <div>
-          <h1 style={{ margin: 0, fontSize: 22 }}>학원/선생님 회원가입 승인</h1>
-          <p style={{ margin: "8px 0 0", color: "#555" }}>
-            대기 중인 신청 목록을 확인하고 승인/거절할 수 있습니다.
-          </p>
-        </div>
-        <Link href="/studio" prefetch={false} style={{ color: "#2AAD38", fontWeight: 600 }}>
-          Studio로 이동
-        </Link>
-      </header>
-
-      {error ? (
-        <section style={{ marginTop: 16, padding: 12, border: "1px solid #f2b8b5", background: "#fde7e9" }}>
-          <div style={{ fontWeight: 700 }}>목록을 불러오지 못했습니다.</div>
-          <div style={{ marginTop: 6, color: "#5f2120" }}>{error.message}</div>
-        </section>
-      ) : null}
-
-      {pending.length === 0 ? (
-        <section style={{ marginTop: 24, padding: 16, border: "1px solid #eee", borderRadius: 8 }}>
-          <div style={{ fontWeight: 700 }}>대기 중인 신청이 없습니다.</div>
-          <div style={{ marginTop: 6, color: "#666" }}>새로운 학원 가입 신청이 들어오면 여기에서 확인할 수 있어요.</div>
-        </section>
-      ) : (
-        <section style={{ marginTop: 24 }}>
-          <table style={{ width: "100%", borderCollapse: "collapse" }}>
-            <thead>
-              <tr style={{ textAlign: "left", borderBottom: "1px solid #eee" }}>
-                <th style={{ padding: "10px 8px" }}>학원</th>
-                <th style={{ padding: "10px 8px" }}>지역</th>
-                <th style={{ padding: "10px 8px" }}>지점</th>
-                <th style={{ padding: "10px 8px" }}>주소</th>
-                <th style={{ padding: "10px 8px" }}>가입 이메일</th>
-                <th style={{ padding: "10px 8px" }}>신청일</th>
-                <th style={{ padding: "10px 8px" }}>상태</th>
-                <th style={{ padding: "10px 8px" }}>처리</th>
-              </tr>
-            </thead>
-            <tbody>
-              {pending.map((row) => (
-                <tr key={row.requestId} style={{ borderBottom: "1px solid #f3f3f3" }}>
-                  <td style={{ padding: "10px 8px" }}>
-                    <div style={{ fontWeight: 700 }}>{row.organizationName}</div>
-                    <div style={{ color: "#666", marginTop: 4 }}>
-                      담당: {row.teacherName}
-                      {row.teacherPhone ? ` · ${row.teacherPhone}` : ""}
-                    </div>
-                  </td>
-                  <td style={{ padding: "10px 8px" }}>{row.academyArea}</td>
-                  <td style={{ padding: "10px 8px" }}>{row.branchName ?? "-"}</td>
-                  <td style={{ padding: "10px 8px", minWidth: 220 }}>
-                    {row.address ? (
-                      <>
-                        <div>{row.address}</div>
-                        {row.addressDetail ? (
-                          <div style={{ color: "#666", marginTop: 4 }}>{row.addressDetail}</div>
-                        ) : null}
-                      </>
-                    ) : (
-                      "-"
-                    )}
-                  </td>
-                  <td style={{ padding: "10px 8px" }}>{row.signupEmail ?? "-"}</td>
-                  <td style={{ padding: "10px 8px" }}>
-                    {new Date(row.createdAt).toLocaleString("ko-KR")}
-                  </td>
-                  <td style={{ padding: "10px 8px" }}>{row.status}</td>
-                  <td style={{ padding: "10px 8px" }}>
-                    <div style={{ display: "flex", gap: 8 }}>
-                      <form action={approve}>
-                        <input type="hidden" name="requestId" value={row.requestId} />
-                        <button
-                          type="submit"
-                          style={{
-                            background: "#2AAD38",
-                            color: "white",
-                            border: "1px solid #2AAD38",
-                            padding: "8px 10px",
-                            borderRadius: 8,
-                            cursor: "pointer",
-                            fontWeight: 700
-                          }}
-                        >
-                          승인
-                        </button>
-                      </form>
-                      <form action={reject}>
-                        <input type="hidden" name="requestId" value={row.requestId} />
-                        <button
-                          type="submit"
-                          style={{
-                            background: "white",
-                            color: "#333",
-                            border: "1px solid #ddd",
-                            padding: "8px 10px",
-                            borderRadius: 8,
-                            cursor: "pointer",
-                            fontWeight: 700
-                          }}
-                        >
-                          거절
-                        </button>
-                      </form>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </section>
-      )}
-    </main>
+    <AcademyApprovalsClient
+      requests={requests}
+      actionError={actionError ?? null}
+      listError={listError}
+      approveAction={approve}
+      rejectAction={reject}
+    />
   )
 }
