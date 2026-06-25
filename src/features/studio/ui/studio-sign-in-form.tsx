@@ -1,8 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { useRouter } from "next/navigation"
-import { useActionState, useEffect } from "react"
+import { useActionState } from "react"
 
 import {
   studioSignInAction,
@@ -20,14 +19,7 @@ type StudioSignInFormProps = {
 }
 
 export const StudioSignInForm = ({ returnTo }: StudioSignInFormProps) => {
-  const router = useRouter()
   const [state, formAction, isPending] = useActionState(studioSignInAction, initialState)
-
-  useEffect(() => {
-    if (state.status === "success" && state.redirectTo) {
-      router.replace(state.redirectTo)
-    }
-  }, [router, state.redirectTo, state.status])
 
   return (
     <form action={formAction} className={styles.form}>

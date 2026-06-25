@@ -13,7 +13,7 @@ export async function middleware(request: NextRequest) {
   const { supabase, response } = getSupabaseMiddlewareClient(request)
 
   try {
-    await supabase.auth.getSession()
+    await supabase.auth.getUser()
   } catch {}
 
   return response

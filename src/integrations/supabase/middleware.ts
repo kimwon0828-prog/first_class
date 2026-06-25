@@ -12,7 +12,7 @@ type MiddlewareSupabaseResult = {
 export const getSupabaseMiddlewareClient = (
   request: NextRequest
 ): MiddlewareSupabaseResult => {
-  const response = NextResponse.next({
+  let response = NextResponse.next({
     request
   })
   const { supabaseUrl, supabasePublishableKey } = getPublicEnv()
@@ -29,6 +29,14 @@ export const getSupabaseMiddlewareClient = (
           options?: Parameters<typeof response.cookies.set>[2]
         }>
       ) {
+        for (const cookie of cookiesToSet) {
+          request.cookies.set(cookie.name, cookie.value)
+        }
+
+        response = NextResponse.next({
+          request
+        })
+
         for (const cookie of cookiesToSet) {
           response.cookies.set(cookie.name, cookie.value, cookie.options)
         }
