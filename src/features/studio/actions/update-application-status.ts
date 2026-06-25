@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache"
 
+import { logSmsEventSafely } from "@/features/notifications/sms/log-sms-event"
 import { requireTeacherStudioAccess } from "@/features/studio/lib/require-teacher-studio-access"
 import { dataAdapter } from "@/shared/lib/db"
 import type { ApplicationStatus, ApplicationStatusActionType } from "@/shared/lib/db/adapter"
@@ -113,6 +114,59 @@ export async function updateApplicationStatusAction(
       actorId: teacher.id,
       note: requestedActionConfig.note
     })
+
+    const updated = await dataAdapter
+      .getStudioApplicationDetail(applicationId, teacher.organizationId)
+      .catch(() => null)
+
+    if (updated) {
+      if (requestedActionType === "move_to_reviewing") {
+        await logSmsEventSafely({
+          organizationId: teacher.organizationId,
+          application: updated,
+          createdBy: teacher.id,
+          recipientType: "parent",
+          eventType: "trial_contact_started"
+        })
+      }
+
+      if (requestedActionType === "move_to_confirmed") {
+        await logSmsEventSafely({
+          organizationId: teacher.organizationId,
+          application: updated,
+          createdBy: teacher.id,
+          recipientType: "parent",
+          eventType: "trial_schedule_confirmed"
+        })
+        await logSmsEventSafely({
+          organizationId: teacher.organizationId,
+          application: updated,
+          createdBy: teacher.id,
+          recipientType: "teacher",
+          eventType: "teacher_trial_schedule_confirmed"
+        })
+      }
+
+      if (requestedActionType === "move_to_completed") {
+        await logSmsEventSafely({
+          organizationId: teacher.organizationId,
+          application: updated,
+          createdBy: teacher.id,
+          recipientType: "parent",
+          eventType: "trial_completed"
+        })
+      }
+
+      if (requestedActionType === "cancel") {
+        await logSmsEventSafely({
+          organizationId: teacher.organizationId,
+          application: updated,
+          createdBy: teacher.id,
+          recipientType: "teacher",
+          eventType: "teacher_trial_canceled"
+        })
+      }
+    }
 
     revalidatePath("/studio")
     revalidatePath("/studio/applications")

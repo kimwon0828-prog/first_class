@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache"
 
+import { logSmsEventSafely } from "@/features/notifications/sms/log-sms-event"
 import { requireTeacherStudioAccess } from "@/features/studio/lib/require-teacher-studio-access"
 import { getStudioApplicationDetail } from "@/features/studio/queries/get-studio-application-detail"
 import { dataAdapter } from "@/shared/lib/db"
@@ -196,6 +197,22 @@ export async function updateApplicationOutcomeAction(
       unregisteredReason: nextValue.unregisteredReason,
       note: logNote
     })
+
+    if (current.registrationStatus !== "enrolled" && nextValue.registrationStatus === "enrolled") {
+      const updated = await dataAdapter
+        .getStudioApplicationDetail(applicationId, teacher.organizationId)
+        .catch(() => null)
+
+      if (updated) {
+        await logSmsEventSafely({
+          organizationId: teacher.organizationId,
+          application: updated,
+          createdBy: teacher.id,
+          recipientType: "parent",
+          eventType: "trial_enrolled"
+        })
+      }
+    }
 
     revalidatePath("/studio")
     revalidatePath("/studio/applications")

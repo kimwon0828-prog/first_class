@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache"
 
+import { logSmsEventSafely } from "@/features/notifications/sms/log-sms-event"
 import { requireTeacherStudioAccess } from "@/features/studio/lib/require-teacher-studio-access"
 import { dataAdapter } from "@/shared/lib/db"
 
@@ -63,6 +64,23 @@ export async function updateApplicationAssigneeAction(
       actorId: teacher.id,
       assignedTeacherId: requestedTeacherId
     })
+
+    if (requestedTeacherId) {
+      const updated = await dataAdapter
+        .getStudioApplicationDetail(applicationId, teacher.organizationId)
+        .catch(() => null)
+
+      if (updated) {
+        await logSmsEventSafely({
+          organizationId: teacher.organizationId,
+          application: updated,
+          createdBy: teacher.id,
+          recipientType: "teacher",
+          eventType: "teacher_trial_assigned",
+          targetTeacherId: requestedTeacherId
+        })
+      }
+    }
 
     revalidatePath("/studio")
     revalidatePath("/studio/applications")
