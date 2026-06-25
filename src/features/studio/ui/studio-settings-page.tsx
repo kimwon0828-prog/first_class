@@ -1,6 +1,6 @@
 "use client"
 
-import { useActionState } from "react"
+import { useActionState, useState } from "react"
 
 import {
   requestAcademyUpdateAction,
@@ -59,6 +59,7 @@ export function StudioSettingsPage({
   pendingError
 }: StudioSettingsPageProps) {
   const [state, formAction, isPending] = useActionState(requestAcademyUpdateAction, initialState)
+  const [isUpdateRequestOpen, setIsUpdateRequestOpen] = useState(false)
 
   if (organizationError || !organization) {
     return (
@@ -209,132 +210,161 @@ export function StudioSettingsPage({
                   제출 후에는 관리자 검토가 끝날 때까지 동일 학원에서 중복 요청을 보낼 수 없습니다.
                 </p>
               </div>
+              <div className={styles.sectionActions}>
+                {isUpdateRequestOpen ? (
+                  <button
+                    type="button"
+                    className={styles.secondaryButton}
+                    onClick={() => setIsUpdateRequestOpen(false)}
+                    disabled={isPending}
+                  >
+                    닫기
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    className={styles.primaryButton}
+                    onClick={() => setIsUpdateRequestOpen(true)}
+                  >
+                    수정하기
+                  </button>
+                )}
+              </div>
             </div>
 
-            <form action={formAction} className={styles.form}>
-              <label className={styles.field}>
-                <span className={styles.label}>학원명</span>
-                <input
-                  name="academyName"
-                  type="text"
-                  defaultValue={organization.name}
-                  minLength={2}
-                  maxLength={50}
-                  required
-                  disabled={isPending}
-                  className={styles.input}
-                />
-              </label>
+            {isUpdateRequestOpen ? (
+              <form action={formAction} className={styles.form}>
+                <label className={styles.field}>
+                  <span className={styles.label}>학원명</span>
+                  <input
+                    name="academyName"
+                    type="text"
+                    defaultValue={organization.name}
+                    minLength={2}
+                    maxLength={50}
+                    required
+                    disabled={isPending}
+                    className={styles.input}
+                  />
+                </label>
 
-              <label className={styles.field}>
-                <span className={styles.label}>대표자명</span>
-                <input
-                  name="representativeName"
-                  type="text"
-                  defaultValue={organization.representativeName ?? ""}
-                  minLength={2}
-                  maxLength={40}
-                  required
-                  disabled={isPending}
-                  className={styles.input}
-                />
-              </label>
+                <label className={styles.field}>
+                  <span className={styles.label}>대표자명</span>
+                  <input
+                    name="representativeName"
+                    type="text"
+                    defaultValue={organization.representativeName ?? ""}
+                    minLength={2}
+                    maxLength={40}
+                    required
+                    disabled={isPending}
+                    className={styles.input}
+                  />
+                </label>
 
-              <label className={styles.field}>
-                <span className={styles.label}>사업자등록번호</span>
-                <input
-                  name="businessRegistrationNumber"
-                  type="text"
-                  defaultValue={organization.businessRegistrationNumber ?? ""}
-                  maxLength={20}
-                  required
-                  disabled={isPending}
-                  className={styles.input}
-                />
-              </label>
+                <label className={styles.field}>
+                  <span className={styles.label}>사업자등록번호</span>
+                  <input
+                    name="businessRegistrationNumber"
+                    type="text"
+                    defaultValue={organization.businessRegistrationNumber ?? ""}
+                    maxLength={20}
+                    required
+                    disabled={isPending}
+                    className={styles.input}
+                  />
+                </label>
 
-              <label className={styles.field}>
-                <span className={styles.label}>학원 대표 전화번호</span>
-                <input
-                  name="academyPhone"
-                  type="tel"
-                  defaultValue={organization.academyPhone ?? organization.organizationPhone ?? ""}
-                  maxLength={20}
-                  required
-                  disabled={isPending}
-                  className={styles.input}
-                />
-              </label>
+                <label className={styles.field}>
+                  <span className={styles.label}>학원 대표 전화번호</span>
+                  <input
+                    name="academyPhone"
+                    type="tel"
+                    defaultValue={organization.academyPhone ?? organization.organizationPhone ?? ""}
+                    maxLength={20}
+                    required
+                    disabled={isPending}
+                    className={styles.input}
+                  />
+                </label>
 
-              <label className={styles.field}>
-                <span className={styles.label}>담당자 전화번호</span>
-                <input
-                  name="contactPhone"
-                  type="tel"
-                  defaultValue={organization.contactPhone ?? ""}
-                  maxLength={20}
-                  required
-                  disabled={isPending}
-                  className={styles.input}
-                />
-              </label>
+                <label className={styles.field}>
+                  <span className={styles.label}>담당자 전화번호</span>
+                  <input
+                    name="contactPhone"
+                    type="tel"
+                    defaultValue={organization.contactPhone ?? ""}
+                    maxLength={20}
+                    required
+                    disabled={isPending}
+                    className={styles.input}
+                  />
+                </label>
 
-              <label className={styles.field}>
-                <span className={styles.label}>우편번호</span>
-                <input
-                  name="postalCode"
-                  type="text"
-                  defaultValue={organization.postalCode ?? ""}
-                  maxLength={20}
-                  disabled={isPending}
-                  className={styles.input}
-                />
-              </label>
+                <label className={styles.field}>
+                  <span className={styles.label}>우편번호</span>
+                  <input
+                    name="postalCode"
+                    type="text"
+                    defaultValue={organization.postalCode ?? ""}
+                    maxLength={20}
+                    disabled={isPending}
+                    className={styles.input}
+                  />
+                </label>
 
-              <label className={`${styles.field} ${styles.fullWidthField}`}>
-                <span className={styles.label}>기본 주소</span>
-                <input
-                  name="addressLine1"
-                  type="text"
-                  defaultValue={organization.addressLine1 ?? organization.address ?? ""}
-                  maxLength={120}
-                  required
-                  disabled={isPending}
-                  className={styles.input}
-                />
-              </label>
+                <label className={`${styles.field} ${styles.fullWidthField}`}>
+                  <span className={styles.label}>기본 주소</span>
+                  <input
+                    name="addressLine1"
+                    type="text"
+                    defaultValue={organization.addressLine1 ?? organization.address ?? ""}
+                    maxLength={120}
+                    required
+                    disabled={isPending}
+                    className={styles.input}
+                  />
+                </label>
 
-              <label className={`${styles.field} ${styles.fullWidthField}`}>
-                <span className={styles.label}>상세 주소</span>
-                <input
-                  name="addressLine2"
-                  type="text"
-                  defaultValue={organization.addressLine2 ?? organization.addressDetail ?? ""}
-                  maxLength={120}
-                  disabled={isPending}
-                  className={styles.input}
-                />
-              </label>
+                <label className={`${styles.field} ${styles.fullWidthField}`}>
+                  <span className={styles.label}>상세 주소</span>
+                  <input
+                    name="addressLine2"
+                    type="text"
+                    defaultValue={organization.addressLine2 ?? organization.addressDetail ?? ""}
+                    maxLength={120}
+                    disabled={isPending}
+                    className={styles.input}
+                  />
+                </label>
 
-              <label className={`${styles.field} ${styles.fullWidthField}`}>
-                <span className={styles.label}>사업자등록증 재업로드</span>
-                <input
-                  name="businessRegistrationFile"
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp"
-                  disabled={isPending}
-                  className={`${styles.input} ${styles.fileInput}`}
-                />
-                <p className={styles.fieldHint}>
-                  새 이미지를 올리지 않으면 기존 사업자등록증 경로를 유지합니다. JPG, PNG, WEBP만 지원하며 최대
-                  5MB까지 업로드할 수 있습니다.
+                <label className={`${styles.field} ${styles.fullWidthField}`}>
+                  <span className={styles.label}>사업자등록증 재업로드</span>
+                  <input
+                    name="businessRegistrationFile"
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    disabled={isPending}
+                    className={`${styles.input} ${styles.fileInput}`}
+                  />
+                  <p className={styles.fieldHint}>
+                    새 이미지를 올리지 않으면 기존 사업자등록증 경로를 유지합니다. JPG, PNG, WEBP만 지원하며 최대
+                    5MB까지 업로드할 수 있습니다.
+                  </p>
+                </label>
+
+                <button type="submit" disabled={isPending} className={styles.submitButton}>
+                  {isPending ? "요청 제출 중..." : "정보수정 요청 제출"}
+                </button>
+              </form>
+            ) : (
+              <div className={styles.sectionHint}>
+                <p className={styles.sectionHintTitle}>현재 정보와 다른 부분이 있나요?</p>
+                <p className={styles.sectionHintDescription}>
+                  수정하기를 누르면 학원명, 연락처, 주소, 사업자등록증 등을 수정 요청할 수 있어요.
                 </p>
-              </label>
-
-              <button type="submit" disabled={isPending} className={styles.submitButton}>
-                {isPending ? "요청 제출 중..." : "정보수정 요청 제출"}
-              </button>
-            </form>
+              </div>
+            )}
           </section>
         ) : null}
       </div>

@@ -93,6 +93,19 @@
   background: #ffffff;
   display: grid;
   gap: 10px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.accountCard:hover {
+  background: #fafafa;
+  border-color: #eaf8ec;
+}
+
+.accountCard:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(42, 173, 56, 0.16);
+  border-color: #2aad38;
 }
 
 .accountLabel {
@@ -173,7 +186,18 @@
   }
 
   .sidebarBottom {
-    display: none;
+    display: block;
+    padding: 0;
+  }
+
+  .accountCard {
+    padding: 10px 12px;
+    border-radius: 14px;
+    grid-auto-flow: column;
+    grid-template-columns: auto auto;
+    align-items: center;
+    gap: 12px;
+    min-width: max-content;
   }
 
   .content {

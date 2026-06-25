@@ -90,6 +90,80 @@
   margin-bottom: 18px;
 }
 
+.sectionActions {
+  display: inline-flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.primaryButton,
+.secondaryButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 40px;
+  padding: 0 14px;
+  border-radius: 12px;
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 800;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.primaryButton {
+  background: #2aad38;
+  border: 1px solid #2aad38;
+  color: #ffffff;
+}
+
+.primaryButton:hover {
+  background: #249b31;
+  border-color: #249b31;
+}
+
+.secondaryButton {
+  background: #ffffff;
+  border: 1px solid #d9d9d9;
+  color: #111111;
+}
+
+.secondaryButton:hover {
+  background: #fafafa;
+  border-color: #cfcfcf;
+}
+
+.secondaryButton:disabled,
+.primaryButton:disabled {
+  opacity: 0.7;
+  cursor: default;
+}
+
+.sectionHint {
+  padding: 18px;
+  border-radius: 16px;
+  border: 1px dashed #d9f3dc;
+  background: #f3fbf4;
+  display: grid;
+  gap: 6px;
+}
+
+.sectionHintTitle {
+  margin: 0;
+  font-size: 15px;
+  line-height: 22px;
+  font-weight: 800;
+  color: #111111;
+}
+
+.sectionHintDescription {
+  margin: 0;
+  font-size: 13px;
+  line-height: 20px;
+  color: #666666;
+}
+
 .sectionTitle {
   margin: 0;
   font-size: 20px;
