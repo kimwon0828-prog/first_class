@@ -72,6 +72,7 @@ type ReviewedSignupRequestRow = {
 
 type ApprovedSignupRequestRow = {
   id: string
+  user_id: string
   status: string
   approved_organization_id: string | null
   approved_teacher_id: string | null
@@ -239,6 +240,7 @@ const syncApprovedOrganizationFields = async (requestId: string) => {
     .select(
       [
         "id",
+        "user_id",
         "status",
         "approved_organization_id",
         "approved_teacher_id",
@@ -308,6 +310,31 @@ const syncApprovedOrganizationFields = async (requestId: string) => {
   }
 }
 
+const confirmApprovedSignupUserEmail = async (requestId: string) => {
+  const serviceRoleClient = getSupabaseServiceRoleClient()
+  const { data, error } = await serviceRoleClient
+    .from("teacher_signup_requests")
+    .select("id, user_id, status")
+    .eq("id", requestId)
+    .maybeSingle()
+
+  if (error || !data) {
+    throw new Error("failed_to_fetch_teacher_signup_request_for_email_confirm")
+  }
+
+  if (data.status !== "approved") {
+    throw new Error("teacher_signup_request_not_approved_for_email_confirm")
+  }
+
+  const { error: confirmError } = await serviceRoleClient.auth.admin.updateUserById(data.user_id, {
+    email_confirm: true
+  })
+
+  if (confirmError) {
+    throw new Error(`failed_to_confirm_teacher_signup_email:${confirmError.message}`)
+  }
+}
+
 export default async function AdminAcademyApprovalsPage({
   searchParams
 }: {
@@ -341,6 +368,7 @@ export default async function AdminAcademyApprovalsPage({
 
     try {
       await syncApprovedOrganizationFields(requestId)
+      await confirmApprovedSignupUserEmail(requestId)
       await syncRequestReviewMetadata(requestId, admin.id)
     } catch (syncError) {
       const message = syncError instanceof Error ? syncError.message : "failed_to_sync_approved_teacher_signup_request"

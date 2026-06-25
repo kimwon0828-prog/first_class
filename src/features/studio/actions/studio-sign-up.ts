@@ -7,7 +7,7 @@ import { isAcademyArea } from "@/shared/config/academy-areas"
 import { getSupabaseServerClient } from "@/integrations/supabase/server"
 
 export type StudioSignUpActionState = {
-  status: "idle" | "error" | "needs_email_confirm" | "success"
+  status: "idle" | "error" | "success"
   message: string
 }
 
@@ -349,15 +349,8 @@ export async function studioSignUpAction(
     }
   }
 
-  if (!data.session) {
-    return {
-      status: "needs_email_confirm",
-      message: "이메일 인증 후 로그인해 주세요. 학원 계정 승인 대기 상태로 접수됩니다."
-    }
-  }
-
   return {
     status: "success",
-    message: "학원 계정 신청이 완료되었습니다."
+    message: "학원 계정 신청이 완료되었습니다. 관리자 승인 후 운영보드에 로그인할 수 있습니다."
   }
 }

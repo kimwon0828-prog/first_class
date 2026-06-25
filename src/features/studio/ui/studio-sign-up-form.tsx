@@ -1,8 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { useRouter } from "next/navigation"
-import { useActionState, useEffect } from "react"
+import { useActionState } from "react"
 
 import { academyAreaOptions } from "@/shared/config/academy-areas"
 import {
@@ -17,28 +16,21 @@ const initialState: StudioSignUpActionState = {
 }
 
 export const StudioSignUpForm = () => {
-  const router = useRouter()
   const [state, formAction, isPending] = useActionState(studioSignUpAction, initialState)
-
-  useEffect(() => {
-    if (state.status === "success") {
-      router.replace("/studio/pending")
-    }
-  }, [router, state.status])
 
   return (
     <form action={formAction} className={styles.form} encType="multipart/form-data">
-      {state.status === "needs_email_confirm" ? (
+      {state.status === "success" ? (
         <div className={styles.successCard} role="status" aria-live="polite">
           <div className={styles.successIcon} aria-hidden="true" />
           <div className={styles.successBody}>
             <p className={styles.successTitle}>학원 계정 신청이 접수되었습니다.</p>
             <p className={styles.successDescription}>
-              이메일 인증 후{" "}
+              관리자 승인 후{" "}
               <Link href="/studio/sign-in" className={styles.inlineLink}>
                 운영보드 로그인
               </Link>
-              으로 들어와 주세요.
+              이 가능합니다.
             </p>
           </div>
         </div>
@@ -215,7 +207,7 @@ export const StudioSignUpForm = () => {
         />
       </label>
 
-      {state.message && state.status !== "needs_email_confirm" ? (
+      {state.message && state.status !== "success" ? (
         <p className={state.status === "error" ? styles.errorMessage : styles.infoMessage} role="status">
           {state.message}
         </p>
