@@ -114,6 +114,23 @@
   padding: 12px 12px;
 }
 
+.actionRow {
+  margin-top: 14px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.cancelButton {
+  border: 1px solid #e5e7eb;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #111111;
+  padding: 10px 14px;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1;
+}
+
 @media (max-width: 360px) {
   .metaRow {
     flex-direction: column;

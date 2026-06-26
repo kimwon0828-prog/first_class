@@ -8,7 +8,11 @@ import type { User } from "@supabase/supabase-js"
 import { MyApplicationList } from "@/features/applications/ui/my-application-list"
 import { createSupabaseBrowserClient } from "@/integrations/supabase/client"
 import { getPublicEnv } from "@/shared/config/env"
-import type { ApplicationStatus, TrialApplicationSummary } from "@/shared/lib/db/adapter"
+import type {
+  ApplicationRegistrationStatus,
+  ApplicationStatus,
+  TrialApplicationSummary
+} from "@/shared/lib/db/adapter"
 import styles from "../../../../app/my/applications/page.module.css"
 
 type LoadState = "loading" | "ready" | "auth_required" | "forbidden" | "error"
@@ -42,11 +46,16 @@ type TrialApplicationRow = {
   selected_schedule_label: string | null
   requested_slot_at: string | null
   confirmed_slot_at: string | null
+  registration_status: ApplicationRegistrationStatus | null
   goal_type: string | null
   status: ApplicationStatus
   created_at: string
   updated_at: string
   classes?: EmbeddedClassRow[] | EmbeddedClassRow | null
+}
+
+export type MyApplicationListItem = TrialApplicationSummary & {
+  registrationStatus: ApplicationRegistrationStatus | null
 }
 
 const ACTIVE_STATUSES: ApplicationStatus[] = ["new", "reviewing", "confirmed"]
@@ -64,7 +73,7 @@ const getEmbeddedClass = (row: TrialApplicationRow): EmbeddedClassRow | null => 
   return row.classes
 }
 
-const mapApplication = (row: TrialApplicationRow): TrialApplicationSummary => {
+const mapApplication = (row: TrialApplicationRow): MyApplicationListItem => {
   const embeddedClass = getEmbeddedClass(row)
 
   return {
@@ -82,6 +91,7 @@ const mapApplication = (row: TrialApplicationRow): TrialApplicationSummary => {
     selectedScheduleLabel: row.selected_schedule_label ?? null,
     requestedSlotAt: row.requested_slot_at ?? "",
     confirmedSlotAt: row.confirmed_slot_at ?? null,
+    registrationStatus: row.registration_status ?? null,
     status: row.status,
     goalType: row.goal_type ?? null,
     createdAt: row.created_at,
@@ -116,7 +126,7 @@ const resolvePageCopy = (statusFilter: string | null) => {
   }
 }
 
-const filterItemsByStatus = (items: TrialApplicationSummary[], statusFilter: string | null) => {
+const filterItemsByStatus = (items: MyApplicationListItem[], statusFilter: string | null) => {
   if (statusFilter === "active") {
     return items.filter((item) => ACTIVE_STATUSES.includes(item.status))
   }
@@ -132,7 +142,7 @@ export const MyApplicationsClient = () => {
   const searchParams = useSearchParams()
   const statusFilter = searchParams.get("status")
   const pageCopy = useMemo(() => resolvePageCopy(statusFilter), [statusFilter])
-  const [items, setItems] = useState<TrialApplicationSummary[]>([])
+  const [items, setItems] = useState<MyApplicationListItem[]>([])
   const [status, setStatus] = useState<LoadState>("loading")
   const [message, setMessage] = useState("")
   const authFallbackTimerRef = useRef<number | null>(null)
@@ -181,7 +191,7 @@ export const MyApplicationsClient = () => {
     const { data, error } = await supabase
       .from("trial_applications")
       .select(
-        "id, class_id, parent_id, child_name, child_grade, parent_name, parent_phone, class_schedule_id, requested_schedule_block_id, selected_schedule_label, requested_slot_at, confirmed_slot_at, goal_type, status, created_at, updated_at, classes(title, program_type, region)"
+        "id, class_id, parent_id, child_name, child_grade, parent_name, parent_phone, class_schedule_id, requested_schedule_block_id, selected_schedule_label, requested_slot_at, confirmed_slot_at, registration_status, goal_type, status, created_at, updated_at, classes(title, program_type, region)"
       )
       .eq("parent_id", user.id)
       .order("created_at", { ascending: false })

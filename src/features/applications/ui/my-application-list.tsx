@@ -1,13 +1,13 @@
 import Link from "next/link"
 
-import type { TrialApplicationSummary } from "@/shared/lib/db/adapter"
+import type { MyApplicationListItem } from "@/features/applications/ui/my-applications-client"
 import styles from "./my-application-list.module.css"
 
 type MyApplicationListProps = {
-  items: TrialApplicationSummary[]
+  items: MyApplicationListItem[]
 }
 
-const statusLabelMap: Record<TrialApplicationSummary["status"], string> = {
+const statusLabelMap: Record<MyApplicationListItem["status"], string> = {
   new: "신청 완료",
   reviewing: "상담 대기",
   confirmed: "수업 확정",
@@ -15,7 +15,7 @@ const statusLabelMap: Record<TrialApplicationSummary["status"], string> = {
   canceled: "신청 취소"
 }
 
-const statusHelpMap: Record<TrialApplicationSummary["status"], string> = {
+const statusHelpMap: Record<MyApplicationListItem["status"], string> = {
   new: "신청이 접수되었어요. 학원에서 확인 후 연락드릴 예정이에요.",
   reviewing: "상담 일정 확인이 필요해요.",
   confirmed: "첫수업 일정이 확정되었어요.",
@@ -23,7 +23,15 @@ const statusHelpMap: Record<TrialApplicationSummary["status"], string> = {
   canceled: "취소된 신청이에요."
 }
 
-const formatProgramType = (value: TrialApplicationSummary["classProgramType"]) => {
+const canShowCancelButton = (item: MyApplicationListItem) => {
+  if (item.registrationStatus === "enrolled") {
+    return false
+  }
+
+  return item.status === "new" || item.status === "reviewing" || item.status === "confirmed"
+}
+
+const formatProgramType = (value: MyApplicationListItem["classProgramType"]) => {
   if (value === "level_test") {
     return "레벨테스트"
   }
@@ -46,7 +54,7 @@ const formatDateTime = (value: string) => {
   })
 }
 
-const resolveScheduleLabel = (item: TrialApplicationSummary) => {
+const resolveScheduleLabel = (item: MyApplicationListItem) => {
   const confirmedAt = item.confirmedSlotAt ? formatDateTime(item.confirmedSlotAt) : null
   const requestedAt = item.requestedSlotAt ? formatDateTime(item.requestedSlotAt) : null
   const selectedLabel = item.selectedScheduleLabel?.trim() ? item.selectedScheduleLabel.trim() : null
@@ -92,6 +100,7 @@ export const MyApplicationList = ({ items }: MyApplicationListProps) => {
         const classTitle = item.classTitle ?? "수업 정보 없음"
         const statusLabel = statusLabelMap[item.status]
         const statusHelp = statusHelpMap[item.status]
+        const showCancelButton = canShowCancelButton(item)
 
         return (
           <article key={item.id} className={styles.card}>
@@ -136,6 +145,20 @@ export const MyApplicationList = ({ items }: MyApplicationListProps) => {
             </div>
 
             <p className={styles.helpText}>{statusHelp}</p>
+
+            {showCancelButton ? (
+              <div className={styles.actionRow}>
+                <button
+                  type="button"
+                  className={styles.cancelButton}
+                  onClick={() => {
+                    window.alert("취소 기능 준비 중")
+                  }}
+                >
+                  신청 취소
+                </button>
+              </div>
+            ) : null}
           </article>
         )
       })}
