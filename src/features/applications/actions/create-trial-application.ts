@@ -199,6 +199,14 @@ export async function createTrialApplicationAction(
       }
     }
 
+    if (message === "missing_class_teacher_for_application") {
+      return {
+        status: "error",
+        message:
+          "담당 선생님 정보가 없는 수업이라 체험 신청을 진행할 수 없습니다. 수업 담당 선생님을 먼저 지정해주세요."
+      }
+    }
+
     if (message === "slot_capacity_reached") {
       return {
         status: "error",

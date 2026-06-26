@@ -88,15 +88,6 @@ const getSecondaryScheduleLabel = (item: StudioApplicationSummary) => {
   return selectedLabel
 }
 
-const getAssignedTeacherLabel = (item: StudioApplicationSummary) => {
-  const teacherName = normalizeText(item.assignedTeacherName)
-  if (teacherName) {
-    return teacherName
-  }
-
-  return "미배정"
-}
-
 const compareScheduledAt = (left: StudioApplicationSummary, right: StudioApplicationSummary) => {
   const leftValue = getBoardDateValue(left)
   const rightValue = getBoardDateValue(right)
@@ -144,10 +135,17 @@ export const StudioScheduleManager = ({ items }: StudioScheduleManagerProps) => 
   const [selectedDateKey, setSelectedDateKey] = useState(todayKey)
   const [visibleMonthDate, setVisibleMonthDate] = useState(() => startOfMonth(today))
 
+  const scheduleIntegrityIssues = useMemo(() => {
+    return items.filter(
+      (item) => item.status !== "canceled" && hasVisibleDate(item) && !normalizeText(item.assignedTeacherName)
+    )
+  }, [items])
+
   const visibleItems = useMemo(() => {
     return items
       .filter((item) => item.status !== "canceled")
       .filter(hasVisibleDate)
+      .filter((item) => Boolean(normalizeText(item.assignedTeacherName)))
       .sort(compareScheduledAt)
   }, [items])
 
@@ -385,6 +383,27 @@ export const StudioScheduleManager = ({ items }: StudioScheduleManagerProps) => 
           </div>
         </section>
 
+        {scheduleIntegrityIssues.length ? (
+          <section className={styles.infoPanel} role="alert" aria-label="일정 데이터 오류">
+            <p className={styles.infoText}>
+              담당 선생님 정보가 없는 일정 {scheduleIntegrityIssues.length}건은 일반 일정에서 제외했습니다.
+              수업 담당 선생님을 먼저 지정해 주세요.
+            </p>
+            <div className={styles.infoActions}>
+              {scheduleIntegrityIssues.slice(0, 3).map((item) => (
+                <Link
+                  key={item.id}
+                  href={`/studio/applications/${item.id}`}
+                  prefetch={false}
+                  className={styles.buttonSecondary}
+                >
+                  {item.childName} 신청 확인
+                </Link>
+              ))}
+            </div>
+          </section>
+        ) : null}
+
         <section className={styles.detailSection}>
           <div className={styles.detailHeader}>
             <div>
@@ -421,7 +440,7 @@ export const StudioScheduleManager = ({ items }: StudioScheduleManagerProps) => 
                   : null
                 const timeLabel = formatTime(scheduledAt)
                 const timeMeta = item.confirmedSlotAt ? "확정 일정" : "희망 일정"
-                const assignedTeacherLabel = getAssignedTeacherLabel(item)
+                const assignedTeacherLabel = normalizeText(item.assignedTeacherName)
 
                 return (
                   <article key={item.id} className={styles.timelineItem}>

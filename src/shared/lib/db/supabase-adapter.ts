@@ -2393,7 +2393,11 @@ export const supabaseDataAdapter: DataAdapter = {
           throw new Error("failed_to_prepare_application_status_update")
         }
 
-        updatePayload.assigned_teacher_id = classTeacherData?.teacher_id ?? null
+        if (!classTeacherData?.teacher_id) {
+          throw new Error("missing_class_teacher_for_confirmation")
+        }
+
+        updatePayload.assigned_teacher_id = classTeacherData.teacher_id
       }
 
       if (currentRow.requested_schedule_block_id) {
@@ -2447,8 +2451,12 @@ export const supabaseDataAdapter: DataAdapter = {
             .eq("id", currentRow.class_id)
             .maybeSingle()
 
-          if (classError || !classData?.teacher_id) {
+          if (classError) {
             throw new Error("failed_to_prepare_application_status_update")
+          }
+
+          if (!classData?.teacher_id) {
+            throw new Error("missing_class_teacher_for_confirmation")
           }
 
           const capacity = Math.max(1, Number(classScheduleData.capacity ?? 1))
@@ -2603,8 +2611,12 @@ export const supabaseDataAdapter: DataAdapter = {
       .eq("is_active", true)
       .maybeSingle()
 
-    if (classError || !classData?.teacher_id) {
+    if (classError) {
       throw new Error("invalid_schedule_slot")
+    }
+
+    if (!classData?.teacher_id) {
+      throw new Error("missing_class_teacher_for_application")
     }
 
     const nowIso = new Date().toISOString()

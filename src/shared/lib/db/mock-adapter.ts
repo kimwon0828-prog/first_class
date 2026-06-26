@@ -1195,7 +1195,10 @@ export const mockDataAdapter: DataAdapter = {
       target.scheduledAt = nowIso
       if (!target.assignedTeacherId) {
         const classItem = classes.find((item) => item.id === target.classId)
-        target.assignedTeacherId = classItem?.teacherId ?? null
+        if (!classItem?.teacherId) {
+          throw new Error("missing_class_teacher_for_confirmation")
+        }
+        target.assignedTeacherId = classItem.teacherId
         target.assignedTeacherName = getTeacherDisplayNameById(target.assignedTeacherId)
       }
 
@@ -1349,6 +1352,9 @@ export const mockDataAdapter: DataAdapter = {
     }
 
     const classItem = classes.find((item) => item.id === input.classId)
+    if (!classItem?.teacherId) {
+      throw new Error("missing_class_teacher_for_application")
+    }
     const created: TrialApplicationSummary = {
       id: `app-${applications.length + 1}`,
       classId: input.classId,
@@ -1375,7 +1381,7 @@ export const mockDataAdapter: DataAdapter = {
       childId: input.childId ?? null,
       classSubject: classItem?.subject ?? null,
       classRegion: classItem?.region ?? null,
-      assignedTeacherId: classItem?.teacherId ?? null,
+      assignedTeacherId: classItem.teacherId,
       assignedTeacherName: classItem?.teacherDisplayName ?? classItem?.teacherName ?? null,
       childSchool: input.childSchool,
       childNotes: input.childNotes,
