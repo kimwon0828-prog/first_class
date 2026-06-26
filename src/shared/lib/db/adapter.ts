@@ -212,9 +212,15 @@ export type CreateStudioScheduleBlockInput = {
 }
 
 export type StudioClassScheduleSlotInput = {
-  startAt: string
-  endAt: string
-  capacity: number
+  id?: string
+  scheduleType: StudioClassScheduleType
+  dayOfWeek: number | null
+  specificDate: string | null
+  startTime: string
+  endTime: string
+  capacity: number | null
+  displayLabel: string | null
+  sortOrder: number
 }
 
 export type UpdateStudioScheduleBlockTypeInput = {

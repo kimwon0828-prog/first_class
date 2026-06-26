@@ -35,6 +35,19 @@ const defaultState: UpsertStudioClassActionState = {
   message: ""
 }
 
+const sanitizeScheduleSlotsForLog = (slots: StudioClassScheduleInput[]) =>
+  slots.map((slot) => ({
+    id: slot.id ?? null,
+    scheduleType: slot.scheduleType,
+    dayOfWeek: slot.dayOfWeek,
+    specificDate: slot.specificDate,
+    startTime: slot.startTime,
+    endTime: slot.endTime,
+    capacity: slot.capacity,
+    displayLabel: slot.displayLabel,
+    sortOrder: slot.sortOrder
+  }))
+
 const parsePositiveInt = (value: string) => {
   if (!/^\d+$/.test(value)) {
     return null
@@ -431,8 +444,34 @@ export async function upsertStudioClassAction(
 
     const parsedSlots = parseScheduleSlots(formData)
     if (!parsedSlots.ok) {
-      return safeError(parsedSlots.message)
+      console.error("[upsertStudioClass validation failed]", {
+        stage: "class_schedule_validation_failed",
+        mode,
+        classId,
+        organizationId,
+        teacherId: selectedTeacherId,
+        message: parsedSlots.message
+      })
+      return safeError(parsedSlots.message, "class_schedule_validation_failed")
     }
+
+    const scheduleSlots = parsedSlots.slots
+    const payloadLog = {
+      mode,
+      classId: classId ?? null,
+      organizationId,
+      teacherId: selectedTeacher.teacherId,
+      isActive,
+      programType,
+      title,
+      subject,
+      targetAge,
+      region: regionRaw,
+      trialPrice,
+      scheduleSlots: sanitizeScheduleSlotsForLog(scheduleSlots)
+    }
+
+    console.info("[upsertStudioClass payload]", payloadLog)
 
     const payload = {
       mode,
@@ -454,7 +493,7 @@ export async function upsertStudioClassAction(
       teacherDisplayName: selectedTeacher.teacherName,
       coverImageUrl,
       isActive,
-      scheduleSlots: parsedSlots.slots
+      scheduleSlots
     }
 
     let savedClass: Awaited<ReturnType<typeof dataAdapter.upsertStudioClass>>
@@ -470,7 +509,7 @@ export async function upsertStudioClassAction(
         code: summary.code,
         details: summary.details,
         hint: summary.hint,
-        payload
+        payload: payloadLog
       })
       return safeError("수업을 저장하지 못했어요. 잠시 후 다시 시도해주세요.", message)
     }

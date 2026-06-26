@@ -838,21 +838,6 @@ export const mockDataAdapter: DataAdapter = {
       classes[existingIndex] = nextValue
     } else {
       classes.unshift(nextValue)
-
-      for (const slot of input.scheduleSlots ?? []) {
-        scheduleBlocks.unshift({
-          id: `slot-${scheduleBlocks.length + 1}`,
-          teacherId: input.teacherId,
-          classId: nextValue.id,
-          type: "available",
-          startAt: slot.startAt,
-          endAt: slot.endAt,
-          capacity: slot.capacity,
-          appliedCount: 0,
-          remainingCount: slot.capacity,
-          isClosed: false
-        })
-      }
     }
 
     return nextValue

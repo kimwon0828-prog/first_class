@@ -16,6 +16,7 @@ import type {
   OrganizationLocationInfo,
   StudioApplicationDetail,
   StudioApplicationSummary,
+  StudioClassInput,
   StudioClassScheduleItem,
   StudioScheduleBlockSummary,
   StudioScheduleBlockType,
@@ -944,6 +945,80 @@ const normalizeStudioClassId = (value: string | undefined) => {
   return uuidPattern.test(normalized) ? normalized : null
 }
 
+const normalizeStudioClassScheduleTimeForDb = (value: string) => {
+  return /^\d{2}:\d{2}$/.test(value) ? `${value}:00` : value
+}
+
+type DbClassSchedulePayload = {
+  id?: string
+  class_id: string
+  schedule_type: StudioClassScheduleType
+  day_of_week: number | null
+  specific_date: string | null
+  start_time: string
+  end_time: string
+  capacity: number | null
+  display_label: string | null
+  sort_order: number
+  updated_at: string
+}
+
+type DbClassScheduleInsertPayload = Omit<DbClassSchedulePayload, "id">
+
+const omitIdFromDbClassSchedulePayload = (
+  payload: DbClassSchedulePayload
+): DbClassScheduleInsertPayload => ({
+  class_id: payload.class_id,
+  schedule_type: payload.schedule_type,
+  day_of_week: payload.day_of_week,
+  specific_date: payload.specific_date,
+  start_time: payload.start_time,
+  end_time: payload.end_time,
+  capacity: payload.capacity,
+  display_label: payload.display_label,
+  sort_order: payload.sort_order,
+  updated_at: payload.updated_at
+})
+
+const toDbClassSchedulePayload = (
+  classId: string,
+  slots: StudioClassInput["scheduleSlots"]
+) => {
+  return (slots ?? []).map((slot, index) => {
+    const payload: DbClassSchedulePayload = {
+      class_id: classId,
+      schedule_type: slot.scheduleType,
+      day_of_week: slot.scheduleType === "weekly" ? slot.dayOfWeek : null,
+      specific_date: slot.scheduleType === "one_time" ? slot.specificDate : null,
+      start_time: normalizeStudioClassScheduleTimeForDb(slot.startTime),
+      end_time: normalizeStudioClassScheduleTimeForDb(slot.endTime),
+      capacity: slot.capacity,
+      display_label: slot.displayLabel,
+      sort_order: slot.sortOrder ?? index,
+      updated_at: new Date().toISOString()
+    }
+    const normalizedId = normalizeStudioClassId(slot.id)
+    if (normalizedId) {
+      payload.id = normalizedId
+    }
+
+    return payload
+  })
+}
+
+const summarizeStudioClassScheduleSlots = (slots: StudioClassInput["scheduleSlots"]) =>
+  (slots ?? []).map((slot) => ({
+    id: slot.id ?? null,
+    scheduleType: slot.scheduleType,
+    dayOfWeek: slot.dayOfWeek,
+    specificDate: slot.specificDate,
+    startTime: slot.startTime,
+    endTime: slot.endTime,
+    capacity: slot.capacity,
+    displayLabel: slot.displayLabel,
+    sortOrder: slot.sortOrder
+  }))
+
 const CLASS_BASE_SELECT_FIELDS =
   "id, organization_id, program_type, title, subject, region, target_age, description, trial_price, teacher_id, teacher_display_name, cover_image_url, is_active"
 
@@ -1547,6 +1622,7 @@ export const supabaseDataAdapter: DataAdapter = {
     const teacherDisplayName = teacherNames.get(input.teacherId) ?? input.teacherDisplayName
 
     const supabase = await getSupabaseServerClient()
+    const schedulePayloadForLog = summarizeStudioClassScheduleSlots(input.scheduleSlots)
     const basePayload = {
       organization_id: input.organizationId,
       program_type: input.programType,
@@ -1592,7 +1668,7 @@ export const supabaseDataAdapter: DataAdapter = {
     if (error) {
       throw new Error(
         formatSupabaseError(
-          input.mode === "create" ? "failed_to_insert_studio_class" : "failed_to_update_studio_class",
+          input.mode === "create" ? "class_create_failed" : "class_update_failed",
           error,
           {
           mode: input.mode,
@@ -1671,34 +1747,127 @@ export const supabaseDataAdapter: DataAdapter = {
       }
     }
 
-    if (input.mode === "create" && input.scheduleSlots && input.scheduleSlots.length > 0) {
-      const slotPayload = input.scheduleSlots.map((slot) => ({
-        teacher_id: input.teacherId,
-        class_id: savedClassRow.id,
-        type: "available",
-        start_at: slot.startAt,
-        end_at: slot.endAt,
-        capacity: slot.capacity,
-        updated_at: new Date().toISOString()
-      }))
+    const { data: existingScheduleData, error: existingScheduleError } = await supabase
+      .from("class_schedules")
+      .select(CLASS_SCHEDULE_SELECT_FIELDS)
+      .eq("class_id", savedClassRow.id)
+      .order("sort_order", { ascending: true })
+      .order("created_at", { ascending: true })
 
-      const { error: slotInsertError } = await supabase.from("schedule_blocks").insert(slotPayload)
+    if (existingScheduleError) {
+      throw new Error(
+        formatSupabaseError("class_schedule_fetch_failed", existingScheduleError, {
+          mode: input.mode,
+          classId: savedClassRow.id,
+          organizationId: input.organizationId
+        })
+      )
+    }
 
-      if (slotInsertError) {
+    const existingSchedules = (existingScheduleData ?? []) as ClassScheduleRow[]
+    const existingScheduleIdSet = new Set(existingSchedules.map((slot) => slot.id))
+    const normalizedSchedulePayload: Array<DbClassSchedulePayload | DbClassScheduleInsertPayload> =
+      toDbClassSchedulePayload(savedClassRow.id, input.scheduleSlots).map((slot) => {
+        if (slot.id && existingScheduleIdSet.has(slot.id)) {
+          return slot
+        }
+
+        return omitIdFromDbClassSchedulePayload(slot)
+      })
+    const persistedSchedulePayload = normalizedSchedulePayload.filter(
+      (slot): slot is DbClassSchedulePayload & { id: string } =>
+        "id" in slot && typeof slot.id === "string"
+    )
+    const newSchedulePayload = normalizedSchedulePayload.filter(
+      (slot): slot is DbClassScheduleInsertPayload =>
+        !("id" in slot) || typeof slot.id !== "string"
+    )
+    const keptScheduleIdSet = new Set(persistedSchedulePayload.map((slot) => slot.id))
+    const removedScheduleIds = existingSchedules
+      .map((slot) => slot.id)
+      .filter((scheduleId) => !keptScheduleIdSet.has(scheduleId))
+
+    if (persistedSchedulePayload.length > 0) {
+      const { error: updateScheduleError } = await supabase
+        .from("class_schedules")
+        .upsert(persistedSchedulePayload, { onConflict: "id" })
+
+      if (updateScheduleError) {
         throw new Error(
-          formatSupabaseError("failed_to_insert_class_schedule_blocks", slotInsertError, {
+          formatSupabaseError("class_schedule_update_failed", updateScheduleError, {
+            mode: input.mode,
             classId: savedClassRow.id,
+            organizationId: input.organizationId,
             teacherId: input.teacherId,
-            slotCount: input.scheduleSlots.length
+            scheduleSlots: schedulePayloadForLog
           })
         )
       }
     }
 
+    if (newSchedulePayload.length > 0) {
+      const { error: insertScheduleError } = await supabase.from("class_schedules").insert(newSchedulePayload)
+
+      if (insertScheduleError) {
+        throw new Error(
+          formatSupabaseError("class_schedule_insert_failed", insertScheduleError, {
+            mode: input.mode,
+            classId: savedClassRow.id,
+            organizationId: input.organizationId,
+            teacherId: input.teacherId,
+            scheduleSlots: schedulePayloadForLog
+          })
+        )
+      }
+    }
+
+    if (removedScheduleIds.length > 0) {
+      const { error: deleteScheduleError } = await supabase
+        .from("class_schedules")
+        .delete()
+        .eq("class_id", savedClassRow.id)
+        .in("id", removedScheduleIds)
+
+      if (deleteScheduleError) {
+        throw new Error(
+          formatSupabaseError("class_schedule_delete_failed", deleteScheduleError, {
+            mode: input.mode,
+            classId: savedClassRow.id,
+            organizationId: input.organizationId,
+            teacherId: input.teacherId,
+            removedScheduleIds,
+            scheduleSlots: schedulePayloadForLog
+          })
+        )
+      }
+    }
+
+    const { data: refreshedScheduleData, error: refreshedScheduleError } = await supabase
+      .from("class_schedules")
+      .select(CLASS_SCHEDULE_SELECT_FIELDS)
+      .eq("class_id", savedClassRow.id)
+      .order("sort_order", { ascending: true })
+      .order("created_at", { ascending: true })
+
+    if (refreshedScheduleError) {
+      throw new Error(
+        formatSupabaseError("class_schedule_fetch_failed", refreshedScheduleError, {
+          mode: input.mode,
+          classId: savedClassRow.id,
+          organizationId: input.organizationId
+        })
+      )
+    }
+
     const savedTeacherIds = savedClassRow.teacher_id ? [savedClassRow.teacher_id] : []
     const teacherNameMap = await getTeacherProfilesMap(savedTeacherIds)
+    const classWithSchedules = {
+      ...savedClassRow,
+      class_schedules: (refreshedScheduleData ?? []) as ClassScheduleRow[]
+    }
+
     return mapClass(
-      savedClassRow,
+      classWithSchedules as ClassRow,
       savedClassRow.teacher_id ? (teacherNameMap.get(savedClassRow.teacher_id)?.teacherName ?? null) : null
     )
   },

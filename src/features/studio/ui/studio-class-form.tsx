@@ -231,43 +231,64 @@ export const StudioClassForm = ({
   )
   const mode = selectedClassId ? "update" : "create"
   const previousOkRef = useRef(false)
-
-  useEffect(() => {
-    setSelectedClassId(initialItem?.id ?? "")
-    setSelectedProgramType(initialItem?.programType ?? "trial_class")
-    setSelectedSubject(
-      studioClassSubjectOptions.includes(initialItem?.subject as (typeof studioClassSubjectOptions)[number])
+  const initializedSnapshotKeyRef = useRef<string | null>(null)
+  const initialFormSnapshot = useMemo(
+    () => ({
+      id: initialItem?.id ?? "",
+      programType: initialItem?.programType ?? "trial_class",
+      subject: studioClassSubjectOptions.includes(
+        initialItem?.subject as (typeof studioClassSubjectOptions)[number]
+      )
         ? (initialItem?.subject ?? "")
-        : ""
-    )
-    setDescription(initialItem?.description ?? "")
-    setRecommendedFor(initialItem?.recommendedFor ?? "")
-    setExperiencePoints(initialItem?.experiencePoints ?? "")
-    setCurriculum(initialItem?.curriculum ?? "")
-    setTeacherIntro(initialItem?.teacherIntro ?? "")
-    setClassFormat(initialItem?.classFormat ?? "")
-    setCoverImageFilePreviewUrl("")
-    setCoverImageUrl(initialItem?.coverImageUrl ?? "")
-    setCoverImageUploadError(null)
-    setIsUploadingCoverImage(false)
-    setScheduleSlots(
-      initialItem?.schedules?.length
+        : "",
+      description: initialItem?.description ?? "",
+      recommendedFor: initialItem?.recommendedFor ?? "",
+      experiencePoints: initialItem?.experiencePoints ?? "",
+      curriculum: initialItem?.curriculum ?? "",
+      teacherIntro: initialItem?.teacherIntro ?? "",
+      classFormat: initialItem?.classFormat ?? "",
+      coverImageUrl: initialItem?.coverImageUrl ?? "",
+      scheduleSlots: initialItem?.schedules?.length
         ? initialItem.schedules.map(createScheduleSlotDraftFromItem)
         : []
-    )
-  }, [
-    initialItem?.coverImageUrl,
-    initialItem?.id,
-    initialItem?.programType,
-    initialItem?.subject,
-    initialItem?.description,
-    initialItem?.recommendedFor,
-    initialItem?.experiencePoints,
-    initialItem?.curriculum,
-    initialItem?.teacherIntro,
-    initialItem?.classFormat,
-    initialItem?.schedules
-  ])
+    }),
+    [
+      initialItem?.classFormat,
+      initialItem?.coverImageUrl,
+      initialItem?.curriculum,
+      initialItem?.description,
+      initialItem?.experiencePoints,
+      initialItem?.id,
+      initialItem?.programType,
+      initialItem?.recommendedFor,
+      initialItem?.schedules,
+      initialItem?.subject,
+      initialItem?.teacherIntro
+    ]
+  )
+
+  useEffect(() => {
+    const snapshotKey = initialFormSnapshot.id || "__create__"
+    if (initializedSnapshotKeyRef.current === snapshotKey) {
+      return
+    }
+
+    initializedSnapshotKeyRef.current = snapshotKey
+    setSelectedClassId(initialFormSnapshot.id)
+    setSelectedProgramType(initialFormSnapshot.programType)
+    setSelectedSubject(initialFormSnapshot.subject)
+    setDescription(initialFormSnapshot.description)
+    setRecommendedFor(initialFormSnapshot.recommendedFor)
+    setExperiencePoints(initialFormSnapshot.experiencePoints)
+    setCurriculum(initialFormSnapshot.curriculum)
+    setTeacherIntro(initialFormSnapshot.teacherIntro)
+    setClassFormat(initialFormSnapshot.classFormat)
+    setCoverImageFilePreviewUrl("")
+    setCoverImageUrl(initialFormSnapshot.coverImageUrl)
+    setCoverImageUploadError(null)
+    setIsUploadingCoverImage(false)
+    setScheduleSlots(initialFormSnapshot.scheduleSlots)
+  }, [initialFormSnapshot])
 
   useEffect(() => {
     const previousOk = previousOkRef.current
