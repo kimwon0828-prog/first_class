@@ -1193,6 +1193,12 @@ export const mockDataAdapter: DataAdapter = {
 
     if (input.actionType === "move_to_confirmed") {
       target.scheduledAt = nowIso
+      if (!target.assignedTeacherId) {
+        const classItem = classes.find((item) => item.id === target.classId)
+        target.assignedTeacherId = classItem?.teacherId ?? null
+        target.assignedTeacherName = getTeacherDisplayNameById(target.assignedTeacherId)
+      }
+
       if (target.requestedScheduleBlockId) {
         target.confirmedSlotAt = target.requestedSlotAt
         target.confirmedScheduleBlockId = target.requestedScheduleBlockId

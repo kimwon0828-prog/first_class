@@ -9,11 +9,13 @@ import styles from "@/features/studio/ui/studio-dashboard.module.css"
 type StudioTeacherFilterProps = {
   options: StudioDashboardTeacherFilterOption[]
   selectedTeacherId: string
+  basePath?: string
 }
 
 export const StudioTeacherFilter = ({
   options,
-  selectedTeacherId
+  selectedTeacherId,
+  basePath = "/studio"
 }: StudioTeacherFilterProps) => {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -32,7 +34,7 @@ export const StudioTeacherFilter = ({
     }
 
     const query = params.toString()
-    router.push(query ? `/studio?${query}` : "/studio")
+    router.push(query ? `${basePath}?${query}` : basePath)
   }
 
   return (

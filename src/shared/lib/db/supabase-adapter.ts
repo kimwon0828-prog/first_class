@@ -2352,6 +2352,7 @@ export const supabaseDataAdapter: DataAdapter = {
     const updatePayload: {
       status: TrialApplicationSummary["status"]
       updated_at: string
+      assigned_teacher_id?: string | null
       requested_schedule_block_id?: string | null
       confirmed_slot_at?: string | null
       confirmed_schedule_block_id?: string | null
@@ -2373,12 +2374,26 @@ export const supabaseDataAdapter: DataAdapter = {
       updatePayload.scheduled_at = nowIso
       const { data: currentRow, error: currentError } = await supabase
         .from("trial_applications")
-        .select("class_id, requested_slot_at, requested_schedule_block_id, class_schedule_id")
+        .select("class_id, requested_slot_at, requested_schedule_block_id, class_schedule_id, assigned_teacher_id")
         .eq("id", input.applicationId)
         .maybeSingle()
 
       if (currentError || !currentRow) {
         throw new Error("failed_to_prepare_application_status_update")
+      }
+
+      if (!currentRow.assigned_teacher_id) {
+        const { data: classTeacherData, error: classTeacherError } = await supabase
+          .from("classes")
+          .select("teacher_id")
+          .eq("id", currentRow.class_id)
+          .maybeSingle()
+
+        if (classTeacherError) {
+          throw new Error("failed_to_prepare_application_status_update")
+        }
+
+        updatePayload.assigned_teacher_id = classTeacherData?.teacher_id ?? null
       }
 
       if (currentRow.requested_schedule_block_id) {

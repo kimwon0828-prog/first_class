@@ -88,6 +88,15 @@ const getSecondaryScheduleLabel = (item: StudioApplicationSummary) => {
   return selectedLabel
 }
 
+const getAssignedTeacherLabel = (item: StudioApplicationSummary) => {
+  const teacherName = normalizeText(item.assignedTeacherName)
+  if (teacherName) {
+    return teacherName
+  }
+
+  return "미배정"
+}
+
 const compareScheduledAt = (left: StudioApplicationSummary, right: StudioApplicationSummary) => {
   const leftValue = getBoardDateValue(left)
   const rightValue = getBoardDateValue(right)
@@ -412,6 +421,7 @@ export const StudioScheduleManager = ({ items }: StudioScheduleManagerProps) => 
                   : null
                 const timeLabel = formatTime(scheduledAt)
                 const timeMeta = item.confirmedSlotAt ? "확정 일정" : "희망 일정"
+                const assignedTeacherLabel = getAssignedTeacherLabel(item)
 
                 return (
                   <article key={item.id} className={styles.timelineItem}>
@@ -451,6 +461,10 @@ export const StudioScheduleManager = ({ items }: StudioScheduleManagerProps) => 
                           <div className={styles.metaRow}>
                             <span className={styles.metaLabel}>보호자 연락처</span>
                             <span className={styles.metaValue}>{formatPhone(item.parentPhone)}</span>
+                          </div>
+                          <div className={styles.metaRow}>
+                            <span className={styles.metaLabel}>담당 선생님</span>
+                            <span className={styles.metaValue}>{assignedTeacherLabel}</span>
                           </div>
                         </div>
                       </div>
