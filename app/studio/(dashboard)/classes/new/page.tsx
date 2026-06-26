@@ -25,7 +25,7 @@ export default async function StudioClassNewPage() {
           </div>
         </div>
 
-        <p className={styles.kicker}>운영자 센터</p>
+        <p className={styles.kicker}>파트너 센터</p>
         <h1 className={styles.title}>새 프로그램 등록</h1>
         <p className={styles.description}>학부모에게 노출될 체험수업과 레벨테스트 정보를 등록해요.</p>
       </header>
@@ -56,4 +56,3 @@ export default async function StudioClassNewPage() {
     </div>
   )
 }
-

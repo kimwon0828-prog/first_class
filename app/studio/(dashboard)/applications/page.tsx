@@ -1,7 +1,6 @@
 import { requireTeacherStudioAccess } from "@/features/studio/lib/require-teacher-studio-access"
 import { getStudioApplicationFilterCount } from "@/features/studio/lib/application-filters"
 import { getStudioApplications } from "@/features/studio/queries/get-studio-applications"
-import { StudioHomeLogo } from "@/features/studio/ui/studio-home-logo"
 import { StudioApplicationTable } from "@/features/studio/ui/studio-application-table"
 
 import styles from "./page.module.css"
@@ -66,8 +65,6 @@ export default async function StudioApplicationsPage() {
       <header className={styles.header}>
         <div className={styles.headerTop}>
           <div>
-            <StudioHomeLogo />
-            <p className={styles.brandKicker}>첫수업 운영보드</p>
             <h1 className={styles.title}>신청/상담 관리</h1>
             <p className={styles.subtitle}>들어온 신청을 확인하고 상담부터 등록까지 관리해요.</p>
           </div>

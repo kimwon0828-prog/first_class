@@ -45,7 +45,7 @@ export default async function StudioSignInPage({ searchParams }: StudioSignInPag
       <div className={styles.shell}>
         <section className={styles.brand}>
           <StudioHomeLogo width={132} height={44} priority logoClassName={styles.logo} />
-          <p className={styles.kicker}>운영자 센터</p>
+          <p className={styles.kicker}>파트너 센터</p>
           <h1 className={styles.headline}>
             체험수업 신청부터 상담,
             <br />
@@ -77,7 +77,7 @@ export default async function StudioSignInPage({ searchParams }: StudioSignInPag
 
         <section className={styles.card} aria-label="선생님 로그인">
           <header className={styles.cardHeader}>
-            <span className={styles.badge}>운영자 센터</span>
+            <span className={styles.badge}>파트너 센터</span>
             <h2 className={styles.cardTitle}>선생님 로그인</h2>
             <p className={styles.cardDescription}>
               첫수업 운영보드에 로그인해 신청 현황을 확인하세요.

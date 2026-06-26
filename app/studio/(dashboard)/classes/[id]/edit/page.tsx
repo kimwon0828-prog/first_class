@@ -41,7 +41,7 @@ export default async function StudioClassEditPage({ params }: StudioClassEditPag
           </Link>
         </div>
 
-        <p className={styles.kicker}>운영자 센터</p>
+        <p className={styles.kicker}>파트너 센터</p>
         <h1 className={styles.title}>수업 수정</h1>
         <p className={styles.description}>기존 수업 정보와 예약 가능 시간을 최신 운영 상태에 맞게 정리해요.</p>
       </header>

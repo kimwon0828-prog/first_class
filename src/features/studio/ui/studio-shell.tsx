@@ -43,7 +43,7 @@ export const StudioShell = ({ children, organizationName }: StudioShellProps) =>
       <aside className={styles.sidebar} aria-label="Studio 메뉴">
         <div className={styles.sidebarTop}>
           <StudioHomeLogo className={styles.logoLink} />
-          <p className={styles.logoLabel}>운영보드</p>
+          <p className={styles.logoLabel}>파트너 센터</p>
         </div>
 
         <nav className={styles.nav}>
