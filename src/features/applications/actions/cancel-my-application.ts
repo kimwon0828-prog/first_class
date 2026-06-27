@@ -142,6 +142,7 @@ export async function cancelMyApplicationAction(
         id: currentApplication.id,
         classId: currentApplication.class_id,
         parentId: currentApplication.parent_id,
+        childName: currentApplication.child_name,
         parentName: currentApplication.parent_name,
         parentPhone: currentApplication.parent_phone,
         classTitle: embeddedClass.title ?? null,

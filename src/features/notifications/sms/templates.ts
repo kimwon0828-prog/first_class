@@ -19,6 +19,7 @@ const formatDateTime = (value: string | null) => {
 }
 
 const joinMessage = (parts: string[]) => parts.filter(Boolean).join(" ")
+const joinDetail = (parts: string[]) => parts.filter(Boolean).join(" / ")
 
 const resolveScheduleText = (input: SmsTemplateRenderInput["context"]) => {
   return (
@@ -29,8 +30,56 @@ const resolveScheduleText = (input: SmsTemplateRenderInput["context"]) => {
   )
 }
 
+const resolveOptionalScheduleDetail = (input: SmsTemplateRenderInput["context"]) => {
+  const confirmedSchedule = formatDateTime(input.scheduledAt)
+  if (confirmedSchedule) {
+    return `일정: ${confirmedSchedule}`
+  }
+
+  const requestedSchedule = formatDateTime(input.requestedAt)
+  if (requestedSchedule) {
+    return `신청 일정: ${requestedSchedule}`
+  }
+
+  const selectedScheduleLabel = input.selectedScheduleLabel?.trim()
+  if (selectedScheduleLabel) {
+    return `신청 일정: ${selectedScheduleLabel}`
+  }
+
+  return null
+}
+
 const resolveClassText = (classTitle: string | null) =>
   classTitle?.trim() ? `${classTitle.trim()} 체험수업` : "체험수업"
+
+const resolveStudentText = (input: SmsTemplateRenderInput["context"]) => {
+  const childName = input.childName?.trim()
+  if (childName) {
+    return childName
+  }
+
+  const parentDisplayName = input.parentDisplayName?.trim()
+  if (parentDisplayName) {
+    return parentDisplayName
+  }
+
+  return "신청자"
+}
+
+const renderTeacherMessage = (
+  leadingText: string,
+  context: SmsTemplateRenderInput["context"],
+  classText: string
+) =>
+  joinMessage([
+    "[첫수업]",
+    leadingText,
+    joinDetail([
+      `수업: ${classText}`,
+      `학생: ${resolveStudentText(context)}`,
+      resolveOptionalScheduleDetail(context) ?? ""
+    ])
+  ])
 
 export const renderSmsTemplate = ({
   recipientType,
@@ -39,7 +88,6 @@ export const renderSmsTemplate = ({
 }: SmsTemplateRenderInput): SmsTemplateRenderResult => {
   const classText = resolveClassText(context.classTitle)
   const scheduleText = resolveScheduleText(context)
-  const teacherText = context.assignedTeacherName?.trim() ? context.assignedTeacherName.trim() : "담당 선생님"
 
   if (recipientType === "parent") {
     switch (eventType) {
@@ -98,38 +146,22 @@ export const renderSmsTemplate = ({
     case "teacher_trial_assigned":
       return {
         templateKey: eventType,
-        messagePreview: joinMessage([
-          "[첫수업]",
-          `${teacherText}님에게 ${classText}이 배정되었습니다.`,
-          `진행 일정: ${scheduleText}`
-        ])
+        messagePreview: renderTeacherMessage("담당 체험수업이 배정되었습니다.", context, classText)
       }
     case "teacher_trial_schedule_confirmed":
       return {
         templateKey: eventType,
-        messagePreview: joinMessage([
-          "[첫수업]",
-          `${teacherText} 담당 ${classText} 일정이 확정되었습니다.`,
-          `확정 일정: ${scheduleText}`
-        ])
+        messagePreview: renderTeacherMessage("체험수업 일정이 확정되었습니다.", context, classText)
       }
     case "teacher_trial_schedule_updated":
       return {
         templateKey: eventType,
-        messagePreview: joinMessage([
-          "[첫수업]",
-          `${teacherText} 담당 ${classText} 일정이 변경되었습니다.`,
-          `변경 일정: ${scheduleText}`
-        ])
+        messagePreview: renderTeacherMessage("체험수업 일정이 변경되었습니다.", context, classText)
       }
     case "teacher_trial_canceled":
       return {
         templateKey: eventType,
-        messagePreview: joinMessage([
-          "[첫수업]",
-          `${teacherText} 담당 ${classText} 일정이 취소되었습니다.`,
-          "변경 사항은 운영 화면에서 다시 확인해 주세요."
-        ])
+        messagePreview: renderTeacherMessage("체험수업 신청이 취소되었습니다.", context, classText)
       }
     default:
       throw new Error("unsupported_teacher_sms_event")

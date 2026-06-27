@@ -11,6 +11,7 @@ type SmsApplicationContext = Pick<
   | "id"
   | "classId"
   | "parentId"
+  | "childName"
   | "parentName"
   | "parentPhone"
   | "classTitle"
@@ -203,6 +204,8 @@ export const logSmsEvent = async ({
     eventType,
     context: {
       classTitle: application.classTitle ?? null,
+      childName: application.childName?.trim() ?? null,
+      parentDisplayName: application.parentName?.trim() ?? null,
       scheduledAt: application.confirmedSlotAt ?? null,
       requestedAt: application.requestedSlotAt ?? null,
       selectedScheduleLabel: application.selectedScheduleLabel ?? null,

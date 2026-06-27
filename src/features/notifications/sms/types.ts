@@ -31,6 +31,8 @@ export type SmsTemplateKey = SmsEventType
 
 export type SmsTemplateContext = {
   classTitle: string | null
+  childName: string | null
+  parentDisplayName: string | null
   scheduledAt: string | null
   requestedAt: string | null
   selectedScheduleLabel: string | null
