@@ -1,6 +1,6 @@
 import "server-only"
 
-import { sendDryRunSms } from "@/features/notifications/sms/sender"
+import { sendSms } from "@/features/notifications/sms/sender"
 import { renderSmsTemplate } from "@/features/notifications/sms/templates"
 import type { SmsEventType, SmsRecipientType } from "@/features/notifications/sms/types"
 import { getSupabaseServiceRoleClient } from "@/integrations/supabase/service-role"
@@ -222,7 +222,7 @@ export const logSmsEvent = async ({
 
     const sendResult =
       recipient.errorMessage === null
-        ? await sendDryRunSms({
+        ? await sendSms({
             recipientType,
             phone: recipient.recipientPhone,
             messagePreview: template.messagePreview
@@ -269,7 +269,7 @@ export const logSmsEvent = async ({
 
   const sendResult =
     recipient.errorMessage === null
-      ? await sendDryRunSms({
+      ? await sendSms({
           recipientType,
           phone: recipient.recipientPhone,
           smsEnabled: recipient.smsEnabled,

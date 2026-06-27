@@ -24,7 +24,7 @@ export type SmsEventType = (typeof SMS_EVENT_TYPES)[number]
 export const SMS_LOG_STATUSES = ["dry_run", "pending", "sent", "failed", "skipped"] as const
 export type SmsLogStatus = (typeof SMS_LOG_STATUSES)[number]
 
-export const SMS_PROVIDERS = ["dry_run"] as const
+export const SMS_PROVIDERS = ["dry_run", "ncloud"] as const
 export type SmsProvider = (typeof SMS_PROVIDERS)[number]
 
 export type SmsTemplateKey = SmsEventType
@@ -50,15 +50,15 @@ export type SmsTemplateRenderResult = {
   messagePreview: string
 }
 
-export type DryRunSmsSendInput = {
+export type SmsSendInput = {
   recipientType: SmsRecipientType
   phone: string | null
   smsEnabled?: boolean
   messagePreview: string
 }
 
-export type DryRunSmsSendResult = {
-  status: Extract<SmsLogStatus, "dry_run" | "skipped">
+export type SmsSendResult = {
+  status: Extract<SmsLogStatus, "dry_run" | "sent" | "failed" | "skipped">
   provider: SmsProvider
   providerMessageId: string | null
   errorMessage: string | null
