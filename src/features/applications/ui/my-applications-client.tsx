@@ -409,7 +409,9 @@ export const MyApplicationsClient = () => {
           </section>
         ) : null}
 
-        {status === "ready" && filteredItems.length > 0 ? <MyApplicationList items={filteredItems} /> : null}
+        {status === "ready" && filteredItems.length > 0 ? (
+          <MyApplicationList items={filteredItems} onCanceled={loadApplications} />
+        ) : null}
       </div>
 
       <nav className={styles.bottomNav} aria-label="Bottom tabs">

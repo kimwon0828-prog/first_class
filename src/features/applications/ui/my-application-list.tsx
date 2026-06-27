@@ -1,10 +1,18 @@
+"use client"
+
+import { useTransition } from "react"
 import Link from "next/link"
 
+import {
+  cancelMyApplicationAction,
+  type CancelMyApplicationActionResult
+} from "@/features/applications/actions/cancel-my-application"
 import type { MyApplicationListItem } from "@/features/applications/ui/my-applications-client"
 import styles from "./my-application-list.module.css"
 
 type MyApplicationListProps = {
   items: MyApplicationListItem[]
+  onCanceled?: () => Promise<void> | void
 }
 
 const statusLabelMap: Record<MyApplicationListItem["status"], string> = {
@@ -92,7 +100,40 @@ const resolveScheduleLabel = (item: MyApplicationListItem) => {
   }
 }
 
-export const MyApplicationList = ({ items }: MyApplicationListProps) => {
+const CancelButton = ({
+  applicationId,
+  onCanceled
+}: {
+  applicationId: string
+  onCanceled?: () => Promise<void> | void
+}) => {
+  const [isPending, startTransition] = useTransition()
+
+  const handleCancel = () => {
+    startTransition(async () => {
+      const result: CancelMyApplicationActionResult = await cancelMyApplicationAction(applicationId)
+      window.alert(result.message)
+
+      if (result.status === "success") {
+        await onCanceled?.()
+      }
+    })
+  }
+
+  return (
+    <button
+      type="button"
+      className={styles.cancelButton}
+      onClick={handleCancel}
+      disabled={isPending}
+      aria-disabled={isPending}
+    >
+      {isPending ? "취소 처리 중..." : "신청 취소"}
+    </button>
+  )
+}
+
+export const MyApplicationList = ({ items, onCanceled }: MyApplicationListProps) => {
   return (
     <section className={styles.list} aria-label="신청 내역">
       {items.map((item) => {
@@ -148,15 +189,7 @@ export const MyApplicationList = ({ items }: MyApplicationListProps) => {
 
             {showCancelButton ? (
               <div className={styles.actionRow}>
-                <button
-                  type="button"
-                  className={styles.cancelButton}
-                  onClick={() => {
-                    window.alert("취소 기능 준비 중")
-                  }}
-                >
-                  신청 취소
-                </button>
+                <CancelButton applicationId={item.id} onCanceled={onCanceled} />
               </div>
             ) : null}
           </article>
