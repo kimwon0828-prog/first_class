@@ -11,6 +11,7 @@ export const PARENT_SMS_EVENT_TYPES = [
 export type ParentSmsEventType = (typeof PARENT_SMS_EVENT_TYPES)[number]
 
 export const TEACHER_SMS_EVENT_TYPES = [
+  "teacher_trial_requested",
   "teacher_trial_assigned",
   "teacher_trial_schedule_confirmed",
   "teacher_trial_schedule_updated",

@@ -143,6 +143,15 @@ export const renderSmsTemplate = ({
   }
 
   switch (eventType) {
+    case "teacher_trial_requested":
+      return {
+        templateKey: eventType,
+        messagePreview: joinMessage([
+          "[첫수업]",
+          "새로운 체험수업 신청이 접수되었습니다.",
+          joinDetail([`수업: ${classText}`, `학생: ${resolveStudentText(context)}`])
+        ])
+      }
     case "teacher_trial_assigned":
       return {
         templateKey: eventType,

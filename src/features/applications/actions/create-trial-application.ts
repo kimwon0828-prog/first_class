@@ -1,7 +1,9 @@
 "use server"
 
+import { logSmsEventSafely } from "@/features/notifications/sms/log-sms-event"
 import { getMyProfile } from "@/features/auth/lib/profile-sync"
 import { requireSession } from "@/features/auth/lib/session"
+import { getSupabaseServerClient } from "@/integrations/supabase/server"
 import { dataAdapter } from "@/shared/lib/db"
 
 export type CreateTrialApplicationActionState = {
@@ -13,6 +15,10 @@ export type CreateTrialApplicationActionState = {
 const defaultState: CreateTrialApplicationActionState = {
   status: "idle",
   message: ""
+}
+
+type ClassOrganizationRow = {
+  organization_id: string
 }
 
 const validateForm = (formData: FormData) => {
@@ -162,7 +168,7 @@ export async function createTrialApplicationAction(
       }
     }
 
-    await dataAdapter.createTrialApplication({
+    const createdApplication = await dataAdapter.createTrialApplication({
       parentId: session.user.id,
       classId,
       childId: validatedChildId,
@@ -181,6 +187,36 @@ export async function createTrialApplicationAction(
       selectedScheduleOptionId: validated.selectedScheduleOptionId,
       memo: validated.memo
     })
+
+    const supabase = await getSupabaseServerClient()
+    const { data: classRow } = await supabase
+      .from("classes")
+      .select("organization_id")
+      .eq("id", classId)
+      .maybeSingle<ClassOrganizationRow>()
+
+    if (classRow?.organization_id) {
+      await logSmsEventSafely({
+        organizationId: classRow.organization_id,
+        application: {
+          id: createdApplication.id,
+          classId: createdApplication.classId,
+          parentId: createdApplication.parentId,
+          childName: createdApplication.childName,
+          parentName: createdApplication.parentName,
+          parentPhone: createdApplication.parentPhone,
+          classTitle: createdApplication.classTitle ?? classItem.title,
+          requestedSlotAt: createdApplication.requestedSlotAt,
+          confirmedSlotAt: createdApplication.confirmedSlotAt,
+          selectedScheduleLabel: createdApplication.selectedScheduleLabel ?? null,
+          assignedTeacherId: classItem.teacherId,
+          assignedTeacherName: classItem.teacherName
+        },
+        createdBy: session.user.id,
+        recipientType: "teacher",
+        eventType: "teacher_trial_requested"
+      })
+    }
   } catch (error) {
     const message =
       error instanceof Error ? error.message : "failed_to_create_trial_application"
