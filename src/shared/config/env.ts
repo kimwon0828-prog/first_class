@@ -20,6 +20,9 @@ export const getPublicEnv = (): PublicEnv => {
   return {
     supabaseUrl,
     supabasePublishableKey: supabaseKey,
-    naverMapClientId: process.env.NEXT_PUBLIC_NAVER_MAP_CLIENT_ID ?? null
+    naverMapClientId:
+      process.env.NEXT_PUBLIC_NAVER_MAPS_CLIENT_ID ??
+      process.env.NEXT_PUBLIC_NAVER_MAP_CLIENT_ID ??
+      null
   }
 }
