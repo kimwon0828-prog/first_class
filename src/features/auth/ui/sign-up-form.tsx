@@ -1,39 +1,48 @@
 "use client"
 
 import Link from "next/link"
-import { useEffect, useState, type FormEvent } from "react"
+import { useActionState, useEffect, useState, type FormEvent } from "react"
 
-import { ensureParentProfileAfterAuthAction } from "@/features/auth/actions/sign-in"
-import { createSupabaseBrowserClient } from "@/integrations/supabase/client"
+import { signUpParentAction, type SignUpActionState } from "@/features/auth/actions/sign-up"
 import styles from "./sign-up-form.module.css"
 
 type SignUpFormProps = {
   returnTo?: string
 }
 
+const initialState: SignUpActionState = {
+  status: "idle",
+  message: ""
+}
+
 export const SignUpForm = ({ returnTo }: SignUpFormProps) => {
+  const [state, formAction, isPending] = useActionState(signUpParentAction, initialState)
   const [name, setName] = useState("")
   const [phone, setPhone] = useState("")
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [passwordConfirm, setPasswordConfirm] = useState("")
-  const [agreeToTerms, setAgreeToTerms] = useState(false)
-  const [agreeToPrivacy, setAgreeToPrivacy] = useState(false)
-  const [agreeToMarketing, setAgreeToMarketing] = useState(false)
-  const [message, setMessage] = useState("")
-  const [status, setStatus] = useState<"idle" | "pending" | "error" | "needs_email_confirm">("idle")
-  const isPending = status === "pending"
+  const [termsAgreed, setTermsAgreed] = useState(false)
+  const [privacyAgreed, setPrivacyAgreed] = useState(false)
+  const [thirdPartyAgreed, setThirdPartyAgreed] = useState(false)
+  const [clientMessage, setClientMessage] = useState("")
   const signInHref = returnTo
     ? `/auth/sign-in?returnTo=${encodeURIComponent(returnTo)}`
     : "/auth/sign-in"
 
+  const message = clientMessage || state.message
+  const messageStatus = clientMessage ? "error" : state.status
+  const requiredAgreementChecked = termsAgreed && privacyAgreed && thirdPartyAgreed
+
   useEffect(() => {
-    setMessage("")
-  }, [])
+    if (state.status === "success" && state.redirectTo) {
+      window.location.href = state.redirectTo
+    }
+  }, [state.redirectTo, state.status])
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault()
     if (isPending) {
+      event.preventDefault()
       return
     }
 
@@ -42,107 +51,53 @@ export const SignUpForm = ({ returnTo }: SignUpFormProps) => {
     const normalizedEmail = email.trim().toLowerCase()
 
     if (trimmedName.length < 2) {
-      setStatus("error")
-      setMessage("보호자명은 2자 이상 입력해 주세요.")
+      event.preventDefault()
+      setClientMessage("보호자명은 2자 이상 입력해 주세요.")
       return
     }
 
     if (trimmedPhone.length < 8) {
-      setStatus("error")
-      setMessage("보호자 연락처를 올바르게 입력해 주세요.")
+      event.preventDefault()
+      setClientMessage("보호자 연락처를 올바르게 입력해 주세요.")
       return
     }
 
     if (!normalizedEmail || !normalizedEmail.includes("@")) {
-      setStatus("error")
-      setMessage("올바른 이메일을 입력해 주세요.")
+      event.preventDefault()
+      setClientMessage("올바른 이메일을 입력해 주세요.")
       return
     }
 
     if (password.length < 8) {
-      setStatus("error")
-      setMessage("비밀번호는 8자 이상이어야 합니다.")
+      event.preventDefault()
+      setClientMessage("비밀번호는 8자 이상이어야 합니다.")
       return
     }
 
     if (password !== passwordConfirm) {
-      setStatus("error")
-      setMessage("비밀번호 확인이 일치하지 않습니다.")
+      event.preventDefault()
+      setClientMessage("비밀번호 확인이 일치하지 않습니다.")
       return
     }
 
-    if (!agreeToTerms) {
-      setStatus("error")
-      setMessage("서비스 이용약관 동의가 필요합니다.")
+    if (!requiredAgreementChecked) {
+      event.preventDefault()
+      setClientMessage("필수 약관에 모두 동의해주세요.")
       return
     }
 
-    if (!agreeToPrivacy) {
-      setStatus("error")
-      setMessage("개인정보 수집 및 이용 동의가 필요합니다.")
-      return
-    }
-
-    setStatus("pending")
-    setMessage("")
-
-    try {
-      const supabase = createSupabaseBrowserClient()
-      const { data, error } = await supabase.auth.signUp({
-        email: normalizedEmail,
-        password,
-        options: {
-          data: {
-            name: trimmedName,
-            phone: trimmedPhone,
-            agreed_to_terms: agreeToTerms,
-            agreed_to_privacy: agreeToPrivacy,
-            agreed_to_marketing: agreeToMarketing,
-            signup_intent: "parent_public",
-            role: "parent"
-          }
-        }
-      })
-
-      if (error) {
-        setStatus("error")
-        setMessage("회원가입에 실패했습니다. 잠시 후 다시 시도해 주세요.")
-        return
-      }
-
-      if (process.env.NEXT_PUBLIC_DEBUG_AUTH === "1") {
-        console.log("[auth cookies after login]", document.cookie)
-      }
-
-      if (!data.session) {
-        setStatus("needs_email_confirm")
-        setMessage("이메일 인증 후 로그인해 주세요. 첫 로그인 시 프로필이 자동으로 생성됩니다.")
-        return
-      }
-
-      const ensured = await ensureParentProfileAfterAuthAction(trimmedName, trimmedPhone)
-      const target =
-        returnTo && ensured.role === "parent"
-          ? returnTo
-          : ensured.role === "parent"
-            ? "/classes"
-            : "/studio"
-      window.location.href = target
-    } catch (caught) {
-      setStatus("error")
-      setMessage(caught instanceof Error ? caught.message : "회원가입 처리 중 오류가 발생했습니다.")
-    } finally {
-      setStatus((current) => (current === "pending" ? "idle" : current))
-    }
+    setClientMessage("")
   }
 
   return (
-    <form onSubmit={handleSubmit} className={styles.form}>
+    <form action={formAction} onSubmit={handleSubmit} className={styles.form}>
+      {returnTo ? <input type="hidden" name="returnTo" value={returnTo} /> : null}
       <section className={styles.card} aria-label="회원가입 정보 입력">
         <div className={styles.fieldStack}>
           <label className={styles.field}>
             <span className={styles.label}>이메일</span>
             <input
+              name="email"
               type="email"
               required
               autoComplete="email"
@@ -157,6 +112,7 @@ export const SignUpForm = ({ returnTo }: SignUpFormProps) => {
           <label className={styles.field}>
             <span className={styles.label}>비밀번호</span>
             <input
+              name="password"
               type="password"
               required
               minLength={8}
@@ -172,6 +128,7 @@ export const SignUpForm = ({ returnTo }: SignUpFormProps) => {
           <label className={styles.field}>
             <span className={styles.label}>비밀번호 확인</span>
             <input
+              name="passwordConfirm"
               type="password"
               required
               minLength={8}
@@ -187,6 +144,7 @@ export const SignUpForm = ({ returnTo }: SignUpFormProps) => {
           <label className={styles.field}>
             <span className={styles.label}>보호자명</span>
             <input
+              name="name"
               type="text"
               required
               minLength={2}
@@ -203,6 +161,7 @@ export const SignUpForm = ({ returnTo }: SignUpFormProps) => {
           <label className={styles.field}>
             <span className={styles.label}>보호자 연락처</span>
             <input
+              name="phone"
               type="tel"
               required
               minLength={8}
@@ -217,44 +176,68 @@ export const SignUpForm = ({ returnTo }: SignUpFormProps) => {
           </label>
         </div>
 
-        <div className={styles.agreementStack}>
-          <label className={styles.checkRow}>
-            <input
-              type="checkbox"
-              value="yes"
-              required
-              disabled={isPending}
-              className={styles.checkbox}
-              checked={agreeToTerms}
-              onChange={(event) => setAgreeToTerms(event.target.checked)}
-            />
-            <span className={styles.checkText}>서비스 이용약관에 동의합니다. (필수)</span>
-          </label>
+        <div className={styles.agreementCard}>
+          <h2 className={styles.agreementTitle}>필수 동의</h2>
+          <div className={styles.agreementStack}>
+            <label className={styles.checkRow}>
+              <input
+                type="checkbox"
+                name="termsAgreed"
+                value="yes"
+                disabled={isPending}
+                className={styles.checkbox}
+                checked={termsAgreed}
+                onChange={(event) => setTermsAgreed(event.target.checked)}
+              />
+              <span className={styles.checkText}>
+                <span className={styles.requiredText}>[필수]</span> 이용약관에 동의합니다.{" "}
+                <Link href="/terms" target="_blank" rel="noreferrer" className={styles.inlineLink}>
+                  전문 보기
+                </Link>
+              </span>
+            </label>
 
-          <label className={styles.checkRow}>
-            <input
-              type="checkbox"
-              value="yes"
-              required
-              disabled={isPending}
-              className={styles.checkbox}
-              checked={agreeToPrivacy}
-              onChange={(event) => setAgreeToPrivacy(event.target.checked)}
-            />
-            <span className={styles.checkText}>개인정보 수집 및 이용에 동의합니다. (필수)</span>
-          </label>
+            <label className={styles.checkRow}>
+              <input
+                type="checkbox"
+                name="privacyAgreed"
+                value="yes"
+                disabled={isPending}
+                className={styles.checkbox}
+                checked={privacyAgreed}
+                onChange={(event) => setPrivacyAgreed(event.target.checked)}
+              />
+              <span className={styles.checkText}>
+                <span className={styles.requiredText}>[필수]</span> 개인정보 수집 및 이용에 동의합니다.{" "}
+                <Link href="/privacy" target="_blank" rel="noreferrer" className={styles.inlineLink}>
+                  전문 보기
+                </Link>
+              </span>
+            </label>
 
-          <label className={styles.checkRow}>
-            <input
-              type="checkbox"
-              value="yes"
-              disabled={isPending}
-              className={styles.checkbox}
-              checked={agreeToMarketing}
-              onChange={(event) => setAgreeToMarketing(event.target.checked)}
-            />
-            <span className={styles.checkText}>마케팅 정보 수신에 동의합니다. (선택)</span>
-          </label>
+            <label className={styles.checkRow}>
+              <input
+                type="checkbox"
+                name="thirdPartyAgreed"
+                value="yes"
+                disabled={isPending}
+                className={styles.checkbox}
+                checked={thirdPartyAgreed}
+                onChange={(event) => setThirdPartyAgreed(event.target.checked)}
+              />
+              <span className={styles.checkText}>
+                <span className={styles.requiredText}>[필수]</span> 개인정보 제3자 제공에 동의합니다.{" "}
+                <Link
+                  href="/third-party-consent"
+                  target="_blank"
+                  rel="noreferrer"
+                  className={styles.inlineLink}
+                >
+                  전문 보기
+                </Link>
+              </span>
+            </label>
+          </div>
         </div>
 
         <p className={styles.helperText}>
@@ -263,7 +246,7 @@ export const SignUpForm = ({ returnTo }: SignUpFormProps) => {
 
         {message ? (
           <p
-            className={`${styles.message} ${status === "error" ? styles.errorMessage : styles.infoMessage}`}
+            className={`${styles.message} ${messageStatus === "error" ? styles.errorMessage : styles.infoMessage}`}
           >
             {message}
           </p>

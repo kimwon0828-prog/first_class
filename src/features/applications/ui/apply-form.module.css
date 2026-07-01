@@ -162,6 +162,11 @@
   align-items: flex-start;
 }
 
+.agreementStack {
+  display: grid;
+  gap: 16px;
+}
+
 .checkbox {
   width: 20px;
   height: 20px;
@@ -176,11 +181,23 @@
   font-weight: 600;
 }
 
+.requiredText {
+  color: #2aad38;
+  font-weight: 800;
+}
+
 .agreeSub {
   margin: 6px 0 0;
   font-size: 13px;
   line-height: 1.5;
   color: #8a8a8a;
+}
+
+.inlineLink {
+  color: #111111;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
 
 .fixedCta {

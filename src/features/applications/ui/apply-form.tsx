@@ -1,7 +1,8 @@
 "use client"
 
 import { useRouter } from "next/navigation"
-import { useActionState, useEffect, useMemo, useState } from "react"
+import Link from "next/link"
+import { useActionState, useEffect, useMemo, useState, type FormEvent } from "react"
 
 import {
   createTrialApplicationAction,
@@ -77,6 +78,11 @@ export const ApplyForm = ({
   const [goalNote, setGoalNote] = useState("")
   const [parentName, setParentName] = useState(parentNameDefault)
   const [parentPhone, setParentPhone] = useState(parentPhoneDefault ?? "")
+  const [termsAgreed, setTermsAgreed] = useState(false)
+  const [privacyAgreed, setPrivacyAgreed] = useState(false)
+  const [thirdPartyAgreed, setThirdPartyAgreed] = useState(false)
+  const [guardianAgreed, setGuardianAgreed] = useState(false)
+  const [clientMessage, setClientMessage] = useState("")
 
   const selectedSlot = useMemo(
     () => availableSlots.find((slot) => slot.optionId === selectedOptionId) ?? null,
@@ -92,6 +98,8 @@ export const ApplyForm = ({
   )
   const canSubmit =
     !slotsError && hasSelectableSlots && Boolean(selectedSlot && !selectedSlot.isClosed)
+  const requiredAgreementsChecked =
+    termsAgreed && privacyAgreed && thirdPartyAgreed && guardianAgreed
 
   useEffect(() => {
     if (selectedSlot?.isClosed) {
@@ -131,8 +139,18 @@ export const ApplyForm = ({
     }
   }, [router, state.redirectTo, state.status])
 
+  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+    if (!requiredAgreementsChecked) {
+      event.preventDefault()
+      setClientMessage("체험수업 신청에 필요한 필수 동의 항목을 확인해주세요.")
+      return
+    }
+
+    setClientMessage("")
+  }
+
   return (
-    <form action={formAction} className={styles.form}>
+    <form action={formAction} onSubmit={handleSubmit} className={styles.form}>
       <section className={styles.card}>
         <h2 className={styles.cardTitle}>보호자 정보</h2>
         <div className={styles.fieldStack}>
@@ -429,21 +447,103 @@ export const ApplyForm = ({
       </section>
 
       <section className={styles.card}>
-        <h2 className={styles.cardTitle}>개인정보 동의</h2>
-        <div className={styles.agreeRow}>
-          <input className={styles.checkbox} type="checkbox" name="privacyAgree" value="yes" />
-          <div>
-            <div className={styles.agreeText}>신청 진행을 위해 개인정보 제공에 동의합니다.</div>
-            <p className={styles.agreeSub}>
-              연락처/자녀 정보는 수업 안내 및 일정 확정을 위해 학원/선생님에게 전달될 수 있어요.
-            </p>
-          </div>
+        <h2 className={styles.cardTitle}>필수 동의</h2>
+        <div className={styles.agreementStack}>
+          <label className={styles.agreeRow}>
+            <input
+              className={styles.checkbox}
+              type="checkbox"
+              name="termsAgreed"
+              value="yes"
+              checked={termsAgreed}
+              onChange={(event) => setTermsAgreed(event.target.checked)}
+              disabled={isPending}
+            />
+            <div>
+              <div className={styles.agreeText}>
+                <span className={styles.requiredText}>[필수]</span> 이용약관에 동의합니다.
+              </div>
+              <p className={styles.agreeSub}>
+                <Link href="/terms" target="_blank" rel="noreferrer" className={styles.inlineLink}>
+                  /terms
+                </Link>
+              </p>
+            </div>
+          </label>
+
+          <label className={styles.agreeRow}>
+            <input
+              className={styles.checkbox}
+              type="checkbox"
+              name="privacyAgreed"
+              value="yes"
+              checked={privacyAgreed}
+              onChange={(event) => setPrivacyAgreed(event.target.checked)}
+              disabled={isPending}
+            />
+            <div>
+              <div className={styles.agreeText}>
+                <span className={styles.requiredText}>[필수]</span> 개인정보 수집 및 이용에 동의합니다.
+              </div>
+              <p className={styles.agreeSub}>
+                <Link href="/privacy" target="_blank" rel="noreferrer" className={styles.inlineLink}>
+                  /privacy
+                </Link>
+              </p>
+            </div>
+          </label>
+
+          <label className={styles.agreeRow}>
+            <input
+              className={styles.checkbox}
+              type="checkbox"
+              name="thirdPartyAgreed"
+              value="yes"
+              checked={thirdPartyAgreed}
+              onChange={(event) => setThirdPartyAgreed(event.target.checked)}
+              disabled={isPending}
+            />
+            <div>
+              <div className={styles.agreeText}>
+                <span className={styles.requiredText}>[필수]</span> 개인정보 제3자 제공에 동의합니다.
+              </div>
+              <p className={styles.agreeSub}>
+                연락처와 학생 정보는 해당 신청을 처리하는 학원 및 담당 선생님에게 전달될 수 있어요.{" "}
+                <Link
+                  href="/third-party-consent"
+                  target="_blank"
+                  rel="noreferrer"
+                  className={styles.inlineLink}
+                >
+                  전문 보기
+                </Link>
+              </p>
+            </div>
+          </label>
+
+          <label className={styles.agreeRow}>
+            <input
+              className={styles.checkbox}
+              type="checkbox"
+              name="guardianAgreed"
+              value="yes"
+              checked={guardianAgreed}
+              onChange={(event) => setGuardianAgreed(event.target.checked)}
+              disabled={isPending}
+            />
+            <div>
+              <div className={styles.agreeText}>
+                <span className={styles.requiredText}>[필수]</span> 학생의 법정대리인으로서 체험수업 신청에
+                필요한 정보를 제공하는 것에 동의합니다.
+              </div>
+            </div>
+          </label>
         </div>
       </section>
 
-      {state.message ? (
-        <p className={state.status === "error" ? styles.dangerText : styles.noticeText}>
-          {state.message}
+      {clientMessage || state.message ? (
+        <p className={clientMessage || state.status === "error" ? styles.dangerText : styles.noticeText}>
+          {clientMessage || state.message}
         </p>
       ) : null}
 

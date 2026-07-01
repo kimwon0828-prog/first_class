@@ -35,9 +35,9 @@ const validateSignUpForm = (formData: FormData) => {
   const email = String(formData.get("email") ?? "").trim().toLowerCase()
   const password = String(formData.get("password") ?? "")
   const passwordConfirm = String(formData.get("passwordConfirm") ?? "")
-  const agreeToTerms = String(formData.get("agreeToTerms") ?? "") === "yes"
-  const agreeToPrivacy = String(formData.get("agreeToPrivacy") ?? "") === "yes"
-  const agreeToMarketing = String(formData.get("agreeToMarketing") ?? "") === "yes"
+  const termsAgreed = String(formData.get("termsAgreed") ?? "") === "yes"
+  const privacyAgreed = String(formData.get("privacyAgreed") ?? "") === "yes"
+  const thirdPartyAgreed = String(formData.get("thirdPartyAgreed") ?? "") === "yes"
 
   if (!name || name.length < 2) {
     return { ok: false as const, message: "보호자명은 2자 이상 입력해 주세요." }
@@ -59,12 +59,8 @@ const validateSignUpForm = (formData: FormData) => {
     return { ok: false as const, message: "비밀번호 확인이 일치하지 않습니다." }
   }
 
-  if (!agreeToTerms) {
-    return { ok: false as const, message: "서비스 이용약관 동의가 필요합니다." }
-  }
-
-  if (!agreeToPrivacy) {
-    return { ok: false as const, message: "개인정보 수집 및 이용 동의가 필요합니다." }
+  if (!termsAgreed || !privacyAgreed || !thirdPartyAgreed) {
+    return { ok: false as const, message: "필수 약관에 모두 동의해주세요." }
   }
 
   return {
@@ -72,10 +68,7 @@ const validateSignUpForm = (formData: FormData) => {
     name,
     phone,
     email,
-    password,
-    agreeToTerms,
-    agreeToPrivacy,
-    agreeToMarketing
+    password
   }
 }
 
@@ -98,9 +91,6 @@ export async function signUpParentAction(
       data: {
         name: validated.name,
         phone: validated.phone,
-        agreed_to_terms: validated.agreeToTerms,
-        agreed_to_privacy: validated.agreeToPrivacy,
-        agreed_to_marketing: validated.agreeToMarketing,
         signup_intent: "parent_public",
         role: "parent"
       }

@@ -37,6 +37,10 @@ const validateForm = (formData: FormData) => {
   const goalNoteRaw = String(formData.get("goalNote") ?? "").trim()
   const selectedScheduleOptionId = String(formData.get("selectedScheduleOptionId") ?? "").trim()
   const memoRaw = String(formData.get("memo") ?? "").trim()
+  const termsAgreed = String(formData.get("termsAgreed") ?? "") === "yes"
+  const privacyAgreed = String(formData.get("privacyAgreed") ?? "") === "yes"
+  const thirdPartyAgreed = String(formData.get("thirdPartyAgreed") ?? "") === "yes"
+  const guardianAgreed = String(formData.get("guardianAgreed") ?? "") === "yes"
   const childSchool = childSchoolRaw.length > 0 ? childSchoolRaw : null
   const childNotes = childNotesRaw.length > 0 ? childNotesRaw : null
   const subjectExperienceDuration =
@@ -73,6 +77,13 @@ const validateForm = (formData: FormData) => {
 
   if (!selectedScheduleOptionId) {
     return { ok: false as const, message: "예약 가능 시간대를 선택해 주세요." }
+  }
+
+  if (!termsAgreed || !privacyAgreed || !thirdPartyAgreed || !guardianAgreed) {
+    return {
+      ok: false as const,
+      message: "체험수업 신청에 필요한 필수 동의 항목을 확인해주세요."
+    }
   }
 
   return {

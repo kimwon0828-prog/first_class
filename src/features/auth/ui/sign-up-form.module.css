@@ -22,6 +22,23 @@
   gap: 14px;
 }
 
+.agreementCard {
+  border: 1px solid #eeeeee;
+  border-radius: 16px;
+  background: #fafafa;
+  padding: 18px 16px;
+  display: grid;
+  gap: 14px;
+}
+
+.agreementTitle {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.4;
+  font-weight: 800;
+  color: #111111;
+}
+
 .field {
   display: grid;
   gap: 10px;
@@ -70,6 +87,18 @@
   font-size: 14px;
   line-height: 1.55;
   color: #4a4a4a;
+}
+
+.requiredText {
+  color: #2aad38;
+  font-weight: 800;
+}
+
+.inlineLink {
+  color: #111111;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
 
 .helperText {
