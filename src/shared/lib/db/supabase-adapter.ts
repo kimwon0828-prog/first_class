@@ -1,3 +1,4 @@
+import { getSupabaseServiceRoleClient } from "@/integrations/supabase/service-role"
 import { getSupabaseServerClient } from "@/integrations/supabase/server"
 import { getPublicEnv } from "@/shared/config/env"
 import type { AcademyArea } from "@/shared/config/academy-areas"
@@ -71,6 +72,14 @@ type OrganizationRow = {
   name: string
 }
 
+type OrganizationLocationByIdRow = {
+  id: string
+  name: string
+  branch_name?: string | null
+  address?: string | null
+  address_detail?: string | null
+}
+
 type OrganizationLocationRow = {
   name: string
   branch_name?: string | null
@@ -84,6 +93,8 @@ type EmbeddedClassRow = {
   subject?: string
   region?: string
   is_active?: boolean
+  organization_id?: string | null
+  teacher_display_name?: string | null
 }
 
 type TrialApplicationRow = {
@@ -342,6 +353,27 @@ const mapOrganizationLocation = (row: OrganizationLocationRow | null): Organizat
   }
 }
 
+const getOrganizationLocationMap = async (organizationIds: string[]) => {
+  const uniqueOrganizationIds = Array.from(new Set(organizationIds.filter(Boolean)))
+  if (uniqueOrganizationIds.length === 0) {
+    return new Map<string, OrganizationLocationByIdRow>()
+  }
+
+  const serviceRoleClient = getSupabaseServiceRoleClient()
+  const { data, error } = await serviceRoleClient
+    .from("organizations")
+    .select("id, name, branch_name, address, address_detail")
+    .in("id", uniqueOrganizationIds)
+
+  if (error) {
+    throw new Error("failed_to_fetch_application_organizations")
+  }
+
+  return new Map<string, OrganizationLocationByIdRow>(
+    ((data ?? []) as OrganizationLocationByIdRow[]).map((row) => [row.id, row])
+  )
+}
+
 const getEmbeddedClass = (row: TrialApplicationRow): EmbeddedClassRow | null => {
   if (!row.classes) {
     return null
@@ -362,6 +394,10 @@ const mapApplication = (row: TrialApplicationRow): TrialApplicationSummary => {
     classId: row.class_id,
     classTitle: embeddedClass?.title ?? null,
     classProgramType: embeddedClass?.program_type ?? null,
+    academyName: null,
+    teacherDisplayName: embeddedClass?.teacher_display_name ?? null,
+    organizationAddress: null,
+    organizationAddressDetail: null,
     parentId: row.parent_id,
     childName: row.child_name,
     childGrade: row.child_grade,
@@ -372,6 +408,7 @@ const mapApplication = (row: TrialApplicationRow): TrialApplicationSummary => {
     selectedScheduleLabel: row.selected_schedule_label ?? null,
     requestedSlotAt: row.requested_slot_at,
     confirmedSlotAt: row.confirmed_slot_at ?? null,
+    registrationStatus: row.registration_status ?? null,
     status: row.status,
     goalType: row.goal_type ?? null,
     createdAt: row.created_at,
@@ -2187,7 +2224,7 @@ export const supabaseDataAdapter: DataAdapter = {
     const { data, error } = await supabase
       .from("trial_applications")
       .select(
-        "id, class_id, parent_id, child_name, child_grade, parent_name, parent_phone, class_schedule_id, requested_schedule_block_id, selected_schedule_label, requested_slot_at, confirmed_slot_at, goal_type, status, created_at, updated_at, classes(title, program_type, region)"
+        "id, class_id, parent_id, child_name, child_grade, parent_name, parent_phone, class_schedule_id, requested_schedule_block_id, selected_schedule_label, requested_slot_at, confirmed_slot_at, registration_status, goal_type, status, created_at, updated_at, classes(title, program_type, organization_id, teacher_display_name)"
       )
       .eq("parent_id", parentId)
       .order("created_at", { ascending: false })
@@ -2196,7 +2233,31 @@ export const supabaseDataAdapter: DataAdapter = {
       throw new Error("failed_to_fetch_my_trial_applications")
     }
 
-    return ((data ?? []) as TrialApplicationRow[]).map(mapApplication)
+    const rows = (data ?? []) as TrialApplicationRow[]
+    const organizationLocationMap = await getOrganizationLocationMap(
+      rows
+        .map((row) => getEmbeddedClass(row)?.organization_id ?? null)
+        .filter((organizationId): organizationId is string => Boolean(organizationId))
+    )
+
+    return rows.map((row) => {
+      const embeddedClass = getEmbeddedClass(row)
+      const base = mapApplication(row)
+      const organizationRow =
+        embeddedClass?.organization_id
+          ? organizationLocationMap.get(embeddedClass.organization_id) ?? null
+          : null
+      const organization = organizationRow ? mapOrganizationLocation(organizationRow) : null
+
+      return {
+        ...base,
+        academyName: organization
+          ? [organization.name, organization.branchName].filter(Boolean).join(" ").trim() || null
+          : null,
+        organizationAddress: organization?.address ?? null,
+        organizationAddressDetail: organization?.addressDetail ?? null
+      }
+    })
   },
   async listStudioApplications(organizationId, options) {
     const supabase = await getSupabaseServerClient()

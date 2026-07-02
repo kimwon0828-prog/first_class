@@ -285,6 +285,10 @@ export type TrialApplicationSummary = {
   classId: string
   classTitle: string | null
   classProgramType: ClassProgramType | null
+  academyName: string | null
+  teacherDisplayName: string | null
+  organizationAddress: string | null
+  organizationAddressDetail: string | null
   parentId: string
   childName: string
   childGrade: string
@@ -295,6 +299,7 @@ export type TrialApplicationSummary = {
   selectedScheduleLabel?: string | null
   requestedSlotAt: string
   confirmedSlotAt: string | null
+  registrationStatus: ApplicationRegistrationStatus | null
   status: ApplicationStatus
   goalType: string | null
   createdAt: string

@@ -102,6 +102,18 @@
   color: #111111;
   text-align: right;
   overflow-wrap: anywhere;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+}
+
+.mapLink {
+  font-size: 13px;
+  font-weight: 700;
+  color: #2aad38;
+  text-decoration: none;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .helpText {
@@ -139,5 +151,6 @@
 
   .metaValue {
     text-align: left;
+    align-items: flex-start;
   }
 }

@@ -47,6 +47,43 @@ const formatProgramType = (value: MyApplicationListItem["classProgramType"]) => 
   return "체험수업"
 }
 
+const resolveAcademyTeacherLabel = (item: MyApplicationListItem) => {
+  const academyName = item.academyName?.trim() || null
+  const teacherName = item.teacherDisplayName?.trim() || null
+
+  if (academyName && teacherName) {
+    return `${academyName} · ${teacherName}`
+  }
+
+  if (academyName) {
+    return academyName
+  }
+
+  if (teacherName) {
+    return teacherName
+  }
+
+  return "정보 준비 중"
+}
+
+const resolveLocation = (item: MyApplicationListItem) => {
+  const address = item.organizationAddress?.trim() || null
+  const addressDetail = item.organizationAddressDetail?.trim() || null
+  const fullAddress = [address, addressDetail]
+    .filter((value): value is string => Boolean(value))
+    .join(" ")
+    .trim()
+  const academyName = item.academyName?.trim() || ""
+  const searchQuery = [academyName, fullAddress].filter(Boolean).join(" ").trim()
+
+  return {
+    address: fullAddress || null,
+    mapUrl: searchQuery
+      ? `https://map.naver.com/p/search/${encodeURIComponent(searchQuery)}`
+      : null
+  }
+}
+
 const formatDateTime = (value: string) => {
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) {
@@ -66,37 +103,32 @@ const resolveScheduleLabel = (item: MyApplicationListItem) => {
   const confirmedAt = item.confirmedSlotAt ? formatDateTime(item.confirmedSlotAt) : null
   const requestedAt = item.requestedSlotAt ? formatDateTime(item.requestedSlotAt) : null
   const selectedLabel = item.selectedScheduleLabel?.trim() ? item.selectedScheduleLabel.trim() : null
+  const requestedValue = requestedAt ?? selectedLabel ?? "일정 협의 필요"
 
-  if (item.confirmedSlotAt) {
+  if (item.status === "completed") {
+    return {
+      label: "수업일",
+      primaryValue: confirmedAt ?? requestedValue
+    }
+  }
+
+  if (item.status === "confirmed" && confirmedAt) {
     return {
       label: "확정 일정",
-      primaryValue: confirmedAt ?? selectedLabel ?? "일정 협의 필요",
-      secondaryValue:
-        confirmedAt && selectedLabel && confirmedAt !== selectedLabel ? `선택 시간: ${selectedLabel}` : null
+      primaryValue: confirmedAt
     }
   }
 
-  if (requestedAt) {
+  if (item.status === "confirmed") {
     return {
       label: "희망 일정",
-      primaryValue: requestedAt,
-      secondaryValue:
-        selectedLabel && selectedLabel !== requestedAt ? `선택 시간: ${selectedLabel}` : null
-    }
-  }
-
-  if (selectedLabel) {
-    return {
-      label: "희망 일정",
-      primaryValue: selectedLabel,
-      secondaryValue: null
+      primaryValue: requestedValue
     }
   }
 
   return {
     label: "희망 일정",
-    primaryValue: "일정 협의 필요",
-    secondaryValue: null
+    primaryValue: requestedValue
   }
 }
 
@@ -142,6 +174,8 @@ export const MyApplicationList = ({ items, onCanceled }: MyApplicationListProps)
         const statusLabel = statusLabelMap[item.status]
         const statusHelp = statusHelpMap[item.status]
         const showCancelButton = canShowCancelButton(item)
+        const academyTeacherLabel = resolveAcademyTeacherLabel(item)
+        const location = resolveLocation(item)
 
         return (
           <article key={item.id} className={styles.card}>
@@ -160,12 +194,31 @@ export const MyApplicationList = ({ items, onCanceled }: MyApplicationListProps)
             <div className={styles.metaGrid}>
               <div className={styles.metaRow}>
                 <span className={styles.metaLabel}>학원/선생님</span>
-                <span className={styles.metaValue}>정보 준비 중</span>
+                <span className={styles.metaValue}>{academyTeacherLabel}</span>
               </div>
-              <div className={styles.metaRow}>
-                <span className={styles.metaLabel}>지역</span>
-                <span className={styles.metaValue}>정보 준비 중</span>
-              </div>
+              {location.address ? (
+                <div className={styles.metaRow}>
+                  <span className={styles.metaLabel}>위치</span>
+                  <span className={styles.metaValue}>
+                    {location.address}
+                    {location.mapUrl ? (
+                      <a
+                        href={location.mapUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className={styles.mapLink}
+                      >
+                        네이버 지도에서 보기
+                      </a>
+                    ) : null}
+                  </span>
+                </div>
+              ) : (
+                <div className={styles.metaRow}>
+                  <span className={styles.metaLabel}>위치</span>
+                  <span className={styles.metaValue}>위치 정보 준비 중</span>
+                </div>
+              )}
               <div className={styles.metaRow}>
                 <span className={styles.metaLabel}>아이</span>
                 <span className={styles.metaValue}>
@@ -175,9 +228,6 @@ export const MyApplicationList = ({ items, onCanceled }: MyApplicationListProps)
               <div className={styles.metaRow}>
                 <span className={styles.metaLabel}>{schedule.label}</span>
                 <span className={styles.metaValue}>{schedule.primaryValue}</span>
-                {schedule.secondaryValue ? (
-                  <span className={styles.metaLine}>{schedule.secondaryValue}</span>
-                ) : null}
               </div>
               <div className={styles.metaRow}>
                 <span className={styles.metaLabel}>신청일</span>

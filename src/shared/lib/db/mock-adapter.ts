@@ -1041,24 +1041,40 @@ export const mockDataAdapter: DataAdapter = {
   async listMyApplications(parentId) {
     return applications
       .filter((item) => item.parentId === parentId)
-      .map((item) => ({
-        id: item.id,
-        classId: item.classId,
-        classTitle: item.classTitle,
-        classProgramType: item.classProgramType,
-        parentId: item.parentId,
-        childName: item.childName,
-        childGrade: item.childGrade,
-        parentName: item.parentName,
-        parentPhone: item.parentPhone,
-        requestedScheduleBlockId: item.requestedScheduleBlockId,
-        requestedSlotAt: item.requestedSlotAt,
-        confirmedSlotAt: item.confirmedSlotAt,
-        status: item.status,
-        goalType: item.goalType,
-        createdAt: item.createdAt,
-        updatedAt: item.updatedAt
-      }))
+      .map((item) => {
+        const classItem = classes.find((classRow) => classRow.id === item.classId) ?? null
+
+        return {
+          id: item.id,
+          classId: item.classId,
+          classTitle: item.classTitle,
+          classProgramType: item.classProgramType,
+          academyName:
+            [mockOrganizationLocation.name, mockOrganizationLocation.branchName]
+              .filter(Boolean)
+              .join(" ")
+              .trim() || null,
+          teacherDisplayName:
+            classItem?.teacherDisplayName ?? classItem?.teacherName ?? item.assignedTeacherName ?? null,
+          organizationAddress: mockOrganizationLocation.address ?? null,
+          organizationAddressDetail: mockOrganizationLocation.addressDetail ?? null,
+          parentId: item.parentId,
+          childName: item.childName,
+          childGrade: item.childGrade,
+          parentName: item.parentName,
+          parentPhone: item.parentPhone,
+          classScheduleId: item.classScheduleId ?? null,
+          requestedScheduleBlockId: item.requestedScheduleBlockId,
+          selectedScheduleLabel: item.selectedScheduleLabel ?? null,
+          requestedSlotAt: item.requestedSlotAt,
+          confirmedSlotAt: item.confirmedSlotAt,
+          registrationStatus: item.registrationStatus ?? null,
+          status: item.status,
+          goalType: item.goalType,
+          createdAt: item.createdAt,
+          updatedAt: item.updatedAt
+        }
+      })
       .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))
   },
   async listStudioApplications(organizationId, options) {
@@ -1360,6 +1376,14 @@ export const mockDataAdapter: DataAdapter = {
       classId: input.classId,
       classTitle: classItem?.title ?? null,
       classProgramType: classItem?.programType ?? null,
+      academyName:
+        [mockOrganizationLocation.name, mockOrganizationLocation.branchName]
+          .filter(Boolean)
+          .join(" ")
+          .trim() || null,
+      teacherDisplayName: classItem?.teacherDisplayName ?? classItem?.teacherName ?? null,
+      organizationAddress: mockOrganizationLocation.address ?? null,
+      organizationAddressDetail: mockOrganizationLocation.addressDetail ?? null,
       parentId: input.parentId,
       childName: input.childName,
       childGrade: input.childGrade,
@@ -1371,6 +1395,7 @@ export const mockDataAdapter: DataAdapter = {
       selectedScheduleLabel: matchedSlot.label,
       requestedSlotAt: matchedSlot.startAt,
       confirmedSlotAt: null,
+      registrationStatus: null,
       status: "new",
       goalType: input.goalType,
       createdAt: new Date().toISOString(),
