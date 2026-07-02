@@ -117,20 +117,25 @@
 }
 
 .slotText {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
   font-size: 14px;
   line-height: 1.45;
   color: #111111;
 }
 
+.slotPrimaryLine {
+  font-weight: 700;
+}
+
 .slotMeta {
-  margin-left: 8px;
   font-size: 13px;
   color: #666666;
   font-weight: 600;
 }
 
 .slotClosed {
-  margin-left: 8px;
   font-size: 13px;
   color: #ef4444;
   font-weight: 800;

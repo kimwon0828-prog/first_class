@@ -42,18 +42,54 @@ const gradeOptions = [
   "고3"
 ]
 
-const formatSlot = (value: string) => {
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) {
-    return value
+const WEEKDAY_LABELS = ["일요일", "월요일", "화요일", "수요일", "목요일", "금요일", "토요일"]
+
+const formatSlotDateLine = (startAt: string, endAt: string) => {
+  const startDate = new Date(startAt)
+  const endDate = new Date(endAt)
+
+  if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) {
+    return null
   }
-  return date.toLocaleString("ko-KR", {
-    month: "2-digit",
-    day: "2-digit",
-    weekday: "short",
-    hour: "2-digit",
-    minute: "2-digit"
-  })
+
+  const dateText = `${startDate.getFullYear()}. ${String(startDate.getMonth() + 1).padStart(2, "0")}. ${String(
+    startDate.getDate()
+  ).padStart(2, "0")}.`
+  const weekdayText = WEEKDAY_LABELS[startDate.getDay()] ?? ""
+
+  return `${dateText} ${weekdayText}`
+}
+
+const formatSlotTimeLine = (startAt: string, endAt: string, remainingCount: number) => {
+  const startDate = new Date(startAt)
+  const endDate = new Date(endAt)
+
+  if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) {
+    return null
+  }
+
+  const timeText = `${String(startDate.getHours()).padStart(2, "0")}:${String(
+    startDate.getMinutes()
+  ).padStart(2, "0")}~${String(endDate.getHours()).padStart(2, "0")}:${String(endDate.getMinutes()).padStart(2, "0")}`
+
+  return `${timeText} · 남은 ${remainingCount}자리`
+}
+
+const resolveSlotDisplay = (slot: AvailableScheduleSlot) => {
+  const dateLine = formatSlotDateLine(slot.startAt, slot.endAt)
+  const timeLine = formatSlotTimeLine(slot.startAt, slot.endAt, slot.remainingCount)
+
+  if (dateLine && timeLine) {
+    return {
+      primaryLine: dateLine,
+      secondaryLine: timeLine
+    }
+  }
+
+  return {
+    primaryLine: slot.label || slot.startAt,
+    secondaryLine: slot.isClosed ? null : `남은 ${slot.remainingCount}자리`
+  }
 }
 
 export const ApplyForm = ({
@@ -397,33 +433,37 @@ export const ApplyForm = ({
 
         {!slotsError && availableSlots.length > 0 ? (
           <div className={styles.scheduleList}>
-            {availableSlots.map((slot) => (
-              <label
-                key={slot.id}
-                className={`${styles.slotItem} ${slot.isClosed ? styles.slotItemDisabled : ""}`}
-              >
-                <input
-                  className={styles.radio}
-                  type="radio"
-                  name="selectedScheduleOptionId"
-                  value={slot.optionId}
-                  required={hasSelectableSlots}
-                  checked={selectedOptionId === slot.optionId}
-                  onChange={() => {
-                    setSelectedOptionId(slot.optionId)
-                  }}
-                  disabled={isPending || slot.isClosed}
-                />
-                <span className={styles.slotText}>
-                  {slot.label || formatSlot(slot.startAt)}
-                  {slot.isClosed ? (
-                    <span className={styles.slotClosed}>마감</span>
-                  ) : (
-                    <span className={styles.slotMeta}>남은 {slot.remainingCount}자리</span>
-                  )}
-                </span>
-              </label>
-            ))}
+            {availableSlots.map((slot) => {
+              const slotDisplay = resolveSlotDisplay(slot)
+
+              return (
+                <label
+                  key={slot.id}
+                  className={`${styles.slotItem} ${slot.isClosed ? styles.slotItemDisabled : ""}`}
+                >
+                  <input
+                    className={styles.radio}
+                    type="radio"
+                    name="selectedScheduleOptionId"
+                    value={slot.optionId}
+                    required={hasSelectableSlots}
+                    checked={selectedOptionId === slot.optionId}
+                    onChange={() => {
+                      setSelectedOptionId(slot.optionId)
+                    }}
+                    disabled={isPending || slot.isClosed}
+                  />
+                  <span className={styles.slotText}>
+                    <span className={styles.slotPrimaryLine}>{slotDisplay.primaryLine}</span>
+                    {slot.isClosed ? (
+                      <span className={styles.slotClosed}>마감</span>
+                    ) : slotDisplay.secondaryLine ? (
+                      <span className={styles.slotMeta}>{slotDisplay.secondaryLine}</span>
+                    ) : null}
+                  </span>
+                </label>
+              )
+            })}
           </div>
         ) : null}
       </section>
