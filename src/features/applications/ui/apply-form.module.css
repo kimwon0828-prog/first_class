@@ -90,6 +90,48 @@
   line-height: 1.45;
 }
 
+.contactSummary {
+  display: grid;
+  gap: 10px;
+}
+
+.contactTitle {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 800;
+  color: #111111;
+}
+
+.contactDescription {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #666666;
+}
+
+.contactMeta {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: #f7f7f7;
+}
+
+.contactMetaLabel {
+  font-size: 13px;
+  font-weight: 700;
+  color: #666666;
+}
+
+.contactMetaValue {
+  font-size: 14px;
+  font-weight: 700;
+  color: #111111;
+  text-align: right;
+}
+
 .scheduleList {
   display: grid;
   gap: 12px;

@@ -17,8 +17,8 @@ type ApplyFormProps = {
   slotsError: string | null
   childProfiles: ChildProfile[]
   childProfilesError: string | null
-  parentNameDefault: string
-  parentPhoneDefault: string | null
+  parentName: string
+  parentPhone: string | null
 }
 
 const initialState: CreateTrialApplicationActionState = {
@@ -98,8 +98,8 @@ export const ApplyForm = ({
   slotsError,
   childProfiles,
   childProfilesError,
-  parentNameDefault,
-  parentPhoneDefault
+  parentName,
+  parentPhone
 }: ApplyFormProps) => {
   const router = useRouter()
   const boundAction = createTrialApplicationAction.bind(null, classId)
@@ -112,9 +112,6 @@ export const ApplyForm = ({
   const [childNotes, setChildNotes] = useState("")
   const [currentLevel, setCurrentLevel] = useState("")
   const [goalNote, setGoalNote] = useState("")
-  const [parentName, setParentName] = useState(parentNameDefault)
-  const [parentPhone, setParentPhone] = useState(parentPhoneDefault ?? "")
-  const [termsAgreed, setTermsAgreed] = useState(false)
   const [privacyAgreed, setPrivacyAgreed] = useState(false)
   const [thirdPartyAgreed, setThirdPartyAgreed] = useState(false)
   const [guardianAgreed, setGuardianAgreed] = useState(false)
@@ -134,8 +131,7 @@ export const ApplyForm = ({
   )
   const canSubmit =
     !slotsError && hasSelectableSlots && Boolean(selectedSlot && !selectedSlot.isClosed)
-  const requiredAgreementsChecked =
-    termsAgreed && privacyAgreed && thirdPartyAgreed && guardianAgreed
+  const requiredAgreementsChecked = privacyAgreed && thirdPartyAgreed && guardianAgreed
 
   useEffect(() => {
     if (selectedSlot?.isClosed) {
@@ -188,42 +184,20 @@ export const ApplyForm = ({
   return (
     <form action={formAction} onSubmit={handleSubmit} className={styles.form}>
       <section className={styles.card}>
-        <h2 className={styles.cardTitle}>보호자 정보</h2>
-        <div className={styles.fieldStack}>
-          <div className={styles.field}>
-            <span className={styles.label}>이름</span>
-            <input
-              name="parentName"
-              type="text"
-              required
-              minLength={2}
-              maxLength={30}
-              value={parentName}
-              onChange={(event) => {
-                setParentName(event.target.value)
-              }}
-              disabled={isPending}
-              className={styles.input}
-            />
+        <div className={styles.contactSummary}>
+          <p className={styles.contactTitle}>연락처 확인</p>
+          <p className={styles.contactDescription}>
+            학원에서 체험수업 일정 조율을 위해 계정에 등록된 연락처로 연락드릴 수 있어요.
+          </p>
+          <div className={styles.contactMeta}>
+            <span className={styles.contactMetaLabel}>보호자명</span>
+            <span className={styles.contactMetaValue}>{parentName}</span>
           </div>
-
-          <div className={styles.field}>
-            <span className={styles.label}>연락처</span>
-            <input
-              name="parentPhone"
-              type="tel"
-              required
-              minLength={8}
-              maxLength={20}
-              value={parentPhone}
-              onChange={(event) => {
-                setParentPhone(event.target.value)
-              }}
-              disabled={isPending}
-              placeholder="010-0000-0000"
-              className={styles.input}
-            />
+          <div className={styles.contactMeta}>
+            <span className={styles.contactMetaLabel}>연락처</span>
+            <span className={styles.contactMetaValue}>{parentPhone ?? "등록된 연락처가 없습니다."}</span>
           </div>
+          {!parentPhone ? <p className={styles.dangerText}>체험수업 신청을 위해 연락처 정보가 필요합니다.</p> : null}
         </div>
       </section>
 
@@ -493,28 +467,6 @@ export const ApplyForm = ({
             <input
               className={styles.checkbox}
               type="checkbox"
-              name="termsAgreed"
-              value="yes"
-              checked={termsAgreed}
-              onChange={(event) => setTermsAgreed(event.target.checked)}
-              disabled={isPending}
-            />
-            <div>
-              <div className={styles.agreeText}>
-                <span className={styles.requiredText}>[필수]</span> 이용약관에 동의합니다.
-              </div>
-              <p className={styles.agreeSub}>
-                <Link href="/terms" target="_blank" rel="noreferrer" className={styles.inlineLink}>
-                  /terms
-                </Link>
-              </p>
-            </div>
-          </label>
-
-          <label className={styles.agreeRow}>
-            <input
-              className={styles.checkbox}
-              type="checkbox"
               name="privacyAgreed"
               value="yes"
               checked={privacyAgreed}
@@ -523,11 +475,13 @@ export const ApplyForm = ({
             />
             <div>
               <div className={styles.agreeText}>
-                <span className={styles.requiredText}>[필수]</span> 개인정보 수집 및 이용에 동의합니다.
+                <span className={styles.requiredText}>[필수]</span> 체험수업 신청에 필요한 개인정보 수집·이용에
+                동의합니다.
               </div>
               <p className={styles.agreeSub}>
+                학생 정보, 희망 일정, 요청사항은 체험수업 신청 접수와 일정 조율을 위해 사용됩니다.{" "}
                 <Link href="/privacy" target="_blank" rel="noreferrer" className={styles.inlineLink}>
-                  /privacy
+                  전문 보기
                 </Link>
               </p>
             </div>
@@ -545,10 +499,11 @@ export const ApplyForm = ({
             />
             <div>
               <div className={styles.agreeText}>
-                <span className={styles.requiredText}>[필수]</span> 개인정보 제3자 제공에 동의합니다.
+                <span className={styles.requiredText}>[필수]</span> 신청 정보가 해당 학원 및 담당 선생님에게
+                제공되는 것에 동의합니다.
               </div>
               <p className={styles.agreeSub}>
-                연락처와 학생 정보는 해당 신청을 처리하는 학원 및 담당 선생님에게 전달될 수 있어요.{" "}
+                연락처와 학생 정보는 해당 신청을 처리하는 학원 및 담당 선생님에게 전달될 수 있습니다.{" "}
                 <Link
                   href="/third-party-consent"
                   target="_blank"
@@ -573,8 +528,8 @@ export const ApplyForm = ({
             />
             <div>
               <div className={styles.agreeText}>
-                <span className={styles.requiredText}>[필수]</span> 학생의 법정대리인으로서 체험수업 신청에
-                필요한 정보를 제공하는 것에 동의합니다.
+                <span className={styles.requiredText}>[필수]</span> 학생의 법정대리인으로서 체험수업 신청에 필요한
+                정보를 제공하는 것에 동의합니다.
               </div>
             </div>
           </label>

@@ -133,8 +133,8 @@ export default async function ClassApplyPage({ params }: ApplyPageProps) {
                   slotsError={slotsError}
                   childProfiles={children}
                   childProfilesError={childrenError}
-                  parentNameDefault={profile.name}
-                  parentPhoneDefault={profile.phone}
+                  parentName={profile.name}
+                  parentPhone={profile.phone}
                 />
               ) : null}
             </>

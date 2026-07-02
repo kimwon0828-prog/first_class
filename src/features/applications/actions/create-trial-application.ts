@@ -25,8 +25,6 @@ const validateForm = (formData: FormData) => {
   const childIdRaw = String(formData.get("childId") ?? "").trim()
   const childName = String(formData.get("childName") ?? "").trim()
   const childGrade = String(formData.get("childGrade") ?? "").trim()
-  const parentName = String(formData.get("parentName") ?? "").trim()
-  const parentPhone = String(formData.get("parentPhone") ?? "").trim()
   const childSchoolRaw = String(formData.get("childSchool") ?? "").trim()
   const childNotesRaw = String(formData.get("childNotes") ?? "").trim()
   const subjectExperienceYnRaw = String(formData.get("subjectExperienceYn") ?? "").trim()
@@ -37,7 +35,6 @@ const validateForm = (formData: FormData) => {
   const goalNoteRaw = String(formData.get("goalNote") ?? "").trim()
   const selectedScheduleOptionId = String(formData.get("selectedScheduleOptionId") ?? "").trim()
   const memoRaw = String(formData.get("memo") ?? "").trim()
-  const termsAgreed = String(formData.get("termsAgreed") ?? "") === "yes"
   const privacyAgreed = String(formData.get("privacyAgreed") ?? "") === "yes"
   const thirdPartyAgreed = String(formData.get("thirdPartyAgreed") ?? "") === "yes"
   const guardianAgreed = String(formData.get("guardianAgreed") ?? "") === "yes"
@@ -67,19 +64,11 @@ const validateForm = (formData: FormData) => {
     return { ok: false as const, message: "학년을 선택해 주세요." }
   }
 
-  if (!parentName || parentName.length < 2) {
-    return { ok: false as const, message: "보호자 이름은 2자 이상 입력해 주세요." }
-  }
-
-  if (!parentPhone || parentPhone.length < 8) {
-    return { ok: false as const, message: "보호자 연락처를 입력해 주세요." }
-  }
-
   if (!selectedScheduleOptionId) {
     return { ok: false as const, message: "예약 가능 시간대를 선택해 주세요." }
   }
 
-  if (!termsAgreed || !privacyAgreed || !thirdPartyAgreed || !guardianAgreed) {
+  if (!privacyAgreed || !thirdPartyAgreed || !guardianAgreed) {
     return {
       ok: false as const,
       message: "체험수업 신청에 필요한 필수 동의 항목을 확인해주세요."
@@ -91,8 +80,6 @@ const validateForm = (formData: FormData) => {
     childId,
     childName,
     childGrade,
-    parentName,
-    parentPhone,
     childSchool,
     childNotes,
     subjectExperienceYn,
@@ -144,6 +131,16 @@ export async function createTrialApplicationAction(
     return { status: "error", message: validated.message }
   }
 
+  const resolvedParentName = profile.name.trim()
+  const resolvedParentPhone = profile.phone?.trim() ?? null
+
+  if (!resolvedParentPhone || resolvedParentPhone.length < 8) {
+    return {
+      status: "error",
+      message: "체험수업 신청을 위해 연락처 정보가 필요합니다."
+    }
+  }
+
   try {
     let validatedChildId: string | null = null
 
@@ -185,8 +182,8 @@ export async function createTrialApplicationAction(
       childId: validatedChildId,
       childName: validated.childName,
       childGrade: validated.childGrade,
-      parentName: validated.parentName,
-      parentPhone: validated.parentPhone,
+      parentName: resolvedParentName,
+      parentPhone: resolvedParentPhone,
       childSchool: validated.childSchool,
       childNotes: validated.childNotes,
       subjectExperienceYn: validated.subjectExperienceYn,
