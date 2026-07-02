@@ -27,6 +27,8 @@ const formatPrice = (price: number) => {
 }
 
 const formatProgramType = (value: string) => (value === "level_test" ? "레벨테스트" : "체험수업")
+const getTeacherSummaryLine = (subjects: string | null | undefined, targetStudents: string | null | undefined) =>
+  [subjects?.trim() || null, targetStudents?.trim() || null].filter(Boolean).join(" · ") || null
 
 export default async function ClassDetailPage({ params, searchParams }: ClassDetailPageProps) {
   const resolvedParams = await params
@@ -60,6 +62,17 @@ export default async function ClassDetailPage({ params, searchParams }: ClassDet
   const organizationLabel = organization
     ? [organization.name, organization.branchName].filter(Boolean).join(" ")
     : ""
+  const teacherProfile = classItem?.teacherProfile ?? null
+  const teacherName =
+    teacherProfile?.teacherName?.trim() ||
+    classItem?.teacherDisplayName?.trim() ||
+    classItem?.teacherName?.trim() ||
+    "정보 준비 중"
+  const teacherSummaryLine = getTeacherSummaryLine(teacherProfile?.subjects, teacherProfile?.targetStudents)
+  const teacherIntroText = classItem?.teacherIntro?.trim() || null
+  const teacherSpecialties = teacherProfile?.specialties?.trim() || null
+  const teacherTeachingStyle = teacherProfile?.teachingStyle?.trim() || null
+  const teacherShortIntro = teacherProfile?.shortIntro?.trim() || null
 
   return (
     <main
@@ -249,13 +262,28 @@ export default async function ClassDetailPage({ params, searchParams }: ClassDet
 
               <section className={styles.section}>
                 <h2 className={styles.sectionTitle}>선생님 소개</h2>
-                <p className={styles.bodyText}>
-                  {classItem.teacherIntro?.trim()
-                    ? classItem.teacherIntro
-                    : classItem.teacherProfile?.intro?.trim()
-                      ? classItem.teacherProfile.intro
-                      : "선생님 소개가 준비 중입니다."}
-                </p>
+                {teacherProfile || teacherIntroText ? (
+                  <div className={styles.teacherProfileStack}>
+                    <p className={styles.teacherProfileName}>{teacherName}</p>
+                    {teacherSummaryLine ? <p className={styles.teacherProfileSummary}>{teacherSummaryLine}</p> : null}
+                    {teacherSpecialties ? (
+                      <p className={styles.bodyText}>전문 영역: {teacherSpecialties}</p>
+                    ) : null}
+                    {teacherTeachingStyle ? (
+                      <p className={styles.bodyText}>수업 스타일: {teacherTeachingStyle}</p>
+                    ) : null}
+                    {teacherShortIntro ? (
+                      <p className={styles.bodyText}>한 줄 소개: {teacherShortIntro}</p>
+                    ) : null}
+                    {teacherIntroText ? (
+                      <p className={styles.bodyText}>{teacherIntroText}</p>
+                    ) : teacherProfile?.intro?.trim() ? (
+                      <p className={styles.bodyText}>{teacherProfile.intro}</p>
+                    ) : null}
+                  </div>
+                ) : (
+                  <p className={styles.bodyText}>선생님 소개가 준비 중입니다.</p>
+                )}
               </section>
 
               {hasLocation ? (

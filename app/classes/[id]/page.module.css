@@ -134,6 +134,27 @@
   overflow-wrap: anywhere;
 }
 
+.teacherProfileStack {
+  display: grid;
+  gap: 10px;
+}
+
+.teacherProfileName {
+  margin: 0;
+  font-size: 17px;
+  line-height: 1.4;
+  font-weight: 800;
+  color: #111111;
+}
+
+.teacherProfileSummary {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
+  color: #4a4a4a;
+  font-weight: 700;
+}
+
 .mutedText {
   margin: 0;
   font-size: 14px;

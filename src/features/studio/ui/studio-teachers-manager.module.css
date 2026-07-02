@@ -328,6 +328,14 @@
   font-weight: 700;
 }
 
+.teacherSummary {
+  margin: 0;
+  font-size: 13px;
+  line-height: 18px;
+  color: #4a4a4a;
+  font-weight: 800;
+}
+
 .statusChip,
 .attentionChip {
   border-radius: 999px;
@@ -548,6 +556,12 @@
   color: #111111;
 }
 
+.fieldHint {
+  font-size: 12px;
+  line-height: 18px;
+  color: #8a8a8a;
+}
+
 .input {
   width: 100%;
   height: 48px;
@@ -560,10 +574,58 @@
   color: #111111;
 }
 
+.textarea {
+  width: 100%;
+  min-height: 92px;
+  border: 1px solid #d9d9d9;
+  border-radius: 12px;
+  background: #ffffff;
+  padding: 12px 14px;
+  font-size: 14px;
+  line-height: 20px;
+  color: #111111;
+  resize: vertical;
+}
+
 .input:focus {
   outline: none;
   border-color: #2aad38;
   box-shadow: 0 0 0 3px rgba(42, 173, 56, 0.16);
+}
+
+.textarea:focus {
+  outline: none;
+  border-color: #2aad38;
+  box-shadow: 0 0 0 3px rgba(42, 173, 56, 0.16);
+}
+
+.formSection {
+  display: grid;
+  gap: 14px;
+  border: 1px solid #eeeeee;
+  border-radius: 18px;
+  background: #fafafa;
+  padding: 16px;
+}
+
+.formSectionHeader {
+  display: grid;
+  gap: 6px;
+}
+
+.formSectionTitle {
+  margin: 0;
+  font-size: 15px;
+  line-height: 20px;
+  font-weight: 900;
+  color: #111111;
+}
+
+.formSectionDescription {
+  margin: 0;
+  font-size: 13px;
+  line-height: 18px;
+  color: #666666;
 }
 
 .formMessage {

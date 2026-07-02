@@ -29,6 +29,9 @@ const formatCreatedAt = (value: string) =>
 
 const getInitials = (value: string) => value.trim().slice(0, 2) || "선생"
 const formatPhone = (value: string | null) => (value?.trim() ? value : "미입력")
+const toSingleLine = (value: string | null) => value?.trim() || null
+const getTeacherCardSummary = (item: StudioTeacherSummary) =>
+  [toSingleLine(item.subjects), toSingleLine(item.targetStudents)].filter(Boolean).join(" · ") || "공개 프로필 준비 중"
 
 export const StudioTeachersManager = ({
   items,
@@ -42,7 +45,9 @@ export const StudioTeachersManager = ({
   const selectedTeacher = items.find((item) => item.id === selectedId) ?? null
   const activeTeachers = items.filter((item) => item.isActive)
   const inactiveTeachers = items.filter((item) => !item.isActive)
-  const needsProfileCount = items.filter((item) => !item.specialty || !item.intro).length
+  const needsProfileCount = items.filter(
+    (item) => !toSingleLine(item.subjects) || !toSingleLine(item.targetStudents) || !toSingleLine(item.shortIntro)
+  ).length
   const canCreateTeacher = seatSummary.remainingTeacherSeats > 0
 
   const filteredItems = useMemo(() => {
@@ -61,7 +66,15 @@ export const StudioTeachersManager = ({
         return true
       }
 
-      return [item.displayName, item.phone, item.specialty, item.intro]
+      return [
+        item.displayName,
+        item.phone,
+        item.subjects,
+        item.targetStudents,
+        item.specialties,
+        item.shortIntro,
+        item.teachingStyle
+      ]
         .filter((value): value is string => typeof value === "string" && value.length > 0)
         .some((value) => value.toLowerCase().includes(needle))
     })
@@ -83,8 +96,8 @@ export const StudioTeachersManager = ({
             선생님 소개는 학부모가 수업을 신청할 때 신뢰를 판단하는 중요한 정보예요.
           </p>
           <p className={styles.guideDescription}>
-            담당 과목, 수업 스타일, 경력 정보를 간단히 정리해 주세요. 문자 발송 기능은 추후 연동 예정이며,
-            전화번호와 수신 동의가 있는 선생님에게만 일정 알림 문자가 발송됩니다.
+            학부모 공개용으로 담당 과목, 대상, 전문 영역과 수업 스타일을 정리해 주세요. 전화번호는 내부
+            운영과 문자 알림용으로만 사용되며 학부모에게 공개되지 않습니다.
           </p>
         </div>
         <button
@@ -203,7 +216,9 @@ export const StudioTeachersManager = ({
           ) : (
             <div className={styles.cards}>
               {filteredItems.map((item) => {
-                const needsAttention = !item.specialty || !item.intro
+                const needsAttention =
+                  !toSingleLine(item.subjects) || !toSingleLine(item.targetStudents) || !toSingleLine(item.shortIntro)
+                const cardSummary = getTeacherCardSummary(item)
 
                 return (
                   <article
@@ -222,6 +237,7 @@ export const StudioTeachersManager = ({
                             {needsAttention ? <span className={styles.attentionChip}>확인 필요</span> : null}
                           </div>
                           <p className={styles.createdAt}>등록일 {formatCreatedAt(item.createdAt)}</p>
+                          <p className={styles.teacherSummary}>{cardSummary}</p>
                         </div>
                       </div>
 
@@ -257,8 +273,32 @@ export const StudioTeachersManager = ({
                       </div>
                       {item.specialty ? (
                         <div className={styles.metaItem}>
-                          <p className={styles.metaLabel}>담당 분야</p>
+                          <p className={styles.metaLabel}>기존 전문분야</p>
                           <p className={styles.metaValue}>{item.specialty}</p>
+                        </div>
+                      ) : null}
+                      {item.subjects ? (
+                        <div className={styles.metaItem}>
+                          <p className={styles.metaLabel}>담당 과목</p>
+                          <p className={styles.metaValue}>{item.subjects}</p>
+                        </div>
+                      ) : null}
+                      {item.targetStudents ? (
+                        <div className={styles.metaItem}>
+                          <p className={styles.metaLabel}>담당 대상</p>
+                          <p className={styles.metaValue}>{item.targetStudents}</p>
+                        </div>
+                      ) : null}
+                      {item.specialties ? (
+                        <div className={styles.metaItem}>
+                          <p className={styles.metaLabel}>전문 영역</p>
+                          <p className={styles.metaValue}>{item.specialties}</p>
+                        </div>
+                      ) : null}
+                      {item.teachingStyle ? (
+                        <div className={styles.metaItem}>
+                          <p className={styles.metaLabel}>수업 스타일</p>
+                          <p className={styles.metaValue}>{item.teachingStyle}</p>
                         </div>
                       ) : null}
                       {item.careerYears > 0 ? (
@@ -275,7 +315,7 @@ export const StudioTeachersManager = ({
                       </div>
                     </div>
 
-                    {item.intro ? <p className={styles.intro}>{item.intro}</p> : null}
+                    {item.shortIntro ? <p className={styles.intro}>{item.shortIntro}</p> : item.intro ? <p className={styles.intro}>{item.intro}</p> : null}
                   </article>
                 )
               })}
@@ -317,7 +357,8 @@ const StudioTeacherForm = ({
         <div>
           <h2 className={styles.sectionTitle}>{isCreateMode ? "선생님 등록" : "선생님 정보 수정"}</h2>
           <p className={styles.sectionDescription}>
-            선생님 이름, 전화번호, 문자 수신 여부를 관리합니다. 선생님 개별 로그인 계정 생성은 이번 MVP 범위에 포함하지 않습니다.
+            이름과 내부 알림 연락처는 운영용으로 관리하고, 공개 프로필 정보는 학부모 수업 상세에 노출됩니다.
+            선생님 개별 로그인 계정 생성은 이번 MVP 범위에 포함하지 않습니다.
           </p>
         </div>
         {!isCreateMode ? (
@@ -356,6 +397,7 @@ const StudioTeacherForm = ({
             className={styles.input}
             placeholder="예: 010-1234-5678"
           />
+          <span className={styles.fieldHint}>내부 알림과 문자 수신 대상 확인용입니다. 학부모에게 공개되지 않습니다.</span>
         </label>
 
         <label className={styles.checkboxField}>
@@ -381,6 +423,72 @@ const StudioTeacherForm = ({
             ? " 현재 저장된 전화번호가 없어 실제 발송 대상이 될 수 없습니다."
             : ""}
         </p>
+
+        <section className={styles.formSection}>
+          <div className={styles.formSectionHeader}>
+            <h3 className={styles.formSectionTitle}>공개 프로필</h3>
+            <p className={styles.formSectionDescription}>
+              아래 정보는 학부모가 수업 상세에서 보는 선생님 소개에 사용됩니다.
+            </p>
+          </div>
+
+          <label className={styles.field}>
+            <span className={styles.label}>담당 과목</span>
+            <input
+              name="subjects"
+              defaultValue={initialItem?.subjects ?? ""}
+              disabled={isPending}
+              className={styles.input}
+              placeholder="예: 국어, 수학, 코딩"
+            />
+          </label>
+
+          <label className={styles.field}>
+            <span className={styles.label}>담당 대상</span>
+            <input
+              name="targetStudents"
+              defaultValue={initialItem?.targetStudents ?? ""}
+              disabled={isPending}
+              className={styles.input}
+              placeholder="예: 초등 고학년, 중등, 고등"
+            />
+          </label>
+
+          <label className={styles.field}>
+            <span className={styles.label}>전문 영역</span>
+            <input
+              name="specialties"
+              defaultValue={initialItem?.specialties ?? ""}
+              disabled={isPending}
+              className={styles.input}
+              placeholder="예: 독해, 문법, 수능국어"
+            />
+          </label>
+
+          <label className={styles.field}>
+            <span className={styles.label}>한 줄 소개</span>
+            <textarea
+              name="shortIntro"
+              defaultValue={initialItem?.shortIntro ?? ""}
+              disabled={isPending}
+              className={styles.textarea}
+              rows={3}
+              placeholder="예: 학생이 스스로 풀이 과정을 설명할 수 있도록 돕습니다."
+            />
+          </label>
+
+          <label className={styles.field}>
+            <span className={styles.label}>수업 스타일</span>
+            <textarea
+              name="teachingStyle"
+              defaultValue={initialItem?.teachingStyle ?? ""}
+              disabled={isPending}
+              className={styles.textarea}
+              rows={4}
+              placeholder="예: 개념 설명 후 문제풀이와 오답 정리를 함께 진행합니다."
+            />
+          </label>
+        </section>
 
         {state.message ? (
           <p className={`${styles.formMessage} ${state.ok ? styles.formMessageSuccess : styles.formMessageError}`}>

@@ -54,14 +54,24 @@ const teacherProfiles: TeacherPublicProfile[] = [
     teacherName: "김지은 선생님",
     intro: "아이 눈높이에 맞춘 체험형 수업을 진행합니다.",
     specialty: "초등 창의 미술",
-    careerYears: 6
+    careerYears: 6,
+    subjects: "미술",
+    targetStudents: "초등 저학년, 초등 고학년",
+    specialties: "드로잉, 색채 표현, 창의 미술",
+    shortIntro: "아이 눈높이에 맞춘 체험형 수업으로 표현 자신감을 키웁니다.",
+    teachingStyle: "작은 성공 경험을 쌓고 스스로 설명하게 돕는 참여형 수업"
   },
   {
     teacherId: "teacher-2",
     teacherName: "박서현 선생님",
     intro: "실험과 토론 중심으로 과학 개념을 쉽게 전달합니다.",
     specialty: "초등 과학 탐구",
-    careerYears: 8
+    careerYears: 8,
+    subjects: "과학",
+    targetStudents: "초등 고학년, 중등",
+    specialties: "탐구 실험, 개념 연결, 토론 수업",
+    shortIntro: "실험과 토론으로 과학 개념을 생활 속 경험과 연결합니다.",
+    teachingStyle: "관찰, 토론, 오답 피드백을 함께 진행하는 탐구형 수업"
   }
 ]
 
@@ -76,6 +86,11 @@ const teacherSummaries: StudioTeacherSummary[] = [
     specialty: "초등 창의 미술",
     intro: "아이 눈높이에 맞춘 체험형 수업을 진행합니다.",
     careerYears: 6,
+    subjects: "미술",
+    targetStudents: "초등 저학년, 초등 고학년",
+    specialties: "드로잉, 색채 표현, 창의 미술",
+    shortIntro: "아이 눈높이에 맞춘 체험형 수업으로 표현 자신감을 키웁니다.",
+    teachingStyle: "작은 성공 경험을 쌓고 스스로 설명하게 돕는 참여형 수업",
     isActive: true,
     createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 30).toISOString()
   },
@@ -89,6 +104,11 @@ const teacherSummaries: StudioTeacherSummary[] = [
     specialty: "초등 과학 탐구",
     intro: "실험과 토론 중심으로 과학 개념을 쉽게 전달합니다.",
     careerYears: 8,
+    subjects: "과학",
+    targetStudents: "초등 고학년, 중등",
+    specialties: "탐구 실험, 개념 연결, 토론 수업",
+    shortIntro: "실험과 토론으로 과학 개념을 생활 속 경험과 연결합니다.",
+    teachingStyle: "관찰, 토론, 오답 피드백을 함께 진행하는 탐구형 수업",
     isActive: true,
     createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 20).toISOString()
   }
@@ -716,6 +736,11 @@ export const mockDataAdapter: DataAdapter = {
       specialty: null,
       intro: null,
       careerYears: 0,
+      subjects: input.subjects,
+      targetStudents: input.targetStudents,
+      specialties: input.specialties,
+      shortIntro: input.shortIntro,
+      teachingStyle: input.teachingStyle,
       isActive: true,
       createdAt: new Date().toISOString()
     }
@@ -726,7 +751,12 @@ export const mockDataAdapter: DataAdapter = {
       teacherName: created.displayName,
       intro: created.intro,
       specialty: created.specialty,
-      careerYears: created.careerYears
+      careerYears: created.careerYears,
+      subjects: created.subjects,
+      targetStudents: created.targetStudents,
+      specialties: created.specialties,
+      shortIntro: created.shortIntro,
+      teachingStyle: created.teachingStyle
     })
 
     return created
@@ -751,6 +781,11 @@ export const mockDataAdapter: DataAdapter = {
     target.displayName = input.displayName
     target.phone = input.phone
     target.smsEnabled = input.smsEnabled
+    target.subjects = input.subjects
+    target.targetStudents = input.targetStudents
+    target.specialties = input.specialties
+    target.shortIntro = input.shortIntro
+    target.teachingStyle = input.teachingStyle
 
     const classItems = classes.filter((item) => item.teacherId === target.id)
     for (const classItem of classItems) {
@@ -761,6 +796,11 @@ export const mockDataAdapter: DataAdapter = {
     const teacherProfile = teacherProfiles.find((profile) => profile.teacherId === target.id)
     if (teacherProfile) {
       teacherProfile.teacherName = input.displayName
+      teacherProfile.subjects = input.subjects
+      teacherProfile.targetStudents = input.targetStudents
+      teacherProfile.specialties = input.specialties
+      teacherProfile.shortIntro = input.shortIntro
+      teacherProfile.teachingStyle = input.teachingStyle
     }
 
     return target

@@ -37,6 +37,11 @@ const normalizeOptionalPhone = (value: FormDataEntryValue | null) => {
   return raw
 }
 
+const normalizeOptionalText = (value: FormDataEntryValue | null) => {
+  const raw = String(value ?? "").trim()
+  return raw ? raw : null
+}
+
 export async function upsertStudioTeacherAction(
   previousState: UpsertStudioTeacherActionState = defaultState,
   formData: FormData
@@ -50,6 +55,11 @@ export async function upsertStudioTeacherAction(
     const displayName = String(formData.get("displayName") ?? "").trim()
     const phone = normalizeOptionalPhone(formData.get("phone"))
     const smsEnabled = formData.get("smsEnabled") === "on"
+    const subjects = normalizeOptionalText(formData.get("subjects"))
+    const targetStudents = normalizeOptionalText(formData.get("targetStudents"))
+    const specialties = normalizeOptionalText(formData.get("specialties"))
+    const shortIntro = normalizeOptionalText(formData.get("shortIntro"))
+    const teachingStyle = normalizeOptionalText(formData.get("teachingStyle"))
 
     if (!mode) {
       return { ok: false, message: "요청 모드를 확인할 수 없습니다." }
@@ -72,7 +82,12 @@ export async function upsertStudioTeacherAction(
         organizationId: teacher.organizationId,
         displayName,
         phone,
-        smsEnabled
+        smsEnabled,
+        subjects,
+        targetStudents,
+        specialties,
+        shortIntro,
+        teachingStyle
       })
     } else {
       await dataAdapter.updateStudioTeacher({
@@ -80,7 +95,12 @@ export async function upsertStudioTeacherAction(
         organizationId: teacher.organizationId,
         displayName,
         phone,
-        smsEnabled
+        smsEnabled,
+        subjects,
+        targetStudents,
+        specialties,
+        shortIntro,
+        teachingStyle
       })
     }
 

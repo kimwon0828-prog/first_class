@@ -45,6 +45,11 @@ type SafeTeacherRow = {
   intro: string | null
   specialty: string | null
   career_years: number | null
+  subjects: string | null
+  target_students: string | null
+  specialties: string | null
+  short_intro: string | null
+  teaching_style: string | null
   is_active: boolean
 }
 
@@ -107,7 +112,9 @@ const toTeacherProfileMap = async (teacherIds: string[]) => {
   const serviceRoleClient = getSupabaseServiceRoleClient()
   const { data: teacherData, error: teacherError } = await serviceRoleClient
     .from("teachers")
-    .select("id, profile_id, display_name, intro, specialty, career_years, is_active")
+    .select(
+      "id, profile_id, display_name, intro, specialty, career_years, subjects, target_students, specialties, short_intro, teaching_style, is_active"
+    )
     .in("id", uniqueTeacherIds)
     .eq("is_active", true)
 
@@ -159,7 +166,12 @@ const toTeacherProfileMap = async (teacherIds: string[]) => {
           teacherName,
           intro: row.intro ?? null,
           specialty: row.specialty ?? null,
-          careerYears: row.career_years ?? 0
+          careerYears: row.career_years ?? 0,
+          subjects: row.subjects ?? null,
+          targetStudents: row.target_students ?? null,
+          specialties: row.specialties ?? null,
+          shortIntro: row.short_intro ?? null,
+          teachingStyle: row.teaching_style ?? null
         }
       ]
     })

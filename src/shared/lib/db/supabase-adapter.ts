@@ -65,6 +65,11 @@ type TeacherPublicProfileRow = {
   intro: string | null
   specialty: string | null
   career_years: number
+  subjects: string | null
+  target_students: string | null
+  specialties: string | null
+  short_intro: string | null
+  teaching_style: string | null
 }
 
 type OrganizationRow = {
@@ -216,6 +221,11 @@ type TeacherRow = {
   specialty: string | null
   intro: string | null
   career_years: number
+  subjects: string | null
+  target_students: string | null
+  specialties: string | null
+  short_intro: string | null
+  teaching_style: string | null
   is_active: boolean
   created_at: string
 }
@@ -248,7 +258,12 @@ const mapTeacherProfile = (
   teacherName: row.teacher_name,
   intro: row.intro,
   specialty: row.specialty,
-  careerYears: row.career_years
+  careerYears: row.career_years,
+  subjects: row.subjects,
+  targetStudents: row.target_students,
+  specialties: row.specialties,
+  shortIntro: row.short_intro,
+  teachingStyle: row.teaching_style
 })
 
 const mapClass = (
@@ -578,6 +593,11 @@ const mapStudioTeacher = (
   specialty: row.specialty,
   intro: row.intro,
   careerYears: row.career_years,
+  subjects: row.subjects?.trim() ? row.subjects.trim() : null,
+  targetStudents: row.target_students?.trim() ? row.target_students.trim() : null,
+  specialties: row.specialties?.trim() ? row.specialties.trim() : null,
+  shortIntro: row.short_intro?.trim() ? row.short_intro.trim() : null,
+  teachingStyle: row.teaching_style?.trim() ? row.teaching_style.trim() : null,
   isActive: row.is_active,
   createdAt: row.created_at
 })
@@ -769,7 +789,7 @@ const buildRequestedOccurrenceEndAt = (
 }
 
 const TEACHER_SELECT_FIELDS =
-  "id, profile_id, organization_id, display_name, phone, sms_enabled, specialty, intro, career_years, is_active, created_at"
+  "id, profile_id, organization_id, display_name, phone, sms_enabled, specialty, intro, career_years, subjects, target_students, specialties, short_intro, teaching_style, is_active, created_at"
 
 const getProfileNameMap = async (profileIds: string[]) => {
   if (profileIds.length === 0) {
@@ -1091,7 +1111,9 @@ const getTeacherProfilesMap = async (teacherIds: string[]) => {
   const supabase = await getSupabaseServerClient()
   const { data, error } = await supabase
     .from("teacher_public_profiles")
-    .select("teacher_id, teacher_name, intro, specialty, career_years")
+    .select(
+      "teacher_id, teacher_name, intro, specialty, career_years, subjects, target_students, specialties, short_intro, teaching_style"
+    )
     .in("teacher_id", teacherIds)
 
   if (error) {
@@ -1551,6 +1573,11 @@ export const supabaseDataAdapter: DataAdapter = {
         specialty: null,
         intro: null,
         career_years: 0,
+        subjects: input.subjects,
+        target_students: input.targetStudents,
+        specialties: input.specialties,
+        short_intro: input.shortIntro,
+        teaching_style: input.teachingStyle,
         is_active: true
       })
       .select(TEACHER_SELECT_FIELDS)
@@ -1574,6 +1601,11 @@ export const supabaseDataAdapter: DataAdapter = {
         display_name: input.displayName,
         phone: input.phone,
         sms_enabled: input.smsEnabled,
+        subjects: input.subjects,
+        target_students: input.targetStudents,
+        specialties: input.specialties,
+        short_intro: input.shortIntro,
+        teaching_style: input.teachingStyle,
         updated_at: new Date().toISOString()
       })
       .eq("id", input.teacherId)

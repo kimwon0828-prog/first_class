@@ -32,6 +32,11 @@ export type TeacherPublicProfile = {
   intro: string | null
   specialty: string | null
   careerYears: number
+  subjects: string | null
+  targetStudents: string | null
+  specialties: string | null
+  shortIntro: string | null
+  teachingStyle: string | null
 }
 
 export type StudioClassScheduleType = "weekly" | "one_time"
@@ -133,6 +138,11 @@ export type StudioTeacherSummary = {
   specialty: string | null
   intro: string | null
   careerYears: number
+  subjects: string | null
+  targetStudents: string | null
+  specialties: string | null
+  shortIntro: string | null
+  teachingStyle: string | null
   isActive: boolean
   createdAt: string
 }
@@ -149,6 +159,11 @@ export type CreateStudioTeacherInput = {
   displayName: string
   phone: string | null
   smsEnabled: boolean
+  subjects: string | null
+  targetStudents: string | null
+  specialties: string | null
+  shortIntro: string | null
+  teachingStyle: string | null
 }
 
 export type UpdateStudioTeacherInput = {
@@ -157,6 +172,11 @@ export type UpdateStudioTeacherInput = {
   displayName: string
   phone: string | null
   smsEnabled: boolean
+  subjects: string | null
+  targetStudents: string | null
+  specialties: string | null
+  shortIntro: string | null
+  teachingStyle: string | null
 }
 
 export type DeactivateStudioTeacherInput = {
