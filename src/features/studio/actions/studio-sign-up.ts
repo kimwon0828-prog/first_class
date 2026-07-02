@@ -108,6 +108,8 @@ const validateSignUpForm = (formData: FormData) => {
     return { ok: false as const, message: "상세 주소는 120자 이하로 입력해 주세요." }
   }
 
+  const address = [addressLine1, addressLine2].filter(Boolean).join(" ").trim()
+
   if (!(businessRegistrationFile instanceof File) || businessRegistrationFile.size <= 0) {
     return { ok: false as const, message: "사업자등록증 이미지를 첨부해 주세요." }
   }
@@ -143,7 +145,7 @@ const validateSignUpForm = (formData: FormData) => {
     postalCode: postalCode || null,
     addressLine1,
     addressLine2: addressLine2 || null,
-    address: addressLine1,
+    address,
     addressDetail: addressLine2 || null,
     businessRegistrationFile,
     email,

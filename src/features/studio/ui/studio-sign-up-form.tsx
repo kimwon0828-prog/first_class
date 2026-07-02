@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { useActionState } from "react"
+import { useActionState, useRef, useState } from "react"
 
 import { academyAreaOptions } from "@/shared/config/academy-areas"
 import {
@@ -15,8 +15,123 @@ const initialState: StudioSignUpActionState = {
   message: ""
 }
 
+const KAKAO_POSTCODE_SCRIPT_SRC =
+  "https://t1.kakaocdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"
+
+type KakaoPostcodeResult = {
+  zonecode?: string
+  roadAddress?: string
+  jibunAddress?: string
+  userSelectedType?: "R" | "J"
+}
+
+type KakaoPostcodeInstance = {
+  open: () => void
+}
+
+type KakaoPostcodeConstructor = new (options: {
+  oncomplete: (data: KakaoPostcodeResult) => void
+}) => KakaoPostcodeInstance
+
+declare global {
+  interface Window {
+    kakao?: {
+      Postcode?: KakaoPostcodeConstructor
+    }
+  }
+}
+
+let kakaoPostcodeScriptPromise: Promise<KakaoPostcodeConstructor> | null = null
+
+const loadKakaoPostcode = () => {
+  if (typeof window === "undefined") {
+    return Promise.reject(new Error("browser_only"))
+  }
+
+  if (window.kakao?.Postcode) {
+    return Promise.resolve(window.kakao.Postcode)
+  }
+
+  if (kakaoPostcodeScriptPromise) {
+    return kakaoPostcodeScriptPromise
+  }
+
+  kakaoPostcodeScriptPromise = new Promise<KakaoPostcodeConstructor>((resolve, reject) => {
+    const existingScript = document.querySelector<HTMLScriptElement>(`script[src="${KAKAO_POSTCODE_SCRIPT_SRC}"]`)
+
+    const handleLoad = () => {
+      const postcode = window.kakao?.Postcode
+      if (postcode) {
+        resolve(postcode)
+        return
+      }
+
+      kakaoPostcodeScriptPromise = null
+      reject(new Error("postcode_constructor_missing"))
+    }
+
+    const handleError = () => {
+      kakaoPostcodeScriptPromise = null
+      reject(new Error("postcode_script_load_failed"))
+    }
+
+    if (existingScript) {
+      existingScript.addEventListener("load", handleLoad, { once: true })
+      existingScript.addEventListener("error", handleError, { once: true })
+      return
+    }
+
+    const script = document.createElement("script")
+    script.src = KAKAO_POSTCODE_SCRIPT_SRC
+    script.async = true
+    script.addEventListener("load", handleLoad, { once: true })
+    script.addEventListener("error", handleError, { once: true })
+    document.body.appendChild(script)
+  })
+
+  return kakaoPostcodeScriptPromise
+}
+
 export const StudioSignUpForm = () => {
   const [state, formAction, isPending] = useActionState(studioSignUpAction, initialState)
+  const [postalCode, setPostalCode] = useState("")
+  const [addressLine1, setAddressLine1] = useState("")
+  const [addressLine2, setAddressLine2] = useState("")
+  const [postcodeError, setPostcodeError] = useState<string | null>(null)
+  const [isSearchingAddress, setIsSearchingAddress] = useState(false)
+  const detailAddressRef = useRef<HTMLInputElement | null>(null)
+
+  const handleAddressSearch = async () => {
+    setPostcodeError(null)
+    setIsSearchingAddress(true)
+
+    try {
+      const Postcode = await loadKakaoPostcode()
+
+      new Postcode({
+        oncomplete: (data) => {
+          const selectedAddress =
+            data.userSelectedType === "R"
+              ? data.roadAddress?.trim() || data.jibunAddress?.trim() || ""
+              : data.jibunAddress?.trim() || data.roadAddress?.trim() || ""
+
+          setPostalCode(data.zonecode?.trim() || "")
+          setAddressLine1(selectedAddress)
+          setAddressLine2("")
+
+          window.setTimeout(() => {
+            detailAddressRef.current?.focus()
+          }, 0)
+        }
+      }).open()
+
+      setIsSearchingAddress(false)
+    } catch (error) {
+      console.error("[studio sign-up postcode load failed]", error)
+      setPostcodeError("주소 검색을 불러오지 못했어요. 잠시 후 다시 시도해 주세요.")
+      setIsSearchingAddress(false)
+    }
+  }
 
   return (
     <form action={formAction} className={styles.form} encType="multipart/form-data">
@@ -136,23 +251,41 @@ export const StudioSignUpForm = () => {
           type="text"
           maxLength={20}
           disabled={isPending}
+          readOnly
           className={styles.input}
           placeholder="예: 12345"
+          value={postalCode}
         />
       </label>
 
-      <label className={styles.field}>
+      <div className={styles.field}>
         <span className={styles.label}>기본 주소</span>
-        <input
-          name="addressLine1"
-          type="text"
-          required
-          maxLength={120}
-          disabled={isPending}
-          className={styles.input}
-          placeholder="예: 경기도 고양시 일산서구 ..."
-        />
-      </label>
+        <div className={styles.addressSearchRow}>
+          <input
+            name="addressLine1"
+            type="text"
+            required
+            maxLength={120}
+            disabled={isPending}
+            readOnly
+            className={styles.input}
+            placeholder="주소 검색으로 주소를 선택해 주세요"
+            value={addressLine1}
+          />
+          <button
+            type="button"
+            disabled={isPending || isSearchingAddress}
+            className={styles.addressSearchButton}
+            onClick={() => {
+              void handleAddressSearch()
+            }}
+          >
+            {isSearchingAddress ? "검색 준비 중..." : "주소 검색"}
+          </button>
+        </div>
+        <p className={styles.fieldHint}>학부모에게 노출되는 위치 정보입니다. 정확한 주소를 입력해주세요.</p>
+        {postcodeError ? <p className={styles.errorMessage}>{postcodeError}</p> : null}
+      </div>
 
       <label className={styles.field}>
         <span className={styles.label}>상세 주소 (선택)</span>
@@ -162,7 +295,10 @@ export const StudioSignUpForm = () => {
           maxLength={120}
           disabled={isPending}
           className={styles.input}
-          placeholder="예: 5층 501호"
+          placeholder="예) 5층 500-7호"
+          value={addressLine2}
+          onChange={(event) => setAddressLine2(event.target.value)}
+          ref={detailAddressRef}
         />
       </label>
 
