@@ -22,7 +22,7 @@ export const validateChildProfileForm = (formData: FormData) => {
   }
 
   if (!grade) {
-    return { ok: false as const, message: "학년 또는 연령을 입력해 주세요." }
+    return { ok: false as const, message: "나이를 선택해 주세요." }
   }
 
   return {

@@ -5,6 +5,8 @@ import type { ChildProfile } from "@/shared/lib/db/adapter"
 import type { ChildProfileActionState } from "@/features/children/actions/create-child-profile"
 import styles from "./child-profile-form.module.css"
 
+const AGE_OPTIONS = Array.from({ length: 13 }, (_, index) => `${index + 7}세`)
+
 type ChildProfileFormProps = {
   mode: "create" | "update"
   formAction: (payload: FormData) => void
@@ -41,17 +43,23 @@ export const ChildProfileForm = ({
       </label>
 
       <label className={styles.field}>
-        <span className={styles.label}>학년</span>
-        <input
+        <span className={styles.label}>나이</span>
+        <select
           name="grade"
-          type="text"
           required
-          maxLength={30}
           defaultValue={initialValue?.grade ?? ""}
           disabled={isPending}
-          placeholder="예: 초3, 7세"
           className={styles.input}
-        />
+        >
+          <option value="" disabled>
+            나이를 선택해주세요
+          </option>
+          {AGE_OPTIONS.map((option) => (
+            <option key={option} value={option}>
+              {option}
+            </option>
+          ))}
+        </select>
       </label>
 
       <details
