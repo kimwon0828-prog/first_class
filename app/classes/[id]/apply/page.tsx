@@ -22,6 +22,41 @@ const formatPrice = (price: number) => {
   return `${price.toLocaleString("ko-KR")}원`
 }
 
+const resolveApplyPageTitle = (programType: string | null | undefined) => {
+  if (programType === "level_test") {
+    return "레벨테스트 신청"
+  }
+
+  return "체험수업 신청"
+}
+
+const normalizeTeacherName = (value: string | null | undefined) => {
+  const trimmed = value?.trim() || ""
+  if (!trimmed) {
+    return null
+  }
+
+  return trimmed.endsWith("선생님") ? trimmed.slice(0, -4).trim() : trimmed
+}
+
+const resolveApplyCardSubtitle = (academyName: string | null, teacherName: string | null) => {
+  const normalizedTeacherName = normalizeTeacherName(teacherName)
+
+  if (academyName && normalizedTeacherName) {
+    return `${academyName} · ${normalizedTeacherName} 선생님`
+  }
+
+  if (academyName) {
+    return academyName
+  }
+
+  if (normalizedTeacherName) {
+    return `${normalizedTeacherName} 선생님`
+  }
+
+  return "정보 준비 중"
+}
+
 export default async function ClassApplyPage({ params }: ApplyPageProps) {
   const resolvedParams = await params
   const returnTo = `/classes/${resolvedParams.id}/apply`
@@ -35,6 +70,14 @@ export default async function ClassApplyPage({ params }: ApplyPageProps) {
         ? getMyChildren()
         : Promise.resolve({ data: [], error: null })
     ])
+  const pageTitle = resolveApplyPageTitle(classItem?.programType)
+  const academyName =
+    [classItem?.organization?.name?.trim() || null, classItem?.organization?.branchName?.trim() || null]
+      .filter((value): value is string => Boolean(value))
+      .join(" ")
+      .trim() || null
+  const teacherName = classItem?.teacherDisplayName?.trim() || classItem?.teacherName?.trim() || null
+  const cardSubtitle = resolveApplyCardSubtitle(academyName, teacherName)
 
   return (
     <main
@@ -76,7 +119,7 @@ export default async function ClassApplyPage({ params }: ApplyPageProps) {
               />
             </svg>
           </Link>
-          <h1 className={styles.pageTitle}>첫수업 신청</h1>
+          <h1 className={styles.pageTitle}>{pageTitle}</h1>
         </header>
 
         <div className={styles.stack}>
@@ -118,10 +161,7 @@ export default async function ClassApplyPage({ params }: ApplyPageProps) {
               <section className={styles.card}>
                 <h2 className={styles.cardTitle}>신청할 수업</h2>
                 <p className={styles.summaryName}>{classItem.title}</p>
-                <p className={styles.summaryMeta}>
-                  {classItem.teacherDisplayName ?? classItem.teacherName ?? "정보 준비 중"} ·{" "}
-                  {classItem.region}
-                </p>
+                <p className={styles.summaryMeta}>{cardSubtitle}</p>
                 <p className={styles.summaryMeta}>{classItem.subject}</p>
                 <p className={styles.summaryPrice}>{formatPrice(classItem.trialPrice)}</p>
               </section>
