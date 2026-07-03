@@ -61,6 +61,68 @@ const resolveTeacherDisplayName = (
   profileName: string | null | undefined
 ) => teacherDisplayName?.trim() || profileName?.trim() || "선생님"
 
+const resolveFallbackErrorMessage = (error: unknown) => {
+  const message = error instanceof Error ? error.message.trim() : ""
+  return message || "failed_to_log_sms_event"
+}
+
+const resolveFallbackMessagePreview = (input: LogSmsEventInput) => {
+  try {
+    const template = renderSmsTemplate({
+      recipientType: input.recipientType,
+      eventType: input.eventType,
+      context: {
+        classTitle: input.application.classTitle ?? null,
+        childName: input.application.childName?.trim() ?? null,
+        parentDisplayName: input.application.parentName?.trim() ?? null,
+        scheduledAt: input.application.confirmedSlotAt ?? null,
+        requestedAt: input.application.requestedSlotAt ?? null,
+        selectedScheduleLabel: input.application.selectedScheduleLabel ?? null,
+        assignedTeacherName: input.application.assignedTeacherName ?? null
+      }
+    })
+
+    return sanitizePreview(template.messagePreview)
+  } catch {
+    return null
+  }
+}
+
+const insertFallbackSmsLog = async (input: LogSmsEventInput, error: unknown) => {
+  const serviceRoleClient = getSupabaseServiceRoleClient()
+  const recipientName =
+    input.recipientType === "teacher"
+      ? input.application.assignedTeacherName?.trim() || null
+      : input.application.parentName?.trim() || null
+  const teacherId =
+    input.recipientType === "teacher"
+      ? input.targetTeacherId ?? input.application.assignedTeacherId ?? null
+      : null
+
+  const { error: insertError } = await serviceRoleClient.from("sms_logs").insert({
+    organization_id: input.organizationId,
+    trial_application_id: input.application.id,
+    class_id: input.application.classId ?? null,
+    teacher_id: teacherId,
+    recipient_type: input.recipientType,
+    recipient_name: recipientName,
+    recipient_phone_masked: null,
+    event_type: input.eventType,
+    template_key: input.eventType,
+    message_preview: resolveFallbackMessagePreview(input),
+    status: "failed",
+    provider: null,
+    provider_message_id: null,
+    error_message: resolveFallbackErrorMessage(error),
+    created_by: input.createdBy,
+    sent_at: null
+  })
+
+  if (insertError) {
+    throw new Error("failed_to_insert_sms_log_fallback")
+  }
+}
+
 const resolveParentRecipient = async (
   parentId: string | null,
   parentName: string | null,
@@ -313,5 +375,11 @@ export const logSmsEventSafely = async (input: LogSmsEventInput) => {
     await logSmsEvent(input)
   } catch (error) {
     console.error("[sms dry-run log failed]", error)
+
+    try {
+      await insertFallbackSmsLog(input, error)
+    } catch (fallbackError) {
+      console.error("[sms fallback log failed]", fallbackError)
+    }
   }
 }
