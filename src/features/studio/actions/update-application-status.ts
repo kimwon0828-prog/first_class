@@ -120,16 +120,6 @@ export async function updateApplicationStatusAction(
       .catch(() => null)
 
     if (updated) {
-      if (requestedActionType === "move_to_reviewing") {
-        await logSmsEventSafely({
-          organizationId: teacher.organizationId,
-          application: updated,
-          createdBy: teacher.id,
-          recipientType: "parent",
-          eventType: "trial_contact_started"
-        })
-      }
-
       if (requestedActionType === "move_to_confirmed") {
         await logSmsEventSafely({
           organizationId: teacher.organizationId,
