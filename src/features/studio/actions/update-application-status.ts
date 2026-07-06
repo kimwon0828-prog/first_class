@@ -152,6 +152,13 @@ export async function updateApplicationStatusAction(
           organizationId: teacher.organizationId,
           application: updated,
           createdBy: teacher.id,
+          recipientType: "parent",
+          eventType: "trial_rejected"
+        })
+        await logSmsEventSafely({
+          organizationId: teacher.organizationId,
+          application: updated,
+          createdBy: teacher.id,
           recipientType: "teacher",
           eventType: "teacher_trial_canceled"
         })

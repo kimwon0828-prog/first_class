@@ -20,6 +20,8 @@ const formatDateTime = (value: string | null) => {
 
 const joinMessage = (parts: string[]) => parts.filter(Boolean).join(" ")
 const joinDetail = (parts: string[]) => parts.filter(Boolean).join(" / ")
+const joinLines = (parts: Array<string | null>) => parts.filter(Boolean).join("\n")
+const joinSections = (parts: Array<string | null>) => parts.filter(Boolean).join("\n\n")
 
 const resolveScheduleText = (input: SmsTemplateRenderInput["context"]) => {
   return (
@@ -50,7 +52,7 @@ const resolveOptionalScheduleDetail = (input: SmsTemplateRenderInput["context"])
 }
 
 const resolveClassText = (classTitle: string | null) =>
-  classTitle?.trim() ? `${classTitle.trim()} 체험수업` : "체험수업"
+  classTitle?.trim() ? classTitle.trim() : "체험수업"
 
 const resolveStudentText = (input: SmsTemplateRenderInput["context"]) => {
   const childName = input.childName?.trim()
@@ -81,6 +83,22 @@ const renderTeacherMessage = (
     ])
   ])
 
+const renderTeacherMultilineMessage = (
+  leadingText: string,
+  context: SmsTemplateRenderInput["context"],
+  classText: string,
+  closingText: string
+) =>
+  joinSections([
+    `[첫수업] ${leadingText}`,
+    joinLines([
+      `수업: ${classText}`,
+      `학생: ${resolveStudentText(context)}`,
+      `일정: ${resolveScheduleText(context)}`
+    ]),
+    closingText
+  ])
+
 export const renderSmsTemplate = ({
   recipientType,
   eventType,
@@ -100,23 +118,35 @@ export const renderSmsTemplate = ({
             "운영진이 상담을 이어서 안내드릴 예정입니다."
           ])
         }
+      case "trial_rejected":
+        return {
+          templateKey: eventType,
+          messagePreview: joinSections([
+            "[첫수업] 체험수업 신청이 진행되지 않게 되었습니다.",
+            joinLines([`수업: ${classText}`, `학생: ${resolveStudentText(context)}`]),
+            "자세한 내용은 학원으로 문의해주세요."
+          ])
+        }
       case "trial_schedule_confirmed":
         return {
           templateKey: eventType,
-          messagePreview: joinMessage([
-            "[첫수업]",
-            `${classText} 일정이 확정되었습니다.`,
-            `확정 일정: ${scheduleText}`,
-            "변경이 필요하면 운영진에게 연락해 주세요."
+          messagePreview: joinSections([
+            "[첫수업] 체험수업 일정이 확정되었습니다.",
+            joinLines([
+              `수업: ${classText}`,
+              `학생: ${resolveStudentText(context)}`,
+              `일정: ${scheduleText}`
+            ]),
+            "좋은 첫수업이 될 수 있도록 학원에서 준비하겠습니다."
           ])
         }
       case "trial_completed":
         return {
           templateKey: eventType,
-          messagePreview: joinMessage([
-            "[첫수업]",
-            `${classText} 진행이 완료되었습니다.`,
-            "등록 상담이 필요하면 운영진이 후속 안내를 드릴 예정입니다."
+          messagePreview: joinSections([
+            "[첫수업] 체험수업이 완료되었습니다.",
+            joinLines([`수업: ${classText}`, `학생: ${resolveStudentText(context)}`]),
+            "수업 후 등록 상담은 학원에서 안내드릴 예정입니다."
           ])
         }
       case "trial_enrolled":
@@ -146,10 +176,14 @@ export const renderSmsTemplate = ({
     case "teacher_trial_requested":
       return {
         templateKey: eventType,
-        messagePreview: joinMessage([
-          "[첫수업]",
-          "새로운 체험수업 신청이 접수되었습니다.",
-          joinDetail([`수업: ${classText}`, `학생: ${resolveStudentText(context)}`])
+        messagePreview: joinSections([
+          "[첫수업] 새로운 체험수업 신청이 들어왔습니다.",
+          joinLines([
+            `수업: ${classText}`,
+            `학생: ${resolveStudentText(context)}`,
+            `희망일정: ${scheduleText}`
+          ]),
+          "첫수업 운영보드에서 신청 내용을 확인해주세요."
         ])
       }
     case "teacher_trial_assigned":
@@ -160,7 +194,12 @@ export const renderSmsTemplate = ({
     case "teacher_trial_schedule_confirmed":
       return {
         templateKey: eventType,
-        messagePreview: renderTeacherMessage("체험수업 일정이 확정되었습니다.", context, classText)
+        messagePreview: renderTeacherMultilineMessage(
+          "체험수업 일정이 확정되었습니다.",
+          context,
+          classText,
+          "수업 준비를 부탁드립니다."
+        )
       }
     case "teacher_trial_schedule_updated":
       return {
@@ -170,7 +209,12 @@ export const renderSmsTemplate = ({
     case "teacher_trial_canceled":
       return {
         templateKey: eventType,
-        messagePreview: renderTeacherMessage("체험수업 신청이 취소되었습니다.", context, classText)
+        messagePreview: renderTeacherMultilineMessage(
+          "체험수업 신청이 취소되었습니다.",
+          context,
+          classText,
+          "운영보드에서 취소 내역을 확인해주세요."
+        )
       }
     default:
       throw new Error("unsupported_teacher_sms_event")

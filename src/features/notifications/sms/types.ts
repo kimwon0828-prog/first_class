@@ -3,6 +3,7 @@ export type SmsRecipientType = (typeof SMS_RECIPIENT_TYPES)[number]
 
 export const PARENT_SMS_EVENT_TYPES = [
   "trial_contact_started",
+  "trial_rejected",
   "trial_schedule_confirmed",
   "trial_completed",
   "trial_enrolled",
