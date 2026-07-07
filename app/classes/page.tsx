@@ -9,6 +9,7 @@ import {
   ClassesSearchPill,
   ClassesSubjectGrid
 } from "@/features/classes/ui/classes-region-select"
+import { ParentFooter } from "@/features/classes/ui/parent-footer"
 import { getPublicClasses } from "@/features/classes/queries/get-public-classes"
 import { BookmarkButton } from "@/features/favorites/ui/bookmark-button"
 import { normalizeAcademyArea } from "@/shared/config/academy-areas"
@@ -327,6 +328,8 @@ export default async function ClassesPage({ searchParams }: ClassesPageProps) {
             </ul>
           ) : null}
         </section>
+
+        <ParentFooter />
       </div>
 
       <nav className={styles.bottomNav} aria-label="하단 탭">
