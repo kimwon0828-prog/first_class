@@ -193,7 +193,7 @@ export const ApplyForm = ({
     <form action={formAction} onSubmit={handleSubmit} className={styles.form}>
       <section className={styles.card}>
         <div className={styles.contactSummary}>
-          <p className={styles.contactTitle}>연락처 확인</p>
+          <p className={styles.contactTitle}>보호자 정보</p>
           <p className={styles.contactDescription}>
             학원에서 체험수업 일정 조율을 위해 계정에 등록된 연락처로 연락드릴 수 있어요.
           </p>
