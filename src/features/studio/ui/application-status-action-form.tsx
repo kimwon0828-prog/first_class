@@ -63,7 +63,6 @@ export const ApplicationStatusActionForm = ({ applicationId, currentStatus }: Ap
       <div className={styles.header}>
         <div>
           <h2 className={styles.title}>상태 관리</h2>
-          <p className={styles.description}>MVP 운영에 필요한 핵심 처리만 표시합니다.</p>
         </div>
       </div>
 
