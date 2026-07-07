@@ -24,13 +24,13 @@ export function ParentFooter() {
       </div>
 
       <nav className={styles.linkList} aria-label="푸터 링크">
-        <Link href="/legal/terms" className={styles.link}>
+        <Link href="/terms" className={styles.link}>
           이용약관
         </Link>
-        <Link href="/legal/privacy" className={styles.link}>
+        <Link href="/privacy" className={styles.link}>
           개인정보처리방침
         </Link>
-        <Link href="/legal/third-party-consent" className={styles.link}>
+        <Link href="/third-party-consent" className={styles.link}>
           제3자 제공 동의
         </Link>
       </nav>
