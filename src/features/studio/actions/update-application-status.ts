@@ -36,7 +36,7 @@ const ACTION_CONFIG: Record<
     label: "일정 확정",
     note: "teacher가 체험 신청 일정을 확정했습니다.",
     nextStatus: "confirmed",
-    allowedCurrentStatuses: ["reviewing"]
+    allowedCurrentStatuses: ["new", "reviewing"]
   },
   move_to_completed: {
     label: "체험 완료",
@@ -60,7 +60,7 @@ const ACTION_CONFIG: Record<
 
 const STATUS_LABELS: Record<ApplicationStatus, string> = {
   new: "신규",
-  reviewing: "상담/확인 중",
+  reviewing: "확인 중",
   confirmed: "확정",
   completed: "완료",
   canceled: "취소"

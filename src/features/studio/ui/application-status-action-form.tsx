@@ -17,7 +17,7 @@ const initialState: UpdateApplicationStatusActionState = {
 
 const STATUS_LABELS: Record<ApplicationStatus, string> = {
   new: "신규 신청",
-  reviewing: "상담/확인 중",
+  reviewing: "확인 중",
   confirmed: "일정 확정",
   completed: "체험 완료",
   canceled: "처리 종료"
@@ -31,17 +31,16 @@ type ActionButtonConfig = {
 
 const ACTIONS_BY_STATUS: Record<ApplicationStatus, ActionButtonConfig[]> = {
   new: [
-    { actionType: "move_to_reviewing", label: "상담/확인 중으로 변경", tone: "primary" },
+    { actionType: "move_to_confirmed", label: "일정 확정", tone: "primary" },
     { actionType: "cancel", label: "취소 처리", tone: "danger" }
   ],
   reviewing: [
-    { actionType: "move_to_confirmed", label: "일정 확정으로 변경", tone: "primary" },
+    { actionType: "move_to_confirmed", label: "일정 확정", tone: "primary" },
     { actionType: "cancel", label: "취소 처리", tone: "danger" }
   ],
   confirmed: [
     { actionType: "move_to_completed", label: "체험 완료", tone: "primary" },
-    { actionType: "no_show", label: "노쇼 처리", tone: "secondary" },
-    { actionType: "cancel", label: "취소 처리", tone: "danger" }
+    { actionType: "no_show", label: "노쇼 처리", tone: "secondary" }
   ],
   completed: [],
   canceled: []
@@ -64,7 +63,7 @@ export const ApplicationStatusActionForm = ({ applicationId, currentStatus }: Ap
       <div className={styles.header}>
         <div>
           <h2 className={styles.title}>상태 관리</h2>
-          <p className={styles.description}>현재 상태에서 가능한 작업만 표시합니다.</p>
+          <p className={styles.description}>MVP 운영에 필요한 핵심 처리만 표시합니다.</p>
         </div>
       </div>
 
@@ -75,8 +74,8 @@ export const ApplicationStatusActionForm = ({ applicationId, currentStatus }: Ap
 
       {availableActions.length === 0 ? (
         <div className={styles.empty}>
-          <p className={styles.emptyTitle}>추가 상태 변경이 필요하지 않아요.</p>
-          <p className={styles.emptyDescription}>완료 또는 취소 상태라서 더 이상 변경할 수 없어요.</p>
+          <p className={styles.emptyTitle}>처리가 종료된 신청입니다.</p>
+          <p className={styles.emptyDescription}>현재 상태에서는 추가 상태 변경이 필요하지 않아요.</p>
         </div>
       ) : (
         <form action={formAction} className={styles.form}>
