@@ -1,6 +1,7 @@
 import Link from "next/link"
 import Image from "next/image"
 
+import { formatStoredTargetGrades } from "@/shared/constants/grade-options"
 import { getMyProfile } from "@/features/auth/lib/profile-sync"
 import { getSession } from "@/features/auth/lib/session"
 import { getPublicClassDetail } from "@/features/classes/queries/get-public-class-detail"
@@ -74,6 +75,7 @@ export default async function ClassDetailPage({ params, searchParams }: ClassDet
   const teacherTeachingStyle = teacherProfile?.teachingStyle?.trim() || null
   const teacherShortIntro = teacherProfile?.shortIntro?.trim() || null
   const academyTeacherLabel = [organizationLabel || null, teacherName || null].filter(Boolean).join(" / ")
+  const targetGradeLabel = formatStoredTargetGrades(classItem?.targetAge)
 
   return (
     <main
@@ -187,7 +189,7 @@ export default async function ClassDetailPage({ params, searchParams }: ClassDet
                 <span className={styles.badge}>{formatProgramType(classItem.programType)}</span>
                 <span className={styles.badge}>{classItem.subject}</span>
                 <span className={styles.badge}>{classItem.region}</span>
-                <span className={styles.badge}>{classItem.targetAge}</span>
+                <span className={styles.badge}>{targetGradeLabel}</span>
               </div>
 
               <h1 className={styles.title}>{classItem.title}</h1>
@@ -212,7 +214,7 @@ export default async function ClassDetailPage({ params, searchParams }: ClassDet
                   </div>
                   <div className={styles.infoRow}>
                     <span className={styles.infoLabel}>대상 학년</span>
-                    <span className={styles.infoValue}>{classItem.targetAge}</span>
+                    <span className={styles.infoValue}>{targetGradeLabel}</span>
                   </div>
                   <div className={styles.infoRow}>
                     <span className={styles.infoLabel}>수업 방식</span>

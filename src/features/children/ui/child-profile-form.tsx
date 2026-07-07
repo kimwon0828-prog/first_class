@@ -1,11 +1,10 @@
 "use client"
 
+import { GRADE_OPTIONS, isValidGrade } from "@/shared/constants/grade-options"
 import type { ChildProfile } from "@/shared/lib/db/adapter"
 
 import type { ChildProfileActionState } from "@/features/children/actions/create-child-profile"
 import styles from "./child-profile-form.module.css"
-
-const AGE_OPTIONS = Array.from({ length: 13 }, (_, index) => `${index + 7}세`)
 
 type ChildProfileFormProps = {
   mode: "create" | "update"
@@ -24,6 +23,8 @@ export const ChildProfileForm = ({
   initialValue,
   onCancelEdit
 }: ChildProfileFormProps) => {
+  const legacyGradeValue = initialValue?.grade?.trim() && !isValidGrade(initialValue.grade) ? initialValue.grade.trim() : null
+
   return (
     <form action={formAction} className={styles.form}>
       {mode === "update" && initialValue ? <input type="hidden" name="childId" value={initialValue.id} /> : null}
@@ -43,23 +44,28 @@ export const ChildProfileForm = ({
       </label>
 
       <label className={styles.field}>
-        <span className={styles.label}>나이</span>
+        <span className={styles.label}>학년</span>
         <select
           name="grade"
           required
-          defaultValue={initialValue?.grade ?? ""}
+          defaultValue={legacyGradeValue ? "" : (initialValue?.grade ?? "")}
           disabled={isPending}
           className={styles.input}
         >
           <option value="" disabled>
-            나이를 선택해주세요
+            학년을 선택해주세요
           </option>
-          {AGE_OPTIONS.map((option) => (
+          {GRADE_OPTIONS.map((option) => (
             <option key={option} value={option}>
               {option}
             </option>
           ))}
         </select>
+        {legacyGradeValue ? (
+          <p className={styles.infoMessage}>
+            현재 저장값은 `{legacyGradeValue}` 입니다. 새 저장 시에는 학년을 다시 선택해 주세요.
+          </p>
+        ) : null}
       </label>
 
       <details

@@ -78,7 +78,7 @@ export const StudioApplicationDetailPanel = ({ item }: StudioApplicationDetailPa
         <dl className={styles.grid}>
           <InfoRow label="이름" value={item.childName} />
           {normalizeText(item.childGrade) ? (
-            <InfoRow label="학년/나이" value={normalizeText(item.childGrade) ?? ""} />
+            <InfoRow label="학년" value={normalizeText(item.childGrade) ?? ""} />
           ) : null}
           {childSchool ? <InfoRow label="학교" value={childSchool} /> : null}
           {currentLevel ? <InfoRow label="현재 수준" value={currentLevel} /> : null}

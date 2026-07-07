@@ -4,6 +4,7 @@ import Link from "next/link"
 import { useEffect, useMemo, useState } from "react"
 import { useSearchParams } from "next/navigation"
 
+import { formatStoredTargetGrades } from "@/shared/constants/grade-options"
 import { submitToggleStudioClassActiveAction } from "@/features/studio/actions/toggle-studio-class-active"
 import type { ClassSummary } from "@/shared/lib/db/adapter"
 import styles from "@/features/studio/ui/studio-classes-manager.module.css"
@@ -289,7 +290,7 @@ export const StudioClassesManager = ({ items }: StudioClassesManagerProps) => {
                           <p className={styles.classTitle}>{item.title}</p>
 
                           <p className={styles.subtitle}>
-                            {item.targetAge} · {item.subject} · {item.region}
+                            {formatStoredTargetGrades(item.targetAge)} · {item.subject} · {item.region}
                           </p>
 
                           <dl className={styles.metaGrid}>
@@ -301,7 +302,7 @@ export const StudioClassesManager = ({ items }: StudioClassesManagerProps) => {
                             </div>
                             <div className={styles.metaItem}>
                               <dt className={styles.metaLabel}>대상</dt>
-                              <dd className={styles.metaValue}>{item.targetAge}</dd>
+                              <dd className={styles.metaValue}>{formatStoredTargetGrades(item.targetAge)}</dd>
                             </div>
                             <div className={styles.metaItem}>
                               <dt className={styles.metaLabel}>유형</dt>

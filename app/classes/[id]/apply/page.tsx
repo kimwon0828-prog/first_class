@@ -1,5 +1,6 @@
 import Link from "next/link"
 
+import { formatStoredTargetGrades } from "@/shared/constants/grade-options"
 import { getMyProfile } from "@/features/auth/lib/profile-sync"
 import { requireSession } from "@/features/auth/lib/session"
 import { getClassAvailableSlots } from "@/features/applications/queries/get-class-available-slots"
@@ -163,12 +164,14 @@ export default async function ClassApplyPage({ params }: ApplyPageProps) {
                 <p className={styles.summaryName}>{classItem.title}</p>
                 <p className={styles.summaryMeta}>{cardSubtitle}</p>
                 <p className={styles.summaryMeta}>{classItem.subject}</p>
+                <p className={styles.summaryMeta}>대상 학년: {formatStoredTargetGrades(classItem.targetAge)}</p>
                 <p className={styles.summaryPrice}>{formatPrice(classItem.trialPrice)}</p>
               </section>
 
               {profile?.role === "parent" ? (
                 <ApplyForm
                   classId={classItem.id}
+                  classTargetAge={classItem.targetAge}
                   availableSlots={slots}
                   slotsError={slotsError}
                   childProfiles={children}

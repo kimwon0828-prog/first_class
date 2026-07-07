@@ -5,6 +5,12 @@ import Link from "next/link"
 import { useActionState, useEffect, useMemo, useState, type FormEvent } from "react"
 
 import {
+  formatStoredTargetGrades,
+  GRADE_OPTIONS,
+  isChildEligibleForClass,
+  isValidGrade
+} from "@/shared/constants/grade-options"
+import {
   createTrialApplicationAction,
   type CreateTrialApplicationActionState
 } from "@/features/applications/actions/create-trial-application"
@@ -13,6 +19,7 @@ import styles from "./apply-form.module.css"
 
 type ApplyFormProps = {
   classId: string
+  classTargetAge: string
   availableSlots: AvailableScheduleSlot[]
   slotsError: string | null
   childProfiles: ChildProfile[]
@@ -26,22 +33,7 @@ const initialState: CreateTrialApplicationActionState = {
   message: ""
 }
 
-const gradeOptions = [
-  "유아",
-  "초1",
-  "초2",
-  "초3",
-  "초4",
-  "초5",
-  "초6",
-  "중1",
-  "중2",
-  "중3",
-  "고1",
-  "고2",
-  "고3"
-]
-
+const gradeOptions = GRADE_OPTIONS
 const WEEKDAY_LABELS = ["일요일", "월요일", "화요일", "수요일", "목요일", "금요일", "토요일"]
 
 const formatSlotDateLine = (startAt: string, endAt: string) => {
@@ -94,6 +86,7 @@ const resolveSlotDisplay = (slot: AvailableScheduleSlot) => {
 
 export const ApplyForm = ({
   classId,
+  classTargetAge,
   availableSlots,
   slotsError,
   childProfiles,
@@ -125,12 +118,21 @@ export const ApplyForm = ({
     () => childProfiles.find((child) => child.id === selectedChildId) ?? null,
     [childProfiles, selectedChildId]
   )
+  const classTargetGradeLabel = useMemo(() => formatStoredTargetGrades(classTargetAge), [classTargetAge])
+  const isGradeEligible = useMemo(() => {
+    if (!childGrade.trim()) {
+      return true
+    }
+
+    return isChildEligibleForClass(childGrade, classTargetAge)
+  }, [childGrade, classTargetAge])
+  const legacyChildGradeValue = childGrade.trim() && !isValidGrade(childGrade) ? childGrade.trim() : null
   const hasSelectableSlots = useMemo(
     () => availableSlots.some((slot) => !slot.isClosed),
     [availableSlots]
   )
   const canSubmit =
-    !slotsError && hasSelectableSlots && Boolean(selectedSlot && !selectedSlot.isClosed)
+    !slotsError && hasSelectableSlots && Boolean(selectedSlot && !selectedSlot.isClosed) && isGradeEligible
   const requiredAgreementsChecked = privacyAgreed && thirdPartyAgreed && guardianAgreed
 
   useEffect(() => {
@@ -175,6 +177,12 @@ export const ApplyForm = ({
     if (!requiredAgreementsChecked) {
       event.preventDefault()
       setClientMessage("체험수업 신청에 필요한 필수 동의 항목을 확인해주세요.")
+      return
+    }
+
+    if (!isGradeEligible) {
+      event.preventDefault()
+      setClientMessage("선택한 자녀의 학년이 이 수업의 대상 학년과 맞지 않아 신청할 수 없어요.")
       return
     }
 
@@ -225,7 +233,11 @@ export const ApplyForm = ({
               >
                 <option value="">직접 입력</option>
                 {childProfiles.map((child) => (
-                  <option key={child.id} value={child.id}>
+                  <option
+                    key={child.id}
+                    value={child.id}
+                    disabled={!isChildEligibleForClass(child.grade, classTargetAge)}
+                  >
                     {child.name} / {child.grade}
                   </option>
                 ))}
@@ -255,25 +267,34 @@ export const ApplyForm = ({
 
           <div className={styles.field}>
             <span className={styles.label}>학년</span>
-            <input
+            <select
               name="childGrade"
-              type="text"
-              list="child-grade-options"
               required
-              maxLength={30}
               value={childGrade}
               onChange={(event) => {
                 setChildGrade(event.target.value)
               }}
               disabled={isPending}
-              placeholder="예: 초3, 7세"
-              className={styles.input}
-            />
-            <datalist id="child-grade-options">
+              className={styles.select}
+            >
+              <option value="" disabled>
+                학년을 선택해주세요
+              </option>
+              {legacyChildGradeValue ? (
+                <option value={legacyChildGradeValue}>{legacyChildGradeValue} (기존 값)</option>
+              ) : null}
               {gradeOptions.map((option) => (
-                <option key={option} value={option} />
+                <option key={option} value={option}>
+                  {option}
+                </option>
               ))}
-            </datalist>
+            </select>
+            <p className={styles.help}>대상 학년: {classTargetGradeLabel}</p>
+            {!isGradeEligible && childGrade.trim() ? (
+              <p className={styles.dangerText}>
+                선택한 자녀의 학년이 이 수업의 대상 학년과 맞지 않아 신청할 수 없어요.
+              </p>
+            ) : null}
           </div>
         </div>
       </section>

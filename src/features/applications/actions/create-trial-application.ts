@@ -1,5 +1,6 @@
 "use server"
 
+import { isChildEligibleForClass } from "@/shared/constants/grade-options"
 import { logSmsEventSafely } from "@/features/notifications/sms/log-sms-event"
 import { getMyProfile } from "@/features/auth/lib/profile-sync"
 import { requireSession } from "@/features/auth/lib/session"
@@ -143,6 +144,9 @@ export async function createTrialApplicationAction(
 
   try {
     let validatedChildId: string | null = null
+    let resolvedChildName = validated.childName
+    let resolvedChildGrade = validated.childGrade
+    let resolvedChildSchool = validated.childSchool
 
     if (validated.childId) {
       const myChildren = await dataAdapter.listMyChildren(profile.id)
@@ -156,6 +160,16 @@ export async function createTrialApplicationAction(
       }
 
       validatedChildId = matchedChild.id
+      resolvedChildName = matchedChild.name
+      resolvedChildGrade = matchedChild.grade
+      resolvedChildSchool = matchedChild.schoolName ?? validated.childSchool
+    }
+
+    if (!isChildEligibleForClass(resolvedChildGrade, classItem.targetAge)) {
+      return {
+        status: "error",
+        message: "선택한 자녀의 학년이 이 수업의 대상 학년과 맞지 않습니다."
+      }
     }
 
     const availableSlots = await dataAdapter.listAvailableScheduleSlotsByClassId(classId)
@@ -180,11 +194,11 @@ export async function createTrialApplicationAction(
       parentId: session.user.id,
       classId,
       childId: validatedChildId,
-      childName: validated.childName,
-      childGrade: validated.childGrade,
+      childName: resolvedChildName,
+      childGrade: resolvedChildGrade,
       parentName: resolvedParentName,
       parentPhone: resolvedParentPhone,
-      childSchool: validated.childSchool,
+      childSchool: resolvedChildSchool,
       childNotes: validated.childNotes,
       subjectExperienceYn: validated.subjectExperienceYn,
       subjectExperienceDuration: validated.subjectExperienceDuration,

@@ -3,15 +3,19 @@
 import { useRouter } from "next/navigation"
 import { useActionState, useEffect, useMemo, useRef, useState } from "react"
 
+import {
+  formatGradeList,
+  formatStoredTargetGrades,
+  GRADE_OPTIONS,
+  parseStoredTargetGrades
+} from "@/shared/constants/grade-options"
 import { academyAreaOptions, normalizeAcademyArea } from "@/shared/config/academy-areas"
 import {
   upsertStudioClassAction,
   type UpsertStudioClassActionState
 } from "@/features/studio/actions/upsert-studio-class"
 import {
-  parseStudioClassTargetAgeRange,
   studioClassProgramTypeOptions,
-  studioClassGradeAgeOptions,
   studioClassSubjectOptions
 } from "@/features/studio/lib/studio-class-options"
 import { getSupabaseBrowserClient } from "@/integrations/supabase/client"
@@ -177,6 +181,9 @@ export const StudioClassForm = ({
   const [curriculum, setCurriculum] = useState(initialItem?.curriculum ?? "")
   const [teacherIntro, setTeacherIntro] = useState(initialItem?.teacherIntro ?? "")
   const [classFormat, setClassFormat] = useState(initialItem?.classFormat ?? "")
+  const [selectedTargetGrades, setSelectedTargetGrades] = useState<string[]>(
+    parseStoredTargetGrades(initialItem?.targetAge)
+  )
   const [coverImageFilePreviewUrl, setCoverImageFilePreviewUrl] = useState("")
   const [coverImageUrl, setCoverImageUrl] = useState(initialItem?.coverImageUrl ?? "")
   const [coverImageUploadError, setCoverImageUploadError] = useState<string | null>(null)
@@ -188,7 +195,9 @@ export const StudioClassForm = ({
   )
   const action = useMemo(() => upsertStudioClassAction, [])
   const [state, formAction, isPending] = useActionState(action, initialState)
-  const targetAgeRange = parseStudioClassTargetAgeRange(initialItem?.targetAge)
+  const initialTargetGrades = useMemo(() => parseStoredTargetGrades(initialItem?.targetAge), [initialItem?.targetAge])
+  const legacyTargetAgeValue =
+    initialItem?.targetAge?.trim() && initialTargetGrades.length === 0 ? initialItem.targetAge.trim() : null
   const selectedRegion = normalizeAcademyArea(initialItem?.region)
   const teacherOptionIds = new Set(safeTeacherOptions.map((option) => option.teacherId))
   const fallbackTeacherOption =
@@ -242,6 +251,7 @@ export const StudioClassForm = ({
         ? (initialItem?.subject ?? "")
         : "",
       description: initialItem?.description ?? "",
+      targetGrades: parseStoredTargetGrades(initialItem?.targetAge),
       recommendedFor: initialItem?.recommendedFor ?? "",
       experiencePoints: initialItem?.experiencePoints ?? "",
       curriculum: initialItem?.curriculum ?? "",
@@ -263,6 +273,7 @@ export const StudioClassForm = ({
       initialItem?.recommendedFor,
       initialItem?.schedules,
       initialItem?.subject,
+      initialItem?.targetAge,
       initialItem?.teacherIntro
     ]
   )
@@ -278,6 +289,7 @@ export const StudioClassForm = ({
     setSelectedProgramType(initialFormSnapshot.programType)
     setSelectedSubject(initialFormSnapshot.subject)
     setDescription(initialFormSnapshot.description)
+    setSelectedTargetGrades(initialFormSnapshot.targetGrades)
     setRecommendedFor(initialFormSnapshot.recommendedFor)
     setExperiencePoints(initialFormSnapshot.experiencePoints)
     setCurriculum(initialFormSnapshot.curriculum)
@@ -374,6 +386,12 @@ export const StudioClassForm = ({
 
   const removeScheduleSlot = (slotId: string) => {
     setScheduleSlots((current) => current.filter((slot) => slot.localId !== slotId))
+  }
+
+  const toggleTargetGrade = (grade: string) => {
+    setSelectedTargetGrades((current) =>
+      current.includes(grade) ? current.filter((item) => item !== grade) : [...current, grade]
+    )
   }
 
   const handleCoverImageChange = async (file: File | null) => {
@@ -566,6 +584,9 @@ export const StudioClassForm = ({
         <input type="hidden" name="programType" value={selectedProgramType} />
         <input type="hidden" name="subject" value={selectedSubject} />
         <input type="hidden" name="coverImageUrl" value={coverImageUrl ?? ""} />
+        {selectedTargetGrades.map((grade) => (
+          <input key={grade} type="hidden" name="targetGrades" value={grade} />
+        ))}
 
         <label style={fieldStyle}>
           <span>프로그램 유형</span>
@@ -641,36 +662,40 @@ export const StudioClassForm = ({
         </label>
 
         <label style={fieldStyle}>
-          <span>대상 학년/연령 범위</span>
-          <div style={{ display: "grid", gap: 8, gridTemplateColumns: "1fr 1fr" }}>
-            <select
-              name="targetAgeStart"
-              defaultValue={targetAgeRange.start}
-              required
-              disabled={isPending}
-              style={inputStyle}
-            >
-              {studioClassGradeAgeOptions.map((option) => (
-                <option key={`start-${option}`} value={option}>
+          <span>대상 학년</span>
+          <div style={chipGroupStyle}>
+            {GRADE_OPTIONS.map((option) => {
+              const isSelected = selectedTargetGrades.includes(option)
+
+              return (
+                <button
+                  key={option}
+                  type="button"
+                  onClick={() => toggleTargetGrade(option)}
+                  disabled={isPending}
+                  style={{
+                    ...chipButtonStyle,
+                    borderColor: isSelected ? "#2aad38" : "#d9d9d9",
+                    background: isSelected ? "#2aad38" : "#fff",
+                    color: isSelected ? "#fff" : "#111111"
+                  }}
+                >
                   {option}
-                </option>
-              ))}
-            </select>
-            <select
-              name="targetAgeEnd"
-              defaultValue={targetAgeRange.end}
-              required
-              disabled={isPending}
-              style={inputStyle}
-            >
-              {studioClassGradeAgeOptions.map((option) => (
-                <option key={`end-${option}`} value={option}>
-                  {option}
-                </option>
-              ))}
-            </select>
+                </button>
+              )
+            })}
           </div>
-          <span style={helperTextStyle}>시작 대상이 끝 대상보다 뒤면 저장되지 않습니다.</span>
+          <span style={helperTextStyle}>
+            {selectedTargetGrades.length > 0
+              ? `선택한 대상 학년: ${formatGradeList(parseStoredTargetGrades(selectedTargetGrades.join(",")))}`
+              : "여러 학년을 선택할 수 있습니다."}
+          </span>
+          {legacyTargetAgeValue ? (
+            <span style={helperTextStyle}>
+              기존 저장값은 `{formatStoredTargetGrades(legacyTargetAgeValue)}` 입니다. 수정 저장 시에는 학년을
+              다시 선택해 주세요.
+            </span>
+          ) : null}
         </label>
 
         <label style={fieldStyle}>

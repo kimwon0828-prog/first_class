@@ -4,6 +4,7 @@ import Image from "next/image"
 import Link from "next/link"
 import { useEffect, useMemo, useState } from "react"
 
+import { formatStoredTargetGrades } from "@/shared/constants/grade-options"
 import { BookmarkButton } from "@/features/favorites/ui/bookmark-button"
 import { getFavoriteClassIds } from "@/features/favorites/lib/storage"
 import type { ClassSummary } from "@/shared/lib/db/adapter"
@@ -117,7 +118,7 @@ export function FavoritesClient(props: {
                         <span className={styles.star}>★</span>
                         <span>{item.subject}</span>
                         <span>·</span>
-                        <span>{item.targetAge}</span>
+                        <span>{formatStoredTargetGrades(item.targetAge)}</span>
                       </div>
                     </div>
                   </Link>

@@ -2,6 +2,7 @@ import Link from "next/link"
 import { redirect } from "next/navigation"
 import Image from "next/image"
 
+import { formatStoredTargetGrades } from "@/shared/constants/grade-options"
 import { getMyProfile } from "@/features/auth/lib/profile-sync"
 import { getSession } from "@/features/auth/lib/session"
 import {
@@ -319,7 +320,7 @@ export default async function ClassesPage({ searchParams }: ClassesPageProps) {
                       <div className={styles.cardMeta}>
                         <span>{item.subject}</span>
                         <span>·</span>
-                        <span>{item.targetAge}</span>
+                        <span>{formatStoredTargetGrades(item.targetAge)}</span>
                       </div>
                     </div>
                   </Link>

@@ -3,8 +3,8 @@
 import { revalidatePath } from "next/cache"
 
 import { isAcademyArea } from "@/shared/config/academy-areas"
+import { serializeTargetGrades } from "@/shared/constants/grade-options"
 import {
-  studioClassGradeAgeOrder,
   studioClassProgramTypeOptions,
   studioClassSubjectOptions
 } from "@/features/studio/lib/studio-class-options"
@@ -308,8 +308,7 @@ export async function upsertStudioClassAction(
       : null
     const title = String(formData.get("title") ?? "").trim()
     const subject = String(formData.get("subject") ?? "").trim()
-    const targetAgeStart = String(formData.get("targetAgeStart") ?? "").trim()
-    const targetAgeEnd = String(formData.get("targetAgeEnd") ?? "").trim()
+    const targetGrades = formData.getAll("targetGrades").map((value) => String(value ?? "").trim())
     const regionRaw = String(formData.get("region") ?? "").trim()
     const description = String(formData.get("description") ?? "").trim()
     const classFormatRaw = String(formData.get("classFormat") ?? "").trim()
@@ -323,13 +322,8 @@ export async function upsertStudioClassAction(
     const isActive = String(formData.get("isActive") ?? "") === "on"
     const organizationId = teacher.organizationId
 
-    const startOrder = studioClassGradeAgeOrder.get(targetAgeStart)
-    const endOrder = studioClassGradeAgeOrder.get(targetAgeEnd)
     const trialPrice = parsePositiveInt(trialPriceRaw)
-    const targetAge =
-      startOrder != null && endOrder != null && targetAgeStart === targetAgeEnd
-        ? targetAgeStart
-        : `${targetAgeStart}~${targetAgeEnd}`
+    const targetAge = serializeTargetGrades(targetGrades)
     const classFormat = classFormatRaw ? classFormatRaw : null
     const recommendedFor = recommendedForRaw ? recommendedForRaw : null
     const experiencePoints = experiencePointsRaw ? experiencePointsRaw : null
@@ -360,12 +354,8 @@ export async function upsertStudioClassAction(
       return safeError("과목 칩에서 과목을 다시 선택해 주세요.")
     }
 
-    if (startOrder == null || endOrder == null) {
-      return safeError("대상 학년/연령 범위를 선택해 주세요.")
-    }
-
-    if (endOrder < startOrder) {
-      return safeError("끝 학년/연령은 시작 값보다 앞설 수 없습니다.")
+    if (!targetAge) {
+      return safeError("대상 학년을 선택해 주세요.")
     }
 
     if (!isAcademyArea(regionRaw)) {
