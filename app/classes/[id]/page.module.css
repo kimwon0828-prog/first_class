@@ -125,6 +125,20 @@
   color: #111111;
 }
 
+.contentSectionGroup {
+  display: grid;
+  gap: 24px;
+}
+
+.contentSectionBlock {
+  display: grid;
+  gap: 0;
+}
+
+.contentSectionBlock + .contentSectionBlock {
+  padding-top: 24px;
+}
+
 .bodyText {
   margin: 0;
   font-size: 15px;

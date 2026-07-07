@@ -73,6 +73,7 @@ export default async function ClassDetailPage({ params, searchParams }: ClassDet
   const teacherSpecialties = teacherProfile?.specialties?.trim() || null
   const teacherTeachingStyle = teacherProfile?.teachingStyle?.trim() || null
   const teacherShortIntro = teacherProfile?.shortIntro?.trim() || null
+  const academyTeacherLabel = [organizationLabel || null, teacherName || null].filter(Boolean).join(" / ")
 
   return (
     <main
@@ -195,13 +196,11 @@ export default async function ClassDetailPage({ params, searchParams }: ClassDet
 
             <div className={styles.sections}>
               <section className={styles.section}>
-                <h2 className={styles.sectionTitle}>핵심 정보</h2>
+                <h2 className={styles.sectionTitle}>수업정보</h2>
                 <div className={styles.infoGrid}>
                   <div className={styles.infoRow}>
                     <span className={styles.infoLabel}>학원/선생님</span>
-                    <span className={styles.infoValue}>
-                      {classItem.teacherDisplayName ?? classItem.teacherName ?? "정보 준비 중"}
-                    </span>
+                    <span className={styles.infoValue}>{academyTeacherLabel || "정보 준비 중"}</span>
                   </div>
                   <div className={styles.infoRow}>
                     <span className={styles.infoLabel}>지역</span>
@@ -225,39 +224,43 @@ export default async function ClassDetailPage({ params, searchParams }: ClassDet
               </section>
 
               <section className={styles.section}>
-                <h2 className={styles.sectionTitle}>수업 소개</h2>
-                {classItem.description?.trim() ? (
-                  <p className={styles.bodyText}>{classItem.description}</p>
-                ) : (
-                  <p className={styles.mutedText}>수업 소개가 준비 중입니다.</p>
-                )}
-              </section>
+                <div className={styles.contentSectionGroup}>
+                  <div className={styles.contentSectionBlock}>
+                    <h2 className={styles.sectionTitle}>수업 소개</h2>
+                    {classItem.description?.trim() ? (
+                      <p className={styles.bodyText}>{classItem.description}</p>
+                    ) : (
+                      <p className={styles.mutedText}>수업 소개가 준비 중입니다.</p>
+                    )}
+                  </div>
 
-              <section className={styles.section}>
-                <h2 className={styles.sectionTitle}>이런 아이에게 추천해요</h2>
-                {classItem.recommendedFor?.trim() ? (
-                  <p className={styles.bodyText}>{classItem.recommendedFor}</p>
-                ) : (
-                  <p className={styles.mutedText}>추천 대상 정보가 준비 중입니다.</p>
-                )}
-              </section>
+                  <div className={styles.contentSectionBlock}>
+                    <h2 className={styles.sectionTitle}>이런 아이에게 추천해요</h2>
+                    {classItem.recommendedFor?.trim() ? (
+                      <p className={styles.bodyText}>{classItem.recommendedFor}</p>
+                    ) : (
+                      <p className={styles.mutedText}>추천 대상 정보가 준비 중입니다.</p>
+                    )}
+                  </div>
 
-              <section className={styles.section}>
-                <h2 className={styles.sectionTitle}>이 수업에서 경험하는 것</h2>
-                {classItem.experiencePoints?.trim() ? (
-                  <p className={styles.bodyText}>{classItem.experiencePoints}</p>
-                ) : (
-                  <p className={styles.mutedText}>수업 경험 정보가 준비 중입니다.</p>
-                )}
-              </section>
+                  <div className={styles.contentSectionBlock}>
+                    <h2 className={styles.sectionTitle}>이 수업에서 경험하는 것</h2>
+                    {classItem.experiencePoints?.trim() ? (
+                      <p className={styles.bodyText}>{classItem.experiencePoints}</p>
+                    ) : (
+                      <p className={styles.mutedText}>수업 경험 정보가 준비 중입니다.</p>
+                    )}
+                  </div>
 
-              <section className={styles.section}>
-                <h2 className={styles.sectionTitle}>커리큘럼</h2>
-                {classItem.curriculum?.trim() ? (
-                  <p className={styles.bodyText}>{classItem.curriculum}</p>
-                ) : (
-                  <p className={styles.mutedText}>커리큘럼 정보가 준비 중입니다.</p>
-                )}
+                  <div className={styles.contentSectionBlock}>
+                    <h2 className={styles.sectionTitle}>커리큘럼</h2>
+                    {classItem.curriculum?.trim() ? (
+                      <p className={styles.bodyText}>{classItem.curriculum}</p>
+                    ) : (
+                      <p className={styles.mutedText}>커리큘럼 정보가 준비 중입니다.</p>
+                    )}
+                  </div>
+                </div>
               </section>
 
               <section className={styles.section}>
