@@ -135,22 +135,6 @@ export default async function SignUpPage({ searchParams }: SignUpPageProps) {
             <br />
             우리 아이에게 맞는 수업을 찾아보세요.
           </p>
-          <p style={{ margin: "12px 0 0", fontSize: 15, lineHeight: 1.6, color: "#666666" }}>
-            간단한 정보만 입력하면 첫수업 신청을 시작할 수 있어요.
-          </p>
-          <div
-            style={{
-              marginTop: 18,
-              borderRadius: 16,
-              background: "#f7f7f7",
-              padding: "14px 14px",
-              fontSize: 13,
-              lineHeight: 1.55,
-              color: "#666666"
-            }}
-          >
-            공개 회원가입은 학부모 계정만 가능합니다.
-          </div>
         </section>
 
         <div style={{ marginTop: 32 }}>
