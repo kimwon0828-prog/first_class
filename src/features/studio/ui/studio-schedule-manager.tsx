@@ -262,9 +262,6 @@ export const StudioScheduleManager = ({ items }: StudioScheduleManagerProps) => 
         <section className={styles.todayCard} aria-label="오늘 일정 요약">
           <div className={styles.todayHeader}>
             <div className={styles.todayHeaderLeft}>
-              <div className={styles.todayIcon} aria-hidden="true">
-                +
-              </div>
               <div>
                 <p className={styles.todayKicker}>{formatMonthLabel(visibleMonthDate)}</p>
                 <h2 className={styles.todayTitle}>이번 달 일정 요약</h2>
@@ -417,9 +414,6 @@ export const StudioScheduleManager = ({ items }: StudioScheduleManagerProps) => 
 
           {itemsForSelectedDay.length === 0 ? (
             <section className={styles.emptyCard} aria-label="빈 상태">
-              <div className={styles.emptyIcon} aria-hidden="true">
-                +
-              </div>
               <p className={styles.emptyTitle}>선택한 날짜에 등록된 일정이 없어요.</p>
               <p className={styles.emptyDescription}>
                 신청을 확정하면 이곳에서 일정을 확인할 수 있습니다.

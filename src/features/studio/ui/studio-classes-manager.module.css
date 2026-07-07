@@ -262,21 +262,6 @@
   min-width: 240px;
 }
 
-.ctaIcon {
-  width: 48px;
-  height: 48px;
-  border-radius: 16px;
-  background: #ffffff;
-  border: 1px solid #eaf8ec;
-  color: #2aad38;
-  display: grid;
-  place-items: center;
-  font-size: 22px;
-  font-weight: 900;
-  line-height: 1;
-  flex: 0 0 auto;
-}
-
 .ctaText {
   display: grid;
   gap: 6px;

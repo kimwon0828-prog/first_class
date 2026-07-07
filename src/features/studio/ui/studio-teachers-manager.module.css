@@ -15,20 +15,6 @@
   padding: 22px 24px;
 }
 
-.guideIcon {
-  width: 48px;
-  height: 48px;
-  border-radius: 16px;
-  border: 1px solid #d8f0dc;
-  background: #ffffff;
-  color: #2aad38;
-  display: grid;
-  place-items: center;
-  font-size: 22px;
-  font-weight: 900;
-  flex: 0 0 auto;
-}
-
 .guideBody {
   display: grid;
   gap: 8px;
@@ -78,13 +64,6 @@
   line-height: 18px;
   font-weight: 800;
   color: #666666;
-}
-
-.summaryAccent {
-  width: 10px;
-  height: 10px;
-  border-radius: 999px;
-  background: #2aad38;
 }
 
 .summaryValue {
@@ -237,13 +216,6 @@
   line-height: 24px;
   font-weight: 900;
   color: #111111;
-}
-
-.sectionDescription {
-  margin: 8px 0 0;
-  font-size: 13px;
-  line-height: 20px;
-  color: #8a8a8a;
 }
 
 .cards {

@@ -41,20 +41,6 @@
   align-items: center;
 }
 
-.todayIcon {
-  width: 48px;
-  height: 48px;
-  border-radius: 16px;
-  background: #ffffff;
-  border: 1px solid #eaf8ec;
-  display: grid;
-  place-items: center;
-  color: #2aad38;
-  font-weight: 900;
-  font-size: 22px;
-  line-height: 1;
-}
-
 .todayKicker {
   margin: 0 0 4px;
   font-size: 12px;
@@ -559,20 +545,6 @@
   border-radius: 22px;
   padding: 28px 24px;
   text-align: center;
-}
-
-.emptyIcon {
-  width: 52px;
-  height: 52px;
-  border-radius: 18px;
-  background: #eaf8ec;
-  color: #2aad38;
-  display: grid;
-  place-items: center;
-  margin: 0 auto 12px;
-  font-weight: 900;
-  font-size: 26px;
-  line-height: 1;
 }
 
 .emptyTitle {

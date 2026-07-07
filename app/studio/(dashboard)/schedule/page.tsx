@@ -40,9 +40,7 @@ export default async function StudioSchedulePage({ searchParams }: StudioSchedul
         <div className={styles.headerTop}>
           <div>
             <h1 className={styles.title}>일정 관리</h1>
-            <p className={styles.subtitle}>
-              조직 전체의 확정된 체험수업과 검토 중인 신청 일정을 한눈에 확인해요.
-            </p>
+            <p className={styles.subtitle}>체험수업 / 레벨테스트 일정을 한눈에 확인해요</p>
           </div>
           <StudioTeacherFilter
             options={filterOptions}

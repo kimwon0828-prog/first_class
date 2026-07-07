@@ -88,9 +88,6 @@ export const StudioTeachersManager = ({
   return (
     <div className={styles.root}>
       <section className={styles.guideCard}>
-        <div className={styles.guideIcon} aria-hidden="true">
-          +
-        </div>
         <div className={styles.guideBody}>
           <p className={styles.guideTitle}>
             선생님 소개는 학부모가 수업을 신청할 때 신뢰를 판단하는 중요한 정보예요.
@@ -186,9 +183,6 @@ export const StudioTeachersManager = ({
           <div className={styles.sectionHeader}>
             <div>
               <h2 className={styles.sectionTitle}>선생님 목록</h2>
-              <p className={styles.sectionDescription}>
-                현재 로그인한 학원 organization 기준으로만 조회합니다. 학원 로그인 계정에 연결된 선생님 row는 제외하고, 내부 선생님 프로필만 관리합니다.
-              </p>
             </div>
             <button type="button" onClick={handleCreateClick} className={styles.secondaryButton}>
               선생님 등록
@@ -382,7 +376,7 @@ const StudioTeacherForm = ({
             maxLength={30}
             disabled={isPending}
             className={styles.input}
-            placeholder="예: 이태경 선생님"
+            placeholder="예: 김수업 선생님"
           />
         </label>
 
@@ -522,7 +516,6 @@ const SummaryCard = ({
   <div className={styles.summaryCard}>
     <div className={styles.summaryTop}>
       <p className={styles.summaryLabel}>{label}</p>
-      <span className={styles.summaryAccent} aria-hidden="true" />
     </div>
     <p className={styles.summaryValue}>{value}</p>
     <p className={styles.summaryDescription}>{description}</p>

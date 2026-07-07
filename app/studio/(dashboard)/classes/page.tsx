@@ -1,5 +1,3 @@
-import Link from "next/link"
-
 import { requireTeacherStudioAccess } from "@/features/studio/lib/require-teacher-studio-access"
 import { getStudioClasses } from "@/features/studio/queries/get-studio-classes"
 import { StudioClassesManager } from "@/features/studio/ui/studio-classes-manager"
@@ -16,11 +14,6 @@ export default async function StudioClassesPage() {
           <div className={styles.headerLeft}>
             <h1 className={styles.title}>수업 관리</h1>
             <p className={styles.description}>학부모에게 노출되는 첫수업 정보를 등록하고 관리해요.</p>
-          </div>
-          <div className={styles.headerRight}>
-            <Link href="/studio/classes/new" className={styles.primaryButton} prefetch={false}>
-              새 수업 등록
-            </Link>
           </div>
         </header>
 

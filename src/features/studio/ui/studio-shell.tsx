@@ -36,7 +36,7 @@ const isActivePath = (pathname: string, href: string) => {
 export const StudioShell = ({ children, organizationName }: StudioShellProps) => {
   const pathname = usePathname() ?? ""
   const router = useRouter()
-  const accountLabel = (organizationName?.trim() || "학원") + " 운영"
+  const accountLabel = organizationName?.trim() || "학원"
 
   return (
     <div className={styles.shell}>

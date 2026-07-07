@@ -206,7 +206,6 @@ export const StudioClassesManager = ({ items }: StudioClassesManagerProps) => {
           <header className={styles.listHeader}>
             <div>
               <h2 className={styles.listTitle}>수업 목록</h2>
-              <p className={styles.listDescription}>같은 organization에 속한 수업만 조회하고 관리합니다.</p>
             </div>
           </header>
 
@@ -225,9 +224,6 @@ export const StudioClassesManager = ({ items }: StudioClassesManagerProps) => {
             <>
               <div className={styles.ctaCard}>
                 <div className={styles.ctaLeft}>
-                  <div className={styles.ctaIcon} aria-hidden="true">
-                    +
-                  </div>
                   <div className={styles.ctaText}>
                     <p className={styles.ctaTitle}>새 프로그램을 등록해보세요</p>
                     <p className={styles.ctaDescription}>
@@ -236,7 +232,7 @@ export const StudioClassesManager = ({ items }: StudioClassesManagerProps) => {
                   </div>
                 </div>
                 <Link href="/studio/classes/new" className={styles.ctaButton} prefetch={false}>
-                  새 프로그램 등록
+                  새 수업 등록
                 </Link>
               </div>
 

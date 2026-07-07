@@ -14,49 +14,57 @@ export default async function StudioApplicationsPage() {
       key: "total",
       label: "전체 신청",
       value: data.length,
-      description: "내 organization 전체 신청"
+      description: "학원 전체 신청",
+      hasAlert: false
     },
     {
       key: "new",
       label: "신규 신청",
       value: getStudioApplicationFilterCount(data, "new"),
-      description: "확인이 필요한 신규 신청"
+      description: "확인이 필요한 신규 신청",
+      hasAlert: getStudioApplicationFilterCount(data, "new") > 0
     },
     {
       key: "reviewing",
       label: "상담/확인 중",
       value: getStudioApplicationFilterCount(data, "reviewing"),
-      description: "상담 진행 및 일정 조율 중"
+      description: "상담 진행 및 일정 조율 중",
+      hasAlert: getStudioApplicationFilterCount(data, "reviewing") > 0
     },
     {
       key: "confirmed",
       label: "일정 확정",
       value: getStudioApplicationFilterCount(data, "confirmed"),
-      description: "체험 일정이 확정된 신청"
+      description: "체험 일정이 확정된 신청",
+      hasAlert: getStudioApplicationFilterCount(data, "confirmed") > 0
     },
     {
       key: "completed",
       label: "체험 완료",
       value: getStudioApplicationFilterCount(data, "completed"),
-      description: "체험을 마친 신청"
+      description: "체험을 마친 신청",
+      hasAlert: getStudioApplicationFilterCount(data, "completed") > 0
     },
     {
       key: "no_show",
       label: "노쇼",
       value: getStudioApplicationFilterCount(data, "no_show"),
-      description: "확정 일정 후 미방문 처리"
+      description: "확정 일정 후 미방문 처리",
+      hasAlert: getStudioApplicationFilterCount(data, "no_show") > 0
     },
     {
       key: "enrolled",
       label: "등록 완료",
       value: getStudioApplicationFilterCount(data, "enrolled"),
-      description: "등록 전환이 완료된 신청"
+      description: "등록 전환이 완료된 신청",
+      hasAlert: getStudioApplicationFilterCount(data, "enrolled") > 0
     },
     {
       key: "not_enrolled",
       label: "미등록",
       value: getStudioApplicationFilterCount(data, "not_enrolled"),
-      description: "체험 후 미등록 처리된 신청"
+      description: "체험 후 미등록 처리된 신청",
+      hasAlert: getStudioApplicationFilterCount(data, "not_enrolled") > 0
     }
   ] as const
 
@@ -94,7 +102,7 @@ export default async function StudioApplicationsPage() {
                 <article key={metric.key} className={styles.metricCard}>
                   <div className={styles.metricTop}>
                     <span className={styles.metricLabel}>{metric.label}</span>
-                    <span className={styles.metricDot} aria-hidden="true" />
+                    {metric.hasAlert ? <span className={styles.metricDot} aria-hidden="true" /> : null}
                   </div>
                   <div className={styles.metricValue}>{metric.value}</div>
                   <p className={styles.metricDescription}>{metric.description}</p>
