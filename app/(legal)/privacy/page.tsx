@@ -24,6 +24,7 @@ export default function PrivacyPage() {
               </p>
               <ul>
                 <li>회원(학부모) 식별 및 계정 관리</li>
+                <li>서비스 이용자 통계 분석 및 서비스 개선</li>
                 <li>
                   체험수업 또는 레벨테스트 신청 접수, 신청 상태(신청·확정·변경·취소·노쇼·완료·등록)
                   관리 및 이력 관리
@@ -45,7 +46,7 @@ export default function PrivacyPage() {
               </p>
               <p>학부모(회원) 정보</p>
               <ul>
-                <li>이름, 이메일, 연락처, 계정 식별 정보(로그인 ID 등)</li>
+                <li>이름, 이메일, 연락처, 학부모 생년월일, 계정 식별 정보(로그인 ID 등)</li>
               </ul>
               <p>학생 정보</p>
               <ul>

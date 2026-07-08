@@ -10,6 +10,43 @@ type SignUpFormProps = {
   returnTo?: string
 }
 
+const MIN_PARENT_BIRTH_DATE = "1900-01-01"
+
+const getTodayDateValue = () => {
+  const today = new Date()
+  const year = today.getFullYear()
+  const month = String(today.getMonth() + 1).padStart(2, "0")
+  const day = String(today.getDate()).padStart(2, "0")
+
+  return `${year}-${month}-${day}`
+}
+
+const validateParentBirthDate = (value: string) => {
+  const normalized = value.trim()
+  if (!normalized) {
+    return "생년월일을 입력해 주세요."
+  }
+
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(normalized)) {
+    return "생년월일을 YYYY-MM-DD 형식으로 입력해 주세요."
+  }
+
+  const parsed = new Date(`${normalized}T00:00:00Z`)
+  if (Number.isNaN(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== normalized) {
+    return "올바른 생년월일을 입력해 주세요."
+  }
+
+  if (normalized < MIN_PARENT_BIRTH_DATE) {
+    return "생년월일은 1900-01-01 이후로 입력해 주세요."
+  }
+
+  if (normalized > getTodayDateValue()) {
+    return "미래 날짜는 생년월일로 입력할 수 없습니다."
+  }
+
+  return null
+}
+
 const initialState: SignUpActionState = {
   status: "idle",
   message: ""
@@ -19,6 +56,7 @@ export const SignUpForm = ({ returnTo }: SignUpFormProps) => {
   const [state, formAction, isPending] = useActionState(signUpParentAction, initialState)
   const [name, setName] = useState("")
   const [phone, setPhone] = useState("")
+  const [parentBirthDate, setParentBirthDate] = useState("")
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [passwordConfirm, setPasswordConfirm] = useState("")
@@ -33,6 +71,7 @@ export const SignUpForm = ({ returnTo }: SignUpFormProps) => {
   const message = clientMessage || state.message
   const messageStatus = clientMessage ? "error" : state.status
   const requiredAgreementChecked = termsAgreed && privacyAgreed && thirdPartyAgreed
+  const maxBirthDate = getTodayDateValue()
 
   useEffect(() => {
     if (state.status === "success" && state.redirectTo) {
@@ -59,6 +98,13 @@ export const SignUpForm = ({ returnTo }: SignUpFormProps) => {
     if (trimmedPhone.length < 8) {
       event.preventDefault()
       setClientMessage("보호자 연락처를 올바르게 입력해 주세요.")
+      return
+    }
+
+    const parentBirthDateError = validateParentBirthDate(parentBirthDate)
+    if (parentBirthDateError) {
+      event.preventDefault()
+      setClientMessage(parentBirthDateError)
       return
     }
 
@@ -173,6 +219,26 @@ export const SignUpForm = ({ returnTo }: SignUpFormProps) => {
               value={phone}
               onChange={(event) => setPhone(event.target.value)}
             />
+          </label>
+
+          <label className={styles.field}>
+            <span className={styles.label}>생년월일</span>
+            <input
+              name="parentBirthDate"
+              type="date"
+              required
+              min={MIN_PARENT_BIRTH_DATE}
+              max={maxBirthDate}
+              autoComplete="bday"
+              disabled={isPending}
+              className={styles.input}
+              value={parentBirthDate}
+              onChange={(event) => setParentBirthDate(event.target.value)}
+              aria-describedby="parent-birth-date-hint"
+            />
+            <span id="parent-birth-date-hint" className={styles.fieldHint}>
+              학부모님의 생년월일을 입력해주세요.
+            </span>
           </label>
         </div>
 

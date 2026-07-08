@@ -15,6 +15,47 @@ const defaultState: SignUpActionState = {
   message: ""
 }
 
+const MIN_PARENT_BIRTH_DATE = "1900-01-01"
+
+const getTodayDateValue = () => {
+  const today = new Date()
+  const year = today.getFullYear()
+  const month = String(today.getMonth() + 1).padStart(2, "0")
+  const day = String(today.getDate()).padStart(2, "0")
+
+  return `${year}-${month}-${day}`
+}
+
+const validateParentBirthDate = (rawValue: FormDataEntryValue | null) => {
+  const parentBirthDate = String(rawValue ?? "").trim()
+
+  if (!parentBirthDate) {
+    return { ok: false as const, message: "생년월일을 입력해 주세요." }
+  }
+
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(parentBirthDate)) {
+    return { ok: false as const, message: "생년월일을 YYYY-MM-DD 형식으로 입력해 주세요." }
+  }
+
+  const parsed = new Date(`${parentBirthDate}T00:00:00Z`)
+  if (Number.isNaN(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== parentBirthDate) {
+    return { ok: false as const, message: "올바른 생년월일을 입력해 주세요." }
+  }
+
+  if (parentBirthDate < MIN_PARENT_BIRTH_DATE) {
+    return { ok: false as const, message: "생년월일은 1900-01-01 이후로 입력해 주세요." }
+  }
+
+  if (parentBirthDate > getTodayDateValue()) {
+    return { ok: false as const, message: "미래 날짜는 생년월일로 입력할 수 없습니다." }
+  }
+
+  return {
+    ok: true as const,
+    parentBirthDate
+  }
+}
+
 const resolveSafeReturnTo = (formData: FormData): string | null => {
   const raw = String(formData.get("returnTo") ?? "").trim()
   if (!raw) {
@@ -32,6 +73,7 @@ const validateSignUpForm = (formData: FormData) => {
   const name = String(formData.get("name") ?? "").trim()
   const phoneRaw = String(formData.get("phone") ?? "").trim()
   const phone = phoneRaw.length > 0 ? phoneRaw : null
+  const parentBirthDateResult = validateParentBirthDate(formData.get("parentBirthDate"))
   const email = String(formData.get("email") ?? "").trim().toLowerCase()
   const password = String(formData.get("password") ?? "")
   const passwordConfirm = String(formData.get("passwordConfirm") ?? "")
@@ -45,6 +87,10 @@ const validateSignUpForm = (formData: FormData) => {
 
   if (!phone || phone.length < 8) {
     return { ok: false as const, message: "보호자 연락처를 올바르게 입력해 주세요." }
+  }
+
+  if (!parentBirthDateResult.ok) {
+    return parentBirthDateResult
   }
 
   if (!email || !email.includes("@")) {
@@ -67,6 +113,7 @@ const validateSignUpForm = (formData: FormData) => {
     ok: true as const,
     name,
     phone,
+    parentBirthDate: parentBirthDateResult.parentBirthDate,
     email,
     password
   }
@@ -91,6 +138,7 @@ export async function signUpParentAction(
       data: {
         name: validated.name,
         phone: validated.phone,
+        parent_birth_date: validated.parentBirthDate,
         signup_intent: "parent_public",
         role: "parent"
       }
@@ -114,7 +162,8 @@ export async function signUpParentAction(
   const profile = await ensureParentProfile({
     allowCreateParentIfMissing: true,
     preferredName: validated.name,
-    preferredPhone: validated.phone
+    preferredPhone: validated.phone,
+    preferredParentBirthDate: validated.parentBirthDate
   })
 
   if (!profile) {
