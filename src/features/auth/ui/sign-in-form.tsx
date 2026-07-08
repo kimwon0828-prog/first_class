@@ -4,6 +4,7 @@ import Link from "next/link"
 import { useActionState } from "react"
 
 import { signInAction, type SignInActionState } from "@/features/auth/actions/sign-in"
+import { KakaoAuthButton } from "@/features/auth/ui/kakao-auth-button"
 import styles from "@/features/auth/ui/sign-in-form.module.css"
 
 type SignInFormProps = {
@@ -51,6 +52,18 @@ export const SignInForm = ({ returnTo }: SignInFormProps) => {
       {state.message ? (
         <p className={state.status === "error" ? styles.errorMessage : styles.infoMessage}>{state.message}</p>
       ) : null}
+
+      <KakaoAuthButton
+        label="카카오로 로그인"
+        next={returnTo ?? "/classes"}
+        className={styles.kakaoButton}
+      />
+
+      <div className={styles.divider} aria-hidden="true">
+        <span className={styles.dividerLine} />
+        <span className={styles.dividerText}>또는 이메일로 로그인</span>
+        <span className={styles.dividerLine} />
+      </div>
 
       <div className={styles.links}>
         <Link href="/auth/find-email">이메일 찾기</Link>

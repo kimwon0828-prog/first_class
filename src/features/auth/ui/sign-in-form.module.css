@@ -71,8 +71,45 @@
   font-size: 13px;
 }
 
+.kakaoButton {
+  margin-top: 24px;
+  width: 100%;
+  border: 0;
+  border-radius: 10px;
+  background: #fee500;
+  color: #191919;
+  font-size: 16px;
+  line-height: 22px;
+  font-weight: 700;
+  padding: 14px 0;
+}
+
+.kakaoButton:disabled {
+  opacity: 0.75;
+}
+
+.divider {
+  margin-top: 18px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.dividerLine {
+  flex: 1 1 auto;
+  height: 1px;
+  background: #e5e7eb;
+}
+
+.dividerText {
+  color: #8a8a8a;
+  font-size: 12px;
+  line-height: 16px;
+  white-space: nowrap;
+}
+
 .submitButton {
-  margin-top: 106px;
+  margin-top: 36px;
   width: 100%;
   border: 0;
   border-radius: 10px;

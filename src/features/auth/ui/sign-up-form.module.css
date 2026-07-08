@@ -44,6 +44,40 @@
   gap: 10px;
 }
 
+.kakaoButton {
+  width: 100%;
+  height: 52px;
+  border: 0;
+  border-radius: 12px;
+  background: #fee500;
+  color: #191919;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.kakaoButton:disabled {
+  opacity: 0.75;
+}
+
+.divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.dividerLine {
+  flex: 1 1 auto;
+  height: 1px;
+  background: #e5e7eb;
+}
+
+.dividerText {
+  color: #8a8a8a;
+  font-size: 12px;
+  line-height: 16px;
+  white-space: nowrap;
+}
+
 .label {
   font-size: 14px;
   font-weight: 700;
