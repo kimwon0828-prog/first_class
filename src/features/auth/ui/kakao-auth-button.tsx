@@ -4,8 +4,6 @@ import { useState } from "react"
 
 import { getSupabaseBrowserClient } from "@/integrations/supabase/client"
 
-const KAKAO_SCOPE = "account_email name birthyear phone_number"
-
 type KakaoAuthButtonProps = {
   label: string
   next?: string
@@ -42,8 +40,7 @@ export const KakaoAuthButton = ({ label, next, className }: KakaoAuthButtonProps
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "kakao",
       options: {
-        redirectTo,
-        scopes: KAKAO_SCOPE
+        redirectTo
       }
     })
 
