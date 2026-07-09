@@ -3,6 +3,7 @@
 import { ensureParentProfile } from "@/features/auth/lib/profile-sync"
 import { resolvePostAuthRedirect } from "@/features/auth/lib/redirect"
 import { getSupabaseServerClient } from "@/integrations/supabase/server"
+import { validateParentBirthDate } from "@/shared/lib/parent-birth-date"
 
 export type SignUpActionState = {
   status: "idle" | "error" | "needs_email_confirm" | "success"
@@ -13,47 +14,6 @@ export type SignUpActionState = {
 const defaultState: SignUpActionState = {
   status: "idle",
   message: ""
-}
-
-const MIN_PARENT_BIRTH_DATE = "1900-01-01"
-
-const getTodayDateValue = () => {
-  const today = new Date()
-  const year = today.getFullYear()
-  const month = String(today.getMonth() + 1).padStart(2, "0")
-  const day = String(today.getDate()).padStart(2, "0")
-
-  return `${year}-${month}-${day}`
-}
-
-const validateParentBirthDate = (rawValue: FormDataEntryValue | null) => {
-  const parentBirthDate = String(rawValue ?? "").trim()
-
-  if (!parentBirthDate) {
-    return { ok: false as const, message: "생년월일을 입력해 주세요." }
-  }
-
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(parentBirthDate)) {
-    return { ok: false as const, message: "생년월일을 YYYY-MM-DD 형식으로 입력해 주세요." }
-  }
-
-  const parsed = new Date(`${parentBirthDate}T00:00:00Z`)
-  if (Number.isNaN(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== parentBirthDate) {
-    return { ok: false as const, message: "올바른 생년월일을 입력해 주세요." }
-  }
-
-  if (parentBirthDate < MIN_PARENT_BIRTH_DATE) {
-    return { ok: false as const, message: "생년월일은 1900-01-01 이후로 입력해 주세요." }
-  }
-
-  if (parentBirthDate > getTodayDateValue()) {
-    return { ok: false as const, message: "미래 날짜는 생년월일로 입력할 수 없습니다." }
-  }
-
-  return {
-    ok: true as const,
-    parentBirthDate
-  }
 }
 
 const resolveSafeReturnTo = (formData: FormData): string | null => {
@@ -73,7 +33,9 @@ const validateSignUpForm = (formData: FormData) => {
   const name = String(formData.get("name") ?? "").trim()
   const phoneRaw = String(formData.get("phone") ?? "").trim()
   const phone = phoneRaw.length > 0 ? phoneRaw : null
-  const parentBirthDateResult = validateParentBirthDate(formData.get("parentBirthDate"))
+  const parentBirthDateResult = validateParentBirthDate(formData.get("parentBirthDate"), {
+    required: true
+  })
   const email = String(formData.get("email") ?? "").trim().toLowerCase()
   const password = String(formData.get("password") ?? "")
   const passwordConfirm = String(formData.get("passwordConfirm") ?? "")

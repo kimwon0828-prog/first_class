@@ -1,16 +1,23 @@
 "use client"
 
-import { useActionState } from "react"
+import { useActionState, useState, type FormEvent } from "react"
 
 import {
   updateParentProfileAction,
   type UpdateParentProfileActionState
 } from "@/features/my/actions/update-parent-profile"
+import {
+  MIN_PARENT_BIRTH_DATE,
+  formatParentBirthDateLabel,
+  getTodayDateValue,
+  validateParentBirthDate
+} from "@/shared/lib/parent-birth-date"
 import styles from "./parent-profile-form.module.css"
 
 type ParentProfileFormProps = {
   initialName: string
   initialPhone: string | null
+  initialParentBirthDate: string | null
 }
 
 const initialState: UpdateParentProfileActionState = {
@@ -18,11 +25,38 @@ const initialState: UpdateParentProfileActionState = {
   message: ""
 }
 
-export const ParentProfileForm = ({ initialName, initialPhone }: ParentProfileFormProps) => {
+export const ParentProfileForm = ({
+  initialName,
+  initialPhone,
+  initialParentBirthDate
+}: ParentProfileFormProps) => {
   const [state, formAction, isPending] = useActionState(updateParentProfileAction, initialState)
+  const [clientMessage, setClientMessage] = useState("")
+  const maxBirthDate = getTodayDateValue()
+  const birthDateLabel = formatParentBirthDateLabel(initialParentBirthDate)
+
+  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+    if (isPending) {
+      event.preventDefault()
+      return
+    }
+
+    const formData = new FormData(event.currentTarget)
+    const parentBirthDateResult = validateParentBirthDate(formData.get("parentBirthDate"), {
+      required: false
+    })
+
+    if (!parentBirthDateResult.ok) {
+      event.preventDefault()
+      setClientMessage(parentBirthDateResult.message)
+      return
+    }
+
+    setClientMessage("")
+  }
 
   return (
-    <form action={formAction} className={styles.form}>
+    <form action={formAction} onSubmit={handleSubmit} className={styles.form}>
       <label className={styles.field}>
         <span className={styles.label}>보호자명</span>
         <input
@@ -50,11 +84,28 @@ export const ParentProfileForm = ({ initialName, initialPhone }: ParentProfileFo
         />
       </label>
 
-      {state.message ? (
+      <label className={styles.field}>
+        <span className={styles.label}>생년월일</span>
+        <input
+          name="parentBirthDate"
+          type="date"
+          min={MIN_PARENT_BIRTH_DATE}
+          max={maxBirthDate}
+          defaultValue={initialParentBirthDate ?? ""}
+          disabled={isPending}
+          className={styles.input}
+          aria-describedby="my-parent-birth-date-hint"
+        />
+        <span id="my-parent-birth-date-hint" className={styles.hint}>
+          현재 등록값: {birthDateLabel}. 비어 있으면 미입력 상태로 저장됩니다.
+        </span>
+      </label>
+
+      {clientMessage || state.message ? (
         <p
-          className={state.status === "error" ? styles.errorMessage : styles.infoMessage}
+          className={clientMessage || state.status === "error" ? styles.errorMessage : styles.infoMessage}
         >
-          {state.message}
+          {clientMessage || state.message}
         </p>
       ) : null}
 

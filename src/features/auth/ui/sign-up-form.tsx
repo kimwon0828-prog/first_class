@@ -4,47 +4,15 @@ import Link from "next/link"
 import { useActionState, useEffect, useState, type FormEvent } from "react"
 
 import { signUpParentAction, type SignUpActionState } from "@/features/auth/actions/sign-up"
+import {
+  MIN_PARENT_BIRTH_DATE,
+  getTodayDateValue,
+  validateParentBirthDate
+} from "@/shared/lib/parent-birth-date"
 import styles from "./sign-up-form.module.css"
 
 type SignUpFormProps = {
   returnTo?: string
-}
-
-const MIN_PARENT_BIRTH_DATE = "1900-01-01"
-
-const getTodayDateValue = () => {
-  const today = new Date()
-  const year = today.getFullYear()
-  const month = String(today.getMonth() + 1).padStart(2, "0")
-  const day = String(today.getDate()).padStart(2, "0")
-
-  return `${year}-${month}-${day}`
-}
-
-const validateParentBirthDate = (value: string) => {
-  const normalized = value.trim()
-  if (!normalized) {
-    return "생년월일을 입력해 주세요."
-  }
-
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(normalized)) {
-    return "생년월일을 YYYY-MM-DD 형식으로 입력해 주세요."
-  }
-
-  const parsed = new Date(`${normalized}T00:00:00Z`)
-  if (Number.isNaN(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== normalized) {
-    return "올바른 생년월일을 입력해 주세요."
-  }
-
-  if (normalized < MIN_PARENT_BIRTH_DATE) {
-    return "생년월일은 1900-01-01 이후로 입력해 주세요."
-  }
-
-  if (normalized > getTodayDateValue()) {
-    return "미래 날짜는 생년월일로 입력할 수 없습니다."
-  }
-
-  return null
 }
 
 const initialState: SignUpActionState = {
@@ -101,10 +69,12 @@ export const SignUpForm = ({ returnTo }: SignUpFormProps) => {
       return
     }
 
-    const parentBirthDateError = validateParentBirthDate(parentBirthDate)
-    if (parentBirthDateError) {
+    const parentBirthDateResult = validateParentBirthDate(parentBirthDate, {
+      required: true
+    })
+    if (!parentBirthDateResult.ok) {
       event.preventDefault()
-      setClientMessage(parentBirthDateError)
+      setClientMessage(parentBirthDateResult.message)
       return
     }
 
@@ -237,7 +207,7 @@ export const SignUpForm = ({ returnTo }: SignUpFormProps) => {
               aria-describedby="parent-birth-date-hint"
             />
             <span id="parent-birth-date-hint" className={styles.fieldHint}>
-              학부모님의 생년월일을 입력해주세요.
+              만 14세 이상 학부모 계정만 가입할 수 있습니다.
             </span>
           </label>
         </div>

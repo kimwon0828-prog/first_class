@@ -3,7 +3,9 @@ import { unstable_noStore as noStore } from "next/cache"
 
 import { requireParentAccess } from "@/features/my/lib/require-parent-access"
 import { getMyDashboard } from "@/features/my/queries/get-my-dashboard"
+import { getMyParentProfileDetail } from "@/features/my/queries/get-my-parent-profile-detail"
 import { MyDashboardHome } from "@/features/my/ui/my-dashboard-home"
+import { ParentProfileForm } from "@/features/my/ui/parent-profile-form"
 import styles from "./page.module.css"
 
 export const dynamic = "force-dynamic"
@@ -12,8 +14,16 @@ export const revalidate = 0
 export default async function MyPage() {
   noStore()
   const profile = await requireParentAccess({ returnTo: "/my" })
-
-  const { data, error } = await getMyDashboard()
+  const [{ data, error }, { data: parentProfile, error: parentProfileError }] = await Promise.all([
+    getMyDashboard(),
+    getMyParentProfileDetail()
+  ])
+  const resolvedParentProfile = parentProfile ?? {
+    id: profile.id,
+    name: profile.name,
+    phone: profile.phone,
+    parentBirthDate: null
+  }
 
   return (
     <main
@@ -46,6 +56,25 @@ export default async function MyPage() {
         ) : (
           <MyDashboardHome profileName={profile.name} dashboard={data} />
         )}
+
+        <section className={styles.card}>
+          <div className={styles.sectionHeader}>
+            <h2 className={styles.sectionTitle}>보호자 기본 정보</h2>
+            <p className={styles.sectionDesc}>
+              카카오 로그인으로 가입한 경우 생년월일이 비어 있을 수 있습니다. 필요하면 여기서 보완해 주세요.
+            </p>
+          </div>
+
+          {parentProfileError ? (
+            <p className={styles.inlineError}>{parentProfileError}</p>
+          ) : null}
+
+          <ParentProfileForm
+            initialName={resolvedParentProfile.name}
+            initialPhone={resolvedParentProfile.phone}
+            initialParentBirthDate={resolvedParentProfile.parentBirthDate}
+          />
+        </section>
 
         <section className={styles.logoutSection}>
           <form method="post" action="/auth/sign-out">

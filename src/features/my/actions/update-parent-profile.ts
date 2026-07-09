@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache"
 import { getMyProfile } from "@/features/auth/lib/profile-sync"
 import { requireSession } from "@/features/auth/lib/session"
 import { getSupabaseServerClient } from "@/integrations/supabase/server"
+import { validateParentBirthDate } from "@/shared/lib/parent-birth-date"
 
 export type UpdateParentProfileActionState = {
   status: "idle" | "error" | "success"
@@ -35,6 +36,9 @@ export async function updateParentProfileAction(
   const name = String(formData.get("name") ?? "").trim()
   const phoneRaw = String(formData.get("phone") ?? "").trim()
   const phone = phoneRaw.length > 0 ? phoneRaw : null
+  const parentBirthDateResult = validateParentBirthDate(formData.get("parentBirthDate"), {
+    required: false
+  })
 
   if (name.length < 2) {
     return {
@@ -50,12 +54,20 @@ export async function updateParentProfileAction(
     }
   }
 
+  if (!parentBirthDateResult.ok) {
+    return {
+      status: "error",
+      message: parentBirthDateResult.message
+    }
+  }
+
   const supabase = await getSupabaseServerClient()
   const { error } = await supabase
     .from("profiles")
     .update({
       name,
       phone,
+      parent_birth_date: parentBirthDateResult.parentBirthDate,
       updated_at: new Date().toISOString()
     })
     .eq("id", profile.id)

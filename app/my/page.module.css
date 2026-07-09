@@ -57,6 +57,34 @@
   text-decoration: none;
 }
 
+.sectionHeader {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 18px;
+}
+
+.sectionTitle {
+  margin: 0;
+  font-size: 18px;
+  line-height: 1.4;
+  font-weight: 800;
+  color: #111111;
+}
+
+.sectionDesc {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.6;
+  color: #666666;
+}
+
+.inlineError {
+  margin: 0 0 16px;
+  color: #b42318;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
 .logoutSection {
   margin-top: 28px;
 }

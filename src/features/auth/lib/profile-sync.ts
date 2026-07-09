@@ -113,9 +113,20 @@ export const ensureParentProfile = async (
 
   const existing = await getMyProfile()
   if (existing) {
-    const nextName = existing.name.trim()
-    const nextPhone = existing.phone
-    const nextParentBirthDate = existing.parentBirthDate
+    const { data: existingDetails } = await supabase
+      .from("profiles")
+      .select("name, phone, parent_birth_date")
+      .eq("id", existing.id)
+      .maybeSingle()
+    const nextName =
+      typeof existingDetails?.name === "string" && existingDetails.name.trim().length > 0
+        ? existingDetails.name.trim()
+        : existing.name.trim()
+    const nextPhone =
+      typeof existingDetails?.phone === "string" && existingDetails.phone.trim().length > 0
+        ? existingDetails.phone.trim()
+        : existing.phone
+    const nextParentBirthDate = normalizeBirthDate(existingDetails?.parent_birth_date)
     const preferredPhone =
       typeof options.preferredPhone === "string" && options.preferredPhone.trim().length > 0
         ? options.preferredPhone.trim()
@@ -160,11 +171,14 @@ export const ensureParentProfile = async (
         ...existing,
         phone: profileUpdates.phone ?? existing.phone,
         name: profileUpdates.name ?? existing.name,
-        parentBirthDate: profileUpdates.parent_birth_date ?? existing.parentBirthDate
+        parentBirthDate: profileUpdates.parent_birth_date ?? nextParentBirthDate
       }
     }
 
-    return existing
+    return {
+      ...existing,
+      parentBirthDate: nextParentBirthDate
+    }
   }
 
   if (!options.allowCreateParentIfMissing) {
