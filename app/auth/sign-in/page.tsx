@@ -5,7 +5,7 @@ import Image from "next/image"
 import { getMyProfile } from "@/features/auth/queries/get-my-profile"
 import { resolvePostAuthRedirect } from "@/features/auth/lib/redirect"
 import { getSession } from "@/features/auth/lib/session"
-import { SignInForm } from "@/features/auth/ui/sign-in-form"
+import { KakaoAuthButton } from "@/features/auth/ui/kakao-auth-button"
 import styles from "./page.module.css"
 
 type SignInPageProps = {
@@ -39,46 +39,78 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
     redirect(returnTo ?? "/classes")
   }
 
+  const signUpHref = returnTo ? `/auth/sign-up?returnTo=${encodeURIComponent(returnTo)}` : "/auth/sign-up"
+  const emailSignInHref = returnTo
+    ? `/auth/sign-in/email?returnTo=${encodeURIComponent(returnTo)}`
+    : "/auth/sign-in/email"
+
   return (
-    <main
-      className={styles.page}
-      style={{
-        margin: "0 auto",
-        width: "100%",
-        maxWidth: 430,
-        minHeight: "100dvh",
-        boxSizing: "border-box",
-        overflowX: "hidden",
-        padding: "calc(14px + env(safe-area-inset-top)) 24px calc(24px + env(safe-area-inset-bottom))",
-        background: "#ffffff"
-      }}
-    >
+    <main className={styles.page}>
       <div className={styles.topBar}>
         <Link href="/classes" className={styles.backButton} aria-label="뒤로가기">
-          〈
+          <svg
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+            aria-hidden="true"
+          >
+            <path
+              d="M15 18l-6-6 6-6"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
         </Link>
       </div>
 
-      <h1 className={styles.title}>로그인</h1>
+      <section className={styles.hero} aria-labelledby="welcome-title">
+        <div className={styles.brand}>
+          <Image
+            src="/images/first-class-logo.png"
+            alt="첫수업"
+            width={93}
+            height={30}
+            className={styles.logo}
+            priority
+          />
+        </div>
 
-      <section className={styles.hero}>
-        <Image
-          src="/images/first-class-logo.png"
-          alt="첫수업"
-          width={93}
-          height={30}
-          className={styles.logo}
-          priority
-        />
-        <p className={styles.headline}>
-          학원 선택의 시작은
-          <br />
-          상담이 아니라 첫 수업이어야 합니다.
+        <div className={styles.copyGroup}>
+          <h1 id="welcome-title" className={styles.title}>
+            학원 선택의 기준을 바꾸다
+            <br />
+            첫수업에 오신 것을
+            <br />
+            환영합니다!
+          </h1>
+        </div>
+
+        <div className={styles.actions}>
+          <KakaoAuthButton label="카카오로 시작하기" next={returnTo ?? "/classes"} className={styles.kakaoButton} />
+
+          <Link href={signUpHref} className={styles.emailButton}>
+            이메일로 시작하기
+          </Link>
+        </div>
+
+        <p className={styles.loginPrompt}>
+          이미 계정이 있으신가요?{" "}
+          <Link href={emailSignInHref} className={styles.loginLink}>
+            이메일로 로그인
+          </Link>
         </p>
-        <p className={styles.description}>회원 서비스 이용을 위해 로그인 해주세요.</p>
-      </section>
 
-      <SignInForm returnTo={returnTo ?? undefined} />
+        <p className={styles.teacherNotice}>
+          선생님/학원 관리자이신가요?{" "}
+          <Link href="/studio/sign-in" className={styles.teacherLink}>
+            선생님 로그인
+          </Link>
+        </p>
+      </section>
     </main>
   )
 }

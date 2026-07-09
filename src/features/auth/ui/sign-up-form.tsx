@@ -66,8 +66,8 @@ export const SignUpForm = ({ returnTo }: SignUpFormProps) => {
   const [thirdPartyAgreed, setThirdPartyAgreed] = useState(false)
   const [clientMessage, setClientMessage] = useState("")
   const signInHref = returnTo
-    ? `/auth/sign-in?returnTo=${encodeURIComponent(returnTo)}`
-    : "/auth/sign-in"
+    ? `/auth/sign-in/email?returnTo=${encodeURIComponent(returnTo)}`
+    : "/auth/sign-in/email"
 
   const message = clientMessage || state.message
   const messageStatus = clientMessage ? "error" : state.status

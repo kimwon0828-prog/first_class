@@ -5,9 +5,9 @@
   min-height: 100dvh;
   box-sizing: border-box;
   overflow-x: hidden;
-  padding: calc(14px + env(safe-area-inset-top)) 24px
+  padding: calc(14px + env(safe-area-inset-top)) 22px
     calc(24px + env(safe-area-inset-bottom));
-  background: #fff;
+  background: #ffffff;
 }
 
 .page * {
@@ -24,25 +24,27 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
-  color: #8e8e93;
-  font-size: 24px;
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  color: #9a9a9a;
   text-decoration: none;
-}
-
-.title {
-  margin: 12px 0 0 12px;
-  font-size: 24px;
-  line-height: 29px;
-  letter-spacing: 0;
-  font-weight: 500;
-  color: #000;
+  background: transparent;
 }
 
 .hero {
-  margin-top: 56px;
-  padding: 0 12px;
+  min-height: calc(100dvh - 110px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  gap: 0;
+}
+
+.brand {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: 78px;
 }
 
 .logo {
@@ -51,33 +53,98 @@
   height: 30px;
 }
 
-.headline {
-  margin: 44px 0 0;
-  font-size: 20px;
-  line-height: 30px;
-  font-weight: 600;
-  color: #000;
-  letter-spacing: 0;
+.copyGroup {
+  margin-top: 78px;
+  text-align: center;
 }
 
-.description {
+.title {
+  margin: 0;
+  color: #111111;
+  font-size: 24px;
+  line-height: 1.45;
+  letter-spacing: -0.03em;
+  font-weight: 700;
+}
+
+.actions {
+  margin-top: 132px;
+  display: grid;
+  gap: 12px;
+}
+
+.kakaoButton,
+.emailButton {
+  display: inline-flex;
+  width: 100%;
+  min-height: 52px;
+  border-radius: 12px;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+  font-size: 16px;
+  line-height: 22px;
+  font-weight: 600;
+}
+
+.kakaoButton {
+  border: 0;
+  background: #fee500;
+  color: #191919;
+}
+
+.kakaoButton:disabled {
+  opacity: 0.75;
+}
+
+.emailButton {
+  border: 0;
+  background: #2aad38;
+  color: #ffffff;
+}
+
+.loginPrompt {
   margin: 18px 0 0;
-  font-size: 14px;
+  text-align: center;
+  color: #636363;
+  font-size: 13px;
   line-height: 20px;
-  color: #000;
+}
+
+.loginLink,
+.teacherLink {
+  color: #2aad38;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.teacherNotice {
+  margin: 18px 0 0;
+  text-align: center;
+  font-size: 13px;
+  line-height: 20px;
+  color: #8b8b8b;
 }
 
 @media (max-width: 420px) {
+  .page {
+    padding-left: 20px;
+    padding-right: 20px;
+  }
+
+  .brand {
+    margin-top: 72px;
+  }
+
+  .copyGroup {
+    margin-top: 72px;
+  }
+
   .title {
-    margin-left: 0;
+    font-size: 23px;
   }
 
-  .hero {
-    padding: 0;
-  }
-
-  .headline,
-  .description {
-    margin-left: 0;
+  .actions {
+    margin-top: 126px;
   }
 }

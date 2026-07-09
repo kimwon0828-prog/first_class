@@ -9,9 +9,11 @@ import styles from "@/features/auth/ui/sign-in-form.module.css"
 
 type SignInFormProps = {
   returnTo?: string
+  showKakaoButton?: boolean
+  compact?: boolean
 }
 
-export const SignInForm = ({ returnTo }: SignInFormProps) => {
+export const SignInForm = ({ returnTo, showKakaoButton = true, compact = false }: SignInFormProps) => {
   const [state, formAction, isPending] = useActionState<SignInActionState, FormData>(signInAction, {
     status: "idle",
     message: ""
@@ -21,11 +23,11 @@ export const SignInForm = ({ returnTo }: SignInFormProps) => {
     : "/auth/sign-up"
 
   return (
-    <form action={formAction} className={styles.form}>
+    <form action={formAction} className={`${styles.form} ${compact ? styles.compactForm : ""}`.trim()}>
       {returnTo ? <input type="hidden" name="returnTo" value={returnTo} /> : null}
 
       <label className={styles.field}>
-        <span className={styles.label}>아이디</span>
+        <span className={styles.label}>이메일</span>
         <input
           name="email"
           type="email"
@@ -53,17 +55,21 @@ export const SignInForm = ({ returnTo }: SignInFormProps) => {
         <p className={state.status === "error" ? styles.errorMessage : styles.infoMessage}>{state.message}</p>
       ) : null}
 
-      <KakaoAuthButton
-        label="카카오로 로그인"
-        next={returnTo ?? "/classes"}
-        className={styles.kakaoButton}
-      />
+      {showKakaoButton ? (
+        <>
+          <KakaoAuthButton
+            label="카카오로 로그인"
+            next={returnTo ?? "/classes"}
+            className={styles.kakaoButton}
+          />
 
-      <div className={styles.divider} aria-hidden="true">
-        <span className={styles.dividerLine} />
-        <span className={styles.dividerText}>또는 이메일로 로그인</span>
-        <span className={styles.dividerLine} />
-      </div>
+          <div className={styles.divider} aria-hidden="true">
+            <span className={styles.dividerLine} />
+            <span className={styles.dividerText}>또는 이메일로 로그인</span>
+            <span className={styles.dividerLine} />
+          </div>
+        </>
+      ) : null}
 
       <div className={styles.links}>
         <Link href="/auth/find-email">이메일 찾기</Link>
