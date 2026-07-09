@@ -4,7 +4,6 @@ import Link from "next/link"
 import { useActionState, useEffect, useState, type FormEvent } from "react"
 
 import { signUpParentAction, type SignUpActionState } from "@/features/auth/actions/sign-up"
-import { KakaoAuthButton } from "@/features/auth/ui/kakao-auth-button"
 import styles from "./sign-up-form.module.css"
 
 type SignUpFormProps = {
@@ -140,18 +139,6 @@ export const SignUpForm = ({ returnTo }: SignUpFormProps) => {
     <form action={formAction} onSubmit={handleSubmit} className={styles.form}>
       {returnTo ? <input type="hidden" name="returnTo" value={returnTo} /> : null}
       <section className={styles.card} aria-label="회원가입 정보 입력">
-        <KakaoAuthButton
-          label="카카오로 시작하기"
-          next={returnTo ?? "/classes"}
-          className={styles.kakaoButton}
-        />
-
-        <div className={styles.divider} aria-hidden="true">
-          <span className={styles.dividerLine} />
-          <span className={styles.dividerText}>또는 이메일로 회원가입</span>
-          <span className={styles.dividerLine} />
-        </div>
-
         <div className={styles.fieldStack}>
           <label className={styles.field}>
             <span className={styles.label}>이메일</span>

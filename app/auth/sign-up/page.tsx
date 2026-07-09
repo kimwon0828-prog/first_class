@@ -1,6 +1,5 @@
 import { redirect } from "next/navigation"
 import Link from "next/link"
-import Image from "next/image"
 
 import { getMyProfile } from "@/features/auth/queries/get-my-profile"
 import { resolvePostAuthRedirect } from "@/features/auth/lib/redirect"
@@ -112,32 +111,7 @@ export default async function SignUpPage({ searchParams }: SignUpPageProps) {
           </div>
         </header>
 
-        <section style={{ marginTop: 28 }}>
-          <Image
-            src="/images/first-class-logo.png"
-            alt="첫수업"
-            width={93}
-            height={30}
-            priority
-            style={{ display: "block" }}
-          />
-          <p
-            style={{
-              margin: "18px 0 0",
-              fontSize: 24,
-              lineHeight: 1.35,
-              fontWeight: 800,
-              letterSpacing: "-0.04em",
-              color: "#111111"
-            }}
-          >
-            첫수업에서
-            <br />
-            우리 아이에게 맞는 수업을 찾아보세요.
-          </p>
-        </section>
-
-        <div style={{ marginTop: 32 }}>
+        <div style={{ marginTop: 28 }}>
           <SignUpForm returnTo={returnTo ?? undefined} />
         </div>
       </div>
