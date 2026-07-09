@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 
+import { detectOAuthEmailConflict } from "@/features/auth/lib/oauth-account-conflict"
 import { ensureParentProfile } from "@/features/auth/lib/profile-sync"
 import { resolvePostAuthRedirect } from "@/features/auth/lib/redirect"
 import { getSupabaseServerClient } from "@/integrations/supabase/server"
@@ -46,6 +47,18 @@ const normalizeName = (user: {
   return emailLocalPart?.slice(0, 30) || "학부모"
 }
 
+const isStudioMetadataAccount = (user: { user_metadata?: Record<string, unknown> }) => {
+  const metadataRole = user.user_metadata?.role
+  const signupIntent = user.user_metadata?.signup_intent
+
+  return (
+    metadataRole === "teacher" ||
+    signupIntent === "teacher_invite" ||
+    signupIntent === "staff_invite" ||
+    signupIntent === "teacher_public"
+  )
+}
+
 export async function GET(request: Request) {
   const requestUrl = new URL(request.url)
   const code = requestUrl.searchParams.get("code")
@@ -70,6 +83,14 @@ export async function GET(request: Request) {
     return NextResponse.redirect(new URL(`/auth/sign-in?returnTo=${encodeURIComponent(next)}`, requestUrl.origin))
   }
 
+  const emailConflictResult = await detectOAuthEmailConflict(user.id, user.email)
+  if (!emailConflictResult.ok) {
+    await supabase.auth.signOut()
+    return NextResponse.redirect(
+      new URL(`/auth/account-conflict?reason=${encodeURIComponent(emailConflictResult.reason)}`, requestUrl.origin)
+    )
+  }
+
   const preferredName = normalizeName(user)
   const preferredPhone =
     normalizePhone(user.user_metadata?.phone) ??
@@ -83,7 +104,13 @@ export async function GET(request: Request) {
   })
 
   if (!profile) {
-    return NextResponse.redirect(new URL("/classes", requestUrl.origin))
+    if (isStudioMetadataAccount(user)) {
+      await supabase.auth.signOut()
+      return NextResponse.redirect(new URL("/auth/account-conflict?reason=studio_account", requestUrl.origin))
+    }
+
+    await supabase.auth.signOut()
+    return NextResponse.redirect(new URL("/auth/account-conflict?reason=account_check_failed", requestUrl.origin))
   }
 
   const destination = profile.role === "parent" ? next : resolvePostAuthRedirect(profile.role)
