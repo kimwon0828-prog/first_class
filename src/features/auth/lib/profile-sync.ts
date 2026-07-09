@@ -64,9 +64,11 @@ export const getMyProfile = async (): Promise<AuthProfile | null> => {
     return null
   }
 
+  // Keep the base profile query aligned with the debug route so auth/role checks
+  // do not fail when newer optional columns are not yet available in the DB.
   const { data, error } = await supabase
     .from("profiles")
-    .select("id, role, name, phone, parent_birth_date, organization_id")
+    .select("id, role, name, phone, organization_id")
     .eq("id", user.id)
     .maybeSingle()
 
@@ -85,7 +87,7 @@ export const getMyProfile = async (): Promise<AuthProfile | null> => {
     dbRole: normalizedRole.dbRole,
     name: typeof data.name === "string" && data.name.trim().length > 0 ? data.name.trim() : getFallbackName(user.email),
     phone: data.phone ?? null,
-    parentBirthDate: normalizeBirthDate(data.parent_birth_date),
+    parentBirthDate: null,
     organizationId: data.organization_id
   }
 }

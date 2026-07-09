@@ -49,8 +49,10 @@ export default async function ClassDetailPage({ params, searchParams }: ClassDet
   const { data: classItem, error } = await getPublicClassDetail(resolvedParams.id)
   const session = await getSession()
   const profile = session ? await getMyProfile() : null
+  const isParentUser = profile?.role === "parent"
+  const isStudioUser =
+    profile?.dbRole === "teacher" || profile?.dbRole === "academy" || profile?.dbRole === "admin"
   const favoritesEnabled = !session || profile?.role === "parent"
-  const parentSession = !!session && profile?.role === "parent"
   const applyHref = `/classes/${resolvedParams.id}/apply`
   const applyEntryHref = session
     ? applyHref
@@ -115,7 +117,35 @@ export default async function ClassDetailPage({ params, searchParams }: ClassDet
           </Link>
 
           <div style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
-            {session && !parentSession ? (
+            {isParentUser ? (
+              <Link href="/my" className={styles.iconButton} aria-label="마이페이지">
+                <svg
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                  aria-hidden="true"
+                >
+                  <path
+                    d="M20 21a8 8 0 1 0-16 0"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                  <path
+                    d="M12 13a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </Link>
+            ) : null}
+
+            {isStudioUser ? (
               <Link
                 href="/studio"
                 className={styles.iconButton}

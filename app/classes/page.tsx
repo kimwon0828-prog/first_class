@@ -110,8 +110,10 @@ export default async function ClassesPage({ searchParams }: ClassesPageProps) {
   })
   const session = await getSession()
   const profile = session ? await getMyProfile() : null
+  const isParentUser = profile?.role === "parent"
+  const isStudioUser =
+    profile?.dbRole === "teacher" || profile?.dbRole === "academy" || profile?.dbRole === "admin"
   const favoritesEnabled = !session || profile?.role === "parent"
-  const parentSession = !!session && profile?.role === "parent"
   const classesHref = buildClassesHref({
     region: selectedRegion,
     subject: selectedSubject,
@@ -120,14 +122,18 @@ export default async function ClassesPage({ searchParams }: ClassesPageProps) {
   const myPageHref = "/my"
   const myApplicationsHref = "/my/applications"
   const myPageEntryHref = session
-    ? parentSession
+    ? isParentUser
       ? myPageHref
-      : "/studio"
+      : isStudioUser
+        ? "/studio"
+        : myPageHref
     : "/auth/sign-in"
   const myApplicationsEntryHref = session
-    ? parentSession
+    ? isParentUser
       ? myApplicationsHref
-      : "/studio"
+      : isStudioUser
+        ? "/studio"
+        : myApplicationsHref
     : `/auth/sign-in?${new URLSearchParams({ returnTo: myApplicationsHref }).toString()}`
 
   const heroBanners = [{ id: "default" }, { id: "secondary" }, { id: "tertiary" }] as const
@@ -169,7 +175,7 @@ export default async function ClassesPage({ searchParams }: ClassesPageProps) {
           />
 
           {session ? (
-            parentSession ? (
+            isParentUser ? (
               <Link href={myPageEntryHref} className={styles.userButton} aria-label="마이페이지">
                 <svg
                   width="22"
@@ -195,9 +201,13 @@ export default async function ClassesPage({ searchParams }: ClassesPageProps) {
                   />
                 </svg>
               </Link>
-            ) : (
+            ) : isStudioUser ? (
               <Link href="/studio" className={styles.loginButton} aria-label="스튜디오로 이동">
                 스튜디오
+              </Link>
+            ) : (
+              <Link href={myPageEntryHref} className={styles.loginButton} aria-label="계정 확인">
+                계정 확인
               </Link>
             )
           ) : (
