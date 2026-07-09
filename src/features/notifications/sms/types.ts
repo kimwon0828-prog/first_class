@@ -16,7 +16,8 @@ export const TEACHER_SMS_EVENT_TYPES = [
   "teacher_trial_assigned",
   "teacher_trial_schedule_confirmed",
   "teacher_trial_schedule_updated",
-  "teacher_trial_canceled"
+  "teacher_trial_canceled",
+  "teacher_trial_reminder"
 ] as const
 export type TeacherSmsEventType = (typeof TEACHER_SMS_EVENT_TYPES)[number]
 
@@ -32,6 +33,7 @@ export type SmsProvider = (typeof SMS_PROVIDERS)[number]
 export type SmsTemplateKey = SmsEventType
 
 export type SmsTemplateContext = {
+  academyName: string | null
   classTitle: string | null
   childName: string | null
   parentDisplayName: string | null

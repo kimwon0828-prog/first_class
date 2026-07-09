@@ -20,12 +20,14 @@ type SmsApplicationContext = Pick<
   | "selectedScheduleLabel"
   | "assignedTeacherId"
   | "assignedTeacherName"
->
+> & {
+  academyName?: string | null
+}
 
 type LogSmsEventInput = {
   organizationId: string
   application: SmsApplicationContext
-  createdBy: string
+  createdBy?: string | null
   recipientType: SmsRecipientType
   eventType: SmsEventType
   targetTeacherId?: string | null
@@ -72,6 +74,7 @@ const resolveFallbackMessagePreview = (input: LogSmsEventInput) => {
       recipientType: input.recipientType,
       eventType: input.eventType,
       context: {
+          academyName: input.application.academyName?.trim() ?? null,
         classTitle: input.application.classTitle ?? null,
         childName: input.application.childName?.trim() ?? null,
         parentDisplayName: input.application.parentName?.trim() ?? null,
@@ -114,7 +117,7 @@ const insertFallbackSmsLog = async (input: LogSmsEventInput, error: unknown) => 
     provider: null,
     provider_message_id: null,
     error_message: resolveFallbackErrorMessage(error),
-    created_by: input.createdBy,
+    created_by: input.createdBy ?? null,
     sent_at: null
   })
 
@@ -265,6 +268,7 @@ export const logSmsEvent = async ({
     recipientType,
     eventType,
     context: {
+      academyName: application.academyName?.trim() ?? null,
       classTitle: application.classTitle ?? null,
       childName: application.childName?.trim() ?? null,
       parentDisplayName: application.parentName?.trim() ?? null,
@@ -313,7 +317,7 @@ export const logSmsEvent = async ({
       provider: sendResult.provider,
       provider_message_id: sendResult.providerMessageId,
       error_message: sendResult.errorMessage,
-      created_by: createdBy,
+      created_by: createdBy ?? null,
       sent_at: sendResult.sentAt
     })
 
@@ -361,7 +365,7 @@ export const logSmsEvent = async ({
     provider: sendResult.provider,
     provider_message_id: sendResult.providerMessageId,
     error_message: sendResult.errorMessage,
-    created_by: createdBy,
+    created_by: createdBy ?? null,
     sent_at: sendResult.sentAt
   })
 

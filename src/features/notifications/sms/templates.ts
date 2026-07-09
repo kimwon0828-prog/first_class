@@ -54,6 +54,9 @@ const resolveOptionalScheduleDetail = (input: SmsTemplateRenderInput["context"])
 const resolveClassText = (classTitle: string | null) =>
   classTitle?.trim() ? classTitle.trim() : "체험수업"
 
+const resolveAcademyText = (academyName: string | null) =>
+  academyName?.trim() ? academyName.trim() : "학원 정보는 스튜디오에서 확인해 주세요."
+
 const resolveStudentText = (input: SmsTemplateRenderInput["context"]) => {
   const childName = input.childName?.trim()
   if (childName) {
@@ -161,10 +164,15 @@ export const renderSmsTemplate = ({
       case "trial_reminder":
         return {
           templateKey: eventType,
-          messagePreview: joinMessage([
-            "[첫수업]",
-            `${classText} 리마인드 안내입니다.`,
-            `예정 일정: ${scheduleText}`
+          messagePreview: joinSections([
+            "[첫수업] 체험수업 하루 전 안내",
+            joinLines([`${resolveStudentText(context)} 학생의 체험수업이 내일 예정되어 있습니다.`]),
+            joinLines([
+              `학원: ${resolveAcademyText(context.academyName)}`,
+              `수업: ${classText}`,
+              `일정: ${scheduleText}`
+            ]),
+            "변경이 필요하신 경우 학원으로 문의해 주세요."
           ])
         }
       default:
@@ -215,6 +223,20 @@ export const renderSmsTemplate = ({
           classText,
           "운영보드에서 취소 내역을 확인해주세요."
         )
+      }
+    case "teacher_trial_reminder":
+      return {
+        templateKey: eventType,
+        messagePreview: joinSections([
+          "[첫수업] 내일 체험수업 일정 안내",
+          "내일 담당 체험수업이 예정되어 있습니다.",
+          joinLines([
+            `학생: ${resolveStudentText(context)}`,
+            `수업: ${classText}`,
+            `일정: ${scheduleText}`
+          ]),
+          "스튜디오에서 신청 정보를 확인해 주세요."
+        ])
       }
     default:
       throw new Error("unsupported_teacher_sms_event")
