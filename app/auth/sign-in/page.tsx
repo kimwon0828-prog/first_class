@@ -90,9 +90,52 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
         </div>
 
         <div className={styles.actions}>
-          <KakaoAuthButton label="카카오로 시작하기" next={returnTo ?? "/classes"} className={styles.kakaoButton} />
+          <KakaoAuthButton
+            label="카카오로 시작하기"
+            next={returnTo ?? "/classes"}
+            className={styles.kakaoButton}
+            icon={
+              <svg
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+                aria-hidden="true"
+                className={styles.buttonIcon}
+              >
+                <path
+                  d="M12 4.5c-4.556 0-8.25 2.893-8.25 6.462 0 2.28 1.507 4.282 3.78 5.432l-.757 3.106a.75.75 0 001.125.81l3.629-2.339c.155.011.312.017.473.017 4.556 0 8.25-2.893 8.25-6.461C20.25 7.393 16.556 4.5 12 4.5z"
+                  fill="currentColor"
+                />
+              </svg>
+            }
+          />
 
           <Link href={signUpHref} className={styles.emailButton}>
+            <svg
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+              aria-hidden="true"
+              className={styles.buttonIcon}
+            >
+              <path
+                d="M4 7.5A1.5 1.5 0 015.5 6h13A1.5 1.5 0 0120 7.5v9a1.5 1.5 0 01-1.5 1.5h-13A1.5 1.5 0 014 16.5v-9z"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinejoin="round"
+              />
+              <path
+                d="M5 7l7 5 7-5"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
             이메일로 시작하기
           </Link>
         </div>

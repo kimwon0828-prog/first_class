@@ -81,10 +81,15 @@
   border-radius: 12px;
   align-items: center;
   justify-content: center;
+  gap: 8px;
   text-decoration: none;
   font-size: 16px;
   line-height: 22px;
   font-weight: 600;
+}
+
+.buttonIcon {
+  flex: 0 0 auto;
 }
 
 .kakaoButton {

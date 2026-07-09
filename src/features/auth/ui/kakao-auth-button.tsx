@@ -1,5 +1,6 @@
 "use client"
 
+import type { ReactNode } from "react"
 import { useState } from "react"
 
 import { getSupabaseBrowserClient } from "@/integrations/supabase/client"
@@ -10,6 +11,7 @@ type KakaoAuthButtonProps = {
   label: string
   next?: string
   className?: string
+  icon?: ReactNode
 }
 
 const resolveSafeNext = (value?: string) => {
@@ -25,7 +27,7 @@ const resolveSafeNext = (value?: string) => {
   return normalized
 }
 
-export const KakaoAuthButton = ({ label, next, className }: KakaoAuthButtonProps) => {
+export const KakaoAuthButton = ({ label, next, className, icon }: KakaoAuthButtonProps) => {
   const [isPending, setIsPending] = useState(false)
 
   const handleClick = async () => {
@@ -55,7 +57,14 @@ export const KakaoAuthButton = ({ label, next, className }: KakaoAuthButtonProps
 
   return (
     <button type="button" onClick={handleClick} disabled={isPending} className={className}>
-      {isPending ? "카카오 연결 중..." : label}
+      {isPending ? (
+        "카카오 연결 중..."
+      ) : (
+        <>
+          {icon}
+          {label}
+        </>
+      )}
     </button>
   )
 }
