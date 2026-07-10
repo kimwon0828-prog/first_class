@@ -1,5 +1,6 @@
 import "server-only"
 
+import { sendParentNotification } from "@/features/notifications/alimtalk/send-parent-notification"
 import { logSmsEvent } from "@/features/notifications/sms/log-sms-event"
 import type { SmsEventType } from "@/features/notifications/sms/types"
 import { getSupabaseServiceRoleClient } from "@/integrations/supabase/service-role"
@@ -96,8 +97,6 @@ const resolveTodayRangeInKst = (baseDate = new Date()): TrialReminderRange => {
     dayAfterTomorrowStartIso: new Date(dayAfterTomorrowStartMs).toISOString()
   }
 }
-
-const isAlimtalkEnabled = () => process.env.ALIMTALK_SEND_ENABLED === "true"
 
 const listReminderCandidates = async (range: TrialReminderRange): Promise<TrialReminderCandidate[]> => {
   const serviceRoleClient = getSupabaseServiceRoleClient()
@@ -197,30 +196,21 @@ const getExistingReminderLogKeys = async (
 }
 
 const sendParentTrialReminder = async (candidate: TrialReminderCandidate) => {
-  if (isAlimtalkEnabled()) {
-    // Alimtalk integration can replace this branch later. For MVP, SMS remains the fallback path.
-  }
-
-  await logSmsEvent({
+  await sendParentNotification({
+    eventType: PARENT_REMINDER_EVENT,
     organizationId: candidate.organizationId,
-    application: {
-      id: candidate.id,
-      academyName: candidate.academyName,
-      classId: candidate.classId,
-      parentId: candidate.parentId,
-      childName: candidate.childName,
-      parentName: candidate.parentName,
-      parentPhone: candidate.parentPhone,
-      classTitle: candidate.classTitle,
-      requestedSlotAt: candidate.requestedSlotAt,
-      confirmedSlotAt: candidate.confirmedSlotAt,
-      selectedScheduleLabel: candidate.selectedScheduleLabel,
-      assignedTeacherId: candidate.assignedTeacherId,
-      assignedTeacherName: null
-    },
+    trialApplicationId: candidate.id,
     createdBy: null,
-    recipientType: "parent",
-    eventType: PARENT_REMINDER_EVENT
+    parentId: candidate.parentId,
+    parentPhone: candidate.parentPhone,
+    parentName: candidate.parentName,
+    studentName: candidate.childName,
+    academyName: candidate.academyName,
+    classId: candidate.classId,
+    classTitle: candidate.classTitle,
+    requestedSlotAt: candidate.requestedSlotAt,
+    confirmedSlotAt: candidate.confirmedSlotAt,
+    selectedScheduleLabel: candidate.selectedScheduleLabel
   })
 }
 

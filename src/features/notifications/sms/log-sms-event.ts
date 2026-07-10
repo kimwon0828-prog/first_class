@@ -6,22 +6,27 @@ import type { SmsEventType, SmsRecipientType } from "@/features/notifications/sm
 import { getSupabaseServiceRoleClient } from "@/integrations/supabase/service-role"
 import type { StudioApplicationDetail } from "@/shared/lib/db/adapter"
 
-type SmsApplicationContext = Pick<
-  StudioApplicationDetail,
-  | "id"
-  | "classId"
-  | "parentId"
-  | "childName"
-  | "parentName"
-  | "parentPhone"
-  | "classTitle"
-  | "requestedSlotAt"
-  | "confirmedSlotAt"
-  | "selectedScheduleLabel"
-  | "assignedTeacherId"
-  | "assignedTeacherName"
+type SmsApplicationContext = Omit<
+  Pick<
+    StudioApplicationDetail,
+    | "id"
+    | "classId"
+    | "parentId"
+    | "childName"
+    | "parentName"
+    | "parentPhone"
+    | "classTitle"
+    | "requestedSlotAt"
+    | "confirmedSlotAt"
+    | "selectedScheduleLabel"
+    | "assignedTeacherId"
+    | "assignedTeacherName"
+  >,
+  "classId" | "parentId"
 > & {
   academyName?: string | null
+  classId: string | null
+  parentId: string | null
 }
 
 type LogSmsEventInput = {

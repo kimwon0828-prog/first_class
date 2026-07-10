@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache"
 
+import { sendParentNotification } from "@/features/notifications/alimtalk/send-parent-notification"
 import { logSmsEventSafely } from "@/features/notifications/sms/log-sms-event"
 import { requireTeacherStudioAccess } from "@/features/studio/lib/require-teacher-studio-access"
 import { dataAdapter } from "@/shared/lib/db"
@@ -121,12 +122,21 @@ export async function updateApplicationStatusAction(
 
     if (updated) {
       if (requestedActionType === "move_to_confirmed") {
-        await logSmsEventSafely({
+        await sendParentNotification({
+          eventType: "trial_schedule_confirmed",
           organizationId: teacher.organizationId,
-          application: updated,
+          trialApplicationId: updated.id,
           createdBy: teacher.id,
-          recipientType: "parent",
-          eventType: "trial_schedule_confirmed"
+          parentId: updated.parentId,
+          parentPhone: updated.parentPhone,
+          parentName: updated.parentName,
+          studentName: updated.childName,
+          academyName: updated.academyName,
+          classId: updated.classId,
+          classTitle: updated.classTitle,
+          requestedSlotAt: updated.requestedSlotAt,
+          confirmedSlotAt: updated.confirmedSlotAt,
+          selectedScheduleLabel: updated.selectedScheduleLabel ?? null
         })
         await logSmsEventSafely({
           organizationId: teacher.organizationId,
@@ -138,22 +148,40 @@ export async function updateApplicationStatusAction(
       }
 
       if (requestedActionType === "move_to_completed") {
-        await logSmsEventSafely({
+        await sendParentNotification({
+          eventType: "trial_completed",
           organizationId: teacher.organizationId,
-          application: updated,
+          trialApplicationId: updated.id,
           createdBy: teacher.id,
-          recipientType: "parent",
-          eventType: "trial_completed"
+          parentId: updated.parentId,
+          parentPhone: updated.parentPhone,
+          parentName: updated.parentName,
+          studentName: updated.childName,
+          academyName: updated.academyName,
+          classId: updated.classId,
+          classTitle: updated.classTitle,
+          requestedSlotAt: updated.requestedSlotAt,
+          confirmedSlotAt: updated.confirmedSlotAt,
+          selectedScheduleLabel: updated.selectedScheduleLabel ?? null
         })
       }
 
       if (requestedActionType === "cancel") {
-        await logSmsEventSafely({
+        await sendParentNotification({
+          eventType: "trial_rejected",
           organizationId: teacher.organizationId,
-          application: updated,
+          trialApplicationId: updated.id,
           createdBy: teacher.id,
-          recipientType: "parent",
-          eventType: "trial_rejected"
+          parentId: updated.parentId,
+          parentPhone: updated.parentPhone,
+          parentName: updated.parentName,
+          studentName: updated.childName,
+          academyName: updated.academyName,
+          classId: updated.classId,
+          classTitle: updated.classTitle,
+          requestedSlotAt: updated.requestedSlotAt,
+          confirmedSlotAt: updated.confirmedSlotAt,
+          selectedScheduleLabel: updated.selectedScheduleLabel ?? null
         })
         await logSmsEventSafely({
           organizationId: teacher.organizationId,
