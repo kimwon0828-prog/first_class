@@ -569,11 +569,16 @@ a.btnPrimary:active {
 }
 
 .featureMedia {
+  position: relative;
   overflow: hidden;
   border: 1px solid var(--line);
   border-radius: 18px;
   background: #ffffff;
   box-shadow: var(--shadow-lg);
+}
+
+.featureMediaOverlay {
+  overflow: visible;
 }
 
 .browserBar {
@@ -597,6 +602,30 @@ a.btnPrimary:active {
   height: auto;
 }
 
+.featureFloatingCard {
+  position: absolute;
+  right: 24px;
+  top: 72px;
+  z-index: 2;
+  width: min(34%, 210px);
+  padding: 8px;
+  border: 1px solid rgba(17, 17, 17, 0.06);
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow:
+    0 24px 48px rgba(17, 17, 17, 0.18),
+    0 10px 20px rgba(17, 17, 17, 0.08);
+  transform: rotate(8deg);
+  backdrop-filter: blur(10px);
+}
+
+.featureFloatingImage {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 18px;
+}
+
 .featureTag {
   display: block;
   margin-bottom: 10px;
@@ -618,6 +647,30 @@ a.btnPrimary:active {
   margin: 0 0 20px;
   color: var(--muted);
   font-size: 15px;
+}
+
+.features > .wrap > .featureRow:nth-child(2) .featureText > .featureTag,
+.features > .wrap > .featureRow:nth-child(3) .featureText > .featureTag,
+.features > .wrap > .featureRow:nth-child(4) .featureText > .featureTag,
+.features > .wrap > .featureRow:nth-child(5) .featureText > .featureTag,
+.features > .wrap > .featureRow:nth-child(6) .featureText > .featureTag {
+  font-size: 20px;
+}
+
+.features > .wrap > .featureRow:nth-child(2) .featureText > h3,
+.features > .wrap > .featureRow:nth-child(3) .featureText > h3,
+.features > .wrap > .featureRow:nth-child(4) .featureText > h3,
+.features > .wrap > .featureRow:nth-child(5) .featureText > h3,
+.features > .wrap > .featureRow:nth-child(6) .featureText > h3 {
+  font-size: 32px;
+}
+
+.features > .wrap > .featureRow:nth-child(2) .featureText > p,
+.features > .wrap > .featureRow:nth-child(3) .featureText > p,
+.features > .wrap > .featureRow:nth-child(4) .featureText > p,
+.features > .wrap > .featureRow:nth-child(5) .featureText > p,
+.features > .wrap > .featureRow:nth-child(6) .featureText > p {
+  font-size: 20px;
 }
 
 .featureList {
@@ -1024,6 +1077,12 @@ a.contactValue:hover {
   .featureRow {
     gap: 40px;
   }
+
+  .featureFloatingCard {
+    right: 18px;
+    top: 54px;
+    width: min(36%, 190px);
+  }
 }
 
 @media (max-width: 860px) {
@@ -1115,6 +1174,18 @@ a.contactValue:hover {
     order: initial;
   }
 
+  .featureMediaOverlay {
+    padding-bottom: 44px;
+  }
+
+  .featureFloatingCard {
+    right: 18px;
+    top: auto;
+    bottom: -18px;
+    width: min(42%, 220px);
+    transform: rotate(6deg);
+  }
+
   .miniGallery,
   .priceGrid,
   .perkGrid,
@@ -1166,6 +1237,22 @@ a.contactValue:hover {
 
   .hero {
     padding: 48px 0 56px;
+  }
+
+  .featureMediaOverlay {
+    padding-bottom: 34px;
+  }
+
+  .featureFloatingCard {
+    right: 12px;
+    bottom: -10px;
+    width: 44%;
+    padding: 6px;
+    border-radius: 18px;
+  }
+
+  .featureFloatingImage {
+    border-radius: 12px;
   }
 
   .heroEyebrow {

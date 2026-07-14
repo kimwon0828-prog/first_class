@@ -63,10 +63,10 @@ const featureRows = [
     ],
     reverse: true,
     image: {
-      src: "/images/partner/application-detail.png",
-      alt: "신청 상세 상담 화면",
-      width: 3052,
-      height: 1726
+      src: "/images/partner/schedule.jpg",
+      alt: "첫수업 파트너 센터 일정 관리 화면",
+      width: 900,
+      height: 507
     }
   },
   {
@@ -89,10 +89,10 @@ const featureRows = [
       "체험수업은 이미 등록 직전까지 온 학부모입니다. 첫수업은 체험→상담→등록 흐름을 추적해서, 어디서 이탈하는지 보여주고 후속 관리로 연결합니다.",
     items: ["공개/비공개 상태를 즉시 전환", "담당 선생님·대상 학년·체험비 관리", "예약 시간대 설정"],
     image: {
-      src: "/images/partner/applications.jpg",
-      alt: "첫수업 파트너 센터 신청 관리 화면",
-      width: 1400,
-      height: 785
+      src: "/images/partner/application-detail.png",
+      alt: "첫수업 파트너 센터 등록 전환 관리 화면",
+      width: 3052,
+      height: 1726
     }
   },
   {
@@ -102,10 +102,10 @@ const featureRows = [
       "예약 수, 참석률, 노쇼율, 등록 전환율까지. 어떤 시간대의 체험수업이 등록으로 이어지는지 데이터로 확인하세요.",
     items: ["공개/비공개 상태를 즉시 전환", "담당 선생님·대상 학년·체험비 관리", "예약 시간대 설정"],
     image: {
-      src: "/images/partner/applications.jpg",
-      alt: "첫수업 파트너 센터 신청 관리 화면",
+      src: "/images/partner/dashboard.jpg",
+      alt: "첫수업 파트너 센터 운영 리포트 대시보드 화면",
       width: 1400,
-      height: 785
+      height: 791
     }
   }
 ]
@@ -160,15 +160,6 @@ const footerLinks = [
   { href: "#pricing", label: "이용 방법" },
   { href: "#contact", label: "문의하기" }
 ]
-
-function CheckItem({ children }: { children: string }) {
-  return (
-    <li className={styles.featureListItem}>
-      <span className={styles.dotCheck} aria-hidden="true" />
-      <span>{children}</span>
-    </li>
-  )
-}
 
 export default function PartnerLanding() {
   return (
@@ -278,7 +269,7 @@ export default function PartnerLanding() {
               className={`${styles.featureRow} ${index % 2 === 1 ? styles.featureRowReverse : ""}`}
               key={feature.tag}
             >
-              <div className={styles.featureMedia}>
+              <div className={`${styles.featureMedia} ${index === 0 ? styles.featureMediaOverlay : ""}`}>
                 <div className={styles.browserBar} aria-hidden="true">
                   <span />
                   <span />
@@ -291,6 +282,17 @@ export default function PartnerLanding() {
                   height={feature.image.height}
                   className={styles.featureImage}
                 />
+                {index === 0 ? (
+                  <div className={styles.featureFloatingCard}>
+                    <Image
+                      src="/images/partner/class-detail-overlay.png"
+                      alt="수업 상세 예시 화면"
+                      width={535}
+                      height={1021}
+                      className={styles.featureFloatingImage}
+                    />
+                  </div>
+                ) : null}
               </div>
 
               <div className={styles.featureText}>
@@ -301,11 +303,6 @@ export default function PartnerLanding() {
                   {feature.title[1]}
                 </h3>
                 <p>{feature.description}</p>
-                <ul className={styles.featureList}>
-                  {feature.items.map((item) => (
-                    <CheckItem key={item}>{item}</CheckItem>
-                  ))}
-                </ul>
               </div>
             </div>
           ))}
