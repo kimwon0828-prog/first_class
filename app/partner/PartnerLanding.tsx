@@ -230,6 +230,12 @@ export default function PartnerLanding() {
         </div>
       </header>
 
+      <div className={styles.mobileFloatingCta}>
+        <a className={`${styles.btn} ${styles.btnPrimary}`} href="/studio/sign-up">
+          파트너 신청
+        </a>
+      </div>
+
       <section className={styles.hero} id="top">
         <div className={`${styles.wrap} ${styles.heroGrid}`}>
           <div className={styles.heroCopy}>
