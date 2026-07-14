@@ -795,11 +795,13 @@ a.btnPrimary:active {
 
 .priceGrid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 20px;
+  grid-template-columns: repeat(2, minmax(280px, 360px));
+  justify-content: center;
+  gap: 24px;
 }
 
 .priceCard {
+  width: 100%;
   padding: 30px 26px;
   border: 1px solid var(--line);
   border-radius: 18px;
@@ -920,35 +922,71 @@ a.btnPrimary:active {
   font-size: 12.5px;
 }
 
-.finalCta {
+.faq {
   padding: 100px 0;
+  background: #fafafa;
 }
 
-.ctaBox {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  overflow: hidden;
+.faqList {
+  max-width: 860px;
+  margin: 0 auto;
+}
+
+.faqItem {
+  margin-bottom: 16px;
   border: 1px solid var(--line);
-  border-radius: 24px;
+  border-radius: 20px;
   background: #ffffff;
-  box-shadow: var(--shadow-lg);
+  box-shadow: 0 10px 30px rgba(17, 17, 17, 0.04);
 }
 
-.ctaLeft {
-  padding: 56px 48px;
+.faqItem[open] {
+  border-color: rgba(42, 173, 56, 0.28);
+  box-shadow: 0 14px 34px rgba(42, 173, 56, 0.08);
 }
 
-.ctaLeft h2 {
-  margin: 14px 0;
-  font-size: 28px;
-  font-weight: 800;
-  line-height: 1.35;
+.faqQuestion {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 24px 28px;
+  cursor: pointer;
+  list-style: none;
+  color: var(--ink);
+  font-size: 18px;
+  font-weight: 700;
 }
 
-.ctaLeft p {
-  margin: 0 0 28px;
+.faqQuestion::-webkit-details-marker {
+  display: none;
+}
+
+.faqIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  background: var(--green-tint-2);
+  color: var(--green-dark);
+  font-size: 22px;
+  font-weight: 500;
+  line-height: 1;
+  transition: transform 0.2s ease;
+}
+
+.faqItem[open] .faqIcon {
+  transform: rotate(45deg);
+}
+
+.faqAnswer {
+  margin: 0;
+  padding: 0 28px 24px;
   color: var(--muted);
   font-size: 15px;
+  line-height: 1.75;
 }
 
 .ctaRight {
@@ -1000,11 +1038,10 @@ a.contactValue:hover {
   margin-bottom: 40px;
 }
 
-.footLogo {
+.footerLogoImage {
   margin-bottom: 12px;
-  color: #ffffff;
-  font-size: 19px;
-  font-weight: 800;
+  width: auto;
+  height: 30px;
 }
 
 .footTag {
@@ -1189,14 +1226,8 @@ a.contactValue:hover {
   .miniGallery,
   .priceGrid,
   .perkGrid,
-  .ctaBox,
   .footGrid {
     grid-template-columns: 1fr;
-  }
-
-  .ctaRight {
-    border-top: 1px solid var(--line);
-    border-left: none;
   }
 
   .compareTable th,
@@ -1295,9 +1326,18 @@ a.contactValue:hover {
     height: 120px;
   }
 
-  .ctaLeft,
-  .ctaRight {
-    padding: 32px 22px;
+  .faq {
+    padding-bottom: 72px;
+  }
+
+  .faqQuestion {
+    padding: 20px 18px;
+    font-size: 16px;
+  }
+
+  .faqAnswer {
+    padding: 0 18px 20px;
+    font-size: 14px;
   }
 
   .contactRow {
