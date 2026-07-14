@@ -134,7 +134,7 @@ const perks = [
   {
     icon: "🚀",
     title: "초기 이용료 혜택",
-    description: "파일럿 기간 특별 이용 조건 제공"
+    description: "파일럿 기간 이후 정식서비스 3개월 이용권 제공"
   },
   {
     icon: "🤝",
@@ -455,8 +455,8 @@ export default function PartnerLanding() {
           </div>
 
           <div className={styles.faqList}>
-            {faqItems.map((item, index) => (
-              <details className={styles.faqItem} key={item.question} open={index === 0}>
+            {faqItems.map((item) => (
+              <details className={styles.faqItem} key={item.question}>
                 <summary className={styles.faqQuestion}>
                   <span>{item.question}</span>
                   <span className={styles.faqIcon} aria-hidden="true">
