@@ -1,4 +1,5 @@
 import Image from "next/image"
+import Link from "next/link"
 
 import styles from "./partner.module.css"
 
@@ -223,6 +224,9 @@ export default function PartnerLanding() {
           </nav>
 
           <div className={styles.navCta}>
+            <Link className={`${styles.btn} ${styles.btnGhost}`} href="/classes">
+              학부모 플랫폼 둘러보기
+            </Link>
             <a className={`${styles.btn} ${styles.btnPrimary}`} href="/studio/sign-up">
               파트너 신청
             </a>
@@ -231,6 +235,9 @@ export default function PartnerLanding() {
       </header>
 
       <div className={styles.mobileFloatingCta}>
+        <Link className={`${styles.btn} ${styles.btnGhost}`} href="/classes">
+          학부모 플랫폼 둘러보기
+        </Link>
         <a className={`${styles.btn} ${styles.btnPrimary}`} href="/studio/sign-up">
           파트너 신청
         </a>

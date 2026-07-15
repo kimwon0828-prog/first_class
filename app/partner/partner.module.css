@@ -1592,7 +1592,9 @@ a.contactValue:hover {
     bottom: 0;
     left: 0;
     z-index: 120;
-    display: block;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
     padding: 12px 16px calc(12px + env(safe-area-inset-bottom, 0px));
     background: linear-gradient(180deg, rgba(252, 251, 247, 0) 0%, rgba(252, 251, 247, 0.92) 24%, #fcfbf7 100%);
     backdrop-filter: blur(10px);
@@ -1602,7 +1604,15 @@ a.contactValue:hover {
     width: 100%;
     min-height: 52px;
     border-radius: 16px;
+    padding: 12px 14px;
+    font-size: 14px;
     box-shadow: 0 18px 34px rgba(42, 173, 56, 0.28);
+  }
+
+  .mobileFloatingCta .btnGhost {
+    background: rgba(255, 255, 255, 0.96);
+    border-color: #dce8d8;
+    box-shadow: 0 12px 28px rgba(17, 24, 28, 0.08);
   }
 
   .footer {
