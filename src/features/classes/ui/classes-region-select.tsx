@@ -9,6 +9,11 @@ import { academyAreaOptions, type AcademyArea } from "@/shared/config/academy-ar
 type AcademyAreaFilter = AcademyArea | null
 const ALL_ACADEMY_AREA_VALUE = "all"
 const ALL_ACADEMY_AREA_LABEL = "전체 학원가"
+const PRIORITY_ACADEMY_AREA: AcademyArea = "은행사거리학원가"
+const orderedAcademyAreaOptions = [
+  PRIORITY_ACADEMY_AREA,
+  ...academyAreaOptions.filter((option) => option !== PRIORITY_ACADEMY_AREA)
+]
 
 type ClassesRegionSelectProps = {
   selectedRegion: AcademyAreaFilter
@@ -156,6 +161,9 @@ const formatAcademyAreaLabel = (value: AcademyAreaFilter) => {
   if (!value) {
     return ALL_ACADEMY_AREA_LABEL
   }
+  if (value === PRIORITY_ACADEMY_AREA) {
+    return "중계 은행사거리 학원가"
+  }
   if (value.includes(" ") || !value.endsWith("학원가")) {
     return value
   }
@@ -274,9 +282,9 @@ export function ClassesRegionSelect({
         style={selectClassName ? undefined : selectStyle}
       >
         <option value={ALL_ACADEMY_AREA_VALUE}>{ALL_ACADEMY_AREA_LABEL}</option>
-        {academyAreaOptions.map((option) => (
+        {orderedAcademyAreaOptions.map((option) => (
           <option key={option} value={option}>
-            {option}
+            {formatAcademyAreaLabel(option)}
           </option>
         ))}
       </select>
@@ -444,7 +452,7 @@ export function ClassesRegionInlineSelect({
             zIndex: 80
           }}
         >
-          {[null, ...academyAreaOptions].map((option) => {
+          {[null, ...orderedAcademyAreaOptions].map((option) => {
             const isActive = option === currentRegion
             return (
               <button
