@@ -1,7 +1,7 @@
 import "server-only"
 
 import { sendParentNotification } from "@/features/notifications/alimtalk/send-parent-notification"
-import { logSmsEvent } from "@/features/notifications/sms/log-sms-event"
+import { sendStudioNotification } from "@/features/notifications/sms/send-studio-notification"
 import type { SmsEventType } from "@/features/notifications/sms/types"
 import { getSupabaseServiceRoleClient } from "@/integrations/supabase/service-role"
 
@@ -67,12 +67,16 @@ type TrialReminderRunResult = {
   teacherSent: number
   teacherSkippedDuplicate: number
   teacherFailed: number
+  adminSent: number
+  adminSkippedDuplicate: number
+  adminFailed: number
   notes: string[]
 }
 
 const KST_OFFSET_MS = 9 * 60 * 60 * 1000
 const PARENT_REMINDER_EVENT: SmsEventType = "trial_reminder"
 const TEACHER_REMINDER_EVENT: SmsEventType = "teacher_trial_reminder"
+const ADMIN_REMINDER_EVENT: SmsEventType = "admin_trial_reminder"
 
 const getEmbeddedClass = (value: TrialReminderCandidateRow["classes"]) => {
   if (!value) {
@@ -180,7 +184,7 @@ const getExistingReminderLogKeys = async (
     .from("sms_logs")
     .select("trial_application_id, event_type")
     .in("trial_application_id", applicationIds)
-    .in("event_type", [PARENT_REMINDER_EVENT, TEACHER_REMINDER_EVENT])
+    .in("event_type", [PARENT_REMINDER_EVENT, TEACHER_REMINDER_EVENT, ADMIN_REMINDER_EVENT])
     .gte("created_at", range.todayStartIso)
     .lt("created_at", range.tomorrowStartIso)
 
@@ -215,7 +219,7 @@ const sendParentTrialReminder = async (candidate: TrialReminderCandidate) => {
 }
 
 const sendTeacherTrialReminder = async (candidate: TrialReminderCandidate) => {
-  await logSmsEvent({
+  return sendStudioNotification({
     organizationId: candidate.organizationId,
     application: {
       id: candidate.id,
@@ -233,8 +237,8 @@ const sendTeacherTrialReminder = async (candidate: TrialReminderCandidate) => {
       assignedTeacherName: null
     },
     createdBy: null,
-    recipientType: "teacher",
-    eventType: TEACHER_REMINDER_EVENT
+    teacherEventType: TEACHER_REMINDER_EVENT,
+    adminEventType: ADMIN_REMINDER_EVENT
   })
 }
 
@@ -257,6 +261,9 @@ export const runTrialReminders = async (authMode: TrialReminderRunResult["authMo
     teacherSent: 0,
     teacherSkippedDuplicate: 0,
     teacherFailed: 0,
+    adminSent: 0,
+    adminSkippedDuplicate: 0,
+    adminFailed: 0,
     notes: [
       "기준 시간대는 Asia/Seoul(KST) 입니다.",
       "teacher_trial_reminder 이벤트 타입은 sms_logs 제약 migration 적용 여부를 별도로 확인해야 합니다."
@@ -279,18 +286,39 @@ export const runTrialReminders = async (authMode: TrialReminderRunResult["authMo
     }
 
     const teacherLogKey = `${candidate.id}:${TEACHER_REMINDER_EVENT}`
-    if (existingLogKeys.has(teacherLogKey)) {
+    const adminLogKey = `${candidate.id}:${ADMIN_REMINDER_EVENT}`
+    if (existingLogKeys.has(teacherLogKey) || existingLogKeys.has(adminLogKey)) {
       result.teacherSkippedDuplicate += 1
+      result.adminSkippedDuplicate += 1
       continue
     }
 
     try {
-      await sendTeacherTrialReminder(candidate)
+      const sendResult = await sendTeacherTrialReminder(candidate)
       existingLogKeys.add(teacherLogKey)
-      result.teacherSent += 1
+      existingLogKeys.add(adminLogKey)
+      if (sendResult.teacher.status === "sent" || sendResult.teacher.status === "dry_run") {
+        result.teacherSent += 1
+      } else if (sendResult.teacher.status === "skipped") {
+        result.teacherSkippedDuplicate += sendResult.teacher.errorMessage === "skipped_duplicate_recipient_phone" ? 1 : 0
+        result.teacherFailed += sendResult.teacher.errorMessage === "skipped_duplicate_recipient_phone" ? 0 : 1
+      } else {
+        result.teacherFailed += 1
+      }
+
+      if (sendResult.admin.status === "sent" || sendResult.admin.status === "dry_run") {
+        result.adminSent += 1
+      } else if (sendResult.admin.status === "skipped") {
+        result.adminSkippedDuplicate +=
+          sendResult.admin.errorMessage === "skipped_duplicate_recipient_phone" ? 1 : 0
+        result.adminFailed += sendResult.admin.errorMessage === "skipped_duplicate_recipient_phone" ? 0 : 1
+      } else {
+        result.adminFailed += 1
+      }
     } catch (error) {
       console.error("[trial reminder][teacher] failed", candidate.id, error)
       result.teacherFailed += 1
+      result.adminFailed += 1
     }
   }
 

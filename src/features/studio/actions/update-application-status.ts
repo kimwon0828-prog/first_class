@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache"
 
 import { sendParentNotification } from "@/features/notifications/alimtalk/send-parent-notification"
-import { logSmsEventSafely } from "@/features/notifications/sms/log-sms-event"
+import { sendStudioNotificationSafely } from "@/features/notifications/sms/send-studio-notification"
 import { requireTeacherStudioAccess } from "@/features/studio/lib/require-teacher-studio-access"
 import { dataAdapter } from "@/shared/lib/db"
 import type { ApplicationStatus, ApplicationStatusActionType } from "@/shared/lib/db/adapter"
@@ -138,12 +138,12 @@ export async function updateApplicationStatusAction(
           confirmedSlotAt: updated.confirmedSlotAt,
           selectedScheduleLabel: updated.selectedScheduleLabel ?? null
         })
-        await logSmsEventSafely({
+        await sendStudioNotificationSafely({
           organizationId: teacher.organizationId,
           application: updated,
           createdBy: teacher.id,
-          recipientType: "teacher",
-          eventType: "teacher_trial_schedule_confirmed"
+          teacherEventType: "teacher_trial_schedule_confirmed",
+          adminEventType: "admin_trial_schedule_confirmed"
         })
       }
 
@@ -183,12 +183,12 @@ export async function updateApplicationStatusAction(
           confirmedSlotAt: updated.confirmedSlotAt,
           selectedScheduleLabel: updated.selectedScheduleLabel ?? null
         })
-        await logSmsEventSafely({
+        await sendStudioNotificationSafely({
           organizationId: teacher.organizationId,
           application: updated,
           createdBy: teacher.id,
-          recipientType: "teacher",
-          eventType: "teacher_trial_canceled"
+          teacherEventType: "teacher_trial_canceled",
+          adminEventType: "admin_trial_canceled"
         })
       }
     }

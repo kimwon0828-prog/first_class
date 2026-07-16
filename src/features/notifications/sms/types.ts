@@ -1,4 +1,4 @@
-export const SMS_RECIPIENT_TYPES = ["parent", "teacher"] as const
+export const SMS_RECIPIENT_TYPES = ["parent", "teacher", "admin"] as const
 export type SmsRecipientType = (typeof SMS_RECIPIENT_TYPES)[number]
 
 export const PARENT_SMS_EVENT_TYPES = [
@@ -21,7 +21,19 @@ export const TEACHER_SMS_EVENT_TYPES = [
 ] as const
 export type TeacherSmsEventType = (typeof TEACHER_SMS_EVENT_TYPES)[number]
 
-export const SMS_EVENT_TYPES = [...PARENT_SMS_EVENT_TYPES, ...TEACHER_SMS_EVENT_TYPES] as const
+export const ADMIN_SMS_EVENT_TYPES = [
+  "admin_trial_requested",
+  "admin_trial_canceled",
+  "admin_trial_schedule_confirmed",
+  "admin_trial_reminder"
+] as const
+export type AdminSmsEventType = (typeof ADMIN_SMS_EVENT_TYPES)[number]
+
+export const SMS_EVENT_TYPES = [
+  ...PARENT_SMS_EVENT_TYPES,
+  ...TEACHER_SMS_EVENT_TYPES,
+  ...ADMIN_SMS_EVENT_TYPES
+] as const
 export type SmsEventType = (typeof SMS_EVENT_TYPES)[number]
 
 export const SMS_LOG_STATUSES = ["dry_run", "pending", "sent", "failed", "skipped"] as const

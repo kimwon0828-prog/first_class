@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache"
 
-import { logSmsEventSafely } from "@/features/notifications/sms/log-sms-event"
+import { sendStudioNotificationSafely } from "@/features/notifications/sms/send-studio-notification"
 import { requireParentAccess } from "@/features/my/lib/require-parent-access"
 import { getSupabaseServiceRoleClient } from "@/integrations/supabase/service-role"
 import { getSupabaseServerClient } from "@/integrations/supabase/server"
@@ -136,7 +136,7 @@ export async function cancelMyApplicationAction(
   revalidatePath("/my/applications")
 
   if (embeddedClass?.organization_id) {
-    await logSmsEventSafely({
+    await sendStudioNotificationSafely({
       organizationId: embeddedClass.organization_id,
       application: {
         id: currentApplication.id,
@@ -153,8 +153,8 @@ export async function cancelMyApplicationAction(
         assignedTeacherName: null
       },
       createdBy: parent.id,
-      recipientType: "teacher",
-      eventType: "teacher_trial_canceled"
+      teacherEventType: "teacher_trial_canceled",
+      adminEventType: "admin_trial_canceled"
     })
   }
 

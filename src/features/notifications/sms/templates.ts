@@ -71,6 +71,9 @@ const resolveStudentText = (input: SmsTemplateRenderInput["context"]) => {
   return "신청자"
 }
 
+const resolveTeacherText = (assignedTeacherName: string | null) =>
+  assignedTeacherName?.trim() ? assignedTeacherName.trim() : "담당 선생님 미지정"
+
 const renderTeacherMessage = (
   leadingText: string,
   context: SmsTemplateRenderInput["context"],
@@ -177,6 +180,71 @@ export const renderSmsTemplate = ({
         }
       default:
         throw new Error("unsupported_parent_sms_event")
+    }
+  }
+
+  if (recipientType === "admin") {
+    switch (eventType) {
+      case "admin_trial_requested":
+        return {
+          templateKey: eventType,
+          messagePreview: joinSections([
+            "[첫수업] 새 체험수업 신청 알림",
+            "새 체험수업 신청이 접수되었습니다.",
+            joinLines([
+              `학생: ${resolveStudentText(context)}`,
+              `수업: ${classText}`,
+              `담당 선생님: ${resolveTeacherText(context.assignedTeacherName)}`
+            ]),
+            "스튜디오에서 신청 정보를 확인해 주세요."
+          ])
+        }
+      case "admin_trial_canceled":
+        return {
+          templateKey: eventType,
+          messagePreview: joinSections([
+            "[첫수업] 체험수업 신청 취소 알림",
+            "체험수업 신청이 취소되었습니다.",
+            joinLines([
+              `학생: ${resolveStudentText(context)}`,
+              `수업: ${classText}`,
+              `담당 선생님: ${resolveTeacherText(context.assignedTeacherName)}`
+            ]),
+            "스튜디오에서 신청 정보를 확인해 주세요."
+          ])
+        }
+      case "admin_trial_schedule_confirmed":
+        return {
+          templateKey: eventType,
+          messagePreview: joinSections([
+            "[첫수업] 체험수업 일정 확정 알림",
+            "체험수업 일정이 확정되었습니다.",
+            joinLines([
+              `학생: ${resolveStudentText(context)}`,
+              `수업: ${classText}`,
+              `담당 선생님: ${resolveTeacherText(context.assignedTeacherName)}`,
+              `일정: ${scheduleText}`
+            ]),
+            "스튜디오에서 신청 정보를 확인해 주세요."
+          ])
+        }
+      case "admin_trial_reminder":
+        return {
+          templateKey: eventType,
+          messagePreview: joinSections([
+            "[첫수업] 내일 체험수업 일정 안내",
+            "내일 체험수업이 예정되어 있습니다.",
+            joinLines([
+              `학생: ${resolveStudentText(context)}`,
+              `수업: ${classText}`,
+              `담당 선생님: ${resolveTeacherText(context.assignedTeacherName)}`,
+              `일정: ${scheduleText}`
+            ]),
+            "스튜디오에서 신청 정보를 확인해 주세요."
+          ])
+        }
+      default:
+        throw new Error("unsupported_admin_sms_event")
     }
   }
 

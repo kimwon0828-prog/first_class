@@ -1,7 +1,7 @@
 "use server"
 
 import { isChildEligibleForClass } from "@/shared/constants/grade-options"
-import { logSmsEventSafely } from "@/features/notifications/sms/log-sms-event"
+import { sendStudioNotificationSafely } from "@/features/notifications/sms/send-studio-notification"
 import { getMyProfile } from "@/features/auth/lib/profile-sync"
 import { requireSession } from "@/features/auth/lib/session"
 import { getSupabaseServerClient } from "@/integrations/supabase/server"
@@ -218,7 +218,7 @@ export async function createTrialApplicationAction(
       .maybeSingle<ClassOrganizationRow>()
 
     if (classRow?.organization_id) {
-      await logSmsEventSafely({
+      await sendStudioNotificationSafely({
         organizationId: classRow.organization_id,
         application: {
           id: createdApplication.id,
@@ -235,8 +235,8 @@ export async function createTrialApplicationAction(
           assignedTeacherName: classItem.teacherName
         },
         createdBy: session.user.id,
-        recipientType: "teacher",
-        eventType: "teacher_trial_requested"
+        teacherEventType: "teacher_trial_requested",
+        adminEventType: "admin_trial_requested"
       })
     }
   } catch (error) {
