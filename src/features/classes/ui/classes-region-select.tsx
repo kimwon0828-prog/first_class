@@ -6,8 +6,12 @@ import { useEffect, useRef, useState } from "react"
 
 import { academyAreaOptions, type AcademyArea } from "@/shared/config/academy-areas"
 
+type AcademyAreaFilter = AcademyArea | null
+const ALL_ACADEMY_AREA_VALUE = "all"
+const ALL_ACADEMY_AREA_LABEL = "전체 학원가"
+
 type ClassesRegionSelectProps = {
-  selectedRegion: AcademyArea
+  selectedRegion: AcademyAreaFilter
   label?: string
   hideLabel?: boolean
   className?: string
@@ -32,7 +36,7 @@ type ClassesSearchPillProps = {
 }
 
 type ClassesRegionInlineSelectProps = {
-  selectedRegion: AcademyArea
+  selectedRegion: AcademyAreaFilter
   className?: string
   rowClassName?: string
   nameClassName?: string
@@ -148,7 +152,10 @@ const ChevronDownIcon = ({ className }: { className?: string }) => (
   </svg>
 )
 
-const formatAcademyAreaLabel = (value: AcademyArea) => {
+const formatAcademyAreaLabel = (value: AcademyAreaFilter) => {
+  if (!value) {
+    return ALL_ACADEMY_AREA_LABEL
+  }
   if (value.includes(" ") || !value.endsWith("학원가")) {
     return value
   }
@@ -248,7 +255,7 @@ export function ClassesRegionSelect({
   const pathname = usePathname()
   const searchParams = useSearchParams()
 
-  const handleChange = (nextRegion: AcademyArea) => {
+  const handleChange = (nextRegion: AcademyAreaFilter) => {
     const subject = searchParams.get("subject")
     const q = searchParams.get("q")
     router.push(buildHref(pathname, { region: nextRegion, subject, q }))
@@ -259,11 +266,14 @@ export function ClassesRegionSelect({
       {!hideLabel ? <span style={{ fontSize: 14, color: "#374151" }}>{label}</span> : null}
       <select
         aria-label="학원가 선택"
-        value={selectedRegion}
-        onChange={(event) => handleChange(event.target.value as AcademyArea)}
+        value={selectedRegion ?? ALL_ACADEMY_AREA_VALUE}
+        onChange={(event) =>
+          handleChange(event.target.value === ALL_ACADEMY_AREA_VALUE ? null : (event.target.value as AcademyArea))
+        }
         className={selectClassName}
         style={selectClassName ? undefined : selectStyle}
       >
+        <option value={ALL_ACADEMY_AREA_VALUE}>{ALL_ACADEMY_AREA_LABEL}</option>
         {academyAreaOptions.map((option) => (
           <option key={option} value={option}>
             {option}
@@ -345,7 +355,7 @@ export function ClassesRegionInlineSelect({
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const containerRef = useRef<HTMLDivElement | null>(null)
-  const [currentRegion, setCurrentRegion] = useState<AcademyArea>(selectedRegion)
+  const [currentRegion, setCurrentRegion] = useState<AcademyAreaFilter>(selectedRegion)
   const [isOpen, setIsOpen] = useState(false)
 
   useEffect(() => {
@@ -364,7 +374,7 @@ export function ClassesRegionInlineSelect({
     return () => window.removeEventListener("pointerdown", onPointerDown)
   }, [isOpen])
 
-  const handleChange = (nextRegion: AcademyArea) => {
+  const handleChange = (nextRegion: AcademyAreaFilter) => {
     const subject = searchParams.get("subject")
     const q = searchParams.get("q")
     router.push(buildHref(pathname, { region: nextRegion, subject, q }))
@@ -434,11 +444,11 @@ export function ClassesRegionInlineSelect({
             zIndex: 80
           }}
         >
-          {academyAreaOptions.map((option) => {
+          {[null, ...academyAreaOptions].map((option) => {
             const isActive = option === currentRegion
             return (
               <button
-                key={option}
+                key={option ?? ALL_ACADEMY_AREA_VALUE}
                 type="button"
                 role="menuitemradio"
                 aria-checked={isActive}

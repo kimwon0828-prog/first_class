@@ -26,7 +26,7 @@ const getSupabaseHost = () => {
 }
 
 export const getPublicClasses = async (
-  region: AcademyArea,
+  region: AcademyArea | null,
   options?: { subject?: string; query?: string }
 ): Promise<QueryResult<ClassSummary[]>> => {
   try {
@@ -43,17 +43,27 @@ export const getPublicClasses = async (
     }
 
     const data =
-      publicClassDataSource === "supabase"
-        ? await listPublicClassesWithSafeProjection({
-            region,
-            subject: options?.subject,
-            query: options?.query
-          })
-        : await (await import("@/shared/lib/db")).dataAdapter.listClasses({
-            region,
-            subject: options?.subject,
-            query: options?.query
-          })
+      region === null
+        ? publicClassDataSource === "supabase"
+          ? await listPublicClassesWithSafeProjection({
+              subject: options?.subject,
+              query: options?.query
+            })
+          : await (await import("@/shared/lib/db")).dataAdapter.listClasses({
+              subject: options?.subject,
+              query: options?.query
+            })
+        : publicClassDataSource === "supabase"
+          ? await listPublicClassesWithSafeProjection({
+              region,
+              subject: options?.subject,
+              query: options?.query
+            })
+          : await (await import("@/shared/lib/db")).dataAdapter.listClasses({
+              region,
+              subject: options?.subject,
+              query: options?.query
+            })
     if (shouldDebugDb()) {
       console.info(
         `[getPublicClasses] ${JSON.stringify({ region, returned: data.length })}`

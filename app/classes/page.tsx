@@ -13,7 +13,7 @@ import {
 import { ParentFooter } from "@/features/classes/ui/parent-footer"
 import { getPublicClasses } from "@/features/classes/queries/get-public-classes"
 import { BookmarkButton } from "@/features/favorites/ui/bookmark-button"
-import { normalizeAcademyArea } from "@/shared/config/academy-areas"
+import { isAcademyArea } from "@/shared/config/academy-areas"
 import styles from "./page.module.css"
 import { HeroBannerSlider } from "./hero-banner-slider"
 
@@ -42,11 +42,12 @@ const escapeQueryValue = (value: string) =>
     .replace(/\?/g, "%3F")
     .replace(/ /g, "%20")
 
-const buildClassesHref = (params: { region: string; subject?: string | null; q?: string | null }) => {
-  const parts = [`region=${escapeQueryValue(params.region)}`]
+const buildClassesHref = (params: { region?: string | null; subject?: string | null; q?: string | null }) => {
+  const parts: string[] = []
+  if (params.region) parts.push(`region=${escapeQueryValue(params.region)}`)
   if (params.subject) parts.push(`subject=${escapeQueryValue(params.subject)}`)
   if (params.q) parts.push(`q=${escapeQueryValue(params.q)}`)
-  return `/classes?${parts.join("&")}`
+  return parts.length ? `/classes?${parts.join("&")}` : "/classes"
 }
 
 export default async function ClassesPage({ searchParams }: ClassesPageProps) {
@@ -61,7 +62,7 @@ export default async function ClassesPage({ searchParams }: ClassesPageProps) {
       return rawRegionParam
     }
   })()
-  const selectedRegion = normalizeAcademyArea(decodedRegion)
+  const selectedRegion = decodedRegion && isAcademyArea(decodedRegion) ? decodedRegion : null
   const selectedQuery =
     typeof resolvedSearchParams?.q === "string" && resolvedSearchParams.q.trim().length > 0
       ? resolvedSearchParams.q.trim()
@@ -77,10 +78,10 @@ export default async function ClassesPage({ searchParams }: ClassesPageProps) {
     }
   })()
 
-  if (decodedRegion !== selectedRegion) {
+  if (decodedRegion && !selectedRegion) {
     redirect(
       buildClassesHref({
-        region: selectedRegion,
+        region: null,
         subject: decodedSubject || null,
         q: selectedQuery ?? null
       })
@@ -283,7 +284,9 @@ export default async function ClassesPage({ searchParams }: ClassesPageProps) {
 
           {!error && classes.length === 0 && !selectedQuery && !selectedSubject ? (
             <div className={styles.stateCard}>
-              <p className={styles.stateTitle}>{selectedRegion}에 현재 공개된 수업이 아직 없어요.</p>
+              <p className={styles.stateTitle}>
+                {selectedRegion ? `${selectedRegion}에 현재 공개된 수업이 아직 없어요.` : "현재 공개된 수업이 아직 없어요."}
+              </p>
               <p className={styles.stateDesc}>조금 뒤 다시 확인해 주세요.</p>
             </div>
           ) : null}
@@ -293,7 +296,11 @@ export default async function ClassesPage({ searchParams }: ClassesPageProps) {
               {classes.map((item) => (
                 <li key={item.id} className={styles.slideItem}>
                   <Link
-                    href={`/classes/${item.id}?region=${selectedRegion}`}
+                    href={
+                      selectedRegion
+                        ? `/classes/${item.id}?region=${encodeURIComponent(selectedRegion)}`
+                        : `/classes/${item.id}`
+                    }
                     className={`${styles.card} ${styles.sliderCard}`}
                   >
                     {favoritesEnabled ? (
