@@ -244,6 +244,21 @@
   box-shadow: 0 0 0 3px rgba(42, 173, 56, 0.12);
 }
 
+.teacherCardInactive {
+  opacity: 0.72;
+  background: #fcfcfc;
+}
+
+.teacherCardInactive:hover {
+  border-color: #e5e7eb;
+  box-shadow: 0 6px 18px rgba(17, 17, 17, 0.04);
+}
+
+.teacherCardInactive.teacherCardSelected {
+  border-color: #9ca3af;
+  box-shadow: 0 0 0 3px rgba(156, 163, 175, 0.14);
+}
+
 .teacherTop {
   display: flex;
   justify-content: space-between;
@@ -323,8 +338,8 @@
 }
 
 .statusInactive {
-  background: #f2f2f2;
-  color: #666666;
+  background: #f3f4f6;
+  color: #4b5563;
 }
 
 .attentionChip {

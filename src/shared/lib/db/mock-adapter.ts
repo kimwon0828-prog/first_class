@@ -1,4 +1,5 @@
 import type {
+  ActivateStudioTeacherInput,
   ApplicationLogEntry,
   ApplicationRegistrationStatus,
   ApplicationUnregisteredReason,
@@ -857,6 +858,25 @@ export const mockDataAdapter: DataAdapter = {
     }
 
     target.isActive = false
+  },
+  async activateStudioTeacher(input: ActivateStudioTeacherInput) {
+    if (input.organizationId !== mockOrganizationId) {
+      throw new Error("teacher_not_found_or_forbidden")
+    }
+
+    const target = teacherSummaries.find(
+      (teacher) => teacher.id === input.teacherId && teacher.organizationId === input.organizationId
+    )
+
+    if (!target) {
+      throw new Error("teacher_not_found_or_forbidden")
+    }
+
+    if (target.profileId) {
+      throw new Error("cannot_activate_linked_teacher")
+    }
+
+    target.isActive = true
   },
   async upsertStudioClass(input) {
     if (input.organizationId !== mockOrganizationId) {

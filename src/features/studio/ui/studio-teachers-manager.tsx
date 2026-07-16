@@ -2,6 +2,7 @@
 
 import { useActionState, useMemo, useState, useTransition } from "react"
 
+import { activateStudioTeacherAction } from "@/features/studio/actions/activate-studio-teacher"
 import { deactivateStudioTeacherAction } from "@/features/studio/actions/deactivate-studio-teacher"
 import {
   upsertStudioTeacherAction,
@@ -58,7 +59,7 @@ export const StudioTeachersManager = ({
   const [actionFeedback, setActionFeedback] = useState<string | null>(null)
   const [query, setQuery] = useState("")
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive">("all")
-  const [isDeactivatePending, startDeactivateTransition] = useTransition()
+  const [isStatusActionPending, startStatusActionTransition] = useTransition()
   const selectedTeacher = items.find((item) => item.id === selectedId) ?? null
   const activeTeachers = items.filter((item) => item.isActive)
   const inactiveTeachers = items.filter((item) => !item.isActive)
@@ -128,10 +129,10 @@ export const StudioTeachersManager = ({
         <SummaryCard
           label="등록 선생님"
           value={`${seatSummary.activeTeacherCount} / ${seatSummary.teacherSeatLimit}`}
-          description="최대 3명까지 등록 가능"
+          description="활성 선생님 기준 최대 3명까지 등록 가능"
         />
-        <SummaryCard label="노출 중" value={`${activeTeachers.length}명`} description="학부모 화면에 연결 가능한 프로필" />
-        <SummaryCard label="비노출" value={`${inactiveTeachers.length}명`} description="현재 비활성화된 선생님" />
+        <SummaryCard label="활성" value={`${activeTeachers.length}명`} description="현재 운영 중인 선생님" />
+        <SummaryCard label="비활성" value={`${inactiveTeachers.length}명`} description="목록에 유지되는 비활성 선생님" />
         <SummaryCard
           label="보강 필요"
           value={`${needsProfileCount}명`}
@@ -183,14 +184,14 @@ export const StudioTeachersManager = ({
             onClick={() => setStatusFilter("active")}
             className={`${styles.pill} ${statusFilter === "active" ? styles.pillActive : ""}`}
           >
-            노출 중
+            활성
           </button>
           <button
             type="button"
             onClick={() => setStatusFilter("inactive")}
             className={`${styles.pill} ${statusFilter === "inactive" ? styles.pillActive : ""}`}
           >
-            비노출
+            비활성
           </button>
         </div>
       </section>
@@ -234,7 +235,9 @@ export const StudioTeachersManager = ({
                 return (
                   <article
                     key={item.id}
-                    className={`${styles.teacherCard} ${selectedId === item.id ? styles.teacherCardSelected : ""}`}
+                    className={`${styles.teacherCard} ${selectedId === item.id ? styles.teacherCardSelected : ""} ${
+                      !item.isActive ? styles.teacherCardInactive : ""
+                    }`}
                   >
                     <div className={styles.teacherTop}>
                       <div className={styles.teacherIdentity}>
@@ -260,15 +263,17 @@ export const StudioTeachersManager = ({
                           type="button"
                           onClick={() => {
                             setActionFeedback(null)
-                            startDeactivateTransition(async () => {
-                              const result = await deactivateStudioTeacherAction(item.id)
+                            startStatusActionTransition(async () => {
+                              const result = item.isActive
+                                ? await deactivateStudioTeacherAction(item.id)
+                                : await activateStudioTeacherAction(item.id)
                               setActionFeedback(result.message)
                             })
                           }}
-                          disabled={isDeactivatePending || !item.isActive}
-                          className={styles.dangerButtonSmall}
+                          disabled={isStatusActionPending}
+                          className={item.isActive ? styles.dangerButtonSmall : styles.secondaryButtonSmall}
                         >
-                          {item.isActive ? "비활성화" : "비활성 상태"}
+                          {item.isActive ? "비활성화" : "활성화"}
                         </button>
                       </div>
                     </div>
@@ -391,10 +396,6 @@ const StudioTeacherForm = ({
       <div className={styles.sectionHeader}>
         <div>
           <h2 className={styles.sectionTitle}>{isCreateMode ? "선생님 등록" : "선생님 정보 수정"}</h2>
-          <p className={styles.sectionDescription}>
-            이름과 내부 알림 연락처는 운영용으로 관리하고, 공개 프로필 정보는 학부모 수업 상세에 노출됩니다.
-            선생님 개별 로그인 계정 생성은 이번 MVP 범위에 포함하지 않습니다.
-          </p>
         </div>
         {!isCreateMode ? (
           <button type="button" onClick={onResetCreate} className={styles.secondaryButton}>
@@ -635,7 +636,7 @@ const SummaryCard = ({
 
 const StatusChip = ({ isActive }: { isActive: boolean }) => (
   <span className={`${styles.statusChip} ${isActive ? styles.statusActive : styles.statusInactive}`}>
-    {isActive ? "노출 중" : "비노출"}
+    {isActive ? "활성" : "비활성"}
   </span>
 )
 

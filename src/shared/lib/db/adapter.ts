@@ -191,6 +191,12 @@ export type DeactivateStudioTeacherInput = {
   actorProfileId: string
 }
 
+export type ActivateStudioTeacherInput = {
+  teacherId: string
+  organizationId: string
+  actorProfileId: string
+}
+
 export type StudioClassInput = {
   mode: "create" | "update"
   classId?: string
@@ -478,6 +484,7 @@ export interface DataAdapter {
   createStudioTeacher(input: CreateStudioTeacherInput): Promise<StudioTeacherSummary>
   updateStudioTeacher(input: UpdateStudioTeacherInput): Promise<StudioTeacherSummary>
   deactivateStudioTeacher(input: DeactivateStudioTeacherInput): Promise<void>
+  activateStudioTeacher(input: ActivateStudioTeacherInput): Promise<void>
   upsertStudioClass(input: StudioClassInput): Promise<ClassSummary>
   updateStudioClassActive(
     classId: string,

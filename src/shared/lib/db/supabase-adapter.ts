@@ -4,6 +4,7 @@ import { getPublicEnv } from "@/shared/config/env"
 import type { AcademyArea } from "@/shared/config/academy-areas"
 import { normalizeTeacherPublicVisibility } from "@/shared/lib/teacher-public-visibility"
 import type {
+  ActivateStudioTeacherInput,
   ApplicationLogEntry,
   ApplicationRegistrationStatus,
   ApplicationUnregisteredReason,
@@ -1678,6 +1679,55 @@ export const supabaseDataAdapter: DataAdapter = {
     if (updateError) {
       throw new Error(
         formatSupabaseError("failed_to_deactivate_studio_teacher", updateError, {
+          organizationId: input.organizationId,
+          teacherId: input.teacherId
+        })
+      )
+    }
+  },
+  async activateStudioTeacher(input: ActivateStudioTeacherInput) {
+    const supabase = await getSupabaseServerClient()
+    const { data: targetTeacher, error: targetError } = await supabase
+      .from("teachers")
+      .select("id, profile_id, organization_id, is_active")
+      .eq("id", input.teacherId)
+      .eq("organization_id", input.organizationId)
+      .maybeSingle()
+
+    if (targetError) {
+      throw new Error(
+        formatSupabaseError("failed_to_fetch_studio_teacher_for_activate", targetError, {
+          organizationId: input.organizationId,
+          teacherId: input.teacherId
+        })
+      )
+    }
+
+    if (!targetTeacher) {
+      throw new Error("teacher_not_found_or_forbidden")
+    }
+
+    if (targetTeacher.profile_id) {
+      throw new Error("cannot_activate_linked_teacher")
+    }
+
+    if (targetTeacher.is_active) {
+      return
+    }
+
+    const { error: updateError } = await supabase
+      .from("teachers")
+      .update({
+        is_active: true,
+        updated_at: new Date().toISOString()
+      })
+      .eq("id", input.teacherId)
+      .eq("organization_id", input.organizationId)
+      .is("profile_id", null)
+
+    if (updateError) {
+      throw new Error(
+        formatSupabaseError("failed_to_activate_studio_teacher", updateError, {
           organizationId: input.organizationId,
           teacherId: input.teacherId
         })
