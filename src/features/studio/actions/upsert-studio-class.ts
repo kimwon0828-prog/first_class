@@ -522,6 +522,22 @@ export async function upsertStudioClassAction(
       return safeError("프로그램 저장 권한을 확인할 수 없습니다.", message)
     }
 
+    if (message.includes("protected_class_schedule_delete_blocked")) {
+      console.error("[upsertStudioClass failed]", { message })
+      return safeError(
+        "이미 신청에 사용된 예약시간은 삭제할 수 없습니다. 기존 신청에 영향을 주지 않도록 새 예약시간을 추가해 주세요.",
+        message
+      )
+    }
+
+    if (message.includes("protected_class_schedule_update_blocked")) {
+      console.error("[upsertStudioClass failed]", { message })
+      return safeError(
+        "이미 신청에 사용된 예약시간의 요일/날짜/시간은 수정할 수 없습니다. 새 예약시간을 추가하거나 라벨·정원만 조정해 주세요.",
+        message
+      )
+    }
+
     if (message.includes("studio_class_not_found_or_forbidden")) {
       console.error("[upsertStudioClass failed]", { message })
       return safeError("프로그램 정보를 찾을 수 없거나 수정 권한이 없습니다.", message)

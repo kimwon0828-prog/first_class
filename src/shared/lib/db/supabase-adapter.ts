@@ -195,6 +195,7 @@ type ClassScheduleRow = {
   display_label?: string | null
   sort_order?: number | null
   created_at?: string
+  application_count?: number
 }
 
 type TeacherSignupRequestRow = {
@@ -309,7 +310,9 @@ const mapClassSchedule = (row: ClassScheduleRow): StudioClassScheduleItem => ({
   endTime: row.end_time,
   capacity: row.capacity ?? null,
   displayLabel: row.display_label ?? null,
-  sortOrder: row.sort_order ?? 0
+  sortOrder: row.sort_order ?? 0,
+  applicationCount: row.application_count ?? 0,
+  isReferencedByApplications: (row.application_count ?? 0) > 0
 })
 
 const CLASS_SCHEDULE_SELECT_FIELDS =
@@ -335,10 +338,40 @@ const attachClassSchedulesToRows = async (
     throw new Error("failed_to_fetch_studio_class_schedules")
   }
 
+  const scheduleRows = (data ?? []) as ClassScheduleRow[]
+  const scheduleIds = scheduleRows.map((row) => row.id)
+  const applicationCountByScheduleId = new Map<string, number>()
+
+  if (scheduleIds.length > 0) {
+    const { data: applicationData, error: applicationError } = await supabase
+      .from("trial_applications")
+      .select("class_schedule_id")
+      .in("class_schedule_id", scheduleIds)
+
+    if (applicationError) {
+      throw new Error("failed_to_fetch_studio_class_schedule_usage")
+    }
+
+    for (const row of (applicationData ?? []) as Array<{ class_schedule_id: string | null }>) {
+      if (!row.class_schedule_id) {
+        continue
+      }
+
+      applicationCountByScheduleId.set(
+        row.class_schedule_id,
+        (applicationCountByScheduleId.get(row.class_schedule_id) ?? 0) + 1
+      )
+    }
+  }
+
   const schedulesByClassId = new Map<string, ClassScheduleRow[]>()
-  for (const row of (data ?? []) as ClassScheduleRow[]) {
+  for (const row of scheduleRows) {
+    const scheduleRow = {
+      ...row,
+      application_count: applicationCountByScheduleId.get(row.id) ?? 0
+    }
     const current = schedulesByClassId.get(row.class_id) ?? []
-    current.push(row)
+    current.push(scheduleRow)
     schedulesByClassId.set(row.class_id, current)
   }
 
@@ -1056,6 +1089,25 @@ const toDbClassSchedulePayload = (
 
     return payload
   })
+}
+
+const isProtectedClassScheduleChanged = (
+  existing: Pick<
+    ClassScheduleRow,
+    "schedule_type" | "day_of_week" | "specific_date" | "start_time" | "end_time"
+  >,
+  next: Pick<
+    DbClassSchedulePayload,
+    "schedule_type" | "day_of_week" | "specific_date" | "start_time" | "end_time"
+  >
+) => {
+  return (
+    existing.schedule_type !== next.schedule_type ||
+    (existing.day_of_week ?? null) !== (next.day_of_week ?? null) ||
+    (existing.specific_date ?? null) !== (next.specific_date ?? null) ||
+    existing.start_time !== next.start_time ||
+    existing.end_time !== next.end_time
+  )
 }
 
 const summarizeStudioClassScheduleSlots = (slots: StudioClassInput["scheduleSlots"]) =>
@@ -1886,6 +1938,32 @@ export const supabaseDataAdapter: DataAdapter = {
 
     const existingSchedules = (existingScheduleData ?? []) as ClassScheduleRow[]
     const existingScheduleIdSet = new Set(existingSchedules.map((slot) => slot.id))
+    const existingScheduleIds = existingSchedules.map((slot) => slot.id)
+    const protectedScheduleIdSet = new Set<string>()
+
+    if (existingScheduleIds.length > 0) {
+      const { data: protectedScheduleData, error: protectedScheduleError } = await supabase
+        .from("trial_applications")
+        .select("class_schedule_id")
+        .in("class_schedule_id", existingScheduleIds)
+
+      if (protectedScheduleError) {
+        throw new Error(
+          formatSupabaseError("class_schedule_usage_fetch_failed", protectedScheduleError, {
+            mode: input.mode,
+            classId: savedClassRow.id,
+            organizationId: input.organizationId
+          })
+        )
+      }
+
+      for (const row of (protectedScheduleData ?? []) as Array<{ class_schedule_id: string | null }>) {
+        if (row.class_schedule_id) {
+          protectedScheduleIdSet.add(row.class_schedule_id)
+        }
+      }
+    }
+
     const normalizedSchedulePayload: Array<DbClassSchedulePayload | DbClassScheduleInsertPayload> =
       toDbClassSchedulePayload(savedClassRow.id, input.scheduleSlots).map((slot) => {
         if (slot.id && existingScheduleIdSet.has(slot.id)) {
@@ -1906,6 +1984,39 @@ export const supabaseDataAdapter: DataAdapter = {
     const removedScheduleIds = existingSchedules
       .map((slot) => slot.id)
       .filter((scheduleId) => !keptScheduleIdSet.has(scheduleId))
+
+    const removedProtectedScheduleIds = removedScheduleIds.filter((scheduleId) =>
+      protectedScheduleIdSet.has(scheduleId)
+    )
+
+    if (removedProtectedScheduleIds.length > 0) {
+      throw new Error(
+        `protected_class_schedule_delete_blocked | payload=${JSON.stringify({
+          classId: savedClassRow.id,
+          protectedScheduleIds: removedProtectedScheduleIds
+        })}`
+      )
+    }
+
+    for (const slot of persistedSchedulePayload) {
+      if (!protectedScheduleIdSet.has(slot.id)) {
+        continue
+      }
+
+      const existingSchedule = existingSchedules.find((item) => item.id === slot.id)
+      if (!existingSchedule) {
+        continue
+      }
+
+      if (isProtectedClassScheduleChanged(existingSchedule, slot)) {
+        throw new Error(
+          `protected_class_schedule_update_blocked | payload=${JSON.stringify({
+            classId: savedClassRow.id,
+            protectedScheduleId: slot.id
+          })}`
+        )
+      }
+    }
 
     if (persistedSchedulePayload.length > 0) {
       const { error: updateScheduleError } = await supabase

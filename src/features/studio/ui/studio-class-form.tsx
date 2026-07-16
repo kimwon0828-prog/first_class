@@ -55,6 +55,8 @@ type ScheduleSlotDraft = {
   endTime: string
   capacity: string
   displayLabel: string
+  applicationCount: number
+  isReferencedByApplications: boolean
 }
 
 const fallbackTimeText = "시간 미입력"
@@ -79,7 +81,9 @@ const createEmptyScheduleSlotDraft = (
   startTime: "",
   endTime: "",
   capacity: "",
-  displayLabel: ""
+  displayLabel: "",
+  applicationCount: 0,
+  isReferencedByApplications: false
 })
 
 const createScheduleSlotDraftFromItem = (schedule: StudioClassScheduleItem): ScheduleSlotDraft => ({
@@ -91,7 +95,9 @@ const createScheduleSlotDraftFromItem = (schedule: StudioClassScheduleItem): Sch
   startTime: schedule.startTime.slice(0, 5),
   endTime: schedule.endTime.slice(0, 5),
   capacity: schedule.capacity != null ? String(schedule.capacity) : "",
-  displayLabel: schedule.displayLabel ?? ""
+  displayLabel: schedule.displayLabel ?? "",
+  applicationCount: schedule.applicationCount ?? 0,
+  isReferencedByApplications: Boolean(schedule.isReferencedByApplications)
 })
 
 const formatSpecificDateLabel = (value: string) => {
@@ -151,6 +157,93 @@ const formatScheduleDraftSummary = (slot: ScheduleSlotDraft) => {
   const capacityText = slot.capacity ? `정원 ${slot.capacity}` : "정원 미입력"
 
   return `${typeText} · ${dateOrDayText} · ${timeText} · ${capacityText}`
+}
+
+type SchedulePreviewOccurrence = {
+  id: string
+  dateKey: string
+  dateLabel: string
+  timeLabel: string
+  capacityLabel: string
+  displayLabel: string | null
+}
+
+const isValidTimeValue = (value: string) => /^([01]\d|2[0-3]):[0-5]\d$/.test(value)
+
+const formatPreviewDateLabel = (date: Date) => {
+  return new Intl.DateTimeFormat("ko-KR", {
+    month: "long",
+    day: "numeric",
+    weekday: "long"
+  }).format(date)
+}
+
+const buildPreviewOccurrence = (dateText: string, slot: ScheduleSlotDraft, index: number) => {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dateText)) {
+    return null
+  }
+
+  if (!isValidTimeValue(slot.startTime) || !isValidTimeValue(slot.endTime) || slot.endTime <= slot.startTime) {
+    return null
+  }
+
+  const startDate = new Date(`${dateText}T${slot.startTime}:00`)
+  const endDate = new Date(`${dateText}T${slot.endTime}:00`)
+  if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime()) || endDate <= startDate) {
+    return null
+  }
+
+  if (startDate <= new Date()) {
+    return null
+  }
+
+  return {
+    id: `${slot.localId}-${dateText}-${index}`,
+    dateKey: dateText,
+    dateLabel: formatPreviewDateLabel(startDate),
+    timeLabel: `${slot.startTime} ~ ${slot.endTime}`,
+    capacityLabel: `정원 ${Math.max(1, Number(slot.capacity || 1))}명`,
+    displayLabel: slot.displayLabel.trim() || null,
+    startAt: startDate.getTime()
+  }
+}
+
+const generateSchedulePreviewOccurrences = (slot: ScheduleSlotDraft) => {
+  if (!slot.startTime || !slot.endTime) {
+    return []
+  }
+
+  if (slot.scheduleType === "one_time") {
+    const preview = buildPreviewOccurrence(slot.specificDate, slot, 0)
+    return preview ? [preview] : []
+  }
+
+  const dayOfWeek = Number(slot.dayOfWeek)
+  if (Number.isNaN(dayOfWeek) || dayOfWeek < 0 || dayOfWeek > 6) {
+    return []
+  }
+
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const previews: Array<SchedulePreviewOccurrence & { startAt: number }> = []
+
+  for (let dayOffset = 0; dayOffset < 28 && previews.length < 4; dayOffset += 1) {
+    const candidate = new Date(today)
+    candidate.setDate(today.getDate() + dayOffset)
+    if (candidate.getDay() !== dayOfWeek) {
+      continue
+    }
+
+    const dateText = `${candidate.getFullYear()}-${String(candidate.getMonth() + 1).padStart(2, "0")}-${String(
+      candidate.getDate()
+    ).padStart(2, "0")}`
+    const preview = buildPreviewOccurrence(dateText, slot, dayOffset)
+    if (preview) {
+      previews.push(preview)
+    }
+  }
+
+  return previews
 }
 
 export const StudioClassForm = ({
@@ -277,6 +370,38 @@ export const StudioClassForm = ({
       initialItem?.teacherIntro
     ]
   )
+  const protectedScheduleCount = useMemo(
+    () => scheduleSlots.filter((slot) => slot.isReferencedByApplications).length,
+    [scheduleSlots]
+  )
+  const previewGroups = useMemo(() => {
+    const grouped = new Map<
+      string,
+      {
+        dateLabel: string
+        items: SchedulePreviewOccurrence[]
+      }
+    >()
+
+    const previewItems = scheduleSlots
+      .flatMap((slot) => generateSchedulePreviewOccurrences(slot))
+      .sort((left, right) => left.startAt - right.startAt)
+
+    for (const item of previewItems) {
+      const current = grouped.get(item.dateKey) ?? {
+        dateLabel: item.dateLabel,
+        items: []
+      }
+      current.items.push(item)
+      grouped.set(item.dateKey, current)
+    }
+
+    return Array.from(grouped.entries()).map(([dateKey, value]) => ({
+      dateKey,
+      dateLabel: value.dateLabel,
+      items: value.items
+    }))
+  }, [scheduleSlots])
 
   useEffect(() => {
     const snapshotKey = initialFormSnapshot.id || "__create__"
@@ -340,8 +465,25 @@ export const StudioClassForm = ({
     key: keyof Omit<ScheduleSlotDraft, "localId" | "persistedId">,
     value: string
   ) => {
+    const protectedKeys: Array<keyof Omit<ScheduleSlotDraft, "localId" | "persistedId">> = [
+      "scheduleType",
+      "dayOfWeek",
+      "specificDate",
+      "startTime",
+      "endTime"
+    ]
     setScheduleSlots((current) =>
-      current.map((slot) => (slot.localId === slotId ? { ...slot, [key]: value } : slot))
+      current.map((slot) => {
+        if (slot.localId !== slotId) {
+          return slot
+        }
+
+        if (slot.isReferencedByApplications && protectedKeys.includes(key)) {
+          return slot
+        }
+
+        return { ...slot, [key]: value }
+      })
     )
   }
 
@@ -353,6 +495,10 @@ export const StudioClassForm = ({
     setScheduleSlots((current) =>
       current.map((slot) => {
         if (slot.localId !== slotId) {
+          return slot
+        }
+
+        if (slot.isReferencedByApplications) {
           return slot
         }
 
@@ -378,7 +524,9 @@ export const StudioClassForm = ({
         {
           ...source,
           localId: createEmptyScheduleSlotDraft(source.scheduleType).localId,
-          persistedId: ""
+          persistedId: "",
+          applicationCount: 0,
+          isReferencedByApplications: false
         }
       ]
     })
@@ -809,47 +957,6 @@ export const StudioClassForm = ({
         </label>
 
         <label style={fieldStyle}>
-          <span>담당 선생님</span>
-          {safeTeacherOptions.length > 0 ? (
-            <select
-              name="teacherId"
-              defaultValue={selectedTeacherId}
-              disabled={isPending}
-              style={inputStyle}
-            >
-              {mergedTeacherOptions.map((option) => (
-                <option key={option.teacherId} value={option.teacherId}>
-                  {resolveTeacherLabel(option)}
-                  {fallbackTeacherOption?.teacherId === option.teacherId
-                    ? " (현재 비활성 선생님)"
-                    : ""}
-                </option>
-              ))}
-            </select>
-          ) : (
-            <div
-              aria-live="polite"
-              style={{
-                ...inputStyle,
-                color: "#6b7280",
-                backgroundColor: "#f9fafb"
-              }}
-            >
-              등록된 선생님이 없습니다.
-            </div>
-          )}
-          <span style={helperTextStyle}>
-            {teacherOptionsError
-              ? teacherOptionsError
-              : isTeacherSelectionLockedToInactive
-                ? "현재 연결된 선생님이 비활성 상태라 표시만 유지합니다. 다른 선생님으로 바꾸려면 active 목록에서 다시 선택해 주세요."
-              : hasNoActiveTeacherOption
-                ? "현재 organization에 등록된 선생님이 없어 저장할 수 없습니다."
-                : "현재 organization에 등록된 선생님만 선택할 수 있습니다."}
-          </span>
-        </label>
-
-        <label style={fieldStyle}>
           <span>대표 이미지</span>
           <input
             type="file"
@@ -889,17 +996,88 @@ export const StudioClassForm = ({
         ) : null}
 
         <section style={slotSectionStyle}>
-          <div style={{ display: "grid", gap: 4 }}>
-            <strong style={{ color: "#111827", fontSize: 15 }}>예약 가능 시간</strong>
-            <p style={{ ...helperTextStyle, margin: 0 }}>
-              매주 반복 또는 일회성 시간을 등록할 수 있습니다. 예약 시간이 없어도 수업 저장은 가능합니다.
-            </p>
+          <div style={slotSectionHeaderStyle}>
+            <div style={{ display: "grid", gap: 6 }}>
+              <strong style={{ color: "#111827", fontSize: 17 }}>
+                {selectedProgramType === "level_test" ? "레벨테스트 예약시간 설정" : "체험수업 예약시간 설정"}
+              </strong>
+              <p style={{ ...helperTextStyle, margin: 0 }}>
+                학부모가 신청할 수 있는 체험수업 가능 시간을 설정해 주세요.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => addScheduleSlot("weekly")}
+              disabled={isPending}
+              style={buttonStyle}
+            >
+              + 예약시간 추가
+            </button>
+          </div>
+
+          <section style={teacherAssignmentCardStyle}>
+            <div style={{ display: "grid", gap: 4 }}>
+              <strong style={{ color: "#111827", fontSize: 14 }}>수업 담당 선생님</strong>
+              <p style={{ ...helperTextStyle, margin: 0 }}>
+                이번 1차에서는 수업 단위로 담당 선생님을 연결하고, 등록한 예약시간 전체에 동일하게 적용합니다.
+              </p>
+            </div>
+
+            {safeTeacherOptions.length > 0 ? (
+              <select
+                name="teacherId"
+                defaultValue={selectedTeacherId}
+                disabled={isPending}
+                style={inputStyle}
+              >
+                {mergedTeacherOptions.map((option) => (
+                  <option key={option.teacherId} value={option.teacherId}>
+                    {resolveTeacherLabel(option)}
+                    {fallbackTeacherOption?.teacherId === option.teacherId ? " (현재 비활성 선생님)" : ""}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <div
+                aria-live="polite"
+                style={{
+                  ...inputStyle,
+                  color: "#6b7280",
+                  backgroundColor: "#f9fafb"
+                }}
+              >
+                등록된 선생님이 없습니다.
+              </div>
+            )}
+            <span style={helperTextStyle}>
+              {teacherOptionsError
+                ? teacherOptionsError
+                : isTeacherSelectionLockedToInactive
+                  ? "현재 연결된 선생님이 비활성 상태라 표시만 유지합니다. 다른 선생님으로 바꾸려면 active 목록에서 다시 선택해 주세요."
+                  : hasNoActiveTeacherOption
+                    ? "현재 organization에 등록된 선생님이 없어 저장할 수 없습니다."
+                    : "현재 organization에 등록된 선생님만 선택할 수 있습니다."}
+            </span>
+          </section>
+
+          <div style={{ display: "grid", gap: 10 }}>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+              <span style={sectionBadgeStyle}>예약 방식</span>
+              <span style={sectionBadgeMutedStyle}>매주 반복</span>
+              <span style={sectionBadgeMutedStyle}>특정 날짜 1회</span>
+            </div>
+            {protectedScheduleCount > 0 ? (
+              <p style={{ ...warningTextStyle, margin: 0 }}>
+                이미 신청에 사용된 예약시간 {protectedScheduleCount}개는 요일/날짜/시간 변경과 삭제가 잠겨 있습니다.
+              </p>
+            ) : null}
           </div>
 
           {scheduleSlots.length > 0 ? (
             <div style={{ display: "grid", gap: 12 }}>
               {scheduleSlots.map((slot, index) => {
                 const isWeekly = slot.scheduleType === "weekly"
+                const isProtected = slot.isReferencedByApplications
 
                 return (
                   <div key={slot.localId} style={slotRowStyle}>
@@ -907,15 +1085,23 @@ export const StudioClassForm = ({
                     <input type="hidden" name="slotScheduleType" value={slot.scheduleType} />
 
                     <div style={slotHeaderStyle}>
-                      <div style={{ display: "grid", gap: 4 }}>
-                        <strong style={{ fontSize: 14, color: "#111827" }}>
-                          {getScheduleCardTitle(slot, index)}
-                        </strong>
+                      <div style={{ display: "grid", gap: 6 }}>
+                        <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                          <strong style={{ fontSize: 14, color: "#111827" }}>
+                            {getScheduleCardTitle(slot, index)}
+                          </strong>
+                          <span style={isWeekly ? previewTypeBadgeStyle : oneTimeBadgeStyle}>
+                            {isWeekly ? "매주 반복" : "특정 날짜 1회"}
+                          </span>
+                          {isProtected ? (
+                            <span style={protectedBadgeStyle}>신청 사용 중 {slot.applicationCount}건</span>
+                          ) : null}
+                        </div>
                         <p style={{ margin: 0, color: "#8a8a8a", fontSize: 12, lineHeight: "16px" }}>
                           {formatScheduleDraftSummary(slot)}
                         </p>
                       </div>
-                      <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                      <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
                         <button
                           type="button"
                           onClick={() => duplicateScheduleSlot(slot.localId)}
@@ -926,11 +1112,20 @@ export const StudioClassForm = ({
                         </button>
                         <button
                           type="button"
-                          onClick={() => removeScheduleSlot(slot.localId)}
+                          onClick={() => {
+                            if (isProtected) {
+                              window.alert(
+                                "이미 신청된 예약시간일 수 있습니다. 삭제하면 기존 신청 확정에 영향을 줄 수 있어요."
+                              )
+                              return
+                            }
+
+                            removeScheduleSlot(slot.localId)
+                          }}
                           disabled={isPending}
                           style={tertiaryButtonStyle}
                         >
-                          제거
+                          {isProtected ? "삭제 불가" : "제거"}
                         </button>
                       </div>
                     </div>
@@ -939,12 +1134,13 @@ export const StudioClassForm = ({
                       <button
                         type="button"
                         onClick={() => changeScheduleSlotType(slot.localId, "weekly")}
-                        disabled={isPending}
+                        disabled={isPending || isProtected}
                         style={{
                           ...chipButtonStyle,
                           borderColor: isWeekly ? "#2aad38" : "#d9d9d9",
                           background: isWeekly ? "#2aad38" : "#fff",
-                          color: isWeekly ? "#fff" : "#111111"
+                          color: isWeekly ? "#fff" : "#111111",
+                          opacity: isProtected ? 0.65 : 1
                         }}
                       >
                         매주 반복
@@ -952,15 +1148,16 @@ export const StudioClassForm = ({
                       <button
                         type="button"
                         onClick={() => changeScheduleSlotType(slot.localId, "one_time")}
-                        disabled={isPending}
+                        disabled={isPending || isProtected}
                         style={{
                           ...chipButtonStyle,
                           borderColor: !isWeekly ? "#2aad38" : "#d9d9d9",
                           background: !isWeekly ? "#2aad38" : "#fff",
-                          color: !isWeekly ? "#fff" : "#111111"
+                          color: !isWeekly ? "#fff" : "#111111",
+                          opacity: isProtected ? 0.65 : 1
                         }}
                       >
-                        일회성
+                        특정 날짜 1회
                       </button>
                     </div>
 
@@ -975,7 +1172,7 @@ export const StudioClassForm = ({
                               onChange={(event) =>
                                 handleScheduleSlotChange(slot.localId, "dayOfWeek", event.target.value)
                               }
-                              disabled={isPending}
+                              disabled={isPending || isProtected}
                               style={inputStyle}
                             >
                               <option value="">요일 선택</option>
@@ -1000,7 +1197,7 @@ export const StudioClassForm = ({
                               onChange={(event) =>
                                 handleScheduleSlotChange(slot.localId, "specificDate", event.target.value)
                               }
-                              disabled={isPending}
+                              disabled={isPending || isProtected}
                               style={inputStyle}
                             />
                           </label>
@@ -1016,7 +1213,7 @@ export const StudioClassForm = ({
                           onChange={(event) =>
                             handleScheduleSlotChange(slot.localId, "startTime", event.target.value)
                           }
-                          disabled={isPending}
+                          disabled={isPending || isProtected}
                           style={inputStyle}
                         />
                       </label>
@@ -1030,7 +1227,7 @@ export const StudioClassForm = ({
                           onChange={(event) =>
                             handleScheduleSlotChange(slot.localId, "endTime", event.target.value)
                           }
-                          disabled={isPending}
+                          disabled={isPending || isProtected}
                           style={inputStyle}
                         />
                       </label>
@@ -1051,11 +1248,8 @@ export const StudioClassForm = ({
                           style={inputStyle}
                         />
                       </label>
-                    </div>
 
-                    <details style={advancedDetailsStyle}>
-                      <summary style={advancedSummaryStyle}>고급 설정: 라벨 직접 입력</summary>
-                      <div style={{ ...fieldStyle, marginTop: 10 }}>
+                      <label style={fieldStyle}>
                         <span>노출 라벨</span>
                         <input
                           name="slotDisplayLabel"
@@ -1067,36 +1261,60 @@ export const StudioClassForm = ({
                           placeholder={getDefaultScheduleLabel(slot) || "자동 생성 라벨이 저장됩니다."}
                           style={inputStyle}
                         />
-                        <span style={helperTextStyle}>
-                          비워두면 `{getDefaultScheduleLabel(slot) || fallbackTimeText}` 형태로 자동 저장됩니다.
-                        </span>
-                      </div>
-                    </details>
+                      </label>
+                    </div>
+
+                    <p style={{ ...helperTextStyle, margin: 0 }}>
+                      {isProtected
+                        ? "이미 신청에 사용된 예약시간입니다. 삭제하거나 요일/날짜/시간을 바꾸면 기존 신청 확정에 영향을 줄 수 있어요."
+                        : "비워두면 노출 라벨은 자동 생성되고, 저장 후 학부모 신청 화면과 동일한 기준으로 노출됩니다."}
+                    </p>
                   </div>
                 )
               })}
             </div>
           ) : (
-            <p style={{ ...helperTextStyle, margin: 0 }}>
-              아직 등록된 예약 가능 시간이 없습니다. 필요할 때만 추가해도 됩니다.
-            </p>
+            <div style={slotEmptyStateStyle}>
+              <strong style={{ fontSize: 14, color: "#111827" }}>아직 등록된 예약시간이 없습니다.</strong>
+              <p style={{ ...helperTextStyle, margin: 0 }}>
+                예약 가능 시간을 1개 이상 등록해야 학부모가 신청할 수 있어요.
+              </p>
+            </div>
           )}
 
-          <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
-            <p style={{ ...helperTextStyle, margin: 0 }}>
-              수정 화면에서는 기존에 저장된 `class_schedules`를 다시 불러와 편집합니다.
-            </p>
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-              <button
-                type="button"
-                onClick={() => addScheduleSlot("weekly")}
-                disabled={isPending}
-                style={buttonStyle}
-              >
-                + 예약 시간 추가
-              </button>
+          <section style={previewCardStyle}>
+            <div style={{ display: "grid", gap: 4 }}>
+              <strong style={{ color: "#111827", fontSize: 15 }}>학부모 화면 4주 미리보기</strong>
+              <p style={{ ...helperTextStyle, margin: 0 }}>
+                현재 입력한 예약시간 기준으로 앞으로 4주 동안 학부모에게 보일 시간을 미리 계산해 보여줍니다.
+              </p>
             </div>
-          </div>
+
+            {previewGroups.length > 0 ? (
+              <div style={{ display: "grid", gap: 12 }}>
+                {previewGroups.map((group) => (
+                  <div key={group.dateKey} style={previewGroupStyle}>
+                    <strong style={{ color: "#111827", fontSize: 14 }}>{group.dateLabel}</strong>
+                    <div style={{ display: "grid", gap: 8 }}>
+                      {group.items.map((item) => (
+                        <div key={item.id} style={previewItemStyle}>
+                          <span style={{ color: "#111827", fontSize: 14 }}>{item.timeLabel}</span>
+                          <span style={helperTextStyle}>{item.capacityLabel}</span>
+                          {item.displayLabel ? (
+                            <span style={{ ...helperTextStyle, color: "#4b5563" }}>{item.displayLabel}</span>
+                          ) : null}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p style={{ ...helperTextStyle, margin: 0 }}>
+                현재 입력한 예약시간으로 생성되는 4주 미리보기 일정이 없습니다.
+              </p>
+            )}
+          </section>
         </section>
 
         <label style={{ ...fieldStyle, gridTemplateColumns: "20px 1fr", alignItems: "center" }}>
@@ -1271,21 +1489,6 @@ const tertiaryButtonStyle = {
   cursor: "pointer"
 }
 
-const advancedDetailsStyle = {
-  padding: "10px 12px",
-  borderRadius: 12,
-  border: "1px dashed #d9d9d9",
-  background: "#fcfcfc"
-}
-
-const advancedSummaryStyle = {
-  cursor: "pointer",
-  color: "#4b5563",
-  fontSize: 13,
-  lineHeight: "18px",
-  fontWeight: 700
-}
-
 const slotSectionStyle = {
   display: "grid",
   gap: 12,
@@ -1293,6 +1496,53 @@ const slotSectionStyle = {
   border: "1px solid #eeeeee",
   borderRadius: 16,
   background: "#fafafa"
+}
+
+const slotSectionHeaderStyle = {
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "flex-start",
+  gap: 12,
+  flexWrap: "wrap" as const
+}
+
+const teacherAssignmentCardStyle = {
+  display: "grid",
+  gap: 10,
+  padding: 14,
+  borderRadius: 14,
+  border: "1px solid #e5e7eb",
+  background: "#ffffff"
+}
+
+const sectionBadgeStyle = {
+  display: "inline-flex",
+  alignItems: "center",
+  borderRadius: 999,
+  padding: "6px 10px",
+  background: "#111827",
+  color: "#ffffff",
+  fontSize: 12,
+  lineHeight: "16px",
+  fontWeight: 700
+}
+
+const sectionBadgeMutedStyle = {
+  display: "inline-flex",
+  alignItems: "center",
+  borderRadius: 999,
+  padding: "6px 10px",
+  background: "#ecfdf3",
+  color: "#166534",
+  fontSize: 12,
+  lineHeight: "16px",
+  fontWeight: 700
+}
+
+const warningTextStyle = {
+  color: "#b54708",
+  fontSize: 13,
+  lineHeight: "18px"
 }
 
 const slotHeaderStyle = {
@@ -1312,10 +1562,72 @@ const slotRowStyle = {
   background: "#fff"
 }
 
+const previewTypeBadgeStyle = {
+  display: "inline-flex",
+  alignItems: "center",
+  borderRadius: 999,
+  padding: "4px 8px",
+  background: "#ecfdf3",
+  color: "#15803d",
+  fontSize: 11,
+  lineHeight: "14px",
+  fontWeight: 700
+}
+
+const oneTimeBadgeStyle = {
+  ...previewTypeBadgeStyle,
+  background: "#eff6ff",
+  color: "#1d4ed8"
+}
+
+const protectedBadgeStyle = {
+  display: "inline-flex",
+  alignItems: "center",
+  borderRadius: 999,
+  padding: "4px 8px",
+  background: "#fff7ed",
+  color: "#c2410c",
+  fontSize: 11,
+  lineHeight: "14px",
+  fontWeight: 700
+}
+
 const slotGridStyle = {
   display: "grid",
   gap: 10,
   gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))"
+}
+
+const slotEmptyStateStyle = {
+  display: "grid",
+  gap: 6,
+  padding: 16,
+  borderRadius: 14,
+  border: "1px dashed #d1d5db",
+  background: "#ffffff"
+}
+
+const previewCardStyle = {
+  display: "grid",
+  gap: 12,
+  padding: 14,
+  borderRadius: 14,
+  border: "1px solid #e5e7eb",
+  background: "#ffffff"
+}
+
+const previewGroupStyle = {
+  display: "grid",
+  gap: 8
+}
+
+const previewItemStyle = {
+  display: "grid",
+  gap: 2,
+  padding: "10px 12px",
+  borderRadius: 12,
+  background: "#f9fafb",
+  border: "1px solid #f3f4f6"
 }
 
 const previewWrapperStyle = {

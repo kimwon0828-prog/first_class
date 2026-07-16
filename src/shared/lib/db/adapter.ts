@@ -52,6 +52,8 @@ export type StudioClassScheduleItem = {
   capacity: number | null
   displayLabel: string | null
   sortOrder: number
+  applicationCount?: number
+  isReferencedByApplications?: boolean
 }
 
 export type ClassSummary = {
