@@ -358,6 +358,10 @@
   grid-column: 1 / -1;
 }
 
+.metaItemWide {
+  grid-column: 1 / -1;
+}
+
 .metaLabel {
   margin: 0 0 6px;
   font-size: 12px;
@@ -372,6 +376,32 @@
   line-height: 20px;
   color: #111111;
   font-weight: 800;
+}
+
+.visibilityChipList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.visibilityChip {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 6px 10px;
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 800;
+}
+
+.visibilityChipVisible {
+  background: #eaf8ec;
+  color: #2aad38;
+}
+
+.visibilityChipHidden {
+  background: #f3f4f6;
+  color: #666666;
 }
 
 .intro {
@@ -485,6 +515,14 @@
   gap: 8px;
 }
 
+.fieldHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
 .checkboxField {
   display: flex;
   gap: 12px;
@@ -532,6 +570,83 @@
   font-size: 12px;
   line-height: 18px;
   color: #8a8a8a;
+}
+
+.visibilityToggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 40px;
+  min-width: 156px;
+  padding: 6px 8px 6px 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 999px;
+  background: #f9fafb;
+  color: #4a4a4a;
+  cursor: pointer;
+  transition: border-color 160ms ease, background-color 160ms ease, color 160ms ease;
+}
+
+.visibilityToggle:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.visibilityToggleActive {
+  border-color: #cfeecf;
+  background: #f3fbf4;
+  color: #2aad38;
+}
+
+.visibilityToggleText {
+  display: grid;
+  gap: 1px;
+  text-align: left;
+}
+
+.visibilityToggleLabel {
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 700;
+  color: #666666;
+}
+
+.visibilityToggleValue {
+  font-size: 13px;
+  line-height: 17px;
+  font-weight: 900;
+  color: #111111;
+}
+
+.visibilitySwitch {
+  width: 42px;
+  height: 24px;
+  border-radius: 999px;
+  background: #d1d5db;
+  padding: 2px;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  transition: background-color 160ms ease;
+  flex: 0 0 auto;
+}
+
+.visibilitySwitchActive {
+  background: #2aad38;
+}
+
+.visibilitySwitchThumb {
+  width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  background: #ffffff;
+  box-shadow: 0 1px 3px rgba(17, 17, 17, 0.16);
+  transition: transform 160ms ease;
+}
+
+.visibilitySwitchActive .visibilitySwitchThumb {
+  transform: translateX(18px);
 }
 
 .input {

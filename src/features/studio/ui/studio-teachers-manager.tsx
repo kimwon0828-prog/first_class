@@ -8,6 +8,11 @@ import {
   type UpsertStudioTeacherActionState
 } from "@/features/studio/actions/upsert-studio-teacher"
 import type { StudioTeacherSeatSummary, StudioTeacherSummary } from "@/shared/lib/db/adapter"
+import {
+  DEFAULT_TEACHER_PUBLIC_VISIBILITY,
+  type TeacherPublicVisibility,
+  type TeacherPublicVisibilityKey
+} from "@/shared/lib/teacher-public-visibility"
 import styles from "./studio-teachers-manager.module.css"
 
 type StudioTeachersManagerProps = {
@@ -30,8 +35,20 @@ const formatCreatedAt = (value: string) =>
 const getInitials = (value: string) => value.trim().slice(0, 2) || "선생"
 const formatPhone = (value: string | null) => (value?.trim() ? value : "미입력")
 const toSingleLine = (value: string | null) => value?.trim() || null
+const PUBLIC_VISIBILITY_FIELDS: Array<{ key: TeacherPublicVisibilityKey; label: string }> = [
+  { key: "name", label: "이름" },
+  { key: "intro", label: "상세 소개" },
+  { key: "subjects", label: "담당 과목" },
+  { key: "targetStudents", label: "담당 대상" },
+  { key: "specialties", label: "전문 영역" },
+  { key: "shortIntro", label: "한 줄 소개" },
+  { key: "teachingStyle", label: "수업 스타일" }
+]
+
 const getTeacherCardSummary = (item: StudioTeacherSummary) =>
   [toSingleLine(item.subjects), toSingleLine(item.targetStudents)].filter(Boolean).join(" · ") || "공개 프로필 준비 중"
+
+const getVisibilityStatusLabel = (isVisible: boolean) => (isVisible ? "노출" : "미노출")
 
 export const StudioTeachersManager = ({
   items,
@@ -307,6 +324,21 @@ export const StudioTeachersManager = ({
                           {needsAttention ? "소개 보강 필요" : "프로필 작성 완료"}
                         </p>
                       </div>
+                      <div className={`${styles.metaItem} ${styles.metaItemWide}`}>
+                        <p className={styles.metaLabel}>학부모 공개 상태</p>
+                        <div className={styles.visibilityChipList}>
+                          {PUBLIC_VISIBILITY_FIELDS.map((field) => (
+                            <span
+                              key={`${item.id}-${field.key}`}
+                              className={`${styles.visibilityChip} ${
+                                item.publicVisibility[field.key] ? styles.visibilityChipVisible : styles.visibilityChipHidden
+                              }`}
+                            >
+                              {field.label} {getVisibilityStatusLabel(item.publicVisibility[field.key])}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
                     </div>
 
                     {item.shortIntro ? <p className={styles.intro}>{item.shortIntro}</p> : item.intro ? <p className={styles.intro}>{item.intro}</p> : null}
@@ -341,9 +373,18 @@ const StudioTeacherForm = ({
   const [state, formAction, isPending] = useActionState(action, initialState)
   const [phone, setPhone] = useState(initialItem?.phone ?? "")
   const [smsEnabled, setSmsEnabled] = useState(initialItem?.smsEnabled ?? false)
+  const [publicVisibility, setPublicVisibility] = useState<TeacherPublicVisibility>(
+    initialItem?.publicVisibility ?? DEFAULT_TEACHER_PUBLIC_VISIBILITY
+  )
   const isCreateMode = !initialItem
   const isCreateDisabled = isCreateMode && seatSummary.activeTeacherCount >= seatSummary.teacherSeatLimit
   const hasPhone = phone.trim().length > 0
+  const toggleVisibility = (key: TeacherPublicVisibilityKey) => {
+    setPublicVisibility((current) => ({
+      ...current,
+      [key]: !current[key]
+    }))
+  }
 
   return (
     <section id="studio-teacher-form" className={styles.formCard}>
@@ -365,9 +406,24 @@ const StudioTeacherForm = ({
       <form action={formAction} className={styles.form}>
         <input type="hidden" name="mode" value={isCreateMode ? "create" : "update"} />
         {!isCreateMode ? <input type="hidden" name="teacherId" value={initialItem.id} /> : null}
+        {PUBLIC_VISIBILITY_FIELDS.map((field) => (
+          <input
+            key={`visibility-input-${field.key}`}
+            type="hidden"
+            name={`publicVisibility_${field.key}`}
+            value={String(publicVisibility[field.key])}
+          />
+        ))}
 
         <label className={styles.field}>
-          <span className={styles.label}>선생님 이름</span>
+          <div className={styles.fieldHeader}>
+            <span className={styles.label}>선생님 이름</span>
+            <VisibilityToggle
+              checked={publicVisibility.name}
+              onToggle={() => toggleVisibility("name")}
+              disabled={isPending}
+            />
+          </div>
           <input
             name="displayName"
             defaultValue={initialItem?.displayName ?? ""}
@@ -427,7 +483,14 @@ const StudioTeacherForm = ({
           </div>
 
           <label className={styles.field}>
-            <span className={styles.label}>담당 과목</span>
+            <div className={styles.fieldHeader}>
+              <span className={styles.label}>담당 과목</span>
+              <VisibilityToggle
+                checked={publicVisibility.subjects}
+                onToggle={() => toggleVisibility("subjects")}
+                disabled={isPending}
+              />
+            </div>
             <input
               name="subjects"
               defaultValue={initialItem?.subjects ?? ""}
@@ -438,7 +501,14 @@ const StudioTeacherForm = ({
           </label>
 
           <label className={styles.field}>
-            <span className={styles.label}>담당 대상</span>
+            <div className={styles.fieldHeader}>
+              <span className={styles.label}>담당 대상</span>
+              <VisibilityToggle
+                checked={publicVisibility.targetStudents}
+                onToggle={() => toggleVisibility("targetStudents")}
+                disabled={isPending}
+              />
+            </div>
             <input
               name="targetStudents"
               defaultValue={initialItem?.targetStudents ?? ""}
@@ -449,7 +519,14 @@ const StudioTeacherForm = ({
           </label>
 
           <label className={styles.field}>
-            <span className={styles.label}>전문 영역</span>
+            <div className={styles.fieldHeader}>
+              <span className={styles.label}>전문 영역</span>
+              <VisibilityToggle
+                checked={publicVisibility.specialties}
+                onToggle={() => toggleVisibility("specialties")}
+                disabled={isPending}
+              />
+            </div>
             <input
               name="specialties"
               defaultValue={initialItem?.specialties ?? ""}
@@ -460,7 +537,14 @@ const StudioTeacherForm = ({
           </label>
 
           <label className={styles.field}>
-            <span className={styles.label}>한 줄 소개</span>
+            <div className={styles.fieldHeader}>
+              <span className={styles.label}>한 줄 소개</span>
+              <VisibilityToggle
+                checked={publicVisibility.shortIntro}
+                onToggle={() => toggleVisibility("shortIntro")}
+                disabled={isPending}
+              />
+            </div>
             <textarea
               name="shortIntro"
               defaultValue={initialItem?.shortIntro ?? ""}
@@ -472,7 +556,14 @@ const StudioTeacherForm = ({
           </label>
 
           <label className={styles.field}>
-            <span className={styles.label}>수업 스타일</span>
+            <div className={styles.fieldHeader}>
+              <span className={styles.label}>수업 스타일</span>
+              <VisibilityToggle
+                checked={publicVisibility.teachingStyle}
+                onToggle={() => toggleVisibility("teachingStyle")}
+                disabled={isPending}
+              />
+            </div>
             <textarea
               name="teachingStyle"
               defaultValue={initialItem?.teachingStyle ?? ""}
@@ -481,6 +572,26 @@ const StudioTeacherForm = ({
               rows={4}
               placeholder="예: 개념 설명 후 문제풀이와 오답 정리를 함께 진행합니다."
             />
+          </label>
+
+          <label className={styles.field}>
+            <div className={styles.fieldHeader}>
+              <span className={styles.label}>상세 소개</span>
+              <VisibilityToggle
+                checked={publicVisibility.intro}
+                onToggle={() => toggleVisibility("intro")}
+                disabled={isPending}
+              />
+            </div>
+            <textarea
+              name="intro"
+              defaultValue={initialItem?.intro ?? ""}
+              disabled={isPending}
+              className={styles.textarea}
+              rows={5}
+              placeholder="예: 학생 성향을 먼저 파악한 뒤, 이해한 내용을 스스로 설명할 수 있게 돕는 수업을 진행합니다."
+            />
+            <span className={styles.fieldHint}>기존 한 줄 소개보다 조금 더 자세한 선생님 소개를 적어주세요.</span>
           </label>
         </section>
 
@@ -526,4 +637,30 @@ const StatusChip = ({ isActive }: { isActive: boolean }) => (
   <span className={`${styles.statusChip} ${isActive ? styles.statusActive : styles.statusInactive}`}>
     {isActive ? "노출 중" : "비노출"}
   </span>
+)
+
+const VisibilityToggle = ({
+  checked,
+  onToggle,
+  disabled
+}: {
+  checked: boolean
+  onToggle: () => void
+  disabled: boolean
+}) => (
+  <button
+    type="button"
+    onClick={onToggle}
+    disabled={disabled}
+    className={`${styles.visibilityToggle} ${checked ? styles.visibilityToggleActive : ""}`}
+    aria-pressed={checked}
+  >
+    <span className={styles.visibilityToggleText}>
+      <span className={styles.visibilityToggleLabel}>학부모 페이지</span>
+      <span className={styles.visibilityToggleValue}>{checked ? "노출" : "비노출"}</span>
+    </span>
+    <span className={`${styles.visibilitySwitch} ${checked ? styles.visibilitySwitchActive : ""}`} aria-hidden="true">
+      <span className={styles.visibilitySwitchThumb} />
+    </span>
+  </button>
 )

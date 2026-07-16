@@ -4,6 +4,10 @@ import { revalidatePath } from "next/cache"
 
 import { requireTeacherStudioAccess } from "@/features/studio/lib/require-teacher-studio-access"
 import { dataAdapter } from "@/shared/lib/db"
+import {
+  TEACHER_PUBLIC_VISIBILITY_KEYS,
+  normalizeTeacherPublicVisibility
+} from "@/shared/lib/teacher-public-visibility"
 
 export type UpsertStudioTeacherActionState = {
   ok: boolean
@@ -42,6 +46,16 @@ const normalizeOptionalText = (value: FormDataEntryValue | null) => {
   return raw ? raw : null
 }
 
+const normalizePublicVisibilityFromFormData = (formData: FormData) => {
+  const candidate: Record<string, unknown> = {}
+
+  for (const key of TEACHER_PUBLIC_VISIBILITY_KEYS) {
+    candidate[key] = String(formData.get(`publicVisibility_${key}`) ?? "true") === "true"
+  }
+
+  return normalizeTeacherPublicVisibility(candidate)
+}
+
 export async function upsertStudioTeacherAction(
   previousState: UpsertStudioTeacherActionState = defaultState,
   formData: FormData
@@ -55,11 +69,13 @@ export async function upsertStudioTeacherAction(
     const displayName = String(formData.get("displayName") ?? "").trim()
     const phone = normalizeOptionalPhone(formData.get("phone"))
     const smsEnabled = formData.get("smsEnabled") === "on"
+    const intro = normalizeOptionalText(formData.get("intro"))
     const subjects = normalizeOptionalText(formData.get("subjects"))
     const targetStudents = normalizeOptionalText(formData.get("targetStudents"))
     const specialties = normalizeOptionalText(formData.get("specialties"))
     const shortIntro = normalizeOptionalText(formData.get("shortIntro"))
     const teachingStyle = normalizeOptionalText(formData.get("teachingStyle"))
+    const publicVisibility = normalizePublicVisibilityFromFormData(formData)
 
     if (!mode) {
       return { ok: false, message: "요청 모드를 확인할 수 없습니다." }
@@ -83,11 +99,13 @@ export async function upsertStudioTeacherAction(
         displayName,
         phone,
         smsEnabled,
+        intro,
         subjects,
         targetStudents,
         specialties,
         shortIntro,
-        teachingStyle
+        teachingStyle,
+        publicVisibility
       })
     } else {
       await dataAdapter.updateStudioTeacher({
@@ -96,11 +114,13 @@ export async function upsertStudioTeacherAction(
         displayName,
         phone,
         smsEnabled,
+        intro,
         subjects,
         targetStudents,
         specialties,
         shortIntro,
-        teachingStyle
+        teachingStyle,
+        publicVisibility
       })
     }
 

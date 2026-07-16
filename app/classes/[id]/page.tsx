@@ -70,7 +70,7 @@ export default async function ClassDetailPage({ params, searchParams }: ClassDet
     teacherProfile?.teacherName?.trim() ||
     classItem?.teacherDisplayName?.trim() ||
     classItem?.teacherName?.trim() ||
-    "정보 준비 중"
+    null
   const teacherSummaryLine = getTeacherSummaryLine(teacherProfile?.subjects, teacherProfile?.targetStudents)
   const teacherIntroText = classItem?.teacherIntro?.trim() || null
   const teacherSpecialties = teacherProfile?.specialties?.trim() || null
@@ -78,6 +78,15 @@ export default async function ClassDetailPage({ params, searchParams }: ClassDet
   const teacherShortIntro = teacherProfile?.shortIntro?.trim() || null
   const academyTeacherLabel = [organizationLabel || null, teacherName || null].filter(Boolean).join(" / ")
   const targetGradeLabel = formatStoredTargetGrades(classItem?.targetAge)
+  const hasTeacherProfileContent = Boolean(
+    teacherName ||
+      teacherSummaryLine ||
+      teacherSpecialties ||
+      teacherTeachingStyle ||
+      teacherShortIntro ||
+      teacherIntroText ||
+      teacherProfile?.intro?.trim()
+  )
 
   return (
     <main
@@ -295,11 +304,11 @@ export default async function ClassDetailPage({ params, searchParams }: ClassDet
                 </div>
               </section>
 
-              <section className={styles.section}>
-                <h2 className={styles.sectionTitle}>선생님 소개</h2>
-                {teacherProfile || teacherIntroText ? (
+              {hasTeacherProfileContent ? (
+                <section className={styles.section}>
+                  <h2 className={styles.sectionTitle}>선생님 소개</h2>
                   <div className={styles.teacherProfileStack}>
-                    <p className={styles.teacherProfileName}>{teacherName}</p>
+                    {teacherName ? <p className={styles.teacherProfileName}>{teacherName}</p> : null}
                     {teacherSummaryLine ? <p className={styles.teacherProfileSummary}>{teacherSummaryLine}</p> : null}
                     {teacherSpecialties ? (
                       <p className={styles.bodyText}>전문 영역: {teacherSpecialties}</p>
@@ -316,10 +325,8 @@ export default async function ClassDetailPage({ params, searchParams }: ClassDet
                       <p className={styles.bodyText}>{teacherProfile.intro}</p>
                     ) : null}
                   </div>
-                ) : (
-                  <p className={styles.bodyText}>선생님 소개가 준비 중입니다.</p>
-                )}
-              </section>
+                </section>
+              ) : null}
 
               {hasLocation ? (
                 <section className={styles.section}>

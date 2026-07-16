@@ -2,6 +2,7 @@ import { getSupabaseServiceRoleClient } from "@/integrations/supabase/service-ro
 import { getSupabaseServerClient } from "@/integrations/supabase/server"
 import { getPublicEnv } from "@/shared/config/env"
 import type { AcademyArea } from "@/shared/config/academy-areas"
+import { normalizeTeacherPublicVisibility } from "@/shared/lib/teacher-public-visibility"
 import type {
   ApplicationLogEntry,
   ApplicationRegistrationStatus,
@@ -61,7 +62,7 @@ type ClassRow = {
 
 type TeacherPublicProfileRow = {
   teacher_id: string
-  teacher_name: string
+  teacher_name: string | null
   intro: string | null
   specialty: string | null
   career_years: number
@@ -226,6 +227,7 @@ type TeacherRow = {
   specialties: string | null
   short_intro: string | null
   teaching_style: string | null
+  public_visibility?: unknown
   is_active: boolean
   created_at: string
 }
@@ -268,9 +270,11 @@ const mapTeacherProfile = (
 
 const mapClass = (
   row: ClassRow,
-  teacherName: string | null
+  teacherName: string | null,
+  options?: { allowClassTeacherFallback?: boolean }
 ): ClassSummary => {
-  const resolvedTeacherName = teacherName ?? row.teacher_display_name ?? null
+  const resolvedTeacherName =
+    teacherName ?? (options?.allowClassTeacherFallback === false ? null : row.teacher_display_name ?? null)
 
   return {
     id: row.id,
@@ -598,6 +602,7 @@ const mapStudioTeacher = (
   specialties: row.specialties?.trim() ? row.specialties.trim() : null,
   shortIntro: row.short_intro?.trim() ? row.short_intro.trim() : null,
   teachingStyle: row.teaching_style?.trim() ? row.teaching_style.trim() : null,
+  publicVisibility: normalizeTeacherPublicVisibility(row.public_visibility),
   isActive: row.is_active,
   createdAt: row.created_at
 })
@@ -789,7 +794,7 @@ const buildRequestedOccurrenceEndAt = (
 }
 
 const TEACHER_SELECT_FIELDS =
-  "id, profile_id, organization_id, display_name, phone, sms_enabled, specialty, intro, career_years, subjects, target_students, specialties, short_intro, teaching_style, is_active, created_at"
+  "id, profile_id, organization_id, display_name, phone, sms_enabled, specialty, intro, career_years, subjects, target_students, specialties, short_intro, teaching_style, public_visibility, is_active, created_at"
 
 const getProfileNameMap = async (profileIds: string[]) => {
   if (profileIds.length === 0) {
@@ -843,18 +848,7 @@ const getStudioTeacherDisplayNameMap = async (teacherIds: string[]) => {
   )
 }
 
-const getTeacherNamesByIds = async (teacherIds: string[]) => {
-  let teacherMap = new Map<string, TeacherPublicProfile>()
-  try {
-    teacherMap = await getTeacherProfilesMap(teacherIds)
-  } catch {
-    teacherMap = new Map<string, TeacherPublicProfile>()
-  }
-
-  return new Map<string, string>(
-    teacherIds.map((teacherId) => [teacherId, teacherMap.get(teacherId)?.teacherName ?? "이름 미정"])
-  )
-}
+const getTeacherNamesByIds = async (teacherIds: string[]) => getStudioTeacherDisplayNameMap(teacherIds)
 
 const getAppliedCountByTeacherScheduleBlockId = async (
   teacherId: string,
@@ -1286,7 +1280,7 @@ export const supabaseDataAdapter: DataAdapter = {
           : null
 
         return {
-          mapped: mapClass(row, teacherName),
+          mapped: mapClass(row, teacherName, { allowClassTeacherFallback: false }),
           haystacks: [
             row.title,
             row.description,
@@ -1348,7 +1342,9 @@ export const supabaseDataAdapter: DataAdapter = {
       }
 
       const detail: ClassDetail = {
-        ...mapClass(classRow, teacherProfile?.teacherName ?? null),
+        ...mapClass(classRow, teacherProfile?.teacherName ?? null, {
+          allowClassTeacherFallback: false
+        }),
         teacherProfile,
         organization: mapOrganizationLocation(getEmbeddedOrganization(classRow))
       }
@@ -1376,7 +1372,9 @@ export const supabaseDataAdapter: DataAdapter = {
     }
 
     const detail: ClassDetail = {
-      ...mapClass(classRow, teacherProfile?.teacherName ?? null),
+      ...mapClass(classRow, teacherProfile?.teacherName ?? null, {
+        allowClassTeacherFallback: false
+      }),
       teacherProfile,
       organization: mapOrganizationLocation(getEmbeddedOrganization(classRow))
     }
@@ -1419,21 +1417,21 @@ export const supabaseDataAdapter: DataAdapter = {
       const teacherIds = Array.from(
         new Set(classRowsWithSchedules.map((row) => row.teacher_id).filter((id): id is string => Boolean(id)))
       )
-      let teacherMap = new Map<string, TeacherPublicProfile>()
+      let teacherNameMap = new Map<string, string>()
       try {
-        teacherMap = await getTeacherProfilesMap(teacherIds)
+        teacherNameMap = await getStudioTeacherDisplayNameMap(teacherIds)
       } catch {
-        teacherMap = new Map<string, TeacherPublicProfile>()
+        teacherNameMap = new Map<string, string>()
       }
       if (debugEnabled) {
-        console.info("[listStudioClasses] teacher profiles (fallback)", {
+        console.info("[listStudioClasses] teacher names (fallback)", {
           teacherIds: teacherIds.length,
-          teacherProfiles: teacherMap.size
+          teacherNames: teacherNameMap.size
         })
       }
 
       const mapped = classRowsWithSchedules.map((row) =>
-        mapClass(row, row.teacher_id ? (teacherMap.get(row.teacher_id)?.teacherName ?? null) : null)
+        mapClass(row, row.teacher_id ? (teacherNameMap.get(row.teacher_id) ?? null) : null)
       )
       if (debugEnabled) {
         console.info("[listStudioClasses] done (fallback)", { returned: mapped.length })
@@ -1460,21 +1458,21 @@ export const supabaseDataAdapter: DataAdapter = {
     const teacherIds = Array.from(
       new Set(classRows.map((row) => row.teacher_id).filter((id): id is string => Boolean(id)))
     )
-    let teacherMap = new Map<string, TeacherPublicProfile>()
+    let teacherNameMap = new Map<string, string>()
     try {
-      teacherMap = await getTeacherProfilesMap(teacherIds)
+      teacherNameMap = await getStudioTeacherDisplayNameMap(teacherIds)
     } catch {
-      teacherMap = new Map<string, TeacherPublicProfile>()
+      teacherNameMap = new Map<string, string>()
     }
     if (debugEnabled) {
-      console.info("[listStudioClasses] teacher profiles", {
+      console.info("[listStudioClasses] teacher names", {
         teacherIds: teacherIds.length,
-        teacherProfiles: teacherMap.size
+        teacherNames: teacherNameMap.size
       })
     }
 
     const mapped = classRows.map((row) =>
-      mapClass(row, row.teacher_id ? (teacherMap.get(row.teacher_id)?.teacherName ?? null) : null)
+      mapClass(row, row.teacher_id ? (teacherNameMap.get(row.teacher_id) ?? null) : null)
     )
     if (debugEnabled) {
       console.info("[listStudioClasses] done", { returned: mapped.length })
@@ -1571,13 +1569,14 @@ export const supabaseDataAdapter: DataAdapter = {
         phone: input.phone,
         sms_enabled: input.smsEnabled,
         specialty: null,
-        intro: null,
+        intro: input.intro,
         career_years: 0,
         subjects: input.subjects,
         target_students: input.targetStudents,
         specialties: input.specialties,
         short_intro: input.shortIntro,
         teaching_style: input.teachingStyle,
+        public_visibility: input.publicVisibility,
         is_active: true
       })
       .select(TEACHER_SELECT_FIELDS)
@@ -1601,11 +1600,13 @@ export const supabaseDataAdapter: DataAdapter = {
         display_name: input.displayName,
         phone: input.phone,
         sms_enabled: input.smsEnabled,
+        intro: input.intro,
         subjects: input.subjects,
         target_students: input.targetStudents,
         specialties: input.specialties,
         short_intro: input.shortIntro,
         teaching_style: input.teachingStyle,
+        public_visibility: input.publicVisibility,
         updated_at: new Date().toISOString()
       })
       .eq("id", input.teacherId)

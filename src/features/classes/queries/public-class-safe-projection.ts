@@ -39,9 +39,8 @@ type SafeOrganizationRow = {
 }
 
 type SafeTeacherRow = {
-  id: string
-  profile_id: string | null
-  display_name: string | null
+  teacher_id: string
+  teacher_name: string | null
   intro: string | null
   specialty: string | null
   career_years: number | null
@@ -50,13 +49,6 @@ type SafeTeacherRow = {
   specialties: string | null
   short_intro: string | null
   teaching_style: string | null
-  is_active: boolean
-}
-
-type SafeProfileRow = {
-  id: string
-  name: string | null
-  role: string | null
 }
 
 type ListPublicClassesOptions = {
@@ -111,59 +103,24 @@ const toTeacherProfileMap = async (teacherIds: string[]) => {
 
   const serviceRoleClient = getSupabaseServiceRoleClient()
   const { data: teacherData, error: teacherError } = await serviceRoleClient
-    .from("teachers")
+    .from("teacher_public_profiles")
     .select(
-      "id, profile_id, display_name, intro, specialty, career_years, subjects, target_students, specialties, short_intro, teaching_style, is_active"
+      "teacher_id, teacher_name, intro, specialty, career_years, subjects, target_students, specialties, short_intro, teaching_style"
     )
-    .in("id", uniqueTeacherIds)
-    .eq("is_active", true)
+    .in("teacher_id", uniqueTeacherIds)
 
   if (teacherError) {
     throw new Error("failed_to_fetch_public_teacher_projection")
   }
 
   const teacherRows = (teacherData ?? []) as SafeTeacherRow[]
-  const profileIds = teacherRows
-    .map((row) => row.profile_id)
-    .filter((profileId): profileId is string => Boolean(profileId))
-
-  let profileById = new Map<string, SafeProfileRow>()
-  if (profileIds.length > 0) {
-    const { data: profileData, error: profileError } = await serviceRoleClient
-      .from("profiles")
-      .select("id, name, role")
-      .in("id", Array.from(new Set(profileIds)))
-
-    if (profileError) {
-      throw new Error("failed_to_fetch_public_teacher_profile_names")
-    }
-
-    profileById = new Map(
-      ((profileData ?? []) as SafeProfileRow[]).map((row) => [row.id, row])
-    )
-  }
-
-  const safeRows = teacherRows.filter((row) => {
-    if (!row.profile_id) {
-      return true
-    }
-
-    return profileById.get(row.profile_id)?.role === "teacher"
-  })
-
   return new Map<string, TeacherPublicProfile>(
-    safeRows.map((row) => {
-      const profile = row.profile_id ? profileById.get(row.profile_id) : null
-      const teacherName =
-        row.display_name?.trim() ||
-        profile?.name?.trim() ||
-        "이름 미등록 선생님"
-
+    teacherRows.map((row) => {
       return [
-        row.id,
+        row.teacher_id,
         {
-          teacherId: row.id,
-          teacherName,
+          teacherId: row.teacher_id,
+          teacherName: row.teacher_name?.trim() || null,
           intro: row.intro ?? null,
           specialty: row.specialty ?? null,
           careerYears: row.career_years ?? 0,

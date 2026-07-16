@@ -30,6 +30,10 @@ import type {
   UpdateStudioApplicationOutcomeInput,
   UpdateStudioApplicationStatusInput
 } from "@/shared/lib/db/adapter"
+import {
+  DEFAULT_TEACHER_PUBLIC_VISIBILITY,
+  normalizeTeacherPublicVisibility
+} from "@/shared/lib/teacher-public-visibility"
 
 type MockScheduleBlock = StudioScheduleBlockSummary & {
   classId: string | null
@@ -91,6 +95,7 @@ const teacherSummaries: StudioTeacherSummary[] = [
     specialties: "드로잉, 색채 표현, 창의 미술",
     shortIntro: "아이 눈높이에 맞춘 체험형 수업으로 표현 자신감을 키웁니다.",
     teachingStyle: "작은 성공 경험을 쌓고 스스로 설명하게 돕는 참여형 수업",
+    publicVisibility: { ...DEFAULT_TEACHER_PUBLIC_VISIBILITY },
     isActive: true,
     createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 30).toISOString()
   },
@@ -109,10 +114,24 @@ const teacherSummaries: StudioTeacherSummary[] = [
     specialties: "탐구 실험, 개념 연결, 토론 수업",
     shortIntro: "실험과 토론으로 과학 개념을 생활 속 경험과 연결합니다.",
     teachingStyle: "관찰, 토론, 오답 피드백을 함께 진행하는 탐구형 수업",
+    publicVisibility: { ...DEFAULT_TEACHER_PUBLIC_VISIBILITY },
     isActive: true,
     createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 20).toISOString()
   }
 ]
+
+const toPublicTeacherProfile = (teacher: StudioTeacherSummary): TeacherPublicProfile => ({
+  teacherId: teacher.id,
+  teacherName: teacher.publicVisibility.name ? teacher.displayName : null,
+  intro: teacher.publicVisibility.intro ? teacher.intro : null,
+  specialty: teacher.specialty,
+  careerYears: teacher.careerYears,
+  subjects: teacher.publicVisibility.subjects ? teacher.subjects : null,
+  targetStudents: teacher.publicVisibility.targetStudents ? teacher.targetStudents : null,
+  specialties: teacher.publicVisibility.specialties ? teacher.specialties : null,
+  shortIntro: teacher.publicVisibility.shortIntro ? teacher.shortIntro : null,
+  teachingStyle: teacher.publicVisibility.teachingStyle ? teacher.teachingStyle : null
+})
 
 type GlobalMockStore = typeof globalThis & {
   __firstClassMockClasses__?: ClassSummary[]
@@ -587,6 +606,14 @@ const getTeacherDisplayNameById = (teacherId: string | null | undefined) => {
   return teacher?.displayName ?? null
 }
 
+const getTeacherSummaryById = (teacherId: string | null | undefined) => {
+  if (!teacherId) {
+    return null
+  }
+
+  return teacherSummaries.find((item) => item.id === teacherId) ?? null
+}
+
 export const mockDataAdapter: DataAdapter = {
   async listClasses(options) {
     const debugEnabled = process.env.NEXT_PUBLIC_DEBUG_DB === "1"
@@ -609,7 +636,8 @@ export const mockDataAdapter: DataAdapter = {
     const needle = normalizeText(searchTerm)
     const shouldFilterByQuery = Boolean(needle)
 
-    const mapped = classes.filter((item) => {
+    const mapped = classes
+      .filter((item) => {
       if (!item.isActive) {
         return false
       }
@@ -623,12 +651,15 @@ export const mockDataAdapter: DataAdapter = {
       }
 
       if (shouldFilterByQuery) {
+        const teacherSummary = getTeacherSummaryById(item.teacherId)
+        const publicTeacherName = teacherSummary
+          ? toPublicTeacherProfile(teacherSummary).teacherName
+          : item.teacherDisplayName ?? item.teacherName ?? null
         const haystacks = [
           item.title,
           item.description,
           item.subject,
-          item.teacherDisplayName ?? null,
-          item.teacherName ?? null
+          publicTeacherName
         ].map(normalizeText)
 
         if (!haystacks.some((value) => value.includes(needle))) {
@@ -636,8 +667,20 @@ export const mockDataAdapter: DataAdapter = {
         }
       }
 
-      return true
-    })
+        return true
+      })
+      .map((item) => {
+        const teacherSummary = getTeacherSummaryById(item.teacherId)
+        const publicTeacherName = teacherSummary
+          ? toPublicTeacherProfile(teacherSummary).teacherName
+          : item.teacherDisplayName ?? item.teacherName ?? null
+
+        return {
+          ...cloneClassSummary(item),
+          teacherDisplayName: publicTeacherName,
+          teacherName: publicTeacherName
+        }
+      })
 
     if (debugEnabled) {
       console.info(`[listClasses] ${JSON.stringify({ classesRows: mapped.length })}`)
@@ -655,11 +698,15 @@ export const mockDataAdapter: DataAdapter = {
       return null
     }
 
-    const teacherProfile =
-      teacherProfiles.find((profile) => profile.teacherId === found.teacherId) ?? null
+    const teacherSummary = getTeacherSummaryById(found.teacherId)
+    const teacherProfile = teacherSummary ? toPublicTeacherProfile(teacherSummary) : null
+    const publicTeacherName =
+      teacherProfile?.teacherName ?? (found.teacherId ? null : found.teacherDisplayName ?? found.teacherName ?? null)
 
     const detail: ClassDetail = {
       ...found,
+      teacherDisplayName: publicTeacherName,
+      teacherName: publicTeacherName,
       teacherProfile,
       organization: mockOrganizationLocation
     }
@@ -734,30 +781,20 @@ export const mockDataAdapter: DataAdapter = {
       phone: input.phone,
       smsEnabled: input.smsEnabled,
       specialty: null,
-      intro: null,
+      intro: input.intro,
       careerYears: 0,
       subjects: input.subjects,
       targetStudents: input.targetStudents,
       specialties: input.specialties,
       shortIntro: input.shortIntro,
       teachingStyle: input.teachingStyle,
+      publicVisibility: normalizeTeacherPublicVisibility(input.publicVisibility),
       isActive: true,
       createdAt: new Date().toISOString()
     }
 
     teacherSummaries.unshift(created)
-    teacherProfiles.push({
-      teacherId: created.id,
-      teacherName: created.displayName,
-      intro: created.intro,
-      specialty: created.specialty,
-      careerYears: created.careerYears,
-      subjects: created.subjects,
-      targetStudents: created.targetStudents,
-      specialties: created.specialties,
-      shortIntro: created.shortIntro,
-      teachingStyle: created.teachingStyle
-    })
+    teacherProfiles.push(toPublicTeacherProfile(created))
 
     return created
   },
@@ -781,11 +818,13 @@ export const mockDataAdapter: DataAdapter = {
     target.displayName = input.displayName
     target.phone = input.phone
     target.smsEnabled = input.smsEnabled
+    target.intro = input.intro
     target.subjects = input.subjects
     target.targetStudents = input.targetStudents
     target.specialties = input.specialties
     target.shortIntro = input.shortIntro
     target.teachingStyle = input.teachingStyle
+    target.publicVisibility = normalizeTeacherPublicVisibility(input.publicVisibility)
 
     const classItems = classes.filter((item) => item.teacherId === target.id)
     for (const classItem of classItems) {
@@ -795,12 +834,7 @@ export const mockDataAdapter: DataAdapter = {
 
     const teacherProfile = teacherProfiles.find((profile) => profile.teacherId === target.id)
     if (teacherProfile) {
-      teacherProfile.teacherName = input.displayName
-      teacherProfile.subjects = input.subjects
-      teacherProfile.targetStudents = input.targetStudents
-      teacherProfile.specialties = input.specialties
-      teacherProfile.shortIntro = input.shortIntro
-      teacherProfile.teachingStyle = input.teachingStyle
+      Object.assign(teacherProfile, toPublicTeacherProfile(target))
     }
 
     return target

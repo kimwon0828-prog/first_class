@@ -1,4 +1,5 @@
 import type { AcademyArea } from "@/shared/config/academy-areas"
+import type { TeacherPublicVisibility } from "@/shared/lib/teacher-public-visibility"
 
 export type UserRole = "parent" | "teacher"
 
@@ -28,7 +29,7 @@ export type ApplicationUnregisteredReason =
 
 export type TeacherPublicProfile = {
   teacherId: string
-  teacherName: string
+  teacherName: string | null
   intro: string | null
   specialty: string | null
   careerYears: number
@@ -143,6 +144,7 @@ export type StudioTeacherSummary = {
   specialties: string | null
   shortIntro: string | null
   teachingStyle: string | null
+  publicVisibility: TeacherPublicVisibility
   isActive: boolean
   createdAt: string
 }
@@ -159,11 +161,13 @@ export type CreateStudioTeacherInput = {
   displayName: string
   phone: string | null
   smsEnabled: boolean
+  intro: string | null
   subjects: string | null
   targetStudents: string | null
   specialties: string | null
   shortIntro: string | null
   teachingStyle: string | null
+  publicVisibility: TeacherPublicVisibility
 }
 
 export type UpdateStudioTeacherInput = {
@@ -172,11 +176,13 @@ export type UpdateStudioTeacherInput = {
   displayName: string
   phone: string | null
   smsEnabled: boolean
+  intro: string | null
   subjects: string | null
   targetStudents: string | null
   specialties: string | null
   shortIntro: string | null
   teachingStyle: string | null
+  publicVisibility: TeacherPublicVisibility
 }
 
 export type DeactivateStudioTeacherInput = {
