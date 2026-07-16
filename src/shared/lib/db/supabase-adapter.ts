@@ -658,6 +658,7 @@ const WEEKDAY_LABELS = [
 ] as const
 
 const WEEKLY_OCCURRENCE_COUNT = 4
+const TRIAL_BOOKING_CUTOFF_MS = 24 * 60 * 60 * 1000
 
 const formatTimeText = (value: string) => {
   const trimmed = value.trim()
@@ -697,6 +698,18 @@ const buildOccurrenceRange = (dateText: string, startTime: string, endTime: stri
     startAt: startDate.toISOString(),
     endAt: endDate.toISOString()
   }
+}
+
+const getTrialBookingCutoffDate = (baseDate: Date = new Date()) =>
+  new Date(baseDate.getTime() + TRIAL_BOOKING_CUTOFF_MS)
+
+const isTrialBookingBookable = (startAt: string, baseDate: Date = new Date()) => {
+  const startDate = new Date(startAt)
+  if (Number.isNaN(startDate.getTime())) {
+    return false
+  }
+
+  return startDate.getTime() > getTrialBookingCutoffDate(baseDate).getTime()
 }
 
 const formatClassScheduleDefaultLabel = (row: ClassScheduleRow, startAt: string, endAt: string) => {
@@ -2279,6 +2292,8 @@ export const supabaseDataAdapter: DataAdapter = {
   },
   async listAvailableScheduleSlotsByClassId(classId) {
     const supabase = await getSupabaseServerClient()
+    const now = new Date()
+    const bookingCutoffIso = getTrialBookingCutoffDate(now).toISOString()
     const { data: classData, error: classError } = await supabase
       .from("classes")
       .select("teacher_id")
@@ -2294,7 +2309,6 @@ export const supabaseDataAdapter: DataAdapter = {
       return []
     }
 
-    const nowIso = new Date().toISOString()
     const { data: classScheduleData, error: classScheduleError } = await supabase
       .from("class_schedules")
       .select(CLASS_SCHEDULE_SELECT_FIELDS)
@@ -2313,7 +2327,7 @@ export const supabaseDataAdapter: DataAdapter = {
         .from("schedule_blocks")
         .select(SCHEDULE_BLOCK_SELECT_FIELDS)
         .eq("class_id", classId)
-        .gt("end_at", nowIso)
+        .gt("end_at", bookingCutoffIso)
         .order("start_at", { ascending: true })
 
       if (existingBlockError) {
@@ -2335,26 +2349,28 @@ export const supabaseDataAdapter: DataAdapter = {
 
       return classScheduleRows
         .flatMap((row) => {
-          return generateUpcomingClassScheduleOccurrences(row).map((occurrence) => {
-            const key = `${occurrence.startAt}|${occurrence.endAt}`
-            const matchedBlock = blockByRange.get(key) ?? null
-            const isAvailableBlock = matchedBlock?.type === "available"
-            const capacity = matchedBlock?.capacity ?? Math.max(1, row.capacity ?? 1)
-            const appliedCount =
-              matchedBlock && isAvailableBlock ? (appliedCountBySlotId.get(matchedBlock.id) ?? 0) : 0
+          return generateUpcomingClassScheduleOccurrences(row, now)
+            .filter((occurrence) => isTrialBookingBookable(occurrence.startAt, now))
+            .map((occurrence) => {
+              const key = `${occurrence.startAt}|${occurrence.endAt}`
+              const matchedBlock = blockByRange.get(key) ?? null
+              const isAvailableBlock = matchedBlock?.type === "available"
+              const capacity = matchedBlock?.capacity ?? Math.max(1, row.capacity ?? 1)
+              const appliedCount =
+                matchedBlock && isAvailableBlock ? (appliedCountBySlotId.get(matchedBlock.id) ?? 0) : 0
 
-            return mapClassScheduleOccurrenceSlot({
-              row,
-              teacherId: classData.teacher_id,
-              startAt: occurrence.startAt,
-              endAt: occurrence.endAt,
-              label: occurrence.label,
-              capacity,
-              appliedCount,
-              scheduleBlockId: isAvailableBlock ? matchedBlock?.id ?? null : null,
-              isClosed: matchedBlock != null && !isAvailableBlock ? true : undefined
+              return mapClassScheduleOccurrenceSlot({
+                row,
+                teacherId: classData.teacher_id,
+                startAt: occurrence.startAt,
+                endAt: occurrence.endAt,
+                label: occurrence.label,
+                capacity,
+                appliedCount,
+                scheduleBlockId: isAvailableBlock ? matchedBlock?.id ?? null : null,
+                isClosed: matchedBlock != null && !isAvailableBlock ? true : undefined
+              })
             })
-          })
         })
         .sort((a, b) => a.startAt.localeCompare(b.startAt))
     }
@@ -2364,7 +2380,7 @@ export const supabaseDataAdapter: DataAdapter = {
       .select("id, teacher_id, class_id, start_at, end_at, capacity")
       .eq("class_id", classId)
       .eq("type", "available")
-      .gt("start_at", nowIso)
+      .gt("start_at", bookingCutoffIso)
       .order("start_at", { ascending: true })
 
     if (primaryError) {
@@ -2381,7 +2397,7 @@ export const supabaseDataAdapter: DataAdapter = {
         .is("class_id", null)
         .eq("teacher_id", classData.teacher_id)
         .eq("type", "available")
-        .gt("start_at", nowIso)
+        .gt("start_at", bookingCutoffIso)
         .order("start_at", { ascending: true })
 
       if (fallbackError) {
@@ -2874,7 +2890,8 @@ export const supabaseDataAdapter: DataAdapter = {
       throw new Error("missing_class_teacher_for_application")
     }
 
-    const nowIso = new Date().toISOString()
+    const now = new Date()
+    const nowIso = now.toISOString()
     let matchedSlot: AvailableScheduleSlot | null = null
     let requestedScheduleBlockId: string | null = null
     let requestedSlotAt = ""
@@ -2914,6 +2931,11 @@ export const supabaseDataAdapter: DataAdapter = {
         remainingCount: Math.max(0, matchedSlot.capacity - appliedCount),
         isClosed: appliedCount >= matchedSlot.capacity
       }
+
+      if (!isTrialBookingBookable(matchedSlot.startAt, now)) {
+        throw new Error("booking_cutoff_reached")
+      }
+
       requestedScheduleBlockId = matchedSlot.scheduleBlockId
       requestedSlotAt = matchedSlot.startAt
       selectedScheduleLabel = matchedSlot.label
@@ -2930,7 +2952,7 @@ export const supabaseDataAdapter: DataAdapter = {
       }
 
       const classScheduleRow = classScheduleData as ClassScheduleRow
-      const occurrence = generateUpcomingClassScheduleOccurrences(classScheduleRow).find(
+      const occurrence = generateUpcomingClassScheduleOccurrences(classScheduleRow, now).find(
         (item) => item.startAt === parsedScheduleOption.occurrenceStartAt
       )
 
@@ -2947,6 +2969,11 @@ export const supabaseDataAdapter: DataAdapter = {
         appliedCount: 0,
         scheduleBlockId: null
       })
+
+      if (!isTrialBookingBookable(matchedSlot.startAt, now)) {
+        throw new Error("booking_cutoff_reached")
+      }
+
       requestedSlotAt = occurrence.startAt
       classScheduleId = classScheduleRow.id
       selectedScheduleLabel = occurrence.label

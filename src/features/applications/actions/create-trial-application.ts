@@ -176,14 +176,7 @@ export async function createTrialApplicationAction(
     const selectedSlot =
       availableSlots.find((slot) => slot.optionId === validated.selectedScheduleOptionId) ?? null
 
-    if (!selectedSlot) {
-      return {
-        status: "error",
-        message: "선택한 시간대가 만료되었거나 더 이상 예약할 수 없습니다. 다시 선택해 주세요."
-      }
-    }
-
-    if (selectedSlot.isClosed || selectedSlot.appliedCount >= selectedSlot.capacity) {
+    if (selectedSlot && (selectedSlot.isClosed || selectedSlot.appliedCount >= selectedSlot.capacity)) {
       return {
         status: "error",
         message: "방금 마감되었습니다. 다른 시간대를 선택해 주세요."
@@ -254,6 +247,13 @@ export async function createTrialApplicationAction(
       return {
         status: "error",
         message: "선택한 시간대가 만료되었거나 더 이상 예약할 수 없습니다. 다시 선택해 주세요."
+      }
+    }
+
+    if (message === "booking_cutoff_reached") {
+      return {
+        status: "error",
+        message: "체험수업 시작 24시간 전까지만 신청할 수 있어요."
       }
     }
 
