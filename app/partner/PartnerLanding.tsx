@@ -427,7 +427,7 @@ export default function PartnerLanding() {
           <div className={`${styles.sectionHead} ${styles.sectionHeadOnGreen}`}>
             <span className={`${styles.eyebrow} ${styles.eyebrowOnGreen}`}>파일럿 파트너 모집</span>
             <h2>
-              후곡·백마 학원가
+              후곡·백마·중계 학원가
               <br />
               파일럿 파트너를 모집합니다
             </h2>
