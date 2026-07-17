@@ -6,6 +6,7 @@ import { normalizeTeacherPublicVisibility } from "@/shared/lib/teacher-public-vi
 import type {
   ActivateStudioTeacherInput,
   ApplicationLogEntry,
+  ClassAssignmentMode,
   ApplicationRegistrationStatus,
   ApplicationUnregisteredReason,
   AvailableScheduleSlot,
@@ -42,6 +43,7 @@ type ClassRow = {
   id: string
   organization_id?: string
   program_type: ClassProgramType
+  assignment_mode?: ClassAssignmentMode | null
   title: string
   subject: string
   region: AcademyArea
@@ -96,6 +98,7 @@ type OrganizationLocationRow = {
 
 type EmbeddedClassRow = {
   program_type?: ClassProgramType
+  assignment_mode?: ClassAssignmentMode | null
   title: string
   subject?: string
   region?: string
@@ -270,6 +273,14 @@ const mapTeacherProfile = (
   teachingStyle: row.teaching_style
 })
 
+const resolveClassAssignmentMode = (row: { assignment_mode?: string | null; teacher_id?: string | null }) => {
+  if (row.assignment_mode === "post_assign" || row.assignment_mode === "preassigned") {
+    return row.assignment_mode
+  }
+
+  return row.teacher_id ? "preassigned" : "post_assign"
+}
+
 const mapClass = (
   row: ClassRow,
   teacherName: string | null,
@@ -281,6 +292,7 @@ const mapClass = (
   return {
     id: row.id,
     programType: row.program_type,
+    assignmentMode: resolveClassAssignmentMode(row),
     title: row.title,
     subject: row.subject,
     region: row.region,
@@ -540,7 +552,7 @@ const mapAvailableSlot = (row: ScheduleBlockRow): AvailableScheduleSlot => ({
 
 const mapClassScheduleOccurrenceSlot = (input: {
   row: ClassScheduleRow
-  teacherId: string
+  teacherId: string | null
   startAt: string
   endAt: string
   label: string
@@ -1136,8 +1148,10 @@ const summarizeStudioClassScheduleSlots = (slots: StudioClassInput["scheduleSlot
     sortOrder: slot.sortOrder
   }))
 
-const CLASS_BASE_SELECT_FIELDS =
+const LEGACY_CLASS_BASE_SELECT_FIELDS =
   "id, organization_id, program_type, title, subject, region, target_age, description, trial_price, teacher_id, teacher_display_name, cover_image_url, is_active"
+
+const CLASS_BASE_SELECT_FIELDS = `${LEGACY_CLASS_BASE_SELECT_FIELDS}, assignment_mode`
 
 const ORGANIZATION_LOCATION_SELECT_FIELDS = "organizations(name, branch_name, address, address_detail)"
 const ORGANIZATION_BASE_SELECT_FIELDS = "organizations(name, branch_name)"
@@ -1145,7 +1159,7 @@ const ORGANIZATION_BASE_SELECT_FIELDS = "organizations(name, branch_name)"
 const CLASS_DETAIL_SELECT_FIELDS =
   `${CLASS_BASE_SELECT_FIELDS}, class_format, recommended_for, experience_points, curriculum, teacher_intro, ${ORGANIZATION_LOCATION_SELECT_FIELDS}`
 
-const CLASS_BASE_FALLBACK_SELECT_FIELDS = `${CLASS_BASE_SELECT_FIELDS}, ${ORGANIZATION_BASE_SELECT_FIELDS}`
+const CLASS_BASE_FALLBACK_SELECT_FIELDS = `${LEGACY_CLASS_BASE_SELECT_FIELDS}, ${ORGANIZATION_BASE_SELECT_FIELDS}`
 
 const isMissingColumnError = (error: { code?: string; message?: string } | null) => {
   if (!error) {
@@ -1801,16 +1815,20 @@ export const supabaseDataAdapter: DataAdapter = {
   },
   async upsertStudioClass(input) {
     const normalizedClassId = normalizeStudioClassId(input.classId)
-
-    await assertTeacherBelongsToOrganization(input.teacherId, input.organizationId)
-    const teacherNames = await getTeacherNamesByIds([input.teacherId])
-    const teacherDisplayName = teacherNames.get(input.teacherId) ?? input.teacherDisplayName
+    if (input.teacherId) {
+      await assertTeacherBelongsToOrganization(input.teacherId, input.organizationId)
+    }
+    const teacherNames = input.teacherId ? await getTeacherNamesByIds([input.teacherId]) : new Map()
+    const teacherDisplayName = input.teacherId
+      ? (teacherNames.get(input.teacherId) ?? input.teacherDisplayName ?? null)
+      : null
 
     const supabase = await getSupabaseServerClient()
     const schedulePayloadForLog = summarizeStudioClassScheduleSlots(input.scheduleSlots)
     const basePayload = {
       organization_id: input.organizationId,
       program_type: input.programType,
+      assignment_mode: input.assignmentMode,
       title: input.title,
       subject: input.subject,
       target_age: input.targetAge,
@@ -1874,11 +1892,10 @@ export const supabaseDataAdapter: DataAdapter = {
 
     if (!savedClassRow) {
       if (input.mode === "create") {
-        const { data: fallbackRow, error: fallbackError } = await supabase
+        let fallbackQuery = supabase
           .from("classes")
           .select(CLASS_BASE_SELECT_FIELDS)
           .eq("organization_id", input.organizationId)
-          .eq("teacher_id", input.teacherId)
           .eq("title", input.title)
           .eq("subject", input.subject)
           .eq("target_age", input.targetAge)
@@ -1886,7 +1903,12 @@ export const supabaseDataAdapter: DataAdapter = {
           .eq("trial_price", input.trialPrice)
           .order("created_at", { ascending: false })
           .limit(1)
-          .maybeSingle()
+
+        fallbackQuery = input.teacherId
+          ? fallbackQuery.eq("teacher_id", input.teacherId)
+          : fallbackQuery.is("teacher_id", null)
+
+        const { data: fallbackRow, error: fallbackError } = await fallbackQuery.maybeSingle()
 
         if (fallbackError) {
           throw new Error(
@@ -2305,7 +2327,7 @@ export const supabaseDataAdapter: DataAdapter = {
       throw new Error("failed_to_fetch_class_for_slots")
     }
 
-    if (!classData || !classData.teacher_id) {
+    if (!classData) {
       return []
     }
 
@@ -2391,6 +2413,10 @@ export const supabaseDataAdapter: DataAdapter = {
     let usesFallback = false
 
     if (scheduleRows.length === 0) {
+      if (!classData.teacher_id) {
+        return []
+      }
+
       const { data: fallbackData, error: fallbackError } = await supabase
         .from("schedule_blocks")
         .select("id, teacher_id, class_id, start_at, end_at, capacity")
@@ -2653,27 +2679,68 @@ export const supabaseDataAdapter: DataAdapter = {
         throw new Error("failed_to_prepare_application_status_update")
       }
 
-      if (!currentRow.assigned_teacher_id) {
-        const { data: classTeacherData, error: classTeacherError } = await supabase
-          .from("classes")
-          .select("teacher_id")
-          .eq("id", currentRow.class_id)
-          .maybeSingle()
-
-        if (classTeacherError) {
-          throw new Error("failed_to_prepare_application_status_update")
-        }
-
-        if (!classTeacherData?.teacher_id) {
-          throw new Error("missing_class_teacher_for_confirmation")
-        }
-
-        updatePayload.assigned_teacher_id = classTeacherData.teacher_id
-      }
+      const assignedTeacherId = currentRow.assigned_teacher_id ?? null
 
       if (currentRow.requested_schedule_block_id) {
         updatePayload.confirmed_slot_at = currentRow.requested_slot_at
-        updatePayload.confirmed_schedule_block_id = currentRow.requested_schedule_block_id
+        if (!assignedTeacherId) {
+          updatePayload.confirmed_schedule_block_id = null
+        } else {
+          const { data: requestedBlockData, error: requestedBlockError } = await supabase
+            .from("schedule_blocks")
+            .select("id, teacher_id, class_id, start_at, end_at, capacity, type")
+            .eq("id", currentRow.requested_schedule_block_id)
+            .maybeSingle()
+
+          if (requestedBlockError || !requestedBlockData) {
+            throw new Error("failed_to_prepare_application_status_update")
+          }
+
+          const requestedBlock = requestedBlockData as ScheduleBlockRow
+          const { data: existingBlockData, error: existingBlockError } = await supabase
+            .from("schedule_blocks")
+            .select("id, teacher_id, class_id, start_at, end_at, capacity, type")
+            .eq("class_id", currentRow.class_id)
+            .eq("teacher_id", assignedTeacherId)
+            .eq("start_at", requestedBlock.start_at)
+            .eq("end_at", requestedBlock.end_at)
+
+          if (existingBlockError) {
+            throw new Error("failed_to_prepare_application_status_update")
+          }
+
+          const existingBlocks = (existingBlockData ?? []) as ScheduleBlockRow[]
+          const availableBlock = existingBlocks.find((row) => row.type === "available") ?? null
+          if (!availableBlock && existingBlocks.length > 0) {
+            throw new Error("schedule_block_conflict_for_requested_occurrence")
+          }
+
+          let resolvedBlock = availableBlock
+          if (!resolvedBlock) {
+            const { data: createdBlock, error: createBlockError } = await supabase
+              .from("schedule_blocks")
+              .insert({
+                teacher_id: assignedTeacherId,
+                class_id: currentRow.class_id,
+                type: "available",
+                start_at: requestedBlock.start_at,
+                end_at: requestedBlock.end_at,
+                capacity: Math.max(1, Number(requestedBlock.capacity ?? 1)),
+                updated_at: new Date().toISOString()
+              })
+              .select("id, teacher_id, class_id, start_at, end_at, capacity, type")
+              .single()
+
+            if (createBlockError || !createdBlock) {
+              throw new Error("failed_to_create_schedule_block_for_confirmation")
+            }
+
+            resolvedBlock = createdBlock as ScheduleBlockRow
+          }
+
+          updatePayload.requested_schedule_block_id = resolvedBlock.id
+          updatePayload.confirmed_schedule_block_id = resolvedBlock.id
+        }
       } else if (currentRow.class_schedule_id) {
         const { data: classScheduleData, error: classScheduleError } = await supabase
           .from("class_schedules")
@@ -2696,65 +2763,57 @@ export const supabaseDataAdapter: DataAdapter = {
           throw new Error("invalid_requested_class_schedule_occurrence")
         }
 
-        const { data: existingBlockData, error: existingBlockError } = await supabase
-          .from("schedule_blocks")
-          .select("id, teacher_id, class_id, start_at, end_at, capacity, type")
-          .eq("class_id", currentRow.class_id)
-          .eq("start_at", requestedSlotAt)
-          .eq("end_at", requestedEndAt)
+        updatePayload.confirmed_slot_at = requestedSlotAt
 
-        if (existingBlockError) {
-          throw new Error("failed_to_prepare_application_status_update")
-        }
+        if (!assignedTeacherId) {
+          updatePayload.confirmed_schedule_block_id = null
+        } else {
+          const { data: existingBlockData, error: existingBlockError } = await supabase
+            .from("schedule_blocks")
+            .select("id, teacher_id, class_id, start_at, end_at, capacity, type")
+            .eq("class_id", currentRow.class_id)
+            .eq("teacher_id", assignedTeacherId)
+            .eq("start_at", requestedSlotAt)
+            .eq("end_at", requestedEndAt)
 
-        const existingBlocks = (existingBlockData ?? []) as ScheduleBlockRow[]
-        const availableBlock = existingBlocks.find((row) => row.type === "available") ?? null
-
-        if (!availableBlock && existingBlocks.length > 0) {
-          throw new Error("schedule_block_conflict_for_requested_occurrence")
-        }
-
-        let resolvedBlock = availableBlock
-        if (!resolvedBlock) {
-          const { data: classData, error: classError } = await supabase
-            .from("classes")
-            .select("teacher_id")
-            .eq("id", currentRow.class_id)
-            .maybeSingle()
-
-          if (classError) {
+          if (existingBlockError) {
             throw new Error("failed_to_prepare_application_status_update")
           }
 
-          if (!classData?.teacher_id) {
-            throw new Error("missing_class_teacher_for_confirmation")
+          const existingBlocks = (existingBlockData ?? []) as ScheduleBlockRow[]
+          const availableBlock = existingBlocks.find((row) => row.type === "available") ?? null
+
+          if (!availableBlock && existingBlocks.length > 0) {
+            throw new Error("schedule_block_conflict_for_requested_occurrence")
           }
 
-          const capacity = Math.max(1, Number(classScheduleData.capacity ?? 1))
-          const { data: createdBlock, error: createBlockError } = await supabase
-            .from("schedule_blocks")
-            .insert({
-              teacher_id: classData.teacher_id,
-              class_id: currentRow.class_id,
-              type: "available",
-              start_at: requestedSlotAt,
-              end_at: requestedEndAt,
-              capacity,
-              updated_at: new Date().toISOString()
-            })
-            .select("id, teacher_id, class_id, start_at, end_at, capacity, type")
-            .single()
+          let resolvedBlock = availableBlock
+          if (!resolvedBlock) {
+            const capacity = Math.max(1, Number(classScheduleData.capacity ?? 1))
+            const { data: createdBlock, error: createBlockError } = await supabase
+              .from("schedule_blocks")
+              .insert({
+                teacher_id: assignedTeacherId,
+                class_id: currentRow.class_id,
+                type: "available",
+                start_at: requestedSlotAt,
+                end_at: requestedEndAt,
+                capacity,
+                updated_at: new Date().toISOString()
+              })
+              .select("id, teacher_id, class_id, start_at, end_at, capacity, type")
+              .single()
 
-          if (createBlockError || !createdBlock) {
-            throw new Error("failed_to_create_schedule_block_for_confirmation")
+            if (createBlockError || !createdBlock) {
+              throw new Error("failed_to_create_schedule_block_for_confirmation")
+            }
+
+            resolvedBlock = createdBlock as ScheduleBlockRow
           }
 
-          resolvedBlock = createdBlock as ScheduleBlockRow
+          updatePayload.requested_schedule_block_id = resolvedBlock.id
+          updatePayload.confirmed_schedule_block_id = resolvedBlock.id
         }
-
-        updatePayload.requested_schedule_block_id = resolvedBlock.id
-        updatePayload.confirmed_slot_at = requestedSlotAt
-        updatePayload.confirmed_schedule_block_id = resolvedBlock.id
       } else {
         throw new Error("missing_requested_schedule_block")
       }
@@ -2875,19 +2934,33 @@ export const supabaseDataAdapter: DataAdapter = {
       throw new Error("invalid_schedule_slot")
     }
 
-    const { data: classData, error: classError } = await supabase
+    const classQuery = await supabase
       .from("classes")
-      .select("teacher_id")
+      .select("teacher_id, assignment_mode")
       .eq("id", input.classId)
       .eq("is_active", true)
       .maybeSingle()
+    const classLookup = isMissingColumnError(classQuery.error)
+      ? await supabase
+          .from("classes")
+          .select("teacher_id")
+          .eq("id", input.classId)
+          .eq("is_active", true)
+          .maybeSingle()
+      : classQuery
+    const { data: classData, error: classError } = classLookup
 
     if (classError) {
       throw new Error("invalid_schedule_slot")
     }
 
-    if (!classData?.teacher_id) {
-      throw new Error("missing_class_teacher_for_application")
+    if (!classData) {
+      throw new Error("invalid_schedule_slot")
+    }
+
+    const classAssignmentMode = resolveClassAssignmentMode(classData)
+    if (classAssignmentMode === "preassigned" && !classData.teacher_id) {
+      throw new Error("missing_preassigned_teacher_for_application")
     }
 
     const now = new Date()
@@ -2914,7 +2987,9 @@ export const supabaseDataAdapter: DataAdapter = {
       matchedSlot = mapAvailableSlot(slotData as ScheduleBlockRow)
       const isLinkedClassSlot = matchedSlot.classId === input.classId
       const isLegacyTeacherFallbackSlot =
-        matchedSlot.classId == null && matchedSlot.teacherId === classData.teacher_id
+        matchedSlot.classId == null &&
+        classData.teacher_id !== null &&
+        matchedSlot.teacherId === classData.teacher_id
 
       if (!isLinkedClassSlot && !isLegacyTeacherFallbackSlot) {
         throw new Error("invalid_schedule_slot")
@@ -3014,7 +3089,8 @@ export const supabaseDataAdapter: DataAdapter = {
       .insert({
         parent_id: input.parentId,
         class_id: input.classId,
-        assigned_teacher_id: classData.teacher_id,
+        assigned_teacher_id:
+          classAssignmentMode === "preassigned" ? (classData.teacher_id ?? null) : null,
         child_id: input.childId ?? null,
         child_name: input.childName,
         child_grade: input.childGrade,

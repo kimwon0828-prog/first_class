@@ -4,6 +4,7 @@ import type { TeacherPublicVisibility } from "@/shared/lib/teacher-public-visibi
 export type UserRole = "parent" | "teacher"
 
 export type ClassProgramType = "trial_class" | "level_test"
+export type ClassAssignmentMode = "post_assign" | "preassigned"
 
 export type ApplicationStatus =
   | "new"
@@ -59,6 +60,7 @@ export type StudioClassScheduleItem = {
 export type ClassSummary = {
   id: string
   programType: ClassProgramType
+  assignmentMode: ClassAssignmentMode
   title: string
   subject: string
   region: AcademyArea
@@ -96,7 +98,7 @@ export type AvailableScheduleSlot = {
   optionId: string
   classScheduleId: string | null
   scheduleBlockId: string | null
-  teacherId: string
+  teacherId: string | null
   classId: string | null
   label: string
   startAt: string
@@ -204,6 +206,7 @@ export type StudioClassInput = {
   classId?: string
   organizationId: string
   programType: ClassProgramType
+  assignmentMode: ClassAssignmentMode
   title: string
   subject: string
   targetAge: string
@@ -215,8 +218,8 @@ export type StudioClassInput = {
   curriculum: string | null
   teacherIntro: string | null
   trialPrice: number
-  teacherId: string
-  teacherDisplayName: string
+  teacherId: string | null
+  teacherDisplayName: string | null
   coverImageUrl: string | null
   isActive: boolean
   scheduleSlots?: StudioClassScheduleSlotInput[]

@@ -77,6 +77,13 @@ export default async function ClassDetailPage({ params, searchParams }: ClassDet
   const teacherTeachingStyle = teacherProfile?.teachingStyle?.trim() || null
   const teacherShortIntro = teacherProfile?.shortIntro?.trim() || null
   const academyTeacherLabel = [organizationLabel || null, teacherName || null].filter(Boolean).join(" / ")
+  const isPreassignedTeacherVisible = classItem?.assignmentMode === "preassigned"
+  const teacherAssignmentLabel = isPreassignedTeacherVisible ? "학원/선생님" : "학원/담당 배정"
+  const teacherAssignmentValue = isPreassignedTeacherVisible
+    ? academyTeacherLabel || "정보 준비 중"
+    : organizationLabel
+      ? `${organizationLabel} / 담당 선생님은 신청 후 학원에서 배정됩니다.`
+      : "담당 선생님은 신청 후 학원에서 배정됩니다."
   const targetGradeLabel = formatStoredTargetGrades(classItem?.targetAge)
   const hasTeacherProfileContent = Boolean(
     teacherName ||
@@ -87,6 +94,7 @@ export default async function ClassDetailPage({ params, searchParams }: ClassDet
       teacherIntroText ||
       teacherProfile?.intro?.trim()
   )
+  const showTeacherProfileSection = isPreassignedTeacherVisible && hasTeacherProfileContent
 
   return (
     <main
@@ -240,8 +248,8 @@ export default async function ClassDetailPage({ params, searchParams }: ClassDet
                 <h2 className={styles.sectionTitle}>수업정보</h2>
                 <div className={styles.infoGrid}>
                   <div className={styles.infoRow}>
-                    <span className={styles.infoLabel}>학원/선생님</span>
-                    <span className={styles.infoValue}>{academyTeacherLabel || "정보 준비 중"}</span>
+                    <span className={styles.infoLabel}>{teacherAssignmentLabel}</span>
+                    <span className={styles.infoValue}>{teacherAssignmentValue}</span>
                   </div>
                   <div className={styles.infoRow}>
                     <span className={styles.infoLabel}>지역</span>
@@ -304,7 +312,7 @@ export default async function ClassDetailPage({ params, searchParams }: ClassDet
                 </div>
               </section>
 
-              {hasTeacherProfileContent ? (
+              {showTeacherProfileSection ? (
                 <section className={styles.section}>
                   <h2 className={styles.sectionTitle}>선생님 소개</h2>
                   <div className={styles.teacherProfileStack}>

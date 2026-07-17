@@ -40,7 +40,19 @@ const normalizeTeacherName = (value: string | null | undefined) => {
   return trimmed.endsWith("선생님") ? trimmed.slice(0, -4).trim() : trimmed
 }
 
-const resolveApplyCardSubtitle = (academyName: string | null, teacherName: string | null) => {
+const resolveApplyCardSubtitle = (
+  academyName: string | null,
+  teacherName: string | null,
+  assignmentMode: "post_assign" | "preassigned" | null | undefined
+) => {
+  if (assignmentMode === "post_assign") {
+    if (academyName) {
+      return `${academyName} · 담당 선생님은 신청 후 배정됩니다.`
+    }
+
+    return "담당 선생님은 신청 후 배정됩니다."
+  }
+
   const normalizedTeacherName = normalizeTeacherName(teacherName)
 
   if (academyName && normalizedTeacherName) {
@@ -78,7 +90,7 @@ export default async function ClassApplyPage({ params }: ApplyPageProps) {
       .join(" ")
       .trim() || null
   const teacherName = classItem?.teacherDisplayName?.trim() || classItem?.teacherName?.trim() || null
-  const cardSubtitle = resolveApplyCardSubtitle(academyName, teacherName)
+  const cardSubtitle = resolveApplyCardSubtitle(academyName, teacherName, classItem?.assignmentMode)
 
   return (
     <main

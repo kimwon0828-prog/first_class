@@ -13,6 +13,7 @@ type PublicClassRow = {
   id: string
   organization_id: string | null
   program_type: ClassSummary["programType"]
+  assignment_mode: ClassSummary["assignmentMode"] | null
   title: string
   subject: string
   region: AcademyArea
@@ -61,6 +62,7 @@ const PUBLIC_CLASS_SELECT_FIELDS = [
   "id",
   "organization_id",
   "program_type",
+  "assignment_mode",
   "title",
   "subject",
   "region",
@@ -78,7 +80,60 @@ const PUBLIC_CLASS_SELECT_FIELDS = [
   "teacher_intro"
 ].join(", ")
 
+const LEGACY_PUBLIC_CLASS_SELECT_FIELDS = [
+  "id",
+  "organization_id",
+  "program_type",
+  "title",
+  "subject",
+  "region",
+  "target_age",
+  "description",
+  "trial_price",
+  "teacher_id",
+  "teacher_display_name",
+  "cover_image_url",
+  "is_active",
+  "class_format",
+  "recommended_for",
+  "experience_points",
+  "curriculum",
+  "teacher_intro"
+].join(", ")
+
+const isMissingColumnError = (error: { code?: string; message?: string } | null) => {
+  if (!error) {
+    return false
+  }
+
+  const code = typeof error.code === "string" ? error.code : ""
+  const message = typeof error.message === "string" ? error.message : ""
+  return code === "42703" || message.includes("does not exist")
+}
+
 const normalizeText = (value: string | null | undefined) => (value ?? "").trim().toLowerCase()
+
+const buildPublicClassesQuery = (
+  selectFields: string,
+  options?: ListPublicClassesOptions
+) => {
+  const serviceRoleClient = getSupabaseServiceRoleClient()
+  let query = serviceRoleClient
+    .from("classes")
+    .select(selectFields)
+    .eq("is_active", true)
+    .order("created_at", { ascending: false })
+
+  if (options?.region) {
+    query = query.eq("region", options.region)
+  }
+
+  if (options?.subject?.trim()) {
+    query = query.eq("subject", options.subject.trim())
+  }
+
+  return query
+}
 
 const toOrganizationLocation = (
   row: SafeOrganizationRow | undefined
@@ -171,6 +226,12 @@ const mapPublicClassSummary = (
   return {
     id: row.id,
     programType: row.program_type,
+    assignmentMode:
+      row.assignment_mode === "preassigned" || row.assignment_mode === "post_assign"
+        ? row.assignment_mode
+        : row.teacher_id
+          ? "preassigned"
+          : "post_assign",
     title: row.title,
     subject: row.subject,
     region: row.region,
@@ -193,22 +254,10 @@ const mapPublicClassSummary = (
 export const listPublicClassesWithSafeProjection = async (
   options?: ListPublicClassesOptions
 ): Promise<ClassSummary[]> => {
-  const serviceRoleClient = getSupabaseServiceRoleClient()
-  let query = serviceRoleClient
-    .from("classes")
-    .select(PUBLIC_CLASS_SELECT_FIELDS)
-    .eq("is_active", true)
-    .order("created_at", { ascending: false })
-
-  if (options?.region) {
-    query = query.eq("region", options.region)
-  }
-
-  if (options?.subject?.trim()) {
-    query = query.eq("subject", options.subject.trim())
-  }
-
-  const { data, error } = await query
+  const initialResult = await buildPublicClassesQuery(PUBLIC_CLASS_SELECT_FIELDS, options)
+  const { data, error } = isMissingColumnError(initialResult.error)
+    ? await buildPublicClassesQuery(LEGACY_PUBLIC_CLASS_SELECT_FIELDS, options)
+    : initialResult
   if (error) {
     throw new Error("failed_to_fetch_public_classes")
   }
@@ -260,12 +309,20 @@ export const getPublicClassDetailWithSafeProjection = async (
   classId: string
 ): Promise<ClassDetail | null> => {
   const serviceRoleClient = getSupabaseServiceRoleClient()
-  const { data, error } = await serviceRoleClient
+  const initialResult = await serviceRoleClient
     .from("classes")
     .select(PUBLIC_CLASS_SELECT_FIELDS)
     .eq("id", classId)
     .eq("is_active", true)
     .maybeSingle()
+  const { data, error } = isMissingColumnError(initialResult.error)
+    ? await serviceRoleClient
+        .from("classes")
+        .select(LEGACY_PUBLIC_CLASS_SELECT_FIELDS)
+        .eq("id", classId)
+        .eq("is_active", true)
+        .maybeSingle()
+    : initialResult
 
   if (error) {
     throw new Error("failed_to_fetch_public_class_detail")

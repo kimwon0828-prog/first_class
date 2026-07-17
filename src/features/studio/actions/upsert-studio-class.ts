@@ -10,7 +10,7 @@ import {
 } from "@/features/studio/lib/studio-class-options"
 import { requireTeacherStudioAccess } from "@/features/studio/lib/require-teacher-studio-access"
 import { dataAdapter } from "@/shared/lib/db"
-import type { ClassProgramType } from "@/shared/lib/db/adapter"
+import type { ClassAssignmentMode, ClassProgramType } from "@/shared/lib/db/adapter"
 
 type StudioClassScheduleInput = {
   id?: string
@@ -84,6 +84,15 @@ const isValidUuid = (value: string | null | undefined) => {
 const normalizeMode = (value: FormDataEntryValue | null): "create" | "update" | null => {
   const rawMode = String(value ?? "").trim()
   if (rawMode === "create" || rawMode === "update") {
+    return rawMode
+  }
+
+  return null
+}
+
+const normalizeAssignmentMode = (value: FormDataEntryValue | null): ClassAssignmentMode | null => {
+  const rawMode = String(value ?? "").trim()
+  if (rawMode === "post_assign" || rawMode === "preassigned") {
     return rawMode
   }
 
@@ -306,6 +315,7 @@ export async function upsertStudioClassAction(
     const programType = studioClassProgramTypeSet.has(programTypeRaw)
       ? (programTypeRaw as ClassProgramType)
       : null
+    const assignmentMode = normalizeAssignmentMode(formData.get("assignmentMode"))
     const title = String(formData.get("title") ?? "").trim()
     const subject = String(formData.get("subject") ?? "").trim()
     const targetGrades = formData.getAll("targetGrades").map((value) => String(value ?? "").trim())
@@ -316,7 +326,8 @@ export async function upsertStudioClassAction(
     const experiencePointsRaw = String(formData.get("experiencePoints") ?? "").trim()
     const curriculumRaw = String(formData.get("curriculum") ?? "").trim()
     const teacherIntroRaw = String(formData.get("teacherIntro") ?? "").trim()
-    const selectedTeacherId = String(formData.get("teacherId") ?? "").trim()
+    const selectedTeacherIdRaw = String(formData.get("teacherId") ?? "").trim()
+    const selectedTeacherId = selectedTeacherIdRaw.length > 0 ? selectedTeacherIdRaw : null
     const trialPriceRaw = String(formData.get("trialPrice") ?? "").trim()
     const coverImageUrlRaw = String(formData.get("coverImageUrl") ?? "").trim()
     const isActive = String(formData.get("isActive") ?? "") === "on"
@@ -340,6 +351,10 @@ export async function upsertStudioClassAction(
 
     if (!programType) {
       return safeError("프로그램 유형을 선택해 주세요.")
+    }
+
+    if (!assignmentMode) {
+      return safeError("담당 선생님 배정 방식을 선택해 주세요.")
     }
 
     if (title.length < 2) {
@@ -374,7 +389,11 @@ export async function upsertStudioClassAction(
       return safeError("소속 기관 정보를 확인할 수 없습니다.")
     }
 
-    if (!selectedTeacherId || !isValidUuid(selectedTeacherId)) {
+    if (selectedTeacherId && !isValidUuid(selectedTeacherId)) {
+      return safeError("담당 선생님을 다시 선택해 주세요.")
+    }
+
+    if (assignmentMode === "preassigned" && !selectedTeacherId) {
       return safeError("담당 선생님을 선택해주세요.")
     }
 
@@ -410,16 +429,18 @@ export async function upsertStudioClassAction(
         return []
       }
     })()
-    let selectedTeacher = teacherOptions.find((option) => option.teacherId === selectedTeacherId)
+    let selectedTeacher = selectedTeacherId
+      ? teacherOptions.find((option) => option.teacherId === selectedTeacherId)
+      : null
 
-    if (!selectedTeacher && existingClass && existingClass.teacherId === selectedTeacherId) {
+    if (!selectedTeacher && selectedTeacherId && existingClass && existingClass.teacherId === selectedTeacherId) {
       selectedTeacher = {
         teacherId: selectedTeacherId,
         teacherName: existingClass.teacherDisplayName ?? existingClass.teacherName ?? "이름 미정"
       }
     }
 
-    if (!selectedTeacher) {
+    if (selectedTeacherId && !selectedTeacher) {
       return safeError(
         "등록 가능한 선생님 프로필이 없어요. 먼저 선생님 프로필을 추가해주세요."
       )
@@ -439,6 +460,7 @@ export async function upsertStudioClassAction(
         mode,
         classId,
         organizationId,
+        assignmentMode,
         teacherId: selectedTeacherId,
         message: parsedSlots.message
       })
@@ -450,7 +472,8 @@ export async function upsertStudioClassAction(
       mode,
       classId: classId ?? null,
       organizationId,
-      teacherId: selectedTeacher.teacherId,
+      assignmentMode,
+      teacherId: selectedTeacher?.teacherId ?? null,
       isActive,
       programType,
       title,
@@ -468,6 +491,7 @@ export async function upsertStudioClassAction(
       classId: classId ?? undefined,
       organizationId,
       programType,
+      assignmentMode,
       title,
       subject,
       targetAge,
@@ -479,8 +503,8 @@ export async function upsertStudioClassAction(
       curriculum,
       teacherIntro,
       trialPrice,
-      teacherId: selectedTeacher.teacherId,
-      teacherDisplayName: selectedTeacher.teacherName,
+      teacherId: selectedTeacher?.teacherId ?? null,
+      teacherDisplayName: selectedTeacher?.teacherName ?? null,
       coverImageUrl,
       isActive,
       scheduleSlots

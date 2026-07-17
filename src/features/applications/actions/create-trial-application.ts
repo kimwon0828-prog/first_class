@@ -211,6 +211,7 @@ export async function createTrialApplicationAction(
       .maybeSingle<ClassOrganizationRow>()
 
     if (classRow?.organization_id) {
+      const shouldSendTeacherRequested = classItem.assignmentMode === "preassigned"
       await sendStudioNotificationSafely({
         organizationId: classRow.organization_id,
         application: {
@@ -224,12 +225,13 @@ export async function createTrialApplicationAction(
           requestedSlotAt: createdApplication.requestedSlotAt,
           confirmedSlotAt: createdApplication.confirmedSlotAt,
           selectedScheduleLabel: createdApplication.selectedScheduleLabel ?? null,
-          assignedTeacherId: classItem.teacherId,
-          assignedTeacherName: classItem.teacherName
+          assignedTeacherId: shouldSendTeacherRequested ? classItem.teacherId : null,
+          assignedTeacherName: shouldSendTeacherRequested ? classItem.teacherName : null
         },
         createdBy: session.user.id,
         teacherEventType: "teacher_trial_requested",
-        adminEventType: "admin_trial_requested"
+        adminEventType: "admin_trial_requested",
+        skipTeacher: !shouldSendTeacherRequested
       })
     }
   } catch (error) {
@@ -257,11 +259,11 @@ export async function createTrialApplicationAction(
       }
     }
 
-    if (message === "missing_class_teacher_for_application") {
+    if (message === "missing_preassigned_teacher_for_application") {
       return {
         status: "error",
         message:
-          "담당 선생님 정보가 없는 수업이라 체험 신청을 진행할 수 없습니다. 수업 담당 선생님을 먼저 지정해주세요."
+          "미리 배정 수업인데 담당 선생님 정보가 없어 체험 신청을 진행할 수 없습니다. 수업 담당 선생님을 먼저 지정해 주세요."
       }
     }
 

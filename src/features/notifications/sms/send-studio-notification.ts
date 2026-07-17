@@ -75,6 +75,7 @@ type SendStudioNotificationInput = {
   teacherEventType: TeacherSmsEventType
   adminEventType: AdminSmsEventType
   targetTeacherId?: string | null
+  skipTeacher?: boolean
 }
 
 type StudioNotificationRecipientResult = {
@@ -342,7 +343,22 @@ const sendTeacherSms = async (input: SendStudioNotificationInput) => {
 export const sendStudioNotification = async (
   input: SendStudioNotificationInput
 ): Promise<SendStudioNotificationResult> => {
-  const teacherResult = await sendTeacherSms(input)
+  const teacherResult = input.skipTeacher
+    ? {
+        recipient: {
+          recipientName: null,
+          recipientPhone: null,
+          teacherId: null,
+          smsEnabled: false,
+          errorMessage: "teacher_notification_skipped"
+        },
+        template: null,
+        sendResult: buildSkippedResult({
+          errorMessage: "teacher_notification_skipped",
+          recipientPhone: null
+        })
+      }
+    : await sendTeacherSms(input)
   const normalizedTeacherPhone =
     teacherResult.recipient.errorMessage === null
       ? normalizePhoneNumber(teacherResult.recipient.recipientPhone)

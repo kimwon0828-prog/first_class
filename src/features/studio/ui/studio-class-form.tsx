@@ -20,6 +20,7 @@ import {
 } from "@/features/studio/lib/studio-class-options"
 import { getSupabaseBrowserClient } from "@/integrations/supabase/client"
 import type {
+  ClassAssignmentMode,
   ClassSummary,
   StudioClassScheduleItem,
   StudioClassScheduleType,
@@ -260,9 +261,15 @@ export const StudioClassForm = ({
   updateSuccessHref
 }: StudioClassFormProps) => {
   const router = useRouter()
-  const safeTeacherOptions = Array.isArray(teacherOptions) ? teacherOptions : []
+  const safeTeacherOptions = useMemo(
+    () => (Array.isArray(teacherOptions) ? teacherOptions : []),
+    [teacherOptions]
+  )
   const [selectedClassId, setSelectedClassId] = useState(initialItem?.id ?? "")
   const [selectedProgramType, setSelectedProgramType] = useState(initialItem?.programType ?? "trial_class")
+  const [selectedAssignmentMode, setSelectedAssignmentMode] = useState<ClassAssignmentMode>(
+    initialItem?.assignmentMode ?? "post_assign"
+  )
   const [selectedSubject, setSelectedSubject] = useState(
     studioClassSubjectOptions.includes(initialItem?.subject as (typeof studioClassSubjectOptions)[number])
       ? initialItem?.subject
@@ -286,26 +293,42 @@ export const StudioClassForm = ({
       ? initialItem.schedules.map(createScheduleSlotDraftFromItem)
       : []
   )
+  const [selectedTeacherId, setSelectedTeacherId] = useState(initialItem?.teacherId ?? "")
   const action = useMemo(() => upsertStudioClassAction, [])
   const [state, formAction, isPending] = useActionState(action, initialState)
   const initialTargetGrades = useMemo(() => parseStoredTargetGrades(initialItem?.targetAge), [initialItem?.targetAge])
   const legacyTargetAgeValue =
     initialItem?.targetAge?.trim() && initialTargetGrades.length === 0 ? initialItem.targetAge.trim() : null
   const selectedRegion = normalizeAcademyArea(initialItem?.region)
-  const teacherOptionIds = new Set(safeTeacherOptions.map((option) => option.teacherId))
-  const fallbackTeacherOption =
-    initialItem?.teacherId &&
-    !teacherOptionIds.has(initialItem.teacherId) &&
-    (initialItem.teacherDisplayName || initialItem.teacherName)
-      ? {
-          teacherId: initialItem.teacherId,
-          teacherName: initialItem.teacherDisplayName ?? initialItem.teacherName ?? "선생님"
-        }
-      : null
-  const mergedTeacherOptions = fallbackTeacherOption
-    ? [fallbackTeacherOption, ...safeTeacherOptions]
-    : safeTeacherOptions
-  const mergedTeacherOptionIds = new Set(mergedTeacherOptions.map((option) => option.teacherId))
+  const teacherOptionIds = useMemo(
+    () => new Set(safeTeacherOptions.map((option) => option.teacherId)),
+    [safeTeacherOptions]
+  )
+  const fallbackTeacherOption = useMemo(
+    () =>
+      initialItem?.teacherId &&
+      !teacherOptionIds.has(initialItem.teacherId) &&
+      (initialItem.teacherDisplayName || initialItem.teacherName)
+        ? {
+            teacherId: initialItem.teacherId,
+            teacherName: initialItem.teacherDisplayName ?? initialItem.teacherName ?? "선생님"
+          }
+        : null,
+    [
+      initialItem?.teacherDisplayName,
+      initialItem?.teacherId,
+      initialItem?.teacherName,
+      teacherOptionIds
+    ]
+  )
+  const mergedTeacherOptions = useMemo(
+    () => (fallbackTeacherOption ? [fallbackTeacherOption, ...safeTeacherOptions] : safeTeacherOptions),
+    [fallbackTeacherOption, safeTeacherOptions]
+  )
+  const mergedTeacherOptionIds = useMemo(
+    () => new Set(mergedTeacherOptions.map((option) => option.teacherId)),
+    [mergedTeacherOptions]
+  )
   const resolveTeacherLabel = (option: StudioTeacherOption | (StudioTeacherOption & Record<string, unknown>)) => {
     const candidate = option as unknown as {
       displayName?: unknown
@@ -320,17 +343,11 @@ export const StudioClassForm = ({
     const normalized = raw.trim()
     return normalized || "선생님"
   }
-  const selectedTeacherId =
-    initialItem?.teacherId && mergedTeacherOptionIds.has(initialItem.teacherId)
-      ? initialItem.teacherId
-      : mergedTeacherOptionIds.has(currentTeacherId)
-        ? currentTeacherId
-        : (mergedTeacherOptions[0]?.teacherId ?? "")
-  const isTeacherOptionUnavailable = mergedTeacherOptions.length === 0
   const hasNoActiveTeacherOption = safeTeacherOptions.length === 0
   const isTeacherSelectionLockedToInactive = Boolean(
     initialItem?.teacherId && fallbackTeacherOption && !teacherOptionIds.has(initialItem.teacherId)
   )
+  const isPreassignedMode = selectedAssignmentMode === "preassigned"
   const mode = selectedClassId ? "update" : "create"
   const previousOkRef = useRef(false)
   const initializedSnapshotKeyRef = useRef<string | null>(null)
@@ -338,6 +355,7 @@ export const StudioClassForm = ({
     () => ({
       id: initialItem?.id ?? "",
       programType: initialItem?.programType ?? "trial_class",
+      assignmentMode: initialItem?.assignmentMode ?? "post_assign",
       subject: studioClassSubjectOptions.includes(
         initialItem?.subject as (typeof studioClassSubjectOptions)[number]
       )
@@ -350,6 +368,7 @@ export const StudioClassForm = ({
       curriculum: initialItem?.curriculum ?? "",
       teacherIntro: initialItem?.teacherIntro ?? "",
       classFormat: initialItem?.classFormat ?? "",
+      teacherId: initialItem?.teacherId ?? "",
       coverImageUrl: initialItem?.coverImageUrl ?? "",
       scheduleSlots: initialItem?.schedules?.length
         ? initialItem.schedules.map(createScheduleSlotDraftFromItem)
@@ -362,11 +381,13 @@ export const StudioClassForm = ({
       initialItem?.description,
       initialItem?.experiencePoints,
       initialItem?.id,
+      initialItem?.assignmentMode,
       initialItem?.programType,
       initialItem?.recommendedFor,
       initialItem?.schedules,
       initialItem?.subject,
       initialItem?.targetAge,
+      initialItem?.teacherId,
       initialItem?.teacherIntro
     ]
   )
@@ -412,6 +433,7 @@ export const StudioClassForm = ({
     initializedSnapshotKeyRef.current = snapshotKey
     setSelectedClassId(initialFormSnapshot.id)
     setSelectedProgramType(initialFormSnapshot.programType)
+    setSelectedAssignmentMode(initialFormSnapshot.assignmentMode)
     setSelectedSubject(initialFormSnapshot.subject)
     setDescription(initialFormSnapshot.description)
     setSelectedTargetGrades(initialFormSnapshot.targetGrades)
@@ -420,12 +442,34 @@ export const StudioClassForm = ({
     setCurriculum(initialFormSnapshot.curriculum)
     setTeacherIntro(initialFormSnapshot.teacherIntro)
     setClassFormat(initialFormSnapshot.classFormat)
+    setSelectedTeacherId(initialFormSnapshot.teacherId)
     setCoverImageFilePreviewUrl("")
     setCoverImageUrl(initialFormSnapshot.coverImageUrl)
     setCoverImageUploadError(null)
     setIsUploadingCoverImage(false)
     setScheduleSlots(initialFormSnapshot.scheduleSlots)
   }, [initialFormSnapshot])
+
+  useEffect(() => {
+    if (selectedAssignmentMode !== "preassigned" || selectedTeacherId) {
+      return
+    }
+
+    if (mergedTeacherOptionIds.has(currentTeacherId)) {
+      setSelectedTeacherId(currentTeacherId)
+      return
+    }
+
+    if (mergedTeacherOptions[0]?.teacherId) {
+      setSelectedTeacherId(mergedTeacherOptions[0].teacherId)
+    }
+  }, [
+    currentTeacherId,
+    mergedTeacherOptionIds,
+    mergedTeacherOptions,
+    selectedAssignmentMode,
+    selectedTeacherId
+  ])
 
   useEffect(() => {
     const previousOk = previousOkRef.current
@@ -721,7 +765,7 @@ export const StudioClassForm = ({
           <p style={heroBadgeStyle}>NEW PROGRAM</p>
           <h2 style={titleStyle}>{selectedClassId ? "프로그램 수정" : "새 프로그램 등록"}</h2>
           <p style={descriptionStyle}>
-            같은 organization에 등록된 담당 선생님을 선택해 저장합니다. 예약 가능 시간은 매주 반복 또는 일회성으로 추가할 수 있고, 비워둔 채로 저장해도 됩니다.
+            수업의 기본 담당 선생님과 신청별 담당 선생님 배정 방식을 함께 설정합니다. 예약 가능 시간은 매주 반복 또는 일회성으로 추가할 수 있고, 비워둔 채로 저장해도 됩니다.
           </p>
         </div>
       </div>
@@ -1017,19 +1061,58 @@ export const StudioClassForm = ({
 
           <section style={teacherAssignmentCardStyle}>
             <div style={{ display: "grid", gap: 4 }}>
-              <strong style={{ color: "#111827", fontSize: 14 }}>수업 담당 선생님</strong>
+              <strong style={{ color: "#111827", fontSize: 14 }}>담당 선생님 배정 방식</strong>
               <p style={{ ...helperTextStyle, margin: 0 }}>
-                이번 1차에서는 수업 단위로 담당 선생님을 연결하고, 등록한 예약시간 전체에 동일하게 적용합니다.
+                수업에는 기본/대표 담당 선생님을 둘 수 있고, 실제 체험 신청 담당자는 신청별로 따로 관리합니다.
               </p>
             </div>
 
-            {safeTeacherOptions.length > 0 ? (
+            <div style={assignmentModeGridStyle}>
+              <label style={radioCardStyle}>
+                <input
+                  type="radio"
+                  name="assignmentMode"
+                  value="post_assign"
+                  checked={selectedAssignmentMode === "post_assign"}
+                  onChange={() => setSelectedAssignmentMode("post_assign")}
+                  disabled={isPending}
+                />
+                <div style={{ display: "grid", gap: 4 }}>
+                  <strong style={{ color: "#111827", fontSize: 14 }}>신청 후 관리자가 배정</strong>
+                  <span style={helperTextStyle}>
+                    신청 생성 시 담당 선생님은 비워두고, 신청 상세에서 나중에 배정합니다.
+                  </span>
+                </div>
+              </label>
+
+              <label style={radioCardStyle}>
+                <input
+                  type="radio"
+                  name="assignmentMode"
+                  value="preassigned"
+                  checked={selectedAssignmentMode === "preassigned"}
+                  onChange={() => setSelectedAssignmentMode("preassigned")}
+                  disabled={isPending}
+                />
+                <div style={{ display: "grid", gap: 4 }}>
+                  <strong style={{ color: "#111827", fontSize: 14 }}>수업 등록 시 미리 배정</strong>
+                  <span style={helperTextStyle}>
+                    수업에 연결한 기본 담당 선생님을 신청 생성 시 자동으로 배정합니다.
+                  </span>
+                </div>
+              </label>
+            </div>
+
+            {mergedTeacherOptions.length > 0 ? (
               <select
                 name="teacherId"
-                defaultValue={selectedTeacherId}
+                value={selectedTeacherId}
+                onChange={(event) => setSelectedTeacherId(event.target.value)}
                 disabled={isPending}
+                required={isPreassignedMode}
                 style={inputStyle}
               >
+                <option value="">선택 안 함</option>
                 {mergedTeacherOptions.map((option) => (
                   <option key={option.teacherId} value={option.teacherId}>
                     {resolveTeacherLabel(option)}
@@ -1055,8 +1138,12 @@ export const StudioClassForm = ({
                 : isTeacherSelectionLockedToInactive
                   ? "현재 연결된 선생님이 비활성 상태라 표시만 유지합니다. 다른 선생님으로 바꾸려면 active 목록에서 다시 선택해 주세요."
                   : hasNoActiveTeacherOption
-                    ? "현재 organization에 등록된 선생님이 없어 저장할 수 없습니다."
-                    : "현재 organization에 등록된 선생님만 선택할 수 있습니다."}
+                    ? isPreassignedMode
+                      ? "미리 배정 방식은 담당 선생님이 필요합니다. 먼저 선생님 프로필을 추가해 주세요."
+                      : "등록된 선생님이 없어도 신청 후 배정 방식으로는 저장할 수 있습니다."
+                    : isPreassignedMode
+                      ? "미리 배정 방식은 담당 선생님 선택이 필수입니다."
+                      : "신청 후 배정 방식에서는 기본/대표 담당 선생님을 선택사항으로 둘 수 있습니다."}
             </span>
           </section>
 
@@ -1327,22 +1414,18 @@ export const StudioClassForm = ({
           <span>공개 상태로 저장</span>
         </label>
 
-        {state.message || teacherOptionsError || isTeacherOptionUnavailable || isUploadingCoverImage ? (
+        {state.message || teacherOptionsError || isUploadingCoverImage ? (
           <p style={{ margin: 0, color: state.ok ? "#111827" : "#b42318", fontSize: 14 }}>
             {teacherOptionsError ??
-              (isTeacherOptionUnavailable
-                ? "담당 선생님 목록이 비어 있어 프로그램을 저장할 수 없습니다."
-                : isUploadingCoverImage
-                  ? "이미지 업로드 중입니다. 잠시만 기다려주세요."
-                  : state.message)}
+              (isUploadingCoverImage
+                ? "이미지 업로드 중입니다. 잠시만 기다려주세요."
+                : state.message)}
           </p>
         ) : null}
 
         <button
           type="submit"
-          disabled={
-            isPending || isUploadingCoverImage || isTeacherOptionUnavailable || Boolean(teacherOptionsError)
-          }
+          disabled={isPending || isUploadingCoverImage || Boolean(teacherOptionsError)}
           style={buttonStyle}
         >
           {isPending ? "저장 중..." : mode === "update" ? "프로그램 수정" : "프로그램 등록"}
@@ -1513,6 +1596,23 @@ const teacherAssignmentCardStyle = {
   borderRadius: 14,
   border: "1px solid #e5e7eb",
   background: "#ffffff"
+}
+
+const assignmentModeGridStyle = {
+  display: "grid",
+  gap: 10,
+  gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))"
+}
+
+const radioCardStyle = {
+  display: "grid",
+  gridTemplateColumns: "16px 1fr",
+  gap: 10,
+  alignItems: "flex-start",
+  padding: 12,
+  borderRadius: 12,
+  border: "1px solid #e5e7eb",
+  background: "#f9fafb"
 }
 
 const sectionBadgeStyle = {

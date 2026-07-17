@@ -147,6 +147,7 @@ const defaultClasses: ClassSummary[] = [
   {
     id: "class-1",
     programType: "trial_class",
+    assignmentMode: "preassigned",
     title: "초등 저학년 창의 미술 체험",
     subject: "미술",
     region: "후곡학원가",
@@ -167,6 +168,7 @@ const defaultClasses: ClassSummary[] = [
   {
     id: "class-2",
     programType: "trial_class",
+    assignmentMode: "preassigned",
     title: "기초 과학 실험 체험",
     subject: "과학",
     region: "백마학원가",
@@ -187,6 +189,7 @@ const defaultClasses: ClassSummary[] = [
   {
     id: "class-3",
     programType: "trial_class",
+    assignmentMode: "preassigned",
     title: "초등 사고력 수학 게임 수업",
     subject: "수학",
     region: "은행사거리학원가",
@@ -207,6 +210,7 @@ const defaultClasses: ClassSummary[] = [
   {
     id: "class-4",
     programType: "trial_class",
+    assignmentMode: "preassigned",
     title: "스토리텔링 영어 말하기 체험",
     subject: "영어",
     region: "후곡학원가",
@@ -493,7 +497,7 @@ const generateUpcomingClassScheduleOccurrences = (
 
 const toAvailableClassScheduleSlot = (input: {
   schedule: StudioClassScheduleItem
-  teacherId: string
+  teacherId: string | null
   classId: string
   startAt: string
   endAt: string
@@ -883,14 +887,16 @@ export const mockDataAdapter: DataAdapter = {
       throw new Error("studio_class_not_found_or_forbidden")
     }
 
-    const teacherSummary = teacherSummaries.find(
-      (item) => item.id === input.teacherId && item.organizationId === input.organizationId
-    )
-    if (!teacherSummary) {
+    const teacherSummary = input.teacherId
+      ? teacherSummaries.find(
+          (item) => item.id === input.teacherId && item.organizationId === input.organizationId
+        ) ?? null
+      : null
+    if (input.teacherId && !teacherSummary) {
       throw new Error("invalid_teacher_for_organization")
     }
 
-    if (!teacherSummary.isActive) {
+    if (teacherSummary && !teacherSummary.isActive) {
       throw new Error("inactive_teacher_for_class")
     }
 
@@ -901,6 +907,7 @@ export const mockDataAdapter: DataAdapter = {
     const nextValue: ClassSummary = {
       id: input.classId ?? `class-${classes.length + 1}`,
       programType: input.programType,
+      assignmentMode: input.assignmentMode,
       title: input.title,
       subject: input.subject,
       region: input.region,
@@ -913,8 +920,8 @@ export const mockDataAdapter: DataAdapter = {
       teacherIntro: input.teacherIntro,
       trialPrice: input.trialPrice,
       teacherId: input.teacherId,
-      teacherDisplayName: teacherSummary.displayName,
-      teacherName: teacherSummary.displayName,
+      teacherDisplayName: teacherSummary?.displayName ?? input.teacherDisplayName ?? null,
+      teacherName: teacherSummary?.displayName ?? input.teacherDisplayName ?? null,
       coverImageUrl: input.coverImageUrl,
       isActive: input.isActive,
       schedules: toMockClassSchedules({
@@ -1054,7 +1061,7 @@ export const mockDataAdapter: DataAdapter = {
   },
   async listAvailableScheduleSlotsByClassId(classId) {
     const classItem = classes.find((item) => item.id === classId)
-    if (!classItem?.teacherId) {
+    if (!classItem) {
       return []
     }
     const teacherId = classItem.teacherId
@@ -1106,10 +1113,10 @@ export const mockDataAdapter: DataAdapter = {
       .filter((slot) => new Date(slot.startAt).getTime() > nowMs)
 
     const fallbackSlots =
-      primarySlots.length === 0
+      primarySlots.length === 0 && teacherId
         ? scheduleBlocks
             .filter((slot) => slot.classId == null)
-            .filter((slot) => slot.teacherId === classItem.teacherId)
+            .filter((slot) => slot.teacherId === teacherId)
             .filter((slot) => slot.type === "available")
             .filter((slot) => new Date(slot.startAt).getTime() > nowMs)
         : []
@@ -1119,7 +1126,7 @@ export const mockDataAdapter: DataAdapter = {
       .filter((slot) => slot.type === "available")
       .map((slot) => {
         const appliedCount = usesFallback
-          ? getAppliedCountForSlot(slot.id, slot.startAt, teacherId)
+          ? getAppliedCountForSlot(slot.id, slot.startAt, teacherId ?? undefined)
           : applications.filter(
               (application) =>
                 application.classId === classId &&
@@ -1303,23 +1310,19 @@ export const mockDataAdapter: DataAdapter = {
 
     if (input.actionType === "move_to_confirmed") {
       target.scheduledAt = nowIso
-      if (!target.assignedTeacherId) {
-        const classItem = classes.find((item) => item.id === target.classId)
-        if (!classItem?.teacherId) {
-          throw new Error("missing_class_teacher_for_confirmation")
-        }
-        target.assignedTeacherId = classItem.teacherId
-        target.assignedTeacherName = getTeacherDisplayNameById(target.assignedTeacherId)
-      }
 
       if (target.requestedScheduleBlockId) {
         target.confirmedSlotAt = target.requestedSlotAt
-        target.confirmedScheduleBlockId = target.requestedScheduleBlockId
+        if (!target.assignedTeacherId) {
+          target.confirmedScheduleBlockId = null
+        } else {
+          target.confirmedScheduleBlockId = target.requestedScheduleBlockId
+        }
       } else if (target.classScheduleId) {
         const classItem = classes.find((item) => item.id === target.classId)
         const schedule = classItem?.schedules?.find((item) => item.id === target.classScheduleId) ?? null
 
-        if (!classItem?.teacherId || !schedule) {
+        if (!schedule) {
           throw new Error("failed_to_prepare_application_status_update")
         }
 
@@ -1328,38 +1331,43 @@ export const mockDataAdapter: DataAdapter = {
           throw new Error("invalid_requested_class_schedule_occurrence")
         }
 
-        const existingBlocks = scheduleBlocks.filter(
-          (slot) =>
-            slot.classId === target.classId &&
-            slot.startAt === target.requestedSlotAt &&
-            slot.endAt === requestedEndAt
-        )
-        const availableBlock = existingBlocks.find((slot) => slot.type === "available") ?? null
-
-        if (!availableBlock && existingBlocks.length > 0) {
-          throw new Error("schedule_block_conflict_for_requested_occurrence")
-        }
-
-        let resolvedBlock = availableBlock
-        if (!resolvedBlock) {
-          resolvedBlock = {
-            id: `slot-${scheduleBlocks.length + 1}`,
-            teacherId: classItem.teacherId,
-            classId: target.classId,
-            type: "available",
-            startAt: target.requestedSlotAt,
-            endAt: requestedEndAt,
-            capacity: Math.max(1, schedule.capacity ?? 1),
-            appliedCount: 0,
-            remainingCount: Math.max(1, schedule.capacity ?? 1),
-            isClosed: false
-          }
-          scheduleBlocks.push(resolvedBlock)
-        }
-
-        target.requestedScheduleBlockId = resolvedBlock.id
         target.confirmedSlotAt = target.requestedSlotAt
-        target.confirmedScheduleBlockId = resolvedBlock.id
+        if (!target.assignedTeacherId) {
+          target.confirmedScheduleBlockId = null
+        } else {
+          const existingBlocks = scheduleBlocks.filter(
+            (slot) =>
+              slot.classId === target.classId &&
+              slot.teacherId === target.assignedTeacherId &&
+              slot.startAt === target.requestedSlotAt &&
+              slot.endAt === requestedEndAt
+          )
+          const availableBlock = existingBlocks.find((slot) => slot.type === "available") ?? null
+
+          if (!availableBlock && existingBlocks.length > 0) {
+            throw new Error("schedule_block_conflict_for_requested_occurrence")
+          }
+
+          let resolvedBlock = availableBlock
+          if (!resolvedBlock) {
+            resolvedBlock = {
+              id: `slot-${scheduleBlocks.length + 1}`,
+              teacherId: target.assignedTeacherId,
+              classId: target.classId,
+              type: "available",
+              startAt: target.requestedSlotAt,
+              endAt: requestedEndAt,
+              capacity: Math.max(1, schedule.capacity ?? 1),
+              appliedCount: 0,
+              remainingCount: Math.max(1, schedule.capacity ?? 1),
+              isClosed: false
+            }
+            scheduleBlocks.push(resolvedBlock)
+          }
+
+          target.requestedScheduleBlockId = resolvedBlock.id
+          target.confirmedScheduleBlockId = resolvedBlock.id
+        }
       } else {
         throw new Error("missing_requested_schedule_block")
       }
@@ -1462,8 +1470,8 @@ export const mockDataAdapter: DataAdapter = {
     }
 
     const classItem = classes.find((item) => item.id === input.classId)
-    if (!classItem?.teacherId) {
-      throw new Error("missing_class_teacher_for_application")
+    if (!classItem) {
+      throw new Error("invalid_schedule_slot")
     }
     const created: TrialApplicationSummary = {
       id: `app-${applications.length + 1}`,
@@ -1500,8 +1508,11 @@ export const mockDataAdapter: DataAdapter = {
       childId: input.childId ?? null,
       classSubject: classItem?.subject ?? null,
       classRegion: classItem?.region ?? null,
-      assignedTeacherId: classItem.teacherId,
-      assignedTeacherName: classItem?.teacherDisplayName ?? classItem?.teacherName ?? null,
+      assignedTeacherId: classItem.assignmentMode === "preassigned" ? classItem.teacherId : null,
+      assignedTeacherName:
+        classItem.assignmentMode === "preassigned"
+          ? (classItem?.teacherDisplayName ?? classItem?.teacherName ?? null)
+          : null,
       childSchool: input.childSchool,
       childNotes: input.childNotes,
       subjectExperienceYn: input.subjectExperienceYn,

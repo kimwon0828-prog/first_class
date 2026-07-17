@@ -223,14 +223,6 @@ export async function updateApplicationStatusAction(
       }
     }
 
-    if (message === "missing_class_teacher_for_confirmation") {
-      return {
-        status: "error",
-        message:
-          "담당 선생님 정보가 없어 일정을 확정할 수 없습니다. 수업 담당 선생님을 먼저 지정해주세요."
-      }
-    }
-
     if (message === "failed_to_prepare_application_status_update") {
       return {
         status: "error",
