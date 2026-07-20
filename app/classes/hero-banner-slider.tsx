@@ -163,7 +163,15 @@ import { useEffect, useMemo, useRef, useState } from "react"
               />
               <div className={styles.heroOverlay} />
               <div className={styles.heroContent}>
-                <div className={styles.heroBrand}>첫수업</div>
+                <div className={styles.heroBrand} aria-label="첫수업 로고">
+                  <Image
+                    src="/images/first-class-logo.png"
+                    alt="첫수업"
+                    width={110}
+                    height={36}
+                    priority={activeIndex === 0}
+                  />
+                </div>
                 <p className={styles.heroCopy}>
                   학원 선택의 시작은 상담이 아니라
                   <br />

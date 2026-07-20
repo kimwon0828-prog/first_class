@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache"
 import { isAcademyArea } from "@/shared/config/academy-areas"
 import { serializeTargetGrades } from "@/shared/constants/grade-options"
 import {
+  normalizeStudioClassSubjectOption,
   studioClassProgramTypeOptions,
   studioClassSubjectOptions
 } from "@/features/studio/lib/studio-class-options"
@@ -317,7 +318,7 @@ export async function upsertStudioClassAction(
       : null
     const assignmentMode = normalizeAssignmentMode(formData.get("assignmentMode"))
     const title = String(formData.get("title") ?? "").trim()
-    const subject = String(formData.get("subject") ?? "").trim()
+    const subject = normalizeStudioClassSubjectOption(String(formData.get("subject") ?? ""))
     const targetGrades = formData.getAll("targetGrades").map((value) => String(value ?? "").trim())
     const regionRaw = String(formData.get("region") ?? "").trim()
     const description = String(formData.get("description") ?? "").trim()
@@ -365,7 +366,7 @@ export async function upsertStudioClassAction(
       return safeError("과목을 선택해 주세요.")
     }
 
-    if (!studioClassSubjectSet.has(subject)) {
+    if (!subject || !studioClassSubjectSet.has(subject)) {
       return safeError("과목 칩에서 과목을 다시 선택해 주세요.")
     }
 

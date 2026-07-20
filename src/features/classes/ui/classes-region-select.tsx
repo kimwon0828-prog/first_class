@@ -181,12 +181,13 @@ const escapeQueryValue = (value: string) =>
 
 const buildHref = (
   pathname: string,
-  params: { region?: string | null; subject?: string | null; q?: string | null }
+  params: { region?: string | null; subject?: string | null; q?: string | null; stage?: string | null }
 ) => {
   const parts: string[] = []
   if (params.region) parts.push(`region=${escapeQueryValue(params.region)}`)
   if (params.subject) parts.push(`subject=${escapeQueryValue(params.subject)}`)
   if (params.q) parts.push(`q=${escapeQueryValue(params.q)}`)
+  if (params.stage) parts.push(`stage=${escapeQueryValue(params.stage)}`)
   return parts.length ? `${pathname}?${parts.join("&")}` : pathname
 }
 
@@ -212,7 +213,8 @@ export function ClassesSearchInput({
     const normalized = nextValue.trim()
     const region = searchParams.get("region")
     const subject = searchParams.get("subject")
-    router.replace(buildHref(pathname, { region, subject, q: normalized || null }))
+    const stage = searchParams.get("stage")
+    router.replace(buildHref(pathname, { region, subject, q: normalized || null, stage }))
   }
 
   const scheduleApply = (nextValue: string) => {
@@ -266,7 +268,8 @@ export function ClassesRegionSelect({
   const handleChange = (nextRegion: AcademyAreaFilter) => {
     const subject = searchParams.get("subject")
     const q = searchParams.get("q")
-    router.push(buildHref(pathname, { region: nextRegion, subject, q }))
+    const stage = searchParams.get("stage")
+    router.push(buildHref(pathname, { region: nextRegion, subject, q, stage }))
   }
 
   return (
@@ -313,7 +316,8 @@ export function ClassesSearchPill({
     const normalized = nextValue.trim()
     const region = searchParams.get("region")
     const subject = searchParams.get("subject")
-    router.replace(buildHref(pathname, { region, subject, q: normalized || null }))
+    const stage = searchParams.get("stage")
+    router.replace(buildHref(pathname, { region, subject, q: normalized || null, stage }))
   }
 
   const scheduleApply = (nextValue: string) => {
@@ -385,7 +389,8 @@ export function ClassesRegionInlineSelect({
   const handleChange = (nextRegion: AcademyAreaFilter) => {
     const subject = searchParams.get("subject")
     const q = searchParams.get("q")
-    router.push(buildHref(pathname, { region: nextRegion, subject, q }))
+    const stage = searchParams.get("stage")
+    router.push(buildHref(pathname, { region: nextRegion, subject, q, stage }))
   }
 
   return (
@@ -504,8 +509,9 @@ export function ClassesSubjectGrid({
   const handleToggle = (label: string) => {
     const region = searchParams.get("region")
     const q = searchParams.get("q")
+    const stage = searchParams.get("stage")
     const currentSubject = searchParams.get("subject")
-    router.push(buildHref(pathname, { region, q, subject: currentSubject === label ? null : label }))
+    router.push(buildHref(pathname, { region, q, subject: currentSubject === label ? null : label, stage }))
   }
 
   return (

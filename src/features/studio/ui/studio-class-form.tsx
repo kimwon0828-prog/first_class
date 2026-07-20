@@ -15,6 +15,7 @@ import {
   type UpsertStudioClassActionState
 } from "@/features/studio/actions/upsert-studio-class"
 import {
+  normalizeStudioClassSubjectOption,
   studioClassProgramTypeOptions,
   studioClassSubjectOptions
 } from "@/features/studio/lib/studio-class-options"
@@ -271,9 +272,7 @@ export const StudioClassForm = ({
     initialItem?.assignmentMode ?? "post_assign"
   )
   const [selectedSubject, setSelectedSubject] = useState(
-    studioClassSubjectOptions.includes(initialItem?.subject as (typeof studioClassSubjectOptions)[number])
-      ? initialItem?.subject
-      : ""
+    normalizeStudioClassSubjectOption(initialItem?.subject) ?? ""
   )
   const [description, setDescription] = useState(initialItem?.description ?? "")
   const [recommendedFor, setRecommendedFor] = useState(initialItem?.recommendedFor ?? "")
@@ -356,11 +355,7 @@ export const StudioClassForm = ({
       id: initialItem?.id ?? "",
       programType: initialItem?.programType ?? "trial_class",
       assignmentMode: initialItem?.assignmentMode ?? "post_assign",
-      subject: studioClassSubjectOptions.includes(
-        initialItem?.subject as (typeof studioClassSubjectOptions)[number]
-      )
-        ? (initialItem?.subject ?? "")
-        : "",
+      subject: normalizeStudioClassSubjectOption(initialItem?.subject) ?? "",
       description: initialItem?.description ?? "",
       targetGrades: parseStoredTargetGrades(initialItem?.targetAge),
       recommendedFor: initialItem?.recommendedFor ?? "",
