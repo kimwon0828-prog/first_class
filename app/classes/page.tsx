@@ -192,6 +192,8 @@ const buildClassesHref = (params: {
   return parts.length ? `/classes?${parts.join("&")}` : "/classes"
 }
 
+const buildAcademiesHref = (subjectLabel: string) => `/academies?subject=${escapeQueryValue(subjectLabel)}`
+
 const formatScheduleLabel = (slot: AvailableScheduleSlot) => {
   const startAt = new Date(slot.startAt)
   if (Number.isNaN(startAt.getTime())) {
@@ -546,17 +548,11 @@ export default async function ClassesPage({ searchParams }: ClassesPageProps) {
               <div key={`subject-page-${pageIndex}`} className={styles.subjectPage}>
                 <div className={styles.subjectGrid}>
                   {page.map((item) => {
-                    const isActive = selectedSubject === item.value
                     return (
                       <Link
                         key={item.label}
-                        href={buildClassesHref({
-                          region: selectedRegion,
-                          subject: isActive ? null : item.value,
-                          q: selectedQuery ?? null,
-                          stage: selectedStageChip?.label ?? null
-                        })}
-                        className={`${styles.subjectItem}${isActive ? ` ${styles.subjectItemActive}` : ""}`}
+                        href={buildAcademiesHref(item.label)}
+                        className={styles.subjectItem}
                       >
                         <span className={styles.subjectEmoji}>{item.emoji}</span>
                         <span className={styles.subjectLabel}>{item.label}</span>
