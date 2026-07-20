@@ -5,6 +5,8 @@ import { getPublicEnv } from "@/shared/config/env"
 type ServerEnv = {
   supabaseUrl: string
   supabaseServiceRoleKey: string
+  naverMapClientId: string | null
+  naverMapClientSecret: string | null
 }
 
 export const getServerEnv = (): ServerEnv => {
@@ -17,6 +19,14 @@ export const getServerEnv = (): ServerEnv => {
 
   return {
     supabaseUrl,
-    supabaseServiceRoleKey
+    supabaseServiceRoleKey,
+    naverMapClientId:
+      process.env.NAVER_MAPS_CLIENT_ID ??
+      process.env.NAVER_MAP_CLIENT_ID ??
+      process.env.NEXT_PUBLIC_NAVER_MAPS_CLIENT_ID ??
+      process.env.NEXT_PUBLIC_NAVER_MAP_CLIENT_ID ??
+      null,
+    naverMapClientSecret:
+      process.env.NAVER_MAPS_CLIENT_SECRET ?? process.env.NAVER_MAP_CLIENT_SECRET ?? null
   }
 }

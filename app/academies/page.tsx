@@ -2,7 +2,7 @@ import Link from "next/link"
 
 import { getMyProfile } from "@/features/auth/lib/profile-sync"
 import { getSession } from "@/features/auth/lib/session"
-import { getAcademiesForMap } from "@/features/academies/queries/get-academies-for-map"
+import { getAcademiesForList } from "@/features/academies/queries/get-academies-for-list"
 import { AcademiesExplorer } from "@/features/academies/ui/academies-explorer"
 import { isAcademyArea } from "@/shared/config/academy-areas"
 
@@ -50,7 +50,7 @@ export default async function AcademiesPage({ searchParams }: AcademiesPageProps
       : "추천순"
 
   const [{ academies, selectedSubjectLabel }, session] = await Promise.all([
-    getAcademiesForMap({
+    getAcademiesForList({
       subject,
       region: selectedRegion,
       grade: selectedGrade,
@@ -62,7 +62,6 @@ export default async function AcademiesPage({ searchParams }: AcademiesPageProps
   const isParentUser = profile?.role === "parent"
   const isStudioUser =
     profile?.dbRole === "teacher" || profile?.dbRole === "academy" || profile?.dbRole === "admin"
-  const favoritesEnabled = !session || profile?.role === "parent"
   const myApplicationsHref = "/my/applications"
   const myApplicationsEntryHref = session
     ? isParentUser
@@ -77,7 +76,7 @@ export default async function AcademiesPage({ searchParams }: AcademiesPageProps
       <div className={styles.shell}>
         <header className={styles.header}>
           <div>
-            <p className={styles.eyebrow}>지도 기반 탐색</p>
+            <p className={styles.eyebrow}>과목별 학원 리스트</p>
             <h1 className={styles.title}>학원 찾기</h1>
           </div>
           <div className={styles.headerActions}>
@@ -108,8 +107,8 @@ export default async function AcademiesPage({ searchParams }: AcademiesPageProps
         <div className={styles.summaryBar}>
           <p className={styles.summaryText}>
             {selectedSubjectLabel
-              ? `${selectedSubjectLabel} 수업을 운영하는 학원을 지도에서 찾아보세요.`
-              : "가까운 학원과 대표 수업을 한 번에 둘러보세요."}
+              ? `${selectedSubjectLabel} 수업을 운영하는 학원을 한눈에 둘러보세요.`
+              : "과목별로 운영 중인 학원과 대표 수업을 한 번에 둘러보세요."}
           </p>
           <p className={styles.summaryMeta}>
             {academies.length > 0
@@ -124,7 +123,6 @@ export default async function AcademiesPage({ searchParams }: AcademiesPageProps
           selectedSubjectLabel={selectedSubjectLabel}
           selectedGradeLabel={selectedGrade}
           selectedSortLabel={selectedSort}
-          favoritesEnabled={favoritesEnabled}
         />
       </div>
 

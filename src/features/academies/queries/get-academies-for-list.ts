@@ -19,7 +19,6 @@ type PublicClassRow = {
   description: string
   trial_price: number
   cover_image_url: string | null
-  is_active: boolean
 }
 
 type SafeOrganizationRow = {
@@ -29,8 +28,6 @@ type SafeOrganizationRow = {
   academy_area: AcademyArea | null
   address: string | null
   address_detail: string | null
-  latitude?: number | null
-  longitude?: number | null
 }
 
 export type AcademyClassPreview = {
@@ -44,24 +41,19 @@ export type AcademyClassPreview = {
   coverImageUrl: string | null
 }
 
-export type AcademyMapOrganization = {
+export type AcademyListItem = {
   id: string
   displayName: string
-  name: string
-  branchName: string | null
   academyArea: AcademyArea | null
   address: string | null
   addressDetail: string | null
   locationSummary: string
   subjectTags: string[]
   targetAgeSummary: string
-  latitude: number | null
-  longitude: number | null
-  hasCoordinates: boolean
   representativeClasses: AcademyClassPreview[]
 }
 
-type GetAcademiesForMapOptions = {
+type GetAcademiesForListOptions = {
   subject?: string | null
   region?: AcademyArea | null
   grade?: string | null
@@ -77,39 +69,12 @@ const PUBLIC_CLASS_SELECT_FIELDS = [
   "target_age",
   "description",
   "trial_price",
-  "cover_image_url",
-  "is_active"
+  "cover_image_url"
 ].join(", ")
 
-const ORGANIZATION_SELECT_FIELDS = [
-  "id",
-  "name",
-  "branch_name",
-  "academy_area",
-  "address",
-  "address_detail",
-  "latitude",
-  "longitude"
-].join(", ")
-
-const LEGACY_ORGANIZATION_SELECT_FIELDS = [
-  "id",
-  "name",
-  "branch_name",
-  "academy_area",
-  "address",
-  "address_detail"
-].join(", ")
-
-const isMissingColumnError = (error: { code?: string; message?: string } | null) => {
-  if (!error) {
-    return false
-  }
-
-  const code = typeof error.code === "string" ? error.code : ""
-  const message = typeof error.message === "string" ? error.message : ""
-  return code === "42703" || message.includes("does not exist")
-}
+const ORGANIZATION_SELECT_FIELDS = ["id", "name", "branch_name", "academy_area", "address", "address_detail"].join(
+  ", "
+)
 
 const normalizeText = (value: string | null | undefined) => (value ?? "").trim().toLowerCase()
 
@@ -122,7 +87,7 @@ const summarizeLocation = (organization: SafeOrganizationRow) => {
 
   const baseAddress = organization.address?.trim()
   if (!baseAddress) {
-    return "위치 정보 준비 중"
+    return "주소 정보 준비 중"
   }
 
   const segments = baseAddress.split(/\s+/).filter(Boolean)
@@ -167,15 +132,16 @@ const sortClasses = (items: PublicClassRow[]) =>
     return left.title.localeCompare(right.title, "ko")
   })
 
-export const getAcademiesForMap = async (
-  options?: GetAcademiesForMapOptions
+export const getAcademiesForList = async (
+  options?: GetAcademiesForListOptions
 ): Promise<{
-  academies: AcademyMapOrganization[]
+  academies: AcademyListItem[]
   selectedSubjectLabel: string | null
 }> => {
   const serviceRoleClient = getSupabaseServiceRoleClient()
   const subjectFilter = resolveAcademiesSubjectFilter(options?.subject)
   const normalizedGrade = normalizeText(options?.grade)
+
   let classQuery = serviceRoleClient
     .from("classes")
     .select(PUBLIC_CLASS_SELECT_FIELDS)
@@ -216,17 +182,10 @@ export const getAcademiesForMap = async (
     }
   }
 
-  const initialOrganizations = await serviceRoleClient
+  const { data: organizationData, error: organizationError } = await serviceRoleClient
     .from("organizations")
     .select(ORGANIZATION_SELECT_FIELDS)
     .in("id", organizationIds)
-
-  const { data: organizationData, error: organizationError } = isMissingColumnError(initialOrganizations.error)
-    ? await serviceRoleClient
-        .from("organizations")
-        .select(LEGACY_ORGANIZATION_SELECT_FIELDS)
-        .in("id", organizationIds)
-    : initialOrganizations
 
   if (organizationError) {
     throw new Error("failed_to_fetch_public_organization_projection")
@@ -257,40 +216,22 @@ export const getAcademiesForMap = async (
       const subjectTags = Array.from(
         new Set(organizationClasses.map((item) => formatAcademySubjectTag(item.subject)))
       ).slice(0, 4)
-      const latitude =
-        typeof organization.latitude === "number" && Number.isFinite(organization.latitude)
-          ? organization.latitude
-          : null
-      const longitude =
-        typeof organization.longitude === "number" && Number.isFinite(organization.longitude)
-          ? organization.longitude
-          : null
       const displayName = [organization.name, organization.branch_name].filter(Boolean).join(" ").trim()
 
       return {
         id: organizationId,
         displayName: displayName || organization.name,
-        name: organization.name,
-        branchName: organization.branch_name ?? null,
         academyArea: organization.academy_area ?? null,
         address: organization.address ?? null,
         addressDetail: organization.address_detail ?? null,
         locationSummary: summarizeLocation(organization),
         subjectTags,
         targetAgeSummary: buildTargetAgeSummary(organizationClasses),
-        latitude,
-        longitude,
-        hasCoordinates: latitude !== null && longitude !== null,
         representativeClasses
-      } satisfies AcademyMapOrganization
+      } satisfies AcademyListItem
     })
-    .filter((item): item is AcademyMapOrganization => Boolean(item))
+    .filter((item): item is AcademyListItem => Boolean(item))
     .sort((left, right) => {
-      const coordinateDiff = Number(right.hasCoordinates) - Number(left.hasCoordinates)
-      if (coordinateDiff !== 0) {
-        return coordinateDiff
-      }
-
       if ((options?.sort ?? "").trim() === "name") {
         return left.displayName.localeCompare(right.displayName, "ko")
       }
