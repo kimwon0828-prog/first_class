@@ -7,8 +7,7 @@ const navItems = [
   { href: "#problem", label: "왜 첫수업인가" },
   { href: "#features", label: "파트너 센터" },
   { href: "#pricing", label: "요금제" },
-  { href: "#pilot", label: "파일럿 혜택" },
-  { href: "#contact", label: "문의하기" }
+  { href: "#pilot", label: "파일럿 혜택" }
 ]
 
 const problemCards = [
@@ -427,7 +426,7 @@ export default function PartnerLanding() {
           <div className={`${styles.sectionHead} ${styles.sectionHeadOnGreen}`}>
             <span className={`${styles.eyebrow} ${styles.eyebrowOnGreen}`}>파일럿 파트너 모집</span>
             <h2>
-              후곡·백마·중계 학원가
+              중계·후곡·백마 학원가
               <br />
               파일럿 파트너를 모집합니다
             </h2>
