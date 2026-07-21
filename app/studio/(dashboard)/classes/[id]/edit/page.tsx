@@ -36,7 +36,7 @@ export default async function StudioClassEditPage({ params }: StudioClassEditPag
     <div className={styles.page}>
       <header className={styles.header}>
         <div className={styles.headerTop}>
-          <Link href="/studio/classes" className={styles.backLink} prefetch={false}>
+          <Link href="/studio/classes" className={styles.backLink}>
             목록으로 돌아가기
           </Link>
         </div>

@@ -157,7 +157,7 @@ export default async function StudioApplicationDetailPage({ params }: StudioAppl
     <div className={styles.page}>
       <header className={styles.header}>
         <div className={styles.headerTopRow}>
-          <Link href="/studio/applications" prefetch={false} className={styles.backLink}>
+          <Link href="/studio/applications" className={styles.backLink}>
             신청/상담 관리로 돌아가기
           </Link>
         </div>
@@ -238,11 +238,11 @@ export default async function StudioApplicationDetailPage({ params }: StudioAppl
                       </>
                     ) : null}
                     {data.classId ? (
-                      <Link href={`/classes/${data.classId}`} prefetch={false} className={styles.secondaryButton}>
+                      <Link href={`/classes/${data.classId}`} className={styles.secondaryButton}>
                         수업 미리보기
                       </Link>
                     ) : null}
-                    <Link href="/studio/schedule" prefetch={false} className={styles.secondaryButton}>
+                    <Link href="/studio/schedule" className={styles.secondaryButton}>
                       일정 관리
                     </Link>
                   </div>

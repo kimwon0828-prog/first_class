@@ -134,6 +134,7 @@ export const StudioScheduleManager = ({ items }: StudioScheduleManagerProps) => 
   const todayKey = useMemo(() => toLocalYmd(today), [today])
   const [selectedDateKey, setSelectedDateKey] = useState(todayKey)
   const [visibleMonthDate, setVisibleMonthDate] = useState(() => startOfMonth(today))
+  const [pendingApplicationId, setPendingApplicationId] = useState<string | null>(null)
 
   const scheduleIntegrityIssues = useMemo(() => {
     return items.filter(
@@ -391,10 +392,11 @@ export const StudioScheduleManager = ({ items }: StudioScheduleManagerProps) => 
                 <Link
                   key={item.id}
                   href={`/studio/applications/${item.id}`}
-                  prefetch={false}
                   className={styles.buttonSecondary}
+                  aria-busy={pendingApplicationId === item.id}
+                  onClick={() => setPendingApplicationId(item.id)}
                 >
-                  {item.childName} 신청 확인
+                  {pendingApplicationId === item.id ? "이동 중..." : `${item.childName} 신청 확인`}
                 </Link>
               ))}
             </div>
@@ -486,10 +488,11 @@ export const StudioScheduleManager = ({ items }: StudioScheduleManagerProps) => 
                         <div className={styles.footerHint}>{item.parentName} 보호자 신청</div>
                         <Link
                           href={`/studio/applications/${item.id}`}
-                          prefetch={false}
                           className={styles.linkButton}
+                          aria-busy={pendingApplicationId === item.id}
+                          onClick={() => setPendingApplicationId(item.id)}
                         >
-                          신청 상세 보기
+                          {pendingApplicationId === item.id ? "이동 중..." : "신청 상세 보기"}
                         </Link>
                       </div>
                     </div>

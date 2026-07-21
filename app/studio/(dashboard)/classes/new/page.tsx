@@ -15,11 +15,11 @@ export default async function StudioClassNewPage() {
     <div className={styles.page}>
       <header className={styles.header}>
         <div className={styles.headerTop}>
-          <Link href="/studio/classes" className={styles.backLink} prefetch={false}>
+          <Link href="/studio/classes" className={styles.backLink}>
             수업 관리로 돌아가기
           </Link>
           <div className={styles.headerActions}>
-            <Link href="/studio/classes" className={styles.secondaryButton} prefetch={false}>
+            <Link href="/studio/classes" className={styles.secondaryButton}>
               수업 관리
             </Link>
           </div>

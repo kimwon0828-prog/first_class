@@ -31,6 +31,7 @@ export const StudioClassesManager = ({ items }: StudioClassesManagerProps) => {
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive">("all")
   const [query, setQuery] = useState("")
   const [toastState, setToastState] = useState<null | "created" | "updated">(null)
+  const [pendingHref, setPendingHref] = useState<string | null>(null)
   const totalCount = items.length
   const activeCount = items.filter((item) => item.isActive).length
   const inactiveCount = totalCount - activeCount
@@ -216,8 +217,13 @@ export const StudioClassesManager = ({ items }: StudioClassesManagerProps) => {
               <p className={styles.emptyDescription}>
                 첫 수업을 등록하면 학부모가 수업을 확인하고 신청할 수 있어요.
               </p>
-              <Link href="/studio/classes/new" className={styles.primaryButton} prefetch={false}>
-                수업 등록하기
+              <Link
+                href="/studio/classes/new"
+                className={styles.primaryButton}
+                aria-busy={pendingHref === "/studio/classes/new"}
+                onClick={() => setPendingHref("/studio/classes/new")}
+              >
+                {pendingHref === "/studio/classes/new" ? "이동 중..." : "수업 등록하기"}
               </Link>
             </div>
           ) : (
@@ -231,8 +237,13 @@ export const StudioClassesManager = ({ items }: StudioClassesManagerProps) => {
                     </p>
                   </div>
                 </div>
-                <Link href="/studio/classes/new" className={styles.ctaButton} prefetch={false}>
-                  새 수업 등록
+                <Link
+                  href="/studio/classes/new"
+                  className={styles.ctaButton}
+                  aria-busy={pendingHref === "/studio/classes/new"}
+                  onClick={() => setPendingHref("/studio/classes/new")}
+                >
+                  {pendingHref === "/studio/classes/new" ? "이동 중..." : "새 수업 등록"}
                 </Link>
               </div>
 
@@ -341,9 +352,10 @@ export const StudioClassesManager = ({ items }: StudioClassesManagerProps) => {
                           <Link
                             href={`/studio/classes/${item.id}/edit`}
                             className={styles.primaryButtonSm}
-                            prefetch={false}
+                            aria-busy={pendingHref === `/studio/classes/${item.id}/edit`}
+                            onClick={() => setPendingHref(`/studio/classes/${item.id}/edit`)}
                           >
-                            수정하기
+                            {pendingHref === `/studio/classes/${item.id}/edit` ? "이동 중..." : "수정하기"}
                           </Link>
                         </div>
                       </div>

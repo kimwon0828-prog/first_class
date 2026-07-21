@@ -116,7 +116,7 @@ export const StudioApplicationDetailPanel = ({ item }: StudioApplicationDetailPa
             <p className={styles.cardDescription}>신청한 수업 정보를 확인해요.</p>
           </div>
           {item.classId ? (
-            <Link href={`/classes/${item.classId}`} prefetch={false} className={styles.linkButton}>
+            <Link href={`/classes/${item.classId}`} className={styles.linkButton}>
               미리보기
             </Link>
           ) : null}

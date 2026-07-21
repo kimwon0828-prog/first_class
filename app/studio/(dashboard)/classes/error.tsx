@@ -56,7 +56,6 @@ export default function StudioClassesError({
           </button>
           <Link
             href="/studio"
-            prefetch={false}
             style={{
               display: "inline-flex",
               alignItems: "center",
@@ -76,7 +75,6 @@ export default function StudioClassesError({
           </Link>
           <Link
             href="/studio/access"
-            prefetch={false}
             style={{
               display: "inline-flex",
               alignItems: "center",
@@ -99,4 +97,3 @@ export default function StudioClassesError({
     </div>
   )
 }
-
