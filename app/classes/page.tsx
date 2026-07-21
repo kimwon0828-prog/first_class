@@ -5,9 +5,8 @@ import { redirect } from "next/navigation"
 import { formatStoredTargetGrades } from "@/shared/constants/grade-options"
 import { getMyProfile } from "@/features/auth/lib/profile-sync"
 import { getSession } from "@/features/auth/lib/session"
-import { getClassAvailableSlots } from "@/features/applications/queries/get-class-available-slots"
-import { getPublicClassDetail } from "@/features/classes/queries/get-public-class-detail"
-import type { AvailableScheduleSlot, ClassSummary } from "@/shared/lib/db/adapter"
+import { getPublicClassCardScheduleSummaries } from "@/features/classes/queries/get-public-class-card-schedule-summaries"
+import type { ClassSummary } from "@/shared/lib/db/adapter"
 import { ClassesRegionInlineSelect, ClassesSearchPill } from "@/features/classes/ui/classes-region-select"
 import { ParentFooter } from "@/features/classes/ui/parent-footer"
 import { getPublicClasses } from "@/features/classes/queries/get-public-classes"
@@ -43,7 +42,7 @@ type HomeSubjectCategory = {
 type AvailableClassCard = {
   classItem: ClassSummary
   academyName: string
-  slot: AvailableScheduleSlot
+  scheduleSummary: string
 }
 
 type HomeStageChip = {
@@ -194,27 +193,6 @@ const buildClassesHref = (params: {
 
 const buildAcademiesHref = (subjectLabel: string) => `/academies?subject=${escapeQueryValue(subjectLabel)}`
 
-const formatScheduleLabel = (slot: AvailableScheduleSlot) => {
-  const startAt = new Date(slot.startAt)
-  if (Number.isNaN(startAt.getTime())) {
-    return slot.label
-  }
-
-  const dayLabel = new Intl.DateTimeFormat("ko-KR", {
-    month: "numeric",
-    day: "numeric",
-    weekday: "short"
-  }).format(startAt)
-
-  const timeLabel = new Intl.DateTimeFormat("ko-KR", {
-    hour: "numeric",
-    minute: "2-digit",
-    hour12: false
-  }).format(startAt)
-
-  return `${dayLabel} · ${timeLabel}`
-}
-
 export default async function ClassesPage({ searchParams }: ClassesPageProps) {
   const resolvedSearchParams = searchParams ? await searchParams : undefined
   const rawRegionParam =
@@ -322,40 +300,26 @@ export default async function ClassesPage({ searchParams }: ClassesPageProps) {
       ? returnTo
       : `/auth/sign-in?${new URLSearchParams({ returnTo }).toString()}`
   }
-  const now = Date.now()
-  const oneWeekFromNow = now + 7 * 24 * 60 * 60 * 1000
+  const topAvailableClasses = visibleClasses.slice(0, 10)
+  const scheduleSummaryByClassId =
+    !error && !isFilteredView && topAvailableClasses.length > 0
+      ? await getPublicClassCardScheduleSummaries(topAvailableClasses.map((item) => item.id))
+      : new Map()
   const availableClassCards: AvailableClassCard[] =
     !error && !isFilteredView
-      ? (
-          await Promise.all(
-            visibleClasses.slice(0, 10).map(async (item) => {
-              const { data: slots } = await getClassAvailableSlots(item.id)
-              const openSlots = slots
-                .filter((slot) => !slot.isClosed)
-                .sort((left, right) => left.startAt.localeCompare(right.startAt))
-              const thisWeekSlot =
-                openSlots.find((slot) => {
-                  const slotTime = new Date(slot.startAt).getTime()
-                  return Number.isFinite(slotTime) && slotTime >= now && slotTime <= oneWeekFromNow
-                }) ?? openSlots[0]
+      ? topAvailableClasses.map((item) => {
+          const academyName = item.organization
+            ? [item.organization.name, item.organization.branchName].filter(Boolean).join(" ").trim()
+            : ""
+          const scheduleSummary =
+            scheduleSummaryByClassId.get(item.id)?.summaryLabel ?? "예약 가능 일정 확인"
 
-              if (!thisWeekSlot) {
-                return null
-              }
-
-              const { data: detail } = await getPublicClassDetail(item.id)
-              const academyName = detail?.organization
-                ? [detail.organization.name, detail.organization.branchName].filter(Boolean).join(" ").trim()
-                : ""
-
-              return {
-                classItem: item,
-                academyName: academyName || "학원 정보 준비 중",
-                slot: thisWeekSlot
-              }
-            })
-          )
-        ).filter((item): item is AvailableClassCard => Boolean(item))
+          return {
+            classItem: item,
+            academyName: academyName || "학원 정보 준비 중",
+            scheduleSummary
+          }
+        })
       : []
 
   return (
@@ -795,8 +759,8 @@ export default async function ClassesPage({ searchParams }: ClassesPageProps) {
               </div>
               {availableClassCards.length > 0 ? (
                 <ul className={styles.availableList}>
-                  {availableClassCards.map(({ classItem, academyName, slot }) => (
-                    <li key={`${classItem.id}-${slot.id}`} className={styles.availableItem}>
+                  {availableClassCards.map(({ classItem, academyName, scheduleSummary }) => (
+                    <li key={classItem.id} className={styles.availableItem}>
                       <article className={styles.availableCard}>
                         <div className={styles.availableBody}>
                           <div className={styles.availableHeader}>
@@ -804,18 +768,16 @@ export default async function ClassesPage({ searchParams }: ClassesPageProps) {
                               <p className={styles.availableAcademy}>{academyName}</p>
                               <h3 className={styles.availableTitle}>{classItem.title}</h3>
                             </div>
-                            <span className={styles.seatBadge}>
-                              {slot.remainingCount > 0 ? `잔여 ${slot.remainingCount}석` : "마감 임박"}
-                            </span>
+                            <span className={styles.seatBadge}>예약 가능</span>
                           </div>
                           <div className={styles.availableMeta}>
-                            <span>{formatScheduleLabel(slot)}</span>
+                            <span>{scheduleSummary}</span>
                             <span>·</span>
                             <span>{formatStoredTargetGrades(classItem.targetAge)}</span>
                           </div>
                         </div>
                         <div className={styles.availableFooter}>
-                          <span className={styles.availableSlotLabel}>{slot.label}</span>
+                          <span className={styles.availableSlotLabel}>자세한 시간은 상세에서 확인</span>
                           <Link href={applyHrefForClass(classItem.id)} className={styles.reserveButton}>
                             예약하기
                           </Link>

@@ -281,8 +281,11 @@ export const listPublicClassesWithSafeProjection = async (
 
   return classRows
     .map((row) => {
-      const summary = mapPublicClassSummary(row, teacherProfileById)
       const organization = row.organization_id ? organizationById.get(row.organization_id) : undefined
+      const summary = {
+        ...mapPublicClassSummary(row, teacherProfileById),
+        organization: toOrganizationLocation(organization)
+      }
 
       return {
         summary,

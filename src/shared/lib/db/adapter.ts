@@ -77,6 +77,7 @@ export type ClassSummary = {
   teacherName: string | null
   coverImageUrl: string | null
   isActive: boolean
+  organization?: OrganizationLocationInfo | null
   schedules?: StudioClassScheduleItem[]
 }
 
