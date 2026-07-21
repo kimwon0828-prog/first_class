@@ -2,8 +2,11 @@ import type { Metadata } from "next"
 import type { ReactNode } from "react"
 
 export const metadata: Metadata = {
-  title: "첫수업 MVP",
-  description: "첫수업 MVP"
+  title: {
+    default: "첫수업",
+    template: "%s | 첫수업"
+  },
+  description: "학부모와 학원을 연결하는 체험수업 예약 플랫폼"
 }
 
 type RootLayoutProps = {
