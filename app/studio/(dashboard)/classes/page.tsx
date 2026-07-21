@@ -1,11 +1,11 @@
 import { requireTeacherStudioAccess } from "@/features/studio/lib/require-teacher-studio-access"
-import { getStudioClasses } from "@/features/studio/queries/get-studio-classes"
+import { getStudioClassListItems } from "@/features/studio/queries/get-studio-classes"
 import { StudioClassesManager } from "@/features/studio/ui/studio-classes-manager"
 import styles from "./page.module.css"
 
 export default async function StudioClassesPage() {
   const teacher = await requireTeacherStudioAccess()
-  const { data: classes, error } = await getStudioClasses(teacher.organizationId)
+  const { data: classes, error } = await getStudioClassListItems(teacher.organizationId)
 
   return (
     <div className={styles.page}>

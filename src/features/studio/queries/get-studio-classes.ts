@@ -1,6 +1,24 @@
 import { dataAdapter } from "@/shared/lib/db"
-import type { ClassSummary } from "@/shared/lib/db/adapter"
+import type { ClassSummary, StudioClassListItem } from "@/shared/lib/db/adapter"
 import type { QueryResult } from "@/shared/queries"
+
+export const getStudioClassListItems = async (
+  organizationId: string
+): Promise<QueryResult<StudioClassListItem[]>> => {
+  try {
+    const data = await dataAdapter.listStudioClassListItems(organizationId)
+    return { data, error: null }
+  } catch (error) {
+    console.error("[getStudioClassListItems failed]", {
+      organizationId,
+      message: error instanceof Error ? error.message : "unknown_error"
+    })
+    return {
+      data: [],
+      error: "수업 목록을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요."
+    }
+  }
+}
 
 export const getStudioClasses = async (
   organizationId: string

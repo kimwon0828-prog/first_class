@@ -6,11 +6,11 @@ import { useSearchParams } from "next/navigation"
 
 import { formatStoredTargetGrades } from "@/shared/constants/grade-options"
 import { submitToggleStudioClassActiveAction } from "@/features/studio/actions/toggle-studio-class-active"
-import type { ClassSummary } from "@/shared/lib/db/adapter"
+import type { StudioClassListItem } from "@/shared/lib/db/adapter"
 import styles from "@/features/studio/ui/studio-classes-manager.module.css"
 
 type StudioClassesManagerProps = {
-  items: ClassSummary[]
+  items: StudioClassListItem[]
 }
 
 const formatPrice = (price: number) => {
@@ -21,7 +21,7 @@ const formatPrice = (price: number) => {
   return `${price.toLocaleString("ko-KR")}원`
 }
 
-const PROGRAM_TYPE_LABELS: Record<ClassSummary["programType"], string> = {
+const PROGRAM_TYPE_LABELS: Record<StudioClassListItem["programType"], string> = {
   trial_class: "체험수업",
   level_test: "레벨테스트"
 }
@@ -319,7 +319,7 @@ export const StudioClassesManager = ({ items }: StudioClassesManagerProps) => {
                             <div className={styles.metaItem}>
                               <dt className={styles.metaLabel}>예약 시간</dt>
                               <dd className={styles.metaValue}>
-                                {item.schedules?.length ? `${item.schedules.length}개 설정됨` : "미설정"}
+                                {item.scheduleCount > 0 ? `${item.scheduleCount}개 설정됨` : "미설정"}
                               </dd>
                             </div>
                           </dl>

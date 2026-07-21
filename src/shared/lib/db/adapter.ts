@@ -81,6 +81,23 @@ export type ClassSummary = {
   schedules?: StudioClassScheduleItem[]
 }
 
+export type StudioClassListItem = {
+  id: string
+  programType: ClassProgramType
+  assignmentMode: ClassAssignmentMode
+  title: string
+  subject: string
+  region: AcademyArea
+  targetAge: string
+  trialPrice: number
+  teacherId: string | null
+  teacherDisplayName: string | null
+  teacherName: string | null
+  coverImageUrl: string | null
+  isActive: boolean
+  scheduleCount: number
+}
+
 export type OrganizationLocationInfo = {
   name: string
   branchName: string | null
@@ -480,6 +497,7 @@ export interface DataAdapter {
   listClasses(options?: ListClassesOptions): Promise<ClassSummary[]>
   getClassById(classId: string): Promise<ClassDetail | null>
   listAvailableScheduleSlotsByClassId(classId: string): Promise<AvailableScheduleSlot[]>
+  listStudioClassListItems(organizationId: string): Promise<StudioClassListItem[]>
   listStudioClasses(organizationId: string): Promise<ClassSummary[]>
   listStudioTeacherOptions(organizationId: string): Promise<StudioTeacherOption[]>
   listStudioDashboardTeacherFilterOptions(

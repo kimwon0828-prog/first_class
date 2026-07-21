@@ -14,6 +14,7 @@ import type {
   MyDashboardData,
   StudioApplicationDetail,
   StudioApplicationSummary,
+  StudioClassListItem,
   StudioClassScheduleItem,
   StudioScheduleBlockSummary,
   StudioDashboardTeacherFilterOption,
@@ -287,6 +288,23 @@ const teacherSignupRequests =
 const cloneClassSummary = (item: ClassSummary): ClassSummary => ({
   ...item,
   schedules: item.schedules?.map((schedule) => ({ ...schedule }))
+})
+
+const toStudioClassListItem = (item: ClassSummary): StudioClassListItem => ({
+  id: item.id,
+  programType: item.programType,
+  assignmentMode: item.assignmentMode,
+  title: item.title,
+  subject: item.subject,
+  region: item.region,
+  targetAge: item.targetAge,
+  trialPrice: item.trialPrice,
+  teacherId: item.teacherId,
+  teacherDisplayName: item.teacherDisplayName,
+  teacherName: item.teacherName,
+  coverImageUrl: item.coverImageUrl,
+  isActive: item.isActive,
+  scheduleCount: item.schedules?.length ?? 0
 })
 
 const toMockClassSchedules = (input: {
@@ -724,6 +742,13 @@ export const mockDataAdapter: DataAdapter = {
     }
 
     return [...classes].map(cloneClassSummary).sort((a, b) => (a.title > b.title ? 1 : -1))
+  },
+  async listStudioClassListItems(organizationId) {
+    if (organizationId !== mockOrganizationId) {
+      return []
+    }
+
+    return [...classes].map(toStudioClassListItem).sort((a, b) => (a.title > b.title ? 1 : -1))
   },
   async listStudioTeacherOptions(organizationId) {
     if (organizationId !== mockOrganizationId) {

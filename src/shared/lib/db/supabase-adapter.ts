@@ -20,6 +20,7 @@ import type {
   OrganizationLocationInfo,
   StudioApplicationDetail,
   StudioApplicationSummary,
+  StudioClassListItem,
   StudioClassInput,
   StudioClassScheduleItem,
   StudioScheduleBlockSummary,
@@ -61,6 +62,21 @@ type ClassRow = {
   is_active: boolean
   organizations?: OrganizationLocationRow[] | OrganizationLocationRow | null
   class_schedules?: ClassScheduleRow[] | null
+}
+
+type StudioClassListRow = {
+  id: string
+  program_type: ClassProgramType
+  assignment_mode?: ClassAssignmentMode | null
+  title: string
+  subject: string
+  region: AcademyArea
+  target_age: string
+  trial_price: number
+  teacher_id: string | null
+  teacher_display_name?: string | null
+  cover_image_url?: string | null
+  is_active: boolean
 }
 
 type TeacherPublicProfileRow = {
@@ -313,6 +329,31 @@ const mapClass = (
   }
 }
 
+const mapStudioClassListItem = (
+  row: StudioClassListRow,
+  teacherName: string | null,
+  scheduleCount: number
+): StudioClassListItem => {
+  const resolvedTeacherName = teacherName ?? row.teacher_display_name ?? null
+
+  return {
+    id: row.id,
+    programType: row.program_type,
+    assignmentMode: resolveClassAssignmentMode(row),
+    title: row.title,
+    subject: row.subject,
+    region: row.region,
+    targetAge: row.target_age,
+    trialPrice: row.trial_price,
+    teacherId: row.teacher_id,
+    teacherDisplayName: resolvedTeacherName,
+    teacherName: resolvedTeacherName,
+    coverImageUrl: row.cover_image_url ?? null,
+    isActive: row.is_active,
+    scheduleCount
+  }
+}
+
 const mapClassSchedule = (row: ClassScheduleRow): StudioClassScheduleItem => ({
   id: row.id,
   scheduleType: row.schedule_type,
@@ -391,6 +432,36 @@ const attachClassSchedulesToRows = async (
     ...row,
     class_schedules: schedulesByClassId.get(row.id) ?? []
   }))
+}
+
+const getScheduleCountByClassId = async (
+  supabase: Awaited<ReturnType<typeof getSupabaseServerClient>>,
+  classIds: string[]
+) => {
+  const uniqueClassIds = Array.from(new Set(classIds.filter(Boolean)))
+  if (uniqueClassIds.length === 0) {
+    return new Map<string, number>()
+  }
+
+  const { data, error } = await supabase
+    .from("class_schedules")
+    .select("class_id")
+    .in("class_id", uniqueClassIds)
+
+  if (error) {
+    throw new Error("failed_to_fetch_studio_class_schedule_counts")
+  }
+
+  const countByClassId = new Map<string, number>()
+  for (const row of (data ?? []) as Array<{ class_id: string | null }>) {
+    if (!row.class_id) {
+      continue
+    }
+
+    countByClassId.set(row.class_id, (countByClassId.get(row.class_id) ?? 0) + 1)
+  }
+
+  return countByClassId
 }
 
 const getEmbeddedOrganization = (row: ClassRow): OrganizationLocationRow | null => {
@@ -1153,6 +1224,11 @@ const LEGACY_CLASS_BASE_SELECT_FIELDS =
 
 const CLASS_BASE_SELECT_FIELDS = `${LEGACY_CLASS_BASE_SELECT_FIELDS}, assignment_mode`
 
+const LEGACY_STUDIO_CLASS_LIST_SELECT_FIELDS =
+  "id, program_type, title, subject, region, target_age, trial_price, teacher_id, teacher_display_name, cover_image_url, is_active"
+
+const STUDIO_CLASS_LIST_SELECT_FIELDS = `${LEGACY_STUDIO_CLASS_LIST_SELECT_FIELDS}, assignment_mode`
+
 const ORGANIZATION_LOCATION_SELECT_FIELDS = "organizations(name, branch_name, address, address_detail)"
 const ORGANIZATION_BASE_SELECT_FIELDS = "organizations(name, branch_name)"
 
@@ -1460,6 +1536,71 @@ export const supabaseDataAdapter: DataAdapter = {
     }
 
     return detail
+  },
+  async listStudioClassListItems(organizationId) {
+    const debugEnabled = shouldDebugDb()
+    if (debugEnabled) {
+      const { supabaseUrl } = getPublicEnv()
+      console.info("[listStudioClassListItems] start", {
+        supabaseHost: new URL(supabaseUrl).host,
+        organizationId
+      })
+    }
+
+    const supabase = await getSupabaseServerClient()
+    const initialResult = await supabase
+      .from("classes")
+      .select(STUDIO_CLASS_LIST_SELECT_FIELDS)
+      .eq("organization_id", organizationId)
+      .order("created_at", { ascending: false })
+
+    const { data, error } = isMissingColumnError(initialResult.error)
+      ? await supabase
+          .from("classes")
+          .select(LEGACY_STUDIO_CLASS_LIST_SELECT_FIELDS)
+          .eq("organization_id", organizationId)
+          .order("created_at", { ascending: false })
+      : initialResult
+
+    if (error) {
+      if (debugEnabled) {
+        console.error("[listStudioClassListItems] classes query failed", {
+          message: error.message ?? null,
+          code: (error as { code?: string }).code ?? null,
+          details: (error as { details?: string }).details ?? null
+        })
+      }
+      throw new Error("failed_to_fetch_studio_class_list_items")
+    }
+
+    const classRows = (data ?? []) as StudioClassListRow[]
+    const [scheduleCountByClassId, teacherNameMap] = await Promise.all([
+      getScheduleCountByClassId(
+        supabase,
+        classRows.map((row) => row.id)
+      ),
+      getStudioTeacherDisplayNameMap(
+        classRows.map((row) => row.teacher_id).filter((id): id is string => Boolean(id))
+      ).catch(() => new Map<string, string>())
+    ])
+
+    const mapped = classRows.map((row) =>
+      mapStudioClassListItem(
+        row,
+        row.teacher_id ? (teacherNameMap.get(row.teacher_id) ?? null) : null,
+        scheduleCountByClassId.get(row.id) ?? 0
+      )
+    )
+
+    if (debugEnabled) {
+      console.info("[listStudioClassListItems] done", {
+        rows: classRows.length,
+        returned: mapped.length,
+        teacherNames: teacherNameMap.size
+      })
+    }
+
+    return mapped
   },
   async listStudioClasses(organizationId) {
     const debugEnabled = shouldDebugDb()
