@@ -1,5 +1,9 @@
 import { dataAdapter } from "@/shared/lib/db"
-import type { StudioApplicationSummary, StudioDashboardSummary } from "@/shared/lib/db/adapter"
+import type {
+  StudioApplicationListOptions,
+  StudioApplicationSummary,
+  StudioDashboardSummary
+} from "@/shared/lib/db/adapter"
 import type { QueryResult } from "@/shared/queries"
 
 const getStartOfToday = () => {
@@ -87,12 +91,10 @@ export const buildStudioDashboardSummary = (
 
 export const getStudioDashboardSummary = async (
   organizationId: string,
-  options?: { teacherId?: string | null }
+  options?: StudioApplicationListOptions
 ): Promise<QueryResult<StudioDashboardSummary>> => {
   try {
-    const applications = await dataAdapter.listStudioApplications(organizationId, {
-      teacherId: options?.teacherId ?? null
-    })
+    const applications = await dataAdapter.listStudioApplications(organizationId, options)
 
     return {
       data: buildStudioDashboardSummary(applications),

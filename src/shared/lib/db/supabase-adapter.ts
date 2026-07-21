@@ -18,6 +18,7 @@ import type {
   DataAdapter,
   MyDashboardData,
   OrganizationLocationInfo,
+  StudioApplicationListOptions,
   StudioApplicationDetail,
   StudioApplicationSummary,
   StudioClassListItem,
@@ -2636,7 +2637,7 @@ export const supabaseDataAdapter: DataAdapter = {
       }
     })
   },
-  async listStudioApplications(organizationId, options) {
+  async listStudioApplications(organizationId, options: StudioApplicationListOptions = {}) {
     const supabase = await getSupabaseServerClient()
     let query = supabase
       .from("trial_applications")
@@ -2645,8 +2646,16 @@ export const supabaseDataAdapter: DataAdapter = {
       )
       .eq("classes.organization_id", organizationId)
 
-    if (options?.teacherId) {
+    if (options.teacherId) {
       query = query.eq("assigned_teacher_id", options.teacherId)
+    }
+
+    if (options.createdAtFrom) {
+      query = query.gte("created_at", options.createdAtFrom)
+    }
+
+    if (options.createdAtTo) {
+      query = query.lte("created_at", options.createdAtTo)
     }
 
     const { data, error } = await query.order("created_at", { ascending: false })

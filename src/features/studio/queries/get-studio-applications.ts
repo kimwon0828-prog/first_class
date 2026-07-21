@@ -1,15 +1,13 @@
 import { dataAdapter } from "@/shared/lib/db"
-import type { StudioApplicationSummary } from "@/shared/lib/db/adapter"
+import type { StudioApplicationListOptions, StudioApplicationSummary } from "@/shared/lib/db/adapter"
 import type { QueryResult } from "@/shared/queries"
 
 export const getStudioApplications = async (
   organizationId: string,
-  options?: { teacherId?: string | null }
+  options?: StudioApplicationListOptions
 ): Promise<QueryResult<StudioApplicationSummary[]>> => {
   try {
-    const data = await dataAdapter.listStudioApplications(organizationId, {
-      teacherId: options?.teacherId ?? null
-    })
+    const data = await dataAdapter.listStudioApplications(organizationId, options)
     return { data, error: null }
   } catch {
     return {

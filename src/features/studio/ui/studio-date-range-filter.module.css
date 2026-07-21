@@ -1,0 +1,140 @@
+.filterCard {
+  display: grid;
+  gap: 12px;
+  padding: 16px 18px;
+  border-radius: 18px;
+  border: 1px solid #eeeeee;
+  background: #ffffff;
+}
+
+.filterTop {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.filterHeading {
+  display: grid;
+  gap: 4px;
+}
+
+.filterTitle {
+  margin: 0;
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 800;
+  color: #111111;
+}
+
+.filterDescription {
+  margin: 0;
+  font-size: 12px;
+  line-height: 18px;
+  color: #8a8a8a;
+}
+
+.status {
+  font-size: 12px;
+  line-height: 18px;
+  font-weight: 700;
+  color: #2aad38;
+}
+
+.controlGrid {
+  display: grid;
+  gap: 12px;
+}
+
+.selectWrap {
+  display: grid;
+  gap: 6px;
+}
+
+.label {
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 700;
+  color: #666666;
+}
+
+.select,
+.dateInput {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid #d9d9d9;
+  background: #ffffff;
+  color: #111111;
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.select:focus,
+.dateInput:focus {
+  outline: none;
+  border-color: #2aad38;
+  box-shadow: 0 0 0 3px rgba(42, 173, 56, 0.16);
+}
+
+.customGrid {
+  display: grid;
+  gap: 10px;
+}
+
+.dateGrid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(1, minmax(0, 1fr));
+}
+
+.actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.buttonPrimary,
+.buttonSecondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 42px;
+  padding: 0 14px;
+  border-radius: 12px;
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.buttonPrimary {
+  border: 1px solid #2aad38;
+  background: #2aad38;
+  color: #ffffff;
+}
+
+.buttonSecondary {
+  border: 1px solid #d9d9d9;
+  background: #ffffff;
+  color: #111111;
+}
+
+.helperText {
+  margin: 0;
+  font-size: 12px;
+  line-height: 16px;
+  color: #8a8a8a;
+}
+
+@media (min-width: 720px) {
+  .controlGrid {
+    grid-template-columns: minmax(220px, 280px) minmax(0, 1fr);
+    align-items: end;
+  }
+
+  .dateGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

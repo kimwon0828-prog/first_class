@@ -13,6 +13,7 @@ import type {
   DataAdapter,
   MyDashboardData,
   StudioApplicationDetail,
+  StudioApplicationListOptions,
   StudioApplicationSummary,
   StudioClassListItem,
   StudioClassScheduleItem,
@@ -1203,18 +1204,26 @@ export const mockDataAdapter: DataAdapter = {
       })
       .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))
   },
-  async listStudioApplications(organizationId, options) {
+  async listStudioApplications(organizationId, options: StudioApplicationListOptions = {}) {
     if (organizationId !== mockOrganizationId) {
       return []
     }
 
     return applications
       .filter((item) => {
-        if (!options?.teacherId) {
-          return true
+        if (options.teacherId && item.assignedTeacherId !== options.teacherId) {
+          return false
         }
 
-        return item.assignedTeacherId === options.teacherId
+        if (options.createdAtFrom && item.createdAt < options.createdAtFrom) {
+          return false
+        }
+
+        if (options.createdAtTo && item.createdAt > options.createdAtTo) {
+          return false
+        }
+
+        return true
       })
       .map((item) => {
         const classItem = classes.find((classRow) => classRow.id === item.classId)

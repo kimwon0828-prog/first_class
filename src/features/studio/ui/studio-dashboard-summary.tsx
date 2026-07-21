@@ -10,6 +10,8 @@ type StudioDashboardSummaryProps = {
   summary: StudioDashboardSummary
   applications: StudioApplicationSummary[]
   applicationsError?: string | null
+  applicationsHref?: string
+  selectedRangeLabel?: string
 }
 
 const formatDateTime = (value: string | null) => {
@@ -109,7 +111,9 @@ const getPriorityRank = (application: StudioApplicationSummary) => {
 export const StudioDashboardSummaryView = ({
   summary,
   applications,
-  applicationsError
+  applicationsError,
+  applicationsHref = "/studio/applications",
+  selectedRangeLabel = "이번 달"
 }: StudioDashboardSummaryProps) => {
   const [pendingTarget, setPendingTarget] = useState<string | null>(null)
   const totalApplications = applications.length
@@ -252,10 +256,10 @@ export const StudioDashboardSummaryView = ({
         <header className={styles.sectionHeaderRow}>
           <div>
             <h2 className={styles.sectionTitle}>최근 신청 현황</h2>
-            <p className={styles.sectionDescription}>최근 신청 5건을 요약해 보여줍니다.</p>
+            <p className={styles.sectionDescription}>{selectedRangeLabel} 기준 최근 신청 5건을 요약해 보여줍니다.</p>
           </div>
           <Link
-            href="/studio/applications"
+            href={applicationsHref}
             className={styles.buttonGhost}
             aria-busy={pendingTarget === "applications"}
             onClick={() => setPendingTarget("applications")}

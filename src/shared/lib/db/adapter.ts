@@ -404,6 +404,12 @@ export type StudioApplicationSummary = TrialApplicationSummary & {
   registrationStatus: ApplicationRegistrationStatus
 }
 
+export type StudioApplicationListOptions = {
+  teacherId?: string | null
+  createdAtFrom?: string | null
+  createdAtTo?: string | null
+}
+
 export type StudioApplicationDetail = StudioApplicationSummary & {
   confirmedScheduleBlockId: string | null
   childSchool: string | null
@@ -525,7 +531,7 @@ export interface DataAdapter {
   listMyApplications(parentId: string): Promise<TrialApplicationSummary[]>
   listStudioApplications(
     organizationId: string,
-    options?: { teacherId?: string | null }
+    options?: StudioApplicationListOptions
   ): Promise<StudioApplicationSummary[]>
   getStudioApplicationDetail(
     applicationId: string,
