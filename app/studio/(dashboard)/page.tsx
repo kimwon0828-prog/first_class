@@ -1,11 +1,10 @@
+import { getStudioOrganizationName } from "@/features/studio/lib/get-studio-organization-name"
 import { requireTeacherStudioAccess } from "@/features/studio/lib/require-teacher-studio-access"
+import { getStudioApplications } from "@/features/studio/queries/get-studio-applications"
 import { getStudioDashboardTeacherOptions } from "@/features/studio/queries/get-studio-dashboard-teacher-options"
-import { getStudioDashboardSummary } from "@/features/studio/queries/get-studio-dashboard-summary"
+import { buildStudioDashboardSummary } from "@/features/studio/queries/get-studio-dashboard-summary"
 import { StudioDashboardSummaryView } from "@/features/studio/ui/studio-dashboard-summary"
 import { StudioTeacherFilter } from "@/features/studio/ui/studio-teacher-filter"
-import { getSupabaseServerClient } from "@/integrations/supabase/server"
-import { dataAdapter } from "@/shared/lib/db"
-import type { StudioApplicationSummary } from "@/shared/lib/db/adapter"
 
 import styles from "@/features/studio/ui/studio-dashboard.module.css"
 
@@ -39,36 +38,18 @@ export default async function StudioIndexPage({ searchParams }: StudioIndexPageP
     selectedTeacherId !== "all"
       ? (filterOptions.find((option) => option.teacherId === selectedTeacherId)?.teacherName ?? null)
       : null
-  let organizationName = "학원"
-
-  if (!selectedTeacherName) {
-    const supabase = await getSupabaseServerClient()
-    const { data: organizationRow } = await supabase
-      .from("organizations")
-      .select("name")
-      .eq("id", teacher.organizationId)
-      .maybeSingle()
-
-    organizationName = organizationRow?.name?.trim() || "학원"
-  }
+  const organizationName = selectedTeacherName
+    ? "학원"
+    : ((await getStudioOrganizationName(teacher.organizationId)) ?? "학원")
 
   const greetingTitle = selectedTeacherName
     ? `안녕하세요, ${selectedTeacherName} 선생님`
     : `안녕하세요, ${organizationName} 관리자님`
 
-  const { data, error } = await getStudioDashboardSummary(teacher.organizationId, {
+  const { data: applications, error } = await getStudioApplications(teacher.organizationId, {
     teacherId: validatedTeacherId
   })
-
-  let applications: StudioApplicationSummary[] = []
-  let applicationsError: string | null = null
-  try {
-    applications = await dataAdapter.listStudioApplications(teacher.organizationId, {
-      teacherId: validatedTeacherId
-    })
-  } catch {
-    applicationsError = "신청 목록을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요."
-  }
+  const summary = buildStudioDashboardSummary(applications)
 
   return (
     <div className={styles.page}>
@@ -100,11 +81,7 @@ export default async function StudioIndexPage({ searchParams }: StudioIndexPageP
             <p className={styles.alertText}>{error}</p>
           </section>
         ) : (
-          <StudioDashboardSummaryView
-            summary={data}
-            applications={applications}
-            applicationsError={applicationsError}
-          />
+          <StudioDashboardSummaryView summary={summary} applications={applications} />
         )}
       </div>
     </div>

@@ -34,6 +34,57 @@ const toEnrollmentRate = (enrolledCount: number, applicationCount: number) => {
   return Math.round((enrolledCount / applicationCount) * 100)
 }
 
+export const buildStudioDashboardSummary = (
+  applications: StudioApplicationSummary[]
+): StudioDashboardSummary => {
+  const todayStart = getStartOfToday()
+  const todayEnd = getEndOfToday()
+  const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1)
+  const monthEnd = new Date(monthStart)
+  monthEnd.setMonth(monthEnd.getMonth() + 1)
+
+  const eligibleApplications = applications.filter((item) => item.status !== "canceled")
+  const enrolledCount = eligibleApplications.filter(
+    (item) => item.registrationStatus === "enrolled"
+  ).length
+
+  const monthlyApplications = eligibleApplications.filter((item) =>
+    isWithinRange(item.createdAt, monthStart, monthEnd)
+  )
+  const monthlyCompletedCount = eligibleApplications.filter(
+    (item) => item.status === "completed" && isWithinRange(item.updatedAt, monthStart, monthEnd)
+  ).length
+  const monthlyEnrolledCount = eligibleApplications.filter(
+    (item) =>
+      item.registrationStatus === "enrolled" &&
+      isWithinRange(item.updatedAt, monthStart, monthEnd)
+  ).length
+
+  return {
+    newApplicationCount: applications.filter((item) => item.status === "new").length,
+    activeApplicationCount: applications.filter(
+      (item) => item.status === "reviewing" || item.status === "confirmed"
+    ).length,
+    todayScheduledCount: applications.filter(
+      (item) => item.status !== "canceled" && isWithinRange(getScheduledAt(item), todayStart, todayEnd)
+    ).length,
+    pendingConfirmationCount: applications.filter(
+      (item) => item.status === "new" || item.status === "reviewing"
+    ).length,
+    needsOutcomeCount: applications.filter(
+      (item) =>
+        item.status === "completed" &&
+        (item.registrationStatus === "undecided" || item.registrationStatus === "pending")
+    ).length,
+    registeredCount: enrolledCount,
+    enrollmentRate: toEnrollmentRate(enrolledCount, eligibleApplications.length),
+    monthlyApplicationCount: monthlyApplications.length,
+    monthlyCompletedCount,
+    monthlyEnrolledCount,
+    monthlyEnrollmentRate: toEnrollmentRate(monthlyEnrolledCount, monthlyApplications.length)
+  }
+}
+
 export const getStudioDashboardSummary = async (
   organizationId: string,
   options?: { teacherId?: string | null }
@@ -43,55 +94,8 @@ export const getStudioDashboardSummary = async (
       teacherId: options?.teacherId ?? null
     })
 
-    const todayStart = getStartOfToday()
-    const todayEnd = getEndOfToday()
-    const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1)
-    const monthEnd = new Date(monthStart)
-    monthEnd.setMonth(monthEnd.getMonth() + 1)
-
-    const eligibleApplications = applications.filter((item) => item.status !== "canceled")
-    const enrolledCount = eligibleApplications.filter(
-      (item) => item.registrationStatus === "enrolled"
-    ).length
-
-    const monthlyApplications = eligibleApplications.filter((item) =>
-      isWithinRange(item.createdAt, monthStart, monthEnd)
-    )
-    const monthlyCompletedCount = eligibleApplications.filter(
-      (item) => item.status === "completed" && isWithinRange(item.updatedAt, monthStart, monthEnd)
-    ).length
-    const monthlyEnrolledCount = eligibleApplications.filter(
-      (item) =>
-        item.registrationStatus === "enrolled" &&
-        isWithinRange(item.updatedAt, monthStart, monthEnd)
-    ).length
-
     return {
-      data: {
-        newApplicationCount: applications.filter((item) => item.status === "new").length,
-        activeApplicationCount: applications.filter((item) =>
-          item.status === "reviewing" || item.status === "confirmed"
-        ).length,
-        todayScheduledCount: applications.filter(
-          (item) =>
-            item.status !== "canceled" &&
-            isWithinRange(getScheduledAt(item), todayStart, todayEnd)
-        ).length,
-        pendingConfirmationCount: applications.filter(
-          (item) => item.status === "new" || item.status === "reviewing"
-        ).length,
-        needsOutcomeCount: applications.filter(
-          (item) =>
-            item.status === "completed" &&
-            (item.registrationStatus === "undecided" || item.registrationStatus === "pending")
-        ).length,
-        registeredCount: enrolledCount,
-        enrollmentRate: toEnrollmentRate(enrolledCount, eligibleApplications.length),
-        monthlyApplicationCount: monthlyApplications.length,
-        monthlyCompletedCount,
-        monthlyEnrolledCount,
-        monthlyEnrollmentRate: toEnrollmentRate(monthlyEnrolledCount, monthlyApplications.length)
-      },
+      data: buildStudioDashboardSummary(applications),
       error: null
     }
   } catch {
