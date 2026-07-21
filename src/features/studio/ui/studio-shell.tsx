@@ -105,6 +105,7 @@ export const StudioShell = ({ children, organizationName }: StudioShellProps) =>
             <div className={styles.accountActions}>
               <Link
                 href="/studio/sign-out"
+                prefetch={false}
                 className={styles.accountLink}
                 onClick={(event) => event.stopPropagation()}
               >

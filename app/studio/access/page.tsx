@@ -121,6 +121,7 @@ export default async function StudioAccessPage({ searchParams }: StudioAccessPag
           </Link>
           <Link
             href="/studio/sign-out"
+            prefetch={false}
             style={{
               display: "inline-flex",
               alignItems: "center",

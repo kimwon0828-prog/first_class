@@ -51,7 +51,8 @@ export default async function StudioPendingPage() {
       ) : null}
 
       <Link 
-        href="/api/auth/sign-out" 
+        href="/api/auth/sign-out"
+        prefetch={false}
         style={{ 
           display: "inline-block", 
           padding: "12px 24px", 
