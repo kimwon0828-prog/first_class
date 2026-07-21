@@ -86,7 +86,6 @@ export async function updateApplicationStatusAction(
 
   const requestedActionType = requestedActionValue as ApplicationStatusActionType
   const requestedActionConfig = ACTION_CONFIG[requestedActionType]
-
   try {
     const current = await dataAdapter.getStudioApplicationDetail(
       applicationId,

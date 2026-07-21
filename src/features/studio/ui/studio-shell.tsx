@@ -53,7 +53,6 @@ export const StudioShell = ({ children, organizationName }: StudioShellProps) =>
               <Link
                 key={item.href}
                 href={item.href}
-                prefetch={false}
                 className={`${styles.navItem} ${active ? styles.navItemActive : ""}`}
                 aria-current={active ? "page" : undefined}
               >
@@ -82,7 +81,6 @@ export const StudioShell = ({ children, organizationName }: StudioShellProps) =>
             <div className={styles.accountActions}>
               <Link
                 href="/studio/sign-out"
-                prefetch={false}
                 className={styles.accountLink}
                 onClick={(event) => event.stopPropagation()}
               >

@@ -1,5 +1,6 @@
 "use server"
 
+import { cache } from "react"
 import { redirect } from "next/navigation"
 
 import { getSupabaseServerClient, getUserFromSupabaseAuthCookieFallback } from "@/integrations/supabase/server"
@@ -53,7 +54,7 @@ const getFallbackName = (email: string | undefined): string => {
   return localPart.slice(0, 30)
 }
 
-export const getParentAccessState = async (currentPath: string): Promise<ParentAccessState> => {
+const getParentAccessStateCached = cache(async (currentPath: string): Promise<ParentAccessState> => {
   const supabase = await getSupabaseServerClient()
   const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
   if (process.env.NEXT_PUBLIC_DEBUG_AUTH === "1") {
@@ -199,7 +200,10 @@ export const getParentAccessState = async (currentPath: string): Promise<ParentA
       phone
     }
   }
-}
+})
+
+export const getParentAccessState = async (currentPath: string): Promise<ParentAccessState> =>
+  getParentAccessStateCached(currentPath)
 
 export const requireParentAccess = async ({ returnTo }: RequireParentAccessOptions) => {
   const state = await getParentAccessState(returnTo)

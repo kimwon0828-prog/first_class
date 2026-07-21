@@ -1,8 +1,9 @@
+import { cache } from "react"
 import { redirect } from "next/navigation"
 
 import { getSupabaseServerClient } from "@/integrations/supabase/server"
 
-export const getSession = async () => {
+const getSessionCached = cache(async () => {
   try {
     const supabase = await getSupabaseServerClient()
     const {
@@ -18,7 +19,9 @@ export const getSession = async () => {
   } catch {
     return null
   }
-}
+})
+
+export const getSession = async () => getSessionCached()
 
 export const requireSession = async (redirectTo: string) => {
   const session = await getSession()

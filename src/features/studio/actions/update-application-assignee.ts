@@ -26,7 +26,6 @@ export async function updateApplicationAssigneeAction(
   const teacher = await requireTeacherStudioAccess()
   const requestedTeacherIdRaw = String(formData.get("assignedTeacherId") ?? "").trim()
   const requestedTeacherId = requestedTeacherIdRaw.length > 0 ? requestedTeacherIdRaw : null
-
   try {
     const current = await dataAdapter.getStudioApplicationDetail(applicationId, teacher.organizationId)
 

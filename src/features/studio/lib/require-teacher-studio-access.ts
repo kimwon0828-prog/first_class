@@ -1,5 +1,6 @@
 "use server"
 
+import { cache } from "react"
 import { redirect } from "next/navigation"
 
 import { normalizeProfileRole } from "@/features/auth/lib/profile-sync"
@@ -14,7 +15,7 @@ export type TeacherStudioAccess = {
 
 const STUDIO_ROLES = ["teacher", "academy", "admin"] as const
 
-export const requireTeacherStudioAccess = async (): Promise<TeacherStudioAccess> => {
+const requireTeacherStudioAccessCached = cache(async (): Promise<TeacherStudioAccess> => {
   const supabase = await getSupabaseServerClient()
   const {
     data: { user },
@@ -106,4 +107,7 @@ export const requireTeacherStudioAccess = async (): Promise<TeacherStudioAccess>
     name: data.name,
     organizationId
   }
-}
+})
+
+export const requireTeacherStudioAccess = async (): Promise<TeacherStudioAccess> =>
+  requireTeacherStudioAccessCached()

@@ -1,3 +1,5 @@
+import { cache } from "react"
+
 import { getSupabaseServerClient } from "@/integrations/supabase/server"
 
 export type DbProfileRole = "parent" | "teacher" | "operator" | "academy" | "admin"
@@ -54,7 +56,7 @@ const normalizeBirthDate = (value: unknown): string | null => {
   return /^\d{4}-\d{2}-\d{2}$/.test(normalized) ? normalized : null
 }
 
-export const getMyProfile = async (): Promise<AuthProfile | null> => {
+const getMyProfileCached = cache(async (): Promise<AuthProfile | null> => {
   const supabase = await getSupabaseServerClient()
   const {
     data: { user }
@@ -90,7 +92,9 @@ export const getMyProfile = async (): Promise<AuthProfile | null> => {
     parentBirthDate: null,
     organizationId: data.organization_id
   }
-}
+})
+
+export const getMyProfile = async (): Promise<AuthProfile | null> => getMyProfileCached()
 
 type EnsureParentProfileOptions = {
   allowCreateParentIfMissing: boolean
