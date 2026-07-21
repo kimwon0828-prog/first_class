@@ -332,6 +332,7 @@ export async function upsertStudioClassAction(
     const trialPriceRaw = String(formData.get("trialPrice") ?? "").trim()
     const coverImageUrlRaw = String(formData.get("coverImageUrl") ?? "").trim()
     const isActive = String(formData.get("isActive") ?? "") === "on"
+    const enforcePublicSlotGuard = String(formData.get("enforcePublicSlotGuard") ?? "") === "true"
     const organizationId = teacher.organizationId
 
     const trialPrice = parsePositiveInt(trialPriceRaw)
@@ -469,6 +470,9 @@ export async function upsertStudioClassAction(
     }
 
     const scheduleSlots = parsedSlots.slots
+    if (enforcePublicSlotGuard && isActive && scheduleSlots.length === 0) {
+      return safeError("예약시간이 없어서 바로 공개할 수 없어요. 먼저 예약시간을 1개 이상 추가해 주세요.")
+    }
     const payloadLog = {
       mode,
       classId: classId ?? null,

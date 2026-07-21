@@ -1,0 +1,674 @@
+.form {
+  display: grid;
+  gap: 20px;
+}
+
+.stepIndicatorCard,
+.stepCard,
+.previewCard,
+.feedbackCard {
+  border: 1px solid #e4e7e4;
+  border-radius: 20px;
+  background: #ffffff;
+  box-shadow: 0 12px 32px rgba(17, 24, 39, 0.05);
+}
+
+.stepIndicatorCard,
+.feedbackCard,
+.stepCard,
+.previewCard {
+  padding: 24px;
+}
+
+.stepIndicatorList {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.stepButton {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid #e4e7e4;
+  border-radius: 16px;
+  background: #ffffff;
+  color: #1f2937;
+  text-align: left;
+}
+
+.stepButtonActive {
+  border-color: #2aad38;
+  background: #f2fbf3;
+}
+
+.stepButtonCompleted {
+  border-color: #bfdfc4;
+}
+
+.stepNumber {
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: #f2fbf3;
+  color: #1e8c2b;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.stepButtonActive .stepNumber {
+  background: #2aad38;
+  color: #ffffff;
+}
+
+.stepTextGroup {
+  display: grid;
+  gap: 4px;
+}
+
+.stepTitle {
+  font-size: 15px;
+  line-height: 20px;
+  font-weight: 800;
+}
+
+.stepSubtitle {
+  font-size: 12px;
+  line-height: 16px;
+  color: #6b7280;
+}
+
+.feedbackCard {
+  font-size: 14px;
+  line-height: 22px;
+  font-weight: 700;
+}
+
+.feedbackSuccess {
+  border-color: #b7e5be;
+  background: #f2fbf3;
+  color: #1e8c2b;
+}
+
+.feedbackError {
+  border-color: #f3c4c4;
+  background: #fff7f7;
+  color: #b42318;
+}
+
+.stepHeader {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.stepEyebrow {
+  margin: 0 0 8px;
+  color: #2aad38;
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+}
+
+.stepTitleText {
+  margin: 0;
+  color: #111827;
+  font-size: 28px;
+  line-height: 1.2;
+  font-weight: 900;
+}
+
+.stepDescription {
+  margin: 10px 0 0;
+  color: #4b5563;
+  font-size: 14px;
+  line-height: 22px;
+}
+
+.fieldBlock {
+  display: grid;
+  gap: 10px;
+}
+
+.fieldBlock + .fieldBlock {
+  margin-top: 24px;
+}
+
+.fieldLabel {
+  color: #111827;
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 800;
+}
+
+.labelRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+
+.optionalBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: #f2fbf3;
+  color: #1e8c2b;
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 700;
+}
+
+.helperText {
+  margin: 0;
+  color: #6b7280;
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.errorText {
+  margin: 0;
+  color: #b42318;
+  font-size: 13px;
+  line-height: 20px;
+  font-weight: 700;
+}
+
+.chipRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.choiceChip,
+.segmentButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 42px;
+  padding: 0 16px;
+  border-radius: 999px;
+  border: 1px solid #d7dcd7;
+  background: #ffffff;
+  color: #111827;
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 700;
+}
+
+.choiceChipSelected,
+.segmentButtonActive {
+  border-color: #2aad38;
+  background: #2aad38;
+  color: #ffffff;
+}
+
+.input,
+.textarea,
+.fileInput {
+  width: 100%;
+  border: 1px solid #d7dcd7;
+  border-radius: 10px;
+  background: #ffffff;
+  color: #111827;
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.input,
+.fileInput {
+  min-height: 46px;
+  padding: 0 14px;
+}
+
+.textarea {
+  min-height: 140px;
+  padding: 14px;
+  resize: vertical;
+}
+
+.sectionCard {
+  display: grid;
+  gap: 18px;
+  padding: 20px;
+  border: 1px solid #e4e7e4;
+  border-radius: 16px;
+  background: #fafdfa;
+}
+
+.sectionCard + .sectionCard {
+  margin-top: 18px;
+}
+
+.sectionHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.sectionTitle {
+  margin: 0;
+  color: #111827;
+  font-size: 18px;
+  line-height: 24px;
+  font-weight: 800;
+}
+
+.sectionDescription {
+  margin: 6px 0 0;
+  color: #6b7280;
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.segmentRow {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.slotComposerGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  align-items: end;
+}
+
+.inlineActionRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.primaryInlineButton,
+.secondaryInlineButton,
+.deleteButton,
+.jumpButton,
+.previewCta,
+.primaryActionButton,
+.secondaryActionButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 0 16px;
+  border-radius: 10px;
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.primaryInlineButton,
+.primaryActionButton,
+.previewCta {
+  border: none;
+  background: #2aad38;
+  color: #ffffff;
+}
+
+.secondaryInlineButton,
+.secondaryActionButton,
+.deleteButton,
+.jumpButton {
+  border: 1px solid #d7dcd7;
+  background: #ffffff;
+  color: #111827;
+}
+
+.slotList,
+.checkList {
+  display: grid;
+  gap: 10px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.slotItem,
+.checkItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid #e4e7e4;
+  border-radius: 14px;
+  background: #ffffff;
+}
+
+.slotTextGroup,
+.checkBody {
+  display: grid;
+  gap: 6px;
+}
+
+.slotBadge,
+.previewProgramBadge,
+.previewSlotChip {
+  display: inline-flex;
+  width: fit-content;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: #f2fbf3;
+  color: #1e8c2b;
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 800;
+}
+
+.previewChipRow,
+.previewSlotList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.previewChip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: #ffffff;
+  border: 1px solid #d7dcd7;
+  color: #111827;
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 700;
+}
+
+.assignmentGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.assignmentCard {
+  display: grid;
+  gap: 6px;
+  padding: 18px;
+  border-radius: 16px;
+  border: 1px solid #d7dcd7;
+  background: #ffffff;
+  color: #111827;
+  text-align: left;
+}
+
+.assignmentCard strong {
+  font-size: 15px;
+  line-height: 20px;
+}
+
+.assignmentCard span,
+.disabledReason {
+  color: #6b7280;
+  font-size: 13px;
+  line-height: 20px;
+  font-style: normal;
+}
+
+.assignmentCardSelected {
+  border-color: #2aad38;
+  background: #f2fbf3;
+}
+
+.assignmentCardDisabled {
+  opacity: 0.56;
+}
+
+.emptyState {
+  padding: 18px;
+  border: 1px dashed #cbd5cb;
+  border-radius: 14px;
+  background: #ffffff;
+  color: #6b7280;
+  font-size: 14px;
+  line-height: 22px;
+}
+
+.collapseCard {
+  border: 1px solid #e4e7e4;
+  border-radius: 16px;
+  background: #ffffff;
+  overflow: hidden;
+}
+
+.collapseHeader {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 18px;
+  background: #ffffff;
+  color: #111827;
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 800;
+}
+
+.collapseBody {
+  padding: 0 18px 18px;
+}
+
+.reviewGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(320px, 0.85fr);
+  gap: 20px;
+}
+
+.checkOk,
+.checkPending {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 64px;
+  flex: 0 0 auto;
+  min-height: 32px;
+  border-radius: 999px;
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 800;
+}
+
+.checkOk {
+  background: #f2fbf3;
+  color: #1e8c2b;
+}
+
+.checkPending {
+  background: #fff7ed;
+  color: #b45309;
+}
+
+.checkBody strong {
+  font-size: 14px;
+  line-height: 20px;
+  color: #111827;
+}
+
+.checkBody span {
+  color: #6b7280;
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.previewCard {
+  position: sticky;
+  top: 104px;
+  height: fit-content;
+  display: grid;
+  gap: 18px;
+}
+
+.previewImageArea {
+  overflow: hidden;
+  border-radius: 16px;
+  background: #f2fbf3;
+  aspect-ratio: 16 / 10;
+}
+
+.previewImage,
+.imagePreviewImage {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.previewFallback,
+.imagePreview {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  place-items: center;
+  color: #1e8c2b;
+  font-size: 24px;
+  line-height: 1.3;
+  font-weight: 800;
+  background: linear-gradient(135deg, #f2fbf3 0%, #d8f0dc 100%);
+}
+
+.imagePreview {
+  min-height: 180px;
+  overflow: hidden;
+  border-radius: 16px;
+  background: #f2fbf3;
+}
+
+.previewBody {
+  display: grid;
+  gap: 12px;
+}
+
+.previewHeading {
+  margin: 0;
+  color: #111827;
+  font-size: 22px;
+  line-height: 1.3;
+  font-weight: 900;
+}
+
+.previewMeta,
+.previewDescription,
+.previewTeacherMeta {
+  margin: 0;
+  color: #4b5563;
+  font-size: 14px;
+  line-height: 22px;
+}
+
+.previewTeacherMeta {
+  display: grid;
+  gap: 4px;
+}
+
+.previewSlotEmpty {
+  color: #9ca3af;
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.stickyBar {
+  position: sticky;
+  bottom: 16px;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 18px;
+  border: 1px solid #e4e7e4;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 18px 40px rgba(17, 24, 39, 0.12);
+  backdrop-filter: blur(14px);
+}
+
+.stickyLeft {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+}
+
+.stickyHint {
+  display: grid;
+  gap: 2px;
+  color: #6b7280;
+  font-size: 12px;
+  line-height: 16px;
+}
+
+.stickyActions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+@media (max-width: 1080px) {
+  .stepIndicatorList {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .reviewGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .previewCard {
+    position: static;
+  }
+}
+
+@media (max-width: 719px) {
+  .stepIndicatorCard,
+  .stepCard,
+  .previewCard,
+  .feedbackCard {
+    padding: 18px;
+  }
+
+  .stepIndicatorList,
+  .slotComposerGrid,
+  .assignmentGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .stepSubtitle {
+    display: none;
+  }
+
+  .slotItem,
+  .checkItem,
+  .stickyBar,
+  .stickyLeft {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .stickyActions {
+    width: 100%;
+    justify-content: stretch;
+  }
+
+  .stickyActions > * {
+    flex: 1 1 0;
+  }
+}
