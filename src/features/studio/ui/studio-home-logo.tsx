@@ -21,7 +21,6 @@ export const StudioHomeLogo = ({
   return (
     <Link
       href="/studio"
-      prefetch={false}
       aria-label="첫수업 대시보드로 이동"
       className={className ? `${styles.link} ${className}` : styles.link}
     >

@@ -1,4 +1,7 @@
+"use client"
+
 import Link from "next/link"
+import { useState } from "react"
 
 import type { StudioApplicationSummary, StudioDashboardSummary } from "@/shared/lib/db/adapter"
 import styles from "@/features/studio/ui/studio-dashboard.module.css"
@@ -108,6 +111,7 @@ export const StudioDashboardSummaryView = ({
   applications,
   applicationsError
 }: StudioDashboardSummaryProps) => {
+  const [pendingTarget, setPendingTarget] = useState<string | null>(null)
   const totalApplications = applications.length
 
   const metricCards = [
@@ -228,8 +232,13 @@ export const StudioDashboardSummaryView = ({
                   </dl>
 
                   <div className={styles.applicationActions}>
-                    <Link href={`/studio/applications/${item.id}`} prefetch={false} className={styles.buttonSecondary}>
-                      관리
+                    <Link
+                      href={`/studio/applications/${item.id}`}
+                      className={styles.buttonSecondary}
+                      aria-busy={pendingTarget === item.id}
+                      onClick={() => setPendingTarget(item.id)}
+                    >
+                      {pendingTarget === item.id ? "이동 중..." : "관리"}
                     </Link>
                   </div>
                 </article>
@@ -245,8 +254,13 @@ export const StudioDashboardSummaryView = ({
             <h2 className={styles.sectionTitle}>최근 신청 현황</h2>
             <p className={styles.sectionDescription}>최근 신청 5건을 요약해 보여줍니다.</p>
           </div>
-          <Link href="/studio/applications" prefetch={false} className={styles.buttonGhost}>
-            신청함 전체 보기
+          <Link
+            href="/studio/applications"
+            className={styles.buttonGhost}
+            aria-busy={pendingTarget === "applications"}
+            onClick={() => setPendingTarget("applications")}
+          >
+            {pendingTarget === "applications" ? "이동 중..." : "신청함 전체 보기"}
           </Link>
         </header>
 
@@ -294,10 +308,11 @@ export const StudioDashboardSummaryView = ({
                         <td className={styles.tdRight}>
                           <Link
                             href={`/studio/applications/${item.id}`}
-                            prefetch={false}
                             className={styles.buttonSecondarySm}
+                            aria-busy={pendingTarget === item.id}
+                            onClick={() => setPendingTarget(item.id)}
                           >
-                            관리
+                            {pendingTarget === item.id ? "이동 중..." : "관리"}
                           </Link>
                         </td>
                       </tr>
@@ -336,8 +351,13 @@ export const StudioDashboardSummaryView = ({
                       </div>
                     </dl>
                     <div className={styles.mobileActions}>
-                      <Link href={`/studio/applications/${item.id}`} prefetch={false} className={styles.buttonSecondary}>
-                        관리
+                      <Link
+                        href={`/studio/applications/${item.id}`}
+                        className={styles.buttonSecondary}
+                        aria-busy={pendingTarget === item.id}
+                        onClick={() => setPendingTarget(item.id)}
+                      >
+                        {pendingTarget === item.id ? "이동 중..." : "관리"}
                       </Link>
                     </div>
                   </article>

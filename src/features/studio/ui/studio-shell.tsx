@@ -3,6 +3,7 @@
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import type { ReactNode } from "react"
+import { useEffect, useState, useTransition } from "react"
 
 import { StudioHomeLogo } from "@/features/studio/ui/studio-home-logo"
 import styles from "./studio-shell.module.css"
@@ -37,6 +38,12 @@ export const StudioShell = ({ children, organizationName }: StudioShellProps) =>
   const pathname = usePathname() ?? ""
   const router = useRouter()
   const accountLabel = organizationName?.trim() || "학원"
+  const [pendingHref, setPendingHref] = useState<string | null>(null)
+  const [isSettingsPending, startSettingsTransition] = useTransition()
+
+  useEffect(() => {
+    setPendingHref(null)
+  }, [pathname])
 
   return (
     <div className={styles.shell}>
@@ -53,11 +60,20 @@ export const StudioShell = ({ children, organizationName }: StudioShellProps) =>
               <Link
                 key={item.href}
                 href={item.href}
-                className={`${styles.navItem} ${active ? styles.navItemActive : ""}`}
+                className={`${styles.navItem} ${active ? styles.navItemActive : ""} ${
+                  pendingHref === item.href ? styles.navItemPending : ""
+                }`}
                 aria-current={active ? "page" : undefined}
+                aria-busy={pendingHref === item.href}
+                onClick={() => {
+                  if (!active) {
+                    setPendingHref(item.href)
+                  }
+                }}
               >
                 <span className={styles.navDot} aria-hidden="true" />
-                {item.label}
+                <span>{item.label}</span>
+                {pendingHref === item.href ? <span className={styles.navPendingText}>이동 중...</span> : null}
               </Link>
             )
           })}
@@ -65,19 +81,27 @@ export const StudioShell = ({ children, organizationName }: StudioShellProps) =>
 
         <div className={styles.sidebarBottom}>
           <div
-            className={styles.accountCard}
+            className={`${styles.accountCard} ${isSettingsPending ? styles.accountCardPending : ""}`}
             role="button"
             tabIndex={0}
-            onClick={() => router.push("/studio/settings")}
+            onClick={() =>
+              startSettingsTransition(() => {
+                router.push("/studio/settings")
+              })
+            }
             onKeyDown={(event) => {
               if (event.key === "Enter" || event.key === " ") {
                 event.preventDefault()
-                router.push("/studio/settings")
+                startSettingsTransition(() => {
+                  router.push("/studio/settings")
+                })
               }
             }}
             aria-label="학원 정보 보기"
+            aria-busy={isSettingsPending}
           >
             <p className={styles.accountLabel}>{accountLabel}</p>
+            {isSettingsPending ? <p className={styles.accountPendingText}>불러오는 중...</p> : null}
             <div className={styles.accountActions}>
               <Link
                 href="/studio/sign-out"

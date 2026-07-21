@@ -70,6 +70,10 @@
   color: #111111;
 }
 
+.navItemPending {
+  opacity: 0.7;
+}
+
 .navDot {
   width: 8px;
   height: 8px;
@@ -79,6 +83,14 @@
 
 .navItemActive .navDot {
   background: #2aad38;
+}
+
+.navPendingText {
+  margin-left: auto;
+  font-size: 11px;
+  line-height: 16px;
+  color: #2aad38;
+  font-weight: 800;
 }
 
 .sidebarBottom {
@@ -102,6 +114,10 @@
   border-color: #eaf8ec;
 }
 
+.accountCardPending {
+  opacity: 0.75;
+}
+
 .accountCard:focus-visible {
   outline: none;
   box-shadow: 0 0 0 3px rgba(42, 173, 56, 0.16);
@@ -114,6 +130,14 @@
   line-height: 18px;
   color: #8a8a8a;
   font-weight: 700;
+}
+
+.accountPendingText {
+  margin: -4px 0 0;
+  font-size: 11px;
+  line-height: 16px;
+  color: #2aad38;
+  font-weight: 800;
 }
 
 .accountActions {

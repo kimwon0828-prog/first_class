@@ -138,6 +138,7 @@ type StudioApplicationTableProps = {
 export const StudioApplicationTable = ({ items }: StudioApplicationTableProps) => {
   const [query, setQuery] = useState("")
   const [statusFilter, setStatusFilter] = useState<StudioApplicationFilterKey>("all")
+  const [pendingApplicationId, setPendingApplicationId] = useState<string | null>(null)
 
   const filterCounts = useMemo(() => {
     return Object.fromEntries(
@@ -283,10 +284,11 @@ export const StudioApplicationTable = ({ items }: StudioApplicationTableProps) =
                         <td className={styles.tdRight}>
                           <Link
                             href={`/studio/applications/${item.id}`}
-                            prefetch={false}
                             className={styles.manageButton}
+                            aria-busy={pendingApplicationId === item.id}
+                            onClick={() => setPendingApplicationId(item.id)}
                           >
-                            관리
+                            {pendingApplicationId === item.id ? "이동 중..." : "관리"}
                           </Link>
                         </td>
                       </tr>
@@ -357,10 +359,11 @@ export const StudioApplicationTable = ({ items }: StudioApplicationTableProps) =
                     <div className={styles.footerHint}>{formatDateTime(item.createdAt) ?? "-"} 접수</div>
                     <Link
                       href={`/studio/applications/${item.id}`}
-                      prefetch={false}
                       className={styles.primaryButton}
+                      aria-busy={pendingApplicationId === item.id}
+                      onClick={() => setPendingApplicationId(item.id)}
                     >
-                      신청 관리하기
+                      {pendingApplicationId === item.id ? "이동 중..." : "신청 관리하기"}
                     </Link>
                   </div>
                 </article>

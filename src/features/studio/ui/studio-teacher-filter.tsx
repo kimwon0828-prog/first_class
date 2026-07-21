@@ -1,7 +1,7 @@
 "use client"
 
 import { useRouter, useSearchParams } from "next/navigation"
-import { useMemo } from "react"
+import { useMemo, useTransition } from "react"
 
 import type { StudioDashboardTeacherFilterOption } from "@/shared/lib/db/adapter"
 import styles from "@/features/studio/ui/studio-dashboard.module.css"
@@ -19,6 +19,7 @@ export const StudioTeacherFilter = ({
 }: StudioTeacherFilterProps) => {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const [isPending, startTransition] = useTransition()
 
   const sortedOptions = useMemo(() => {
     return [...options].sort((a, b) => (a.teacherName > b.teacherName ? 1 : -1))
@@ -34,16 +35,20 @@ export const StudioTeacherFilter = ({
     }
 
     const query = params.toString()
-    router.push(query ? `${basePath}?${query}` : basePath)
+    startTransition(() => {
+      router.push(query ? `${basePath}?${query}` : basePath)
+    })
   }
 
   return (
-    <label className={styles.teacherFilter}>
+    <label className={styles.teacherFilter} aria-busy={isPending}>
       <span className={styles.teacherFilterLabel}>선생님 필터</span>
       <select
         value={selectedTeacherId}
         onChange={(event) => handleChange(event.target.value)}
         className={styles.select}
+        disabled={isPending}
+        aria-disabled={isPending}
       >
         <option value="all">전체</option>
         {sortedOptions.map((option) => (
@@ -52,6 +57,21 @@ export const StudioTeacherFilter = ({
           </option>
         ))}
       </select>
+      {isPending ? (
+        <span
+          style={{
+            marginTop: 6,
+            fontSize: 12,
+            lineHeight: "16px",
+            color: "#2aad38",
+            fontWeight: 700
+          }}
+          role="status"
+          aria-live="polite"
+        >
+          불러오는 중...
+        </span>
+      ) : null}
     </label>
   )
 }

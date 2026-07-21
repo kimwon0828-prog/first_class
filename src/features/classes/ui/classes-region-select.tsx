@@ -2,7 +2,7 @@
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import type { CSSProperties } from "react"
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useRef, useState, useTransition } from "react"
 
 import { academyAreaOptions, type AcademyArea } from "@/shared/config/academy-areas"
 
@@ -81,6 +81,14 @@ const inputStyle: CSSProperties = {
   backgroundColor: "#ffffff",
   fontSize: 14,
   color: "#111827"
+}
+
+const pendingTextStyle: CSSProperties = {
+  marginTop: 6,
+  fontSize: 12,
+  lineHeight: "16px",
+  color: "#2aad38",
+  fontWeight: 700
 }
 
 const SearchIcon = ({ className }: { className?: string }) => (
@@ -204,6 +212,7 @@ export function ClassesSearchInput({
   const searchParams = useSearchParams()
   const [value, setValue] = useState(initialQuery)
   const debounceRef = useRef<number | null>(null)
+  const [isPending, startTransition] = useTransition()
 
   useEffect(() => {
     setValue(initialQuery)
@@ -214,7 +223,9 @@ export function ClassesSearchInput({
     const region = searchParams.get("region")
     const subject = searchParams.get("subject")
     const stage = searchParams.get("stage")
-    router.replace(buildHref(pathname, { region, subject, q: normalized || null, stage }))
+    startTransition(() => {
+      router.replace(buildHref(pathname, { region, subject, q: normalized || null, stage }))
+    })
   }
 
   const scheduleApply = (nextValue: string) => {
@@ -233,6 +244,7 @@ export function ClassesSearchInput({
         applyQuery(value)
       }}
       className={className}
+      aria-busy={isPending}
       style={className ? undefined : { display: "grid", gap: 6 }}
     >
       <label style={{ display: "grid", gap: 6 }}>
@@ -249,6 +261,11 @@ export function ClassesSearchInput({
           className={inputClassName}
           style={inputClassName ? undefined : inputStyle}
         />
+        {isPending ? (
+          <span style={pendingTextStyle} role="status" aria-live="polite">
+            불러오는 중...
+          </span>
+        ) : null}
       </label>
     </form>
   )
@@ -264,16 +281,23 @@ export function ClassesRegionSelect({
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
+  const [isPending, startTransition] = useTransition()
 
   const handleChange = (nextRegion: AcademyAreaFilter) => {
     const subject = searchParams.get("subject")
     const q = searchParams.get("q")
     const stage = searchParams.get("stage")
-    router.push(buildHref(pathname, { region: nextRegion, subject, q, stage }))
+    startTransition(() => {
+      router.push(buildHref(pathname, { region: nextRegion, subject, q, stage }))
+    })
   }
 
   return (
-    <label className={className} style={className ? undefined : { display: "grid", gap: 6 }}>
+    <label
+      className={className}
+      style={className ? undefined : { display: "grid", gap: 6 }}
+      aria-busy={isPending}
+    >
       {!hideLabel ? <span style={{ fontSize: 14, color: "#374151" }}>{label}</span> : null}
       <select
         aria-label="학원가 선택"
@@ -282,6 +306,8 @@ export function ClassesRegionSelect({
           handleChange(event.target.value === ALL_ACADEMY_AREA_VALUE ? null : (event.target.value as AcademyArea))
         }
         className={selectClassName}
+        disabled={isPending}
+        aria-disabled={isPending}
         style={selectClassName ? undefined : selectStyle}
       >
         <option value={ALL_ACADEMY_AREA_VALUE}>{ALL_ACADEMY_AREA_LABEL}</option>
@@ -291,6 +317,11 @@ export function ClassesRegionSelect({
           </option>
         ))}
       </select>
+      {isPending ? (
+        <span style={pendingTextStyle} role="status" aria-live="polite">
+          불러오는 중...
+        </span>
+      ) : null}
     </label>
   )
 }
@@ -307,6 +338,7 @@ export function ClassesSearchPill({
   const searchParams = useSearchParams()
   const [value, setValue] = useState(initialQuery)
   const debounceRef = useRef<number | null>(null)
+  const [isPending, startTransition] = useTransition()
 
   useEffect(() => {
     setValue(initialQuery)
@@ -317,7 +349,9 @@ export function ClassesSearchPill({
     const region = searchParams.get("region")
     const subject = searchParams.get("subject")
     const stage = searchParams.get("stage")
-    router.replace(buildHref(pathname, { region, subject, q: normalized || null, stage }))
+    startTransition(() => {
+      router.replace(buildHref(pathname, { region, subject, q: normalized || null, stage }))
+    })
   }
 
   const scheduleApply = (nextValue: string) => {
@@ -336,6 +370,7 @@ export function ClassesSearchPill({
         applyQuery(value)
       }}
       className={className}
+      aria-busy={isPending}
     >
       <div className={pillClassName}>
         <SearchIcon />
@@ -352,6 +387,11 @@ export function ClassesSearchPill({
           style={inputClassName ? undefined : { ...inputStyle, border: 0, padding: 0 }}
         />
       </div>
+      {isPending ? (
+        <span style={pendingTextStyle} role="status" aria-live="polite">
+          불러오는 중...
+        </span>
+      ) : null}
     </form>
   )
 }
@@ -369,6 +409,7 @@ export function ClassesRegionInlineSelect({
   const containerRef = useRef<HTMLDivElement | null>(null)
   const [currentRegion, setCurrentRegion] = useState<AcademyAreaFilter>(selectedRegion)
   const [isOpen, setIsOpen] = useState(false)
+  const [isPending, startTransition] = useTransition()
 
   useEffect(() => {
     setCurrentRegion(selectedRegion)
@@ -390,13 +431,16 @@ export function ClassesRegionInlineSelect({
     const subject = searchParams.get("subject")
     const q = searchParams.get("q")
     const stage = searchParams.get("stage")
-    router.push(buildHref(pathname, { region: nextRegion, subject, q, stage }))
+    startTransition(() => {
+      router.push(buildHref(pathname, { region: nextRegion, subject, q, stage }))
+    })
   }
 
   return (
     <div
       ref={containerRef}
       className={className}
+      aria-busy={isPending}
       style={{ position: "relative", display: "inline-block" }}
     >
       <div className={rowClassName}>
@@ -405,22 +449,25 @@ export function ClassesRegionInlineSelect({
           type="button"
           aria-label="학원가 선택 열기"
           aria-expanded={isOpen}
+          disabled={isPending}
           onClick={() => setIsOpen((prev) => !prev)}
           style={{
             border: 0,
             background: "transparent",
             padding: 0,
             color: "inherit",
-            cursor: "pointer"
+            cursor: isPending ? "default" : "pointer"
           }}
         >
           <span className={nameClassName}>{formatAcademyAreaLabel(currentRegion)}</span>
+          {isPending ? <span style={{ ...pendingTextStyle, marginTop: 0, marginLeft: 8 }}>불러오는 중...</span> : null}
         </button>
         <span className={chevronWrapClassName}>
           <button
             type="button"
             aria-label="학원가 선택 열기"
             aria-expanded={isOpen}
+            disabled={isPending}
             onClick={() => setIsOpen((prev) => !prev)}
             style={{
               display: "inline-flex",
@@ -432,7 +479,7 @@ export function ClassesRegionInlineSelect({
               background: "transparent",
               padding: 0,
               color: "inherit",
-              cursor: "pointer"
+              cursor: isPending ? "default" : "pointer"
             }}
           >
             <ChevronDownIcon />
@@ -465,6 +512,7 @@ export function ClassesRegionInlineSelect({
                 type="button"
                 role="menuitemradio"
                 aria-checked={isActive}
+                disabled={isPending}
                 onClick={() => {
                   setCurrentRegion(option)
                   setIsOpen(false)
@@ -505,17 +553,22 @@ export function ClassesSubjectGrid({
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
+  const [isPending, startTransition] = useTransition()
 
   const handleToggle = (label: string) => {
     const region = searchParams.get("region")
     const q = searchParams.get("q")
     const stage = searchParams.get("stage")
     const currentSubject = searchParams.get("subject")
-    router.push(buildHref(pathname, { region, q, subject: currentSubject === label ? null : label, stage }))
+    startTransition(() => {
+      router.push(
+        buildHref(pathname, { region, q, subject: currentSubject === label ? null : label, stage })
+      )
+    })
   }
 
   return (
-    <div className={gridClassName}>
+    <div className={gridClassName} aria-busy={isPending}>
       {items.map((item) => {
         const isActive = selectedSubject === item.label
         return (
@@ -524,12 +577,19 @@ export function ClassesSubjectGrid({
             type="button"
             className={`${itemClassName}${isActive ? ` ${itemActiveClassName}` : ""}`}
             onClick={() => handleToggle(item.label)}
+            disabled={isPending}
+            aria-disabled={isPending}
           >
             <span className={emojiClassName}>{item.emoji}</span>
             <span className={labelClassName}>{item.label}</span>
           </button>
         )
       })}
+      {isPending ? (
+        <p style={{ ...pendingTextStyle, width: "100%", marginBottom: 0 }} role="status" aria-live="polite">
+          불러오는 중...
+        </p>
+      ) : null}
     </div>
   )
 }
