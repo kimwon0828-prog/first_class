@@ -3025,20 +3025,40 @@ export const supabaseDataAdapter: DataAdapter = {
   async updateStudioApplicationOutcome(input: UpdateStudioApplicationOutcomeInput) {
     const supabase = await getSupabaseServerClient()
     const nowIso = new Date().toISOString()
+    const canEditBeforeCompleted = Boolean(input.allowBeforeCompleted) && input.currentStatus !== "completed"
+    const registrationFieldsTouched =
+      input.registrationStatus !== "undecided" ||
+      input.unregisteredReason !== null ||
+      input.trialFeedback !== null ||
+      input.registeredCourse !== null ||
+      input.finalLevel !== null ||
+      input.finalSchedule !== null ||
+      input.followUpNote !== null
+    if (canEditBeforeCompleted && registrationFieldsTouched) {
+      throw new Error("application_outcome_registration_requires_completed")
+    }
+
+    const nextValues =
+      canEditBeforeCompleted
+        ? {
+            consultation_note: input.consultationNote,
+            updated_at: nowIso
+          }
+        : {
+            consultation_note: input.consultationNote,
+            trial_feedback: input.trialFeedback,
+            registered_course: input.registeredCourse,
+            final_level: input.finalLevel,
+            final_schedule: input.finalSchedule,
+            follow_up_note: input.followUpNote,
+            registration_status: input.registrationStatus,
+            enrolled_at: input.registrationStatus === "enrolled" ? nowIso : null,
+            unregistered_reason: input.unregisteredReason,
+            updated_at: nowIso
+          }
     const { data, error } = await supabase
       .from("trial_applications")
-      .update({
-        consultation_note: input.consultationNote,
-        trial_feedback: input.trialFeedback,
-        registered_course: input.registeredCourse,
-        final_level: input.finalLevel,
-        final_schedule: input.finalSchedule,
-        follow_up_note: input.followUpNote,
-        registration_status: input.registrationStatus,
-        enrolled_at: input.registrationStatus === "enrolled" ? nowIso : null,
-        unregistered_reason: input.unregisteredReason,
-        updated_at: nowIso
-      })
+      .update(nextValues)
       .eq("id", input.applicationId)
       .eq("status", input.currentStatus)
       .select("id")

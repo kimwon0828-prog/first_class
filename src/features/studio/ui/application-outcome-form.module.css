@@ -107,10 +107,16 @@
   color: #111111;
 }
 
-.grid2 {
-  display: grid;
-  gap: 12px;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+.inlineNotice {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid #f4d9a6;
+  background: #fff7e8;
+  color: #9a6700;
+  font-size: 13px;
+  line-height: 20px;
+  font-weight: 700;
 }
 
 .field {
@@ -166,6 +172,69 @@
   opacity: 0.65;
 }
 
+.registrationCardStack {
+  display: grid;
+  gap: 10px;
+}
+
+.registrationOption {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  gap: 12px;
+  align-items: center;
+  padding: 14px;
+  border: 1px solid #e7eae7;
+  border-radius: 12px;
+  background: #ffffff;
+  text-align: left;
+  cursor: pointer;
+}
+
+.registrationOption:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.registrationOptionActive {
+  border-color: #cfe9d2;
+  background: #f2fbf3;
+}
+
+.registrationOptionDot {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid #c4ccc4;
+  background: #ffffff;
+}
+
+.registrationOptionActive .registrationOptionDot {
+  border-color: #2aad38;
+  box-shadow: inset 0 0 0 4px #2aad38;
+}
+
+.registrationOptionBody {
+  display: grid;
+  gap: 4px;
+}
+
+.registrationOptionTitle {
+  margin: 0;
+  font-size: 14px;
+  line-height: 20px;
+  color: #182118;
+  font-weight: 900;
+}
+
+.registrationOptionDescription {
+  margin: 0;
+  font-size: 13px;
+  line-height: 20px;
+  color: #667366;
+  font-weight: 700;
+}
+
 .primaryButton {
   width: 100%;
   height: 48px;
@@ -185,10 +254,4 @@
 .primaryButton:disabled {
   opacity: 0.7;
   cursor: not-allowed;
-}
-
-@media (max-width: 720px) {
-  .grid2 {
-    grid-template-columns: 1fr;
-  }
 }

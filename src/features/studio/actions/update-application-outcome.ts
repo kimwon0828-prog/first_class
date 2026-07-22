@@ -8,7 +8,6 @@ import { getStudioApplicationDetail } from "@/features/studio/queries/get-studio
 import { dataAdapter } from "@/shared/lib/db"
 import type {
   ApplicationRegistrationStatus,
-  ApplicationUnregisteredReason,
   StudioApplicationDetail
 } from "@/shared/lib/db/adapter"
 
@@ -27,16 +26,6 @@ const REGISTRATION_STATUSES: ApplicationRegistrationStatus[] = [
   "enrolled",
   "not_enrolled",
   "pending"
-]
-
-const UNREGISTERED_REASONS: ApplicationUnregisteredReason[] = [
-  "schedule_mismatch",
-  "cost_burden",
-  "distance",
-  "child_reaction",
-  "comparing_other_academies",
-  "no_response",
-  "other"
 ]
 
 const normalizeOptionalText = (value: FormDataEntryValue | null) => {
@@ -58,7 +47,6 @@ const getChangedFieldLabels = (
     finalSchedule: string | null
     followUpNote: string | null
     registrationStatus: ApplicationRegistrationStatus
-    unregisteredReason: ApplicationUnregisteredReason | null
   }
 ) => {
   const changes: string[] = []
@@ -91,10 +79,6 @@ const getChangedFieldLabels = (
     changes.push("등록 상태")
   }
 
-  if (current.unregisteredReason !== nextValue.unregisteredReason) {
-    changes.push("미등록 사유")
-  }
-
   return changes
 }
 
@@ -108,7 +92,6 @@ export async function updateApplicationOutcomeAction(
   const teacher = await requireTeacherStudioAccess()
 
   const registrationStatusValue = formData.get("registrationStatus")
-  const unregisteredReasonValue = formData.get("unregisteredReason")
 
   if (
     typeof registrationStatusValue !== "string" ||
@@ -122,30 +105,6 @@ export async function updateApplicationOutcomeAction(
 
   const registrationStatus = registrationStatusValue as ApplicationRegistrationStatus
 
-  if (
-    typeof unregisteredReasonValue === "string" &&
-    unregisteredReasonValue.trim().length > 0 &&
-    !UNREGISTERED_REASONS.includes(unregisteredReasonValue as ApplicationUnregisteredReason)
-  ) {
-    return {
-      status: "error",
-      message: "미등록 사유 값이 올바르지 않습니다."
-    }
-  }
-
-  const unregisteredReason =
-    registrationStatus === "not_enrolled"
-      ? ((normalizeOptionalText(unregisteredReasonValue) as ApplicationUnregisteredReason | null) ??
-          null)
-      : null
-
-  if (registrationStatus === "not_enrolled" && !unregisteredReason) {
-    return {
-      status: "error",
-      message: "미등록 상태일 때는 미등록 사유를 선택해 주세요."
-    }
-  }
-
   const { data: current, error } = await getStudioApplicationDetail(
     applicationId,
     teacher.organizationId
@@ -158,12 +117,7 @@ export async function updateApplicationOutcomeAction(
     }
   }
 
-  if (current.status !== "completed") {
-    return {
-      status: "error",
-      message: "완료 처리된 신청에만 운영 기록을 저장할 수 있습니다."
-    }
-  }
+  const isCompleted = current.status === "completed"
 
   const nextValue = {
     consultationNote: normalizeOptionalText(formData.get("consultationNote")),
@@ -173,20 +127,23 @@ export async function updateApplicationOutcomeAction(
     finalSchedule: normalizeOptionalText(formData.get("finalSchedule")),
     followUpNote: normalizeOptionalText(formData.get("followUpNote")),
     registrationStatus,
-    unregisteredReason
+    unregisteredReason: null
   }
 
   const changedFieldLabels = getChangedFieldLabels(current, nextValue)
   const logNote =
     changedFieldLabels.length > 0
-      ? `운영 기록 저장: ${changedFieldLabels.join(", ")}`
-      : "운영 기록 저장"
+      ? `${isCompleted ? "운영 기록 저장" : "상담 기록 저장"}: ${changedFieldLabels.join(", ")}`
+      : isCompleted
+        ? "운영 기록 저장"
+        : "상담 기록 저장"
 
   try {
     await dataAdapter.updateStudioApplicationOutcome({
       applicationId,
       actorId: teacher.id,
       currentStatus: current.status,
+      allowBeforeCompleted: true,
       consultationNote: nextValue.consultationNote,
       trialFeedback: nextValue.trialFeedback,
       registeredCourse: nextValue.registeredCourse,
@@ -240,9 +197,18 @@ export async function updateApplicationOutcomeAction(
       }
     }
 
+    if (message === "application_outcome_registration_requires_completed") {
+      return {
+        status: "error",
+        message: "등록 결과와 후속 운영 기록은 체험 완료 처리 후 저장할 수 있습니다."
+      }
+    }
+
     return {
       status: "error",
-      message: "운영 기록 저장에 실패했습니다. 잠시 후 다시 시도해 주세요."
+      message: isCompleted
+        ? "운영 기록 저장에 실패했습니다. 잠시 후 다시 시도해 주세요."
+        : "상담 기록 저장에 실패했습니다. 잠시 후 다시 시도해 주세요."
     }
   }
 }

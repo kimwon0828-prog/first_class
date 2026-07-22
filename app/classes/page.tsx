@@ -256,7 +256,10 @@ export default async function ClassesPage({ searchParams }: ClassesPageProps) {
   const profile = session ? await getMyProfile() : null
   const isParentUser = profile?.role === "parent"
   const isStudioUser =
-    profile?.dbRole === "teacher" || profile?.dbRole === "academy" || profile?.dbRole === "admin"
+    profile?.dbRole === "teacher" ||
+    profile?.dbRole === "academy" ||
+    profile?.dbRole === "operator" ||
+    profile?.dbRole === "admin"
   const favoritesEnabled = !session || profile?.role === "parent"
   const classesHref = buildClassesHref({
     region: selectedRegion,

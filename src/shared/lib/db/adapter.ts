@@ -444,6 +444,7 @@ export type UpdateStudioApplicationOutcomeInput = {
   applicationId: string
   actorId: string
   currentStatus: ApplicationStatus
+  allowBeforeCompleted?: boolean
   consultationNote: string | null
   trialFeedback: string | null
   registeredCourse: string | null

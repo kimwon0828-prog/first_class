@@ -1447,15 +1447,31 @@ export const mockDataAdapter: DataAdapter = {
       throw new Error("application_not_found_or_forbidden")
     }
 
+    const canEditBeforeCompleted = Boolean(input.allowBeforeCompleted) && input.currentStatus !== "completed"
+    const registrationFieldsTouched =
+      input.registrationStatus !== "undecided" ||
+      input.unregisteredReason !== null ||
+      input.trialFeedback !== null ||
+      input.registeredCourse !== null ||
+      input.finalLevel !== null ||
+      input.finalSchedule !== null ||
+      input.followUpNote !== null
+
+    if (canEditBeforeCompleted && registrationFieldsTouched) {
+      throw new Error("application_outcome_registration_requires_completed")
+    }
+
     target.consultationNote = input.consultationNote
-    target.trialFeedback = input.trialFeedback
-    target.registeredCourse = input.registeredCourse
-    target.finalLevel = input.finalLevel
-    target.finalSchedule = input.finalSchedule
-    target.followUpNote = input.followUpNote
-    target.registrationStatus = input.registrationStatus
-    target.enrolledAt = input.registrationStatus === "enrolled" ? new Date().toISOString() : null
-    target.unregisteredReason = input.unregisteredReason
+    if (!canEditBeforeCompleted) {
+      target.trialFeedback = input.trialFeedback
+      target.registeredCourse = input.registeredCourse
+      target.finalLevel = input.finalLevel
+      target.finalSchedule = input.finalSchedule
+      target.followUpNote = input.followUpNote
+      target.registrationStatus = input.registrationStatus
+      target.enrolledAt = input.registrationStatus === "enrolled" ? new Date().toISOString() : null
+      target.unregisteredReason = input.unregisteredReason
+    }
     target.updatedAt = new Date().toISOString()
 
     applicationLogs.unshift({
