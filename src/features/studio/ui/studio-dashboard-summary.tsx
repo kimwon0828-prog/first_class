@@ -340,36 +340,40 @@ export const StudioDashboardSummaryView = ({
                   </dl>
 
                   <div className={styles.priorityActions}>
-                    {item.status === "new" ? (
-                      <Link
-                        href={detailHref}
-                        className={styles.actionButtonPrimary}
-                        aria-busy={pendingTarget === `${item.id}-detail`}
-                        onClick={() => setPendingTarget(`${item.id}-detail`)}
-                      >
-                        {pendingTarget === `${item.id}-detail` ? "이동 중..." : "상세 보기"}
-                      </Link>
-                    ) : (
-                      <Link
-                        href={detailHref}
-                        className={styles.actionButtonPrimary}
-                        aria-busy={pendingTarget === `${item.id}-continue`}
-                        onClick={() => setPendingTarget(`${item.id}-continue`)}
-                      >
-                        {pendingTarget === `${item.id}-continue` ? "이동 중..." : "이어서 처리"}
-                      </Link>
-                    )}
-
-                    {item.status === "confirmed" ? (
-                      <Link
-                        href={detailHref}
-                        className={styles.actionButtonPrimary}
-                        aria-busy={pendingTarget === `${item.id}-memo`}
-                        onClick={() => setPendingTarget(`${item.id}-memo`)}
-                      >
-                        {pendingTarget === `${item.id}-memo` ? "이동 중..." : "운영 메모"}
-                      </Link>
-                    ) : null}
+                    <Link
+                      href={detailHref}
+                      className={styles.actionButtonPrimary}
+                      aria-busy={
+                        pendingTarget ===
+                        (item.status === "new"
+                          ? `${item.id}-detail`
+                          : item.status === "confirmed"
+                            ? `${item.id}-memo`
+                            : `${item.id}-continue`)
+                      }
+                      onClick={() =>
+                        setPendingTarget(
+                          item.status === "new"
+                            ? `${item.id}-detail`
+                            : item.status === "confirmed"
+                              ? `${item.id}-memo`
+                              : `${item.id}-continue`
+                        )
+                      }
+                    >
+                      {pendingTarget ===
+                      (item.status === "new"
+                        ? `${item.id}-detail`
+                        : item.status === "confirmed"
+                          ? `${item.id}-memo`
+                          : `${item.id}-continue`)
+                        ? "이동 중..."
+                        : item.status === "new"
+                          ? "상세 보기"
+                          : item.status === "confirmed"
+                            ? "운영 메모"
+                            : "이어서 처리"}
+                    </Link>
                   </div>
                 </article>
               )
