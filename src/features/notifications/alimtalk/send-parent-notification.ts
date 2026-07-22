@@ -7,6 +7,22 @@ import { logSmsEventSafely } from "@/features/notifications/sms/log-sms-event"
 const shouldFallbackToSms = (status: ParentNotificationResult["alimtalk"]["status"]) =>
   status === "disabled" || status === "failed" || status === "skipped"
 
+const resolveSafeNotificationError = (error: unknown) => ({
+  message: error instanceof Error ? error.message : "unknown_error",
+  code:
+    typeof error === "object" && error && "code" in error && typeof error.code === "string"
+      ? error.code
+      : null,
+  details:
+    typeof error === "object" && error && "details" in error && typeof error.details === "string"
+      ? error.details
+      : null,
+  hint:
+    typeof error === "object" && error && "hint" in error && typeof error.hint === "string"
+      ? error.hint
+      : null
+})
+
 export const sendParentNotification = async (
   context: ParentNotificationContext
 ): Promise<ParentNotificationResult> => {
@@ -56,5 +72,24 @@ export const sendParentNotification = async (
   return {
     channel: "sms_fallback",
     alimtalk
+  }
+}
+
+export const sendParentNotificationSafely = async (
+  context: ParentNotificationContext
+): Promise<ParentNotificationResult | null> => {
+  try {
+    return await sendParentNotification(context)
+  } catch (error) {
+    const safeError = resolveSafeNotificationError(error)
+    console.warn("[parent notification failed]", {
+      eventType: context.eventType,
+      applicationId: context.trialApplicationId,
+      message: safeError.message,
+      code: safeError.code,
+      details: safeError.details,
+      hint: safeError.hint
+    })
+    return null
   }
 }

@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache"
 
-import { sendParentNotification } from "@/features/notifications/alimtalk/send-parent-notification"
+import { sendParentNotificationSafely } from "@/features/notifications/alimtalk/send-parent-notification"
 import { sendStudioNotificationSafely } from "@/features/notifications/sms/send-studio-notification"
 import { requireTeacherStudioAccess } from "@/features/studio/lib/require-teacher-studio-access"
 import { dataAdapter } from "@/shared/lib/db"
@@ -149,7 +149,7 @@ export async function updateApplicationStatusAction(
 
     if (updated) {
       if (requestedActionType === "move_to_confirmed") {
-        await sendParentNotification({
+        await sendParentNotificationSafely({
           eventType: "trial_schedule_confirmed",
           organizationId: teacher.organizationId,
           trialApplicationId: updated.id,
@@ -175,7 +175,7 @@ export async function updateApplicationStatusAction(
       }
 
       if (requestedActionType === "move_to_completed") {
-        await sendParentNotification({
+        await sendParentNotificationSafely({
           eventType: "trial_completed",
           organizationId: teacher.organizationId,
           trialApplicationId: updated.id,
@@ -194,7 +194,7 @@ export async function updateApplicationStatusAction(
       }
 
       if (requestedActionType === "cancel") {
-        await sendParentNotification({
+        await sendParentNotificationSafely({
           eventType: "trial_rejected",
           organizationId: teacher.organizationId,
           trialApplicationId: updated.id,
