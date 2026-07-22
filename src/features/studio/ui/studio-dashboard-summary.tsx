@@ -12,7 +12,10 @@ type StudioDashboardSummaryProps = {
   applicationsError?: string | null
   applicationsHref?: string
   selectedRangeLabel?: string
+  selectedTeacherName?: string | null
 }
+
+type DashboardApplicationLinkStatus = "new" | "reviewing"
 
 const formatDateTime = (value: string | null) => {
   if (!value) {
@@ -28,11 +31,17 @@ const formatDateTime = (value: string | null) => {
 const getScheduledAt = (application: StudioApplicationSummary) =>
   application.confirmedSlotAt ?? application.requestedSlotAt
 
-const getStatusBadge = (application: StudioApplicationSummary) => {
-  if (application.registrationStatus === "enrolled") {
-    return { label: "등록 완료", tone: "successSolid" as const }
+const getProgramTypeLabel = (application: StudioApplicationSummary) => {
+  if (application.classProgramType === "level_test") {
+    return "레벨테스트"
   }
+  return "체험수업"
+}
 
+const isNoShowApplication = (application: StudioApplicationSummary) =>
+  application.status === "canceled" && Boolean(application.noShowAt)
+
+const getPrimaryStatusBadge = (application: StudioApplicationSummary) => {
   if (application.status === "new") {
     return { label: "신규 신청", tone: "successSoft" as const }
   }
@@ -45,14 +54,22 @@ const getStatusBadge = (application: StudioApplicationSummary) => {
     return { label: "수업 확정", tone: "infoSoft" as const }
   }
 
+  if (isNoShowApplication(application)) {
+    return { label: "노쇼", tone: "neutralSoft" as const }
+  }
+
   if (application.status === "completed") {
-    return { label: "수업 완료", tone: "neutralSoft" as const }
+    return { label: "체험 완료", tone: "darkSoft" as const }
   }
 
   return { label: "신청 취소", tone: "dangerSoft" as const }
 }
 
 const getSecondaryBadge = (application: StudioApplicationSummary) => {
+  if (application.registrationStatus === "enrolled") {
+    return { label: "등록 완료", tone: "successSolid" as const }
+  }
+
   if (application.registrationStatus === "pending") {
     return { label: "등록 보류", tone: "warningSoft" as const }
   }
@@ -80,6 +97,7 @@ const Badge = ({
     | "neutralSoft"
     | "dangerSoft"
     | "darkSolid"
+    | "darkSoft"
     | "successSolid"
 }) => {
   return <span className={`${styles.badge} ${styles[`badge_${tone}`]}`}>{label}</span>
@@ -94,18 +112,28 @@ const getPriorityRank = (application: StudioApplicationSummary) => {
     return 2
   }
 
-  if (
-    application.status === "completed" &&
-    (application.registrationStatus === "undecided" || application.registrationStatus === "pending")
-  ) {
+  if (application.status === "confirmed") {
     return 3
   }
 
-  if (application.status === "confirmed") {
-    return 4
+  return 99
+}
+
+const buildApplicationsHref = (
+  baseHref: string,
+  status?: DashboardApplicationLinkStatus
+) => {
+  const [pathname, search = ""] = baseHref.split("?")
+  const params = new URLSearchParams(search)
+
+  if (status) {
+    params.set("status", status)
+  } else {
+    params.delete("status")
   }
 
-  return 99
+  const query = params.toString()
+  return query ? `${pathname}?${query}` : pathname
 }
 
 export const StudioDashboardSummaryView = ({
@@ -113,62 +141,56 @@ export const StudioDashboardSummaryView = ({
   applications,
   applicationsError,
   applicationsHref = "/studio/applications",
-  selectedRangeLabel = "이번 달"
+  selectedRangeLabel = "이번 달",
+  selectedTeacherName = null
 }: StudioDashboardSummaryProps) => {
   const [pendingTarget, setPendingTarget] = useState<string | null>(null)
-  const totalApplications = applications.length
-
-  const metricCards = [
-    {
-      key: "total",
-      label: "전체 신청",
-      value: totalApplications,
-      description: "선택한 조건 기준 전체 신청 수",
-      hasAlert: false
-    },
-    {
-      key: "new",
-      label: "신규 신청",
-      value: summary.newApplicationCount,
-      description: "확인이 필요한 신규 신청",
-      hasAlert: summary.newApplicationCount > 0
-    },
-    {
-      key: "pending",
-      label: "상담 대기",
-      value: summary.pendingConfirmationCount,
-      description: "상담/확정 전 상태",
-      hasAlert: summary.pendingConfirmationCount > 0
-    },
-    {
-      key: "registered",
-      label: "등록 완료",
-      value: summary.registeredCount,
-      description: "등록 처리 완료 건수",
-      hasAlert: false
-    },
-    {
-      key: "conversion",
-      label: "등록전환율",
-      value: `${summary.enrollmentRate}%`,
-      description: "등록 완료 / 전체 신청",
-      hasAlert: false
-    }
-  ] as const
-
-  const todayCheckItems = [...applications]
-    .filter((item) => item.status !== "canceled")
+  const newApplicationsHref = buildApplicationsHref(applicationsHref, "new")
+  const reviewingApplicationsHref = buildApplicationsHref(applicationsHref, "reviewing")
+  const queueItems = [...applications]
+    .filter((item) => item.status === "new" || item.status === "reviewing" || item.status === "confirmed")
     .sort((a, b) => {
       const rankDelta = getPriorityRank(a) - getPriorityRank(b)
       if (rankDelta !== 0) {
         return rankDelta
       }
 
-      return (b.updatedAt ?? b.createdAt ?? "").localeCompare(a.updatedAt ?? a.createdAt ?? "")
+      return (b.createdAt ?? "").localeCompare(a.createdAt ?? "")
     })
     .slice(0, 4)
 
   const recentItems = applications.slice(0, 5)
+  const conversionGaugeWidth =
+    summary.enrollmentRate != null ? `${Math.max(0, Math.min(100, summary.enrollmentRate))}%` : "0%"
+
+  const metricItems = [
+    {
+      key: "total",
+      label: "전체 신청",
+      value: String(summary.totalApplicationCount),
+      description: selectedRangeLabel
+    },
+    {
+      key: "confirmed",
+      label: "수업 확정",
+      value: String(summary.confirmedCount),
+      description: "상담 완료"
+    },
+    {
+      key: "registered",
+      label: "등록 완료",
+      value: String(summary.registeredCount),
+      description: "확정 → 등록"
+    },
+    {
+      key: "canceled",
+      label: "노쇼·취소",
+      value: String(summary.canceledOrNoShowCount),
+      description: selectedRangeLabel
+    }
+  ]
+
+  const actionZoneEmpty = summary.actionableCount === 0
 
   return (
     <div className={styles.dashboard}>
@@ -178,72 +200,183 @@ export const StudioDashboardSummaryView = ({
         </section>
       ) : null}
 
-      <section className={styles.metricGrid} aria-label="핵심 지표">
-        {metricCards.map((card) => (
-          <div key={card.key} className={styles.metricCard}>
-            <div className={styles.metricTop}>
-              <p className={styles.metricLabel}>{card.label}</p>
-              {card.hasAlert ? <span className={styles.metricAccent} aria-hidden="true" /> : null}
+      <section className={styles.section}>
+        <header className={styles.sectionHeaderRow}>
+          <div className={styles.sectionTitleGroup}>
+            <div className={styles.sectionTitleRow}>
+              <h2 className={styles.sectionTitle}>지금 처리할 일</h2>
+              {summary.newApplicationCount > 0 ? <span className={styles.pulseDot} aria-hidden="true" /> : null}
             </div>
-            <p className={styles.metricValue}>{card.value}</p>
-            <p className={styles.metricDescription}>{card.description}</p>
+            <p className={styles.sectionDescription}>
+              확인이 늦어지면 학부모가 다른 학원으로 가요. 빠른 응답이 등록으로 이어져요.
+            </p>
           </div>
-        ))}
+        </header>
+
+        {actionZoneEmpty ? (
+          <div className={styles.emptyActionCard}>
+            <p className={styles.emptyTitle}>지금 처리할 신청이 없어요.</p>
+            <p className={styles.emptyDescription}>새 신청이 오면 문자로 알려드릴게요.</p>
+          </div>
+        ) : (
+          <div className={styles.actionZoneGrid}>
+            <article className={`${styles.actionCard} ${styles.actionCardPrimary}`}>
+              <div className={styles.actionCardHeader}>
+                <p className={styles.actionLabel}>새 신청</p>
+              </div>
+              <p className={styles.actionValue}>{summary.newApplicationCount}</p>
+              <p className={styles.actionDescription}>아직 확인 안 한 신청이에요.</p>
+              <Link
+                href={newApplicationsHref}
+                className={styles.actionButtonSolid}
+                aria-busy={pendingTarget === "action-new"}
+                onClick={() => setPendingTarget("action-new")}
+              >
+                {pendingTarget === "action-new" ? "이동 중..." : "확인하러 가기"}
+              </Link>
+            </article>
+
+            <article className={`${styles.actionCard} ${styles.actionCardOutline}`}>
+              <div className={styles.actionCardHeader}>
+                <p className={styles.actionLabel}>상담 대기</p>
+              </div>
+              <p className={`${styles.actionValue} ${styles.actionValueAmber}`}>{summary.consultationPendingCount}</p>
+              <p className={styles.actionDescription}>확정 전, 후속 연락이 필요해요.</p>
+              <Link
+                href={reviewingApplicationsHref}
+                className={styles.actionButtonOutline}
+                aria-busy={pendingTarget === "action-reviewing"}
+                onClick={() => setPendingTarget("action-reviewing")}
+              >
+                {pendingTarget === "action-reviewing" ? "이동 중..." : "이어서 처리"}
+              </Link>
+            </article>
+          </div>
+        )}
       </section>
 
       <section className={styles.section}>
-        <header className={styles.sectionHeader}>
-          <h2 className={styles.sectionTitle}>오늘 확인할 신청</h2>
-          <p className={styles.sectionDescription}>우선 처리해야 할 신청을 빠르게 확인하세요.</p>
+        <div className={styles.metricStrip}>
+          {metricItems.map((item) => (
+            <article key={item.key} className={styles.metricStripItem}>
+              <p className={styles.metricStripLabel}>{item.label}</p>
+              <p className={styles.metricStripValue}>{item.value}</p>
+              <p className={styles.metricStripDescription}>{item.description}</p>
+            </article>
+          ))}
+
+          <article className={`${styles.metricStripItem} ${styles.metricStripHighlight}`}>
+            <p className={styles.metricStripLabel}>등록 전환율</p>
+            <p className={styles.metricStripValue}>
+              {summary.enrollmentRate != null ? `${summary.enrollmentRate}%` : "—"}
+            </p>
+            <p className={styles.metricStripDescription}>
+              {summary.enrollmentRate != null
+                ? `등록 ${summary.enrollmentRateNumerator} / 완료 ${summary.enrollmentRateDenominator}`
+                : "아직 집계할 체험이 없어요"}
+            </p>
+            <div className={styles.metricGauge} aria-hidden="true">
+              <span className={styles.metricGaugeFill} style={{ width: conversionGaugeWidth }} />
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section className={styles.section}>
+        <header className={styles.sectionHeaderRow}>
+          <div className={styles.sectionTitleGroup}>
+            <h2 className={styles.sectionTitle}>우선 처리 큐</h2>
+            <p className={styles.sectionDescription}>
+              신규 신청부터 확정 건까지, 바로 연락하거나 다음 단계로 넘길 신청을 먼저 보여줍니다.
+            </p>
+          </div>
         </header>
 
-        {applicationsError ? null : todayCheckItems.length === 0 ? (
+        {applicationsError ? null : queueItems.length === 0 ? (
           <div className={styles.emptyCard}>
-            <p className={styles.emptyTitle}>오늘 확인할 신청이 없어요.</p>
-            <p className={styles.emptyDescription}>새로운 신청이 들어오면 이곳에서 우선 확인할 수 있어요.</p>
+            <p className={styles.emptyTitle}>우선 처리할 신청이 없어요.</p>
+            <p className={styles.emptyDescription}>새 신청이나 확정 일정이 생기면 이곳에서 먼저 확인할 수 있어요.</p>
           </div>
         ) : (
-          <div className={styles.listGrid}>
-            {todayCheckItems.map((item) => {
-              const primaryBadge = getStatusBadge(item)
+          <div className={styles.priorityQueueGrid}>
+            {queueItems.map((item) => {
+              const primaryBadge = getPrimaryStatusBadge(item)
               const secondaryBadge = getSecondaryBadge(item)
+              const scheduleLabel = item.status === "confirmed" ? "확정 일정" : "희망 일정"
+              const isNewCard = item.status === "new"
+              const detailHref = `/studio/applications/${item.id}`
               return (
-                <article key={item.id} className={styles.applicationCard}>
-                  <div className={styles.applicationCardTop}>
-                    <div className={styles.applicationCardTitleRow}>
-                      <strong className={styles.applicationTitle}>
-                        {item.childName} <span className={styles.applicationTitleSub}>· {item.childGrade}</span>
+                <article
+                  key={item.id}
+                  className={`${styles.priorityCard} ${isNewCard ? styles.priorityCardNew : ""}`}
+                >
+                  <div className={styles.priorityCardTop}>
+                    <div>
+                      <strong className={styles.priorityTitle}>
+                        {item.childName}
+                        <span className={styles.priorityTitleSub}> · {item.childGrade}</span>
                       </strong>
-                      <div className={styles.badgeRow}>
-                        <Badge label={primaryBadge.label} tone={primaryBadge.tone} />
-                        {secondaryBadge ? (
-                          <Badge label={secondaryBadge.label} tone={secondaryBadge.tone} />
-                        ) : null}
-                      </div>
+                      <p className={styles.priorityClassTitle}>
+                        {getProgramTypeLabel(item)} · {item.classTitle ?? "-"}
+                      </p>
                     </div>
-                    <p className={styles.applicationClassTitle}>{item.classTitle ?? "-"}</p>
+                    <div className={styles.badgeRow}>
+                      <Badge label={primaryBadge.label} tone={primaryBadge.tone} />
+                      {secondaryBadge ? <Badge label={secondaryBadge.label} tone={secondaryBadge.tone} /> : null}
+                    </div>
                   </div>
 
-                  <dl className={styles.applicationMeta}>
-                    <div className={styles.applicationMetaRow}>
-                      <dt className={styles.applicationMetaLabel}>희망 일정</dt>
-                      <dd className={styles.applicationMetaValue}>{formatDateTime(getScheduledAt(item))}</dd>
+                  <dl className={styles.priorityMetaGrid}>
+                    <div className={styles.priorityMetaItem}>
+                      <dt className={styles.priorityMetaLabel}>{scheduleLabel}</dt>
+                      <dd className={styles.priorityMetaValue}>{formatDateTime(getScheduledAt(item))}</dd>
                     </div>
-                    <div className={styles.applicationMetaRow}>
-                      <dt className={styles.applicationMetaLabel}>보호자 연락처</dt>
-                      <dd className={styles.applicationMetaValue}>{item.parentPhone ?? "-"}</dd>
+                    <div className={styles.priorityMetaItem}>
+                      <dt className={styles.priorityMetaLabel}>보호자 연락처</dt>
+                      <dd className={styles.priorityMetaValue}>{item.parentPhone ?? "-"}</dd>
                     </div>
                   </dl>
 
-                  <div className={styles.applicationActions}>
-                    <Link
-                      href={`/studio/applications/${item.id}`}
-                      className={styles.buttonSecondary}
-                      aria-busy={pendingTarget === item.id}
-                      onClick={() => setPendingTarget(item.id)}
-                    >
-                      {pendingTarget === item.id ? "이동 중..." : "관리"}
-                    </Link>
+                  <div className={styles.priorityActions}>
+                    {item.status === "confirmed" ? (
+                      <Link
+                        href={detailHref}
+                        className={styles.actionButtonSecondary}
+                        aria-busy={pendingTarget === `${item.id}-schedule`}
+                        onClick={() => setPendingTarget(`${item.id}-schedule`)}
+                      >
+                        {pendingTarget === `${item.id}-schedule` ? "이동 중..." : "일정 보기"}
+                      </Link>
+                    ) : item.status === "new" ? (
+                      <Link
+                        href={detailHref}
+                        className={styles.actionButtonPrimary}
+                        aria-busy={pendingTarget === `${item.id}-detail`}
+                        onClick={() => setPendingTarget(`${item.id}-detail`)}
+                      >
+                        {pendingTarget === `${item.id}-detail` ? "이동 중..." : "상세 보기"}
+                      </Link>
+                    ) : (
+                      <Link
+                        href={detailHref}
+                        className={styles.actionButtonPrimary}
+                        aria-busy={pendingTarget === `${item.id}-continue`}
+                        onClick={() => setPendingTarget(`${item.id}-continue`)}
+                      >
+                        {pendingTarget === `${item.id}-continue` ? "이동 중..." : "이어서 처리"}
+                      </Link>
+                    )}
+
+                    {item.status === "confirmed" ? (
+                      <Link
+                        href={detailHref}
+                        className={styles.actionButtonPrimary}
+                        aria-busy={pendingTarget === `${item.id}-memo`}
+                        onClick={() => setPendingTarget(`${item.id}-memo`)}
+                      >
+                        {pendingTarget === `${item.id}-memo` ? "이동 중..." : "운영 메모"}
+                      </Link>
+                    ) : null}
                   </div>
                 </article>
               )
@@ -254,17 +387,20 @@ export const StudioDashboardSummaryView = ({
 
       <section className={styles.section}>
         <header className={styles.sectionHeaderRow}>
-          <div>
+          <div className={styles.sectionTitleGroup}>
             <h2 className={styles.sectionTitle}>최근 신청 현황</h2>
-            <p className={styles.sectionDescription}>{selectedRangeLabel} 기준 최근 신청 5건을 요약해 보여줍니다.</p>
+            <p className={styles.sectionDescription}>
+              {selectedRangeLabel}
+              {selectedTeacherName ? ` · ${selectedTeacherName}` : ""} 기준 최근 신청 5건을 요약해 보여줍니다.
+            </p>
           </div>
           <Link
             href={applicationsHref}
-            className={styles.buttonGhost}
+            className={styles.linkButtonGhost}
             aria-busy={pendingTarget === "applications"}
             onClick={() => setPendingTarget("applications")}
           >
-            {pendingTarget === "applications" ? "이동 중..." : "신청함 전체 보기"}
+            {pendingTarget === "applications" ? "이동 중..." : "신청함 전체 보기 →"}
           </Link>
         </header>
 
@@ -291,7 +427,7 @@ export const StudioDashboardSummaryView = ({
                 </thead>
                 <tbody>
                   {recentItems.map((item) => {
-                    const primaryBadge = getStatusBadge(item)
+                    const primaryBadge = getPrimaryStatusBadge(item)
                     const secondaryBadge = getSecondaryBadge(item)
                     return (
                       <tr key={item.id} className={styles.tr}>
@@ -328,7 +464,7 @@ export const StudioDashboardSummaryView = ({
 
             <div className={styles.mobileList}>
               {recentItems.map((item) => {
-                const primaryBadge = getStatusBadge(item)
+                const primaryBadge = getPrimaryStatusBadge(item)
                 const secondaryBadge = getSecondaryBadge(item)
                 return (
                   <article key={item.id} className={styles.mobileItem}>

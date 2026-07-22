@@ -1,6 +1,7 @@
 "use client"
 
 import Link from "next/link"
+import { useSearchParams } from "next/navigation"
 import { useMemo, useState } from "react"
 
 import {
@@ -136,8 +137,15 @@ type StudioApplicationTableProps = {
 }
 
 export const StudioApplicationTable = ({ items }: StudioApplicationTableProps) => {
+  const searchParams = useSearchParams()
+  const initialStatusFilter = useMemo<StudioApplicationFilterKey>(() => {
+    const candidate = searchParams?.get("status")
+    return STUDIO_APPLICATION_FILTERS.some((filter) => filter.key === candidate)
+      ? (candidate as StudioApplicationFilterKey)
+      : "all"
+  }, [searchParams])
   const [query, setQuery] = useState("")
-  const [statusFilter, setStatusFilter] = useState<StudioApplicationFilterKey>("all")
+  const [statusFilter, setStatusFilter] = useState<StudioApplicationFilterKey>(initialStatusFilter)
   const [pendingApplicationId, setPendingApplicationId] = useState<string | null>(null)
 
   const filterCounts = useMemo(() => {

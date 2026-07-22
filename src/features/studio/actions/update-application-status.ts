@@ -67,6 +67,34 @@ const STATUS_LABELS: Record<ApplicationStatus, string> = {
   canceled: "취소"
 }
 
+const logSafeStatusActionError = (
+  scope: string,
+  error: unknown,
+  payload: Record<string, unknown>
+) => {
+  const message = error instanceof Error ? error.message : "unknown_error"
+  const code =
+    typeof error === "object" && error && "code" in error && typeof error.code === "string"
+      ? error.code
+      : null
+  const details =
+    typeof error === "object" && error && "details" in error && typeof error.details === "string"
+      ? error.details
+      : null
+  const hint =
+    typeof error === "object" && error && "hint" in error && typeof error.hint === "string"
+      ? error.hint
+      : null
+
+  console.error(`[studio application status] ${scope}`, {
+    message,
+    code,
+    details,
+    hint,
+    payload
+  })
+}
+
 export async function updateApplicationStatusAction(
   applicationId: string,
   previousState: UpdateApplicationStatusActionState = defaultState,
@@ -206,6 +234,12 @@ export async function updateApplicationStatusAction(
     }
   } catch (error) {
     const message = error instanceof Error ? error.message : "failed_to_update_application_status"
+    logSafeStatusActionError("update_failed", error, {
+      applicationId,
+      actionType: requestedActionType,
+      actorId: teacher.id,
+      organizationId: teacher.organizationId
+    })
 
     if (message === "application_status_conflict") {
       return {

@@ -589,16 +589,19 @@ const buildRequestedOccurrenceEndAt = (
     return null
   }
 
-  if (startDate.getHours() !== startHour || startDate.getMinutes() !== startMinute) {
+  if (startDate.getUTCHours() !== startHour || startDate.getUTCMinutes() !== startMinute) {
     return null
   }
 
-  const endDate = new Date(startDate)
-  endDate.setHours(endHour, endMinute, 0, 0)
-  if (endDate <= startDate) {
+  const startMinutes = startHour * 60 + startMinute
+  const endMinutes = endHour * 60 + endMinute
+  const durationMinutes = endMinutes - startMinutes
+
+  if (durationMinutes <= 0) {
     return null
   }
 
+  const endDate = new Date(startDate.getTime() + durationMinutes * 60 * 1000)
   return endDate.toISOString()
 }
 

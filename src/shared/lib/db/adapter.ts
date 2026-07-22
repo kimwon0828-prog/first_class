@@ -128,17 +128,17 @@ export type AvailableScheduleSlot = {
 }
 
 export type StudioDashboardSummary = {
+  actionableCount: number
+  totalApplicationCount: number
   newApplicationCount: number
-  activeApplicationCount: number
-  todayScheduledCount: number
-  pendingConfirmationCount: number
-  needsOutcomeCount: number
+  consultationPendingCount: number
+  confirmedCount: number
+  canceledOrNoShowCount: number
   registeredCount: number
-  enrollmentRate: number
-  monthlyApplicationCount: number
-  monthlyCompletedCount: number
-  monthlyEnrolledCount: number
-  monthlyEnrollmentRate: number
+  completedCount: number
+  enrollmentRate: number | null
+  enrollmentRateNumerator: number
+  enrollmentRateDenominator: number
 }
 
 export type StudioTeacherOption = {
