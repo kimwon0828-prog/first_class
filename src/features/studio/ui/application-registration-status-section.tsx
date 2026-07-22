@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 
+import { getStudioRegistrationStatusLabel } from "@/features/studio/lib/application-status-labels"
 import type { ApplicationRegistrationStatus } from "@/shared/lib/db/adapter"
 
 import styles from "./application-outcome-form.module.css"
@@ -19,7 +20,11 @@ const REGISTRATION_OPTIONS: Array<{
 }> = [
   { value: "enrolled", label: "등록함", description: "정규 수강으로 이어졌어요." },
   { value: "not_enrolled", label: "미등록", description: "등록하지 않기로 했어요." },
-  { value: "pending", label: "보류", description: "추가 검토나 재연락이 필요해요." }
+  {
+    value: "pending",
+    label: getStudioRegistrationStatusLabel("pending"),
+    description: "추가 검토나 재연락이 필요해요."
+  }
 ]
 
 const getInitialRegistrationStatus = (

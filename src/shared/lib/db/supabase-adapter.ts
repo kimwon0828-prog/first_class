@@ -21,6 +21,8 @@ import type {
   StudioApplicationListOptions,
   StudioApplicationDetail,
   StudioApplicationSummary,
+  StudioUnregisteredApplicationItem,
+  StudioUnregisteredListOptions,
   StudioClassListItem,
   StudioClassInput,
   StudioClassScheduleItem,
@@ -2674,6 +2676,111 @@ export const supabaseDataAdapter: DataAdapter = {
     )
 
     return rows.map((row) => mapStudioApplication(row, teacherNameById))
+  },
+  async listStudioUnregisteredApplications(
+    organizationId,
+    options: StudioUnregisteredListOptions = {}
+  ) {
+    const supabase = await getSupabaseServerClient()
+    let query = supabase
+      .from("trial_applications")
+      .select(
+        "id, child_name, child_grade, parent_name, parent_phone, assigned_teacher_id, completed_at, consultation_note, follow_up_note, registration_status, updated_at, classes!inner(title, subject, organization_id)"
+      )
+      .eq("classes.organization_id", organizationId)
+      .eq("status", "completed")
+      .or("registration_status.is.null,registration_status.eq.not_enrolled,registration_status.eq.pending,registration_status.eq.undecided")
+
+    if (options.teacherId) {
+      query = query.eq("assigned_teacher_id", options.teacherId)
+    }
+
+    if (options.completedAtFrom) {
+      query = query.gte("completed_at", options.completedAtFrom)
+    }
+
+    if (options.completedAtTo) {
+      query = query.lte("completed_at", options.completedAtTo)
+    }
+
+    const { data, error } = await query.order("completed_at", { ascending: false })
+
+    if (error) {
+      throw new Error("failed_to_fetch_studio_unregistered_applications")
+    }
+
+    const rows = (data ?? []) as TrialApplicationRow[]
+    const teacherNameById = await getStudioTeacherDisplayNameMap(
+      rows
+        .map((row) => row.assigned_teacher_id)
+        .filter((teacherId): teacherId is string => Boolean(teacherId))
+    )
+    const applicationIds = rows.map((row) => row.id)
+    const latestLogNoteByApplicationId = new Map<string, string>()
+
+    if (applicationIds.length > 0) {
+      const { data: logData, error: logError } = await supabase
+        .from("application_logs")
+        .select("application_id, note, created_at")
+        .in("application_id", applicationIds)
+        .order("created_at", { ascending: false })
+
+      if (logError) {
+        throw new Error("failed_to_fetch_studio_unregistered_application_logs")
+      }
+
+      for (const row of (logData ?? []) as Array<{
+        application_id: string
+        note: string | null
+        created_at: string
+      }>) {
+        const trimmedNote = row.note?.trim()
+        if (!trimmedNote || latestLogNoteByApplicationId.has(row.application_id)) {
+          continue
+        }
+
+        latestLogNoteByApplicationId.set(row.application_id, trimmedNote)
+      }
+    }
+
+    return rows.map((row): StudioUnregisteredApplicationItem => {
+      const embeddedClass = getEmbeddedClass(row)
+      const completedAt = row.completed_at ?? row.updated_at
+
+      return {
+        id: row.id,
+        childName: row.child_name,
+        childGrade: row.child_grade,
+        parentName: row.parent_name ?? null,
+        parentPhone: row.parent_phone ?? null,
+        classTitle: embeddedClass?.title ?? null,
+        classSubject: embeddedClass?.subject ?? null,
+        assignedTeacherId: row.assigned_teacher_id ?? null,
+        assignedTeacherName: row.assigned_teacher_id
+          ? teacherNameById.get(row.assigned_teacher_id) ?? null
+          : null,
+        completedAt,
+        registrationStatus: row.registration_status ?? null,
+        consultationNote: row.consultation_note?.trim() ? row.consultation_note.trim() : null,
+        followUpNote: row.follow_up_note?.trim() ? row.follow_up_note.trim() : null,
+        latestApplicationLogNote: latestLogNoteByApplicationId.get(row.id) ?? null
+      }
+    })
+  },
+  async getStudioUnregisteredActionRequiredCount(organizationId) {
+    const supabase = await getSupabaseServerClient()
+    const { count, error } = await supabase
+      .from("trial_applications")
+      .select("id, classes!inner(id)", { count: "exact", head: true })
+      .eq("classes.organization_id", organizationId)
+      .eq("status", "completed")
+      .or("registration_status.is.null,registration_status.eq.pending,registration_status.eq.undecided")
+
+    if (error) {
+      throw new Error("failed_to_fetch_studio_unregistered_action_required_count")
+    }
+
+    return count ?? 0
   },
   async getStudioApplicationDetail(applicationId, organizationId) {
     const supabase = await getSupabaseServerClient()

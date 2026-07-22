@@ -17,6 +17,8 @@ import type {
   StudioApplicationSummary,
   StudioClassListItem,
   StudioClassScheduleItem,
+  StudioUnregisteredApplicationItem,
+  StudioUnregisteredListOptions,
   StudioScheduleBlockSummary,
   StudioDashboardTeacherFilterOption,
   StudioTeacherSeatSummary,
@@ -1243,6 +1245,81 @@ export const mockDataAdapter: DataAdapter = {
         return mapped
       })
       .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))
+  },
+  async listStudioUnregisteredApplications(
+    organizationId,
+    options: StudioUnregisteredListOptions = {}
+  ) {
+    if (organizationId !== mockOrganizationId) {
+      return []
+    }
+
+    return applications
+      .filter((item) => {
+        if (item.status !== "completed") {
+          return false
+        }
+
+        if (item.registrationStatus === "enrolled") {
+          return false
+        }
+
+        if (options.teacherId && item.assignedTeacherId !== options.teacherId) {
+          return false
+        }
+
+        const completedAt = item.completedAt ?? item.updatedAt
+
+        if (options.completedAtFrom && completedAt < options.completedAtFrom) {
+          return false
+        }
+
+        if (options.completedAtTo && completedAt > options.completedAtTo) {
+          return false
+        }
+
+        return true
+      })
+      .map((item) => {
+        const classItem = classes.find((classRow) => classRow.id === item.classId)
+        const latestApplicationLogNote =
+          applicationLogs
+            .filter((log) => log.applicationId === item.id && log.note?.trim())
+            .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))[0]?.note ?? null
+
+        const mapped: StudioUnregisteredApplicationItem = {
+          id: item.id,
+          childName: item.childName,
+          childGrade: item.childGrade,
+          parentName: item.parentName ?? null,
+          parentPhone: item.parentPhone ?? null,
+          classTitle: classItem?.title ?? null,
+          classSubject: classItem?.subject ?? null,
+          assignedTeacherId: item.assignedTeacherId ?? null,
+          assignedTeacherName: getTeacherDisplayNameById(item.assignedTeacherId),
+          completedAt: item.completedAt ?? item.updatedAt,
+          registrationStatus: item.registrationStatus ?? null,
+          consultationNote: item.consultationNote ?? null,
+          followUpNote: item.followUpNote ?? null,
+          latestApplicationLogNote
+        }
+
+        return mapped
+      })
+      .sort((a, b) => (a.completedAt < b.completedAt ? 1 : -1))
+  },
+  async getStudioUnregisteredActionRequiredCount(organizationId) {
+    if (organizationId !== mockOrganizationId) {
+      return 0
+    }
+
+    return applications.filter((item) => {
+      if (item.status !== "completed") {
+        return false
+      }
+
+      return item.registrationStatus == null || item.registrationStatus === "pending" || item.registrationStatus === "undecided"
+    }).length
   },
   async getStudioApplicationDetail(applicationId, organizationId) {
     if (organizationId !== mockOrganizationId) {

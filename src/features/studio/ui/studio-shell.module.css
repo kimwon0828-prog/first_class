@@ -58,6 +58,10 @@
   border: 1px solid transparent;
 }
 
+.navLabel {
+  min-width: 0;
+}
+
 .navItem:hover {
   background: #fafafa;
   border-color: #eeeeee;
@@ -90,6 +94,22 @@
   font-size: 11px;
   line-height: 16px;
   color: #2aad38;
+  font-weight: 800;
+}
+
+.navBadge {
+  margin-left: auto;
+  min-width: 26px;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #fbf3e4;
+  color: #c98a1e;
+  font-size: 12px;
+  line-height: 16px;
   font-weight: 800;
 }
 

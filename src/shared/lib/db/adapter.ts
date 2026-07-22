@@ -410,6 +410,29 @@ export type StudioApplicationListOptions = {
   createdAtTo?: string | null
 }
 
+export type StudioUnregisteredListOptions = {
+  teacherId?: string | null
+  completedAtFrom?: string | null
+  completedAtTo?: string | null
+}
+
+export type StudioUnregisteredApplicationItem = {
+  id: string
+  childName: string
+  childGrade: string
+  parentName: string | null
+  parentPhone: string | null
+  classTitle: string | null
+  classSubject: string | null
+  assignedTeacherId: string | null
+  assignedTeacherName: string | null
+  completedAt: string
+  registrationStatus: ApplicationRegistrationStatus | null
+  consultationNote: string | null
+  followUpNote: string | null
+  latestApplicationLogNote: string | null
+}
+
 export type StudioApplicationDetail = StudioApplicationSummary & {
   confirmedScheduleBlockId: string | null
   childSchool: string | null
@@ -534,6 +557,11 @@ export interface DataAdapter {
     organizationId: string,
     options?: StudioApplicationListOptions
   ): Promise<StudioApplicationSummary[]>
+  listStudioUnregisteredApplications(
+    organizationId: string,
+    options?: StudioUnregisteredListOptions
+  ): Promise<StudioUnregisteredApplicationItem[]>
+  getStudioUnregisteredActionRequiredCount(organizationId: string): Promise<number>
   getStudioApplicationDetail(
     applicationId: string,
     organizationId: string

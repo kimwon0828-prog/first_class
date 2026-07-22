@@ -20,7 +20,7 @@ export const STUDIO_REGISTRATION_STATUS_LABELS: Record<ApplicationRegistrationSt
   undecided: "등록 미결정",
   enrolled: "등록함",
   not_enrolled: "미등록",
-  pending: "보류"
+  pending: "고민 중"
 }
 
 export const getStudioDisplayStatus = (
@@ -37,8 +37,9 @@ export const getStudioStatusLabel = (
   application: Pick<StudioApplicationSummary, "status" | "noShowAt">
 ) => STUDIO_APPLICATION_STATUS_LABELS[getStudioDisplayStatus(application)]
 
-export const getStudioRegistrationStatusLabel = (registrationStatus: ApplicationRegistrationStatus) =>
-  STUDIO_REGISTRATION_STATUS_LABELS[registrationStatus]
+export const getStudioRegistrationStatusLabel = (
+  registrationStatus: ApplicationRegistrationStatus | null | undefined
+) => STUDIO_REGISTRATION_STATUS_LABELS[registrationStatus ?? "undecided"]
 
 export const isRegistrationDecisionRecorded = (item: Pick<
   StudioApplicationDetail,

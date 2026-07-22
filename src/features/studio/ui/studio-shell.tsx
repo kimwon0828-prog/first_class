@@ -11,20 +11,14 @@ import styles from "./studio-shell.module.css"
 type StudioShellProps = {
   children: ReactNode
   organizationName?: string | null
+  unregisteredLeadCount?: number
 }
 
 type NavItem = {
   href: string
   label: string
+  badgeCount?: number
 }
-
-const NAV_ITEMS: NavItem[] = [
-  { href: "/studio", label: "대시보드" },
-  { href: "/studio/applications", label: "신청 관리" },
-  { href: "/studio/classes", label: "수업 관리" },
-  { href: "/studio/schedule", label: "일정 관리" },
-  { href: "/studio/teachers", label: "선생님 관리" }
-]
 
 const isActivePath = (pathname: string, href: string) => {
   if (href === "/studio") {
@@ -34,12 +28,28 @@ const isActivePath = (pathname: string, href: string) => {
   return pathname === href || pathname.startsWith(`${href}/`)
 }
 
-export const StudioShell = ({ children, organizationName }: StudioShellProps) => {
+export const StudioShell = ({
+  children,
+  organizationName,
+  unregisteredLeadCount = 0
+}: StudioShellProps) => {
   const pathname = usePathname() ?? ""
   const router = useRouter()
   const accountLabel = organizationName?.trim() || "학원"
   const [pendingHref, setPendingHref] = useState<string | null>(null)
   const [isSettingsPending, startSettingsTransition] = useTransition()
+  const navItems: NavItem[] = [
+    { href: "/studio", label: "대시보드" },
+    { href: "/studio/applications", label: "신청 관리" },
+    {
+      href: "/studio/unregistered",
+      label: "미등록 학생관리",
+      badgeCount: unregisteredLeadCount > 0 ? unregisteredLeadCount : undefined
+    },
+    { href: "/studio/classes", label: "수업 관리" },
+    { href: "/studio/schedule", label: "일정 관리" },
+    { href: "/studio/teachers", label: "선생님 관리" }
+  ]
 
   useEffect(() => {
     setPendingHref(null)
@@ -54,7 +64,7 @@ export const StudioShell = ({ children, organizationName }: StudioShellProps) =>
         </div>
 
         <nav className={styles.nav}>
-          {NAV_ITEMS.map((item) => {
+          {navItems.map((item) => {
             const active = isActivePath(pathname, item.href)
             return (
               <Link
@@ -72,7 +82,8 @@ export const StudioShell = ({ children, organizationName }: StudioShellProps) =>
                 }}
               >
                 <span className={styles.navDot} aria-hidden="true" />
-                <span>{item.label}</span>
+                <span className={styles.navLabel}>{item.label}</span>
+                {item.badgeCount ? <span className={styles.navBadge}>{item.badgeCount}</span> : null}
                 {pendingHref === item.href ? <span className={styles.navPendingText}>이동 중...</span> : null}
               </Link>
             )

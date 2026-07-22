@@ -1,0 +1,591 @@
+.page {
+  display: grid;
+  gap: 24px;
+  padding: 32px;
+}
+
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.eyebrow {
+  margin: 0 0 8px;
+  color: #2aad38;
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 800;
+}
+
+.title {
+  margin: 0;
+  color: #111111;
+  font-size: 30px;
+  line-height: 1.2;
+  font-weight: 800;
+}
+
+.description {
+  margin: 12px 0 0;
+  color: #5f655f;
+  font-size: 15px;
+  line-height: 24px;
+  max-width: 760px;
+}
+
+.errorCard,
+.actionSection,
+.stripSection,
+.filterSection,
+.emptyCard,
+.groupSection,
+.futureCard {
+  border-radius: 16px;
+  background: #ffffff;
+  border: 1px solid #e7ebe7;
+  box-shadow: 0 16px 40px rgba(17, 17, 17, 0.04);
+}
+
+.errorCard {
+  padding: 16px 18px;
+  border-color: #f3d0d0;
+  background: #fff8f8;
+}
+
+.errorText {
+  margin: 0;
+  color: #b42318;
+  font-size: 14px;
+  line-height: 22px;
+  font-weight: 700;
+}
+
+.actionSection,
+.stripSection,
+.filterSection,
+.emptyCard,
+.groupSection,
+.futureCard {
+  padding: 24px;
+}
+
+.sectionHeading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.sectionTitle {
+  margin: 0;
+  color: #111111;
+  font-size: 21px;
+  line-height: 30px;
+  font-weight: 800;
+}
+
+.sectionDescription {
+  margin: 8px 0 0;
+  color: #687068;
+  font-size: 14px;
+  line-height: 22px;
+}
+
+.actionGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.actionCard {
+  display: grid;
+  gap: 8px;
+  text-decoration: none;
+  border-radius: 14px;
+  padding: 20px;
+  border: 1px solid transparent;
+  color: inherit;
+}
+
+.actionCardPending {
+  background: linear-gradient(135deg, #fbf3e4 0%, #fff9ef 100%);
+  border-color: #f0d8ad;
+}
+
+.actionCardUndecided {
+  background: linear-gradient(135deg, #eef4fc 0%, #f7faff 100%);
+  border-color: #d8e5f8;
+}
+
+.actionLabel {
+  margin: 0;
+  color: #4d564d;
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 700;
+}
+
+.actionValue {
+  color: #111111;
+  font-size: 36px;
+  line-height: 1;
+  font-weight: 800;
+}
+
+.actionText {
+  margin: 0;
+  color: #5f655f;
+  font-size: 14px;
+  line-height: 22px;
+}
+
+.stripGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.stripItem {
+  display: grid;
+  gap: 6px;
+  padding: 16px 18px;
+  border-radius: 14px;
+  background: #f8faf8;
+  border: 1px solid #edf1ed;
+}
+
+.stripLabel {
+  margin: 0;
+  color: #6a716a;
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 700;
+}
+
+.stripValue {
+  margin: 0;
+  color: #111111;
+  font-size: 24px;
+  line-height: 1.1;
+  font-weight: 800;
+}
+
+.stripDescription {
+  margin: 0;
+  color: #7a817a;
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.filterSection {
+  display: grid;
+  gap: 16px;
+}
+
+.filterForm {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) repeat(2, minmax(180px, 1fr)) auto;
+  gap: 12px;
+  align-items: end;
+}
+
+.searchField,
+.selectField {
+  display: grid;
+  gap: 8px;
+}
+
+.fieldLabel {
+  color: #4d564d;
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 700;
+}
+
+.searchInput,
+.select {
+  width: 100%;
+  border-radius: 10px;
+  border: 1px solid #d9e2da;
+  background: #ffffff;
+  padding: 12px 14px;
+  color: #111111;
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.submitButton,
+.emptyButton,
+.primaryButtonGreen,
+.primaryButtonBlue,
+.outlineButton {
+  border-radius: 10px;
+  padding: 11px 16px;
+  text-decoration: none;
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 800;
+  border: 1px solid transparent;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.submitButton,
+.emptyButton,
+.primaryButtonGreen {
+  background: #2aad38;
+  color: #ffffff;
+}
+
+.primaryButtonBlue {
+  background: #3b7dd8;
+  color: #ffffff;
+}
+
+.outlineButton {
+  background: #ffffff;
+  color: #2d342d;
+  border-color: #d6ddd6;
+}
+
+.tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.tabChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: 999px;
+  border: 1px solid #dde4de;
+  background: #ffffff;
+  color: #4f574f;
+  text-decoration: none;
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 800;
+}
+
+.tabChipActive {
+  background: #f2fbf3;
+  border-color: #cfead3;
+  color: #1e8c2b;
+}
+
+.tabCount {
+  min-width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #f3f5f3;
+  color: #5b635b;
+  padding: 0 6px;
+}
+
+.tabChipActive .tabCount {
+  background: #ddf4e0;
+  color: #1e8c2b;
+}
+
+.emptyCard {
+  display: grid;
+  gap: 12px;
+  justify-items: start;
+}
+
+.emptyTitle {
+  margin: 0;
+  color: #111111;
+  font-size: 22px;
+  line-height: 30px;
+  font-weight: 800;
+}
+
+.emptyDescription {
+  margin: 0;
+  color: #687068;
+  font-size: 14px;
+  line-height: 22px;
+}
+
+.groupList {
+  display: grid;
+  gap: 20px;
+}
+
+.groupHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.groupTitle {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #111111;
+  font-size: 20px;
+  line-height: 28px;
+  font-weight: 800;
+}
+
+.groupCount {
+  color: #6a716a;
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 700;
+}
+
+.groupDescription {
+  margin: 8px 0 0;
+  color: #6a716a;
+  font-size: 14px;
+  line-height: 22px;
+}
+
+.cardList {
+  display: grid;
+  gap: 16px;
+}
+
+.studentCard {
+  display: grid;
+  gap: 16px;
+  padding: 20px;
+  border-radius: 14px;
+  border: 1px solid #e7ebe7;
+  background: #ffffff;
+}
+
+.studentCardPending {
+  border-left: 3px solid #c98a1e;
+}
+
+.studentCardUndecided {
+  border-left: 3px solid #3b7dd8;
+}
+
+.studentCardNotEnrolled {
+  border-left: 3px solid transparent;
+}
+
+.cardTopLink {
+  display: flex;
+  gap: 16px;
+  text-decoration: none;
+  color: inherit;
+}
+
+.avatar {
+  width: 52px;
+  height: 52px;
+  border-radius: 16px;
+  background: #f2fbf3;
+  color: #1e8c2b;
+  font-size: 16px;
+  line-height: 1;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+}
+
+.cardTopBody {
+  min-width: 0;
+  flex: 1 1 auto;
+  display: grid;
+  gap: 10px;
+}
+
+.cardTitleRow {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.cardTitle {
+  margin: 0;
+  color: #111111;
+  font-size: 20px;
+  line-height: 28px;
+  font-weight: 800;
+}
+
+.cardTitleSub {
+  color: #687068;
+  font-size: 15px;
+  line-height: 22px;
+  font-weight: 700;
+}
+
+.cardSubTitle {
+  margin: 6px 0 0;
+  color: #566056;
+  font-size: 14px;
+  line-height: 22px;
+}
+
+.cardBadges {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.statusBadge,
+.elapsedBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 30px;
+  padding: 0 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 800;
+}
+
+.statusBadgePending {
+  background: #fbf3e4;
+  color: #c98a1e;
+}
+
+.statusBadgeUndecided {
+  background: #eef4fc;
+  color: #3b7dd8;
+}
+
+.statusBadgeNotEnrolled {
+  background: #f1f2f1;
+  color: #6b716b;
+}
+
+.elapsedBadge {
+  background: #f4f7f4;
+  color: #5b635b;
+}
+
+.elapsedBadgeAlert {
+  background: #fff1f1;
+  color: #c0372c;
+}
+
+.metaRow {
+  margin: 0;
+  color: #646c64;
+  font-size: 14px;
+  line-height: 22px;
+}
+
+.memoBlock {
+  margin: 0;
+  padding: 14px 16px;
+  border-radius: 12px;
+  background: #f8faf8;
+  border: 1px solid #edf1ed;
+}
+
+.memoLabel {
+  margin: 0 0 8px;
+  color: #6a716a;
+  font-size: 12px;
+  line-height: 18px;
+  font-weight: 800;
+}
+
+.memoText {
+  margin: 0;
+  color: #2d342d;
+  font-size: 14px;
+  line-height: 24px;
+  white-space: pre-wrap;
+}
+
+.cardActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.futureCard {
+  border-style: dashed;
+}
+
+.futureTitle {
+  margin: 0 0 10px;
+  color: #111111;
+  font-size: 18px;
+  line-height: 26px;
+  font-weight: 800;
+}
+
+.futureDescription {
+  margin: 0;
+  color: #687068;
+  font-size: 14px;
+  line-height: 24px;
+}
+
+@media (max-width: 900px) {
+  .page {
+    padding: 20px;
+  }
+
+  .actionGrid,
+  .stripGrid,
+  .filterForm {
+    grid-template-columns: 1fr;
+  }
+
+  .cardTitleRow,
+  .cardTopLink {
+    flex-direction: column;
+  }
+
+  .cardBadges {
+    justify-content: flex-start;
+  }
+
+  .cardActions {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .title {
+    font-size: 26px;
+  }
+
+  .groupSection,
+  .actionSection,
+  .stripSection,
+  .filterSection,
+  .emptyCard,
+  .futureCard {
+    padding: 18px;
+  }
+
+  .cardActions {
+    grid-template-columns: 1fr;
+  }
+
+  .studentCard {
+    padding: 16px;
+  }
+}
