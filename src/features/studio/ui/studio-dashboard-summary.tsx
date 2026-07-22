@@ -15,7 +15,7 @@ type StudioDashboardSummaryProps = {
   selectedTeacherName?: string | null
 }
 
-type DashboardApplicationLinkStatus = "new" | "reviewing"
+type DashboardApplicationLinkStatus = "new" | "completed"
 
 const formatDateTime = (value: string | null) => {
   if (!value) {
@@ -146,7 +146,7 @@ export const StudioDashboardSummaryView = ({
 }: StudioDashboardSummaryProps) => {
   const [pendingTarget, setPendingTarget] = useState<string | null>(null)
   const newApplicationsHref = buildApplicationsHref(applicationsHref, "new")
-  const reviewingApplicationsHref = buildApplicationsHref(applicationsHref, "reviewing")
+  const completedApplicationsHref = buildApplicationsHref(applicationsHref, "completed")
   const queueItems = [...applications]
     .filter((item) => item.status === "new" || item.status === "reviewing" || item.status === "confirmed")
     .sort((a, b) => {
@@ -205,7 +205,7 @@ export const StudioDashboardSummaryView = ({
           <div className={styles.sectionTitleGroup}>
             <div className={styles.sectionTitleRow}>
               <h2 className={styles.sectionTitle}>지금 처리할 일</h2>
-              {summary.newApplicationCount > 0 ? <span className={styles.pulseDot} aria-hidden="true" /> : null}
+              {summary.actionableCount > 0 ? <span className={styles.pulseDot} aria-hidden="true" /> : null}
             </div>
             <p className={styles.sectionDescription}>
               확인이 늦어지면 학부모가 다른 학원으로 가요. 빠른 응답이 등록으로 이어져요.
@@ -238,17 +238,19 @@ export const StudioDashboardSummaryView = ({
 
             <article className={`${styles.actionCard} ${styles.actionCardOutline}`}>
               <div className={styles.actionCardHeader}>
-                <p className={styles.actionLabel}>상담 대기</p>
+                <p className={styles.actionLabel}>등록 확인 필요</p>
               </div>
-              <p className={`${styles.actionValue} ${styles.actionValueAmber}`}>{summary.consultationPendingCount}</p>
-              <p className={styles.actionDescription}>확정 전, 후속 연락이 필요해요.</p>
+              <p className={`${styles.actionValue} ${styles.actionValueAmber}`}>
+                {summary.needsRegistrationConfirmationCount}
+              </p>
+              <p className={styles.actionDescription}>체험은 끝났지만 등록 여부가 아직 기록되지 않았어요.</p>
               <Link
-                href={reviewingApplicationsHref}
+                href={completedApplicationsHref}
                 className={styles.actionButtonOutline}
-                aria-busy={pendingTarget === "action-reviewing"}
-                onClick={() => setPendingTarget("action-reviewing")}
+                aria-busy={pendingTarget === "action-completed"}
+                onClick={() => setPendingTarget("action-completed")}
               >
-                {pendingTarget === "action-reviewing" ? "이동 중..." : "이어서 처리"}
+                {pendingTarget === "action-completed" ? "이동 중..." : "등록 확인하기"}
               </Link>
             </article>
           </div>
@@ -338,16 +340,7 @@ export const StudioDashboardSummaryView = ({
                   </dl>
 
                   <div className={styles.priorityActions}>
-                    {item.status === "confirmed" ? (
-                      <Link
-                        href={detailHref}
-                        className={styles.actionButtonSecondary}
-                        aria-busy={pendingTarget === `${item.id}-schedule`}
-                        onClick={() => setPendingTarget(`${item.id}-schedule`)}
-                      >
-                        {pendingTarget === `${item.id}-schedule` ? "이동 중..." : "일정 보기"}
-                      </Link>
-                    ) : item.status === "new" ? (
+                    {item.status === "new" ? (
                       <Link
                         href={detailHref}
                         className={styles.actionButtonPrimary}

@@ -10,7 +10,7 @@ const createEmptySummary = (): StudioDashboardSummary => ({
   actionableCount: 0,
   totalApplicationCount: 0,
   newApplicationCount: 0,
-  consultationPendingCount: 0,
+  needsRegistrationConfirmationCount: 0,
   confirmedCount: 0,
   canceledOrNoShowCount: 0,
   registeredCount: 0,
@@ -25,7 +25,17 @@ export const buildStudioDashboardSummary = (
 ): StudioDashboardSummary => {
   const totalApplicationCount = applications.length
   const newApplicationCount = applications.filter((item) => item.status === "new").length
-  const consultationPendingCount = applications.filter((item) => item.status === "reviewing").length
+  const needsRegistrationConfirmationCount = applications.filter((item) => {
+    if (item.status !== "completed") {
+      return false
+    }
+
+    return (
+      item.registrationStatus == null ||
+      item.registrationStatus === "undecided" ||
+      item.registrationStatus === "pending"
+    )
+  }).length
   const confirmedCount = applications.filter((item) => item.status === "confirmed").length
   const canceledOrNoShowCount = applications.filter((item) => item.status === "canceled").length
   const registeredCount = applications.filter((item) => item.registrationStatus === "enrolled").length
@@ -41,10 +51,10 @@ export const buildStudioDashboardSummary = (
       : null
 
   return {
-    actionableCount: newApplicationCount + consultationPendingCount,
+    actionableCount: newApplicationCount + needsRegistrationConfirmationCount,
     totalApplicationCount,
     newApplicationCount,
-    consultationPendingCount,
+    needsRegistrationConfirmationCount,
     confirmedCount,
     canceledOrNoShowCount,
     registeredCount,

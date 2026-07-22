@@ -131,7 +131,7 @@ export type StudioDashboardSummary = {
   actionableCount: number
   totalApplicationCount: number
   newApplicationCount: number
-  consultationPendingCount: number
+  needsRegistrationConfirmationCount: number
   confirmedCount: number
   canceledOrNoShowCount: number
   registeredCount: number
