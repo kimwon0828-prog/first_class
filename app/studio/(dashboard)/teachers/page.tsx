@@ -10,13 +10,6 @@ export default async function StudioTeachersPage() {
   return (
     <div className={styles.page}>
       <div className={styles.container}>
-        <header className={styles.header}>
-          <div>
-            <h1 className={styles.title}>선생님 관리</h1>
-            <p className={styles.description}>학부모에게 보여질 선생님 정보를 등록하고 관리해요.</p>
-          </div>
-        </header>
-
         {error ? (
           <section className={styles.errorCard}>
             <p className={styles.errorText}>{error}</p>

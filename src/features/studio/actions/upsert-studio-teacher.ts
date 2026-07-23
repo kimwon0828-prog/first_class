@@ -93,6 +93,18 @@ export async function upsertStudioTeacherAction(
       return { ok: false, message: "전화번호 형식이 올바르지 않습니다. 예: 010-1234-5678" }
     }
 
+    if (!subjects) {
+      return { ok: false, message: "담당 과목을 선택해 주세요." }
+    }
+
+    if (!targetStudents) {
+      return { ok: false, message: "담당 대상을 하나 이상 선택해 주세요." }
+    }
+
+    if (!shortIntro) {
+      return { ok: false, message: "한 줄 소개를 입력해 주세요." }
+    }
+
     if (mode === "create") {
       await dataAdapter.createStudioTeacher({
         organizationId: teacher.organizationId,

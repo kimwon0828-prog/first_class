@@ -1,9 +1,10 @@
 "use client"
 
-import { useActionState, useMemo, useState, useTransition } from "react"
+import { useActionState, useEffect, useMemo, useState, useTransition } from "react"
 
 import { activateStudioTeacherAction } from "@/features/studio/actions/activate-studio-teacher"
 import { deactivateStudioTeacherAction } from "@/features/studio/actions/deactivate-studio-teacher"
+import { updateStudioTeacherPublicStateAction } from "@/features/studio/actions/update-studio-teacher-public-state"
 import {
   upsertStudioTeacherAction,
   type UpsertStudioTeacherActionState
@@ -11,6 +12,7 @@ import {
 import type { StudioTeacherSeatSummary, StudioTeacherSummary } from "@/shared/lib/db/adapter"
 import {
   DEFAULT_TEACHER_PUBLIC_VISIBILITY,
+  TEACHER_PUBLIC_VISIBILITY_KEYS,
   type TeacherPublicVisibility,
   type TeacherPublicVisibilityKey
 } from "@/shared/lib/teacher-public-visibility"
@@ -21,54 +23,113 @@ type StudioTeachersManagerProps = {
   seatSummary: StudioTeacherSeatSummary
 }
 
+type PanelState = {
+  isOpen: boolean
+  teacherId: string | null
+}
+
 const initialState: UpsertStudioTeacherActionState = {
   ok: false,
   message: ""
 }
 
-const formatCreatedAt = (value: string) =>
-  new Intl.DateTimeFormat("ko-KR", {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit"
-  }).format(new Date(value))
-
-const getInitials = (value: string) => value.trim().slice(0, 2) || "선생"
-const formatPhone = (value: string | null) => (value?.trim() ? value : "미입력")
-const toSingleLine = (value: string | null) => value?.trim() || null
-const PUBLIC_VISIBILITY_FIELDS: Array<{ key: TeacherPublicVisibilityKey; label: string }> = [
+const SUBJECT_OPTIONS = ["국어", "영어", "수학", "과학", "코딩·로봇", "예체능"] as const
+const TARGET_OPTIONS = ["초등 저학년", "초등 고학년", "중등", "고등"] as const
+const ADVANCED_VISIBILITY_FIELDS: Array<{ key: TeacherPublicVisibilityKey; label: string }> = [
   { key: "name", label: "이름" },
-  { key: "intro", label: "상세 소개" },
   { key: "subjects", label: "담당 과목" },
   { key: "targetStudents", label: "담당 대상" },
   { key: "specialties", label: "전문 영역" },
   { key: "shortIntro", label: "한 줄 소개" },
-  { key: "teachingStyle", label: "수업 스타일" }
+  { key: "teachingStyle", label: "수업 스타일" },
+  { key: "intro", label: "상세 소개" }
 ]
 
-const getTeacherCardSummary = (item: StudioTeacherSummary) =>
-  [toSingleLine(item.subjects), toSingleLine(item.targetStudents)].filter(Boolean).join(" · ") || "공개 프로필 준비 중"
+const getInitials = (value: string) => value.trim().slice(0, 2) || "선생"
+const toText = (value: string | null) => value?.trim() || null
+const formatPhone = (value: string | null) => (toText(value) ? value : "미기록")
+const parseCommaSeparatedValues = (value: string | null) =>
+  (value ?? "")
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean)
 
-const getVisibilityStatusLabel = (isVisible: boolean) => (isVisible ? "노출" : "미노출")
+const buildPublicVisibility = (isPublic: boolean): TeacherPublicVisibility => {
+  if (isPublic) {
+    return { ...DEFAULT_TEACHER_PUBLIC_VISIBILITY }
+  }
+
+  return TEACHER_PUBLIC_VISIBILITY_KEYS.reduce(
+    (acc, key) => {
+      acc[key] = false
+      return acc
+    },
+    {} as TeacherPublicVisibility
+  )
+}
+
+const isTeacherPublic = (visibility: TeacherPublicVisibility) =>
+  TEACHER_PUBLIC_VISIBILITY_KEYS.some((key) => visibility[key])
+
+const isTeacherProfileIncomplete = (item: Pick<StudioTeacherSummary, "shortIntro">) =>
+  !toText(item.shortIntro)
+
+const getTeacherSummary = (item: StudioTeacherSummary) =>
+  [toText(item.subjects), toText(item.targetStudents), toText(item.specialties)].filter(Boolean).join(" · ")
+
+const getTeacherPreviewSummary = (subjects: string, targetStudents: string, specialties: string) =>
+  [toText(subjects), toText(targetStudents), toText(specialties)].filter(Boolean).join(" · ")
+
+const getSubjectOptions = (currentValue: string) => {
+  const normalized = currentValue.trim()
+  if (!normalized || SUBJECT_OPTIONS.includes(normalized as (typeof SUBJECT_OPTIONS)[number])) {
+    return SUBJECT_OPTIONS
+  }
+
+  return [normalized, ...SUBJECT_OPTIONS]
+}
+
+const getTargetOptions = (values: string[]) => {
+  const extras = values.filter((value) => !TARGET_OPTIONS.includes(value as (typeof TARGET_OPTIONS)[number]))
+  return [...extras, ...TARGET_OPTIONS]
+}
+
+const renderProfileValue = (
+  value: string | null,
+  onWriteClick: () => void
+) =>
+  value ? (
+    <span>{value}</span>
+  ) : (
+    <button type="button" className={styles.inlineWriteButton} onClick={onWriteClick}>
+      미작성 · 작성하기
+    </button>
+  )
 
 export const StudioTeachersManager = ({
   items,
   seatSummary
 }: StudioTeachersManagerProps) => {
-  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [panelState, setPanelState] = useState<PanelState>({ isOpen: false, teacherId: null })
   const [actionFeedback, setActionFeedback] = useState<string | null>(null)
   const [query, setQuery] = useState("")
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive">("all")
+  const [openInternalTeacherId, setOpenInternalTeacherId] = useState<string | null>(null)
   const [isStatusActionPending, startStatusActionTransition] = useTransition()
-  const selectedTeacher = items.find((item) => item.id === selectedId) ?? null
-  const activeTeachers = items.filter((item) => item.isActive)
-  const inactiveTeachers = items.filter((item) => !item.isActive)
-  const needsProfileCount = items.filter(
-    (item) => !toSingleLine(item.subjects) || !toSingleLine(item.targetStudents) || !toSingleLine(item.shortIntro)
-  ).length
+  const [isVisibilityActionPending, startVisibilityActionTransition] = useTransition()
+
+  const selectedTeacher = items.find((item) => item.id === panelState.teacherId) ?? null
+  const publicCount = items.filter((item) => item.isActive && isTeacherPublic(item.publicVisibility)).length
+  const incompleteCount = items.filter(isTeacherProfileIncomplete).length
   const canCreateTeacher = seatSummary.remainingTeacherSeats > 0
+  const shouldShowSearch = items.length >= 3
+  const usageRatio = Math.min(1, seatSummary.activeTeacherCount / seatSummary.teacherSeatLimit)
 
   const filteredItems = useMemo(() => {
+    if (!shouldShowSearch) {
+      return items
+    }
+
     const needle = query.trim().toLowerCase()
 
     return items.filter((item) => {
@@ -86,68 +147,74 @@ export const StudioTeachersManager = ({
 
       return [
         item.displayName,
-        item.phone,
         item.subjects,
         item.targetStudents,
         item.specialties,
         item.shortIntro,
-        item.teachingStyle
+        item.teachingStyle,
+        item.intro
       ]
         .filter((value): value is string => typeof value === "string" && value.length > 0)
         .some((value) => value.toLowerCase().includes(needle))
     })
-  }, [items, query, statusFilter])
+  }, [items, query, shouldShowSearch, statusFilter])
 
-  const handleCreateClick = () => {
-    setSelectedId(null)
-    document.getElementById("studio-teacher-form")?.scrollIntoView({ behavior: "smooth", block: "start" })
+  const openCreatePanel = () => {
+    setPanelState({ isOpen: true, teacherId: null })
+  }
+
+  const openEditPanel = (teacherId: string) => {
+    setPanelState({ isOpen: true, teacherId })
+  }
+
+  const closePanel = () => {
+    setPanelState({ isOpen: false, teacherId: null })
+  }
+
+  const handleStatusAction = (item: StudioTeacherSummary) => {
+    setActionFeedback(null)
+    startStatusActionTransition(async () => {
+      const result = item.isActive
+        ? await deactivateStudioTeacherAction(item.id)
+        : await activateStudioTeacherAction(item.id)
+      setActionFeedback(result.message)
+    })
+  }
+
+  const handlePublicToggle = (item: StudioTeacherSummary) => {
+    setActionFeedback(null)
+    startVisibilityActionTransition(async () => {
+      const result = await updateStudioTeacherPublicStateAction(
+        item.id,
+        !isTeacherPublic(item.publicVisibility)
+      )
+      setActionFeedback(result.message)
+    })
   }
 
   return (
     <div className={styles.root}>
-      <section className={styles.guideCard}>
-        <div className={styles.guideBody}>
-          <p className={styles.guideTitle}>
-            선생님 소개는 학부모가 수업을 신청할 때 신뢰를 판단하는 중요한 정보예요.
-          </p>
-          <p className={styles.guideDescription}>
-            학부모 공개용으로 담당 과목, 대상, 전문 영역과 수업 스타일을 정리해 주세요. 전화번호는 내부
-            운영과 문자 알림용으로만 사용되며 학부모에게 공개되지 않습니다.
+      <section className={styles.headerRow}>
+        <div className={styles.headerCopy}>
+          <h1 className={styles.pageTitle}>선생님 관리</h1>
+          <p className={styles.pageDescription}>
+            학부모가 수업을 고를 때 선생님 소개를 보고 신뢰를 판단해요.
           </p>
         </div>
-        <button
-          type="button"
-          onClick={handleCreateClick}
-          className={styles.primaryButton}
-          disabled={!canCreateTeacher}
+        <span
+          className={styles.headerActionWrap}
+          title={!canCreateTeacher ? "최대 3명까지 등록할 수 있어요" : undefined}
         >
-          선생님 등록
-        </button>
+          <button
+            type="button"
+            onClick={openCreatePanel}
+            className={styles.primaryButton}
+            disabled={!canCreateTeacher}
+          >
+            + 선생님 등록
+          </button>
+        </span>
       </section>
-
-      <section className={styles.statsGrid} aria-label="선생님 요약 지표">
-        <SummaryCard
-          label="등록 선생님"
-          value={`${seatSummary.activeTeacherCount} / ${seatSummary.teacherSeatLimit}`}
-          description="활성 선생님 기준 최대 3명까지 등록 가능"
-        />
-        <SummaryCard label="활성" value={`${activeTeachers.length}명`} description="현재 운영 중인 선생님" />
-        <SummaryCard label="비활성" value={`${inactiveTeachers.length}명`} description="목록에 유지되는 비활성 선생님" />
-        <SummaryCard
-          label="보강 필요"
-          value={`${needsProfileCount}명`}
-          description="소개 또는 전문분야가 비어 있는 프로필"
-        />
-      </section>
-
-      {seatSummary.remainingTeacherSeats <= 0 ? (
-        <section className={styles.warningCard}>
-          <strong className={styles.warningTitle}>선생님 등록 한도에 도달했습니다.</strong>
-          <p className={styles.warningDescription}>
-            추가 선생님 등록은 추가 결제 상품으로 제공될 예정입니다.
-          </p>
-        </section>
-      ) : null}
 
       {actionFeedback ? (
         <p
@@ -161,507 +228,645 @@ export const StudioTeachersManager = ({
         </p>
       ) : null}
 
-      <section className={styles.toolbar}>
-        <div className={styles.searchWrap}>
-          <input
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder="선생님명 / 전문분야 / 소개 검색"
-            className={styles.search}
-            aria-label="선생님 검색"
-          />
+      <section className={styles.summaryBar} aria-label="선생님 요약">
+        <div className={styles.summaryItems}>
+          <span className={styles.summaryItem}>
+            <strong>{items.length}명</strong> 등록
+          </span>
+          <span className={styles.summaryDot} aria-hidden="true" />
+          <span className={styles.summaryItem}>
+            <strong>{publicCount}명</strong> 공개 중
+          </span>
+          <span className={styles.summaryDot} aria-hidden="true" />
+          <span
+            className={`${styles.summaryItem} ${
+              incompleteCount > 0 ? styles.summaryItemWarning : ""
+            }`}
+          >
+            <strong>{incompleteCount}명</strong> 프로필 미완성
+          </span>
         </div>
-        <div className={styles.pills} role="tablist" aria-label="상태 필터">
-          <button
-            type="button"
-            onClick={() => setStatusFilter("all")}
-            className={`${styles.pill} ${statusFilter === "all" ? styles.pillActive : ""}`}
-          >
-            전체
-          </button>
-          <button
-            type="button"
-            onClick={() => setStatusFilter("active")}
-            className={`${styles.pill} ${statusFilter === "active" ? styles.pillActive : ""}`}
-          >
-            활성
-          </button>
-          <button
-            type="button"
-            onClick={() => setStatusFilter("inactive")}
-            className={`${styles.pill} ${statusFilter === "inactive" ? styles.pillActive : ""}`}
-          >
-            비활성
-          </button>
+        <div className={styles.capacityWrap}>
+          <span className={styles.capacityLabel}>최대 {seatSummary.teacherSeatLimit}명</span>
+          <div className={styles.capacityTrack} aria-hidden="true">
+            <div
+              className={styles.capacityFill}
+              style={{ width: seatSummary.activeTeacherCount === 0 ? "0%" : `${usageRatio * 100}%` }}
+            />
+          </div>
+          <span className={styles.capacityCount}>
+            {seatSummary.activeTeacherCount}/{seatSummary.teacherSeatLimit}
+          </span>
         </div>
       </section>
 
-      <div className={styles.layout}>
-        <section className={styles.listCard}>
-          <div className={styles.sectionHeader}>
-            <div>
-              <h2 className={styles.sectionTitle}>선생님 목록</h2>
-            </div>
-            <button type="button" onClick={handleCreateClick} className={styles.secondaryButton}>
-              선생님 등록
+      {shouldShowSearch ? (
+        <section className={styles.toolbar}>
+          <div className={styles.searchWrap}>
+            <input
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="선생님 이름이나 소개를 검색해 보세요"
+              className={styles.search}
+              aria-label="선생님 검색"
+            />
+          </div>
+          <div className={styles.pills} role="tablist" aria-label="선생님 상태">
+            <button
+              type="button"
+              onClick={() => setStatusFilter("all")}
+              className={`${styles.pill} ${statusFilter === "all" ? styles.pillActive : ""}`}
+            >
+              전체
+            </button>
+            <button
+              type="button"
+              onClick={() => setStatusFilter("active")}
+              className={`${styles.pill} ${statusFilter === "active" ? styles.pillActive : ""}`}
+            >
+              활성
+            </button>
+            <button
+              type="button"
+              onClick={() => setStatusFilter("inactive")}
+              className={`${styles.pill} ${statusFilter === "inactive" ? styles.pillActive : ""}`}
+            >
+              비활성
             </button>
           </div>
-
-          {items.length === 0 ? (
-            <div className={styles.emptyCard}>
-              <div className={styles.emptyIcon} aria-hidden="true" />
-              <p className={styles.emptyTitle}>아직 등록된 선생님이 없어요.</p>
-              <p className={styles.emptyDescription}>
-                선생님 정보를 등록하면 수업 소개에 연결할 수 있어요.
-              </p>
-              {canCreateTeacher ? (
-                <button type="button" onClick={handleCreateClick} className={styles.primaryButton}>
-                  선생님 등록하기
-                </button>
-              ) : null}
-            </div>
-          ) : filteredItems.length === 0 ? (
-            <div className={styles.emptySoft}>
-              <p className={styles.emptyTitle}>검색 결과가 없어요.</p>
-              <p className={styles.emptyDescription}>다른 키워드나 상태로 다시 확인해 주세요.</p>
-            </div>
-          ) : (
-            <div className={styles.cards}>
-              {filteredItems.map((item) => {
-                const needsAttention =
-                  !toSingleLine(item.subjects) || !toSingleLine(item.targetStudents) || !toSingleLine(item.shortIntro)
-                const cardSummary = getTeacherCardSummary(item)
-
-                return (
-                  <article
-                    key={item.id}
-                    className={`${styles.teacherCard} ${selectedId === item.id ? styles.teacherCardSelected : ""} ${
-                      !item.isActive ? styles.teacherCardInactive : ""
-                    }`}
-                  >
-                    <div className={styles.teacherTop}>
-                      <div className={styles.teacherIdentity}>
-                        <div className={styles.avatar} aria-hidden="true">
-                          {getInitials(item.displayName)}
-                        </div>
-                        <div className={styles.teacherHeading}>
-                          <div className={styles.nameRow}>
-                            <strong className={styles.teacherName}>{item.displayName}</strong>
-                            <StatusChip isActive={item.isActive} />
-                            {needsAttention ? <span className={styles.attentionChip}>확인 필요</span> : null}
-                          </div>
-                          <p className={styles.createdAt}>등록일 {formatCreatedAt(item.createdAt)}</p>
-                          <p className={styles.teacherSummary}>{cardSummary}</p>
-                        </div>
-                      </div>
-
-                      <div className={styles.actions}>
-                        <button type="button" onClick={() => setSelectedId(item.id)} className={styles.secondaryButtonSmall}>
-                          수정
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setActionFeedback(null)
-                            startStatusActionTransition(async () => {
-                              const result = item.isActive
-                                ? await deactivateStudioTeacherAction(item.id)
-                                : await activateStudioTeacherAction(item.id)
-                              setActionFeedback(result.message)
-                            })
-                          }}
-                          disabled={isStatusActionPending}
-                          className={item.isActive ? styles.dangerButtonSmall : styles.secondaryButtonSmall}
-                        >
-                          {item.isActive ? "비활성화" : "활성화"}
-                        </button>
-                      </div>
-                    </div>
-
-                    <div className={styles.metaGrid}>
-                      <div className={styles.metaItem}>
-                        <p className={styles.metaLabel}>전화번호</p>
-                        <p className={styles.metaValue}>{formatPhone(item.phone)}</p>
-                      </div>
-                      <div className={styles.metaItem}>
-                        <p className={styles.metaLabel}>문자 수신</p>
-                        <p className={styles.metaValue}>{item.smsEnabled ? "수신 동의" : "수신 안 함"}</p>
-                      </div>
-                      {item.specialty ? (
-                        <div className={styles.metaItem}>
-                          <p className={styles.metaLabel}>기존 전문분야</p>
-                          <p className={styles.metaValue}>{item.specialty}</p>
-                        </div>
-                      ) : null}
-                      {item.subjects ? (
-                        <div className={styles.metaItem}>
-                          <p className={styles.metaLabel}>담당 과목</p>
-                          <p className={styles.metaValue}>{item.subjects}</p>
-                        </div>
-                      ) : null}
-                      {item.targetStudents ? (
-                        <div className={styles.metaItem}>
-                          <p className={styles.metaLabel}>담당 대상</p>
-                          <p className={styles.metaValue}>{item.targetStudents}</p>
-                        </div>
-                      ) : null}
-                      {item.specialties ? (
-                        <div className={styles.metaItem}>
-                          <p className={styles.metaLabel}>전문 영역</p>
-                          <p className={styles.metaValue}>{item.specialties}</p>
-                        </div>
-                      ) : null}
-                      {item.teachingStyle ? (
-                        <div className={styles.metaItem}>
-                          <p className={styles.metaLabel}>수업 스타일</p>
-                          <p className={styles.metaValue}>{item.teachingStyle}</p>
-                        </div>
-                      ) : null}
-                      {item.careerYears > 0 ? (
-                        <div className={styles.metaItem}>
-                          <p className={styles.metaLabel}>경력</p>
-                          <p className={styles.metaValue}>{item.careerYears}년</p>
-                        </div>
-                      ) : null}
-                      <div className={styles.metaItem}>
-                        <p className={styles.metaLabel}>프로필 상태</p>
-                        <p className={styles.metaValue}>
-                          {needsAttention ? "소개 보강 필요" : "프로필 작성 완료"}
-                        </p>
-                      </div>
-                      <div className={`${styles.metaItem} ${styles.metaItemWide}`}>
-                        <p className={styles.metaLabel}>학부모 공개 상태</p>
-                        <div className={styles.visibilityChipList}>
-                          {PUBLIC_VISIBILITY_FIELDS.map((field) => (
-                            <span
-                              key={`${item.id}-${field.key}`}
-                              className={`${styles.visibilityChip} ${
-                                item.publicVisibility[field.key] ? styles.visibilityChipVisible : styles.visibilityChipHidden
-                              }`}
-                            >
-                              {field.label} {getVisibilityStatusLabel(item.publicVisibility[field.key])}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-
-                    {item.shortIntro ? <p className={styles.intro}>{item.shortIntro}</p> : item.intro ? <p className={styles.intro}>{item.intro}</p> : null}
-                  </article>
-                )
-              })}
-            </div>
-          )}
         </section>
+      ) : null}
 
-        <StudioTeacherForm
+      <section className={styles.listSection}>
+        {items.length === 0 ? (
+          <div className={styles.emptyCard}>
+            <div className={styles.emptyIcon} aria-hidden="true" />
+            <p className={styles.emptyTitle}>아직 등록된 선생님이 없어요.</p>
+            <p className={styles.emptyDescription}>
+              수업 소개에 연결할 선생님 프로필을 먼저 만들어 두세요.
+            </p>
+          </div>
+        ) : filteredItems.length === 0 ? (
+          <div className={styles.emptySoft}>
+            <p className={styles.emptyTitle}>조건에 맞는 선생님이 없어요.</p>
+            <p className={styles.emptyDescription}>다른 검색어로 다시 확인해 주세요.</p>
+          </div>
+        ) : (
+          <div className={styles.cards}>
+            {filteredItems.map((item) => (
+              <TeacherCard
+                key={item.id}
+                item={item}
+                onEdit={() => openEditPanel(item.id)}
+                onTogglePublic={() => handlePublicToggle(item)}
+                onToggleStatus={() => handleStatusAction(item)}
+                onWriteClick={() => openEditPanel(item.id)}
+                internalOpen={openInternalTeacherId === item.id}
+                onToggleInternal={() =>
+                  setOpenInternalTeacherId((current) => (current === item.id ? null : item.id))
+                }
+                statusPending={isStatusActionPending}
+                visibilityPending={isVisibilityActionPending}
+              />
+            ))}
+          </div>
+        )}
+
+        {items.length > 0 && canCreateTeacher ? (
+          <section className={styles.emptySlotCard}>
+            <p className={styles.emptySlotTitle}>
+              선생님을 <strong>{seatSummary.remainingTeacherSeats}명</strong> 더 등록할 수 있어요
+            </p>
+            <p className={styles.emptySlotDescription}>
+              여러 선생님이 등록되면 학부모가 수업별 담당을 보고 더 안심하고 선택할 수 있어요.
+            </p>
+            <button type="button" onClick={openCreatePanel} className={styles.secondaryButton}>
+              + 선생님 등록
+            </button>
+          </section>
+        ) : null}
+      </section>
+
+      {panelState.isOpen ? (
+        <TeacherFormPanel
           key={selectedTeacher?.id ?? "create"}
           initialItem={selectedTeacher}
           seatSummary={seatSummary}
-          onResetCreate={() => setSelectedId(null)}
+          onClose={closePanel}
+          onComplete={(message) => setActionFeedback(message)}
         />
-      </div>
+      ) : null}
     </div>
   )
 }
 
-const StudioTeacherForm = ({
+const TeacherCard = ({
+  item,
+  onEdit,
+  onTogglePublic,
+  onToggleStatus,
+  onWriteClick,
+  internalOpen,
+  onToggleInternal,
+  statusPending,
+  visibilityPending
+}: {
+  item: StudioTeacherSummary
+  onEdit: () => void
+  onTogglePublic: () => void
+  onToggleStatus: () => void
+  onWriteClick: () => void
+  internalOpen: boolean
+  onToggleInternal: () => void
+  statusPending: boolean
+  visibilityPending: boolean
+}) => {
+  const isPublic = isTeacherPublic(item.publicVisibility)
+  const isIncomplete = isTeacherProfileIncomplete(item)
+  const summary = getTeacherSummary(item)
+  const displaySummary = summary || "담당 정보가 아직 비어 있어요."
+  const visibilityDescription = !item.isActive
+    ? "현재 비활성 상태라 학부모 페이지에는 보이지 않아요."
+    : isPublic
+      ? "수업 상세 페이지에 이 선생님 소개가 표시돼요."
+      : "끄면 내부 배정에만 사용되고 소개가 노출되지 않아요."
+
+  return (
+    <article className={`${styles.teacherCard} ${!item.isActive ? styles.teacherCardInactive : ""}`}>
+      <div className={styles.teacherTop}>
+        <div className={styles.teacherIdentity}>
+          <div className={styles.avatar} aria-hidden="true">
+            {getInitials(item.displayName)}
+          </div>
+          <div className={styles.teacherHeading}>
+            <div className={styles.nameRow}>
+              <strong className={styles.teacherName}>{item.displayName}</strong>
+              <span className={`${styles.statusChip} ${isPublic && item.isActive ? styles.statusActive : styles.statusInactive}`}>
+                {isPublic && item.isActive ? "공개 중" : "비공개"}
+              </span>
+              {isIncomplete ? <span className={styles.attentionChip}>프로필 미완성</span> : null}
+            </div>
+            <p className={styles.teacherSummary}>{displaySummary}</p>
+          </div>
+        </div>
+
+        <div className={styles.actions}>
+          <button type="button" onClick={onEdit} className={styles.secondaryButtonSmall}>
+            수정
+          </button>
+          <button
+            type="button"
+            onClick={onToggleStatus}
+            disabled={statusPending}
+            className={styles.secondaryButtonSmall}
+          >
+            {item.isActive ? "비활성화" : "활성화"}
+          </button>
+        </div>
+      </div>
+
+      <section
+        className={`${styles.publicStateCard} ${isPublic ? styles.publicStateCardActive : styles.publicStateCardInactive}`}
+      >
+        <div className={styles.publicStateCopy}>
+          <strong className={styles.publicStateTitle}>
+            {isPublic ? "학부모에게 공개 중" : "학부모에게 비공개"}
+          </strong>
+          <p className={styles.publicStateDescription}>{visibilityDescription}</p>
+        </div>
+        <SimpleSwitch
+          checked={isPublic}
+          onToggle={onTogglePublic}
+          disabled={visibilityPending}
+          ariaLabel="학부모 공개 여부"
+        />
+      </section>
+
+      <dl className={styles.profileGrid}>
+        <div className={styles.profileRow}>
+          <dt className={styles.profileLabel}>담당</dt>
+          <dd className={styles.profileValue}>
+            {renderProfileValue(
+              [toText(item.subjects), toText(item.targetStudents)].filter(Boolean).join(" · ") || null,
+              onWriteClick
+            )}
+          </dd>
+        </div>
+        <div className={styles.profileRow}>
+          <dt className={styles.profileLabel}>전문 영역</dt>
+          <dd className={styles.profileValue}>{renderProfileValue(toText(item.specialties), onWriteClick)}</dd>
+        </div>
+        <div className={styles.profileRow}>
+          <dt className={styles.profileLabel}>수업 스타일</dt>
+          <dd className={styles.profileValue}>{renderProfileValue(toText(item.teachingStyle), onWriteClick)}</dd>
+        </div>
+      </dl>
+
+      <div className={styles.quoteBlock}>
+        <span className={styles.quoteLabel}>한 줄 소개</span>
+        {item.shortIntro ? (
+          <p className={styles.quoteText}>{item.shortIntro}</p>
+        ) : (
+          <button type="button" className={styles.inlineWriteButton} onClick={onWriteClick}>
+            미작성 · 작성하기
+          </button>
+        )}
+      </div>
+
+      <div className={styles.internalWrap}>
+        <button type="button" onClick={onToggleInternal} className={styles.internalToggle}>
+          {internalOpen ? "내부 운영 정보 닫기" : "내부 운영 정보 보기 (연락처 · 알림 설정)"}
+        </button>
+
+        {internalOpen ? (
+          <div className={styles.internalPanel}>
+            <dl className={styles.internalGrid}>
+              <div className={styles.internalItem}>
+                <dt className={styles.internalLabel}>연락처</dt>
+                <dd className={styles.internalValue}>{formatPhone(item.phone)}</dd>
+              </div>
+              <div className={styles.internalItem}>
+                <dt className={styles.internalLabel}>알림 설정</dt>
+                <dd className={styles.internalValue}>{item.smsEnabled ? "문자 수신 동의" : "문자 수신 안 함"}</dd>
+              </div>
+            </dl>
+            <p className={styles.internalHint}>
+              이 정보는 학부모에게 공개되지 않아요. 내부 운영과 알림 발송에만 사용됩니다.
+            </p>
+          </div>
+        ) : null}
+      </div>
+    </article>
+  )
+}
+
+const TeacherFormPanel = ({
   initialItem,
   seatSummary,
-  onResetCreate
+  onClose,
+  onComplete
 }: {
   initialItem: StudioTeacherSummary | null
   seatSummary: StudioTeacherSeatSummary
-  onResetCreate: () => void
+  onClose: () => void
+  onComplete: (message: string) => void
 }) => {
   const action = useMemo(() => upsertStudioTeacherAction, [])
   const [state, formAction, isPending] = useActionState(action, initialState)
+  const [displayName, setDisplayName] = useState(initialItem?.displayName ?? "")
+  const [subject, setSubject] = useState(initialItem?.subjects ?? "")
+  const [targetSelections, setTargetSelections] = useState(parseCommaSeparatedValues(initialItem?.targetStudents ?? null))
+  const [specialties, setSpecialties] = useState(initialItem?.specialties ?? "")
+  const [shortIntro, setShortIntro] = useState(initialItem?.shortIntro ?? "")
+  const [teachingStyle, setTeachingStyle] = useState(initialItem?.teachingStyle ?? "")
+  const [intro, setIntro] = useState(initialItem?.intro ?? "")
   const [phone, setPhone] = useState(initialItem?.phone ?? "")
-  const [smsEnabled, setSmsEnabled] = useState(initialItem?.smsEnabled ?? false)
+  const [smsEnabled] = useState(initialItem?.smsEnabled ?? false)
   const [publicVisibility, setPublicVisibility] = useState<TeacherPublicVisibility>(
     initialItem?.publicVisibility ?? DEFAULT_TEACHER_PUBLIC_VISIBILITY
   )
+  const [isAdvancedOpen, setIsAdvancedOpen] = useState(false)
+
   const isCreateMode = !initialItem
   const isCreateDisabled = isCreateMode && seatSummary.activeTeacherCount >= seatSummary.teacherSeatLimit
-  const hasPhone = phone.trim().length > 0
-  const toggleVisibility = (key: TeacherPublicVisibilityKey) => {
+  const targetOptions = getTargetOptions(targetSelections)
+  const subjectOptions = getSubjectOptions(subject)
+  const isPublic = isTeacherPublic(publicVisibility)
+  const targetStudentsValue = targetSelections.join(", ")
+  const previewSummary = getTeacherPreviewSummary(subject, targetStudentsValue, specialties)
+
+  useEffect(() => {
+    if (!state.message) {
+      return
+    }
+
+    onComplete(state.message)
+    if (state.ok) {
+      onClose()
+    }
+  }, [onClose, onComplete, state.message, state.ok])
+
+  const toggleTarget = (value: string) => {
+    setTargetSelections((current) =>
+      current.includes(value) ? current.filter((item) => item !== value) : [...current, value]
+    )
+  }
+
+  const toggleAdvancedVisibility = (key: TeacherPublicVisibilityKey) => {
     setPublicVisibility((current) => ({
       ...current,
       [key]: !current[key]
     }))
   }
 
+  const toggleMainPublic = () => {
+    setPublicVisibility(buildPublicVisibility(!isPublic))
+  }
+
   return (
-    <section id="studio-teacher-form" className={styles.formCard}>
-      <div className={styles.sectionHeader}>
-        <div>
-          <h2 className={styles.sectionTitle}>{isCreateMode ? "선생님 등록" : "선생님 정보 수정"}</h2>
-        </div>
-        {!isCreateMode ? (
-          <button type="button" onClick={onResetCreate} className={styles.secondaryButton}>
-            새로 등록
-          </button>
-        ) : null}
-      </div>
-
-      <form action={formAction} className={styles.form}>
-        <input type="hidden" name="mode" value={isCreateMode ? "create" : "update"} />
-        {!isCreateMode ? <input type="hidden" name="teacherId" value={initialItem.id} /> : null}
-        {PUBLIC_VISIBILITY_FIELDS.map((field) => (
-          <input
-            key={`visibility-input-${field.key}`}
-            type="hidden"
-            name={`publicVisibility_${field.key}`}
-            value={String(publicVisibility[field.key])}
-          />
-        ))}
-
-        <label className={styles.field}>
-          <div className={styles.fieldHeader}>
-            <span className={styles.label}>선생님 이름</span>
-            <VisibilityToggle
-              checked={publicVisibility.name}
-              onToggle={() => toggleVisibility("name")}
-              disabled={isPending}
-            />
-          </div>
-          <input
-            name="displayName"
-            defaultValue={initialItem?.displayName ?? ""}
-            required
-            minLength={2}
-            maxLength={30}
-            disabled={isPending}
-            className={styles.input}
-            placeholder="예: 김수업 선생님"
-          />
-        </label>
-
-        <label className={styles.field}>
-          <span className={styles.label}>전화번호</span>
-          <input
-            name="phone"
-            type="tel"
-            value={phone}
-            onChange={(event) => setPhone(event.target.value)}
-            disabled={isPending}
-            className={styles.input}
-            placeholder="예: 010-1234-5678"
-          />
-          <span className={styles.fieldHint}>내부 알림과 문자 수신 대상 확인용입니다. 학부모에게 공개되지 않습니다.</span>
-        </label>
-
-        <label className={styles.checkboxField}>
-          <input
-            name="smsEnabled"
-            type="checkbox"
-            checked={smsEnabled}
-            onChange={(event) => setSmsEnabled(event.target.checked)}
-            disabled={isPending}
-            className={styles.checkbox}
-          />
-          <div className={styles.checkboxBody}>
-            <span className={styles.checkboxLabel}>체험수업 일정 알림 문자 받기</span>
-            <span className={styles.checkboxDescription}>
-              문자 발송 기능은 추후 연동 예정입니다.
-            </span>
-          </div>
-        </label>
-
-        <p className={styles.formHintNeutral}>
-          전화번호와 수신 동의가 있는 선생님에게만 일정 알림 문자가 발송됩니다.
-          {!hasPhone && smsEnabled
-            ? " 현재 저장된 전화번호가 없어 실제 발송 대상이 될 수 없습니다."
-            : ""}
-        </p>
-
-        <section className={styles.formSection}>
-          <div className={styles.formSectionHeader}>
-            <h3 className={styles.formSectionTitle}>공개 프로필</h3>
-            <p className={styles.formSectionDescription}>
-              아래 정보는 학부모가 수업 상세에서 보는 선생님 소개에 사용됩니다.
-            </p>
-          </div>
-
-          <label className={styles.field}>
-            <div className={styles.fieldHeader}>
-              <span className={styles.label}>담당 과목</span>
-              <VisibilityToggle
-                checked={publicVisibility.subjects}
-                onToggle={() => toggleVisibility("subjects")}
-                disabled={isPending}
-              />
-            </div>
+    <div className={styles.panelRoot}>
+      <button type="button" className={styles.panelOverlay} aria-label="패널 닫기" onClick={onClose} />
+      <aside className={styles.panel} role="dialog" aria-modal="true" aria-label={isCreateMode ? "선생님 등록" : "선생님 정보 수정"}>
+        <form action={formAction} className={styles.panelForm}>
+          <input type="hidden" name="mode" value={isCreateMode ? "create" : "update"} />
+          {!isCreateMode ? <input type="hidden" name="teacherId" value={initialItem.id} /> : null}
+          <input type="hidden" name="subjects" value={subject} />
+          <input type="hidden" name="targetStudents" value={targetStudentsValue} />
+          <input type="hidden" name="smsEnabled" value={smsEnabled ? "on" : ""} />
+          {ADVANCED_VISIBILITY_FIELDS.map((field) => (
             <input
-              name="subjects"
-              defaultValue={initialItem?.subjects ?? ""}
-              disabled={isPending}
-              className={styles.input}
-              placeholder="예: 국어, 수학, 코딩"
+              key={`visibility-${field.key}`}
+              type="hidden"
+              name={`publicVisibility_${field.key}`}
+              value={String(publicVisibility[field.key])}
             />
-          </label>
+          ))}
 
-          <label className={styles.field}>
-            <div className={styles.fieldHeader}>
-              <span className={styles.label}>담당 대상</span>
-              <VisibilityToggle
-                checked={publicVisibility.targetStudents}
-                onToggle={() => toggleVisibility("targetStudents")}
-                disabled={isPending}
-              />
+          <header className={styles.panelHeader}>
+            <div>
+              <p className={styles.panelEyebrow}>선생님 프로필</p>
+              <h2 className={styles.panelTitle}>{isCreateMode ? "선생님 등록" : "선생님 정보 수정"}</h2>
             </div>
-            <input
-              name="targetStudents"
-              defaultValue={initialItem?.targetStudents ?? ""}
-              disabled={isPending}
-              className={styles.input}
-              placeholder="예: 초등 고학년, 중등, 고등"
-            />
-          </label>
+            <button type="button" onClick={onClose} className={styles.panelCloseButton}>
+              닫기
+            </button>
+          </header>
 
-          <label className={styles.field}>
-            <div className={styles.fieldHeader}>
-              <span className={styles.label}>전문 영역</span>
-              <VisibilityToggle
-                checked={publicVisibility.specialties}
-                onToggle={() => toggleVisibility("specialties")}
-                disabled={isPending}
+          <div className={styles.panelBody}>
+            <section className={styles.formSection}>
+              <div className={styles.publicFieldRow}>
+                <div>
+                  <strong className={styles.fieldTitle}>학부모에게 공개</strong>
+                  <p className={styles.fieldDescription}>
+                    끄면 내부 배정에만 사용되고 소개가 노출되지 않아요.
+                  </p>
+                </div>
+                <SimpleSwitch
+                  checked={isPublic}
+                  onToggle={toggleMainPublic}
+                  disabled={isPending}
+                  ariaLabel="학부모 공개"
+                />
+              </div>
+            </section>
+
+            <section className={styles.formSection}>
+              <div className={styles.formSectionHeader}>
+                <h3 className={styles.formSectionTitle}>기본 정보</h3>
+              </div>
+
+              <label className={styles.field}>
+                <span className={styles.label}>선생님 이름</span>
+                <input
+                  name="displayName"
+                  value={displayName}
+                  onChange={(event) => setDisplayName(event.target.value)}
+                  required
+                  minLength={2}
+                  maxLength={30}
+                  disabled={isPending}
+                  className={styles.input}
+                  placeholder="예: 김수업 선생님"
+                />
+              </label>
+
+              <div className={styles.field}>
+                <span className={styles.label}>담당 과목</span>
+                <div className={styles.chipGroup}>
+                  {subjectOptions.map((option) => (
+                    <button
+                      key={option}
+                      type="button"
+                      onClick={() => setSubject(option)}
+                      className={`${styles.choiceChip} ${subject === option ? styles.choiceChipActive : ""}`}
+                    >
+                      {option}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className={styles.field}>
+                <span className={styles.label}>담당 대상</span>
+                <div className={styles.chipGroup}>
+                  {targetOptions.map((option) => (
+                    <button
+                      key={option}
+                      type="button"
+                      onClick={() => toggleTarget(option)}
+                      className={`${styles.choiceChip} ${
+                        targetSelections.includes(option) ? styles.choiceChipActive : ""
+                      }`}
+                    >
+                      {option}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <label className={styles.field}>
+                <span className={styles.label}>전문 영역</span>
+                <input
+                  name="specialties"
+                  value={specialties}
+                  onChange={(event) => setSpecialties(event.target.value)}
+                  disabled={isPending}
+                  className={styles.input}
+                  placeholder="예: 글쓰기, 독해, 발표 수업"
+                />
+              </label>
+            </section>
+
+            <section className={styles.formSection}>
+              <div className={styles.formSectionHeader}>
+                <h3 className={styles.formSectionTitle}>학부모에게 보여질 소개</h3>
+              </div>
+
+              <label className={styles.field}>
+                <span className={styles.label}>한 줄 소개</span>
+                <input
+                  name="shortIntro"
+                  value={shortIntro}
+                  onChange={(event) => setShortIntro(event.target.value)}
+                  required
+                  disabled={isPending}
+                  className={styles.input}
+                  placeholder="예: 아이 눈높이에 맞춰 자신감을 키우는 수업을 진행해요."
+                />
+              </label>
+
+              <label className={styles.field}>
+                <span className={styles.label}>수업 스타일</span>
+                <textarea
+                  name="teachingStyle"
+                  value={teachingStyle}
+                  onChange={(event) => setTeachingStyle(event.target.value)}
+                  disabled={isPending}
+                  className={styles.textarea}
+                  rows={4}
+                  placeholder="예: 개념 설명 후 예시를 함께 풀고 스스로 설명하게 도와요."
+                />
+              </label>
+
+              <label className={styles.field}>
+                <span className={styles.label}>상세 소개</span>
+                <textarea
+                  name="intro"
+                  value={intro}
+                  onChange={(event) => setIntro(event.target.value)}
+                  disabled={isPending}
+                  className={styles.textarea}
+                  rows={5}
+                  placeholder="예: 학생 성향을 먼저 파악하고, 수업 이후에도 스스로 정리할 수 있게 돕습니다."
+                />
+              </label>
+
+              <TeacherPreviewCard
+                displayName={displayName}
+                summary={previewSummary}
+                shortIntro={shortIntro}
+                isPublic={isPublic}
               />
-            </div>
-            <input
-              name="specialties"
-              defaultValue={initialItem?.specialties ?? ""}
-              disabled={isPending}
-              className={styles.input}
-              placeholder="예: 독해, 문법, 수능국어"
-            />
-          </label>
+            </section>
 
-          <label className={styles.field}>
-            <div className={styles.fieldHeader}>
-              <span className={styles.label}>한 줄 소개</span>
-              <VisibilityToggle
-                checked={publicVisibility.shortIntro}
-                onToggle={() => toggleVisibility("shortIntro")}
-                disabled={isPending}
-              />
-            </div>
-            <textarea
-              name="shortIntro"
-              defaultValue={initialItem?.shortIntro ?? ""}
-              disabled={isPending}
-              className={styles.textarea}
-              rows={3}
-              placeholder="예: 학생이 스스로 풀이 과정을 설명할 수 있도록 돕습니다."
-            />
-          </label>
+            <section className={styles.formSection}>
+              <div className={styles.formSectionHeader}>
+                <h3 className={styles.formSectionTitle}>내부 운영 정보</h3>
+              </div>
 
-          <label className={styles.field}>
-            <div className={styles.fieldHeader}>
-              <span className={styles.label}>수업 스타일</span>
-              <VisibilityToggle
-                checked={publicVisibility.teachingStyle}
-                onToggle={() => toggleVisibility("teachingStyle")}
-                disabled={isPending}
-              />
-            </div>
-            <textarea
-              name="teachingStyle"
-              defaultValue={initialItem?.teachingStyle ?? ""}
-              disabled={isPending}
-              className={styles.textarea}
-              rows={4}
-              placeholder="예: 개념 설명 후 문제풀이와 오답 정리를 함께 진행합니다."
-            />
-          </label>
+              <label className={styles.field}>
+                <span className={styles.label}>전화번호</span>
+                <input
+                  name="phone"
+                  type="tel"
+                  value={phone}
+                  onChange={(event) => setPhone(event.target.value)}
+                  disabled={isPending}
+                  className={styles.input}
+                  placeholder="예: 010-1234-5678"
+                />
+                <span className={styles.fieldHint}>
+                  학부모에게 공개되지 않아요. 내부 운영과 알림 발송에만 사용됩니다.
+                </span>
+              </label>
 
-          <label className={styles.field}>
-            <div className={styles.fieldHeader}>
-              <span className={styles.label}>상세 소개</span>
-              <VisibilityToggle
-                checked={publicVisibility.intro}
-                onToggle={() => toggleVisibility("intro")}
-                disabled={isPending}
-              />
-            </div>
-            <textarea
-              name="intro"
-              defaultValue={initialItem?.intro ?? ""}
-              disabled={isPending}
-              className={styles.textarea}
-              rows={5}
-              placeholder="예: 학생 성향을 먼저 파악한 뒤, 이해한 내용을 스스로 설명할 수 있게 돕는 수업을 진행합니다."
-            />
-            <span className={styles.fieldHint}>기존 한 줄 소개보다 조금 더 자세한 선생님 소개를 적어주세요.</span>
-          </label>
-        </section>
+              <div className={styles.lockNotice}>
+                <strong className={styles.lockTitle}>일정 알림 문자는 아직 준비 중이에요.</strong>
+                <p className={styles.lockDescription}>
+                  연동이 완료되면 이 화면에서 켤 수 있게 안내드릴게요.
+                  {smsEnabled ? " 현재 저장된 선생님은 문자 수신 동의 상태예요." : ""}
+                </p>
+              </div>
+            </section>
 
-        {state.message ? (
-          <p className={`${styles.formMessage} ${state.ok ? styles.formMessageSuccess : styles.formMessageError}`}>
-            {state.message}
-          </p>
-        ) : null}
+            <section className={styles.formSection}>
+              <button
+                type="button"
+                className={styles.advancedToggle}
+                onClick={() => setIsAdvancedOpen((current) => !current)}
+              >
+                항목별 노출 설정 (고급)
+              </button>
+              <p className={styles.fieldDescription}>
+                보통은 건드릴 필요 없어요. 특정 항목만 숨기고 싶을 때 사용하세요.
+              </p>
 
-        {isCreateDisabled ? (
-          <p className={styles.formHint}>
-            active 선생님 수가 최대 등록 가능 수에 도달해 신규 등록을 막습니다.
-          </p>
-        ) : null}
+              {isAdvancedOpen ? (
+                <div className={styles.advancedList}>
+                  {ADVANCED_VISIBILITY_FIELDS.map((field) => (
+                    <div key={field.key} className={styles.advancedItem}>
+                      <span className={styles.advancedLabel}>{field.label}</span>
+                      <SimpleSwitch
+                        checked={publicVisibility[field.key]}
+                        onToggle={() => toggleAdvancedVisibility(field.key)}
+                        disabled={isPending}
+                        ariaLabel={`${field.label} 노출`}
+                        compact
+                      />
+                    </div>
+                  ))}
+                </div>
+              ) : null}
+            </section>
 
-        <button type="submit" disabled={isPending || isCreateDisabled} className={styles.primaryButton}>
-          {isPending ? "저장 중..." : isCreateMode ? "선생님 등록" : "정보 수정"}
-        </button>
-      </form>
-    </section>
+            {state.message ? (
+              <p className={`${styles.formMessage} ${state.ok ? styles.formMessageSuccess : styles.formMessageError}`}>
+                {state.message}
+              </p>
+            ) : null}
+            {isCreateDisabled ? (
+              <p className={styles.formHint}>최대 3명까지 등록할 수 있어요.</p>
+            ) : null}
+          </div>
+
+          <div className={styles.panelFooter}>
+            <button type="button" onClick={onClose} className={styles.secondaryButton} disabled={isPending}>
+              취소
+            </button>
+            <button type="submit" disabled={isPending || isCreateDisabled} className={styles.primaryButton}>
+              {isPending ? "저장 중..." : isCreateMode ? "선생님 등록" : "변경사항 저장"}
+            </button>
+          </div>
+        </form>
+      </aside>
+    </div>
   )
 }
 
-const SummaryCard = ({
-  label,
-  value,
-  description
+const TeacherPreviewCard = ({
+  displayName,
+  summary,
+  shortIntro,
+  isPublic
 }: {
-  label: string
-  value: string
-  description: string
+  displayName: string
+  summary: string
+  shortIntro: string
+  isPublic: boolean
 }) => (
-  <div className={styles.summaryCard}>
-    <div className={styles.summaryTop}>
-      <p className={styles.summaryLabel}>{label}</p>
+  <section className={styles.previewCard}>
+    <div className={styles.previewTop}>
+      <div className={styles.previewAvatar} aria-hidden="true">
+        {getInitials(displayName || "선생")}
+      </div>
+      <div className={styles.previewHeading}>
+        <strong className={styles.previewName}>{displayName || "선생님 이름"}</strong>
+        <p className={styles.previewSummary}>{summary || "담당 요약이 여기에 표시돼요."}</p>
+      </div>
+      <span className={`${styles.previewBadge} ${isPublic ? styles.previewBadgeActive : styles.previewBadgeInactive}`}>
+        {isPublic ? "공개 중" : "비공개"}
+      </span>
     </div>
-    <p className={styles.summaryValue}>{value}</p>
-    <p className={styles.summaryDescription}>{description}</p>
-  </div>
+    <p className={styles.previewIntro}>{shortIntro.trim() || "한 줄 소개가 여기에 표시돼요."}</p>
+  </section>
 )
 
-const StatusChip = ({ isActive }: { isActive: boolean }) => (
-  <span className={`${styles.statusChip} ${isActive ? styles.statusActive : styles.statusInactive}`}>
-    {isActive ? "활성" : "비활성"}
-  </span>
-)
-
-const VisibilityToggle = ({
+const SimpleSwitch = ({
   checked,
   onToggle,
-  disabled
+  disabled,
+  ariaLabel,
+  compact = false
 }: {
   checked: boolean
   onToggle: () => void
   disabled: boolean
+  ariaLabel: string
+  compact?: boolean
 }) => (
   <button
     type="button"
+    aria-pressed={checked}
+    aria-label={ariaLabel}
     onClick={onToggle}
     disabled={disabled}
-    className={`${styles.visibilityToggle} ${checked ? styles.visibilityToggleActive : ""}`}
-    aria-pressed={checked}
+    className={`${styles.switchRoot} ${compact ? styles.switchRootCompact : ""} ${
+      checked ? styles.switchRootActive : ""
+    }`}
   >
-    <span className={styles.visibilityToggleText}>
-      <span className={styles.visibilityToggleLabel}>학부모 페이지</span>
-      <span className={styles.visibilityToggleValue}>{checked ? "노출" : "비노출"}</span>
+    <span className={styles.switchTrack}>
+      <span className={styles.switchThumb} />
     </span>
-    <span className={`${styles.visibilitySwitch} ${checked ? styles.visibilitySwitchActive : ""}`} aria-hidden="true">
-      <span className={styles.visibilitySwitchThumb} />
-    </span>
+    <span className={styles.switchLabel}>{checked ? "ON" : "OFF"}</span>
   </button>
 )
