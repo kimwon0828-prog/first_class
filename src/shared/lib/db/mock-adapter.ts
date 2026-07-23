@@ -39,6 +39,7 @@ import {
   DEFAULT_TEACHER_PUBLIC_VISIBILITY,
   normalizeTeacherPublicVisibility
 } from "@/shared/lib/teacher-public-visibility"
+import { getSubjectLabel, normalizeSubjectCategory } from "@/shared/constants/education-taxonomy"
 
 type MockScheduleBlock = StudioScheduleBlockSummary & {
   classId: string | null
@@ -675,7 +676,7 @@ export const mockDataAdapter: DataAdapter = {
         return false
       }
 
-      if (subject && item.subject !== subject) {
+      if (subject && normalizeSubjectCategory(item.subject) !== normalizeSubjectCategory(subject)) {
         return false
       }
 
@@ -688,6 +689,7 @@ export const mockDataAdapter: DataAdapter = {
           item.title,
           item.description,
           item.subject,
+          getSubjectLabel(item.subject),
           publicTeacherName
         ].map(normalizeText)
 

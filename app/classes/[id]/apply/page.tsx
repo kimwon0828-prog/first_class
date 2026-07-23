@@ -1,6 +1,7 @@
 import Link from "next/link"
 
 import { formatStoredTargetGrades } from "@/shared/constants/grade-options"
+import { getSubjectLabel } from "@/shared/constants/education-taxonomy"
 import { getMyProfile } from "@/features/auth/lib/profile-sync"
 import { requireSession } from "@/features/auth/lib/session"
 import { getClassAvailableSlots } from "@/features/applications/queries/get-class-available-slots"
@@ -175,7 +176,7 @@ export default async function ClassApplyPage({ params }: ApplyPageProps) {
                 <h2 className={styles.cardTitle}>신청할 수업</h2>
                 <p className={styles.summaryName}>{classItem.title}</p>
                 <p className={styles.summaryMeta}>{cardSubtitle}</p>
-                <p className={styles.summaryMeta}>{classItem.subject}</p>
+                <p className={styles.summaryMeta}>{getSubjectLabel(classItem.subject)}</p>
                 <p className={styles.summaryMeta}>대상 학년: {formatStoredTargetGrades(classItem.targetAge)}</p>
                 <p className={styles.summaryPrice}>{formatPrice(classItem.trialPrice)}</p>
               </section>

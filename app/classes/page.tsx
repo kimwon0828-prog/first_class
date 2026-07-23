@@ -3,6 +3,12 @@ import Link from "next/link"
 import { redirect } from "next/navigation"
 
 import { formatStoredTargetGrades } from "@/shared/constants/grade-options"
+import {
+  getSubjectLabel,
+  normalizeSubjectCategory,
+  SUBJECT_CATEGORIES,
+  type SubjectCategoryValue
+} from "@/shared/constants/education-taxonomy"
 import { getMyProfile } from "@/features/auth/lib/profile-sync"
 import { getSession } from "@/features/auth/lib/session"
 import { getPublicClassCardScheduleSummaries } from "@/features/classes/queries/get-public-class-card-schedule-summaries"
@@ -35,9 +41,8 @@ const formatPrice = (price: number) => {
 
 type HomeSubjectCategory = {
   label: string
-  value: string
+  value: SubjectCategoryValue
   emoji: string
-  aliases: readonly string[]
 }
 
 type AvailableClassCard = {
@@ -70,44 +75,20 @@ const homeStageChips = [
   }
 ] as const satisfies readonly HomeStageChip[]
 
-const homeSubjectCategories = [
-  {
-    label: "사고력수학",
-    value: "사고력수학",
-    emoji: "🧠",
-    aliases: ["사고력수학"]
-  },
-  {
-    label: "코딩로봇",
-    value: "코딩/로봇",
-    emoji: "🤖",
-    aliases: ["코딩/로봇", "코딩", "코딩로봇", "로봇"]
-  },
-  {
-    label: "독서논술",
-    value: "국어/독서논술",
-    emoji: "📚",
-    aliases: ["국어/독서논술", "국어", "독서논술"]
-  },
-  {
-    label: "영어",
-    value: "영어",
-    emoji: "🗣️",
-    aliases: ["영어"]
-  },
-  {
-    label: "예술",
-    value: "예술",
-    emoji: "🖌️",
-    aliases: ["예술", "미술/음악", "미술", "음악"]
-  },
-  {
-    label: "체육무용",
-    value: "체육/무용",
-    emoji: "💃",
-    aliases: ["체육/무용", "체육", "체육무용", "무용"]
-  }
-] as const satisfies readonly HomeSubjectCategory[]
+const subjectEmojiByValue: Record<SubjectCategoryValue, string> = {
+  thinking_math: "🧠",
+  coding_robot_science: "🤖",
+  reading_writing: "📚",
+  english: "🗣️",
+  arts: "🖌️",
+  sports_dance: "💃"
+}
+
+const homeSubjectCategories: readonly HomeSubjectCategory[] = SUBJECT_CATEGORIES.map((item) => ({
+  label: item.label,
+  value: item.value,
+  emoji: subjectEmojiByValue[item.value]
+}))
 
 const chunkItems = <T,>(items: readonly T[], size: number) => {
   const pages: T[][] = []
@@ -131,26 +112,19 @@ const resolveStageChip = (value: string) => {
 }
 
 const resolveSubjectCategory = (value: string) => {
-  const normalized = value.trim()
+  const normalized = normalizeSubjectCategory(value)
   if (!normalized) {
     return null
   }
 
-  return (
-    homeSubjectCategories.find(
-      (item) => item.value === normalized || item.aliases.some((alias) => alias === normalized)
-    ) ?? null
-  )
-}
-
-const matchesSubjectCategory = (subject: string, category: HomeSubjectCategory) => {
-  const normalizedSubject = normalizeText(subject)
-  return category.aliases.some((alias) => normalizeText(alias) === normalizedSubject)
+  return homeSubjectCategories.find((item) => item.value === normalized) ?? null
 }
 
 const matchesKeyword = (item: ClassSummary, keywords: readonly string[]) => {
   const haystack = normalizeText(
-    [item.title, item.subject, item.description, item.targetAge, item.classFormat].filter(Boolean).join(" ")
+    [item.title, item.subject, getSubjectLabel(item.subject), item.description, item.targetAge, item.classFormat]
+      .filter(Boolean)
+      .join(" ")
   )
   return keywords.some((keyword) => haystack.includes(normalizeText(keyword)))
 }
@@ -192,7 +166,8 @@ const buildClassesHref = (params: {
   return parts.length ? `/classes?${parts.join("&")}` : "/classes"
 }
 
-const buildAcademiesHref = (subjectLabel: string) => `/academies?subject=${escapeQueryValue(subjectLabel)}`
+const buildAcademiesHref = (subjectValue: SubjectCategoryValue) =>
+  `/academies?subject=${escapeQueryValue(subjectValue)}`
 
 export default async function ClassesPage({ searchParams }: ClassesPageProps) {
   const resolvedSearchParams = searchParams ? await searchParams : undefined
@@ -247,11 +222,10 @@ export default async function ClassesPage({ searchParams }: ClassesPageProps) {
   const selectedSubject = resolvedSubjectCategory?.value ?? null
 
   const { data: classes, error } = await getPublicClasses(selectedRegion, {
+    subject: selectedSubject ?? undefined,
     query: selectedQuery
   })
-  const filteredClasses = resolvedSubjectCategory
-    ? classes.filter((item) => matchesSubjectCategory(item.subject, resolvedSubjectCategory))
-    : classes
+  const filteredClasses = classes
   const session = await getSession()
   const profile = session ? await getMyProfile() : null
   const isParentUser = profile?.role === "parent"
@@ -486,7 +460,7 @@ export default async function ClassesPage({ searchParams }: ClassesPageProps) {
                       <h3 className={styles.cardTitle}>{item.title}</h3>
                       <p className={styles.cardPrice}>{formatPrice(item.trialPrice)}</p>
                       <div className={styles.cardMeta}>
-                        <span>{item.subject}</span>
+                        <span>{getSubjectLabel(item.subject)}</span>
                         <span>·</span>
                         <span>{formatStoredTargetGrades(item.targetAge)}</span>
                       </div>
@@ -519,7 +493,7 @@ export default async function ClassesPage({ searchParams }: ClassesPageProps) {
                     return (
                       <Link
                         key={item.label}
-                        href={buildAcademiesHref(item.label)}
+                        href={buildAcademiesHref(item.value)}
                         className={styles.subjectItem}
                       >
                         <span className={styles.subjectEmoji}>{item.emoji}</span>
@@ -654,7 +628,7 @@ export default async function ClassesPage({ searchParams }: ClassesPageProps) {
                       <h3 className={styles.cardTitle}>{item.title}</h3>
                       <p className={styles.cardPrice}>{formatPrice(item.trialPrice)}</p>
                       <div className={styles.cardMeta}>
-                        <span>{item.subject}</span>
+                        <span>{getSubjectLabel(item.subject)}</span>
                         <span>·</span>
                         <span>{formatStoredTargetGrades(item.targetAge)}</span>
                       </div>
@@ -727,7 +701,7 @@ export default async function ClassesPage({ searchParams }: ClassesPageProps) {
                         <h3 className={styles.cardTitle}>{item.title}</h3>
                         <p className={styles.cardPrice}>{formatPrice(item.trialPrice)}</p>
                         <div className={styles.cardMeta}>
-                          <span>{item.subject}</span>
+                          <span>{getSubjectLabel(item.subject)}</span>
                           <span>·</span>
                           <span>{formatStoredTargetGrades(item.targetAge)}</span>
                         </div>

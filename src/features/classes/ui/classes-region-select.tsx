@@ -49,6 +49,7 @@ type ClassesRegionInlineSelectProps = {
 }
 
 type ClassesSubjectGridItem = {
+  value: string
   label: string
   emoji: string
 }
@@ -555,14 +556,14 @@ export function ClassesSubjectGrid({
   const searchParams = useSearchParams()
   const [isPending, startTransition] = useTransition()
 
-  const handleToggle = (label: string) => {
+  const handleToggle = (value: string) => {
     const region = searchParams.get("region")
     const q = searchParams.get("q")
     const stage = searchParams.get("stage")
     const currentSubject = searchParams.get("subject")
     startTransition(() => {
       router.push(
-        buildHref(pathname, { region, q, subject: currentSubject === label ? null : label, stage })
+        buildHref(pathname, { region, q, subject: currentSubject === value ? null : value, stage })
       )
     })
   }
@@ -570,13 +571,13 @@ export function ClassesSubjectGrid({
   return (
     <div className={gridClassName} aria-busy={isPending}>
       {items.map((item) => {
-        const isActive = selectedSubject === item.label
+        const isActive = selectedSubject === item.value
         return (
           <button
-            key={item.label}
+            key={item.value}
             type="button"
             className={`${itemClassName}${isActive ? ` ${itemActiveClassName}` : ""}`}
-            onClick={() => handleToggle(item.label)}
+            onClick={() => handleToggle(item.value)}
             disabled={isPending}
             aria-disabled={isPending}
           >

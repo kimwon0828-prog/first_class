@@ -2,6 +2,7 @@ import "server-only"
 
 import { getSupabaseServiceRoleClient } from "@/integrations/supabase/service-role"
 import type { AcademyArea } from "@/shared/config/academy-areas"
+import { formatStoredTargetGrades, parseStoredTargetGradeBands } from "@/shared/constants/grade-options"
 
 import {
   formatAcademySubjectTag,
@@ -76,8 +77,6 @@ const ORGANIZATION_SELECT_FIELDS = ["id", "name", "branch_name", "academy_area",
   ", "
 )
 
-const normalizeText = (value: string | null | undefined) => (value ?? "").trim().toLowerCase()
-
 const summarizeLocation = (organization: SafeOrganizationRow) => {
   if (organization.academy_area) {
     return organization.academy_area === "은행사거리학원가"
@@ -111,7 +110,11 @@ const buildClassPreview = (row: PublicClassRow): AcademyClassPreview => ({
 
 const buildTargetAgeSummary = (items: PublicClassRow[]) => {
   const uniqueValues = Array.from(
-    new Set(items.map((item) => item.target_age?.trim()).filter((value): value is string => Boolean(value)))
+    new Set(
+      items
+        .map((item) => formatStoredTargetGrades(item.target_age))
+        .filter((value): value is string => Boolean(value))
+    )
   )
 
   if (uniqueValues.length === 0) {
@@ -140,7 +143,7 @@ export const getAcademiesForList = async (
 }> => {
   const serviceRoleClient = getSupabaseServiceRoleClient()
   const subjectFilter = resolveAcademiesSubjectFilter(options?.subject)
-  const normalizedGrade = normalizeText(options?.grade)
+  const normalizedGradeBands = parseStoredTargetGradeBands(options?.grade)
 
   let classQuery = serviceRoleClient
     .from("classes")
@@ -152,10 +155,6 @@ export const getAcademiesForList = async (
     classQuery = classQuery.eq("region", options.region)
   }
 
-  if (subjectFilter) {
-    classQuery = classQuery.in("subject", [...subjectFilter.classSubjects])
-  }
-
   const { data, error } = await classQuery
   if (error) {
     throw new Error("failed_to_fetch_public_academies")
@@ -165,10 +164,11 @@ export const getAcademiesForList = async (
     .filter((row) => Boolean(row.organization_id))
     .filter((row) => matchesAcademiesSubjectFilter(row.subject, subjectFilter))
     .filter((row) => {
-      if (!normalizedGrade) {
+      if (normalizedGradeBands.length === 0) {
         return true
       }
-      return normalizeText(row.target_age).includes(normalizedGrade)
+      const rowGradeBands = parseStoredTargetGradeBands(row.target_age)
+      return normalizedGradeBands.some((band) => rowGradeBands.includes(band))
     })
 
   const organizationIds = Array.from(

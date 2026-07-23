@@ -1,46 +1,19 @@
-import { GRADE_OPTIONS } from "@/shared/constants/grade-options"
+import {
+  GRADE_BANDS,
+  normalizeSubjectCategory,
+  SUBJECT_CATEGORIES,
+  type GradeBandValue,
+  type SubjectCategoryValue
+} from "@/shared/constants/education-taxonomy"
 
-export const studioClassSubjectOptions = [
-  "사고력수학",
-  "교과수학",
-  "국어/독서논술",
-  "영어",
-  "과학",
-  "코딩/로봇",
-  "미술",
-  "음악",
-  "체육/무용",
-  "기타"
-] as const
+export const studioClassSubjectOptions = SUBJECT_CATEGORIES.map((item) => item.value) as readonly SubjectCategoryValue[]
 
-export type StudioClassSubjectOption = (typeof studioClassSubjectOptions)[number]
-
-const legacyStudioClassSubjectMap: Record<string, StudioClassSubjectOption> = {
-  국어: "국어/독서논술",
-  독서논술: "국어/독서논술",
-  수학: "교과수학",
-  코딩: "코딩/로봇",
-  코딩로봇: "코딩/로봇",
-  로봇: "코딩/로봇",
-  체육: "체육/무용",
-  무용: "체육/무용",
-  체육무용: "체육/무용",
-  기타과목: "기타"
-}
+export type StudioClassSubjectOption = SubjectCategoryValue
 
 export const normalizeStudioClassSubjectOption = (
   value: string | null | undefined
 ): StudioClassSubjectOption | null => {
-  const normalized = value?.trim()
-  if (!normalized) {
-    return null
-  }
-
-  if (studioClassSubjectOptions.includes(normalized as StudioClassSubjectOption)) {
-    return normalized as StudioClassSubjectOption
-  }
-
-  return legacyStudioClassSubjectMap[normalized] ?? null
+  return normalizeSubjectCategory(value)
 }
 
 export const studioClassProgramTypeOptions = [
@@ -57,6 +30,6 @@ export const studioClassProgramTypeOptions = [
 export type StudioClassProgramTypeOption =
   (typeof studioClassProgramTypeOptions)[number]["value"]
 
-export const studioClassGradeOptions = GRADE_OPTIONS
+export const studioClassGradeOptions = GRADE_BANDS.map((item) => item.value) as readonly GradeBandValue[]
 
-export type StudioClassGradeOption = (typeof studioClassGradeOptions)[number]
+export type StudioClassGradeOption = GradeBandValue

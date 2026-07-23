@@ -3,6 +3,7 @@ import { getSupabaseServerClient } from "@/integrations/supabase/server"
 import { getPublicEnv } from "@/shared/config/env"
 import type { AcademyArea } from "@/shared/config/academy-areas"
 import { normalizeTeacherPublicVisibility } from "@/shared/lib/teacher-public-visibility"
+import { getSubjectLabel, normalizeSubjectCategory } from "@/shared/constants/education-taxonomy"
 import type {
   ActivateStudioTeacherInput,
   ApplicationLogEntry,
@@ -1359,10 +1360,6 @@ export const supabaseDataAdapter: DataAdapter = {
       query = query.eq("region", options.region)
     }
 
-    if (subject) {
-      query = query.eq("subject", subject)
-    }
-
     const { data, error } = await query
 
     if (error) {
@@ -1432,6 +1429,13 @@ export const supabaseDataAdapter: DataAdapter = {
     const shouldFilterByQuery = Boolean(needle)
 
     const mapped = classRows
+      .filter((row) => {
+        if (!subject) {
+          return true
+        }
+
+        return normalizeSubjectCategory(row.subject) === normalizeSubjectCategory(subject)
+      })
       .map((row) => {
         const teacherName = row.teacher_id
           ? (teacherMap.get(row.teacher_id)?.teacherName ?? null)
@@ -1439,6 +1443,7 @@ export const supabaseDataAdapter: DataAdapter = {
         const organizationName = row.organization_id
           ? (organizationNameById.get(row.organization_id) ?? null)
           : null
+        const subjectLabel = getSubjectLabel(row.subject)
 
         return {
           mapped: mapClass(row, teacherName, { allowClassTeacherFallback: false }),
@@ -1446,6 +1451,7 @@ export const supabaseDataAdapter: DataAdapter = {
             row.title,
             row.description,
             row.subject,
+            subjectLabel,
             row.teacher_display_name ?? null,
             teacherName,
             organizationName

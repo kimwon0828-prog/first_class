@@ -5,6 +5,7 @@ import { getSession } from "@/features/auth/lib/session"
 import { getAcademiesForList } from "@/features/academies/queries/get-academies-for-list"
 import { AcademiesExplorer } from "@/features/academies/ui/academies-explorer"
 import { isAcademyArea } from "@/shared/config/academy-areas"
+import { formatStoredTargetGrades } from "@/shared/constants/grade-options"
 
 import styles from "./page.module.css"
 
@@ -121,7 +122,7 @@ export default async function AcademiesPage({ searchParams }: AcademiesPageProps
           academies={academies}
           selectedRegionLabel={formatAcademyAreaLabel(selectedRegion)}
           selectedSubjectLabel={selectedSubjectLabel}
-          selectedGradeLabel={selectedGrade}
+          selectedGradeLabel={selectedGrade ? formatStoredTargetGrades(selectedGrade) : null}
           selectedSortLabel={selectedSort}
         />
       </div>

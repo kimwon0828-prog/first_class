@@ -4,11 +4,13 @@ import { useRouter } from "next/navigation"
 import { useActionState, useEffect, useMemo, useRef, useState } from "react"
 
 import {
-  formatGradeList,
   formatStoredTargetGrades,
-  GRADE_OPTIONS,
-  parseStoredTargetGrades
+  parseStoredTargetGradeBands
 } from "@/shared/constants/grade-options"
+import {
+  GRADE_BANDS,
+  getSubjectLabel
+} from "@/shared/constants/education-taxonomy"
 import { academyAreaOptions, normalizeAcademyArea } from "@/shared/config/academy-areas"
 import {
   upsertStudioClassAction,
@@ -281,7 +283,9 @@ export const StudioClassForm = ({
   const [teacherIntro, setTeacherIntro] = useState(initialItem?.teacherIntro ?? "")
   const [classFormat, setClassFormat] = useState(initialItem?.classFormat ?? "")
   const [selectedTargetGrades, setSelectedTargetGrades] = useState<string[]>(
-    parseStoredTargetGrades(initialItem?.targetAge)
+    parseStoredTargetGradeBands(initialItem?.targetAge).filter(
+      (value): value is (typeof GRADE_BANDS)[number]["value"] => value !== "preschool" && value !== "high"
+    )
   )
   const [coverImageFilePreviewUrl, setCoverImageFilePreviewUrl] = useState("")
   const [coverImageUrl, setCoverImageUrl] = useState(initialItem?.coverImageUrl ?? "")
@@ -295,7 +299,17 @@ export const StudioClassForm = ({
   const [selectedTeacherId, setSelectedTeacherId] = useState(initialItem?.teacherId ?? "")
   const action = useMemo(() => upsertStudioClassAction, [])
   const [state, formAction, isPending] = useActionState(action, initialState)
-  const initialTargetGrades = useMemo(() => parseStoredTargetGrades(initialItem?.targetAge), [initialItem?.targetAge])
+  const legacySubjectValue =
+    initialItem?.subject?.trim() && !normalizeStudioClassSubjectOption(initialItem.subject)
+      ? initialItem.subject.trim()
+      : null
+  const initialTargetGrades = useMemo(
+    () =>
+      parseStoredTargetGradeBands(initialItem?.targetAge).filter(
+        (value): value is (typeof GRADE_BANDS)[number]["value"] => value !== "preschool" && value !== "high"
+      ),
+    [initialItem?.targetAge]
+  )
   const legacyTargetAgeValue =
     initialItem?.targetAge?.trim() && initialTargetGrades.length === 0 ? initialItem.targetAge.trim() : null
   const selectedRegion = normalizeAcademyArea(initialItem?.region)
@@ -357,7 +371,9 @@ export const StudioClassForm = ({
       assignmentMode: initialItem?.assignmentMode ?? "post_assign",
       subject: normalizeStudioClassSubjectOption(initialItem?.subject) ?? "",
       description: initialItem?.description ?? "",
-      targetGrades: parseStoredTargetGrades(initialItem?.targetAge),
+      targetGrades: parseStoredTargetGradeBands(initialItem?.targetAge).filter(
+        (value): value is (typeof GRADE_BANDS)[number]["value"] => value !== "preschool" && value !== "high"
+      ),
       recommendedFor: initialItem?.recommendedFor ?? "",
       experiencePoints: initialItem?.experiencePoints ?? "",
       curriculum: initialItem?.curriculum ?? "",
@@ -838,27 +854,33 @@ export const StudioClassForm = ({
                     color: isSelected ? "#fff" : "#111111"
                   }}
                 >
-                  {option}
+                  {getSubjectLabel(option)}
                 </button>
               )
             })}
           </div>
           <span style={helperTextStyle}>
-            {selectedSubject ? `선택한 과목: ${selectedSubject}` : "과목 칩에서 1개를 선택해 주세요."}
+            {selectedSubject ? `선택한 과목: ${getSubjectLabel(selectedSubject)}` : "과목 칩에서 1개를 선택해 주세요."}
           </span>
+          {legacySubjectValue ? (
+            <span style={helperTextStyle}>
+              기존 저장값은 `{getSubjectLabel(legacySubjectValue) ?? legacySubjectValue}` 입니다. 수정 저장 시에는 과목을
+              다시 선택해 주세요.
+            </span>
+          ) : null}
         </label>
 
         <label style={fieldStyle}>
           <span>대상 학년</span>
           <div style={chipGroupStyle}>
-            {GRADE_OPTIONS.map((option) => {
-              const isSelected = selectedTargetGrades.includes(option)
+            {GRADE_BANDS.map((option) => {
+              const isSelected = selectedTargetGrades.includes(option.value)
 
               return (
                 <button
-                  key={option}
+                  key={option.value}
                   type="button"
-                  onClick={() => toggleTargetGrade(option)}
+                  onClick={() => toggleTargetGrade(option.value)}
                   disabled={isPending}
                   style={{
                     ...chipButtonStyle,
@@ -867,14 +889,14 @@ export const StudioClassForm = ({
                     color: isSelected ? "#fff" : "#111111"
                   }}
                 >
-                  {option}
+                  {option.label}
                 </button>
               )
             })}
           </div>
           <span style={helperTextStyle}>
             {selectedTargetGrades.length > 0
-              ? `선택한 대상 학년: ${formatGradeList(parseStoredTargetGrades(selectedTargetGrades.join(",")))}`
+              ? `선택한 대상 학년: ${formatStoredTargetGrades(selectedTargetGrades.join(","))}`
               : "여러 학년을 선택할 수 있습니다."}
           </span>
           {legacyTargetAgeValue ? (

@@ -16,6 +16,14 @@ import {
   type TeacherPublicVisibility,
   type TeacherPublicVisibilityKey
 } from "@/shared/lib/teacher-public-visibility"
+import {
+  getSubjectLabel,
+  normalizeGradeBand,
+  normalizeSubjectCategory,
+  GRADE_BANDS,
+  SUBJECT_CATEGORIES
+} from "@/shared/constants/education-taxonomy"
+import { formatStoredTargetGrades } from "@/shared/constants/grade-options"
 import styles from "./studio-teachers-manager.module.css"
 
 type StudioTeachersManagerProps = {
@@ -33,8 +41,8 @@ const initialState: UpsertStudioTeacherActionState = {
   message: ""
 }
 
-const SUBJECT_OPTIONS = ["국어", "영어", "수학", "과학", "코딩·로봇", "예체능"] as const
-const TARGET_OPTIONS = ["초등 저학년", "초등 고학년", "중등", "고등"] as const
+const SUBJECT_OPTIONS = SUBJECT_CATEGORIES.map((item) => item.value) as readonly string[]
+const TARGET_OPTIONS = GRADE_BANDS.map((item) => item.value) as readonly string[]
 const ADVANCED_VISIBILITY_FIELDS: Array<{ key: TeacherPublicVisibilityKey; label: string }> = [
   { key: "name", label: "이름" },
   { key: "subjects", label: "담당 과목" },
@@ -52,7 +60,26 @@ const parseCommaSeparatedValues = (value: string | null) =>
   (value ?? "")
     .split(",")
     .map((item) => item.trim())
+    .map((item) => normalizeGradeBand(item) ?? item)
     .filter(Boolean)
+
+const formatTeacherSubjectValue = (value: string | null | undefined) => {
+  const normalized = toText(value ?? null)
+  if (!normalized) {
+    return null
+  }
+
+  return getSubjectLabel(normalized)
+}
+
+const formatTeacherTargetValue = (value: string | null | undefined) => {
+  const normalized = toText(value ?? null)
+  if (!normalized) {
+    return null
+  }
+
+  return formatStoredTargetGrades(normalized)
+}
 
 const buildPublicVisibility = (isPublic: boolean): TeacherPublicVisibility => {
   if (isPublic) {
@@ -75,14 +102,18 @@ const isTeacherProfileIncomplete = (item: Pick<StudioTeacherSummary, "shortIntro
   !toText(item.shortIntro)
 
 const getTeacherSummary = (item: StudioTeacherSummary) =>
-  [toText(item.subjects), toText(item.targetStudents), toText(item.specialties)].filter(Boolean).join(" · ")
+  [formatTeacherSubjectValue(item.subjects), formatTeacherTargetValue(item.targetStudents), toText(item.specialties)]
+    .filter(Boolean)
+    .join(" · ")
 
 const getTeacherPreviewSummary = (subjects: string, targetStudents: string, specialties: string) =>
-  [toText(subjects), toText(targetStudents), toText(specialties)].filter(Boolean).join(" · ")
+  [formatTeacherSubjectValue(subjects), formatTeacherTargetValue(targetStudents), toText(specialties)]
+    .filter(Boolean)
+    .join(" · ")
 
 const getSubjectOptions = (currentValue: string) => {
-  const normalized = currentValue.trim()
-  if (!normalized || SUBJECT_OPTIONS.includes(normalized as (typeof SUBJECT_OPTIONS)[number])) {
+  const normalized = toText(currentValue)
+  if (!normalized || SUBJECT_OPTIONS.includes(normalized)) {
     return SUBJECT_OPTIONS
   }
 
@@ -90,7 +121,7 @@ const getSubjectOptions = (currentValue: string) => {
 }
 
 const getTargetOptions = (values: string[]) => {
-  const extras = values.filter((value) => !TARGET_OPTIONS.includes(value as (typeof TARGET_OPTIONS)[number]))
+  const extras = values.filter((value) => !TARGET_OPTIONS.includes(value))
   return [...extras, ...TARGET_OPTIONS]
 }
 
@@ -149,6 +180,8 @@ export const StudioTeachersManager = ({
         item.displayName,
         item.subjects,
         item.targetStudents,
+        formatTeacherSubjectValue(item.subjects),
+        formatTeacherTargetValue(item.targetStudents),
         item.specialties,
         item.shortIntro,
         item.teachingStyle,
@@ -447,7 +480,9 @@ const TeacherCard = ({
           <dt className={styles.profileLabel}>담당</dt>
           <dd className={styles.profileValue}>
             {renderProfileValue(
-              [toText(item.subjects), toText(item.targetStudents)].filter(Boolean).join(" · ") || null,
+              [formatTeacherSubjectValue(item.subjects), formatTeacherTargetValue(item.targetStudents)]
+                .filter(Boolean)
+                .join(" · ") || null,
               onWriteClick
             )}
           </dd>
@@ -514,7 +549,7 @@ const TeacherFormPanel = ({
   const action = useMemo(() => upsertStudioTeacherAction, [])
   const [state, formAction, isPending] = useActionState(action, initialState)
   const [displayName, setDisplayName] = useState(initialItem?.displayName ?? "")
-  const [subject, setSubject] = useState(initialItem?.subjects ?? "")
+  const [subject, setSubject] = useState(normalizeSubjectCategory(initialItem?.subjects) ?? initialItem?.subjects ?? "")
   const [targetSelections, setTargetSelections] = useState(parseCommaSeparatedValues(initialItem?.targetStudents ?? null))
   const [specialties, setSpecialties] = useState(initialItem?.specialties ?? "")
   const [shortIntro, setShortIntro] = useState(initialItem?.shortIntro ?? "")
@@ -640,7 +675,7 @@ const TeacherFormPanel = ({
                       onClick={() => setSubject(option)}
                       className={`${styles.choiceChip} ${subject === option ? styles.choiceChipActive : ""}`}
                     >
-                      {option}
+                      {formatTeacherSubjectValue(option)}
                     </button>
                   ))}
                 </div>
@@ -658,7 +693,7 @@ const TeacherFormPanel = ({
                         targetSelections.includes(option) ? styles.choiceChipActive : ""
                       }`}
                     >
-                      {option}
+                      {formatTeacherTargetValue(option)}
                     </button>
                   ))}
                 </div>

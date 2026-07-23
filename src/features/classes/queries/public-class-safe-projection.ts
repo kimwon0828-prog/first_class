@@ -8,6 +8,7 @@ import type {
   TeacherPublicProfile
 } from "@/shared/lib/db/adapter"
 import type { AcademyArea } from "@/shared/config/academy-areas"
+import { getSubjectLabel, normalizeSubjectCategory } from "@/shared/constants/education-taxonomy"
 
 type PublicClassRow = {
   id: string
@@ -126,10 +127,6 @@ const buildPublicClassesQuery = (
 
   if (options?.region) {
     query = query.eq("region", options.region)
-  }
-
-  if (options?.subject?.trim()) {
-    query = query.eq("subject", options.subject.trim())
   }
 
   return query
@@ -277,11 +274,20 @@ export const listPublicClassesWithSafeProjection = async (
   ])
 
   const needle = normalizeText(options?.query)
+  const normalizedSubject = normalizeSubjectCategory(options?.subject)
   const shouldFilterByQuery = Boolean(needle)
 
   return classRows
+    .filter((row) => {
+      if (!normalizedSubject) {
+        return true
+      }
+
+      return normalizeSubjectCategory(row.subject) === normalizedSubject
+    })
     .map((row) => {
       const organization = row.organization_id ? organizationById.get(row.organization_id) : undefined
+      const subjectLabel = getSubjectLabel(row.subject)
       const summary = {
         ...mapPublicClassSummary(row, teacherProfileById),
         organization: toOrganizationLocation(organization)
@@ -293,6 +299,7 @@ export const listPublicClassesWithSafeProjection = async (
           row.title,
           row.description,
           row.subject,
+          subjectLabel,
           summary.teacherDisplayName,
           organization?.name ?? null
         ]

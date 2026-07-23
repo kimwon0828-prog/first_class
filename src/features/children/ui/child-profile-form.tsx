@@ -1,6 +1,7 @@
 "use client"
 
-import { GRADE_OPTIONS, isValidGrade } from "@/shared/constants/grade-options"
+import { isValidGrade } from "@/shared/constants/grade-options"
+import { CHILD_GRADES, getChildGradeLabel } from "@/shared/constants/education-taxonomy"
 import type { ChildProfile } from "@/shared/lib/db/adapter"
 
 import type { ChildProfileActionState } from "@/features/children/actions/create-child-profile"
@@ -55,15 +56,16 @@ export const ChildProfileForm = ({
           <option value="" disabled>
             학년을 선택해주세요
           </option>
-          {GRADE_OPTIONS.map((option) => (
-            <option key={option} value={option}>
-              {option}
+          {CHILD_GRADES.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
             </option>
           ))}
         </select>
         {legacyGradeValue ? (
           <p className={styles.infoMessage}>
-            현재 저장값은 `{legacyGradeValue}` 입니다. 새 저장 시에는 학년을 다시 선택해 주세요.
+            현재 저장값은 `{getChildGradeLabel(legacyGradeValue) ?? legacyGradeValue}` 입니다. 새 저장 시에는 학년을
+            다시 선택해 주세요.
           </p>
         ) : null}
       </label>

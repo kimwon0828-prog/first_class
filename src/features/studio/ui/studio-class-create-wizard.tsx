@@ -4,10 +4,9 @@ import { useRouter } from "next/navigation"
 import { useActionState, useEffect, useMemo, useRef, useState } from "react"
 
 import {
-  formatGradeList,
-  GRADE_OPTIONS,
-  parseStoredTargetGrades
+  formatStoredTargetGrades
 } from "@/shared/constants/grade-options"
+import { GRADE_BANDS, getSubjectLabel } from "@/shared/constants/education-taxonomy"
 import { getSupabaseBrowserClient } from "@/integrations/supabase/client"
 import {
   upsertStudioClassAction,
@@ -203,7 +202,7 @@ const addMinutesToTime = (startTime: string, durationMin: string) => {
 const formatProgramTypeLabel = (programType: ClassProgramType) =>
   studioClassProgramTypeOptions.find((option) => option.value === programType)?.label ?? "체험수업"
 
-const formatSubjectLabel = (subject: StudioClassSubjectOption | "") => subject.replaceAll("/", "·")
+const formatSubjectLabel = (subject: StudioClassSubjectOption | "") => getSubjectLabel(subject) ?? "과목 선택"
 
 const formatSlotLabel = (slot: ScheduleSlotDraft) => {
   const recurrenceLabel = slot.recurrence === "weekly" ? "매주 반복" : "특정 날짜 1회"
@@ -753,7 +752,7 @@ export const StudioClassCreateWizard = ({
   const previewDescription = values.description.trim() || "프로그램 소개를 입력하면 학부모 화면 미리보기에 바로 반영됩니다."
   const previewMeta = [
     values.subject ? formatSubjectLabel(values.subject) : "과목 선택",
-    values.targetGrades.length > 0 ? formatGradeList(parseStoredTargetGrades(values.targetGrades.join(","))) : "대상 학년 선택",
+    values.targetGrades.length > 0 ? formatStoredTargetGrades(values.targetGrades.join(",")) : "대상 학년 선택",
     values.classFormat || "수업 방식 선택"
   ]
   const previewCta = values.programType === "level_test" ? "레벨테스트 신청하기" : "체험수업 신청하기"
@@ -899,14 +898,14 @@ export const StudioClassCreateWizard = ({
           <div className={styles.fieldBlock}>
             <label className={styles.fieldLabel}>대상 학년 *</label>
             <div className={styles.chipRow}>
-              {GRADE_OPTIONS.map((grade) => (
+              {GRADE_BANDS.map((grade) => (
                 <button
-                  key={grade}
+                  key={grade.value}
                   type="button"
-                  className={`${styles.choiceChip} ${values.targetGrades.includes(grade) ? styles.choiceChipSelected : ""}`}
-                  onClick={() => toggleGrade(grade)}
+                  className={`${styles.choiceChip} ${values.targetGrades.includes(grade.value) ? styles.choiceChipSelected : ""}`}
+                  onClick={() => toggleGrade(grade.value)}
                 >
-                  {grade}
+                  {grade.label}
                 </button>
               ))}
             </div>
@@ -1305,8 +1304,8 @@ export const StudioClassCreateWizard = ({
                     <strong>과목 · 학년 · 수업방식</strong>
                     <span>
                       {values.subject && values.targetGrades.length > 0 && values.classFormat
-                        ? `${formatSubjectLabel(values.subject)} · ${formatGradeList(
-                            parseStoredTargetGrades(values.targetGrades.join(","))
+                        ? `${formatSubjectLabel(values.subject)} · ${formatStoredTargetGrades(
+                            values.targetGrades.join(",")
                           )} · ${values.classFormat}`
                         : "1단계에서 과목, 대상 학년, 수업 방식을 채워 주세요."}
                     </span>

@@ -6,10 +6,10 @@ import { useActionState, useEffect, useMemo, useState, type FormEvent } from "re
 
 import {
   formatStoredTargetGrades,
-  GRADE_OPTIONS,
   isChildEligibleForClass,
   isValidGrade
 } from "@/shared/constants/grade-options"
+import { CHILD_GRADES, getChildGradeLabel } from "@/shared/constants/education-taxonomy"
 import {
   createTrialApplicationAction,
   type CreateTrialApplicationActionState
@@ -33,7 +33,7 @@ const initialState: CreateTrialApplicationActionState = {
   message: ""
 }
 
-const gradeOptions = GRADE_OPTIONS
+const gradeOptions = CHILD_GRADES
 const WEEKDAY_LABELS = ["일요일", "월요일", "화요일", "수요일", "목요일", "금요일", "토요일"]
 
 const formatSlotDateLine = (startAt: string, endAt: string) => {
@@ -238,7 +238,7 @@ export const ApplyForm = ({
                     value={child.id}
                     disabled={!isChildEligibleForClass(child.grade, classTargetAge)}
                   >
-                    {child.name} / {child.grade}
+                    {child.name} / {getChildGradeLabel(child.grade)}
                   </option>
                 ))}
               </select>
@@ -281,11 +281,13 @@ export const ApplyForm = ({
                 학년을 선택해주세요
               </option>
               {legacyChildGradeValue ? (
-                <option value={legacyChildGradeValue}>{legacyChildGradeValue} (기존 값)</option>
+                <option value={legacyChildGradeValue}>
+                  {getChildGradeLabel(legacyChildGradeValue) ?? legacyChildGradeValue} (기존 값)
+                </option>
               ) : null}
               {gradeOptions.map((option) => (
-                <option key={option} value={option}>
-                  {option}
+                <option key={option.value} value={option.value}>
+                  {option.label}
                 </option>
               ))}
             </select>

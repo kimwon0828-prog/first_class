@@ -2,6 +2,7 @@ import Link from "next/link"
 import Image from "next/image"
 
 import { formatStoredTargetGrades } from "@/shared/constants/grade-options"
+import { getSubjectLabel } from "@/shared/constants/education-taxonomy"
 import { getMyProfile } from "@/features/auth/lib/profile-sync"
 import { getSession } from "@/features/auth/lib/session"
 import { getPublicClassDetail } from "@/features/classes/queries/get-public-class-detail"
@@ -28,8 +29,10 @@ const formatPrice = (price: number) => {
 }
 
 const formatProgramType = (value: string) => (value === "level_test" ? "레벨테스트" : "체험수업")
-const getTeacherSummaryLine = (subjects: string | null | undefined, targetStudents: string | null | undefined) =>
-  [subjects?.trim() || null, targetStudents?.trim() || null].filter(Boolean).join(" · ") || null
+const getTeacherSummaryLine = (subjects: string | null | undefined, targetStudents: string | null | undefined) => {
+  const normalizedTargets = targetStudents?.trim() ? formatStoredTargetGrades(targetStudents) : null
+  return [getSubjectLabel(subjects), normalizedTargets].filter(Boolean).join(" · ") || null
+}
 
 export default async function ClassDetailPage({ params, searchParams }: ClassDetailPageProps) {
   const resolvedParams = await params
@@ -234,7 +237,7 @@ export default async function ClassDetailPage({ params, searchParams }: ClassDet
             <div className={styles.titleBlock}>
               <div className={styles.badges}>
                 <span className={styles.badge}>{formatProgramType(classItem.programType)}</span>
-                <span className={styles.badge}>{classItem.subject}</span>
+                <span className={styles.badge}>{getSubjectLabel(classItem.subject)}</span>
                 <span className={styles.badge}>{classItem.region}</span>
                 <span className={styles.badge}>{targetGradeLabel}</span>
               </div>
@@ -257,7 +260,7 @@ export default async function ClassDetailPage({ params, searchParams }: ClassDet
                   </div>
                   <div className={styles.infoRow}>
                     <span className={styles.infoLabel}>과목</span>
-                    <span className={styles.infoValue}>{classItem.subject}</span>
+                    <span className={styles.infoValue}>{getSubjectLabel(classItem.subject)}</span>
                   </div>
                   <div className={styles.infoRow}>
                     <span className={styles.infoLabel}>대상 학년</span>

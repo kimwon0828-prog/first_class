@@ -2,6 +2,7 @@
 
 import Link from "next/link"
 
+import { formatStoredTargetGrades } from "@/shared/constants/grade-options"
 import type { AcademyListItem } from "../queries/get-academies-for-list"
 import styles from "../../../../app/academies/page.module.css"
 
@@ -78,7 +79,7 @@ export function AcademiesExplorer({
                           <p className={styles.classPreviewSubject}>{classItem.displaySubject}</p>
                           <h3 className={styles.classPreviewTitle}>{classItem.title}</h3>
                         </div>
-                        <span className={styles.classPreviewAge}>{classItem.targetAge}</span>
+                        <span className={styles.classPreviewAge}>{formatStoredTargetGrades(classItem.targetAge)}</span>
                       </Link>
                     ))}
                   </div>
