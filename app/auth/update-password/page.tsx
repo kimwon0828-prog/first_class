@@ -1,20 +1,40 @@
 "use client"
 
 import Link from "next/link"
-import { useEffect, useMemo, useState } from "react"
+import { useSearchParams } from "next/navigation"
+import { Suspense, useEffect, useMemo, useState } from "react"
 
 import { getSupabaseBrowserClient } from "@/integrations/supabase/client"
 
 const isValidPassword = (value: string) => value.length >= 8
+const INVALID_LINK_MESSAGE = "유효하지 않거나 만료된 링크입니다. 비밀번호 재설정 메일을 다시 요청해 주세요."
 
-export default function UpdatePasswordPage() {
-  const [ready, setReady] = useState(false)
+const logSupabaseError = (label: string, error: unknown) => {
+  if (process.env.NODE_ENV !== "development") {
+    return
+  }
+
+  console.error(label, error)
+}
+
+function UpdatePasswordPageContent() {
+  const searchParams = useSearchParams()
+  const userType = searchParams.get("type") === "academy" ? "academy" : "parent"
+  const loginHref = userType === "academy" ? "/studio/sign-in" : "/auth/sign-in"
+  const retryHref = `/auth/reset-password?type=${userType}`
+  const successButtonLabel = userType === "academy" ? "학원 로그인으로 이동" : "학부모 로그인으로 이동"
+  const [isSessionReady, setIsSessionReady] = useState(false)
+  const [hasRecoverySession, setHasRecoverySession] = useState(false)
   const [password, setPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle")
   const [message, setMessage] = useState("")
 
   const validationError = useMemo(() => {
+    if (!hasRecoverySession) {
+      return null
+    }
+
     if (!password && !confirmPassword) {
       return null
     }
@@ -28,15 +48,35 @@ export default function UpdatePasswordPage() {
     }
 
     return null
-  }, [confirmPassword, password])
+  }, [confirmPassword, hasRecoverySession, password])
 
   useEffect(() => {
     const check = async () => {
       try {
         const supabase = getSupabaseBrowserClient()
-        await supabase.auth.getSession()
+        const {
+          data: { session },
+          error
+        } = await supabase.auth.getSession()
+
+        if (error) {
+          logSupabaseError("[update-password] getSession failed", error)
+        }
+
+        if (session) {
+          setHasRecoverySession(true)
+          setMessage("")
+          return
+        }
+
+        setHasRecoverySession(false)
+        setMessage(INVALID_LINK_MESSAGE)
+      } catch (error) {
+        logSupabaseError("[update-password] getSession threw", error)
+        setHasRecoverySession(false)
+        setMessage(INVALID_LINK_MESSAGE)
       } finally {
-        setReady(true)
+        setIsSessionReady(true)
       }
     }
     void check()
@@ -45,7 +85,9 @@ export default function UpdatePasswordPage() {
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
 
-    if (!ready) {
+    if (!isSessionReady || !hasRecoverySession) {
+      setStatus("error")
+      setMessage(INVALID_LINK_MESSAGE)
       return
     }
 
@@ -61,15 +103,17 @@ export default function UpdatePasswordPage() {
       const supabase = getSupabaseBrowserClient()
       const { error } = await supabase.auth.updateUser({ password })
       if (error) {
+        logSupabaseError("[update-password] updateUser failed", error)
         setStatus("error")
-        setMessage("비밀번호 변경에 실패했어요. 링크가 만료되었거나 다시 시도해 주세요.")
+        setMessage("비밀번호 변경에 실패했어요. 비밀번호 규칙을 확인하거나 재설정 메일을 다시 요청해 주세요.")
         return
       }
 
       await supabase.auth.signOut()
       setStatus("success")
       setMessage("비밀번호가 변경되었어요. 다시 로그인해주세요.")
-    } catch {
+    } catch (error) {
+      logSupabaseError("[update-password] updateUser threw", error)
       setStatus("error")
       setMessage("비밀번호 변경에 실패했어요. 잠시 후 다시 시도해 주세요.")
     }
@@ -96,8 +140,8 @@ export default function UpdatePasswordPage() {
       >
         <header style={{ display: "flex", alignItems: "center", minHeight: 40 }}>
           <Link
-            href="/auth/sign-in"
-            aria-label="학부모 로그인으로"
+            href={loginHref}
+            aria-label="로그인으로"
             style={{
               display: "inline-flex",
               alignItems: "center",
@@ -119,7 +163,9 @@ export default function UpdatePasswordPage() {
 
         <section style={{ marginTop: 18 }}>
           <p style={{ margin: 0, fontSize: 14, lineHeight: "20px", color: "#111827" }}>
-            새 비밀번호를 입력해 주세요.
+            {hasRecoverySession
+              ? "새 비밀번호를 입력해 주세요."
+              : "복구 링크의 유효성을 확인하고 있어요."}
           </p>
         </section>
 
@@ -134,7 +180,7 @@ export default function UpdatePasswordPage() {
               required
               type="password"
               autoComplete="new-password"
-              disabled={!ready || status === "loading" || status === "success"}
+              disabled={!isSessionReady || !hasRecoverySession || status === "loading" || status === "success"}
               style={{
                 width: "100%",
                 border: "1px solid #d1d5db",
@@ -156,7 +202,7 @@ export default function UpdatePasswordPage() {
               required
               type="password"
               autoComplete="new-password"
-              disabled={!ready || status === "loading" || status === "success"}
+              disabled={!isSessionReady || !hasRecoverySession || status === "loading" || status === "success"}
               style={{
                 width: "100%",
                 border: "1px solid #d1d5db",
@@ -174,7 +220,7 @@ export default function UpdatePasswordPage() {
                 margin: 0,
                 fontSize: 13,
                 lineHeight: "18px",
-                color: status === "success" ? "#111827" : "#b42318"
+                color: status === "success" ? "#111827" : message === INVALID_LINK_MESSAGE ? "#b42318" : "#b42318"
               }}
             >
               {message || validationError}
@@ -182,30 +228,54 @@ export default function UpdatePasswordPage() {
           ) : null}
 
           {status !== "success" ? (
-            <button
-              type="submit"
-              disabled={!ready || status === "loading"}
-              style={{
-                marginTop: 6,
-                width: "100%",
-                border: 0,
-                borderRadius: 10,
-                background: "#2aad38",
-                color: "#ffffff",
-                fontSize: 16,
-                lineHeight: "22px",
-                fontWeight: 600,
-                padding: "14px 0",
-                cursor: !ready || status === "loading" ? "default" : "pointer",
-                opacity: !ready || status === "loading" ? 0.8 : 1
-              }}
-            >
-              {status === "loading" ? "변경 중..." : "비밀번호 변경하기"}
-            </button>
+            hasRecoverySession ? (
+              <button
+                type="submit"
+                disabled={!isSessionReady || status === "loading"}
+                style={{
+                  marginTop: 6,
+                  width: "100%",
+                  border: 0,
+                  borderRadius: 10,
+                  background: "#2aad38",
+                  color: "#ffffff",
+                  fontSize: 16,
+                  lineHeight: "22px",
+                  fontWeight: 600,
+                  padding: "14px 0",
+                  cursor: !isSessionReady || status === "loading" ? "default" : "pointer",
+                  opacity: !isSessionReady || status === "loading" ? 0.8 : 1
+                }}
+              >
+                {status === "loading" ? "변경 중..." : "비밀번호 변경하기"}
+              </button>
+            ) : (
+              <Link
+                href={retryHref}
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  width: "100%",
+                  borderRadius: 10,
+                  background: "#2aad38",
+                  color: "#ffffff",
+                  textDecoration: "none",
+                  fontSize: 16,
+                  lineHeight: "22px",
+                  fontWeight: 600,
+                  padding: "14px 0",
+                  opacity: isSessionReady ? 1 : 0.8,
+                  pointerEvents: isSessionReady ? "auto" : "none"
+                }}
+              >
+                다시 요청하기
+              </Link>
+            )
           ) : (
             <div style={{ marginTop: 6, display: "grid", gap: 10 }}>
               <Link
-                href="/auth/sign-in"
+                href={loginHref}
                 style={{
                   display: "inline-flex",
                   alignItems: "center",
@@ -221,27 +291,7 @@ export default function UpdatePasswordPage() {
                   padding: "14px 0"
                 }}
               >
-                학부모 로그인
-              </Link>
-              <Link
-                href="/studio/sign-in"
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  width: "100%",
-                  borderRadius: 10,
-                  border: "1px solid #d1d5db",
-                  background: "#ffffff",
-                  color: "#111827",
-                  textDecoration: "none",
-                  fontSize: 16,
-                  lineHeight: "22px",
-                  fontWeight: 600,
-                  padding: "14px 0"
-                }}
-              >
-                선생님 로그인
+                {successButtonLabel}
               </Link>
             </div>
           )}
@@ -251,3 +301,10 @@ export default function UpdatePasswordPage() {
   )
 }
 
+export default function UpdatePasswordPage() {
+  return (
+    <Suspense>
+      <UpdatePasswordPageContent />
+    </Suspense>
+  )
+}

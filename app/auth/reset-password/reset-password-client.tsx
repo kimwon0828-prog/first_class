@@ -1,6 +1,7 @@
 "use client"
 
 import Link from "next/link"
+import { useSearchParams } from "next/navigation"
 import { useState } from "react"
 
 import { getSupabaseBrowserClient } from "@/integrations/supabase/client"
@@ -17,7 +18,9 @@ const isValidEmail = (value: string) => {
 }
 
 export const ResetPasswordClient = ({ userType }: ResetPasswordClientProps) => {
+  const searchParams = useSearchParams()
   const loginHref = userType === "academy" ? "/studio/sign-in" : "/auth/sign-in"
+  const linkError = searchParams.get("error") === "invalid_link"
 
   const [email, setEmail] = useState("")
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle")
@@ -37,7 +40,7 @@ export const ResetPasswordClient = ({ userType }: ResetPasswordClientProps) => {
     setMessage("")
     try {
       const supabase = getSupabaseBrowserClient()
-      const redirectTo = `${window.location.origin}/auth/update-password`
+      const redirectTo = `${window.location.origin}/auth/recovery?type=${userType}`
       const { error } = await supabase.auth.resetPasswordForEmail(trimmedEmail, { redirectTo })
 
       if (error) {
@@ -100,6 +103,11 @@ export const ResetPasswordClient = ({ userType }: ResetPasswordClientProps) => {
           <p style={{ margin: 0, fontSize: 14, lineHeight: "20px", color: "#111827" }}>
             가입하신 이메일 주소로 비밀번호 재설정 링크를 보내드릴게요.
           </p>
+          {linkError && status !== "success" ? (
+            <p style={{ margin: "10px 0 0", fontSize: 13, lineHeight: "18px", color: "#b42318" }}>
+              유효하지 않거나 만료된 링크입니다. 비밀번호 재설정 메일을 다시 요청해 주세요.
+            </p>
+          ) : null}
         </section>
 
         <form onSubmit={handleSubmit} style={{ marginTop: 28, display: "grid", gap: 18 }}>
@@ -169,4 +177,3 @@ export const ResetPasswordClient = ({ userType }: ResetPasswordClientProps) => {
     </main>
   )
 }
-
