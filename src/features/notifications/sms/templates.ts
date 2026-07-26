@@ -1,4 +1,12 @@
 import type { SmsTemplateRenderInput, SmsTemplateRenderResult } from "@/features/notifications/sms/types"
+import { sanitizeSmsSingleLine } from "@/features/notifications/sms/byte-utils"
+
+const joinLines = (parts: Array<string | null>) => parts.filter(Boolean).join("\n")
+const joinSections = (parts: Array<string | null>) => parts.filter(Boolean).join("\n\n")
+
+const DEFAULT_SCHEDULE_TEXT = "일정 확인 필요"
+const DEFAULT_CLASS_TEXT = "체험수업"
+const DEFAULT_STUDENT_TEXT = "신청자"
 
 const formatDateTime = (value: string | null) => {
   if (!value) {
@@ -10,100 +18,70 @@ const formatDateTime = (value: string | null) => {
     return null
   }
 
-  return new Intl.DateTimeFormat("ko-KR", {
+  const formatter = new Intl.DateTimeFormat("ko-KR", {
+    timeZone: "Asia/Seoul",
     month: "numeric",
     day: "numeric",
     hour: "numeric",
-    minute: "2-digit"
-  }).format(date)
-}
+    minute: "2-digit",
+    hour12: true
+  })
+  const parts = formatter.formatToParts(date)
+  const month = parts.find((part) => part.type === "month")?.value
+  const day = parts.find((part) => part.type === "day")?.value
+  const hour = parts.find((part) => part.type === "hour")?.value
+  const minute = parts.find((part) => part.type === "minute")?.value
+  const dayPeriod = parts.find((part) => part.type === "dayPeriod")?.value?.replace(/\s+/g, "") ?? ""
 
-const joinMessage = (parts: string[]) => parts.filter(Boolean).join(" ")
-const joinDetail = (parts: string[]) => parts.filter(Boolean).join(" / ")
-const joinLines = (parts: Array<string | null>) => parts.filter(Boolean).join("\n")
-const joinSections = (parts: Array<string | null>) => parts.filter(Boolean).join("\n\n")
-
-const resolveScheduleText = (input: SmsTemplateRenderInput["context"]) => {
-  return (
-    formatDateTime(input.scheduledAt) ??
-    formatDateTime(input.requestedAt) ??
-    input.selectedScheduleLabel?.trim() ??
-    "일정은 운영진이 별도로 안내드릴 예정입니다."
-  )
-}
-
-const resolveOptionalScheduleDetail = (input: SmsTemplateRenderInput["context"]) => {
-  const confirmedSchedule = formatDateTime(input.scheduledAt)
-  if (confirmedSchedule) {
-    return `일정: ${confirmedSchedule}`
+  if (!month || !day || !hour || !minute || !dayPeriod) {
+    return null
   }
 
-  const requestedSchedule = formatDateTime(input.requestedAt)
-  if (requestedSchedule) {
-    return `신청 일정: ${requestedSchedule}`
-  }
-
-  const selectedScheduleLabel = input.selectedScheduleLabel?.trim()
-  if (selectedScheduleLabel) {
-    return `신청 일정: ${selectedScheduleLabel}`
-  }
-
-  return null
+  return minute === "00" ? `${month}/${day} ${dayPeriod} ${hour}시` : `${month}/${day} ${dayPeriod} ${hour}:${minute}`
 }
 
-const resolveClassText = (classTitle: string | null) =>
-  classTitle?.trim() ? classTitle.trim() : "체험수업"
+const resolveScheduleText = (input: SmsTemplateRenderInput["context"]) =>
+  formatDateTime(input.scheduledAt) ?? formatDateTime(input.requestedAt) ?? DEFAULT_SCHEDULE_TEXT
+
+const resolveClassText = (classTitle: string | null) => {
+  const resolved = sanitizeSmsSingleLine(classTitle, 10)
+  return resolved || DEFAULT_CLASS_TEXT
+}
 
 const resolveAcademyText = (academyName: string | null) =>
   academyName?.trim() ? academyName.trim() : "학원 정보는 스튜디오에서 확인해 주세요."
 
 const resolveStudentText = (input: SmsTemplateRenderInput["context"]) => {
-  const childName = input.childName?.trim()
+  const childName = sanitizeSmsSingleLine(input.childName, 7)
   if (childName) {
     return childName
   }
 
-  const parentDisplayName = input.parentDisplayName?.trim()
+  const parentDisplayName = sanitizeSmsSingleLine(input.parentDisplayName, 7)
   if (parentDisplayName) {
     return parentDisplayName
   }
 
-  return "신청자"
+  return DEFAULT_STUDENT_TEXT
 }
 
-const resolveTeacherText = (assignedTeacherName: string | null) =>
-  assignedTeacherName?.trim() ? assignedTeacherName.trim() : "담당 선생님 미지정"
+const renderCompactMessage = (
+  heading: string,
+  context: SmsTemplateRenderInput["context"],
+  classText: string
+) =>
+  joinLines([
+    `[첫수업] ${heading}`,
+    classText,
+    `${resolveStudentText(context)} / ${resolveScheduleText(context)}`
+  ])
 
 const renderTeacherMessage = (
   leadingText: string,
   context: SmsTemplateRenderInput["context"],
   classText: string
 ) =>
-  joinMessage([
-    "[첫수업]",
-    leadingText,
-    joinDetail([
-      `수업: ${classText}`,
-      `학생: ${resolveStudentText(context)}`,
-      resolveOptionalScheduleDetail(context) ?? ""
-    ])
-  ])
-
-const renderTeacherMultilineMessage = (
-  leadingText: string,
-  context: SmsTemplateRenderInput["context"],
-  classText: string,
-  closingText: string
-) =>
-  joinSections([
-    `[첫수업] ${leadingText}`,
-    joinLines([
-      `수업: ${classText}`,
-      `학생: ${resolveStudentText(context)}`,
-      `일정: ${resolveScheduleText(context)}`
-    ]),
-    closingText
-  ])
+  renderCompactMessage(leadingText, context, classText)
 
 export const renderSmsTemplate = ({
   recipientType,
@@ -118,11 +96,11 @@ export const renderSmsTemplate = ({
       case "trial_contact_started":
         return {
           templateKey: eventType,
-          messagePreview: joinMessage([
+          messagePreview: [
             "[첫수업]",
             `${classText} 신청이 확인되었습니다.`,
             "운영진이 상담을 이어서 안내드릴 예정입니다."
-          ])
+          ].join(" ")
         }
       case "trial_rejected":
         return {
@@ -158,11 +136,11 @@ export const renderSmsTemplate = ({
       case "trial_enrolled":
         return {
           templateKey: eventType,
-          messagePreview: joinMessage([
+          messagePreview: [
             "[첫수업]",
             `${classText} 등록이 완료되었습니다.`,
             "수업 준비 안내는 운영진이 별도로 전달드립니다."
-          ])
+          ].join(" ")
         }
       case "trial_reminder":
         return {
@@ -188,60 +166,22 @@ export const renderSmsTemplate = ({
       case "admin_trial_requested":
         return {
           templateKey: eventType,
-          messagePreview: joinSections([
-            "[첫수업] 새 체험수업 신청 알림",
-            "새 체험수업 신청이 접수되었습니다.",
-            joinLines([
-              `학생: ${resolveStudentText(context)}`,
-              `수업: ${classText}`,
-              `담당 선생님: ${resolveTeacherText(context.assignedTeacherName)}`
-            ]),
-            "스튜디오에서 신청 정보를 확인해 주세요."
-          ])
+          messagePreview: renderCompactMessage("신규 신청", context, classText)
         }
       case "admin_trial_canceled":
         return {
           templateKey: eventType,
-          messagePreview: joinSections([
-            "[첫수업] 체험수업 신청 취소 알림",
-            "체험수업 신청이 취소되었습니다.",
-            joinLines([
-              `학생: ${resolveStudentText(context)}`,
-              `수업: ${classText}`,
-              `담당 선생님: ${resolveTeacherText(context.assignedTeacherName)}`
-            ]),
-            "스튜디오에서 신청 정보를 확인해 주세요."
-          ])
+          messagePreview: renderCompactMessage("신청 취소", context, classText)
         }
       case "admin_trial_schedule_confirmed":
         return {
           templateKey: eventType,
-          messagePreview: joinSections([
-            "[첫수업] 체험수업 일정 확정 알림",
-            "체험수업 일정이 확정되었습니다.",
-            joinLines([
-              `학생: ${resolveStudentText(context)}`,
-              `수업: ${classText}`,
-              `담당 선생님: ${resolveTeacherText(context.assignedTeacherName)}`,
-              `일정: ${scheduleText}`
-            ]),
-            "스튜디오에서 신청 정보를 확인해 주세요."
-          ])
+          messagePreview: renderCompactMessage("일정 확정", context, classText)
         }
       case "admin_trial_reminder":
         return {
           templateKey: eventType,
-          messagePreview: joinSections([
-            "[첫수업] 내일 체험수업 일정 안내",
-            "내일 체험수업이 예정되어 있습니다.",
-            joinLines([
-              `학생: ${resolveStudentText(context)}`,
-              `수업: ${classText}`,
-              `담당 선생님: ${resolveTeacherText(context.assignedTeacherName)}`,
-              `일정: ${scheduleText}`
-            ]),
-            "스튜디오에서 신청 정보를 확인해 주세요."
-          ])
+          messagePreview: renderCompactMessage("내일 수업", context, classText)
         }
       default:
         throw new Error("unsupported_admin_sms_event")
@@ -252,59 +192,32 @@ export const renderSmsTemplate = ({
     case "teacher_trial_requested":
       return {
         templateKey: eventType,
-        messagePreview: joinSections([
-          "[첫수업] 새로운 체험수업 신청이 들어왔습니다.",
-          joinLines([
-            `수업: ${classText}`,
-            `학생: ${resolveStudentText(context)}`,
-            `희망일정: ${scheduleText}`
-          ]),
-          "첫수업 운영보드에서 신청 내용을 확인해주세요."
-        ])
+        messagePreview: renderCompactMessage("신규 신청", context, classText)
       }
     case "teacher_trial_assigned":
       return {
         templateKey: eventType,
-        messagePreview: renderTeacherMessage("담당 체험수업이 배정되었습니다.", context, classText)
+        messagePreview: renderTeacherMessage("수업 배정", context, classText)
       }
     case "teacher_trial_schedule_confirmed":
       return {
         templateKey: eventType,
-        messagePreview: renderTeacherMultilineMessage(
-          "체험수업 일정이 확정되었습니다.",
-          context,
-          classText,
-          "수업 준비를 부탁드립니다."
-        )
+        messagePreview: renderTeacherMessage("일정 확정", context, classText)
       }
     case "teacher_trial_schedule_updated":
       return {
         templateKey: eventType,
-        messagePreview: renderTeacherMessage("체험수업 일정이 변경되었습니다.", context, classText)
+        messagePreview: renderTeacherMessage("일정 변경", context, classText)
       }
     case "teacher_trial_canceled":
       return {
         templateKey: eventType,
-        messagePreview: renderTeacherMultilineMessage(
-          "체험수업 신청이 취소되었습니다.",
-          context,
-          classText,
-          "운영보드에서 취소 내역을 확인해주세요."
-        )
+        messagePreview: renderTeacherMessage("신청 취소", context, classText)
       }
     case "teacher_trial_reminder":
       return {
         templateKey: eventType,
-        messagePreview: joinSections([
-          "[첫수업] 내일 체험수업 일정 안내",
-          "내일 담당 체험수업이 예정되어 있습니다.",
-          joinLines([
-            `학생: ${resolveStudentText(context)}`,
-            `수업: ${classText}`,
-            `일정: ${scheduleText}`
-          ]),
-          "스튜디오에서 신청 정보를 확인해 주세요."
-        ])
+        messagePreview: renderTeacherMessage("내일 수업", context, classText)
       }
     default:
       throw new Error("unsupported_teacher_sms_event")

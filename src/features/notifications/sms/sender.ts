@@ -1,5 +1,6 @@
 import "server-only"
 
+import { prepareSmsContent } from "@/features/notifications/sms/byte-utils"
 import { sendNcloudSms } from "@/features/notifications/sms/providers/ncloud"
 import { maskPhoneNumber, normalizePhoneNumber } from "@/features/notifications/sms/phone"
 import type { SmsSendInput, SmsSendResult } from "@/features/notifications/sms/types"
@@ -17,9 +18,11 @@ const getSmsProvider = () => {
 }
 
 const buildDryRunResult = ({
+  preparedContent,
   recipientPhoneMasked,
   errorMessage
 }: {
+  preparedContent: ReturnType<typeof prepareSmsContent>
   recipientPhoneMasked: string | null
   errorMessage: string | null
 }): SmsSendResult => ({
@@ -28,7 +31,9 @@ const buildDryRunResult = ({
   providerMessageId: null,
   errorMessage,
   recipientPhoneMasked,
-  sentAt: null
+  sentAt: null,
+  messageType: preparedContent.messageType,
+  byteLength: preparedContent.byteLength
 })
 
 const getNcloudConfig = () => {
@@ -56,11 +61,20 @@ export const sendSms = async ({
   smsEnabled,
   messagePreview
 }: SmsSendInput): Promise<SmsSendResult> => {
+  const preparedContent = prepareSmsContent(messagePreview)
   const normalizedPhone = normalizePhoneNumber(phone)
   const recipientPhoneMasked = maskPhoneNumber(normalizedPhone)
 
+  console.info("[sms send prepared]", {
+    recipientType,
+    messageType: preparedContent.messageType,
+    byteLength: preparedContent.byteLength,
+    hadUnsupportedCharacters: preparedContent.hadUnsupportedCharacters
+  })
+
   if (!normalizedPhone) {
     return buildDryRunResult({
+      preparedContent,
       recipientPhoneMasked,
       errorMessage: `${recipientType}_phone_missing_or_invalid`,
     })
@@ -68,6 +82,7 @@ export const sendSms = async ({
 
   if (recipientType === "teacher" && smsEnabled === false) {
     return buildDryRunResult({
+      preparedContent,
       recipientPhoneMasked,
       errorMessage: "teacher_sms_disabled",
     })
@@ -75,6 +90,7 @@ export const sendSms = async ({
 
   if (!isSmsSendEnabled()) {
     return buildDryRunResult({
+      preparedContent,
       recipientPhoneMasked,
       errorMessage: null
     })
@@ -82,6 +98,7 @@ export const sendSms = async ({
 
   if (getSmsProvider() !== "ncloud") {
     return buildDryRunResult({
+      preparedContent,
       recipientPhoneMasked,
       errorMessage: "sms_provider_not_supported"
     })
@@ -95,7 +112,9 @@ export const sendSms = async ({
       providerMessageId: null,
       errorMessage: "ncloud_env_missing_or_invalid",
       recipientPhoneMasked,
-      sentAt: null
+      sentAt: null,
+      messageType: preparedContent.messageType,
+      byteLength: preparedContent.byteLength
     }
   }
 
@@ -103,7 +122,7 @@ export const sendSms = async ({
     return await sendNcloudSms({
       config: ncloudConfig,
       to: normalizedPhone,
-      content: messagePreview,
+      preparedContent,
       recipientPhoneMasked: recipientPhoneMasked ?? normalizedPhone
     })
   } catch {
@@ -113,7 +132,9 @@ export const sendSms = async ({
       providerMessageId: null,
       errorMessage: "ncloud_request_failed",
       recipientPhoneMasked,
-      sentAt: null
+      sentAt: null,
+      messageType: preparedContent.messageType,
+      byteLength: preparedContent.byteLength
     }
   }
 }

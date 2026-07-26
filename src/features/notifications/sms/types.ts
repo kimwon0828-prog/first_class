@@ -42,6 +42,9 @@ export type SmsLogStatus = (typeof SMS_LOG_STATUSES)[number]
 export const SMS_PROVIDERS = ["dry_run", "ncloud"] as const
 export type SmsProvider = (typeof SMS_PROVIDERS)[number]
 
+export const SMS_MESSAGE_TYPES = ["SMS", "LMS"] as const
+export type SmsMessageType = (typeof SMS_MESSAGE_TYPES)[number]
+
 export type SmsTemplateKey = SmsEventType
 
 export type SmsTemplateContext = {
@@ -73,6 +76,14 @@ export type SmsSendInput = {
   messagePreview: string
 }
 
+export type SmsPreparedContent = {
+  content: string
+  byteLength: number
+  messageType: SmsMessageType
+  subject: string | null
+  hadUnsupportedCharacters: boolean
+}
+
 export type SmsSendResult = {
   status: Extract<SmsLogStatus, "dry_run" | "sent" | "failed" | "skipped">
   provider: SmsProvider
@@ -80,4 +91,6 @@ export type SmsSendResult = {
   errorMessage: string | null
   recipientPhoneMasked: string | null
   sentAt: string | null
+  messageType: SmsMessageType
+  byteLength: number
 }

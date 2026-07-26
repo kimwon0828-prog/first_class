@@ -2,7 +2,7 @@ import "server-only"
 
 import { createHmac } from "node:crypto"
 
-import type { SmsSendResult } from "@/features/notifications/sms/types"
+import type { SmsPreparedContent, SmsSendResult } from "@/features/notifications/sms/types"
 
 export type NcloudSmsProviderConfig = {
   accessKey: string
@@ -14,7 +14,7 @@ export type NcloudSmsProviderConfig = {
 type SendNcloudSmsInput = {
   config: NcloudSmsProviderConfig
   to: string
-  content: string
+  preparedContent: SmsPreparedContent
   recipientPhoneMasked: string
 }
 
@@ -66,7 +66,7 @@ const resolveErrorMessage = (status: number, body: unknown) => {
 export const sendNcloudSms = async ({
   config,
   to,
-  content,
+  preparedContent,
   recipientPhoneMasked
 }: SendNcloudSmsInput): Promise<SmsSendResult> => {
   const requestPath = `/sms/v2/services/${config.serviceId}/messages`
@@ -88,11 +88,12 @@ export const sendNcloudSms = async ({
       "x-ncp-apigw-signature-v2": signature
     },
     body: JSON.stringify({
-      type: "SMS",
+      type: preparedContent.messageType,
       contentType: "COMM",
       countryCode: "82",
       from: config.fromNumber,
-      content,
+      subject: preparedContent.subject ?? undefined,
+      content: preparedContent.content,
       messages: [{ to }]
     }),
     cache: "no-store"
@@ -112,7 +113,9 @@ export const sendNcloudSms = async ({
       providerMessageId: null,
       errorMessage: resolveErrorMessage(response.status, responseBody),
       recipientPhoneMasked,
-      sentAt: null
+      sentAt: null,
+      messageType: preparedContent.messageType,
+      byteLength: preparedContent.byteLength
     }
   }
 
@@ -124,7 +127,9 @@ export const sendNcloudSms = async ({
       providerMessageId: data.requestId ?? null,
       errorMessage: "ncloud_unexpected_response",
       recipientPhoneMasked,
-      sentAt: null
+      sentAt: null,
+      messageType: preparedContent.messageType,
+      byteLength: preparedContent.byteLength
     }
   }
 
@@ -134,6 +139,8 @@ export const sendNcloudSms = async ({
     providerMessageId: data.requestId ?? null,
     errorMessage: null,
     recipientPhoneMasked,
-    sentAt: data.requestTime ?? new Date().toISOString()
+    sentAt: data.requestTime ?? new Date().toISOString(),
+    messageType: preparedContent.messageType,
+    byteLength: preparedContent.byteLength
   }
 }

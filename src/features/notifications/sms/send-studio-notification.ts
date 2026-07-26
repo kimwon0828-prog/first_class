@@ -111,7 +111,9 @@ const buildSkippedResult = ({
   providerMessageId: null,
   errorMessage,
   recipientPhoneMasked: maskPhoneNumber(recipientPhone),
-  sentAt: null
+  sentAt: null,
+  messageType: "SMS",
+  byteLength: 0
 })
 
 const resolveTeacherRecipient = async (
