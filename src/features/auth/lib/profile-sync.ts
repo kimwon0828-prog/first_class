@@ -56,6 +56,66 @@ const normalizeBirthDate = (value: unknown): string | null => {
   return /^\d{4}-\d{2}-\d{2}$/.test(normalized) ? normalized : null
 }
 
+type ProfileRow = {
+  id: string
+  role: unknown
+  name: string
+  phone: string | null
+  organization_id: string | null
+}
+
+type ProfileQueryResult =
+  | {
+      kind: "success"
+      data: ProfileRow
+    }
+  | {
+      kind: "missing"
+    }
+  | {
+      kind: "error"
+      errorCode: string | null
+    }
+
+const shouldDebugAuth = process.env.NODE_ENV !== "production" && process.env.NEXT_PUBLIC_DEBUG_AUTH === "1"
+
+const queryOwnProfile = async (userId: string): Promise<ProfileQueryResult> => {
+  const supabase = await getSupabaseServerClient()
+  const runQuery = async () =>
+    supabase.from("profiles").select("id, role, name, phone, organization_id").eq("id", userId).maybeSingle()
+
+  const firstAttempt = await runQuery()
+
+  if (!firstAttempt.error) {
+    return firstAttempt.data ? { kind: "success", data: firstAttempt.data } : { kind: "missing" }
+  }
+
+  if (shouldDebugAuth) {
+    console.info("[profile-sync] profile_lookup_retry", {
+      userIdPrefix: userId.slice(0, 8),
+      errorCode: firstAttempt.error.code ?? null
+    })
+  }
+
+  const secondAttempt = await runQuery()
+
+  if (!secondAttempt.error) {
+    return secondAttempt.data ? { kind: "success", data: secondAttempt.data } : { kind: "missing" }
+  }
+
+  if (shouldDebugAuth) {
+    console.info("[profile-sync] profile_lookup_failed", {
+      userIdPrefix: userId.slice(0, 8),
+      errorCode: secondAttempt.error.code ?? null
+    })
+  }
+
+  return {
+    kind: "error",
+    errorCode: secondAttempt.error.code ?? firstAttempt.error.code ?? null
+  }
+}
+
 const getMyProfileCached = cache(async (): Promise<AuthProfile | null> => {
   const supabase = await getSupabaseServerClient()
   const {
@@ -66,18 +126,12 @@ const getMyProfileCached = cache(async (): Promise<AuthProfile | null> => {
     return null
   }
 
-  // Keep the base profile query aligned with the debug route so auth/role checks
-  // do not fail when newer optional columns are not yet available in the DB.
-  const { data, error } = await supabase
-    .from("profiles")
-    .select("id, role, name, phone, organization_id")
-    .eq("id", user.id)
-    .maybeSingle()
-
-  if (error || !data) {
+  const profileQuery = await queryOwnProfile(user.id)
+  if (profileQuery.kind !== "success") {
     return null
   }
 
+  const { data } = profileQuery
   const normalizedRole = normalizeProfileRole(data.role)
   if (!normalizedRole) {
     return null

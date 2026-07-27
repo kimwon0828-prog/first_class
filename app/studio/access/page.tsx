@@ -47,6 +47,14 @@ const getReasonCopy = (reason: string | null) => {
     }
   }
 
+  if (reason === "profile_lookup_failed") {
+    return {
+      title: "프로필 정보를 다시 확인해 주세요",
+      description:
+        "일시적으로 profiles 조회에 실패해 Studio 접근을 중단했습니다. 잠시 후 다시 시도해 주세요."
+    }
+  }
+
   return {
     title: "Studio 접근을 확인해 주세요",
     description: "계정 연결 상태를 확인한 뒤 다시 시도해 주세요."

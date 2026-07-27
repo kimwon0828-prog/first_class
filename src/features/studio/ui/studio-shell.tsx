@@ -70,6 +70,7 @@ export const StudioShell = ({
               <Link
                 key={item.href}
                 href={item.href}
+                prefetch={false}
                 className={`${styles.navItem} ${active ? styles.navItemActive : ""} ${
                   pendingHref === item.href ? styles.navItemPending : ""
                 }`}
