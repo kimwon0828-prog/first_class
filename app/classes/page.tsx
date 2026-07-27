@@ -58,10 +58,6 @@ type HomeStageChip = {
 
 const homeStageChips = [
   {
-    label: "6~7세 첫 학원",
-    keywords: ["6세", "7세", "예비초", "입문", "기초", "첫", "창의", "체험"]
-  },
-  {
     label: "초1~2 탐색",
     keywords: ["초1", "초2", "탐색", "입문", "기초", "창의", "체험"]
   },
@@ -72,6 +68,10 @@ const homeStageChips = [
   {
     label: "초5~6 확장",
     keywords: ["초5", "초6", "확장", "프로젝트", "심화", "영재", "실전"]
+  },
+  {
+    label: "중등",
+    keywords: ["중등", "중1", "중2", "중3", "내신", "특목", "심화", "실전"]
   }
 ] as const satisfies readonly HomeStageChip[]
 
