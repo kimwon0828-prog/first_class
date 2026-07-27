@@ -226,7 +226,7 @@ export default function PartnerLanding() {
             <Link className={`${styles.btn} ${styles.btnGhost}`} href="/classes">
               학부모 플랫폼 둘러보기
             </Link>
-            <a className={`${styles.btn} ${styles.btnPrimary}`} href="/studio/sign-up">
+            <a className={`${styles.btn} ${styles.btnPrimary}`} href="https://tally.so/r/b5XeNL">
               파트너 신청
             </a>
           </div>
@@ -237,7 +237,7 @@ export default function PartnerLanding() {
         <Link className={`${styles.btn} ${styles.btnGhost}`} href="/classes">
           학부모 플랫폼 둘러보기
         </Link>
-        <a className={`${styles.btn} ${styles.btnPrimary}`} href="/studio/sign-up">
+        <a className={`${styles.btn} ${styles.btnPrimary}`} href="https://tally.so/r/b5XeNL">
           파트너 신청
         </a>
       </div>
