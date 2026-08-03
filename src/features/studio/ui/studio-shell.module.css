@@ -121,51 +121,91 @@
 .accountCard {
   border: 1px solid #eeeeee;
   border-radius: 18px;
-  padding: 14px 14px;
   background: #ffffff;
   display: grid;
-  gap: 10px;
-  cursor: pointer;
-  user-select: none;
+  gap: 12px;
+  padding: 14px;
 }
 
-.accountCard:hover {
-  background: #fafafa;
-  border-color: #eaf8ec;
+.accountProfileLink {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  text-decoration: none;
+  color: inherit;
+  border: 1px solid transparent;
+  border-radius: 14px;
+  padding: 8px 10px;
 }
 
-.accountCardPending {
+.accountProfileLink:hover {
+  color: inherit;
+}
+
+.accountProfileLinkActive {
+  background: #f3fbf4;
+  border-color: #d8f0dc;
+}
+
+.accountProfileLinkPending {
   opacity: 0.75;
 }
 
-.accountCard:focus-visible {
+.accountProfileLink:focus-visible,
+.accountLink:focus-visible {
   outline: none;
   box-shadow: 0 0 0 3px rgba(42, 173, 56, 0.16);
   border-color: #2aad38;
 }
 
-.accountLabel {
-  margin: 0;
-  font-size: 13px;
-  line-height: 18px;
-  color: #8a8a8a;
-  font-weight: 700;
+.accountAvatar {
+  width: 42px;
+  height: 42px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  background: #f2fbf3;
+  color: #1e8c2b;
+  font-weight: 900;
+  font-size: 16px;
+  line-height: 1;
 }
 
-.accountPendingText {
-  margin: -4px 0 0;
-  font-size: 11px;
-  line-height: 16px;
-  color: #2aad38;
+.accountName {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 15px;
+  line-height: 22px;
+  color: #111111;
+  font-weight: 800;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.accountChevron {
+  flex: 0 0 auto;
+  color: #8a8a8a;
+  font-size: 14px;
+  line-height: 1;
   font-weight: 800;
 }
 
 .accountActions {
   display: flex;
-  gap: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #f0f0f0;
 }
 
 .accountLink {
+  display: inline-flex;
+  align-items: center;
+  min-height: 36px;
+  padding: 0 2px;
+  border: 1px solid transparent;
+  border-radius: 10px;
   color: #4a4a4a;
   text-decoration: none;
   font-size: 13px;
@@ -235,14 +275,20 @@
   }
 
   .accountCard {
-    padding: 10px 12px;
+    padding: 12px;
     border-radius: 14px;
-    grid-auto-flow: column;
-    grid-template-columns: auto auto;
-    align-items: center;
-    gap: 12px;
     min-width: max-content;
   }
+
+  .accountProfileLink {
+    min-width: max-content;
+  }
+
+  .accountActions {
+    padding-top: 0;
+    border-top: 0;
+  }
+
 
   .content {
     padding: 20px;

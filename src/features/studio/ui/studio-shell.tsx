@@ -1,9 +1,9 @@
 "use client"
 
 import Link from "next/link"
-import { usePathname, useRouter } from "next/navigation"
+import { usePathname } from "next/navigation"
 import type { ReactNode } from "react"
-import { useEffect, useState, useTransition } from "react"
+import { useEffect, useState } from "react"
 
 import { StudioHomeLogo } from "@/features/studio/ui/studio-home-logo"
 import styles from "./studio-shell.module.css"
@@ -34,10 +34,10 @@ export const StudioShell = ({
   unregisteredLeadCount = 0
 }: StudioShellProps) => {
   const pathname = usePathname() ?? ""
-  const router = useRouter()
   const accountLabel = organizationName?.trim() || "학원"
+  const mypageHref = "/studio/mypage"
+  const isMypageActive = isActivePath(pathname, mypageHref)
   const [pendingHref, setPendingHref] = useState<string | null>(null)
-  const [isSettingsPending, startSettingsTransition] = useTransition()
   const navItems: NavItem[] = [
     { href: "/studio", label: "대시보드" },
     { href: "/studio/applications", label: "신청 관리" },
@@ -92,35 +92,32 @@ export const StudioShell = ({
         </nav>
 
         <div className={styles.sidebarBottom}>
-          <div
-            className={`${styles.accountCard} ${isSettingsPending ? styles.accountCardPending : ""}`}
-            role="button"
-            tabIndex={0}
-            onClick={() =>
-              startSettingsTransition(() => {
-                router.push("/studio/settings")
-              })
-            }
-            onKeyDown={(event) => {
-              if (event.key === "Enter" || event.key === " ") {
-                event.preventDefault()
-                startSettingsTransition(() => {
-                  router.push("/studio/settings")
-                })
-              }
-            }}
-            aria-label="학원 정보 보기"
-            aria-busy={isSettingsPending}
-          >
-            <p className={styles.accountLabel}>{accountLabel}</p>
-            {isSettingsPending ? <p className={styles.accountPendingText}>불러오는 중...</p> : null}
+          <div className={styles.accountCard}>
+            <Link
+              href={mypageHref}
+              prefetch={false}
+              className={`${styles.accountProfileLink} ${
+                isMypageActive ? styles.accountProfileLinkActive : ""
+              } ${pendingHref === mypageHref ? styles.accountProfileLinkPending : ""}`}
+              aria-current={isMypageActive ? "page" : undefined}
+              aria-busy={pendingHref === mypageHref}
+              onClick={() => {
+                if (!isMypageActive) {
+                  setPendingHref(mypageHref)
+                }
+              }}
+            >
+              <span className={styles.accountAvatar} aria-label="학원 프로필 이미지 자리" role="img">
+                {accountLabel.slice(0, 1)}
+              </span>
+              <span className={styles.accountName}>{accountLabel}</span>
+              <span className={styles.accountChevron} aria-hidden="true">
+                {">"}
+              </span>
+            </Link>
+
             <div className={styles.accountActions}>
-              <Link
-                href="/studio/sign-out"
-                prefetch={false}
-                className={styles.accountLink}
-                onClick={(event) => event.stopPropagation()}
-              >
+              <Link href="/studio/sign-out" prefetch={false} className={styles.accountLink}>
                 로그아웃
               </Link>
             </div>

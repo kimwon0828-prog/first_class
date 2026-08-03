@@ -1,0 +1,127 @@
+.page {
+  min-height: 100dvh;
+  background: #f7f7f7;
+  padding: 28px 24px 56px;
+}
+
+.container {
+  max-width: 760px;
+  margin: 0 auto;
+}
+
+.header {
+  display: grid;
+  justify-items: center;
+  margin-bottom: 18px;
+}
+
+.title {
+  margin: 0;
+  font-size: 22px;
+  line-height: 28px;
+  font-weight: 900;
+  letter-spacing: -0.03em;
+  color: #111111;
+}
+
+.section {
+  display: grid;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.accountCard,
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 16px;
+  text-decoration: none;
+  color: inherit;
+}
+
+.accountCard {
+  border: 1px solid #e7eae7;
+  border-radius: 18px;
+  background: #ffffff;
+}
+
+.accountCard:hover,
+.row:hover {
+  background: #fafafa;
+}
+
+.accountCard:focus-visible,
+.row:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(42, 173, 56, 0.14);
+  border-color: #2aad38;
+}
+
+.accountName {
+  font-size: 15px;
+  line-height: 20px;
+  font-weight: 800;
+  color: #111111;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.accountAction {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 800;
+  color: #4a4a4a;
+  flex: 0 0 auto;
+}
+
+.groupTitle {
+  margin: 0;
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 800;
+  color: #6b716b;
+}
+
+.listCard {
+  border: 1px solid #e7eae7;
+  border-radius: 18px;
+  background: #ffffff;
+  overflow: hidden;
+}
+
+.row {
+  border-top: 1px solid #eef0ee;
+}
+
+.row:first-child {
+  border-top: 0;
+}
+
+.rowTitle {
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 700;
+  color: #111111;
+  min-width: 0;
+}
+
+.rowChevron {
+  color: #8a8a8a;
+  font-size: 14px;
+  line-height: 1;
+  font-weight: 800;
+  flex: 0 0 auto;
+}
+
+@media (max-width: 720px) {
+  .page {
+    padding: 24px 16px 48px;
+  }
+}
