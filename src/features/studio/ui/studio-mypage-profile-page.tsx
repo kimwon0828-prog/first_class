@@ -5,11 +5,16 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 
 import {
+  saveAcademyLogoPath,
+  type SaveAcademyLogoPathResult
+} from "@/features/studio/actions/save-academy-logo-path"
+import {
   saveAcademyPublicProfileAction,
   type SaveAcademyPublicProfileActionState
 } from "@/features/studio/actions/save-academy-public-profile"
 import type { StudioAcademyPublicProfile } from "@/features/studio/queries/get-studio-academy-public-profile"
 import type { StudioSettingsOrganization } from "@/features/studio/queries/get-studio-settings-organization"
+import { getSupabaseBrowserClient } from "@/integrations/supabase/client"
 import styles from "./studio-mypage-profile-page.module.css"
 
 const toNullableText = (value: string | null | undefined) => {
@@ -106,6 +111,15 @@ const initialActionState: SaveAcademyPublicProfileActionState = {
   completedAt: null
 }
 
+const LOGO_BUCKET = "academy-profile-assets"
+const LOGO_FILE_SIZE_LIMIT = 5 * 1024 * 1024
+
+const logoMimeTypeToExtension: Record<string, "jpg" | "png" | "webp"> = {
+  "image/jpeg": "jpg",
+  "image/png": "png",
+  "image/webp": "webp"
+}
+
 const toInputValue = (value: string | null | undefined) => value ?? ""
 
 const createInitialFormValues = (publicProfile: StudioAcademyPublicProfile | null): PublicProfileFormValues => ({
@@ -117,6 +131,9 @@ const createInitialFormValues = (publicProfile: StudioAcademyPublicProfile | nul
 })
 
 type StudioMypageProfilePageProps = {
+  organizationId: string
+  academyName: string
+  initialLogoImagePath: string | null
   organization: StudioSettingsOrganization | null
   organizationError: string | null
   publicProfile: StudioAcademyPublicProfile | null
@@ -125,6 +142,9 @@ type StudioMypageProfilePageProps = {
 }
 
 export function StudioMypageProfilePage({
+  organizationId,
+  academyName,
+  initialLogoImagePath,
   organization,
   organizationError,
   publicProfile,
@@ -133,17 +153,42 @@ export function StudioMypageProfilePage({
 }: StudioMypageProfilePageProps) {
   const router = useRouter()
   const [state, formAction, isPending] = useActionState(saveAcademyPublicProfileAction, initialActionState)
-  const academyName = organization?.name?.trim() || "학원"
   const disableFormByQueryError = Boolean(publicProfileError)
   const readOnlyFields = !disableFormByQueryError && (!canEditPublicProfile || isPending)
   const disableSaveButton = !canEditPublicProfile || isPending || disableFormByQueryError
   const refreshHandledRef = useRef<string | null>(null)
+  const fileInputRef = useRef<HTMLInputElement | null>(null)
   const initialFormValues = useMemo(() => createInitialFormValues(publicProfile), [publicProfile])
+  const initialFormValuesKey = useMemo(() => JSON.stringify(initialFormValues), [initialFormValues])
+  const formValuesKeyRef = useRef<string | null>(null)
   const [formValues, setFormValues] = useState<PublicProfileFormValues>(initialFormValues)
+  const [currentLogoImagePath, setCurrentLogoImagePath] = useState(initialLogoImagePath)
+  const [isLogoUploading, setIsLogoUploading] = useState(false)
+  const [logoFeedback, setLogoFeedback] = useState<{
+    type: "error" | "success" | "warning" | null
+    message: string
+  }>({
+    type: null,
+    message: ""
+  })
+  const [isLogoImageBroken, setIsLogoImageBroken] = useState(false)
 
   useEffect(() => {
+    if (formValuesKeyRef.current === initialFormValuesKey) {
+      return
+    }
+
     setFormValues(initialFormValues)
-  }, [initialFormValues])
+    formValuesKeyRef.current = initialFormValuesKey
+  }, [initialFormValues, initialFormValuesKey])
+
+  useEffect(() => {
+    setCurrentLogoImagePath(initialLogoImagePath)
+  }, [initialLogoImagePath])
+
+  useEffect(() => {
+    setIsLogoImageBroken(false)
+  }, [currentLogoImagePath])
 
   useEffect(() => {
     if (state.status !== "success" || !state.completedAt) {
@@ -159,6 +204,19 @@ export function StudioMypageProfilePage({
   }, [router, state.completedAt, state.status])
 
   const permissionMessage = canEditPublicProfile ? null : "학원 대표 계정만 프로필을 수정할 수 있습니다."
+  const logoButtonLabel = isLogoUploading ? "업로드 중..." : currentLogoImagePath ? "로고 변경" : "로고 등록"
+  const logoInitial = academyName.trim().charAt(0) || "학"
+  const logoPublicUrl = useMemo(() => {
+    if (!currentLogoImagePath) {
+      return null
+    }
+
+    const {
+      data: { publicUrl }
+    } = getSupabaseBrowserClient().storage.from(LOGO_BUCKET).getPublicUrl(currentLogoImagePath)
+
+    return publicUrl || null
+  }, [currentLogoImagePath])
 
   const feedbackClassName =
     state.status === "error"
@@ -166,6 +224,128 @@ export function StudioMypageProfilePage({
       : state.status === "success"
         ? `${styles.feedbackMessage} ${styles.feedbackSuccess}`
         : ""
+
+  const logoFeedbackClassName =
+    logoFeedback.type === "error"
+      ? `${styles.feedbackMessage} ${styles.feedbackError}`
+      : logoFeedback.type === "warning"
+        ? `${styles.feedbackMessage} ${styles.feedbackWarning}`
+        : logoFeedback.type === "success"
+          ? `${styles.feedbackMessage} ${styles.feedbackSuccess}`
+          : ""
+
+  const resetLogoFileInput = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ""
+    }
+  }
+
+  const handleLogoButtonClick = () => {
+    if (!canEditPublicProfile || isLogoUploading) {
+      return
+    }
+
+    fileInputRef.current?.click()
+  }
+
+  const handleLogoFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+
+    if (!file || isLogoUploading) {
+      resetLogoFileInput()
+      return
+    }
+
+    const extension = logoMimeTypeToExtension[file.type]
+
+    if (!extension) {
+      setLogoFeedback({
+        type: "error",
+        message: "JPEG, PNG, WEBP 파일만 업로드할 수 있습니다."
+      })
+      resetLogoFileInput()
+      return
+    }
+
+    if (file.size > LOGO_FILE_SIZE_LIMIT) {
+      setLogoFeedback({
+        type: "error",
+        message: "로고 이미지는 5MB 이하 파일만 업로드할 수 있습니다."
+      })
+      resetLogoFileInput()
+      return
+    }
+
+    const nextLogoPath = `${organizationId}/logo/${crypto.randomUUID()}.${extension}`
+    const previousLogoPath = currentLogoImagePath
+    const supabase = getSupabaseBrowserClient()
+
+    setIsLogoUploading(true)
+    setLogoFeedback({ type: null, message: "" })
+
+    try {
+      const { error: uploadError } = await supabase.storage.from(LOGO_BUCKET).upload(nextLogoPath, file, {
+        contentType: file.type,
+        upsert: false
+      })
+
+      if (uploadError) {
+        setLogoFeedback({
+          type: "error",
+          message: "로고 업로드에 실패했습니다. 잠시 후 다시 시도해 주세요."
+        })
+        return
+      }
+
+      let saveResult: SaveAcademyLogoPathResult
+
+      try {
+        saveResult = await saveAcademyLogoPath({ logoImagePath: nextLogoPath })
+      } catch {
+        await supabase.storage.from(LOGO_BUCKET).remove([nextLogoPath])
+
+        setLogoFeedback({
+          type: "error",
+          message: "로고를 저장하지 못했습니다. 잠시 후 다시 시도해 주세요."
+        })
+        return
+      }
+
+      if (saveResult.status !== "success") {
+        await supabase.storage.from(LOGO_BUCKET).remove([nextLogoPath])
+
+        setLogoFeedback({
+          type: "error",
+          message: saveResult.message
+        })
+        return
+      }
+
+      setCurrentLogoImagePath(nextLogoPath)
+
+      if (previousLogoPath && previousLogoPath !== nextLogoPath) {
+        const { error: removePreviousLogoError } = await supabase.storage.from(LOGO_BUCKET).remove([previousLogoPath])
+
+        if (removePreviousLogoError) {
+          setLogoFeedback({
+            type: "warning",
+            message: "로고는 저장되었지만 이전 이미지 정리에 실패했습니다."
+          })
+          router.refresh()
+          return
+        }
+      }
+
+      setLogoFeedback({
+        type: "success",
+        message: saveResult.message
+      })
+      router.refresh()
+    } finally {
+      setIsLogoUploading(false)
+      resetLogoFileInput()
+    }
+  }
 
   return (
     <div className={styles.page}>
@@ -245,23 +425,55 @@ export function StudioMypageProfilePage({
 
           <div className={styles.imageGrid}>
             <article className={styles.imageCard}>
-              <div
-                className={`${styles.imagePlaceholder} ${styles.logoPlaceholder}`}
-                role="img"
-                aria-label="학원 로고 업로드 준비 영역"
-              >
-                <span className={styles.placeholderText}>로고</span>
-              </div>
+              {logoPublicUrl && !isLogoImageBroken ? (
+                <div className={`${styles.imagePlaceholder} ${styles.logoPlaceholder}`}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={logoPublicUrl}
+                    alt={`${academyName} 로고`}
+                    className={styles.logoImage}
+                    onError={() => setIsLogoImageBroken(true)}
+                  />
+                </div>
+              ) : (
+                <div
+                  className={`${styles.imagePlaceholder} ${styles.logoPlaceholder}`}
+                  role="img"
+                  aria-label={`${academyName} 로고 placeholder`}
+                >
+                  <span className={styles.logoInitial}>{logoInitial}</span>
+                </div>
+              )}
               <div className={styles.imageMeta}>
                 <div>
                   <p className={styles.rowTitle}>학원 로고</p>
-                  <p className={styles.metaText}>권장 크기 500×500 · JPG, PNG, WEBP</p>
-                  <p className={styles.metaText}>이미지 등록 기능은 준비 중입니다.</p>
+                  <p className={styles.metaText}>권장 크기 500×500 · JPG, PNG, WEBP · 최대 5MB</p>
+                  <p className={styles.metaText}>저장된 로고가 없으면 학원명 첫 글자가 표시됩니다.</p>
                 </div>
-                <button type="button" className={styles.disabledButton} disabled>
-                  로고 등록
-                </button>
+                <div className={styles.imageActionColumn}>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    className={styles.visuallyHidden}
+                    tabIndex={-1}
+                    onChange={handleLogoFileChange}
+                  />
+                  <button
+                    type="button"
+                    className={canEditPublicProfile ? styles.secondaryButton : styles.disabledButton}
+                    disabled={!canEditPublicProfile || isLogoUploading}
+                    onClick={handleLogoButtonClick}
+                  >
+                    {logoButtonLabel}
+                  </button>
+                </div>
               </div>
+              {logoFeedback.message ? (
+                <p className={logoFeedbackClassName} role="status">
+                  {logoFeedback.message}
+                </p>
+              ) : null}
             </article>
 
             <article className={styles.imageCard}>
@@ -349,7 +561,7 @@ export function StudioMypageProfilePage({
                     {state.message}
                   </p>
                 ) : null}
-                <p className={styles.saveHint}>이미지 등록 기능은 준비 중입니다. 텍스트 정보만 저장할 수 있습니다.</p>
+                <p className={styles.saveHint}>대표 이미지 등록 기능은 준비 중입니다. 텍스트 정보는 기존처럼 저장할 수 있습니다.</p>
               </div>
               <button type="submit" className={styles.primaryButton} disabled={disableSaveButton}>
                 {isPending ? "저장 중..." : "저장"}
