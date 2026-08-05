@@ -48,6 +48,7 @@ export default async function StudioMypageProfileRoute() {
       organizationId={access.organizationId}
       academyName={organization?.name?.trim() || "학원"}
       initialLogoImagePath={publicProfile?.logoImagePath ?? null}
+      initialCoverImagePath={publicProfile?.coverImagePath ?? null}
       organization={organization}
       organizationError={organizationError}
       publicProfile={publicProfile}

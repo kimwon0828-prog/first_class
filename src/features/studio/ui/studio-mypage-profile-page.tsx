@@ -5,6 +5,10 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 
 import {
+  saveAcademyCoverPath,
+  type SaveAcademyCoverPathResult
+} from "@/features/studio/actions/save-academy-cover-path"
+import {
   saveAcademyLogoPath,
   type SaveAcademyLogoPathResult
 } from "@/features/studio/actions/save-academy-logo-path"
@@ -111,13 +115,30 @@ const initialActionState: SaveAcademyPublicProfileActionState = {
   completedAt: null
 }
 
-const LOGO_BUCKET = "academy-profile-assets"
+const PROFILE_ASSET_BUCKET = "academy-profile-assets"
+const ASSET_FILENAME_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.(jpg|jpeg|png|webp)$/
 const LOGO_FILE_SIZE_LIMIT = 5 * 1024 * 1024
+const COVER_FILE_SIZE_LIMIT = 10 * 1024 * 1024
 
-const logoMimeTypeToExtension: Record<string, "jpg" | "png" | "webp"> = {
+const imageMimeTypeToExtension: Record<string, "jpg" | "png" | "webp"> = {
   "image/jpeg": "jpg",
   "image/png": "png",
   "image/webp": "webp"
+}
+
+const isManagedAssetPath = (path: string, organizationId: string, folder: "logo" | "cover") => {
+  const parts = path.split("/")
+
+  if (parts.length !== 3) {
+    return false
+  }
+
+  const [pathOrganizationId, pathFolder, filename] = parts
+
+  return (
+    pathOrganizationId === organizationId && pathFolder === folder && ASSET_FILENAME_PATTERN.test(filename)
+  )
 }
 
 const toInputValue = (value: string | null | undefined) => value ?? ""
@@ -134,6 +155,7 @@ type StudioMypageProfilePageProps = {
   organizationId: string
   academyName: string
   initialLogoImagePath: string | null
+  initialCoverImagePath: string | null
   organization: StudioSettingsOrganization | null
   organizationError: string | null
   publicProfile: StudioAcademyPublicProfile | null
@@ -145,6 +167,7 @@ export function StudioMypageProfilePage({
   organizationId,
   academyName,
   initialLogoImagePath,
+  initialCoverImagePath,
   organization,
   organizationError,
   publicProfile,
@@ -157,13 +180,16 @@ export function StudioMypageProfilePage({
   const readOnlyFields = !disableFormByQueryError && (!canEditPublicProfile || isPending)
   const disableSaveButton = !canEditPublicProfile || isPending || disableFormByQueryError
   const refreshHandledRef = useRef<string | null>(null)
-  const fileInputRef = useRef<HTMLInputElement | null>(null)
+  const logoFileInputRef = useRef<HTMLInputElement | null>(null)
+  const coverFileInputRef = useRef<HTMLInputElement | null>(null)
   const initialFormValues = useMemo(() => createInitialFormValues(publicProfile), [publicProfile])
   const initialFormValuesKey = useMemo(() => JSON.stringify(initialFormValues), [initialFormValues])
   const formValuesKeyRef = useRef<string | null>(null)
   const [formValues, setFormValues] = useState<PublicProfileFormValues>(initialFormValues)
   const [currentLogoImagePath, setCurrentLogoImagePath] = useState(initialLogoImagePath)
+  const [currentCoverImagePath, setCurrentCoverImagePath] = useState(initialCoverImagePath)
   const [isLogoUploading, setIsLogoUploading] = useState(false)
+  const [isCoverUploading, setIsCoverUploading] = useState(false)
   const [logoFeedback, setLogoFeedback] = useState<{
     type: "error" | "success" | "warning" | null
     message: string
@@ -171,7 +197,16 @@ export function StudioMypageProfilePage({
     type: null,
     message: ""
   })
+  const [coverFeedback, setCoverFeedback] = useState<{
+    type: "error" | "success" | "warning" | null
+    message: string
+  }>({
+    type: null,
+    message: ""
+  })
   const [isLogoImageBroken, setIsLogoImageBroken] = useState(false)
+  const [isCoverImageBroken, setIsCoverImageBroken] = useState(false)
+  const [coverPreviewUrl, setCoverPreviewUrl] = useState<string | null>(null)
 
   useEffect(() => {
     if (formValuesKeyRef.current === initialFormValuesKey) {
@@ -187,8 +222,25 @@ export function StudioMypageProfilePage({
   }, [initialLogoImagePath])
 
   useEffect(() => {
+    setCurrentCoverImagePath(initialCoverImagePath)
+    setCoverPreviewUrl(null)
+  }, [initialCoverImagePath])
+
+  useEffect(() => {
     setIsLogoImageBroken(false)
   }, [currentLogoImagePath])
+
+  useEffect(() => {
+    setIsCoverImageBroken(false)
+  }, [currentCoverImagePath, coverPreviewUrl])
+
+  useEffect(() => {
+    return () => {
+      if (coverPreviewUrl) {
+        URL.revokeObjectURL(coverPreviewUrl)
+      }
+    }
+  }, [coverPreviewUrl])
 
   useEffect(() => {
     if (state.status !== "success" || !state.completedAt) {
@@ -205,6 +257,7 @@ export function StudioMypageProfilePage({
 
   const permissionMessage = canEditPublicProfile ? null : "학원 대표 계정만 프로필을 수정할 수 있습니다."
   const logoButtonLabel = isLogoUploading ? "업로드 중..." : currentLogoImagePath ? "로고 변경" : "로고 등록"
+  const coverButtonLabel = isCoverUploading ? "업로드 중..." : currentCoverImagePath ? "대표 이미지 변경" : "대표 이미지 등록"
   const logoInitial = academyName.trim().charAt(0) || "학"
   const logoPublicUrl = useMemo(() => {
     if (!currentLogoImagePath) {
@@ -213,10 +266,22 @@ export function StudioMypageProfilePage({
 
     const {
       data: { publicUrl }
-    } = getSupabaseBrowserClient().storage.from(LOGO_BUCKET).getPublicUrl(currentLogoImagePath)
+    } = getSupabaseBrowserClient().storage.from(PROFILE_ASSET_BUCKET).getPublicUrl(currentLogoImagePath)
 
     return publicUrl || null
   }, [currentLogoImagePath])
+  const coverPublicUrl = useMemo(() => {
+    if (!currentCoverImagePath) {
+      return null
+    }
+
+    const {
+      data: { publicUrl }
+    } = getSupabaseBrowserClient().storage.from(PROFILE_ASSET_BUCKET).getPublicUrl(currentCoverImagePath)
+
+    return publicUrl || null
+  }, [currentCoverImagePath])
+  const visibleCoverImageUrl = coverPreviewUrl ?? coverPublicUrl
 
   const feedbackClassName =
     state.status === "error"
@@ -234,9 +299,24 @@ export function StudioMypageProfilePage({
           ? `${styles.feedbackMessage} ${styles.feedbackSuccess}`
           : ""
 
+  const coverFeedbackClassName =
+    coverFeedback.type === "error"
+      ? `${styles.feedbackMessage} ${styles.feedbackError}`
+      : coverFeedback.type === "warning"
+        ? `${styles.feedbackMessage} ${styles.feedbackWarning}`
+        : coverFeedback.type === "success"
+          ? `${styles.feedbackMessage} ${styles.feedbackSuccess}`
+          : ""
+
   const resetLogoFileInput = () => {
-    if (fileInputRef.current) {
-      fileInputRef.current.value = ""
+    if (logoFileInputRef.current) {
+      logoFileInputRef.current.value = ""
+    }
+  }
+
+  const resetCoverFileInput = () => {
+    if (coverFileInputRef.current) {
+      coverFileInputRef.current.value = ""
     }
   }
 
@@ -245,7 +325,15 @@ export function StudioMypageProfilePage({
       return
     }
 
-    fileInputRef.current?.click()
+    logoFileInputRef.current?.click()
+  }
+
+  const handleCoverButtonClick = () => {
+    if (!canEditPublicProfile || isCoverUploading) {
+      return
+    }
+
+    coverFileInputRef.current?.click()
   }
 
   const handleLogoFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -256,7 +344,7 @@ export function StudioMypageProfilePage({
       return
     }
 
-    const extension = logoMimeTypeToExtension[file.type]
+    const extension = imageMimeTypeToExtension[file.type]
 
     if (!extension) {
       setLogoFeedback({
@@ -284,10 +372,12 @@ export function StudioMypageProfilePage({
     setLogoFeedback({ type: null, message: "" })
 
     try {
-      const { error: uploadError } = await supabase.storage.from(LOGO_BUCKET).upload(nextLogoPath, file, {
-        contentType: file.type,
-        upsert: false
-      })
+      const { error: uploadError } = await supabase.storage
+        .from(PROFILE_ASSET_BUCKET)
+        .upload(nextLogoPath, file, {
+          contentType: file.type,
+          upsert: false
+        })
 
       if (uploadError) {
         setLogoFeedback({
@@ -302,7 +392,7 @@ export function StudioMypageProfilePage({
       try {
         saveResult = await saveAcademyLogoPath({ logoImagePath: nextLogoPath })
       } catch {
-        await supabase.storage.from(LOGO_BUCKET).remove([nextLogoPath])
+        await supabase.storage.from(PROFILE_ASSET_BUCKET).remove([nextLogoPath])
 
         setLogoFeedback({
           type: "error",
@@ -312,7 +402,7 @@ export function StudioMypageProfilePage({
       }
 
       if (saveResult.status !== "success") {
-        await supabase.storage.from(LOGO_BUCKET).remove([nextLogoPath])
+        await supabase.storage.from(PROFILE_ASSET_BUCKET).remove([nextLogoPath])
 
         setLogoFeedback({
           type: "error",
@@ -324,7 +414,9 @@ export function StudioMypageProfilePage({
       setCurrentLogoImagePath(nextLogoPath)
 
       if (previousLogoPath && previousLogoPath !== nextLogoPath) {
-        const { error: removePreviousLogoError } = await supabase.storage.from(LOGO_BUCKET).remove([previousLogoPath])
+        const { error: removePreviousLogoError } = await supabase.storage
+          .from(PROFILE_ASSET_BUCKET)
+          .remove([previousLogoPath])
 
         if (removePreviousLogoError) {
           setLogoFeedback({
@@ -344,6 +436,122 @@ export function StudioMypageProfilePage({
     } finally {
       setIsLogoUploading(false)
       resetLogoFileInput()
+    }
+  }
+
+  const handleCoverFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+
+    if (!file || isCoverUploading) {
+      resetCoverFileInput()
+      return
+    }
+
+    const extension = imageMimeTypeToExtension[file.type]
+
+    if (!extension) {
+      setCoverFeedback({
+        type: "error",
+        message: "JPEG, PNG, WEBP 파일만 업로드할 수 있습니다."
+      })
+      resetCoverFileInput()
+      return
+    }
+
+    if (file.size > COVER_FILE_SIZE_LIMIT) {
+      setCoverFeedback({
+        type: "error",
+        message: "대표 이미지는 10MB 이하 파일만 업로드할 수 있습니다."
+      })
+      resetCoverFileInput()
+      return
+    }
+
+    const nextCoverPath = `${organizationId}/cover/${crypto.randomUUID()}.${extension}`
+    const previousCoverPath = currentCoverImagePath
+    const nextCoverPreviewUrl = URL.createObjectURL(file)
+    const supabase = getSupabaseBrowserClient()
+
+    setIsCoverUploading(true)
+    setCoverFeedback({ type: null, message: "" })
+    setCoverPreviewUrl(nextCoverPreviewUrl)
+
+    try {
+      const { error: uploadError } = await supabase.storage
+        .from(PROFILE_ASSET_BUCKET)
+        .upload(nextCoverPath, file, {
+          contentType: file.type,
+          upsert: false
+        })
+
+      if (uploadError) {
+        setCoverPreviewUrl(null)
+        setCoverFeedback({
+          type: "error",
+          message: "대표 이미지 업로드에 실패했습니다. 잠시 후 다시 시도해 주세요."
+        })
+        return
+      }
+
+      let saveResult: SaveAcademyCoverPathResult
+
+      try {
+        saveResult = await saveAcademyCoverPath({ coverImagePath: nextCoverPath })
+      } catch {
+        if (isManagedAssetPath(nextCoverPath, organizationId, "cover")) {
+          await supabase.storage.from(PROFILE_ASSET_BUCKET).remove([nextCoverPath])
+        }
+
+        setCoverPreviewUrl(null)
+        setCoverFeedback({
+          type: "error",
+          message: "대표 이미지를 저장하지 못했습니다. 잠시 후 다시 시도해 주세요."
+        })
+        return
+      }
+
+      if (saveResult.status !== "success") {
+        if (isManagedAssetPath(nextCoverPath, organizationId, "cover")) {
+          await supabase.storage.from(PROFILE_ASSET_BUCKET).remove([nextCoverPath])
+        }
+
+        setCoverPreviewUrl(null)
+        setCoverFeedback({
+          type: "error",
+          message: saveResult.message
+        })
+        return
+      }
+
+      setCurrentCoverImagePath(nextCoverPath)
+
+      if (
+        previousCoverPath &&
+        previousCoverPath !== nextCoverPath &&
+        isManagedAssetPath(previousCoverPath, organizationId, "cover")
+      ) {
+        const { error: removePreviousCoverError } = await supabase.storage
+          .from(PROFILE_ASSET_BUCKET)
+          .remove([previousCoverPath])
+
+        if (removePreviousCoverError) {
+          setCoverFeedback({
+            type: "warning",
+            message: "대표 이미지는 저장되었지만 이전 이미지 정리에 실패했습니다."
+          })
+          router.refresh()
+          return
+        }
+      }
+
+      setCoverFeedback({
+        type: "success",
+        message: saveResult.message
+      })
+      router.refresh()
+    } finally {
+      setIsCoverUploading(false)
+      resetCoverFileInput()
     }
   }
 
@@ -452,7 +660,7 @@ export function StudioMypageProfilePage({
                 </div>
                 <div className={styles.imageActionColumn}>
                   <input
-                    ref={fileInputRef}
+                    ref={logoFileInputRef}
                     type="file"
                     accept="image/jpeg,image/png,image/webp"
                     className={styles.visuallyHidden}
@@ -477,23 +685,55 @@ export function StudioMypageProfilePage({
             </article>
 
             <article className={styles.imageCard}>
-              <div
-                className={`${styles.imagePlaceholder} ${styles.coverPlaceholder}`}
-                role="img"
-                aria-label="대표 이미지 업로드 준비 영역"
-              >
-                <span className={styles.placeholderText}>대표 이미지</span>
-              </div>
+              {visibleCoverImageUrl && !isCoverImageBroken ? (
+                <div className={`${styles.imagePlaceholder} ${styles.coverPlaceholder}`}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={visibleCoverImageUrl}
+                    alt={`${academyName} 대표 이미지`}
+                    className={styles.coverImage}
+                    onError={() => setIsCoverImageBroken(true)}
+                  />
+                </div>
+              ) : (
+                <div
+                  className={`${styles.imagePlaceholder} ${styles.coverPlaceholder}`}
+                  role="img"
+                  aria-label={`${academyName} 대표 이미지 placeholder`}
+                >
+                  <span className={styles.placeholderText}>대표 이미지</span>
+                </div>
+              )}
               <div className={styles.imageMeta}>
                 <div>
                   <p className={styles.rowTitle}>대표 이미지</p>
-                  <p className={styles.metaText}>권장 크기 1600×900 · JPG, PNG, WEBP</p>
-                  <p className={styles.metaText}>이미지 등록 기능은 준비 중입니다.</p>
+                  <p className={styles.metaText}>권장 크기 1600×900 · 16:9 · JPG, PNG, WEBP · 최대 10MB</p>
+                  <p className={styles.metaText}>학원 소개 상단에 노출될 가로형 이미지를 등록해 주세요.</p>
                 </div>
-                <button type="button" className={styles.disabledButton} disabled>
-                  대표 이미지 등록
-                </button>
+                <div className={styles.imageActionColumn}>
+                  <input
+                    ref={coverFileInputRef}
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    className={styles.visuallyHidden}
+                    tabIndex={-1}
+                    onChange={handleCoverFileChange}
+                  />
+                  <button
+                    type="button"
+                    className={canEditPublicProfile ? styles.secondaryButton : styles.disabledButton}
+                    disabled={!canEditPublicProfile || isCoverUploading}
+                    onClick={handleCoverButtonClick}
+                  >
+                    {coverButtonLabel}
+                  </button>
+                </div>
               </div>
+              {coverFeedback.message ? (
+                <p className={coverFeedbackClassName} role="status">
+                  {coverFeedback.message}
+                </p>
+              ) : null}
             </article>
           </div>
 
@@ -561,7 +801,7 @@ export function StudioMypageProfilePage({
                     {state.message}
                   </p>
                 ) : null}
-                <p className={styles.saveHint}>대표 이미지 등록 기능은 준비 중입니다. 텍스트 정보는 기존처럼 저장할 수 있습니다.</p>
+                <p className={styles.saveHint}>텍스트 정보 저장과 이미지 업로드는 서로 독립적으로 동작합니다.</p>
               </div>
               <button type="submit" className={styles.primaryButton} disabled={disableSaveButton}>
                 {isPending ? "저장 중..." : "저장"}
