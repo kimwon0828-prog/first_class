@@ -42,12 +42,15 @@ export type TeacherPublicProfile = {
 }
 
 export type StudioClassScheduleType = "weekly" | "one_time"
+export type StudioClassScheduleBookingStatus = "open" | "closed" | "hidden"
 
 export type StudioClassScheduleItem = {
   id: string
   scheduleType: StudioClassScheduleType
+  bookingStatus?: StudioClassScheduleBookingStatus
   dayOfWeek: number | null
   specificDate: string | null
+  seriesId?: string | null
   startTime: string
   endTime: string
   capacity: number | null
@@ -116,6 +119,8 @@ export type AvailableScheduleSlot = {
   optionId: string
   classScheduleId: string | null
   scheduleBlockId: string | null
+  scheduleType?: StudioClassScheduleType
+  bookingStatus?: StudioClassScheduleBookingStatus
   teacherId: string | null
   classId: string | null
   label: string
@@ -144,6 +149,136 @@ export type StudioDashboardSummary = {
 export type StudioTeacherOption = {
   teacherId: string
   teacherName: string
+}
+
+export type StudioScheduleCalendarStatus = "open" | "closed" | "hidden"
+
+export type StudioScheduleCalendarItem = {
+  classScheduleId: string
+  classId: string
+  classTitle: string
+  teacherId: string | null
+  teacherName: string | null
+  scheduleType: StudioClassScheduleType
+  bookingStatus: StudioClassScheduleBookingStatus
+  dayOfWeek: number | null
+  specificDate: string
+  startTime: string
+  endTime: string
+  capacity: number
+  activeReservationCount: number
+  remainingCapacity: number
+  status: StudioScheduleCalendarStatus
+  seriesId: string | null
+}
+
+export type StudioScheduleCalendarDay = {
+  date: string
+  items: StudioScheduleCalendarItem[]
+  totalCapacity: number
+  totalActiveReservationCount: number
+  totalRemainingCapacity: number
+  closedCount: number
+  hiddenCount: number
+}
+
+export type StudioScheduleCalendarFilterOptions = {
+  classId?: string | null
+  teacherId?: string | null
+}
+
+export type StudioScheduleCalendarQuery = StudioScheduleCalendarFilterOptions & {
+  organizationId: string
+  month: string
+}
+
+export type CreateStudioClassScheduleInput = {
+  organizationId: string
+  classId: string
+  teacherId: string | null
+  specificDate: string
+  startTime: string
+  endTime: string
+  capacity: number
+}
+
+export type UpdateStudioClassScheduleInput = {
+  organizationId: string
+  classScheduleId: string
+  capacity?: number
+  displayLabel?: string | null
+  bookingStatus?: StudioClassScheduleBookingStatus
+}
+
+export type UpdateStudioClassSchedulesForDateInput = {
+  organizationId: string
+  classId: string
+  specificDate: string
+  bookingStatus: StudioClassScheduleBookingStatus
+}
+
+export type DeleteStudioClassScheduleInput = {
+  organizationId: string
+  classScheduleId: string
+}
+
+export type BulkCreateClassSchedulesTimeSlotInput = {
+  startTime: string
+  endTime: string
+  capacity: number
+}
+
+export type BulkCreateClassSchedulesRepeatMode = "daily" | "weekdays" | "weekends" | "custom"
+
+export type BulkCreateClassSchedulesInput = {
+  organizationId: string
+  classId: string
+  teacherId: string | null
+  startDate: string
+  endDate: string
+  repeatMode: BulkCreateClassSchedulesRepeatMode
+  weekdays: number[]
+  timeSlots: BulkCreateClassSchedulesTimeSlotInput[]
+}
+
+export type BulkCreateClassSchedulesPreviewConflict = {
+  kind: "duplicate" | "teacher_conflict" | "validation"
+  specificDate: string
+  startTime: string
+  endTime: string
+  capacity: number
+  classScheduleId?: string | null
+  message: string
+}
+
+export type BulkCreateClassSchedulesPreviewItem = {
+  specificDate: string
+  startTime: string
+  endTime: string
+  capacity: number
+  classId: string
+  teacherId: string | null
+  classTitle: string
+  teacherName: string | null
+  isDuplicate: boolean
+  hasTeacherConflict: boolean
+}
+
+export type BulkCreateClassSchedulesPreview = {
+  totalCalculatedCount: number
+  creatableCount: number
+  duplicateCount: number
+  teacherConflictCount: number
+  excludedItems: BulkCreateClassSchedulesPreviewConflict[]
+  items: BulkCreateClassSchedulesPreviewItem[]
+}
+
+export type BulkCreateClassSchedulesResult = {
+  insertedCount: number
+  skippedDuplicateCount: number
+  teacherConflictCount: number
+  seriesId: string | null
+  insertedScheduleIds: string[]
 }
 
 export type StudioDashboardTeacherFilterOption = {
@@ -269,8 +404,10 @@ export type CreateStudioScheduleBlockInput = {
 export type StudioClassScheduleSlotInput = {
   id?: string
   scheduleType: StudioClassScheduleType
+  bookingStatus?: StudioClassScheduleBookingStatus
   dayOfWeek: number | null
   specificDate: string | null
+  seriesId?: string | null
   startTime: string
   endTime: string
   capacity: number | null
@@ -527,6 +664,12 @@ export interface DataAdapter {
   listClasses(options?: ListClassesOptions): Promise<ClassSummary[]>
   getClassById(classId: string): Promise<ClassDetail | null>
   listAvailableScheduleSlotsByClassId(classId: string): Promise<AvailableScheduleSlot[]>
+  getStudioScheduleCalendar(
+    input: StudioScheduleCalendarQuery
+  ): Promise<{
+    items: StudioScheduleCalendarItem[]
+    days: StudioScheduleCalendarDay[]
+  }>
   listStudioClassListItems(organizationId: string): Promise<StudioClassListItem[]>
   listStudioClasses(organizationId: string): Promise<ClassSummary[]>
   listStudioTeacherOptions(organizationId: string): Promise<StudioTeacherOption[]>
@@ -548,6 +691,16 @@ export interface DataAdapter {
   listTeacherScheduleBlocks(teacherId: string): Promise<StudioScheduleBlockSummary[]>
   createStudioScheduleBlock(input: CreateStudioScheduleBlockInput): Promise<StudioScheduleBlockSummary>
   updateStudioScheduleBlockType(input: UpdateStudioScheduleBlockTypeInput): Promise<void>
+  createStudioClassSchedule(input: CreateStudioClassScheduleInput): Promise<StudioClassScheduleItem>
+  updateStudioClassSchedule(input: UpdateStudioClassScheduleInput): Promise<StudioClassScheduleItem>
+  updateStudioClassSchedulesForDate(input: UpdateStudioClassSchedulesForDateInput): Promise<number>
+  deleteStudioClassSchedule(input: DeleteStudioClassScheduleInput): Promise<void>
+  previewBulkCreateClassSchedules(
+    input: BulkCreateClassSchedulesInput
+  ): Promise<BulkCreateClassSchedulesPreview>
+  bulkCreateClassSchedules(
+    input: BulkCreateClassSchedulesInput
+  ): Promise<BulkCreateClassSchedulesResult>
   listMyChildren(parentId: string): Promise<ChildProfile[]>
   createChildProfile(input: ChildProfileInput): Promise<ChildProfile>
   updateChildProfile(input: UpdateChildProfileInput): Promise<ChildProfile>

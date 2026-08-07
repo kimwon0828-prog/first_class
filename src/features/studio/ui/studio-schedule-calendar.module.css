@@ -1,0 +1,149 @@
+.calendar {
+  display: grid;
+  gap: 12px;
+}
+
+.weekdayRow,
+.monthGrid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.weekdayCell {
+  padding: 8px 0;
+  color: #6b7280;
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.weekdayCellSunday {
+  color: #ef4444;
+}
+
+.dayCell {
+  min-height: 108px;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  background: #ffffff;
+  padding: 10px 10px 12px;
+  display: grid;
+  align-content: start;
+  gap: 10px;
+  text-align: left;
+}
+
+.dayCellMuted {
+  background: #fafafa;
+  color: #9ca3af;
+}
+
+.dayCellPast {
+  opacity: 0.58;
+}
+
+.dayCellSelected {
+  border-color: #2aad38;
+  background: #f3fbf4;
+  box-shadow: inset 0 0 0 1px rgba(42, 173, 56, 0.14);
+}
+
+.dayCellToday {
+  border-color: #cdeed0;
+}
+
+.dayTop {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.dayNumber {
+  color: #111827;
+  font-size: 16px;
+  line-height: 20px;
+  font-weight: 800;
+}
+
+.dayCellMuted .dayNumber {
+  color: inherit;
+}
+
+.countBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 20px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: #f3fbf4;
+  color: #15803d;
+  font-size: 11px;
+  line-height: 14px;
+  font-weight: 800;
+}
+
+.dayBody {
+  display: grid;
+  gap: 6px;
+}
+
+.dayMetric,
+.dayStatus,
+.lockBadge {
+  width: fit-content;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 20px;
+  padding: 0 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  line-height: 14px;
+  font-weight: 700;
+}
+
+.dayMetric {
+  background: #f8fafc;
+  color: #475569;
+}
+
+.dayStatus {
+  background: #f3fbf4;
+  color: #15803d;
+}
+
+.dayStatusClosed {
+  background: #fff7ed;
+  color: #b45309;
+}
+
+.dayStatusHidden {
+  background: #f3f4f6;
+  color: #4b5563;
+}
+
+.lockBadge {
+  background: #111827;
+  color: #ffffff;
+}
+
+@media (max-width: 720px) {
+  .weekdayRow,
+  .monthGrid {
+    gap: 6px;
+  }
+
+  .dayCell {
+    min-height: 84px;
+    padding: 8px;
+  }
+
+  .dayNumber {
+    font-size: 14px;
+    line-height: 18px;
+  }
+}

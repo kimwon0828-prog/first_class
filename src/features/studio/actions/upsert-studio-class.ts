@@ -16,8 +16,10 @@ import type { ClassAssignmentMode, ClassProgramType } from "@/shared/lib/db/adap
 type StudioClassScheduleInput = {
   id?: string
   scheduleType: "weekly" | "one_time"
+  bookingStatus?: "open" | "closed" | "hidden"
   dayOfWeek: number | null
   specificDate: string | null
+  seriesId?: string | null
   startTime: string
   endTime: string
   capacity: number | null
@@ -40,8 +42,10 @@ const sanitizeScheduleSlotsForLog = (slots: StudioClassScheduleInput[]) =>
   slots.map((slot) => ({
     id: slot.id ?? null,
     scheduleType: slot.scheduleType,
+    bookingStatus: slot.bookingStatus ?? "open",
     dayOfWeek: slot.dayOfWeek,
     specificDate: slot.specificDate,
+    seriesId: slot.seriesId ?? null,
     startTime: slot.startTime,
     endTime: slot.endTime,
     capacity: slot.capacity,
@@ -162,6 +166,8 @@ const parseScheduleSlots = (
   const startTimes = formData.getAll("slotStartTime").map((value) => String(value ?? "").trim())
   const endTimes = formData.getAll("slotEndTime").map((value) => String(value ?? "").trim())
   const capacities = formData.getAll("slotCapacity").map((value) => String(value ?? "").trim())
+  const seriesIds = formData.getAll("slotSeriesId").map((value) => String(value ?? "").trim())
+  const rawBookingStatuses = formData.getAll("slotBookingStatus").map((value) => String(value ?? "").trim())
   const displayLabels = formData
     .getAll("slotDisplayLabel")
     .map((value) => String(value ?? "").trim())
@@ -174,10 +180,14 @@ const parseScheduleSlots = (
     startTimes.length === 0 &&
     endTimes.length === 0 &&
     capacities.length === 0 &&
+    seriesIds.length === 0 &&
+    rawBookingStatuses.length === 0 &&
     displayLabels.length === 0
   ) {
     return { ok: true, slots: [] }
   }
+  const bookingStatuses =
+    rawBookingStatuses.length === 0 ? scheduleTypes.map(() => "open") : rawBookingStatuses
 
   if (
     ids.length !== scheduleTypes.length ||
@@ -186,6 +196,8 @@ const parseScheduleSlots = (
     startTimes.length !== scheduleTypes.length ||
     endTimes.length !== scheduleTypes.length ||
     capacities.length !== scheduleTypes.length ||
+    seriesIds.length !== scheduleTypes.length ||
+    bookingStatuses.length !== scheduleTypes.length ||
     displayLabels.length !== scheduleTypes.length
   ) {
     return { ok: false, message: "예약 가능 시간 입력값을 다시 확인해 주세요." }
@@ -200,7 +212,11 @@ const parseScheduleSlots = (
     const startTime = startTimes[index]
     const endTime = endTimes[index]
     const capacityRaw = capacities[index]
+    const seriesIdRaw = seriesIds[index]
+    const bookingStatusRaw = bookingStatuses[index]
     const displayLabelRaw = displayLabels[index]
+    const bookingStatus =
+      bookingStatusRaw === "closed" || bookingStatusRaw === "hidden" ? bookingStatusRaw : "open"
 
     if (scheduleType !== "weekly" && scheduleType !== "one_time") {
       return { ok: false, message: `예약 가능 시간 ${index + 1}의 유형을 선택해 주세요.` }
@@ -235,8 +251,10 @@ const parseScheduleSlots = (
       slots.push({
         id: isValidUuid(id) ? id : undefined,
         scheduleType,
+        bookingStatus,
         dayOfWeek,
         specificDate: null,
+        seriesId: isValidUuid(seriesIdRaw) ? seriesIdRaw : null,
         startTime,
         endTime,
         capacity,
@@ -262,8 +280,10 @@ const parseScheduleSlots = (
     slots.push({
       id: isValidUuid(id) ? id : undefined,
       scheduleType,
+      bookingStatus,
       dayOfWeek: null,
       specificDate: specificDateRaw,
+      seriesId: isValidUuid(seriesIdRaw) ? seriesIdRaw : null,
       startTime,
       endTime,
       capacity,
@@ -326,7 +346,7 @@ export async function upsertStudioClassAction(
     const recommendedForRaw = String(formData.get("recommendedFor") ?? "").trim()
     const experiencePointsRaw = String(formData.get("experiencePoints") ?? "").trim()
     const curriculumRaw = String(formData.get("curriculum") ?? "").trim()
-    const teacherIntroRaw = String(formData.get("teacherIntro") ?? "").trim()
+    const teacherIntroRaw = formData.has("teacherIntro") ? String(formData.get("teacherIntro") ?? "").trim() : null
     const selectedTeacherIdRaw = String(formData.get("teacherId") ?? "").trim()
     const selectedTeacherId = selectedTeacherIdRaw.length > 0 ? selectedTeacherIdRaw : null
     const trialPriceRaw = String(formData.get("trialPrice") ?? "").trim()
@@ -341,8 +361,6 @@ export async function upsertStudioClassAction(
     const recommendedFor = recommendedForRaw ? recommendedForRaw : null
     const experiencePoints = experiencePointsRaw ? experiencePointsRaw : null
     const curriculum = curriculumRaw ? curriculumRaw : null
-    const teacherIntro = teacherIntroRaw ? teacherIntroRaw : null
-
     if (!mode) {
       return safeError("저장 모드를 확인할 수 없습니다. 다시 시도해 주세요.")
     }
@@ -419,6 +437,8 @@ export async function upsertStudioClassAction(
     if (mode === "update" && classId && !existingClass) {
       return { ok: false, message: "프로그램 정보를 찾을 수 없거나 수정 권한이 없습니다." }
     }
+
+    const teacherIntro = teacherIntroRaw == null ? existingClass?.teacherIntro ?? null : teacherIntroRaw || null
 
     const teacherOptions = await (async () => {
       try {

@@ -11,6 +11,10 @@ import type {
   ApplicationRegistrationStatus,
   ApplicationUnregisteredReason,
   AvailableScheduleSlot,
+  BulkCreateClassSchedulesInput,
+  BulkCreateClassSchedulesPreview,
+  BulkCreateClassSchedulesPreviewConflict,
+  BulkCreateClassSchedulesPreviewItem,
   ChildProfile,
   ChildProfileInput,
   ClassProgramType,
@@ -26,7 +30,10 @@ import type {
   StudioUnregisteredListOptions,
   StudioClassListItem,
   StudioClassInput,
+  StudioClassScheduleBookingStatus,
   StudioClassScheduleItem,
+  StudioScheduleCalendarDay,
+  StudioScheduleCalendarItem,
   StudioScheduleBlockSummary,
   StudioScheduleBlockType,
   StudioClassScheduleType,
@@ -210,8 +217,10 @@ type ClassScheduleRow = {
   id: string
   class_id: string
   schedule_type: StudioClassScheduleType
+  booking_status?: StudioClassScheduleBookingStatus
   day_of_week?: number | null
   specific_date?: string | null
+  series_id?: string | null
   start_time: string
   end_time: string
   capacity?: number | null
@@ -361,8 +370,10 @@ const mapStudioClassListItem = (
 const mapClassSchedule = (row: ClassScheduleRow): StudioClassScheduleItem => ({
   id: row.id,
   scheduleType: row.schedule_type,
+  bookingStatus: row.booking_status ?? "open",
   dayOfWeek: row.day_of_week ?? null,
   specificDate: row.specific_date ?? null,
+  seriesId: row.series_id ?? null,
   startTime: row.start_time,
   endTime: row.end_time,
   capacity: row.capacity ?? null,
@@ -372,8 +383,16 @@ const mapClassSchedule = (row: ClassScheduleRow): StudioClassScheduleItem => ({
   isReferencedByApplications: (row.application_count ?? 0) > 0
 })
 
+const filterPublicVisibleClassSchedules = (schedules: StudioClassScheduleItem[] | undefined) =>
+  schedules?.filter((schedule) => (schedule.bookingStatus ?? "open") !== "hidden")
+
+const hideHiddenSchedulesForPublicClass = <T extends ClassSummary | ClassDetail>(classItem: T): T => ({
+  ...classItem,
+  schedules: filterPublicVisibleClassSchedules(classItem.schedules)
+})
+
 const CLASS_SCHEDULE_SELECT_FIELDS =
-  "id, class_id, schedule_type, day_of_week, specific_date, start_time, end_time, capacity, display_label, sort_order, created_at"
+  "id, class_id, schedule_type, booking_status, day_of_week, specific_date, series_id, start_time, end_time, capacity, display_label, sort_order, created_at"
 
 const attachClassSchedulesToRows = async (
   supabase: Awaited<ReturnType<typeof getSupabaseServerClient>>,
@@ -643,6 +662,8 @@ const mapClassScheduleOccurrenceSlot = (input: {
     optionId: `class_schedule:${input.row.id}:${input.startAt}`,
     classScheduleId: input.row.id,
     scheduleBlockId: input.scheduleBlockId,
+    scheduleType: input.row.schedule_type,
+    bookingStatus: input.row.booking_status ?? "open",
     teacherId: input.teacherId,
     classId: input.row.class_id,
     label: input.label,
@@ -787,6 +808,187 @@ const buildOccurrenceRange = (dateText: string, startTime: string, endTime: stri
   }
 }
 
+const pad2 = (value: number) => String(value).padStart(2, "0")
+
+const isValidDateString = (value: string) => /^\d{4}-\d{2}-\d{2}$/.test(value)
+
+const isLeapYear = (year: number) => {
+  if (year % 400 === 0) {
+    return true
+  }
+
+  if (year % 100 === 0) {
+    return false
+  }
+
+  return year % 4 === 0
+}
+
+const getDaysInMonth = (year: number, month: number) => {
+  const monthLengths = [31, isLeapYear(year) ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
+  return monthLengths[month - 1] ?? 0
+}
+
+const parseDateParts = (value: string) => {
+  if (!isValidDateString(value)) {
+    return null
+  }
+
+  const [yearText, monthText, dayText] = value.split("-")
+  const year = Number(yearText)
+  const month = Number(monthText)
+  const day = Number(dayText)
+
+  if (!Number.isInteger(year) || !Number.isInteger(month) || !Number.isInteger(day)) {
+    return null
+  }
+
+  if (month < 1 || month > 12) {
+    return null
+  }
+
+  const daysInMonth = getDaysInMonth(year, month)
+  if (day < 1 || day > daysInMonth) {
+    return null
+  }
+
+  return { year, month, day }
+}
+
+const compareDateStrings = (left: string, right: string) => left.localeCompare(right)
+
+const dateStringToWeekday = (value: string) => {
+  const parts = parseDateParts(value)
+  if (!parts) {
+    return null
+  }
+
+  let year = parts.year
+  let month = parts.month
+  const day = parts.day
+
+  if (month < 3) {
+    month += 12
+    year -= 1
+  }
+
+  const k = year % 100
+  const j = Math.floor(year / 100)
+  const h =
+    (day +
+      Math.floor((13 * (month + 1)) / 5) +
+      k +
+      Math.floor(k / 4) +
+      Math.floor(j / 4) +
+      5 * j) %
+    7
+
+  return (h + 6) % 7
+}
+
+const addDaysToDateString = (value: string, days: number) => {
+  const parts = parseDateParts(value)
+  if (!parts || !Number.isInteger(days)) {
+    return null
+  }
+
+  let year = parts.year
+  let month = parts.month
+  let day = parts.day + days
+
+  while (day > getDaysInMonth(year, month)) {
+    day -= getDaysInMonth(year, month)
+    month += 1
+    if (month > 12) {
+      month = 1
+      year += 1
+    }
+  }
+
+  while (day < 1) {
+    month -= 1
+    if (month < 1) {
+      month = 12
+      year -= 1
+    }
+    day += getDaysInMonth(year, month)
+  }
+
+  return `${year}-${pad2(month)}-${pad2(day)}`
+}
+
+const getMonthRange = (monthText: string) => {
+  const normalized = monthText.trim()
+  const parts = parseDateParts(`${normalized}-01`)
+  if (!parts) {
+    return null
+  }
+
+  return {
+    monthStart: `${parts.year}-${pad2(parts.month)}-01`,
+    monthEnd: `${parts.year}-${pad2(parts.month)}-${pad2(getDaysInMonth(parts.year, parts.month))}`
+  }
+}
+
+const normalizeTimeValue = (value: string) => {
+  const trimmed = value.trim()
+  if (/^\d{2}:\d{2}:\d{2}$/.test(trimmed)) {
+    return trimmed.slice(0, 5)
+  }
+
+  return /^\d{2}:\d{2}$/.test(trimmed) ? trimmed : ""
+}
+
+const compareTimeValues = (left: string, right: string) => normalizeTimeValue(left).localeCompare(normalizeTimeValue(right))
+
+const rangesOverlap = (
+  leftStart: string,
+  leftEnd: string,
+  rightStart: string,
+  rightEnd: string
+) => {
+  const normalizedLeftStart = normalizeTimeValue(leftStart)
+  const normalizedLeftEnd = normalizeTimeValue(leftEnd)
+  const normalizedRightStart = normalizeTimeValue(rightStart)
+  const normalizedRightEnd = normalizeTimeValue(rightEnd)
+
+  return normalizedLeftStart < normalizedRightEnd && normalizedRightStart < normalizedLeftEnd
+}
+
+const resolveRepeatWeekdays = (input: BulkCreateClassSchedulesInput) => {
+  switch (input.repeatMode) {
+    case "daily":
+      return [0, 1, 2, 3, 4, 5, 6]
+    case "weekdays":
+      return [1, 2, 3, 4, 5]
+    case "weekends":
+      return [0, 6]
+    case "custom":
+      return Array.from(new Set(input.weekdays)).sort((a, b) => a - b)
+    default:
+      return []
+  }
+}
+
+const buildScheduleDuplicateKey = (classId: string, specificDate: string, startTime: string) =>
+  `${classId}::${specificDate}::${normalizeTimeValue(startTime)}`
+
+const buildTeacherConflictKey = (teacherId: string, specificDate: string) => `${teacherId}::${specificDate}`
+
+const normalizeEmbeddedClass = (
+  value:
+    | Pick<ClassRow, "id" | "organization_id" | "title" | "teacher_id" | "teacher_display_name">
+    | Array<Pick<ClassRow, "id" | "organization_id" | "title" | "teacher_id" | "teacher_display_name">>
+    | null
+    | undefined
+) => {
+  if (!value) {
+    return null
+  }
+
+  return Array.isArray(value) ? value[0] ?? null : value
+}
+
 const getTrialBookingCutoffDate = (baseDate: Date = new Date()) =>
   new Date(baseDate.getTime() + TRIAL_BOOKING_CUTOFF_MS)
 
@@ -807,15 +1009,27 @@ const formatClassScheduleDefaultLabel = (row: ClassScheduleRow, startAt: string,
   return formatConcreteOccurrenceLabel(startAt, endAt)
 }
 
-const generateUpcomingClassScheduleOccurrences = (
+const generateClassScheduleOccurrencesWithinRange = (
   row: ClassScheduleRow,
-  now: Date = new Date()
-): Array<{ startAt: string; endAt: string; label: string }> => {
+  startDateText: string,
+  endDateText: string
+): Array<{ specificDate: string; startAt: string; endAt: string; label: string }> => {
   const startTime = formatTimeText(row.start_time)
   const endTime = formatTimeText(row.end_time)
 
+  if (compareDateStrings(startDateText, endDateText) > 0) {
+    return []
+  }
+
   if (row.schedule_type === "one_time") {
     if (!row.specific_date) {
+      return []
+    }
+
+    if (
+      compareDateStrings(row.specific_date, startDateText) < 0 ||
+      compareDateStrings(row.specific_date, endDateText) > 0
+    ) {
       return []
     }
 
@@ -824,46 +1038,64 @@ const generateUpcomingClassScheduleOccurrences = (
       return []
     }
 
-    return new Date(occurrence.startAt) > now
-      ? [{ ...occurrence, label: formatClassScheduleDefaultLabel(row, occurrence.startAt, occurrence.endAt) }]
-      : []
+    return [
+      {
+        specificDate: row.specific_date,
+        ...occurrence,
+        label: formatClassScheduleDefaultLabel(row, occurrence.startAt, occurrence.endAt)
+      }
+    ]
   }
 
   if (row.day_of_week == null || row.day_of_week < 0 || row.day_of_week > 6) {
     return []
   }
 
-  const occurrences: Array<{ startAt: string; endAt: string; label: string }> = []
-  const baseDate = new Date(now)
-  baseDate.setHours(0, 0, 0, 0)
+  const occurrences: Array<{ specificDate: string; startAt: string; endAt: string; label: string }> = []
+  let cursor = startDateText
 
-  for (let dayOffset = 0; dayOffset < 56 && occurrences.length < WEEKLY_OCCURRENCE_COUNT; dayOffset += 1) {
-    const candidate = new Date(baseDate)
-    candidate.setDate(baseDate.getDate() + dayOffset)
-
-    if (candidate.getDay() !== row.day_of_week) {
-      continue
+  while (compareDateStrings(cursor, endDateText) <= 0) {
+    const weekday = dateStringToWeekday(cursor)
+    if (weekday === row.day_of_week) {
+      const occurrence = buildOccurrenceRange(cursor, startTime, endTime)
+      if (occurrence) {
+        occurrences.push({
+          specificDate: cursor,
+          ...occurrence,
+          label: formatClassScheduleDefaultLabel(row, occurrence.startAt, occurrence.endAt)
+        })
+      }
     }
 
-    const dateText = `${candidate.getFullYear()}-${String(candidate.getMonth() + 1).padStart(2, "0")}-${String(
-      candidate.getDate()
-    ).padStart(2, "0")}`
-    const occurrence = buildOccurrenceRange(dateText, startTime, endTime)
-    if (!occurrence) {
-      continue
+    const nextCursor = addDaysToDateString(cursor, 1)
+    if (!nextCursor) {
+      break
     }
-
-    if (new Date(occurrence.startAt) <= now) {
-      continue
-    }
-
-    occurrences.push({
-      ...occurrence,
-      label: formatClassScheduleDefaultLabel(row, occurrence.startAt, occurrence.endAt)
-    })
+    cursor = nextCursor
   }
 
   return occurrences
+}
+
+const generateUpcomingClassScheduleOccurrences = (
+  row: ClassScheduleRow,
+  now: Date = new Date()
+): Array<{ startAt: string; endAt: string; label: string }> => {
+  const baseDate = new Date(now)
+  baseDate.setHours(0, 0, 0, 0)
+  const rangeStart = `${baseDate.getFullYear()}-${pad2(baseDate.getMonth() + 1)}-${pad2(baseDate.getDate())}`
+  const rangeEndDate = new Date(baseDate)
+  rangeEndDate.setDate(rangeEndDate.getDate() + 55)
+  const rangeEnd = `${rangeEndDate.getFullYear()}-${pad2(rangeEndDate.getMonth() + 1)}-${pad2(rangeEndDate.getDate())}`
+
+  return generateClassScheduleOccurrencesWithinRange(row, rangeStart, rangeEnd)
+    .filter((occurrence) => new Date(occurrence.startAt) > now)
+    .slice(0, WEEKLY_OCCURRENCE_COUNT)
+    .map((occurrence) => ({
+      startAt: occurrence.startAt,
+      endAt: occurrence.endAt,
+      label: occurrence.label
+    }))
 }
 
 const parseSelectedScheduleOptionId = (value: string | undefined) => {
@@ -1092,6 +1324,499 @@ const assertTeacherBelongsToOrganization = async (teacherId: string, organizatio
   }
 }
 
+const getClassOwnershipRow = async (classId: string, organizationId: string) => {
+  const supabase = await getSupabaseServerClient()
+  const { data, error } = await supabase
+    .from("classes")
+    .select("id, organization_id, title, teacher_id, teacher_display_name, is_active")
+    .eq("id", classId)
+    .eq("organization_id", organizationId)
+    .maybeSingle()
+
+  if (error) {
+    throw new Error(
+      formatSupabaseError("failed_to_fetch_class_ownership", error, {
+        classId,
+        organizationId
+      })
+    )
+  }
+
+  if (!data) {
+    throw new Error("studio_class_not_found_or_forbidden")
+  }
+
+  return data as Pick<ClassRow, "id" | "organization_id" | "title" | "teacher_id" | "teacher_display_name" | "is_active">
+}
+
+const getClassScheduleById = async (classScheduleId: string, organizationId: string) => {
+  const supabase = await getSupabaseServerClient()
+  const { data, error } = await supabase
+    .from("class_schedules")
+    .select(
+      "id, class_id, schedule_type, day_of_week, specific_date, series_id, start_time, end_time, capacity, display_label, sort_order, created_at, classes!inner(id, organization_id, title, teacher_id, teacher_display_name)"
+    )
+    .eq("id", classScheduleId)
+    .eq("classes.organization_id", organizationId)
+    .maybeSingle()
+
+  if (error) {
+    throw new Error(
+      formatSupabaseError("failed_to_fetch_class_schedule", error, {
+        classScheduleId,
+        organizationId
+      })
+    )
+  }
+
+  if (!data) {
+    throw new Error("class_schedule_not_found_or_forbidden")
+  }
+
+  const normalizedClass = normalizeEmbeddedClass(
+    (data as {
+      classes?:
+        | Pick<ClassRow, "id" | "organization_id" | "title" | "teacher_id" | "teacher_display_name">
+        | Array<Pick<ClassRow, "id" | "organization_id" | "title" | "teacher_id" | "teacher_display_name">>
+        | null
+    }).classes
+  )
+
+  if (!normalizedClass) {
+    throw new Error("class_schedule_not_found_or_forbidden")
+  }
+
+  return {
+    ...(data as ClassScheduleRow),
+    classes: normalizedClass
+  }
+}
+
+const getActiveReservationCountByClassScheduleIds = async (classScheduleIds: string[]) => {
+  const counts = new Map<string, number>()
+  if (classScheduleIds.length === 0) {
+    return counts
+  }
+
+  const supabase = await getSupabaseServerClient()
+  const { data, error } = await supabase
+    .from("trial_applications")
+    .select("class_schedule_id, status")
+    .in("class_schedule_id", classScheduleIds)
+    .in("status", ACTIVE_APPLICATION_STATUSES)
+
+  if (error) {
+    throw new Error(formatSupabaseError("failed_to_fetch_class_schedule_application_counts", error))
+  }
+
+  for (const row of (data ?? []) as Array<{ class_schedule_id: string | null }>) {
+    if (!row.class_schedule_id) {
+      continue
+    }
+    counts.set(row.class_schedule_id, (counts.get(row.class_schedule_id) ?? 0) + 1)
+  }
+
+  return counts
+}
+
+const buildScheduleOccurrenceReservationKey = (classScheduleId: string, startAt: string) =>
+  `${classScheduleId}::${startAt}`
+
+const getActiveReservationCountByScheduleOccurrence = async (classScheduleIds: string[]) => {
+  const counts = new Map<string, number>()
+  if (classScheduleIds.length === 0) {
+    return counts
+  }
+
+  const supabase = await getSupabaseServerClient()
+  const { data, error } = await supabase
+    .from("trial_applications")
+    .select("class_schedule_id, requested_slot_at, status")
+    .in("class_schedule_id", classScheduleIds)
+    .in("status", ACTIVE_APPLICATION_STATUSES)
+
+  if (error) {
+    throw new Error(formatSupabaseError("failed_to_fetch_schedule_occurrence_application_counts", error))
+  }
+
+  for (const row of (data ?? []) as Array<{ class_schedule_id: string | null; requested_slot_at?: string | null }>) {
+    if (!row.class_schedule_id || !row.requested_slot_at) {
+      continue
+    }
+
+    const key = buildScheduleOccurrenceReservationKey(row.class_schedule_id, row.requested_slot_at)
+    counts.set(key, (counts.get(key) ?? 0) + 1)
+  }
+
+  return counts
+}
+
+const buildCalendarItemStatus = (
+  capacity: number,
+  activeReservationCount: number,
+  bookingStatus: StudioClassScheduleBookingStatus
+) => {
+  if (bookingStatus === "hidden") {
+    return "hidden"
+  }
+
+  return bookingStatus === "closed" || activeReservationCount >= capacity ? "closed" : "open"
+}
+
+const buildStudioScheduleCalendarItem = (
+  row: ClassScheduleRow & {
+    classes: Pick<ClassRow, "id" | "title" | "teacher_id" | "teacher_display_name">
+  },
+  teacherNameById: Map<string, string>,
+  occurrence: {
+    specificDate: string
+    startAt: string
+    endAt: string
+  },
+  activeReservationCount: number
+): StudioScheduleCalendarItem => {
+  const capacity = Math.max(1, row.capacity ?? 1)
+  const teacherId = row.classes.teacher_id ?? null
+  const teacherName =
+    (teacherId ? teacherNameById.get(teacherId) : null) ?? row.classes.teacher_display_name ?? null
+  const remainingCapacity = Math.max(capacity - activeReservationCount, 0)
+  const bookingStatus = row.booking_status ?? "open"
+
+  return {
+    classScheduleId: row.id,
+    classId: row.class_id,
+    classTitle: row.classes.title,
+    teacherId,
+    teacherName,
+    scheduleType: row.schedule_type,
+    bookingStatus,
+    dayOfWeek: row.day_of_week ?? null,
+    specificDate: occurrence.specificDate,
+    startTime: formatTimeText(row.start_time),
+    endTime: formatTimeText(row.end_time),
+    capacity,
+    activeReservationCount,
+    remainingCapacity,
+    status: buildCalendarItemStatus(capacity, activeReservationCount, bookingStatus),
+    seriesId: row.series_id ?? null
+  }
+}
+
+const buildStudioScheduleCalendarDays = (items: StudioScheduleCalendarItem[]): StudioScheduleCalendarDay[] => {
+  const map = new Map<string, StudioScheduleCalendarItem[]>()
+  for (const item of items) {
+    const current = map.get(item.specificDate) ?? []
+    current.push(item)
+    map.set(item.specificDate, current)
+  }
+
+  return Array.from(map.entries())
+    .sort((a, b) => compareDateStrings(a[0], b[0]))
+    .map(([date, dateItems]) => {
+      const sortedItems = [...dateItems].sort((left, right) => {
+        const timeCompare = compareTimeValues(left.startTime, right.startTime)
+        if (timeCompare !== 0) {
+          return timeCompare
+        }
+        return left.classTitle.localeCompare(right.classTitle)
+      })
+
+      const totalCapacity = sortedItems.reduce((sum, item) => sum + item.capacity, 0)
+      const totalActiveReservationCount = sortedItems.reduce(
+        (sum, item) => sum + item.activeReservationCount,
+        0
+      )
+      const totalRemainingCapacity = sortedItems.reduce((sum, item) => sum + item.remainingCapacity, 0)
+      const closedCount = sortedItems.filter((item) => item.status === "closed").length
+      const hiddenCount = sortedItems.filter((item) => item.status === "hidden").length
+
+      return {
+        date,
+        items: sortedItems,
+        totalCapacity,
+        totalActiveReservationCount,
+        totalRemainingCapacity,
+        closedCount,
+        hiddenCount
+      }
+    })
+}
+
+const listClassSchedulesInRange = async (
+  organizationId: string,
+  startDate: string,
+  endDate: string,
+  filters?: {
+    classId?: string | null
+    teacherId?: string | null
+  }
+) => {
+  const supabase = await getSupabaseServerClient()
+  let query = supabase
+    .from("class_schedules")
+    .select(
+      "id, class_id, schedule_type, booking_status, day_of_week, specific_date, series_id, start_time, end_time, capacity, display_label, sort_order, created_at, classes!inner(id, organization_id, title, teacher_id, teacher_display_name)"
+    )
+    .eq("classes.organization_id", organizationId)
+    .order("schedule_type", { ascending: true })
+    .order("start_time", { ascending: true })
+    .order("created_at", { ascending: true })
+
+  if (filters?.classId) {
+    query = query.eq("class_id", filters.classId)
+  }
+
+  if (filters?.teacherId) {
+    query = query.eq("classes.teacher_id", filters.teacherId)
+  }
+
+  const { data, error } = await query
+
+  if (error) {
+    throw new Error(
+      formatSupabaseError("failed_to_fetch_class_schedules_in_range", error, {
+        organizationId,
+        startDate,
+        endDate,
+        classId: filters?.classId ?? null,
+        teacherId: filters?.teacherId ?? null
+      })
+    )
+  }
+
+  return ((data ?? []) as Array<
+    ClassScheduleRow & {
+      classes?:
+        | Pick<ClassRow, "id" | "organization_id" | "title" | "teacher_id" | "teacher_display_name">
+        | Array<Pick<ClassRow, "id" | "organization_id" | "title" | "teacher_id" | "teacher_display_name">>
+        | null
+    }
+  >)
+    .map((row) => {
+      const normalizedClass = normalizeEmbeddedClass(row.classes)
+      if (!normalizedClass) {
+        return null
+      }
+
+      return {
+        ...row,
+        classes: normalizedClass
+      }
+    })
+    .filter(
+      (
+        row
+      ): row is ClassScheduleRow & {
+        classes: Pick<ClassRow, "id" | "organization_id" | "title" | "teacher_id" | "teacher_display_name">
+      } => Boolean(row)
+    )
+}
+
+const validateBulkCreateClassSchedulesInput = (input: BulkCreateClassSchedulesInput) => {
+  if (!isValidDateString(input.startDate) || !isValidDateString(input.endDate)) {
+    throw new Error("invalid_schedule_date_range")
+  }
+
+  if (compareDateStrings(input.startDate, input.endDate) > 0) {
+    throw new Error("invalid_schedule_date_range")
+  }
+
+  const resolvedWeekdays = resolveRepeatWeekdays(input)
+  if (resolvedWeekdays.length === 0) {
+    throw new Error("schedule_repeat_days_required")
+  }
+
+  if (!Array.isArray(input.timeSlots) || input.timeSlots.length === 0) {
+    throw new Error("schedule_time_slots_required")
+  }
+
+  const totalDays = (() => {
+    let count = 0
+    let cursor = input.startDate
+    while (compareDateStrings(cursor, input.endDate) <= 0) {
+      count += 1
+      const next = addDaysToDateString(cursor, 1)
+      if (!next) {
+        break
+      }
+      cursor = next
+    }
+    return count
+  })()
+
+  if (totalDays > 120) {
+    throw new Error("schedule_date_range_too_large")
+  }
+
+  if (input.timeSlots.length > 12) {
+    throw new Error("schedule_time_slots_too_many")
+  }
+
+  for (const slot of input.timeSlots) {
+    const startTime = normalizeTimeValue(slot.startTime)
+    const endTime = normalizeTimeValue(slot.endTime)
+    if (!startTime || !endTime || compareTimeValues(startTime, endTime) >= 0) {
+      throw new Error("invalid_schedule_time_range")
+    }
+
+    if (!Number.isInteger(slot.capacity) || slot.capacity < 1) {
+      throw new Error("invalid_schedule_capacity")
+    }
+  }
+
+  if (totalDays * input.timeSlots.length > 500) {
+    throw new Error("schedule_generation_count_too_large")
+  }
+
+  return resolvedWeekdays
+}
+
+const buildBulkPreviewItems = async (
+  input: BulkCreateClassSchedulesInput
+): Promise<{
+  preview: BulkCreateClassSchedulesPreview
+  creatableRows: DbClassScheduleInsertPayload[]
+}> => {
+  const classRow = await getClassOwnershipRow(input.classId, input.organizationId)
+  if (input.teacherId) {
+    await assertTeacherBelongsToOrganization(input.teacherId, input.organizationId)
+  }
+
+  const effectiveTeacherId = input.teacherId ?? classRow.teacher_id ?? null
+  const teacherNameById = effectiveTeacherId ? await getTeacherNamesByIds([effectiveTeacherId]) : new Map()
+  const teacherName =
+    (effectiveTeacherId ? teacherNameById.get(effectiveTeacherId) : null) ??
+    classRow.teacher_display_name ??
+    null
+
+  const weekdays = validateBulkCreateClassSchedulesInput(input)
+  const existingRows = await listClassSchedulesInRange(input.organizationId, input.startDate, input.endDate, {
+    teacherId: effectiveTeacherId
+  })
+
+  const duplicateKeySet = new Set<string>()
+  const teacherRowsByDate = new Map<string, Array<{ startTime: string; endTime: string; classScheduleId: string }>>()
+  for (const row of existingRows) {
+    const occurrences = generateClassScheduleOccurrencesWithinRange(row, input.startDate, input.endDate)
+    for (const occurrence of occurrences) {
+      if (row.class_id === input.classId) {
+        duplicateKeySet.add(buildScheduleDuplicateKey(row.class_id, occurrence.specificDate, row.start_time))
+      }
+
+      const rowTeacherId = row.classes.teacher_id
+      if (!rowTeacherId || effectiveTeacherId !== rowTeacherId) {
+        continue
+      }
+
+      const conflictKey = buildTeacherConflictKey(rowTeacherId, occurrence.specificDate)
+      const current = teacherRowsByDate.get(conflictKey) ?? []
+      current.push({
+        startTime: row.start_time,
+        endTime: row.end_time,
+        classScheduleId: row.id
+      })
+      teacherRowsByDate.set(conflictKey, current)
+    }
+  }
+
+  const items: BulkCreateClassSchedulesPreviewItem[] = []
+  const excludedItems: BulkCreateClassSchedulesPreviewConflict[] = []
+  const creatableRows: DbClassScheduleInsertPayload[] = []
+  const inBatchDuplicateKeySet = new Set<string>()
+  const seriesId = crypto.randomUUID()
+  let cursor = input.startDate
+
+  while (compareDateStrings(cursor, input.endDate) <= 0) {
+    const weekday = dateStringToWeekday(cursor)
+    if (weekday != null && weekdays.includes(weekday)) {
+      input.timeSlots.forEach((slot, index) => {
+        const startTime = normalizeTimeValue(slot.startTime)
+        const endTime = normalizeTimeValue(slot.endTime)
+        const duplicateKey = buildScheduleDuplicateKey(input.classId, cursor, startTime)
+        const teacherConflictKey =
+          effectiveTeacherId != null ? buildTeacherConflictKey(effectiveTeacherId, cursor) : null
+        const existingTeacherRows = teacherConflictKey ? teacherRowsByDate.get(teacherConflictKey) ?? [] : []
+        const isDuplicate = duplicateKeySet.has(duplicateKey) || inBatchDuplicateKeySet.has(duplicateKey)
+        const hasTeacherConflict = existingTeacherRows.some((row) =>
+          rangesOverlap(row.startTime, row.endTime, startTime, endTime)
+        )
+
+        const item: BulkCreateClassSchedulesPreviewItem = {
+          specificDate: cursor,
+          startTime,
+          endTime,
+          capacity: slot.capacity,
+          classId: input.classId,
+          teacherId: effectiveTeacherId,
+          classTitle: classRow.title,
+          teacherName,
+          isDuplicate,
+          hasTeacherConflict
+        }
+
+        items.push(item)
+
+        if (isDuplicate) {
+          excludedItems.push({
+            kind: "duplicate",
+            specificDate: cursor,
+            startTime,
+            endTime,
+            capacity: slot.capacity,
+            message: "같은 수업, 날짜, 시작 시간의 기존 일정이 있어 생성에서 제외됩니다."
+          })
+          return
+        }
+
+        if (hasTeacherConflict) {
+          excludedItems.push({
+            kind: "teacher_conflict",
+            specificDate: cursor,
+            startTime,
+            endTime,
+            capacity: slot.capacity,
+            message: "같은 선생님의 기존 일정과 시간이 겹칩니다."
+          })
+        }
+
+        inBatchDuplicateKeySet.add(duplicateKey)
+        creatableRows.push({
+          class_id: input.classId,
+          schedule_type: "one_time",
+          booking_status: "open",
+          day_of_week: null,
+          specific_date: cursor,
+          series_id: seriesId,
+          start_time: normalizeStudioClassScheduleTimeForDb(startTime),
+          end_time: normalizeStudioClassScheduleTimeForDb(endTime),
+          capacity: slot.capacity,
+          display_label: null,
+          sort_order: index,
+          updated_at: new Date().toISOString()
+        })
+      })
+    }
+
+    const nextCursor = addDaysToDateString(cursor, 1)
+    if (!nextCursor) {
+      break
+    }
+    cursor = nextCursor
+  }
+
+  return {
+    preview: {
+      totalCalculatedCount: items.length,
+      creatableCount: creatableRows.length,
+      duplicateCount: excludedItems.filter((item) => item.kind === "duplicate").length,
+      teacherConflictCount: excludedItems.filter((item) => item.kind === "teacher_conflict").length,
+      excludedItems,
+      items
+    },
+    creatableRows
+  }
+}
+
 const formatSupabaseError = (
   context: string,
   error: {
@@ -1140,8 +1865,10 @@ type DbClassSchedulePayload = {
   id?: string
   class_id: string
   schedule_type: StudioClassScheduleType
+  booking_status?: StudioClassScheduleBookingStatus
   day_of_week: number | null
   specific_date: string | null
+  series_id?: string | null
   start_time: string
   end_time: string
   capacity: number | null
@@ -1157,8 +1884,10 @@ const omitIdFromDbClassSchedulePayload = (
 ): DbClassScheduleInsertPayload => ({
   class_id: payload.class_id,
   schedule_type: payload.schedule_type,
+  booking_status: payload.booking_status ?? "open",
   day_of_week: payload.day_of_week,
   specific_date: payload.specific_date,
+  series_id: payload.series_id ?? null,
   start_time: payload.start_time,
   end_time: payload.end_time,
   capacity: payload.capacity,
@@ -1175,8 +1904,10 @@ const toDbClassSchedulePayload = (
     const payload: DbClassSchedulePayload = {
       class_id: classId,
       schedule_type: slot.scheduleType,
+      booking_status: slot.bookingStatus ?? "open",
       day_of_week: slot.scheduleType === "weekly" ? slot.dayOfWeek : null,
       specific_date: slot.scheduleType === "one_time" ? slot.specificDate : null,
+      series_id: slot.seriesId ?? null,
       start_time: normalizeStudioClassScheduleTimeForDb(slot.startTime),
       end_time: normalizeStudioClassScheduleTimeForDb(slot.endTime),
       capacity: slot.capacity,
@@ -1191,6 +1922,24 @@ const toDbClassSchedulePayload = (
 
     return payload
   })
+}
+
+const mergeExistingClassScheduleMeta = (
+  payload: DbClassSchedulePayload,
+  existing: Pick<ClassScheduleRow, "booking_status" | "series_id">
+): DbClassSchedulePayload => ({
+  ...payload,
+  booking_status: existing.booking_status ?? "open",
+  series_id: existing.series_id ?? null
+})
+
+const cleanupCreatedStudioClass = async (
+  supabase: Awaited<ReturnType<typeof getSupabaseServerClient>>,
+  classId: string,
+  organizationId: string
+) => {
+  await supabase.from("class_schedules").delete().eq("class_id", classId)
+  await supabase.from("classes").delete().eq("id", classId).eq("organization_id", organizationId)
 }
 
 const isProtectedClassScheduleChanged = (
@@ -1465,7 +2214,7 @@ export const supabaseDataAdapter: DataAdapter = {
 
         return haystacks.map(normalizeText).some((value) => value.includes(needle))
       })
-      .map(({ mapped }) => mapped)
+      .map(({ mapped }) => hideHiddenSchedulesForPublicClass(mapped))
     if (debugEnabled) {
       console.info(`[listClasses] ${JSON.stringify({ returned: mapped.length })}`)
     }
@@ -1516,7 +2265,7 @@ export const supabaseDataAdapter: DataAdapter = {
         organization: mapOrganizationLocation(getEmbeddedOrganization(classRow))
       }
 
-      return detail
+      return hideHiddenSchedulesForPublicClass(detail)
     }
 
     if (error) {
@@ -1546,7 +2295,7 @@ export const supabaseDataAdapter: DataAdapter = {
       organization: mapOrganizationLocation(getEmbeddedOrganization(classRow))
     }
 
-    return detail
+    return hideHiddenSchedulesForPublicClass(detail)
   },
   async listStudioClassListItems(organizationId) {
     const debugEnabled = shouldDebugDb()
@@ -1612,6 +2361,48 @@ export const supabaseDataAdapter: DataAdapter = {
     }
 
     return mapped
+  },
+  async getStudioScheduleCalendar(input) {
+    const monthRange = getMonthRange(input.month)
+    if (!monthRange) {
+      throw new Error("invalid_schedule_month")
+    }
+
+    const rows = await listClassSchedulesInRange(
+      input.organizationId,
+      monthRange.monthStart,
+      monthRange.monthEnd,
+      {
+        classId: input.classId ?? null,
+        teacherId: input.teacherId ?? null
+      }
+    )
+
+    const teacherIds = Array.from(
+      new Set(rows.map((row) => row.classes.teacher_id).filter((teacherId): teacherId is string => Boolean(teacherId)))
+    )
+    const teacherNameById = await getTeacherNamesByIds(teacherIds)
+    const activeReservationCountByOccurrence = await getActiveReservationCountByScheduleOccurrence(
+      rows.map((row) => row.id)
+    )
+
+    const items = rows.flatMap((row) =>
+      generateClassScheduleOccurrencesWithinRange(row, monthRange.monthStart, monthRange.monthEnd).map((occurrence) =>
+        buildStudioScheduleCalendarItem(
+          row,
+          teacherNameById,
+          occurrence,
+          activeReservationCountByOccurrence.get(
+            buildScheduleOccurrenceReservationKey(row.id, occurrence.startAt)
+          ) ?? 0
+        )
+      )
+    )
+
+    return {
+      items,
+      days: buildStudioScheduleCalendarDays(items)
+    }
   },
   async listStudioClasses(organizationId) {
     const debugEnabled = shouldDebugDb()
@@ -2114,6 +2905,9 @@ export const supabaseDataAdapter: DataAdapter = {
       .order("created_at", { ascending: true })
 
     if (existingScheduleError) {
+      if (input.mode === "create") {
+        await cleanupCreatedStudioClass(supabase, savedClassRow.id, input.organizationId)
+      }
       throw new Error(
         formatSupabaseError("class_schedule_fetch_failed", existingScheduleError, {
           mode: input.mode,
@@ -2154,7 +2948,8 @@ export const supabaseDataAdapter: DataAdapter = {
     const normalizedSchedulePayload: Array<DbClassSchedulePayload | DbClassScheduleInsertPayload> =
       toDbClassSchedulePayload(savedClassRow.id, input.scheduleSlots).map((slot) => {
         if (slot.id && existingScheduleIdSet.has(slot.id)) {
-          return slot
+          const existingSchedule = existingSchedules.find((item) => item.id === slot.id)
+          return existingSchedule ? mergeExistingClassScheduleMeta(slot, existingSchedule) : slot
         }
 
         return omitIdFromDbClassSchedulePayload(slot)
@@ -2177,6 +2972,9 @@ export const supabaseDataAdapter: DataAdapter = {
     )
 
     if (removedProtectedScheduleIds.length > 0) {
+      if (input.mode === "create") {
+        await cleanupCreatedStudioClass(supabase, savedClassRow.id, input.organizationId)
+      }
       throw new Error(
         `protected_class_schedule_delete_blocked | payload=${JSON.stringify({
           classId: savedClassRow.id,
@@ -2196,6 +2994,9 @@ export const supabaseDataAdapter: DataAdapter = {
       }
 
       if (isProtectedClassScheduleChanged(existingSchedule, slot)) {
+        if (input.mode === "create") {
+          await cleanupCreatedStudioClass(supabase, savedClassRow.id, input.organizationId)
+        }
         throw new Error(
           `protected_class_schedule_update_blocked | payload=${JSON.stringify({
             classId: savedClassRow.id,
@@ -2211,6 +3012,9 @@ export const supabaseDataAdapter: DataAdapter = {
         .upsert(persistedSchedulePayload, { onConflict: "id" })
 
       if (updateScheduleError) {
+        if (input.mode === "create") {
+          await cleanupCreatedStudioClass(supabase, savedClassRow.id, input.organizationId)
+        }
         throw new Error(
           formatSupabaseError("class_schedule_update_failed", updateScheduleError, {
             mode: input.mode,
@@ -2227,6 +3031,9 @@ export const supabaseDataAdapter: DataAdapter = {
       const { error: insertScheduleError } = await supabase.from("class_schedules").insert(newSchedulePayload)
 
       if (insertScheduleError) {
+        if (input.mode === "create") {
+          await cleanupCreatedStudioClass(supabase, savedClassRow.id, input.organizationId)
+        }
         throw new Error(
           formatSupabaseError("class_schedule_insert_failed", insertScheduleError, {
             mode: input.mode,
@@ -2247,6 +3054,9 @@ export const supabaseDataAdapter: DataAdapter = {
         .in("id", removedScheduleIds)
 
       if (deleteScheduleError) {
+        if (input.mode === "create") {
+          await cleanupCreatedStudioClass(supabase, savedClassRow.id, input.organizationId)
+        }
         throw new Error(
           formatSupabaseError("class_schedule_delete_failed", deleteScheduleError, {
             mode: input.mode,
@@ -2268,6 +3078,9 @@ export const supabaseDataAdapter: DataAdapter = {
       .order("created_at", { ascending: true })
 
     if (refreshedScheduleError) {
+      if (input.mode === "create") {
+        await cleanupCreatedStudioClass(supabase, savedClassRow.id, input.organizationId)
+      }
       throw new Error(
         formatSupabaseError("class_schedule_fetch_failed", refreshedScheduleError, {
           mode: input.mode,
@@ -2372,6 +3185,208 @@ export const supabaseDataAdapter: DataAdapter = {
 
     if (!data) {
       throw new Error("studio_schedule_block_not_found_or_forbidden")
+    }
+  },
+  async createStudioClassSchedule(input) {
+    const classRow = await getClassOwnershipRow(input.classId, input.organizationId)
+    const effectiveTeacherId = input.teacherId ?? classRow.teacher_id ?? null
+    if (effectiveTeacherId) {
+      await assertTeacherBelongsToOrganization(effectiveTeacherId, input.organizationId)
+    }
+
+    if (!isValidDateString(input.specificDate)) {
+      throw new Error("invalid_schedule_date")
+    }
+
+    const startTime = normalizeTimeValue(input.startTime)
+    const endTime = normalizeTimeValue(input.endTime)
+    if (!startTime || !endTime || compareTimeValues(startTime, endTime) >= 0) {
+      throw new Error("invalid_schedule_time_range")
+    }
+
+    if (!Number.isInteger(input.capacity) || input.capacity < 1) {
+      throw new Error("invalid_schedule_capacity")
+    }
+
+    const previewInput: BulkCreateClassSchedulesInput = {
+      organizationId: input.organizationId,
+      classId: input.classId,
+      teacherId: effectiveTeacherId,
+      startDate: input.specificDate,
+      endDate: input.specificDate,
+      repeatMode: "custom",
+      weekdays: [dateStringToWeekday(input.specificDate) ?? -1],
+      timeSlots: [{ startTime, endTime, capacity: input.capacity }]
+    }
+
+    const { preview, creatableRows } = await buildBulkPreviewItems(previewInput)
+    if (preview.duplicateCount > 0) {
+      throw new Error("duplicate_class_schedule")
+    }
+
+    const payload = creatableRows[0]
+    if (!payload) {
+      throw new Error("failed_to_prepare_class_schedule")
+    }
+
+    const supabase = await getSupabaseServerClient()
+    const { data, error } = await supabase
+      .from("class_schedules")
+      .insert(payload)
+      .select(CLASS_SCHEDULE_SELECT_FIELDS)
+      .single()
+
+    if (error || !data) {
+      throw new Error(
+        formatSupabaseError("failed_to_create_class_schedule", error ?? {}, {
+          organizationId: input.organizationId,
+          classId: input.classId,
+          specificDate: input.specificDate,
+          startTime,
+          endTime
+        })
+      )
+    }
+
+    return mapClassSchedule(data as ClassScheduleRow)
+  },
+  async updateStudioClassSchedule(input) {
+    const scheduleRow = await getClassScheduleById(input.classScheduleId, input.organizationId)
+    const activeReservationCountByScheduleId = await getActiveReservationCountByClassScheduleIds([scheduleRow.id])
+    const activeReservationCount = activeReservationCountByScheduleId.get(scheduleRow.id) ?? 0
+
+    if (scheduleRow.schedule_type !== "one_time") {
+      throw new Error("weekly_class_schedule_must_be_updated_from_class_management")
+    }
+
+    const nextCapacityValue =
+      typeof input.capacity === "number" ? Math.max(1, Math.trunc(input.capacity)) : scheduleRow.capacity ?? 1
+
+    if (nextCapacityValue < activeReservationCount) {
+      throw new Error("class_schedule_capacity_below_active_reservations")
+    }
+
+    const nextDisplayLabel =
+      input.displayLabel === undefined ? scheduleRow.display_label ?? null : input.displayLabel
+    const nextBookingStatus = input.bookingStatus ?? scheduleRow.booking_status ?? "open"
+
+    const supabase = await getSupabaseServerClient()
+    const { data, error } = await supabase
+      .from("class_schedules")
+      .update({
+        capacity: nextCapacityValue,
+        booking_status: nextBookingStatus,
+        display_label: nextDisplayLabel,
+        updated_at: new Date().toISOString()
+      })
+      .eq("id", scheduleRow.id)
+      .select(CLASS_SCHEDULE_SELECT_FIELDS)
+      .single()
+
+    if (error || !data) {
+      throw new Error(
+        formatSupabaseError("failed_to_update_class_schedule", error ?? {}, {
+          organizationId: input.organizationId,
+          classScheduleId: input.classScheduleId
+        })
+      )
+    }
+
+    return mapClassSchedule(data as ClassScheduleRow)
+  },
+  async updateStudioClassSchedulesForDate(input) {
+    await getClassOwnershipRow(input.classId, input.organizationId)
+
+    if (!isValidDateString(input.specificDate)) {
+      throw new Error("invalid_schedule_date")
+    }
+
+    const supabase = await getSupabaseServerClient()
+    const { data, error } = await supabase
+      .from("class_schedules")
+      .update({
+        booking_status: input.bookingStatus,
+        updated_at: new Date().toISOString()
+      })
+      .eq("class_id", input.classId)
+      .eq("schedule_type", "one_time")
+      .eq("specific_date", input.specificDate)
+      .select("id")
+
+    if (error) {
+      throw new Error(
+        formatSupabaseError("failed_to_update_class_schedules_for_date", error, {
+          organizationId: input.organizationId,
+          classId: input.classId,
+          specificDate: input.specificDate
+        })
+      )
+    }
+
+    return Array.isArray(data) ? data.length : 0
+  },
+  async deleteStudioClassSchedule(input) {
+    const scheduleRow = await getClassScheduleById(input.classScheduleId, input.organizationId)
+    const activeReservationCountByScheduleId = await getActiveReservationCountByClassScheduleIds([scheduleRow.id])
+    const activeReservationCount = activeReservationCountByScheduleId.get(scheduleRow.id) ?? 0
+
+    if (activeReservationCount > 0) {
+      throw new Error("class_schedule_with_active_reservations_cannot_be_deleted")
+    }
+
+    const supabase = await getSupabaseServerClient()
+    const { error } = await supabase.from("class_schedules").delete().eq("id", scheduleRow.id)
+
+    if (error) {
+      throw new Error(
+        formatSupabaseError("failed_to_delete_class_schedule", error, {
+          organizationId: input.organizationId,
+          classScheduleId: input.classScheduleId
+        })
+      )
+    }
+  },
+  async previewBulkCreateClassSchedules(input) {
+    return (await buildBulkPreviewItems(input)).preview
+  },
+  async bulkCreateClassSchedules(input) {
+    const { preview, creatableRows } = await buildBulkPreviewItems(input)
+    if (creatableRows.length === 0) {
+      return {
+        insertedCount: 0,
+        skippedDuplicateCount: preview.duplicateCount,
+        teacherConflictCount: preview.teacherConflictCount,
+        seriesId: null,
+        insertedScheduleIds: []
+      }
+    }
+
+    const supabase = await getSupabaseServerClient()
+    const { data, error } = await supabase
+      .from("class_schedules")
+      .insert(creatableRows)
+      .select("id, series_id")
+
+    if (error) {
+      throw new Error(
+        formatSupabaseError("failed_to_bulk_create_class_schedules", error, {
+          organizationId: input.organizationId,
+          classId: input.classId,
+          startDate: input.startDate,
+          endDate: input.endDate,
+          insertCount: creatableRows.length
+        })
+      )
+    }
+
+    const insertedRows = (data ?? []) as Array<{ id: string; series_id?: string | null }>
+
+    return {
+      insertedCount: insertedRows.length,
+      skippedDuplicateCount: preview.duplicateCount,
+      teacherConflictCount: preview.teacherConflictCount,
+      seriesId: insertedRows[0]?.series_id ?? creatableRows[0]?.series_id ?? null,
+      insertedScheduleIds: insertedRows.map((row) => row.id)
     }
   },
   async listMyChildren(parentId) {
@@ -2497,6 +3512,12 @@ export const supabaseDataAdapter: DataAdapter = {
     const classScheduleRows = (classScheduleData ?? []) as ClassScheduleRow[]
 
     if (classScheduleRows.length > 0) {
+      const visibleClassScheduleRows = classScheduleRows.filter((row) => (row.booking_status ?? "open") !== "hidden")
+
+      if (visibleClassScheduleRows.length === 0) {
+        return []
+      }
+
       const { data: existingBlockData, error: existingBlockError } = await supabase
         .from("schedule_blocks")
         .select(SCHEDULE_BLOCK_SELECT_FIELDS)
@@ -2511,6 +3532,9 @@ export const supabaseDataAdapter: DataAdapter = {
       const existingBlocks = (existingBlockData ?? []) as ScheduleBlockRow[]
       const availableBlocks = existingBlocks.filter((row) => row.type === "available")
       const appliedCountBySlotId = await getAppliedCountByClassScheduleBlockId(classId, availableBlocks)
+      const appliedCountByOccurrence = await getActiveReservationCountByScheduleOccurrence(
+        visibleClassScheduleRows.map((row) => row.id)
+      )
       const blockByRange = new Map<string, ScheduleBlockRow>()
 
       for (const block of existingBlocks) {
@@ -2521,7 +3545,7 @@ export const supabaseDataAdapter: DataAdapter = {
         }
       }
 
-      return classScheduleRows
+      return visibleClassScheduleRows
         .flatMap((row) => {
           return generateUpcomingClassScheduleOccurrences(row, now)
             .filter((occurrence) => isTrialBookingBookable(occurrence.startAt, now))
@@ -2531,7 +3555,11 @@ export const supabaseDataAdapter: DataAdapter = {
               const isAvailableBlock = matchedBlock?.type === "available"
               const capacity = matchedBlock?.capacity ?? Math.max(1, row.capacity ?? 1)
               const appliedCount =
-                matchedBlock && isAvailableBlock ? (appliedCountBySlotId.get(matchedBlock.id) ?? 0) : 0
+                matchedBlock && isAvailableBlock
+                  ? (appliedCountBySlotId.get(matchedBlock.id) ?? 0)
+                  : (appliedCountByOccurrence.get(
+                      buildScheduleOccurrenceReservationKey(row.id, occurrence.startAt)
+                    ) ?? 0)
 
               return mapClassScheduleOccurrenceSlot({
                 row,
@@ -2542,7 +3570,9 @@ export const supabaseDataAdapter: DataAdapter = {
                 capacity,
                 appliedCount,
                 scheduleBlockId: isAvailableBlock ? matchedBlock?.id ?? null : null,
-                isClosed: matchedBlock != null && !isAvailableBlock ? true : undefined
+                isClosed:
+                  row.booking_status === "closed" ||
+                  (matchedBlock != null && !isAvailableBlock ? true : undefined)
               })
             })
         })
@@ -3312,6 +4342,12 @@ export const supabaseDataAdapter: DataAdapter = {
       }
 
       const classScheduleRow = classScheduleData as ClassScheduleRow
+      const classScheduleBookingStatus = classScheduleRow.booking_status ?? "open"
+
+      if (classScheduleBookingStatus === "hidden") {
+        throw new Error("schedule_booking_hidden")
+      }
+
       const occurrence = generateUpcomingClassScheduleOccurrences(classScheduleRow, now).find(
         (item) => item.startAt === parsedScheduleOption.occurrenceStartAt
       )
@@ -3329,6 +4365,14 @@ export const supabaseDataAdapter: DataAdapter = {
         appliedCount: 0,
         scheduleBlockId: null
       })
+
+      if (classScheduleBookingStatus === "closed") {
+        throw new Error("schedule_booking_closed")
+      }
+
+      if (matchedSlot.isClosed) {
+        throw new Error("slot_capacity_reached")
+      }
 
       if (!isTrialBookingBookable(matchedSlot.startAt, now)) {
         throw new Error("booking_cutoff_reached")

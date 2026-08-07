@@ -259,6 +259,20 @@ export async function createTrialApplicationAction(
       }
     }
 
+    if (message === "schedule_booking_closed") {
+      return {
+        status: "error",
+        message: "현재 모집이 마감된 일정입니다."
+      }
+    }
+
+    if (message === "schedule_booking_hidden") {
+      return {
+        status: "error",
+        message: "현재 공개되지 않은 일정입니다."
+      }
+    }
+
     if (message === "missing_preassigned_teacher_for_application") {
       return {
         status: "error",

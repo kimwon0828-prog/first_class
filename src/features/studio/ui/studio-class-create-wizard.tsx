@@ -1,7 +1,7 @@
 "use client"
 
 import { useRouter } from "next/navigation"
-import { useActionState, useEffect, useMemo, useRef, useState } from "react"
+import { Fragment, useActionState, useEffect, useMemo, useRef, useState } from "react"
 
 import {
   formatStoredTargetGrades
@@ -12,6 +12,7 @@ import {
   upsertStudioClassAction,
   type UpsertStudioClassActionState
 } from "@/features/studio/actions/upsert-studio-class"
+import { getStudioClassFieldExamples } from "@/features/studio/lib/studio-class-field-examples"
 import { studioClassIntroTemplates } from "@/features/studio/lib/studio-class-intro-templates"
 import {
   normalizeStudioClassSubjectOption,
@@ -19,6 +20,13 @@ import {
   studioClassSubjectOptions,
   type StudioClassSubjectOption
 } from "@/features/studio/lib/studio-class-options"
+import {
+  buildCreateClassScheduleDraftSlots,
+  createDefaultCreateClassScheduleDraft,
+  StudioClassCreateScheduleStep,
+  type CreateClassScheduleDraft,
+  type CreateClassScheduleDraftSlot
+} from "@/features/studio/ui/studio-class-create-schedule-step"
 import type {
   ClassAssignmentMode,
   ClassProgramType,
@@ -41,27 +49,6 @@ type VisibilityMode = "private" | "public"
 
 type ClassModeOption = "오프라인 소그룹" | "1:1" | "온라인"
 
-type SlotRecurrence = "weekly" | "one_time"
-
-type ScheduleSlotDraft = {
-  id: string
-  recurrence: SlotRecurrence
-  dayOfWeek: string
-  specificDate: string
-  startTime: string
-  durationMin: string
-  capacity: string
-}
-
-type SlotComposerState = {
-  recurrence: SlotRecurrence
-  dayOfWeek: string
-  specificDate: string
-  startTime: string
-  durationMin: string
-  capacity: string
-}
-
 type DraftValues = {
   programType: ClassProgramType
   title: string
@@ -73,16 +60,15 @@ type DraftValues = {
   recommendedFor: string
   experiencePoints: string
   curriculum: string
-  teacherIntro: string
   coverImageUrl: string
   assignmentMode: ClassAssignmentMode
   teacherId: string
   visibility: VisibilityMode
-  slots: ScheduleSlotDraft[]
+  scheduleDraft: CreateClassScheduleDraft
 }
 
 type StoredDraft = {
-  version: 1
+  version: 1 | 2
   step: WizardStepId
   values: DraftValues
   updatedAt: string
@@ -95,21 +81,12 @@ type ValidationErrors = Partial<Record<
   | "subject"
   | "targetGrades"
   | "classFormat"
-  | "slotComposer"
   | "teacherId"
   | "description"
   | "slots"
   | "visibility",
   string
 >>
-
-type PreviewOccurrence = {
-  id: string
-  dateLabel: string
-  timeLabel: string
-}
-
-type OptionalSectionKey = "recommendedFor" | "experiencePoints" | "curriculum" | "teacherIntro" | "coverImage"
 
 const initialActionState: UpsertStudioClassActionState = {
   ok: false,
@@ -123,34 +100,7 @@ const stepDefinitions = [
   { id: 4 as const, title: "확인 후 등록", subtitle: "학부모 화면 미리보기" }
 ]
 
-const weekdayOptions = [
-  { value: "0", label: "일요일" },
-  { value: "1", label: "월요일" },
-  { value: "2", label: "화요일" },
-  { value: "3", label: "수요일" },
-  { value: "4", label: "목요일" },
-  { value: "5", label: "금요일" },
-  { value: "6", label: "토요일" }
-] as const
-
 const classModeOptions: ClassModeOption[] = ["오프라인 소그룹", "1:1", "온라인"]
-
-const optionalFieldLabels: Record<OptionalSectionKey, string> = {
-  recommendedFor: "이런 아이에게 추천해요",
-  experiencePoints: "이 수업에서 경험하는 것",
-  curriculum: "커리큘럼",
-  teacherIntro: "선생님 소개",
-  coverImage: "대표 이미지"
-}
-
-const createEmptySlotComposer = (): SlotComposerState => ({
-  recurrence: "weekly",
-  dayOfWeek: "1",
-  specificDate: "",
-  startTime: "",
-  durationMin: "60",
-  capacity: "1"
-})
 
 const createDefaultDraftValues = (): DraftValues => ({
   programType: "trial_class",
@@ -163,67 +113,19 @@ const createDefaultDraftValues = (): DraftValues => ({
   recommendedFor: "",
   experiencePoints: "",
   curriculum: "",
-  teacherIntro: "",
   coverImageUrl: "",
   assignmentMode: "post_assign",
   teacherId: "",
   visibility: "private",
-  slots: []
+  scheduleDraft: createDefaultCreateClassScheduleDraft()
 })
 
 const createDraftStorageKey = (organizationId: string) => `studio-class-create-draft:${organizationId}`
-
-const createLocalId = () => `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
-
-const isValidTimeValue = (value: string) => /^([01]\d|2[0-3]):[0-5]\d$/.test(value)
-
-const addMinutesToTime = (startTime: string, durationMin: string) => {
-  if (!isValidTimeValue(startTime)) {
-    return null
-  }
-
-  const duration = Number(durationMin)
-  if (!Number.isFinite(duration) || duration < 10) {
-    return null
-  }
-
-  const [hours, minutes] = startTime.split(":").map(Number)
-  const startMinutes = hours * 60 + minutes
-  const endMinutes = startMinutes + duration
-  if (endMinutes >= 24 * 60) {
-    return null
-  }
-
-  const endHour = Math.floor(endMinutes / 60)
-  const endMinute = endMinutes % 60
-  return `${String(endHour).padStart(2, "0")}:${String(endMinute).padStart(2, "0")}`
-}
 
 const formatProgramTypeLabel = (programType: ClassProgramType) =>
   studioClassProgramTypeOptions.find((option) => option.value === programType)?.label ?? "체험수업"
 
 const formatSubjectLabel = (subject: StudioClassSubjectOption | "") => getSubjectLabel(subject) ?? "과목 선택"
-
-const formatSlotLabel = (slot: ScheduleSlotDraft) => {
-  const recurrenceLabel = slot.recurrence === "weekly" ? "매주 반복" : "특정 날짜 1회"
-  const dateLabel =
-    slot.recurrence === "weekly"
-      ? weekdayOptions.find((option) => option.value === slot.dayOfWeek)?.label ?? "요일 미선택"
-      : slot.specificDate || "날짜 미선택"
-  const endTime = addMinutesToTime(slot.startTime, slot.durationMin)
-  const timeLabel = slot.startTime && endTime ? `${slot.startTime}~${endTime}` : "시간 미입력"
-  const capacityLabel = slot.capacity ? `정원 ${slot.capacity}명` : "정원 미입력"
-  return `${recurrenceLabel} · ${dateLabel} · ${timeLabel} · ${capacityLabel}`
-}
-
-const formatSlotChip = (slot: ScheduleSlotDraft) => {
-  const endTime = addMinutesToTime(slot.startTime, slot.durationMin)
-  const dateText =
-    slot.recurrence === "weekly"
-      ? weekdayOptions.find((option) => option.value === slot.dayOfWeek)?.label ?? "요일 미선택"
-      : slot.specificDate || "날짜 미선택"
-  return `${dateText} ${slot.startTime}${endTime ? `~${endTime}` : ""}`
-}
 
 const getNextStepLabel = (step: WizardStepId) => {
   if (step === 1) return "예약시간"
@@ -259,72 +161,8 @@ const scrollToTop = () => {
   })
 }
 
-const isValidDateInput = (value: string) => /^\d{4}-\d{2}-\d{2}$/.test(value) && !Number.isNaN(new Date(value).getTime())
-
-const generatePreviewOccurrences = (slots: ScheduleSlotDraft[]): PreviewOccurrence[] => {
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
-  const nextItems: Array<PreviewOccurrence & { sortKey: number }> = []
-
-  for (const slot of slots) {
-    const endTime = addMinutesToTime(slot.startTime, slot.durationMin)
-    if (!slot.startTime || !endTime) {
-      continue
-    }
-
-    if (slot.recurrence === "one_time") {
-      if (!isValidDateInput(slot.specificDate)) {
-        continue
-      }
-      const start = new Date(`${slot.specificDate}T${slot.startTime}:00`)
-      if (start.getTime() <= Date.now()) {
-        continue
-      }
-      nextItems.push({
-        id: `${slot.id}-${slot.specificDate}`,
-        dateLabel: new Intl.DateTimeFormat("ko-KR", {
-          month: "long",
-          day: "numeric",
-          weekday: "short"
-        }).format(start),
-        timeLabel: `${slot.startTime}~${endTime}`,
-        sortKey: start.getTime()
-      })
-      continue
-    }
-
-    const dayOfWeek = Number(slot.dayOfWeek)
-    if (!Number.isFinite(dayOfWeek)) {
-      continue
-    }
-
-    for (let offset = 0; offset < 28; offset += 1) {
-      const candidate = new Date(today)
-      candidate.setDate(today.getDate() + offset)
-      if (candidate.getDay() !== dayOfWeek) {
-        continue
-      }
-      const dateText = `${candidate.getFullYear()}-${String(candidate.getMonth() + 1).padStart(2, "0")}-${String(
-        candidate.getDate()
-      ).padStart(2, "0")}`
-      const start = new Date(`${dateText}T${slot.startTime}:00`)
-      if (start.getTime() <= Date.now()) {
-        continue
-      }
-      nextItems.push({
-        id: `${slot.id}-${dateText}`,
-        dateLabel: new Intl.DateTimeFormat("ko-KR", {
-          month: "long",
-          day: "numeric",
-          weekday: "short"
-        }).format(start),
-        timeLabel: `${slot.startTime}~${endTime}`,
-        sortKey: start.getTime()
-      })
-    }
-  }
-
-  return nextItems.sort((left, right) => left.sortKey - right.sortKey).slice(0, 8)
+const formatGeneratedSlotChip = (slot: CreateClassScheduleDraftSlot) => {
+  return `${slot.specificDate} ${slot.startTime}~${slot.endTime}`
 }
 
 const parseStoredDraft = (raw: string | null): StoredDraft | null => {
@@ -334,12 +172,81 @@ const parseStoredDraft = (raw: string | null): StoredDraft | null => {
 
   try {
     const parsed = JSON.parse(raw) as StoredDraft
-    if (parsed?.version !== 1 || !parsed.values) {
+    if (!(parsed?.version === 1 || parsed?.version === 2) || !parsed.values) {
       return null
     }
     return parsed
   } catch {
     return null
+  }
+}
+
+const isLegacyEmptyOperatingHoursDraft = (value: Partial<CreateClassScheduleDraft>) => {
+  const groups = Array.isArray(value.groups) ? value.groups : []
+  const hasOperationDates = Boolean(value.operationStartDate || value.operationEndDate)
+  const hasExtraData =
+    (Array.isArray(value.extraSlots) && value.extraSlots.length > 0) ||
+    (Array.isArray(value.closedDates) && value.closedDates.length > 0) ||
+    (Array.isArray(value.closedSlotKeys) && value.closedSlotKeys.length > 0)
+
+  if (hasOperationDates || hasExtraData) {
+    return false
+  }
+
+  if (String(value.defaultCapacity ?? "") !== "3") {
+    return false
+  }
+
+  if (groups.length === 0) {
+    return true
+  }
+
+  return groups.every((group) =>
+    Array.isArray(group.timeRanges)
+      ? group.timeRanges.every(
+          (range) =>
+            !String(range.startTime ?? "").trim() &&
+            !String(range.lastStartTime ?? "").trim() &&
+            String(range.capacity ?? "") === "3"
+        )
+      : true
+  )
+}
+
+const normalizeLoadedScheduleDraft = (value: unknown): CreateClassScheduleDraft => {
+  const defaults = createDefaultCreateClassScheduleDraft()
+  if (!value || typeof value !== "object") {
+    return defaults
+  }
+
+  const candidate = value as Partial<CreateClassScheduleDraft>
+  const shouldClearLegacyCapacity = isLegacyEmptyOperatingHoursDraft(candidate)
+  const normalizedGroups = Array.isArray(candidate.groups)
+    ? candidate.groups.map((group) => ({
+        ...group,
+        weekdays: Array.isArray(group.weekdays) ? group.weekdays : [],
+        timeRanges: Array.isArray(group.timeRanges)
+          ? group.timeRanges.map((range) => ({
+              ...range,
+              capacity:
+                shouldClearLegacyCapacity && String(range.capacity ?? "") === "3" ? "" : String(range.capacity ?? "")
+            }))
+          : []
+      }))
+    : defaults.groups
+
+  return {
+    ...defaults,
+    ...candidate,
+    usePerTimeRangeCapacity: Boolean(candidate.usePerTimeRangeCapacity),
+    defaultCapacity:
+      shouldClearLegacyCapacity && String(candidate.defaultCapacity ?? "") === "3"
+        ? ""
+        : String(candidate.defaultCapacity ?? defaults.defaultCapacity),
+    groups: normalizedGroups,
+    extraSlots: Array.isArray(candidate.extraSlots) ? candidate.extraSlots : defaults.extraSlots,
+    closedDates: Array.isArray(candidate.closedDates) ? candidate.closedDates : defaults.closedDates,
+    closedSlotKeys: Array.isArray(candidate.closedSlotKeys) ? candidate.closedSlotKeys : defaults.closedSlotKeys
   }
 }
 
@@ -362,17 +269,9 @@ export const StudioClassCreateWizard = ({
   const safeTeacherOptions = useMemo(() => (Array.isArray(teacherOptions) ? teacherOptions : []), [teacherOptions])
   const [currentStep, setCurrentStep] = useState<WizardStepId>(1)
   const [values, setValues] = useState<DraftValues>(createDefaultDraftValues)
-  const [slotComposer, setSlotComposer] = useState<SlotComposerState>(createEmptySlotComposer)
   const [fieldErrors, setFieldErrors] = useState<ValidationErrors>({})
   const [draftStatus, setDraftStatus] = useState("작성 내용은 자동으로 임시저장돼요")
   const [draftSavedAt, setDraftSavedAt] = useState<string | null>(null)
-  const [optionalSections, setOptionalSections] = useState<Record<OptionalSectionKey, boolean>>({
-    recommendedFor: false,
-    experiencePoints: false,
-    curriculum: false,
-    teacherIntro: false,
-    coverImage: false
-  })
   const [coverImagePreviewUrl, setCoverImagePreviewUrl] = useState("")
   const [coverImageUploadError, setCoverImageUploadError] = useState<string | null>(null)
   const [isUploadingCoverImage, setIsUploadingCoverImage] = useState(false)
@@ -380,8 +279,12 @@ export const StudioClassCreateWizard = ({
   const draftHydratedRef = useRef(false)
   const draftStorageKey = useMemo(() => createDraftStorageKey(organizationId), [organizationId])
 
-  const canPublish = values.slots.length > 0
-  const previewOccurrences = useMemo(() => generatePreviewOccurrences(values.slots), [values.slots])
+  const generatedScheduleSlots = useMemo(
+    () => buildCreateClassScheduleDraftSlots(values.scheduleDraft),
+    [values.scheduleDraft]
+  )
+  const fieldExamples = useMemo(() => getStudioClassFieldExamples(values.subject), [values.subject])
+  const canPublish = generatedScheduleSlots.length > 0
   const selectedTeacherLabel =
     safeTeacherOptions.find((option) => option.teacherId === values.teacherId)?.teacherName ?? "미정"
 
@@ -392,7 +295,8 @@ export const StudioClassCreateWizard = ({
       setValues({
         ...createDefaultDraftValues(),
         ...parsed.values,
-        subject: normalizedSubject
+        subject: normalizedSubject,
+        scheduleDraft: normalizeLoadedScheduleDraft(parsed.values.scheduleDraft)
       })
       setCurrentStep(parsed.step)
       setDraftSavedAt(parsed.updatedAt)
@@ -431,7 +335,7 @@ export const StudioClassCreateWizard = ({
     const timeout = window.setTimeout(() => {
       try {
         const payload: StoredDraft = {
-          version: 1,
+          version: 2,
           step: currentStep,
           values,
           updatedAt: new Date().toISOString()
@@ -493,14 +397,10 @@ export const StudioClassCreateWizard = ({
     )
   }
 
-  const toggleOptionalSection = (key: OptionalSectionKey) => {
-    setOptionalSections((current) => ({ ...current, [key]: !current[key] }))
-  }
-
   const saveDraftNow = () => {
     try {
       const payload: StoredDraft = {
-        version: 1,
+        version: 2,
         step: currentStep,
         values,
         updatedAt: new Date().toISOString()
@@ -511,67 +411,6 @@ export const StudioClassCreateWizard = ({
     } catch {
       setDraftStatus("브라우저 임시저장에 실패했어요")
     }
-  }
-
-  const validateSlotComposer = () => {
-    if (slotComposer.recurrence === "weekly" && slotComposer.dayOfWeek === "") {
-      return "요일을 선택해 주세요."
-    }
-    if (slotComposer.recurrence === "one_time" && !isValidDateInput(slotComposer.specificDate)) {
-      return "날짜를 정확히 입력해 주세요."
-    }
-    if (!isValidTimeValue(slotComposer.startTime)) {
-      return "시작 시간을 정확히 입력해 주세요."
-    }
-    const duration = Number(slotComposer.durationMin)
-    if (!Number.isFinite(duration) || duration < 10) {
-      return "수업시간은 10분 이상으로 입력해 주세요."
-    }
-    if (!addMinutesToTime(slotComposer.startTime, slotComposer.durationMin)) {
-      return "시작 시간과 수업시간을 다시 확인해 주세요."
-    }
-    const capacity = Number(slotComposer.capacity)
-    if (!Number.isFinite(capacity) || capacity < 1) {
-      return "정원은 1명 이상이어야 해요."
-    }
-    return null
-  }
-
-  const addSlot = () => {
-    const error = validateSlotComposer()
-    if (error) {
-      setFieldErrors((current) => ({ ...current, slotComposer: error }))
-      return
-    }
-
-    setValues((current) => ({
-      ...current,
-      slots: [
-        ...current.slots,
-        {
-          id: createLocalId(),
-          recurrence: slotComposer.recurrence,
-          dayOfWeek: slotComposer.recurrence === "weekly" ? slotComposer.dayOfWeek : "",
-          specificDate: slotComposer.recurrence === "one_time" ? slotComposer.specificDate : "",
-          startTime: slotComposer.startTime,
-          durationMin: slotComposer.durationMin,
-          capacity: slotComposer.capacity
-        }
-      ]
-    }))
-    setFieldErrors((current) => ({ ...current, slotComposer: undefined, slots: undefined }))
-    setSlotComposer((current) => ({
-      ...createEmptySlotComposer(),
-      recurrence: current.recurrence,
-      dayOfWeek: current.dayOfWeek
-    }))
-  }
-
-  const removeSlot = (slotId: string) => {
-    setValues((current) => ({
-      ...current,
-      slots: current.slots.filter((slot) => slot.id !== slotId)
-    }))
   }
 
   const validateStep = (step: WizardStepId): ValidationErrors => {
@@ -612,7 +451,7 @@ export const StudioClassCreateWizard = ({
     }
 
     if (step >= 4) {
-      if (values.visibility === "public" && values.slots.length === 0) {
+      if (values.visibility === "public" && generatedScheduleSlots.length === 0) {
         nextErrors.visibility = "예약시간이 없어서 공개할 수 없어요."
         nextErrors.slots = "예약시간을 1개 이상 추가해야 바로 공개할 수 있어요."
       }
@@ -769,7 +608,6 @@ export const StudioClassCreateWizard = ({
       <input type="hidden" name="recommendedFor" value={values.recommendedFor} />
       <input type="hidden" name="experiencePoints" value={values.experiencePoints} />
       <input type="hidden" name="curriculum" value={values.curriculum} />
-      <input type="hidden" name="teacherIntro" value={values.teacherIntro} />
       <input type="hidden" name="trialPrice" value={values.trialPrice.trim() || "0"} />
       <input type="hidden" name="assignmentMode" value={values.assignmentMode} />
       <input type="hidden" name="teacherId" value={values.teacherId} />
@@ -779,23 +617,20 @@ export const StudioClassCreateWizard = ({
       {values.targetGrades.map((grade) => (
         <input key={grade} type="hidden" name="targetGrades" value={grade} />
       ))}
-      {values.slots.map((slot) => {
-        const endTime = addMinutesToTime(slot.startTime, slot.durationMin) ?? ""
+      {generatedScheduleSlots.map((slot) => {
         return (
-          <div key={slot.id}>
+          <Fragment key={slot.id}>
             <input type="hidden" name="slotId" value="" />
-            <input type="hidden" name="slotScheduleType" value={slot.recurrence} />
-            <input type="hidden" name="slotDayOfWeek" value={slot.recurrence === "weekly" ? slot.dayOfWeek : ""} />
-            <input
-              type="hidden"
-              name="slotSpecificDate"
-              value={slot.recurrence === "one_time" ? slot.specificDate : ""}
-            />
+            <input type="hidden" name="slotScheduleType" value="one_time" />
+            <input type="hidden" name="slotDayOfWeek" value="" />
+            <input type="hidden" name="slotSpecificDate" value={slot.specificDate} />
+            <input type="hidden" name="slotSeriesId" value={slot.seriesId ?? ""} />
+            <input type="hidden" name="slotBookingStatus" value={slot.bookingStatus} />
             <input type="hidden" name="slotStartTime" value={slot.startTime} />
-            <input type="hidden" name="slotEndTime" value={endTime} />
+            <input type="hidden" name="slotEndTime" value={slot.endTime} />
             <input type="hidden" name="slotCapacity" value={slot.capacity} />
             <input type="hidden" name="slotDisplayLabel" value="" />
-          </div>
+          </Fragment>
         )
       })}
 
@@ -871,7 +706,7 @@ export const StudioClassCreateWizard = ({
               value={values.title}
               onChange={(event) => updateValue("title", event.target.value)}
               className={styles.input}
-              placeholder="예: 사고력 수학 첫 진단 수업"
+              placeholder={fieldExamples.title}
               maxLength={60}
             />
             <p className={styles.helperText}>과목명보다 아이가 하게 될 활동이 드러나면 좋아요.</p>
@@ -953,143 +788,15 @@ export const StudioClassCreateWizard = ({
       ) : null}
 
       {currentStep === 2 ? (
-        <section className={styles.stepCard}>
-          <div className={styles.stepHeader}>
-            <div>
-              <p className={styles.stepEyebrow}>STEP 2</p>
-              <h2 className={styles.stepTitleText}>예약시간</h2>
-              <p className={styles.stepDescription}>학부모가 신청할 수 있는 예약 슬롯과 담당 선생님 배정 방식을 정합니다.</p>
-            </div>
-          </div>
-
-          <section className={styles.sectionCard}>
-            <div className={styles.sectionHeader}>
-              <div>
-                <h3 className={styles.sectionTitle}>A. 예약 슬롯</h3>
-                <p className={styles.sectionDescription}>입력한 슬롯은 아래 리스트와 4주 미리보기에 바로 반영됩니다.</p>
-              </div>
-            </div>
-
-            <div className={styles.segmentRow}>
-              <button
-                type="button"
-                className={`${styles.segmentButton} ${slotComposer.recurrence === "weekly" ? styles.segmentButtonActive : ""}`}
-                onClick={() => {
-                  setSlotComposer((current) => ({ ...current, recurrence: "weekly" }))
-                  setFieldErrors((current) => ({ ...current, slotComposer: undefined }))
-                }}
-              >
-                매주 반복
-              </button>
-              <button
-                type="button"
-                className={`${styles.segmentButton} ${
-                  slotComposer.recurrence === "one_time" ? styles.segmentButtonActive : ""
-                }`}
-                onClick={() => {
-                  setSlotComposer((current) => ({ ...current, recurrence: "one_time" }))
-                  setFieldErrors((current) => ({ ...current, slotComposer: undefined }))
-                }}
-              >
-                특정 날짜 1회
-              </button>
-            </div>
-
-            <div className={styles.slotComposerGrid}>
-              {slotComposer.recurrence === "weekly" ? (
-                <label className={styles.fieldBlock}>
-                  <span className={styles.fieldLabel}>요일</span>
-                  <select
-                    className={styles.input}
-                    value={slotComposer.dayOfWeek}
-                    onChange={(event) => setSlotComposer((current) => ({ ...current, dayOfWeek: event.target.value }))}
-                  >
-                    {weekdayOptions.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              ) : (
-                <label className={styles.fieldBlock}>
-                  <span className={styles.fieldLabel}>날짜</span>
-                  <input
-                    type="date"
-                    className={styles.input}
-                    value={slotComposer.specificDate}
-                    onChange={(event) =>
-                      setSlotComposer((current) => ({ ...current, specificDate: event.target.value }))
-                    }
-                  />
-                </label>
-              )}
-
-              <label className={styles.fieldBlock}>
-                <span className={styles.fieldLabel}>시간</span>
-                <input
-                  type="time"
-                  className={styles.input}
-                  value={slotComposer.startTime}
-                  onChange={(event) => setSlotComposer((current) => ({ ...current, startTime: event.target.value }))}
-                />
-              </label>
-
-              <label className={styles.fieldBlock}>
-                <span className={styles.fieldLabel}>수업시간(분)</span>
-                <input
-                  type="number"
-                  min={10}
-                  step={10}
-                  className={styles.input}
-                  value={slotComposer.durationMin}
-                  onChange={(event) => setSlotComposer((current) => ({ ...current, durationMin: event.target.value }))}
-                />
-              </label>
-
-              <label className={styles.fieldBlock}>
-                <span className={styles.fieldLabel}>정원</span>
-                <input
-                  type="number"
-                  min={1}
-                  className={styles.input}
-                  value={slotComposer.capacity}
-                  onChange={(event) => setSlotComposer((current) => ({ ...current, capacity: event.target.value }))}
-                />
-              </label>
-            </div>
-
-            <div className={styles.inlineActionRow}>
-              <button type="button" className={styles.primaryInlineButton} onClick={addSlot}>
-                + 예약시간 추가
-              </button>
-              {renderFieldError(fieldErrors.slotComposer)}
-            </div>
-
-            {values.slots.length === 0 ? (
-              <div className={styles.emptyState}>
-                아직 등록된 예약시간이 없어요. 위에서 요일·시간을 고르고 추가해 주세요.
-              </div>
-            ) : (
-              <ul className={styles.slotList}>
-                {values.slots.map((slot) => (
-                  <li key={slot.id} className={styles.slotItem}>
-                    <div className={styles.slotTextGroup}>
-                      <span className={styles.slotBadge}>
-                        {slot.recurrence === "weekly" ? "매주 반복" : "특정 날짜 1회"}
-                      </span>
-                      <strong>{formatSlotLabel(slot)}</strong>
-                    </div>
-                    <button type="button" className={styles.deleteButton} onClick={() => removeSlot(slot.id)}>
-                      삭제
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-            {renderFieldError(fieldErrors.slots)}
-          </section>
-
+        <>
+          <StudioClassCreateScheduleStep
+            scheduleDraft={values.scheduleDraft}
+            slotsError={fieldErrors.slots}
+            onChange={(next) => {
+              setValues((current) => ({ ...current, scheduleDraft: next }))
+              setFieldErrors((current) => ({ ...current, slots: undefined, visibility: undefined }))
+            }}
+          />
           <section className={styles.sectionCard}>
             <div className={styles.sectionHeader}>
               <div>
@@ -1152,27 +859,7 @@ export const StudioClassCreateWizard = ({
               </div>
             ) : null}
           </section>
-
-          <section className={styles.sectionCard}>
-            <div className={styles.sectionHeader}>
-              <div>
-                <h3 className={styles.sectionTitle}>학부모 화면 4주 미리보기</h3>
-                <p className={styles.sectionDescription}>입력한 예약 슬롯이 실제 날짜 기준으로 어떻게 보일지 미리 확인해 주세요.</p>
-              </div>
-            </div>
-            {previewOccurrences.length === 0 ? (
-              <div className={styles.emptyState}>예약시간을 추가하면 향후 4주 기준 실제 날짜가 여기에 표시됩니다.</div>
-            ) : (
-              <div className={styles.previewChipRow}>
-                {previewOccurrences.map((item) => (
-                  <span key={item.id} className={styles.previewChip}>
-                    {item.dateLabel} · {item.timeLabel}
-                  </span>
-                ))}
-              </div>
-            )}
-          </section>
-        </section>
+        </>
       ) : null}
 
       {currentStep === 3 ? (
@@ -1181,7 +868,7 @@ export const StudioClassCreateWizard = ({
             <div>
               <p className={styles.stepEyebrow}>STEP 3</p>
               <h2 className={styles.stepTitleText}>소개 문구</h2>
-              <p className={styles.stepDescription}>필수 소개 1개만 먼저 작성하고, 나머지는 필요할 때 펼쳐서 채워 주세요.</p>
+              <p className={styles.stepDescription}>학부모가 수업 내용을 쉽게 이해할 수 있도록 프로그램의 특징과 진행 내용을 작성해 주세요.</p>
             </div>
           </div>
 
@@ -1200,62 +887,101 @@ export const StudioClassCreateWizard = ({
               rows={6}
               value={values.description}
               onChange={(event) => updateValue("description", event.target.value)}
-              placeholder="학부모가 이 프로그램을 한눈에 이해할 수 있게 소개해 주세요."
+              placeholder={fieldExamples.description}
             />
             {renderFieldError(fieldErrors.description)}
           </div>
 
-          {(["recommendedFor", "experiencePoints", "curriculum", "teacherIntro", "coverImage"] as const).map((key) => (
-            <section key={key} className={styles.collapseCard}>
-              <button type="button" className={styles.collapseHeader} onClick={() => toggleOptionalSection(key)}>
-                <span>{optionalFieldLabels[key]}</span>
-                <span>{optionalSections[key] ? "접기" : "열기"}</span>
-              </button>
+          <div className={styles.fieldBlock}>
+            <div className={styles.labelRow}>
+              <label className={styles.fieldLabel} htmlFor="class-recommended-for">
+                이런 아이에게 추천해요
+              </label>
+              <span className={styles.optionalBadge}>선택</span>
+            </div>
+            <p className={styles.helperText}>필요한 경우에만 입력해 주세요.</p>
+            <textarea
+              id="class-recommended-for"
+              className={styles.textarea}
+              rows={5}
+              value={values.recommendedFor}
+              onChange={(event) => updateValue("recommendedFor", event.target.value)}
+              placeholder={fieldExamples.recommendedFor}
+            />
+          </div>
 
-              {optionalSections[key] ? (
-                <div className={styles.collapseBody}>
-                  {key === "coverImage" ? (
-                    <div className={styles.fieldBlock}>
-                      <div className={styles.labelRow}>
-                        <span className={styles.fieldLabel}>대표 이미지</span>
-                        <span className={styles.optionalBadge}>선택</span>
-                      </div>
-                      <input
-                        type="file"
-                        accept="image/jpeg,image/png,image/webp"
-                        className={styles.fileInput}
-                        disabled={isUploadingCoverImage || isPending}
-                        onChange={(event) => {
-                          const file = event.target.files?.[0]
-                          void handleCoverImageChange(file ?? null)
-                        }}
-                      />
-                      <p className={styles.helperText}>JPEG/PNG/WEBP, 5MB 이하. 없으면 과목 기본 이미지로 보입니다.</p>
-                      {coverImageUploadError ? renderFieldError(coverImageUploadError) : null}
-                      {coverImagePreviewUrl || values.coverImageUrl ? (
-                        <div className={styles.imagePreview}>
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img
-                            src={coverImagePreviewUrl || values.coverImageUrl}
-                            alt="대표 이미지 미리보기"
-                            className={styles.imagePreviewImage}
-                          />
-                        </div>
-                      ) : null}
-                    </div>
-                  ) : (
-                    <textarea
-                      className={styles.textarea}
-                      rows={5}
-                      value={values[key]}
-                      onChange={(event) => updateValue(key, event.target.value)}
-                      placeholder={`${optionalFieldLabels[key]} 내용을 작성해 주세요.`}
-                    />
-                  )}
-                </div>
-              ) : null}
-            </section>
-          ))}
+          <div className={styles.fieldBlock}>
+            <div className={styles.labelRow}>
+              <label className={styles.fieldLabel} htmlFor="class-experience-points">
+                이 수업에서 경험하는 것
+              </label>
+              <span className={styles.optionalBadge}>선택</span>
+            </div>
+            <p className={styles.helperText}>필요한 경우에만 입력해 주세요.</p>
+            <textarea
+              id="class-experience-points"
+              className={styles.textarea}
+              rows={5}
+              value={values.experiencePoints}
+              onChange={(event) => updateValue("experiencePoints", event.target.value)}
+              placeholder={fieldExamples.experiencePoints}
+            />
+          </div>
+
+          <div className={styles.fieldBlock}>
+            <div className={styles.labelRow}>
+              <label className={styles.fieldLabel} htmlFor="class-curriculum">
+                커리큘럼
+              </label>
+              <span className={styles.optionalBadge}>선택</span>
+            </div>
+            <p className={styles.helperText}>필요한 경우에만 입력해 주세요.</p>
+            <textarea
+              id="class-curriculum"
+              className={styles.textarea}
+              rows={5}
+              value={values.curriculum}
+              onChange={(event) => updateValue("curriculum", event.target.value)}
+              placeholder={fieldExamples.curriculum}
+            />
+          </div>
+
+          <div className={styles.fieldBlock}>
+            <div className={styles.labelRow}>
+              <span className={styles.fieldLabel}>대표 이미지</span>
+              <span className={styles.optionalBadge}>선택</span>
+            </div>
+            <p className={styles.helperText}>권장 크기 1200 × 900px · 4:3 비율</p>
+            <p className={styles.helperText}>
+              JPG, PNG 또는 WebP 이미지를 사용할 수 있어요. 중요한 인물이나 문구는 이미지 중앙에 배치해 주세요.
+            </p>
+            <p className={styles.helperText}>5MB 이하 이미지만 업로드할 수 있어요. 없으면 과목 기본 이미지로 보입니다.</p>
+            <input
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              className={styles.fileInput}
+              disabled={isUploadingCoverImage || isPending}
+              onChange={(event) => {
+                const file = event.target.files?.[0]
+                void handleCoverImageChange(file ?? null)
+              }}
+            />
+            {coverImageUploadError ? renderFieldError(coverImageUploadError) : null}
+            <div className={styles.imagePreview}>
+              {coverImagePreviewUrl || values.coverImageUrl ? (
+                <>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={coverImagePreviewUrl || values.coverImageUrl}
+                    alt="대표 이미지 미리보기"
+                    className={styles.imagePreviewImage}
+                  />
+                </>
+              ) : (
+                <span className={styles.imagePreviewPlaceholder}>대표 이미지 미리보기</span>
+              )}
+            </div>
+          </div>
         </section>
       ) : null}
 
@@ -1315,15 +1041,15 @@ export const StudioClassCreateWizard = ({
                   </button>
                 </li>
                 <li className={styles.checkItem}>
-                  <span className={values.slots.length > 0 ? styles.checkOk : styles.checkPending}>
-                    {values.slots.length > 0 ? "완료" : "미완료"}
+                  <span className={generatedScheduleSlots.length > 0 ? styles.checkOk : styles.checkPending}>
+                    {generatedScheduleSlots.length > 0 ? "완료" : "미완료"}
                   </span>
                   <div className={styles.checkBody}>
-                    <strong>예약시간 {values.slots.length}개</strong>
+                    <strong>생성 예정 일정 {generatedScheduleSlots.length}개</strong>
                     <span>
-                      {values.slots.length > 0
-                        ? values.slots.map((slot) => formatSlotChip(slot)).join(" / ")
-                        : "2단계에서 예약시간을 추가해 주세요."}
+                      {generatedScheduleSlots.length > 0
+                        ? generatedScheduleSlots.slice(0, 6).map((slot) => formatGeneratedSlotChip(slot)).join(" / ")
+                        : "2단계에서 기본 운영시간을 설정해 주세요."}
                     </span>
                   </div>
                   <button type="button" className={styles.jumpButton} onClick={() => moveToStep(2)}>
@@ -1411,10 +1137,10 @@ export const StudioClassCreateWizard = ({
               <p className={styles.previewDescription}>{previewDescription}</p>
 
               <div className={styles.previewSlotList}>
-                {values.slots.length > 0 ? (
-                  values.slots.slice(0, 4).map((slot) => (
+                {generatedScheduleSlots.length > 0 ? (
+                  generatedScheduleSlots.slice(0, 4).map((slot) => (
                     <span key={slot.id} className={styles.previewSlotChip}>
-                      {formatSlotChip(slot)}
+                      {formatGeneratedSlotChip(slot)}
                     </span>
                   ))
                 ) : (

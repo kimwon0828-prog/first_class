@@ -1,7 +1,7 @@
 "use client"
 
 import { useRouter } from "next/navigation"
-import { useActionState, useEffect, useMemo, useRef, useState } from "react"
+import { Fragment, useActionState, useEffect, useMemo, useRef, useState } from "react"
 
 import {
   formatStoredTargetGrades,
@@ -16,16 +16,19 @@ import {
   upsertStudioClassAction,
   type UpsertStudioClassActionState
 } from "@/features/studio/actions/upsert-studio-class"
+import { getStudioClassFieldExamples } from "@/features/studio/lib/studio-class-field-examples"
 import {
   normalizeStudioClassSubjectOption,
   studioClassProgramTypeOptions,
   studioClassSubjectOptions
 } from "@/features/studio/lib/studio-class-options"
+import { StudioClassScheduleEditor } from "@/features/studio/ui/studio-class-schedule-editor"
 import { getSupabaseBrowserClient } from "@/integrations/supabase/client"
 import type {
   ClassAssignmentMode,
   ClassSummary,
   StudioClassScheduleItem,
+  StudioScheduleCalendarDay,
   StudioClassScheduleType,
   StudioTeacherOption
 } from "@/shared/lib/db/adapter"
@@ -42,6 +45,9 @@ type StudioClassFormProps = {
   formId?: string
   createSuccessHref?: string
   updateSuccessHref?: string
+  scheduleCalendarMonth?: string
+  scheduleCalendarDays?: StudioScheduleCalendarDay[]
+  scheduleCalendarError?: string | null
 }
 
 const initialState: UpsertStudioClassActionState = {
@@ -53,8 +59,10 @@ type ScheduleSlotDraft = {
   localId: string
   persistedId: string
   scheduleType: StudioClassScheduleType
+  bookingStatus: "open" | "closed" | "hidden"
   dayOfWeek: string
   specificDate: string
+  seriesId: string
   startTime: string
   endTime: string
   capacity: string
@@ -63,39 +71,14 @@ type ScheduleSlotDraft = {
   isReferencedByApplications: boolean
 }
 
-const fallbackTimeText = "시간 미입력"
-const weekdayOptions = [
-  { value: "0", label: "일요일" },
-  { value: "1", label: "월요일" },
-  { value: "2", label: "화요일" },
-  { value: "3", label: "수요일" },
-  { value: "4", label: "목요일" },
-  { value: "5", label: "금요일" },
-  { value: "6", label: "토요일" }
-] as const
-
-const createEmptyScheduleSlotDraft = (
-  scheduleType: StudioClassScheduleType = "weekly"
-): ScheduleSlotDraft => ({
-  localId: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-  persistedId: "",
-  scheduleType,
-  dayOfWeek: scheduleType === "weekly" ? "1" : "",
-  specificDate: "",
-  startTime: "",
-  endTime: "",
-  capacity: "",
-  displayLabel: "",
-  applicationCount: 0,
-  isReferencedByApplications: false
-})
-
 const createScheduleSlotDraftFromItem = (schedule: StudioClassScheduleItem): ScheduleSlotDraft => ({
   localId: `${schedule.id}-${Math.random().toString(36).slice(2, 8)}`,
   persistedId: schedule.id,
   scheduleType: schedule.scheduleType,
+  bookingStatus: schedule.bookingStatus ?? "open",
   dayOfWeek: schedule.dayOfWeek != null ? String(schedule.dayOfWeek) : "",
   specificDate: schedule.specificDate ?? "",
+  seriesId: schedule.seriesId ?? "",
   startTime: schedule.startTime.slice(0, 5),
   endTime: schedule.endTime.slice(0, 5),
   capacity: schedule.capacity != null ? String(schedule.capacity) : "",
@@ -103,152 +86,6 @@ const createScheduleSlotDraftFromItem = (schedule: StudioClassScheduleItem): Sch
   applicationCount: schedule.applicationCount ?? 0,
   isReferencedByApplications: Boolean(schedule.isReferencedByApplications)
 })
-
-const formatSpecificDateLabel = (value: string) => {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
-    return value
-  }
-
-  const [year, month, day] = value.split("-")
-  return `${year}.${month}.${day}`
-}
-
-const getScheduleTimeText = (slot: ScheduleSlotDraft) => {
-  if (!slot.startTime && !slot.endTime) {
-    return fallbackTimeText
-  }
-
-  return `${slot.startTime || "--:--"}~${slot.endTime || "--:--"}`
-}
-
-const getDefaultScheduleLabel = (slot: ScheduleSlotDraft) => {
-  if (!slot.startTime || !slot.endTime) {
-    return ""
-  }
-
-  if (slot.scheduleType === "weekly") {
-    const weekdayLabel =
-      weekdayOptions.find((option) => option.value === slot.dayOfWeek)?.label ?? null
-
-    if (!weekdayLabel) {
-      return ""
-    }
-
-    return `매주 ${weekdayLabel} ${slot.startTime}~${slot.endTime}`
-  }
-
-  if (!slot.specificDate) {
-    return ""
-  }
-
-  return `${formatSpecificDateLabel(slot.specificDate)} ${slot.startTime}~${slot.endTime}`
-}
-
-const getScheduleCardTitle = (slot: ScheduleSlotDraft, index: number) => {
-  const manualLabel = slot.displayLabel.trim()
-  const defaultLabel = getDefaultScheduleLabel(slot)
-
-  return manualLabel || defaultLabel || `예약 시간 ${index + 1}`
-}
-
-const formatScheduleDraftSummary = (slot: ScheduleSlotDraft) => {
-  const typeText = slot.scheduleType === "weekly" ? "매주 반복" : "일회성"
-  const dateOrDayText =
-    slot.scheduleType === "weekly"
-      ? (weekdayOptions.find((option) => option.value === slot.dayOfWeek)?.label ?? "요일 미선택")
-      : (slot.specificDate ? formatSpecificDateLabel(slot.specificDate) : "날짜 미입력")
-  const timeText = getScheduleTimeText(slot)
-  const capacityText = slot.capacity ? `정원 ${slot.capacity}` : "정원 미입력"
-
-  return `${typeText} · ${dateOrDayText} · ${timeText} · ${capacityText}`
-}
-
-type SchedulePreviewOccurrence = {
-  id: string
-  dateKey: string
-  dateLabel: string
-  timeLabel: string
-  capacityLabel: string
-  displayLabel: string | null
-}
-
-const isValidTimeValue = (value: string) => /^([01]\d|2[0-3]):[0-5]\d$/.test(value)
-
-const formatPreviewDateLabel = (date: Date) => {
-  return new Intl.DateTimeFormat("ko-KR", {
-    month: "long",
-    day: "numeric",
-    weekday: "long"
-  }).format(date)
-}
-
-const buildPreviewOccurrence = (dateText: string, slot: ScheduleSlotDraft, index: number) => {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(dateText)) {
-    return null
-  }
-
-  if (!isValidTimeValue(slot.startTime) || !isValidTimeValue(slot.endTime) || slot.endTime <= slot.startTime) {
-    return null
-  }
-
-  const startDate = new Date(`${dateText}T${slot.startTime}:00`)
-  const endDate = new Date(`${dateText}T${slot.endTime}:00`)
-  if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime()) || endDate <= startDate) {
-    return null
-  }
-
-  if (startDate <= new Date()) {
-    return null
-  }
-
-  return {
-    id: `${slot.localId}-${dateText}-${index}`,
-    dateKey: dateText,
-    dateLabel: formatPreviewDateLabel(startDate),
-    timeLabel: `${slot.startTime} ~ ${slot.endTime}`,
-    capacityLabel: `정원 ${Math.max(1, Number(slot.capacity || 1))}명`,
-    displayLabel: slot.displayLabel.trim() || null,
-    startAt: startDate.getTime()
-  }
-}
-
-const generateSchedulePreviewOccurrences = (slot: ScheduleSlotDraft) => {
-  if (!slot.startTime || !slot.endTime) {
-    return []
-  }
-
-  if (slot.scheduleType === "one_time") {
-    const preview = buildPreviewOccurrence(slot.specificDate, slot, 0)
-    return preview ? [preview] : []
-  }
-
-  const dayOfWeek = Number(slot.dayOfWeek)
-  if (Number.isNaN(dayOfWeek) || dayOfWeek < 0 || dayOfWeek > 6) {
-    return []
-  }
-
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
-  const previews: Array<SchedulePreviewOccurrence & { startAt: number }> = []
-
-  for (let dayOffset = 0; dayOffset < 28 && previews.length < 4; dayOffset += 1) {
-    const candidate = new Date(today)
-    candidate.setDate(today.getDate() + dayOffset)
-    if (candidate.getDay() !== dayOfWeek) {
-      continue
-    }
-
-    const dateText = `${candidate.getFullYear()}-${String(candidate.getMonth() + 1).padStart(2, "0")}-${String(
-      candidate.getDate()
-    ).padStart(2, "0")}`
-    const preview = buildPreviewOccurrence(dateText, slot, dayOffset)
-    if (preview) {
-      previews.push(preview)
-    }
-  }
-
-  return previews
-}
 
 export const StudioClassForm = ({
   organizationId,
@@ -261,7 +98,10 @@ export const StudioClassForm = ({
   variant = "default",
   formId,
   createSuccessHref,
-  updateSuccessHref
+  updateSuccessHref,
+  scheduleCalendarMonth,
+  scheduleCalendarDays = [],
+  scheduleCalendarError
 }: StudioClassFormProps) => {
   const router = useRouter()
   const safeTeacherOptions = useMemo(
@@ -280,7 +120,6 @@ export const StudioClassForm = ({
   const [recommendedFor, setRecommendedFor] = useState(initialItem?.recommendedFor ?? "")
   const [experiencePoints, setExperiencePoints] = useState(initialItem?.experiencePoints ?? "")
   const [curriculum, setCurriculum] = useState(initialItem?.curriculum ?? "")
-  const [teacherIntro, setTeacherIntro] = useState(initialItem?.teacherIntro ?? "")
   const [classFormat, setClassFormat] = useState(initialItem?.classFormat ?? "")
   const [selectedTargetGrades, setSelectedTargetGrades] = useState<string[]>(
     parseStoredTargetGradeBands(initialItem?.targetAge).filter(
@@ -361,6 +200,7 @@ export const StudioClassForm = ({
     initialItem?.teacherId && fallbackTeacherOption && !teacherOptionIds.has(initialItem.teacherId)
   )
   const isPreassignedMode = selectedAssignmentMode === "preassigned"
+  const fieldExamples = useMemo(() => getStudioClassFieldExamples(selectedSubject), [selectedSubject])
   const mode = selectedClassId ? "update" : "create"
   const previousOkRef = useRef(false)
   const initializedSnapshotKeyRef = useRef<string | null>(null)
@@ -377,7 +217,6 @@ export const StudioClassForm = ({
       recommendedFor: initialItem?.recommendedFor ?? "",
       experiencePoints: initialItem?.experiencePoints ?? "",
       curriculum: initialItem?.curriculum ?? "",
-      teacherIntro: initialItem?.teacherIntro ?? "",
       classFormat: initialItem?.classFormat ?? "",
       teacherId: initialItem?.teacherId ?? "",
       coverImageUrl: initialItem?.coverImageUrl ?? "",
@@ -398,42 +237,13 @@ export const StudioClassForm = ({
       initialItem?.schedules,
       initialItem?.subject,
       initialItem?.targetAge,
-      initialItem?.teacherId,
-      initialItem?.teacherIntro
+      initialItem?.teacherId
     ]
   )
   const protectedScheduleCount = useMemo(
     () => scheduleSlots.filter((slot) => slot.isReferencedByApplications).length,
     [scheduleSlots]
   )
-  const previewGroups = useMemo(() => {
-    const grouped = new Map<
-      string,
-      {
-        dateLabel: string
-        items: SchedulePreviewOccurrence[]
-      }
-    >()
-
-    const previewItems = scheduleSlots
-      .flatMap((slot) => generateSchedulePreviewOccurrences(slot))
-      .sort((left, right) => left.startAt - right.startAt)
-
-    for (const item of previewItems) {
-      const current = grouped.get(item.dateKey) ?? {
-        dateLabel: item.dateLabel,
-        items: []
-      }
-      current.items.push(item)
-      grouped.set(item.dateKey, current)
-    }
-
-    return Array.from(grouped.entries()).map(([dateKey, value]) => ({
-      dateKey,
-      dateLabel: value.dateLabel,
-      items: value.items
-    }))
-  }, [scheduleSlots])
 
   useEffect(() => {
     const snapshotKey = initialFormSnapshot.id || "__create__"
@@ -451,7 +261,6 @@ export const StudioClassForm = ({
     setRecommendedFor(initialFormSnapshot.recommendedFor)
     setExperiencePoints(initialFormSnapshot.experiencePoints)
     setCurriculum(initialFormSnapshot.curriculum)
-    setTeacherIntro(initialFormSnapshot.teacherIntro)
     setClassFormat(initialFormSnapshot.classFormat)
     setSelectedTeacherId(initialFormSnapshot.teacherId)
     setCoverImageFilePreviewUrl("")
@@ -514,82 +323,6 @@ export const StudioClassForm = ({
       }
     }
   }, [coverImageFilePreviewUrl])
-
-  const handleScheduleSlotChange = (
-    slotId: string,
-    key: keyof Omit<ScheduleSlotDraft, "localId" | "persistedId">,
-    value: string
-  ) => {
-    const protectedKeys: Array<keyof Omit<ScheduleSlotDraft, "localId" | "persistedId">> = [
-      "scheduleType",
-      "dayOfWeek",
-      "specificDate",
-      "startTime",
-      "endTime"
-    ]
-    setScheduleSlots((current) =>
-      current.map((slot) => {
-        if (slot.localId !== slotId) {
-          return slot
-        }
-
-        if (slot.isReferencedByApplications && protectedKeys.includes(key)) {
-          return slot
-        }
-
-        return { ...slot, [key]: value }
-      })
-    )
-  }
-
-  const addScheduleSlot = (scheduleType: StudioClassScheduleType = "weekly") => {
-    setScheduleSlots((current) => [...current, createEmptyScheduleSlotDraft(scheduleType)])
-  }
-
-  const changeScheduleSlotType = (slotId: string, nextType: StudioClassScheduleType) => {
-    setScheduleSlots((current) =>
-      current.map((slot) => {
-        if (slot.localId !== slotId) {
-          return slot
-        }
-
-        if (slot.isReferencedByApplications) {
-          return slot
-        }
-
-        return {
-          ...slot,
-          scheduleType: nextType,
-          dayOfWeek: nextType === "weekly" ? slot.dayOfWeek || "1" : "",
-          specificDate: nextType === "one_time" ? slot.specificDate : ""
-        }
-      })
-    )
-  }
-
-  const duplicateScheduleSlot = (slotId: string) => {
-    setScheduleSlots((current) => {
-      const source = current.find((slot) => slot.localId === slotId)
-      if (!source) {
-        return current
-      }
-
-      return [
-        ...current,
-        {
-          ...source,
-          localId: createEmptyScheduleSlotDraft(source.scheduleType).localId,
-          persistedId: "",
-          applicationCount: 0,
-          isReferencedByApplications: false
-        }
-      ]
-    })
-  }
-
-  const removeScheduleSlot = (slotId: string) => {
-    setScheduleSlots((current) => current.filter((slot) => slot.localId !== slotId))
-  }
 
   const toggleTargetGrade = (grade: string) => {
     setSelectedTargetGrades((current) =>
@@ -697,15 +430,6 @@ export const StudioClassForm = ({
         return
       }
 
-      console.log("[supabase url]", supabaseUrl)
-      console.log("[cover upload start]", {
-        organizationId,
-        fileName: file.name,
-        fileType: file.type,
-        fileSize: file.size,
-        path: objectName
-      })
-
       const supabase = getSupabaseBrowserClient()
       const { error: uploadError } = await supabase.storage.from("class-covers").upload(objectName, file, {
         contentType: file.type,
@@ -790,6 +514,24 @@ export const StudioClassForm = ({
         {selectedTargetGrades.map((grade) => (
           <input key={grade} type="hidden" name="targetGrades" value={grade} />
         ))}
+        {scheduleSlots.map((slot) => (
+          <Fragment key={slot.localId}>
+            <input type="hidden" name="slotId" value={slot.persistedId} />
+            <input type="hidden" name="slotScheduleType" value={slot.scheduleType} />
+            <input type="hidden" name="slotDayOfWeek" value={slot.scheduleType === "weekly" ? slot.dayOfWeek : ""} />
+            <input
+              type="hidden"
+              name="slotSpecificDate"
+              value={slot.scheduleType === "one_time" ? slot.specificDate : ""}
+            />
+            <input type="hidden" name="slotSeriesId" value={slot.seriesId} />
+            <input type="hidden" name="slotBookingStatus" value={slot.bookingStatus} />
+            <input type="hidden" name="slotStartTime" value={slot.startTime} />
+            <input type="hidden" name="slotEndTime" value={slot.endTime} />
+            <input type="hidden" name="slotCapacity" value={slot.capacity} />
+            <input type="hidden" name="slotDisplayLabel" value={slot.displayLabel} />
+          </Fragment>
+        ))}
 
         <label style={fieldStyle}>
           <span>프로그램 유형</span>
@@ -831,6 +573,7 @@ export const StudioClassForm = ({
             minLength={2}
             maxLength={60}
             disabled={isPending}
+            placeholder={fieldExamples.title}
             style={inputStyle}
           />
         </label>
@@ -946,7 +689,7 @@ export const StudioClassForm = ({
             minLength={10}
             rows={5}
             disabled={isPending}
-            placeholder="파이썬 기초 문법을 배우고 간단한 프로그램을 만들어보는 체험수업입니다."
+            placeholder={fieldExamples.description}
             style={textareaStyle}
           />
         </label>
@@ -959,7 +702,7 @@ export const StudioClassForm = ({
             onChange={(event) => setRecommendedFor(event.target.value)}
             rows={5}
             disabled={isPending}
-            placeholder="코딩을 처음 시작하는 아이, 파이썬을 배워보고 싶은 아이, 논리적으로 문제를 해결하는 활동을 좋아하는 아이에게 추천해요."
+            placeholder={fieldExamples.recommendedFor}
             style={textareaStyle}
           />
         </label>
@@ -972,7 +715,7 @@ export const StudioClassForm = ({
             onChange={(event) => setExperiencePoints(event.target.value)}
             rows={5}
             disabled={isPending}
-            placeholder="변수와 출력문을 사용해보고, 간단한 조건문으로 나만의 미니 프로그램을 만들어봅니다."
+            placeholder={fieldExamples.experiencePoints}
             style={textareaStyle}
           />
         </label>
@@ -985,20 +728,7 @@ export const StudioClassForm = ({
             onChange={(event) => setCurriculum(event.target.value)}
             rows={6}
             disabled={isPending}
-            placeholder={"1단계: 파이썬이 무엇인지 알아보기\n2단계: 변수와 출력문 사용해보기\n3단계: 조건문으로 간단한 프로그램 만들기\n4단계: 나만의 미니 프로젝트 완성하기"}
-            style={textareaStyle}
-          />
-        </label>
-
-        <label style={fieldStyle}>
-          <span>선생님 소개</span>
-          <textarea
-            name="teacherIntro"
-            value={teacherIntro}
-            onChange={(event) => setTeacherIntro(event.target.value)}
-            rows={5}
-            disabled={isPending}
-            placeholder="아이의 수준에 맞춰 개념을 쉽게 설명하고, 직접 만들어보는 활동을 중심으로 수업합니다."
+            placeholder={fieldExamples.curriculum}
             style={textareaStyle}
           />
         </label>
@@ -1019,6 +749,11 @@ export const StudioClassForm = ({
 
         <label style={fieldStyle}>
           <span>대표 이미지</span>
+          <span style={helperTextStyle}>권장 크기 1200 × 900px · 4:3 비율</span>
+          <span style={helperTextStyle}>
+            JPG, PNG 또는 WebP 이미지를 사용할 수 있어요. 중요한 인물이나 문구는 이미지 중앙에 배치해 주세요.
+          </span>
+          <span style={helperTextStyle}>5MB 이하 이미지만 업로드할 수 있어요.</span>
           <input
             type="file"
             accept="image/jpeg,image/png,image/webp"
@@ -1029,32 +764,35 @@ export const StudioClassForm = ({
               void handleCoverImageChange(file ?? null)
             }}
           />
-          <span style={helperTextStyle}>JPEG/PNG/WEBP 파일, 5MB 이하만 업로드할 수 있습니다.</span>
         </label>
 
         {coverImageUploadError ? (
           <p style={{ margin: 0, color: "#b42318", fontSize: 14 }}>{coverImageUploadError}</p>
         ) : null}
 
-        {coverImageFilePreviewUrl ? (
-          <div style={previewWrapperStyle}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={coverImageFilePreviewUrl}
-              alt={`${initialItem?.title ?? "새 프로그램"} 새 대표 이미지 미리보기`}
-              style={previewImageStyle}
-            />
-          </div>
-        ) : coverImageUrl ? (
-          <div style={previewWrapperStyle}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={coverImageUrl}
-              alt={`${initialItem?.title ?? "프로그램"} 기존 대표 이미지`}
-              style={previewImageStyle}
-            />
-          </div>
-        ) : null}
+        <div style={previewWrapperStyle}>
+          {coverImageFilePreviewUrl ? (
+            <>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={coverImageFilePreviewUrl}
+                alt={`${initialItem?.title ?? "새 프로그램"} 새 대표 이미지 미리보기`}
+                style={previewImageStyle}
+              />
+            </>
+          ) : coverImageUrl ? (
+            <>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={coverImageUrl}
+                alt={`${initialItem?.title ?? "프로그램"} 기존 대표 이미지`}
+                style={previewImageStyle}
+              />
+            </>
+          ) : (
+            <div style={previewPlaceholderStyle}>대표 이미지 미리보기</div>
+          )}
+        </div>
 
         <section style={slotSectionStyle}>
           <div style={slotSectionHeaderStyle}>
@@ -1066,14 +804,6 @@ export const StudioClassForm = ({
                 학부모가 신청할 수 있는 체험수업 가능 시간을 설정해 주세요.
               </p>
             </div>
-            <button
-              type="button"
-              onClick={() => addScheduleSlot("weekly")}
-              disabled={isPending}
-              style={buttonStyle}
-            >
-              + 예약시간 추가
-            </button>
           </div>
 
           <section style={teacherAssignmentCardStyle}>
@@ -1166,259 +896,39 @@ export const StudioClassForm = ({
 
           <div style={{ display: "grid", gap: 10 }}>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-              <span style={sectionBadgeStyle}>예약 방식</span>
-              <span style={sectionBadgeMutedStyle}>매주 반복</span>
-              <span style={sectionBadgeMutedStyle}>특정 날짜 1회</span>
+                <span style={sectionBadgeStyle}>기본 운영시간</span>
+                <span style={sectionBadgeMutedStyle}>요약 카드</span>
+                <span style={sectionBadgeMutedStyle}>예외 일정 분리</span>
             </div>
             {protectedScheduleCount > 0 ? (
               <p style={{ ...warningTextStyle, margin: 0 }}>
                 이미 신청에 사용된 예약시간 {protectedScheduleCount}개는 요일/날짜/시간 변경과 삭제가 잠겨 있습니다.
               </p>
             ) : null}
+            <p style={{ ...helperTextStyle, margin: 0 }}>
+                기본 운영시간은 요약 카드와 모달에서 정리하고, 날짜별 예외는 아래 캘린더에서 별도로 관리합니다.
+            </p>
           </div>
 
-          {scheduleSlots.length > 0 ? (
-            <div style={{ display: "grid", gap: 12 }}>
-              {scheduleSlots.map((slot, index) => {
-                const isWeekly = slot.scheduleType === "weekly"
-                const isProtected = slot.isReferencedByApplications
-
-                return (
-                  <div key={slot.localId} style={slotRowStyle}>
-                    <input type="hidden" name="slotId" value={slot.persistedId} />
-                    <input type="hidden" name="slotScheduleType" value={slot.scheduleType} />
-
-                    <div style={slotHeaderStyle}>
-                      <div style={{ display: "grid", gap: 6 }}>
-                        <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-                          <strong style={{ fontSize: 14, color: "#111827" }}>
-                            {getScheduleCardTitle(slot, index)}
-                          </strong>
-                          <span style={isWeekly ? previewTypeBadgeStyle : oneTimeBadgeStyle}>
-                            {isWeekly ? "매주 반복" : "특정 날짜 1회"}
-                          </span>
-                          {isProtected ? (
-                            <span style={protectedBadgeStyle}>신청 사용 중 {slot.applicationCount}건</span>
-                          ) : null}
-                        </div>
-                        <p style={{ margin: 0, color: "#8a8a8a", fontSize: 12, lineHeight: "16px" }}>
-                          {formatScheduleDraftSummary(slot)}
-                        </p>
-                      </div>
-                      <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-                        <button
-                          type="button"
-                          onClick={() => duplicateScheduleSlot(slot.localId)}
-                          disabled={isPending}
-                          style={tertiaryButtonStyle}
-                        >
-                          복사
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            if (isProtected) {
-                              window.alert(
-                                "이미 신청된 예약시간일 수 있습니다. 삭제하면 기존 신청 확정에 영향을 줄 수 있어요."
-                              )
-                              return
-                            }
-
-                            removeScheduleSlot(slot.localId)
-                          }}
-                          disabled={isPending}
-                          style={tertiaryButtonStyle}
-                        >
-                          {isProtected ? "삭제 불가" : "제거"}
-                        </button>
-                      </div>
-                    </div>
-
-                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                      <button
-                        type="button"
-                        onClick={() => changeScheduleSlotType(slot.localId, "weekly")}
-                        disabled={isPending || isProtected}
-                        style={{
-                          ...chipButtonStyle,
-                          borderColor: isWeekly ? "#2aad38" : "#d9d9d9",
-                          background: isWeekly ? "#2aad38" : "#fff",
-                          color: isWeekly ? "#fff" : "#111111",
-                          opacity: isProtected ? 0.65 : 1
-                        }}
-                      >
-                        매주 반복
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => changeScheduleSlotType(slot.localId, "one_time")}
-                        disabled={isPending || isProtected}
-                        style={{
-                          ...chipButtonStyle,
-                          borderColor: !isWeekly ? "#2aad38" : "#d9d9d9",
-                          background: !isWeekly ? "#2aad38" : "#fff",
-                          color: !isWeekly ? "#fff" : "#111111",
-                          opacity: isProtected ? 0.65 : 1
-                        }}
-                      >
-                        특정 날짜 1회
-                      </button>
-                    </div>
-
-                    <div style={slotGridStyle}>
-                      {isWeekly ? (
-                        <>
-                          <label style={fieldStyle}>
-                            <span>요일</span>
-                            <select
-                              name="slotDayOfWeek"
-                              value={slot.dayOfWeek}
-                              onChange={(event) =>
-                                handleScheduleSlotChange(slot.localId, "dayOfWeek", event.target.value)
-                              }
-                              disabled={isPending || isProtected}
-                              style={inputStyle}
-                            >
-                              <option value="">요일 선택</option>
-                              {weekdayOptions.map((option) => (
-                                <option key={option.value} value={option.value}>
-                                  {option.label}
-                                </option>
-                              ))}
-                            </select>
-                          </label>
-                          <input type="hidden" name="slotSpecificDate" value="" />
-                        </>
-                      ) : (
-                        <>
-                          <input type="hidden" name="slotDayOfWeek" value="" />
-                          <label style={fieldStyle}>
-                            <span>날짜</span>
-                            <input
-                              name="slotSpecificDate"
-                              type="date"
-                              value={slot.specificDate}
-                              onChange={(event) =>
-                                handleScheduleSlotChange(slot.localId, "specificDate", event.target.value)
-                              }
-                              disabled={isPending || isProtected}
-                              style={inputStyle}
-                            />
-                          </label>
-                        </>
-                      )}
-
-                      <label style={fieldStyle}>
-                        <span>시작 시간</span>
-                        <input
-                          name="slotStartTime"
-                          type="time"
-                          value={slot.startTime}
-                          onChange={(event) =>
-                            handleScheduleSlotChange(slot.localId, "startTime", event.target.value)
-                          }
-                          disabled={isPending || isProtected}
-                          style={inputStyle}
-                        />
-                      </label>
-
-                      <label style={fieldStyle}>
-                        <span>종료 시간</span>
-                        <input
-                          name="slotEndTime"
-                          type="time"
-                          value={slot.endTime}
-                          onChange={(event) =>
-                            handleScheduleSlotChange(slot.localId, "endTime", event.target.value)
-                          }
-                          disabled={isPending || isProtected}
-                          style={inputStyle}
-                        />
-                      </label>
-
-                      <label style={fieldStyle}>
-                        <span>정원</span>
-                        <input
-                          name="slotCapacity"
-                          type="number"
-                          min={1}
-                          step={1}
-                          value={slot.capacity}
-                          onChange={(event) =>
-                            handleScheduleSlotChange(slot.localId, "capacity", event.target.value)
-                          }
-                          disabled={isPending}
-                          placeholder="예: 4"
-                          style={inputStyle}
-                        />
-                      </label>
-
-                      <label style={fieldStyle}>
-                        <span>노출 라벨</span>
-                        <input
-                          name="slotDisplayLabel"
-                          value={slot.displayLabel}
-                          onChange={(event) =>
-                            handleScheduleSlotChange(slot.localId, "displayLabel", event.target.value)
-                          }
-                          disabled={isPending}
-                          placeholder={getDefaultScheduleLabel(slot) || "자동 생성 라벨이 저장됩니다."}
-                          style={inputStyle}
-                        />
-                      </label>
-                    </div>
-
-                    <p style={{ ...helperTextStyle, margin: 0 }}>
-                      {isProtected
-                        ? "이미 신청에 사용된 예약시간입니다. 삭제하거나 요일/날짜/시간을 바꾸면 기존 신청 확정에 영향을 줄 수 있어요."
-                        : "비워두면 노출 라벨은 자동 생성되고, 저장 후 학부모 신청 화면과 동일한 기준으로 노출됩니다."}
-                    </p>
-                  </div>
-                )
-              })}
-            </div>
+          {scheduleCalendarError ? (
+            <p style={{ margin: 0, color: "#b42318", fontSize: 14 }}>{scheduleCalendarError}</p>
+          ) : null}
+          {selectedClassId && scheduleCalendarMonth ? (
+            <StudioClassScheduleEditor
+              classId={selectedClassId}
+              month={scheduleCalendarMonth}
+              days={scheduleCalendarDays}
+              scheduleSlots={scheduleSlots}
+              onChangeScheduleSlots={setScheduleSlots}
+            />
           ) : (
             <div style={slotEmptyStateStyle}>
-              <strong style={{ fontSize: 14, color: "#111827" }}>아직 등록된 예약시간이 없습니다.</strong>
+              <strong style={{ fontSize: 14, color: "#111827" }}>일정 정보를 불러오지 못했습니다.</strong>
               <p style={{ ...helperTextStyle, margin: 0 }}>
-                예약 가능 시간을 1개 이상 등록해야 학부모가 신청할 수 있어요.
+                새로고침 후 다시 시도해 주세요.
               </p>
             </div>
           )}
-
-          <section style={previewCardStyle}>
-            <div style={{ display: "grid", gap: 4 }}>
-              <strong style={{ color: "#111827", fontSize: 15 }}>학부모 화면 4주 미리보기</strong>
-              <p style={{ ...helperTextStyle, margin: 0 }}>
-                현재 입력한 예약시간 기준으로 앞으로 4주 동안 학부모에게 보일 시간을 미리 계산해 보여줍니다.
-              </p>
-            </div>
-
-            {previewGroups.length > 0 ? (
-              <div style={{ display: "grid", gap: 12 }}>
-                {previewGroups.map((group) => (
-                  <div key={group.dateKey} style={previewGroupStyle}>
-                    <strong style={{ color: "#111827", fontSize: 14 }}>{group.dateLabel}</strong>
-                    <div style={{ display: "grid", gap: 8 }}>
-                      {group.items.map((item) => (
-                        <div key={item.id} style={previewItemStyle}>
-                          <span style={{ color: "#111827", fontSize: 14 }}>{item.timeLabel}</span>
-                          <span style={helperTextStyle}>{item.capacityLabel}</span>
-                          {item.displayLabel ? (
-                            <span style={{ ...helperTextStyle, color: "#4b5563" }}>{item.displayLabel}</span>
-                          ) : null}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p style={{ ...helperTextStyle, margin: 0 }}>
-                현재 입력한 예약시간으로 생성되는 4주 미리보기 일정이 없습니다.
-              </p>
-            )}
-          </section>
         </section>
 
         <label style={{ ...fieldStyle, gridTemplateColumns: "20px 1fr", alignItems: "center" }}>
@@ -1578,17 +1088,6 @@ const buttonStyle = {
   cursor: "pointer"
 }
 
-const tertiaryButtonStyle = {
-  border: "1px solid #eeeeee",
-  borderRadius: 10,
-  background: "#fff",
-  color: "#4b5563",
-  fontSize: 12,
-  lineHeight: "16px",
-  padding: "6px 10px",
-  cursor: "pointer"
-}
-
 const slotSectionStyle = {
   display: "grid",
   gap: 12,
@@ -1662,59 +1161,6 @@ const warningTextStyle = {
   lineHeight: "18px"
 }
 
-const slotHeaderStyle = {
-  display: "flex",
-  justifyContent: "space-between",
-  alignItems: "flex-start",
-  gap: 12,
-  flexWrap: "wrap" as const
-}
-
-const slotRowStyle = {
-  display: "grid",
-  gap: 12,
-  padding: 12,
-  border: "1px solid #eeeeee",
-  borderRadius: 16,
-  background: "#fff"
-}
-
-const previewTypeBadgeStyle = {
-  display: "inline-flex",
-  alignItems: "center",
-  borderRadius: 999,
-  padding: "4px 8px",
-  background: "#ecfdf3",
-  color: "#15803d",
-  fontSize: 11,
-  lineHeight: "14px",
-  fontWeight: 700
-}
-
-const oneTimeBadgeStyle = {
-  ...previewTypeBadgeStyle,
-  background: "#eff6ff",
-  color: "#1d4ed8"
-}
-
-const protectedBadgeStyle = {
-  display: "inline-flex",
-  alignItems: "center",
-  borderRadius: 999,
-  padding: "4px 8px",
-  background: "#fff7ed",
-  color: "#c2410c",
-  fontSize: 11,
-  lineHeight: "14px",
-  fontWeight: 700
-}
-
-const slotGridStyle = {
-  display: "grid",
-  gap: 10,
-  gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))"
-}
-
 const slotEmptyStateStyle = {
   display: "grid",
   gap: 6,
@@ -1724,30 +1170,9 @@ const slotEmptyStateStyle = {
   background: "#ffffff"
 }
 
-const previewCardStyle = {
-  display: "grid",
-  gap: 12,
-  padding: 14,
-  borderRadius: 14,
-  border: "1px solid #e5e7eb",
-  background: "#ffffff"
-}
-
-const previewGroupStyle = {
-  display: "grid",
-  gap: 8
-}
-
-const previewItemStyle = {
-  display: "grid",
-  gap: 2,
-  padding: "10px 12px",
-  borderRadius: 12,
-  background: "#f9fafb",
-  border: "1px solid #f3f4f6"
-}
-
 const previewWrapperStyle = {
+  width: "100%",
+  aspectRatio: "4 / 3",
   border: "1px solid #eeeeee",
   borderRadius: 16,
   overflow: "hidden",
@@ -1757,6 +1182,20 @@ const previewWrapperStyle = {
 const previewImageStyle = {
   display: "block",
   width: "100%",
-  maxHeight: 220,
-  objectFit: "cover" as const
+  height: "100%",
+  objectFit: "cover" as const,
+  objectPosition: "center" as const
+}
+
+const previewPlaceholderStyle = {
+  width: "100%",
+  height: "100%",
+  display: "grid",
+  placeItems: "center",
+  padding: 18,
+  textAlign: "center" as const,
+  color: "#6b7280",
+  fontSize: 14,
+  lineHeight: "20px",
+  background: "linear-gradient(135deg, #f2fbf3 0%, #d8f0dc 100%)"
 }

@@ -10,6 +10,7 @@ type ClassCardScheduleSummary = {
 type ClassScheduleSummaryRow = {
   class_id: string
   schedule_type: "weekly" | "one_time"
+  booking_status: "open" | "closed" | "hidden" | null
   day_of_week: number | null
   specific_date: string | null
   start_time: string
@@ -76,8 +77,11 @@ export const getPublicClassCardScheduleSummaries = async (
   const serviceRoleClient = getSupabaseServiceRoleClient()
   const { data, error } = await serviceRoleClient
     .from("class_schedules")
-    .select("class_id, schedule_type, day_of_week, specific_date, start_time, display_label, sort_order, created_at")
+    .select(
+      "class_id, schedule_type, booking_status, day_of_week, specific_date, start_time, display_label, sort_order, created_at"
+    )
     .in("class_id", uniqueClassIds)
+    .neq("booking_status", "hidden")
     .order("sort_order", { ascending: true })
     .order("created_at", { ascending: true })
 

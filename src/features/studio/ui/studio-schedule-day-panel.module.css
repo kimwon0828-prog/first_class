@@ -1,0 +1,206 @@
+.panel {
+  display: grid;
+  gap: 16px;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.title {
+  margin: 0;
+  color: #111827;
+  font-size: 20px;
+  line-height: 26px;
+  font-weight: 900;
+}
+
+.description,
+.hint,
+.message,
+.errorText,
+.warningText {
+  margin: 0;
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.description,
+.hint {
+  color: #6b7280;
+}
+
+.message {
+  color: #15803d;
+  font-weight: 700;
+}
+
+.errorText {
+  color: #b42318;
+  font-weight: 700;
+}
+
+.warningText {
+  color: #b45309;
+  font-weight: 700;
+}
+
+.actionRow,
+.badgeRow,
+.timeActions,
+.stepper {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.buttonPrimary,
+.buttonSecondary,
+.buttonDanger,
+.stepperButton {
+  min-height: 38px;
+  border-radius: 12px;
+  padding: 0 14px;
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 700;
+}
+
+.buttonPrimary {
+  border: 0;
+  background: #2aad38;
+  color: #ffffff;
+}
+
+.buttonSecondary,
+.stepperButton {
+  border: 1px solid #d7dce2;
+  background: #ffffff;
+  color: #111827;
+}
+
+.buttonDanger {
+  border: 1px solid #fecaca;
+  background: #ffffff;
+  color: #dc2626;
+}
+
+.extraCard,
+.timeCard,
+.emptyState {
+  border: 1px solid #edf0f3;
+  border-radius: 14px;
+  background: #ffffff;
+}
+
+.extraCard,
+.timeCard {
+  padding: 16px;
+  display: grid;
+  gap: 14px;
+}
+
+.emptyState {
+  padding: 18px;
+  color: #6b7280;
+}
+
+.extraGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.field {
+  display: grid;
+  gap: 8px;
+}
+
+.fieldLabel {
+  color: #111827;
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 800;
+}
+
+.input {
+  width: 100%;
+  min-height: 42px;
+  border: 1px solid #d7dce2;
+  border-radius: 12px;
+  background: #ffffff;
+  color: #111827;
+  font-size: 14px;
+  line-height: 20px;
+  padding: 0 14px;
+}
+
+.timeHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.timeHeadline {
+  color: #111827;
+  font-size: 16px;
+  line-height: 22px;
+  font-weight: 800;
+}
+
+.metaBadge,
+.metaBadgeMuted,
+.metaBadgeWarning {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 24px;
+  padding: 0 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  line-height: 14px;
+  font-weight: 800;
+}
+
+.metaBadge {
+  background: #ecfdf3;
+  color: #166534;
+}
+
+.metaBadgeMuted {
+  background: #f3f4f6;
+  color: #4b5563;
+}
+
+.metaBadgeWarning {
+  background: #fff7ed;
+  color: #b45309;
+}
+
+.capacityRow {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.stepperValue {
+  min-width: 52px;
+  text-align: center;
+  color: #111827;
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 800;
+}
+
+@media (max-width: 720px) {
+  .extraGrid {
+    grid-template-columns: 1fr;
+  }
+}

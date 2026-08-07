@@ -4,19 +4,26 @@ import type {
   ApplicationRegistrationStatus,
   ApplicationUnregisteredReason,
   AvailableScheduleSlot,
+  BulkCreateClassSchedulesInput,
+  BulkCreateClassSchedulesPreview,
+  BulkCreateClassSchedulesResult,
   ChildProfile,
   ChildProfileInput,
   CreateStudioTeacherInput,
+  CreateStudioClassScheduleInput,
   DeactivateStudioTeacherInput,
   ClassDetail,
   ClassSummary,
   DataAdapter,
+  DeleteStudioClassScheduleInput,
   MyDashboardData,
   StudioApplicationDetail,
   StudioApplicationListOptions,
   StudioApplicationSummary,
   StudioClassListItem,
   StudioClassScheduleItem,
+  StudioScheduleCalendarDay,
+  StudioScheduleCalendarItem,
   StudioUnregisteredApplicationItem,
   StudioUnregisteredListOptions,
   StudioScheduleBlockSummary,
@@ -33,7 +40,8 @@ import type {
   TrialApplicationSummary,
   UpdateStudioApplicationAssigneeInput,
   UpdateStudioApplicationOutcomeInput,
-  UpdateStudioApplicationStatusInput
+  UpdateStudioApplicationStatusInput,
+  UpdateStudioClassScheduleInput
 } from "@/shared/lib/db/adapter"
 import {
   DEFAULT_TEACHER_PUBLIC_VISIBILITY,
@@ -294,6 +302,14 @@ const cloneClassSummary = (item: ClassSummary): ClassSummary => ({
   schedules: item.schedules?.map((schedule) => ({ ...schedule }))
 })
 
+const filterPublicVisibleSchedules = (schedules: StudioClassScheduleItem[] | undefined) =>
+  schedules?.filter((schedule) => (schedule.bookingStatus ?? "open") !== "hidden")
+
+const toPublicVisibleClassSummary = (item: ClassSummary): ClassSummary => ({
+  ...cloneClassSummary(item),
+  schedules: filterPublicVisibleSchedules(item.schedules)
+})
+
 const toStudioClassListItem = (item: ClassSummary): StudioClassListItem => ({
   id: item.id,
   programType: item.programType,
@@ -324,8 +340,10 @@ const toMockClassSchedules = (input: {
       const candidate = slot as {
         id?: unknown
         scheduleType?: unknown
+        bookingStatus?: unknown
         dayOfWeek?: unknown
         specificDate?: unknown
+        seriesId?: unknown
         startTime?: unknown
         endTime?: unknown
         capacity?: unknown
@@ -347,8 +365,13 @@ const toMockClassSchedules = (input: {
             ? candidate.id
             : `${input.classId}-schedule-${index + 1}`,
         scheduleType: candidate.scheduleType,
+        bookingStatus:
+          candidate.bookingStatus === "closed" || candidate.bookingStatus === "hidden"
+            ? candidate.bookingStatus
+            : "open",
         dayOfWeek: typeof candidate.dayOfWeek === "number" ? candidate.dayOfWeek : null,
         specificDate: typeof candidate.specificDate === "string" ? candidate.specificDate : null,
+        seriesId: typeof candidate.seriesId === "string" ? candidate.seriesId : null,
         startTime: candidate.startTime,
         endTime: candidate.endTime,
         capacity: typeof candidate.capacity === "number" ? candidate.capacity : null,
@@ -356,7 +379,7 @@ const toMockClassSchedules = (input: {
         sortOrder: typeof candidate.sortOrder === "number" ? candidate.sortOrder : index
       } satisfies StudioClassScheduleItem
     })
-    .filter((schedule): schedule is StudioClassScheduleItem => Boolean(schedule))
+    .filter((schedule): schedule is NonNullable<typeof schedule> => schedule !== null)
 }
 
 const ACTIVE_APPLICATION_STATUSES: TrialApplicationSummary["status"][] = [
@@ -536,6 +559,8 @@ const toAvailableClassScheduleSlot = (input: {
     optionId: `class_schedule:${input.schedule.id}:${input.startAt}`,
     classScheduleId: input.schedule.id,
     scheduleBlockId: input.scheduleBlockId,
+    scheduleType: input.schedule.scheduleType,
+    bookingStatus: input.schedule.bookingStatus ?? "open",
     teacherId: input.teacherId,
     classId: input.classId,
     label: input.label,
@@ -707,7 +732,7 @@ export const mockDataAdapter: DataAdapter = {
           : item.teacherDisplayName ?? item.teacherName ?? null
 
         return {
-          ...cloneClassSummary(item),
+          ...toPublicVisibleClassSummary(item),
           teacherDisplayName: publicTeacherName,
           teacherName: publicTeacherName
         }
@@ -735,7 +760,7 @@ export const mockDataAdapter: DataAdapter = {
       teacherProfile?.teacherName ?? (found.teacherId ? null : found.teacherDisplayName ?? found.teacherName ?? null)
 
     const detail: ClassDetail = {
-      ...found,
+      ...toPublicVisibleClassSummary(found),
       teacherDisplayName: publicTeacherName,
       teacherName: publicTeacherName,
       teacherProfile,
@@ -1102,8 +1127,13 @@ export const mockDataAdapter: DataAdapter = {
     const nowMs = Date.now()
     if (classItem.schedules && classItem.schedules.length > 0) {
       const existingBlocks = scheduleBlocks.filter((slot) => slot.classId === classId)
+      const visibleSchedules = classItem.schedules.filter((schedule) => (schedule.bookingStatus ?? "open") !== "hidden")
 
-      return classItem.schedules
+      if (visibleSchedules.length === 0) {
+        return []
+      }
+
+      return visibleSchedules
         .flatMap((schedule) =>
           generateUpcomingClassScheduleOccurrences(schedule).map((occurrence) => {
             const matchedBlock =
@@ -1171,6 +1201,281 @@ export const mockDataAdapter: DataAdapter = {
         return toAvailableScheduleSlot(slot, appliedCount)
       })
       .sort((a, b) => (a.startAt > b.startAt ? 1 : -1))
+  },
+  async getStudioScheduleCalendar(input) {
+    if (input.organizationId !== mockOrganizationId) {
+      return { items: [], days: [] }
+    }
+
+    const items: StudioScheduleCalendarItem[] = classes
+      .filter((item) => !input.classId || item.id === input.classId)
+      .filter((item) => !input.teacherId || item.teacherId === input.teacherId)
+      .flatMap((classItem) =>
+        (classItem.schedules ?? [])
+          .filter((schedule) => schedule.scheduleType === "one_time" && schedule.specificDate?.startsWith(input.month))
+          .map((schedule) => {
+            const activeReservationCount = applications.filter(
+              (application) =>
+                application.classId === classItem.id &&
+                application.classScheduleId === schedule.id &&
+                ACTIVE_APPLICATION_STATUSES.includes(application.status)
+            ).length
+            const capacity = Math.max(1, schedule.capacity ?? 1)
+            const remainingCapacity = Math.max(capacity - activeReservationCount, 0)
+            const bookingStatus = schedule.bookingStatus ?? "open"
+            const status =
+              bookingStatus === "hidden"
+                ? "hidden"
+                : bookingStatus === "closed" || remainingCapacity <= 0
+                  ? "closed"
+                  : "open"
+
+            return {
+              classScheduleId: schedule.id,
+              classId: classItem.id,
+              classTitle: classItem.title,
+              teacherId: classItem.teacherId ?? null,
+              teacherName: classItem.teacherDisplayName ?? classItem.teacherName ?? null,
+              scheduleType: schedule.scheduleType,
+              bookingStatus: schedule.bookingStatus ?? "open",
+              dayOfWeek: schedule.dayOfWeek ?? null,
+              specificDate: schedule.specificDate ?? "",
+              startTime: schedule.startTime.slice(0, 5),
+              endTime: schedule.endTime.slice(0, 5),
+              capacity,
+              activeReservationCount,
+              remainingCapacity,
+              status,
+              seriesId: schedule.seriesId ?? null
+            } satisfies StudioScheduleCalendarItem
+          })
+      )
+      .sort((a, b) => (a.specificDate === b.specificDate ? (a.startTime > b.startTime ? 1 : -1) : a.specificDate > b.specificDate ? 1 : -1))
+
+    const daysMap = new Map<string, StudioScheduleCalendarItem[]>()
+    for (const item of items) {
+      const current = daysMap.get(item.specificDate) ?? []
+      current.push(item)
+      daysMap.set(item.specificDate, current)
+    }
+
+    const days: StudioScheduleCalendarDay[] = Array.from(daysMap.entries()).map(([date, dateItems]) => ({
+      date,
+      items: dateItems,
+      totalCapacity: dateItems.reduce((sum, item) => sum + item.capacity, 0),
+      totalActiveReservationCount: dateItems.reduce((sum, item) => sum + item.activeReservationCount, 0),
+      totalRemainingCapacity: dateItems.reduce((sum, item) => sum + item.remainingCapacity, 0),
+      closedCount: dateItems.filter((item) => item.status === "closed").length,
+      hiddenCount: dateItems.filter((item) => item.status === "hidden").length
+    }))
+
+    return { items, days }
+  },
+  async createStudioClassSchedule(input: CreateStudioClassScheduleInput) {
+    const target = classes.find((item) => item.id === input.classId)
+    if (!target || input.organizationId !== mockOrganizationId) {
+      throw new Error("studio_class_not_found_or_forbidden")
+    }
+
+    const created: StudioClassScheduleItem = {
+      id: `class-schedule-${Date.now()}`,
+      scheduleType: "one_time",
+      bookingStatus: "open",
+      dayOfWeek: null,
+      specificDate: input.specificDate,
+      seriesId: null,
+      startTime: input.startTime,
+      endTime: input.endTime,
+      capacity: input.capacity,
+      displayLabel: null,
+      sortOrder: (target.schedules?.length ?? 0) + 1,
+      applicationCount: 0,
+      isReferencedByApplications: false
+    }
+
+    target.schedules = [...(target.schedules ?? []), created]
+    return created
+  },
+  async updateStudioClassSchedule(input: UpdateStudioClassScheduleInput) {
+    const targetClass = classes.find((item) =>
+      (item.schedules ?? []).some((schedule) => schedule.id === input.classScheduleId)
+    )
+    if (!targetClass || input.organizationId !== mockOrganizationId) {
+      throw new Error("class_schedule_not_found_or_forbidden")
+    }
+
+    const targetSchedule = (targetClass.schedules ?? []).find((schedule) => schedule.id === input.classScheduleId)
+    if (!targetSchedule) {
+      throw new Error("class_schedule_not_found_or_forbidden")
+    }
+
+    const activeReservationCount = applications.filter(
+      (application) =>
+        application.classScheduleId === targetSchedule.id && ACTIVE_APPLICATION_STATUSES.includes(application.status)
+    ).length
+
+    if (typeof input.capacity === "number" && input.capacity < activeReservationCount) {
+      throw new Error("class_schedule_capacity_below_active_reservations")
+    }
+
+    targetSchedule.capacity =
+      typeof input.capacity === "number" ? input.capacity : targetSchedule.capacity
+    if (input.bookingStatus) {
+      targetSchedule.bookingStatus = input.bookingStatus
+    }
+    if (input.displayLabel !== undefined) {
+      targetSchedule.displayLabel = input.displayLabel
+    }
+    targetSchedule.applicationCount = activeReservationCount
+    targetSchedule.isReferencedByApplications = activeReservationCount > 0
+
+    return targetSchedule
+  },
+  async updateStudioClassSchedulesForDate(input) {
+    const targetClass = classes.find((item) => item.id === input.classId)
+    if (!targetClass || input.organizationId !== mockOrganizationId) {
+      throw new Error("studio_class_not_found_or_forbidden")
+    }
+
+    const targetSchedules = (targetClass.schedules ?? []).filter(
+      (schedule) => schedule.scheduleType === "one_time" && schedule.specificDate === input.specificDate
+    )
+
+    for (const schedule of targetSchedules) {
+      schedule.bookingStatus = input.bookingStatus
+    }
+
+    return targetSchedules.length
+  },
+  async deleteStudioClassSchedule(input: DeleteStudioClassScheduleInput) {
+    const targetClass = classes.find((item) =>
+      (item.schedules ?? []).some((schedule) => schedule.id === input.classScheduleId)
+    )
+    if (!targetClass || input.organizationId !== mockOrganizationId) {
+      throw new Error("class_schedule_not_found_or_forbidden")
+    }
+
+    const activeReservationCount = applications.filter(
+      (application) =>
+        application.classScheduleId === input.classScheduleId && ACTIVE_APPLICATION_STATUSES.includes(application.status)
+    ).length
+    if (activeReservationCount > 0) {
+      throw new Error("class_schedule_with_active_reservations_cannot_be_deleted")
+    }
+
+    targetClass.schedules = (targetClass.schedules ?? []).filter((schedule) => schedule.id !== input.classScheduleId)
+  },
+  async previewBulkCreateClassSchedules(input: BulkCreateClassSchedulesInput) {
+    if (input.organizationId !== mockOrganizationId) {
+      throw new Error("studio_class_not_found_or_forbidden")
+    }
+
+    const target = classes.find((item) => item.id === input.classId)
+    if (!target) {
+      throw new Error("studio_class_not_found_or_forbidden")
+    }
+
+    const weekdays =
+      input.repeatMode === "daily"
+        ? [0, 1, 2, 3, 4, 5, 6]
+        : input.repeatMode === "weekdays"
+          ? [1, 2, 3, 4, 5]
+          : input.repeatMode === "weekends"
+            ? [0, 6]
+            : input.weekdays
+
+    const items: BulkCreateClassSchedulesPreview["items"] = []
+    const excludedItems: BulkCreateClassSchedulesPreview["excludedItems"] = []
+    const cursor = new Date(`${input.startDate}T00:00:00`)
+    const endDate = new Date(`${input.endDate}T00:00:00`)
+
+    while (cursor <= endDate) {
+      if (weekdays.includes(cursor.getDay())) {
+        const dateText = `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, "0")}-${String(cursor.getDate()).padStart(2, "0")}`
+        for (const slot of input.timeSlots) {
+          const duplicate = (target.schedules ?? []).some(
+            (schedule) =>
+              schedule.scheduleType === "one_time" &&
+              schedule.specificDate === dateText &&
+              schedule.startTime.slice(0, 5) === slot.startTime
+          )
+          items.push({
+            specificDate: dateText,
+            startTime: slot.startTime,
+            endTime: slot.endTime,
+            capacity: slot.capacity,
+            classId: input.classId,
+            teacherId: input.teacherId,
+            classTitle: target.title,
+            teacherName: target.teacherDisplayName ?? target.teacherName ?? null,
+            isDuplicate: duplicate,
+            hasTeacherConflict: false
+          })
+          if (duplicate) {
+            excludedItems.push({
+              kind: "duplicate",
+              specificDate: dateText,
+              startTime: slot.startTime,
+              endTime: slot.endTime,
+              capacity: slot.capacity,
+              message: "같은 수업, 날짜, 시작 시간의 기존 일정이 있어 생성에서 제외됩니다."
+            })
+          }
+        }
+      }
+      cursor.setDate(cursor.getDate() + 1)
+    }
+
+    return {
+      totalCalculatedCount: items.length,
+      creatableCount: items.filter((item) => !item.isDuplicate).length,
+      duplicateCount: items.filter((item) => item.isDuplicate).length,
+      teacherConflictCount: 0,
+      excludedItems,
+      items
+    } satisfies BulkCreateClassSchedulesPreview
+  },
+  async bulkCreateClassSchedules(input: BulkCreateClassSchedulesInput) {
+    const preview = await this.previewBulkCreateClassSchedules(input)
+    const target = classes.find((item) => item.id === input.classId)
+    if (!target) {
+      throw new Error("studio_class_not_found_or_forbidden")
+    }
+
+    const seriesId = `series-${Date.now()}`
+    const insertedScheduleIds: string[] = []
+    preview.items
+      .filter((item) => !item.isDuplicate)
+      .forEach((item, index) => {
+        const id = `class-schedule-${Date.now()}-${index}`
+        insertedScheduleIds.push(id)
+        target.schedules = [
+          ...(target.schedules ?? []),
+          {
+            id,
+            scheduleType: "one_time",
+            bookingStatus: "open",
+            dayOfWeek: null,
+            specificDate: item.specificDate,
+            seriesId,
+            startTime: item.startTime,
+            endTime: item.endTime,
+            capacity: item.capacity,
+            displayLabel: null,
+            sortOrder: (target.schedules?.length ?? 0) + index,
+            applicationCount: 0,
+            isReferencedByApplications: false
+          }
+        ]
+      })
+
+    return {
+      insertedCount: insertedScheduleIds.length,
+      skippedDuplicateCount: preview.duplicateCount,
+      teacherConflictCount: preview.teacherConflictCount,
+      seriesId,
+      insertedScheduleIds
+    } satisfies BulkCreateClassSchedulesResult
   },
   async listMyApplications(parentId) {
     return applications
@@ -1582,6 +1887,14 @@ export const mockDataAdapter: DataAdapter = {
 
     if (!matchedSlot) {
       throw new Error("invalid_schedule_slot")
+    }
+
+    if (matchedSlot.bookingStatus === "closed") {
+      throw new Error("schedule_booking_closed")
+    }
+
+    if (matchedSlot.bookingStatus === "hidden") {
+      throw new Error("schedule_booking_hidden")
     }
 
     if (matchedSlot.isClosed || matchedSlot.appliedCount >= matchedSlot.capacity) {

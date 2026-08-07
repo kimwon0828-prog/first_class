@@ -1,0 +1,315 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(15, 23, 42, 0.48);
+}
+
+.modal {
+  width: min(100%, 760px);
+  max-height: min(90vh, 920px);
+  overflow: auto;
+  border-radius: 16px;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 24px 70px rgba(15, 23, 42, 0.2);
+}
+
+.header {
+  padding: 24px 24px 18px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.title {
+  margin: 0;
+  font-size: 22px;
+  line-height: 30px;
+  font-weight: 800;
+  color: #111827;
+}
+
+.section {
+  display: grid;
+  gap: 16px;
+  padding: 22px 24px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.sectionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.sectionTitle {
+  font-size: 15px;
+  line-height: 22px;
+  font-weight: 800;
+  color: #111827;
+}
+
+.rowGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.field {
+  display: grid;
+  gap: 8px;
+}
+
+.label {
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 700;
+  color: #374151;
+}
+
+.input {
+  width: 100%;
+  min-width: 0;
+  height: 48px;
+  padding: 0 14px;
+  border: 1px solid #d1d5db;
+  border-radius: 12px;
+  background: #ffffff;
+  font-size: 15px;
+  line-height: 20px;
+  color: #111827;
+}
+
+.hint,
+.helpText,
+.weekdayText,
+.rangePreview {
+  margin: 0;
+  font-size: 13px;
+  line-height: 19px;
+  color: #6b7280;
+}
+
+.checkboxRow,
+.radioRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  line-height: 20px;
+  color: #111827;
+}
+
+.modeList {
+  display: grid;
+  gap: 10px;
+}
+
+.groupList {
+  display: grid;
+  gap: 14px;
+}
+
+.groupCard {
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  background: #f9fafb;
+}
+
+.groupHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.groupTitle {
+  font-size: 15px;
+  line-height: 22px;
+  font-weight: 800;
+  color: #111827;
+}
+
+.weekdayRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.weekdayButton {
+  min-width: 38px;
+  height: 38px;
+  border: 1px solid #d1d5db;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #111827;
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.weekdayButtonSelected {
+  border-color: #16a34a;
+  background: #16a34a;
+  color: #ffffff;
+}
+
+.timeRangeList {
+  display: grid;
+  gap: 10px;
+}
+
+.timeRangeCard {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid #dcfce7;
+  border-radius: 14px;
+  background: #ffffff;
+}
+
+.timeRow {
+  display: grid;
+  gap: 12px;
+  align-items: end;
+}
+
+.timeRowWithCapacity {
+  grid-template-columns: minmax(0, 1fr) 16px minmax(0, 1fr) minmax(0, 1fr);
+}
+
+.timeRowWithoutCapacity {
+  grid-template-columns: minmax(0, 1fr) 16px minmax(0, 1fr);
+}
+
+.dash {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #94a3b8;
+  font-weight: 700;
+  padding-bottom: 14px;
+}
+
+.timeRangeFooter {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.secondaryButton,
+.cancelButton,
+.saveButton,
+.textButton {
+  border-radius: 12px;
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.secondaryButton {
+  justify-self: flex-start;
+  border: 1px solid #d1d5db;
+  background: #ffffff;
+  color: #111827;
+  padding: 11px 16px;
+}
+
+.textButton {
+  border: 0;
+  background: transparent;
+  color: #6b7280;
+  padding: 0;
+}
+
+.errorText {
+  margin: 0;
+  padding: 0 24px;
+  font-size: 14px;
+  line-height: 20px;
+  color: #b42318;
+}
+
+.footer {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  padding: 20px 24px 24px;
+}
+
+.cancelButton {
+  border: 1px solid #d1d5db;
+  background: #ffffff;
+  color: #111827;
+  min-width: 120px;
+  padding: 13px 18px;
+}
+
+.saveButton {
+  border: 1px solid #16a34a;
+  background: #16a34a;
+  color: #ffffff;
+  min-width: 120px;
+  padding: 13px 18px;
+}
+
+@media (max-width: 768px) {
+  .overlay {
+    align-items: flex-end;
+    padding: 0;
+  }
+
+  .modal {
+    width: 100%;
+    max-height: 94vh;
+    border-radius: 20px 20px 0 0;
+  }
+
+  .header,
+  .section {
+    padding-left: 18px;
+    padding-right: 18px;
+  }
+
+  .errorText {
+    padding-left: 18px;
+    padding-right: 18px;
+  }
+
+  .rowGrid,
+  .timeRow {
+    grid-template-columns: 1fr;
+  }
+
+  .dash {
+    display: none;
+  }
+
+  .footer {
+    position: sticky;
+    bottom: 0;
+    background: #ffffff;
+    border-top: 1px solid #e5e7eb;
+    padding-left: 18px;
+    padding-right: 18px;
+  }
+
+  .cancelButton,
+  .saveButton {
+    flex: 1;
+  }
+
+  .secondaryButton {
+    width: 100%;
+  }
+}
