@@ -1,9 +1,9 @@
 .card {
   display: grid;
-  gap: 18px;
-  padding: 24px;
+  gap: 16px;
+  padding: 20px;
   border: 1px solid #e5e7eb;
-  border-radius: 16px;
+  border-radius: 12px;
   background: #ffffff;
 }
 
@@ -28,18 +28,18 @@
   margin: 8px 0 0;
   font-size: 14px;
   line-height: 22px;
-  color: #6b7280;
+  color: #4b5563;
 }
 
 .actionButton {
-  border: 1px solid #d1d5db;
-  border-radius: 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
   background: #ffffff;
   color: #111827;
   font-size: 14px;
   line-height: 20px;
   font-weight: 700;
-  padding: 11px 16px;
+  padding: 9px 16px;
   cursor: pointer;
 }
 
@@ -52,7 +52,7 @@
   font-size: 13px;
   line-height: 18px;
   font-weight: 700;
-  color: #16a34a;
+  color: #1f8b2c;
 }
 
 .groupCard {
@@ -60,8 +60,8 @@
   gap: 6px;
   padding: 16px;
   border: 1px solid #e5e7eb;
-  border-radius: 14px;
-  background: #f9fafb;
+  border-radius: 12px;
+  background: #f9faf9;
 }
 
 .groupWeekdays {

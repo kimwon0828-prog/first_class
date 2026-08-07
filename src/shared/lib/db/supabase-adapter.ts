@@ -394,6 +394,18 @@ const hideHiddenSchedulesForPublicClass = <T extends ClassSummary | ClassDetail>
 const CLASS_SCHEDULE_SELECT_FIELDS =
   "id, class_id, schedule_type, booking_status, day_of_week, specific_date, series_id, start_time, end_time, capacity, display_label, sort_order, created_at"
 
+const chunkArray = <T,>(items: T[], chunkSize: number) => {
+  if (chunkSize <= 0) {
+    return [items]
+  }
+
+  const chunks: T[][] = []
+  for (let index = 0; index < items.length; index += chunkSize) {
+    chunks.push(items.slice(index, index + chunkSize))
+  }
+  return chunks
+}
+
 const attachClassSchedulesToRows = async (
   supabase: Awaited<ReturnType<typeof getSupabaseServerClient>>,
   rows: ClassRow[]
@@ -419,24 +431,28 @@ const attachClassSchedulesToRows = async (
   const applicationCountByScheduleId = new Map<string, number>()
 
   if (scheduleIds.length > 0) {
-    const { data: applicationData, error: applicationError } = await supabase
-      .from("trial_applications")
-      .select("class_schedule_id")
-      .in("class_schedule_id", scheduleIds)
+    const scheduleIdChunks = chunkArray(scheduleIds, 100)
 
-    if (applicationError) {
-      throw new Error("failed_to_fetch_studio_class_schedule_usage")
-    }
+    for (const scheduleIdChunk of scheduleIdChunks) {
+      const { data: applicationData, error: applicationError } = await supabase
+        .from("trial_applications")
+        .select("class_schedule_id")
+        .in("class_schedule_id", scheduleIdChunk)
 
-    for (const row of (applicationData ?? []) as Array<{ class_schedule_id: string | null }>) {
-      if (!row.class_schedule_id) {
-        continue
+      if (applicationError) {
+        throw new Error("failed_to_fetch_studio_class_schedule_usage")
       }
 
-      applicationCountByScheduleId.set(
-        row.class_schedule_id,
-        (applicationCountByScheduleId.get(row.class_schedule_id) ?? 0) + 1
-      )
+      for (const row of (applicationData ?? []) as Array<{ class_schedule_id: string | null }>) {
+        if (!row.class_schedule_id) {
+          continue
+        }
+
+        applicationCountByScheduleId.set(
+          row.class_schedule_id,
+          (applicationCountByScheduleId.get(row.class_schedule_id) ?? 0) + 1
+        )
+      }
     }
   }
 
