@@ -1,6 +1,38 @@
 .scheduleStepLayout {
   display: grid;
+  gap: 24px;
+}
+
+.sectionBlock {
+  display: grid;
+  gap: 10px;
+}
+
+.sectionLabel {
+  margin: 0;
+  color: #9ca3af;
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.sectionCard {
+  display: grid;
   gap: 16px;
+  padding: 20px;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  background: #ffffff;
+}
+
+.sectionHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  flex-wrap: wrap;
 }
 
 .noteCard {
@@ -28,6 +60,13 @@
   margin: 0;
   font-size: 14px;
   line-height: 22px;
+  color: #4b5563;
+}
+
+.subtleText {
+  margin: 0;
+  font-size: 13px;
+  line-height: 20px;
   color: #6b7280;
 }
 
@@ -49,13 +88,99 @@
 }
 
 .metricChip {
-  background: #ecfdf3;
-  color: #166534;
+  background: #eaf7ec;
+  color: #1f8b2c;
 }
 
 .metricChipMuted {
   background: #f3f4f6;
   color: #4b5563;
+}
+
+.metricChipWarning {
+  background: #fff7ed;
+  color: #b45309;
+}
+
+.previewLayout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(280px, 0.85fr);
+  gap: 18px;
+}
+
+.previewCalendarCard,
+.previewDayCard,
+.emptyCard {
+  display: grid;
+  gap: 14px;
+  padding: 18px;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  background: #fcfdfc;
+}
+
+.previewToolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.previewMonthLabel {
+  margin: 0;
+  color: #111827;
+  font-size: 16px;
+  line-height: 22px;
+  font-weight: 800;
+}
+
+.iconButton {
+  min-height: 36px;
+  padding: 0 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  background: #ffffff;
+  color: #111827;
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 700;
+}
+
+.generatedSlotList {
+  display: grid;
+  gap: 10px;
+}
+
+.generatedSlotCard {
+  display: grid;
+  gap: 8px;
+  padding: 14px 16px;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  background: #ffffff;
+}
+
+.generatedSlotHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.generatedSlotTime {
+  color: #111827;
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 800;
+}
+
+.generatedSlotMeta,
+.emptyText {
+  margin: 0;
+  color: #4b5563;
+  font-size: 13px;
+  line-height: 20px;
 }
 
 .errorText {
@@ -66,7 +191,25 @@
 }
 
 @media (max-width: 720px) {
+  .sectionCard,
   .noteCard {
     padding: 18px;
+  }
+
+  .previewLayout {
+    grid-template-columns: 1fr;
+  }
+
+  .previewCalendarCard,
+  .previewDayCard,
+  .emptyCard {
+    padding: 16px;
+  }
+
+  .generatedSlotHeader,
+  .sectionHeader,
+  .previewToolbar {
+    flex-direction: column;
+    align-items: flex-start;
   }
 }
