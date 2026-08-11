@@ -14,7 +14,7 @@ type ClassesBottomNavProps = {
 const navPendingTextStyle = {
   fontSize: 11,
   lineHeight: "14px",
-  color: "#2aad38",
+  color: "var(--brand-700)",
   fontWeight: 700
 } as const
 

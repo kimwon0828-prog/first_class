@@ -14,12 +14,11 @@ import { getSession } from "@/features/auth/lib/session"
 import { getPublicClassCardScheduleSummaries } from "@/features/classes/queries/get-public-class-card-schedule-summaries"
 import type { ClassSummary } from "@/shared/lib/db/adapter"
 import { ClassesRegionInlineSelect, ClassesSearchPill } from "@/features/classes/ui/classes-region-select"
+import { ClassCard } from "@/features/classes/ui/class-card"
 import { ParentFooter } from "@/features/classes/ui/parent-footer"
 import { getPublicClasses } from "@/features/classes/queries/get-public-classes"
-import { BookmarkButton } from "@/features/favorites/ui/bookmark-button"
 import { isAcademyArea } from "@/shared/config/academy-areas"
 import { ClassesBottomNav } from "./classes-bottom-nav"
-import { HeroBannerSlider } from "./hero-banner-slider"
 import styles from "./page.module.css"
 
 type ClassesPageProps = {
@@ -234,7 +233,6 @@ export default async function ClassesPage({ searchParams }: ClassesPageProps) {
     profile?.dbRole === "academy" ||
     profile?.dbRole === "operator" ||
     profile?.dbRole === "admin"
-  const favoritesEnabled = !session || profile?.role === "parent"
   const classesHref = buildClassesHref({
     region: selectedRegion,
     subject: selectedSubject,
@@ -265,7 +263,6 @@ export default async function ClassesPage({ searchParams }: ClassesPageProps) {
     : `/auth/sign-in?${new URLSearchParams({ returnTo: myApplicationsHref }).toString()}`
   const isFilteredView = Boolean(selectedQuery || selectedSubject)
   const visibleClasses = filteredClasses
-  const heroBanners = [{ id: "default" }, { id: "secondary" }, { id: "tertiary" }] as const
   const selectedStageClasses = selectedStageChip
     ? visibleClasses.filter((item) => matchesKeyword(item, selectedStageChip.keywords)).slice(0, 8)
     : visibleClasses.slice(0, 8)
@@ -278,6 +275,7 @@ export default async function ClassesPage({ searchParams }: ClassesPageProps) {
       ? returnTo
       : `/auth/sign-in?${new URLSearchParams({ returnTo }).toString()}`
   }
+  void applyHrefForClass
   const topAvailableClasses = visibleClasses.slice(0, 10)
   const scheduleSummaryByClassId =
     !error && !isFilteredView && topAvailableClasses.length > 0
@@ -299,24 +297,11 @@ export default async function ClassesPage({ searchParams }: ClassesPageProps) {
           }
         })
       : []
+  void recommendedAdvancedClasses
 
   return (
-    <main
-      className={styles.page}
-      style={{ background: "#ffffff", minHeight: "100dvh", width: "100%", overflowX: "hidden" }}
-    >
-      <div
-        className={styles.shell}
-        style={{
-          boxSizing: "border-box",
-          width: "100%",
-          maxWidth: 430,
-          margin: "0 auto",
-          minHeight: "100dvh",
-          background: "#ffffff",
-          paddingBottom: "calc(96px + env(safe-area-inset-bottom))"
-        }}
-      >
+    <main className={styles.page}>
+      <div className={styles.shell}>
         <header className={styles.header}>
           <Link href={classesHomeHref} className={styles.brand}>
             <Image
@@ -379,202 +364,49 @@ export default async function ClassesPage({ searchParams }: ClassesPageProps) {
           )}
         </header>
 
-        <section className={styles.regionSection}>
-          <ClassesRegionInlineSelect
-            selectedRegion={selectedRegion}
-            rowClassName={styles.regionRow}
-            nameClassName={styles.regionName}
-            chevronWrapClassName={styles.regionChevronWrap}
-          />
-        </section>
-
-        <HeroBannerSlider banners={[...heroBanners]} />
-
-        <section className={styles.stageSection} aria-label="연령 및 단계 탐색">
-          <div className={styles.sectionHeader}>
-            <h2 className={styles.sectionTitle}>연령과 단계로 둘러보기</h2>
-          </div>
-          <div className={styles.stageScroller}>
-            {homeStageChips.map((chip) => (
-              <Link
-                key={chip.label}
-                href={buildClassesHref({
-                  region: selectedRegion,
-                  subject: selectedSubject,
-                  q: selectedQuery ?? null,
-                  stage: selectedStageChip?.label === chip.label ? null : chip.label
-                })}
-                className={`${styles.stageChip}${selectedStageChip?.label === chip.label ? ` ${styles.stageChipActive}` : ""}`}
-              >
-                {chip.label}
-              </Link>
-            ))}
-          </div>
-        </section>
-
-        <section>
-          <div className={styles.sectionHeader}>
-            <h2 className={styles.sectionTitle}>
-              {selectedStageChip ? `${selectedStageChip.label} 추천 수업` : "추천 수업"}
-            </h2>
-          </div>
-          {selectedStageClasses.length > 0 ? (
-            <ul className={styles.grid}>
-              {selectedStageClasses.map((item) => (
-                <li
-                  key={`stage-${selectedStageChip?.label ?? "all"}-${item.id}`}
-                  className={styles.slideItem}
-                >
-                  <Link href={detailHrefForClass(item.id)} className={`${styles.card} ${styles.sliderCard}`}>
-                    {favoritesEnabled ? (
-                      <BookmarkButton
-                        classId={item.id}
-                        className={styles.bookmarkButton}
-                        activeClassName={styles.bookmarkButtonActive}
-                      />
-                    ) : null}
-                    <div className={styles.cardImage}>
-                      {item.coverImageUrl ? (
-                        <Image
-                          src={item.coverImageUrl}
-                          alt={`${item.title} 대표 이미지`}
-                          fill
-                          sizes="(max-width: 430px) 70vw, 280px"
-                          style={{ objectFit: "cover" }}
-                          unoptimized
-                        />
-                      ) : (
-                        <div
-                          className={styles.imagePlaceholder}
-                          role="img"
-                          aria-label="첫수업 준비 중인 수업 이미지입니다."
-                        >
-                          첫수업 준비 중인 수업 이미지입니다.
-                        </div>
-                      )}
-                    </div>
-                    <div className={styles.cardBody}>
-                      <p className={styles.curatedEyebrow}>
-                        {selectedStageChip?.label ?? "추천"}
-                      </p>
-                      <h3 className={styles.cardTitle}>{item.title}</h3>
-                      <p className={styles.cardPrice}>{formatPrice(item.trialPrice)}</p>
-                      <div className={styles.cardMeta}>
-                        <span>{getSubjectLabel(item.subject)}</span>
-                        <span>·</span>
-                        <span>{formatStoredTargetGrades(item.targetAge)}</span>
-                      </div>
-                    </div>
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <div className={styles.stateCard}>
-              <p className={styles.stateTitle}>
-                {selectedStageChip
-                  ? `${selectedStageChip.label}에 맞는 수업을 준비 중이에요.`
-                  : "추천할 전체 학원 수업을 준비 중이에요."}
-              </p>
-              <p className={styles.stateDesc}>다른 연령/단계를 선택하거나 조금 뒤 다시 확인해 주세요.</p>
-            </div>
-          )}
-        </section>
-
-        <section className={styles.categorySection} aria-label="과목 카테고리">
-          <div className={styles.sectionHeader}>
-            <h2 className={styles.sectionTitle}>찾고 싶은 과목부터</h2>
-          </div>
-          <div className={styles.subjectPager} aria-label="과목 빠른 탐색">
-            {subjectPages.map((page, pageIndex) => (
-              <div key={`subject-page-${pageIndex}`} className={styles.subjectPage}>
-                <div className={styles.subjectGrid}>
-                  {page.map((item) => {
-                    return (
-                      <Link
-                        key={item.label}
-                        href={buildAcademiesHref(item.value)}
-                        className={styles.subjectItem}
-                      >
-                        <span className={styles.subjectEmoji}>{item.emoji}</span>
-                        <span className={styles.subjectLabel}>{item.label}</span>
-                      </Link>
-                    )
-                  })}
+        <div className={styles.content}>
+          <section className={styles.filterSection}>
+            <div className={styles.filterPanel}>
+              <div className={styles.filterRow}>
+                <p className={styles.filterLabel}>지역</p>
+                <ClassesRegionInlineSelect
+                  selectedRegion={selectedRegion}
+                  rowClassName={styles.regionRow}
+                  nameClassName={styles.regionName}
+                  chevronWrapClassName={styles.regionChevronWrap}
+                />
+              </div>
+              <div className={styles.filterRow}>
+                <p className={styles.filterLabel}>연령 · 단계</p>
+                <div className={styles.stageScroller}>
+                  {homeStageChips.map((chip) => (
+                    <Link
+                      key={chip.label}
+                      href={buildClassesHref({
+                        region: selectedRegion,
+                        subject: selectedSubject,
+                        q: selectedQuery ?? null,
+                        stage: selectedStageChip?.label === chip.label ? null : chip.label
+                      })}
+                      className={`${styles.stageChip}${
+                        selectedStageChip?.label === chip.label ? ` ${styles.stageChipActive}` : ""
+                      }`}
+                    >
+                      {chip.label}
+                    </Link>
+                  ))}
                 </div>
               </div>
-            ))}
-          </div>
-          {subjectPages.length > 1 ? (
-            <div className={styles.subjectDots} aria-hidden="true">
-              {subjectPages.map((_, index) => (
-                <span key={`subject-dot-${index}`} className={styles.subjectDot} />
-              ))}
-            </div>
-          ) : null}
-        </section>
-
-        {error ? (
-          <section>
-            <div className={styles.sectionHeader}>
-              <h2 className={styles.sectionTitle}>첫수업을 불러오는 중 문제가 생겼어요</h2>
-            </div>
-            <div className={styles.stateCard}>
-              <p className={styles.stateTitle}>{error}</p>
-              <p className={styles.stateDesc}>잠시 후 다시 시도해 주세요.</p>
-              <Link href={classesHref} className={styles.retryLink}>
-                다시 불러오기
-              </Link>
             </div>
           </section>
-        ) : null}
 
-        {!error && visibleClasses.length === 0 && (selectedQuery || selectedSubject) ? (
-          <section>
-            <div className={styles.sectionHeader}>
-              <h2 className={styles.sectionTitle}>찾아본 조건에 맞는 수업</h2>
-            </div>
-            <div className={styles.stateCard}>
-              <p className={styles.stateTitle}>검색 결과가 없어요.</p>
-              <p className={styles.stateDesc}>다른 검색어로 다시 찾아보세요.</p>
-            </div>
-          </section>
-        ) : null}
-
-        {!error && visibleClasses.length === 0 && !selectedQuery && !selectedSubject ? (
-          <section>
-            <div className={styles.sectionHeader}>
-              <h2 className={styles.sectionTitle}>공개된 첫수업</h2>
-            </div>
-            <div className={styles.stateCard}>
-              <p className={styles.stateTitle}>
-                {selectedRegion ? `${selectedRegion}에 현재 공개된 수업이 아직 없어요.` : "현재 공개된 수업이 아직 없어요."}
-              </p>
-              <p className={styles.stateDesc}>조금 뒤 다시 확인해 주세요.</p>
-            </div>
-          </section>
-        ) : null}
-
-        {!error && visibleClasses.length > 0 && isFilteredView ? (
-          <section>
+          <section className={styles.categorySection} aria-label="과목 카테고리">
             <div className={styles.sectionHeader}>
               <h2 className={styles.sectionTitle}>
-                {selectedSubject && selectedQuery
-                  ? `${resolvedSubjectCategory?.label ?? selectedSubject} · "${selectedQuery}" 결과`
-                  : selectedSubject
-                    ? `${resolvedSubjectCategory?.label ?? selectedSubject} 수업`
-                    : `"${selectedQuery}" 검색 결과`}
+                찾고 싶은 <span className={styles.sectionTitleAccent}>과목</span>부터
               </h2>
-              <Link
-                href={buildClassesHref({
-                  region: selectedRegion,
-                  subject: null,
-                  q: null,
-                  stage: selectedStageChip?.label ?? null
-                })}
-                className={styles.sectionLink}
-              >
-                필터 해제
+              <Link href="/academies" className={styles.sectionLink}>
+                전체보기
                 <svg
                   width="16"
                   height="16"
@@ -593,60 +425,120 @@ export default async function ClassesPage({ searchParams }: ClassesPageProps) {
                 </svg>
               </Link>
             </div>
-            <ul className={styles.resultGrid}>
-              {visibleClasses.map((item) => (
-                <li key={item.id} className={styles.resultGridItem}>
-                  <Link href={detailHrefForClass(item.id)} className={styles.card}>
-                    {favoritesEnabled ? (
-                      <BookmarkButton
-                        classId={item.id}
-                        className={styles.bookmarkButton}
-                        activeClassName={styles.bookmarkButtonActive}
-                      />
-                    ) : null}
-                    <div className={styles.cardImage}>
-                      {item.coverImageUrl ? (
-                        <Image
-                          src={item.coverImageUrl}
-                          alt={`${item.title} 대표 이미지`}
-                          fill
-                          sizes="(max-width: 430px) 50vw, 215px"
-                          style={{ objectFit: "cover" }}
-                          unoptimized
-                        />
-                      ) : (
-                        <div
-                          className={styles.imagePlaceholder}
-                          role="img"
-                          aria-label="첫수업 준비 중인 수업 이미지입니다."
-                        >
-                          첫수업 준비 중인 수업 이미지입니다.
-                        </div>
-                      )}
-                    </div>
-                    <div className={styles.cardBody}>
-                      <h3 className={styles.cardTitle}>{item.title}</h3>
-                      <p className={styles.cardPrice}>{formatPrice(item.trialPrice)}</p>
-                      <div className={styles.cardMeta}>
-                        <span>{getSubjectLabel(item.subject)}</span>
-                        <span>·</span>
-                        <span>{formatStoredTargetGrades(item.targetAge)}</span>
-                      </div>
-                    </div>
-                  </Link>
-                </li>
+            <div className={styles.subjectPager} aria-label="과목 빠른 탐색">
+              {subjectPages.map((page, pageIndex) => (
+                <div key={`subject-page-${pageIndex}`} className={styles.subjectPage}>
+                  <div className={styles.subjectGrid}>
+                    {page.map((item) => (
+                      <Link key={item.label} href={buildAcademiesHref(item.value)} className={styles.subjectItem}>
+                        <span className={styles.subjectEmoji}>{item.emoji}</span>
+                        <span className={styles.subjectLabel}>{item.label}</span>
+                      </Link>
+                    ))}
+                  </div>
+                </div>
               ))}
-            </ul>
+            </div>
+            {subjectPages.length > 1 ? (
+              <div className={styles.subjectDots} aria-hidden="true">
+                {subjectPages.map((_, index) => (
+                  <span key={`subject-dot-${index}`} className={styles.subjectDot} />
+                ))}
+              </div>
+            ) : null}
           </section>
-        ) : null}
 
-        {!error && visibleClasses.length > 0 && !isFilteredView ? (
-          <>
-            <section>
+          <section className={styles.heroSection} aria-label="첫수업 소개 배너">
+            <article className={styles.heroCard}>
+              <Image
+                src="/images/hero-banner-bg.png"
+                alt="첫수업 소개 배너"
+                fill
+                sizes="(max-width: 480px) 100vw, 480px"
+                style={{ objectFit: "cover" }}
+                priority
+              />
+              <div className={styles.heroOverlay} />
+              <div className={styles.heroContent}>
+                <div className={styles.heroBrand} aria-label="첫수업 로고">
+                  <Image src="/images/first-class-logo.png" alt="첫수업" width={110} height={36} priority />
+                </div>
+                <p className={styles.heroCopy}>
+                  학원 선택의 시작은 상담이 아니라
+                  <br />
+                  <strong>첫 수업</strong>이어야 합니다.
+                </p>
+              </div>
+            </article>
+          </section>
+
+          {error ? (
+            <section className={styles.sectionBlock}>
               <div className={styles.sectionHeader}>
-                <h2 className={styles.sectionTitle}>영재원 준비, 체험으로 시작하기</h2>
-                <Link href={classesHref} className={styles.sectionLink}>
-                  전체보기
+                <h2 className={styles.sectionTitle}>
+                  첫수업 <span className={styles.sectionTitleAccent}>불러오기</span>
+                </h2>
+              </div>
+              <div className={styles.stateCard}>
+                <p className={styles.stateTitle}>{error}</p>
+                <p className={styles.stateDesc}>잠시 후 다시 시도해 주세요.</p>
+                <Link href={classesHref} className={styles.retryLink}>
+                  다시 불러오기
+                </Link>
+              </div>
+            </section>
+          ) : null}
+
+          {!error && visibleClasses.length === 0 && (selectedQuery || selectedSubject) ? (
+            <section className={styles.sectionBlock}>
+              <div className={styles.sectionHeader}>
+                <h2 className={styles.sectionTitle}>
+                  조건에 맞는 <span className={styles.sectionTitleAccent}>수업</span>
+                </h2>
+              </div>
+              <div className={styles.stateCard}>
+                <p className={styles.stateTitle}>검색 결과가 없어요.</p>
+                <p className={styles.stateDesc}>다른 검색어로 다시 찾아보세요.</p>
+              </div>
+            </section>
+          ) : null}
+
+          {!error && visibleClasses.length === 0 && !selectedQuery && !selectedSubject ? (
+            <section className={styles.sectionBlock}>
+              <div className={styles.sectionHeader}>
+                <h2 className={styles.sectionTitle}>
+                  공개된 <span className={styles.sectionTitleAccent}>첫수업</span>
+                </h2>
+              </div>
+              <div className={styles.stateCard}>
+                <p className={styles.stateTitle}>
+                  {selectedRegion ? `${selectedRegion}에 현재 공개된 수업이 아직 없어요.` : "현재 공개된 수업이 아직 없어요."}
+                </p>
+                <p className={styles.stateDesc}>조금 뒤 다시 확인해 주세요.</p>
+              </div>
+            </section>
+          ) : null}
+
+          {!error && visibleClasses.length > 0 && isFilteredView ? (
+            <section className={styles.sectionBlock}>
+              <div className={styles.sectionHeader}>
+                <h2 className={styles.sectionTitle}>
+                  {selectedSubject && selectedQuery
+                    ? `${resolvedSubjectCategory?.label ?? selectedSubject} · "${selectedQuery}" 결과`
+                    : selectedSubject
+                      ? `${resolvedSubjectCategory?.label ?? selectedSubject} 수업`
+                      : `"${selectedQuery}" 검색 결과`}
+                </h2>
+                <Link
+                  href={buildClassesHref({
+                    region: selectedRegion,
+                    subject: null,
+                    q: null,
+                    stage: selectedStageChip?.label ?? null
+                  })}
+                  className={styles.sectionLink}
+                >
+                  필터 해제
                   <svg
                     width="16"
                     height="16"
@@ -665,116 +557,208 @@ export default async function ClassesPage({ searchParams }: ClassesPageProps) {
                   </svg>
                 </Link>
               </div>
-              <ul className={styles.grid}>
-                {recommendedAdvancedClasses.map((item) => (
-                  <li key={item.id} className={styles.slideItem}>
-                    <Link href={detailHrefForClass(item.id)} className={`${styles.card} ${styles.sliderCard}`}>
-                      {favoritesEnabled ? (
-                        <BookmarkButton
-                          classId={item.id}
-                          className={styles.bookmarkButton}
-                          activeClassName={styles.bookmarkButtonActive}
-                        />
-                      ) : null}
-                      <div className={styles.cardImage}>
-                        {item.coverImageUrl ? (
-                          <Image
-                            src={item.coverImageUrl}
-                            alt={`${item.title} 대표 이미지`}
-                            fill
-                            sizes="(max-width: 430px) 70vw, 280px"
-                            style={{ objectFit: "cover" }}
-                            unoptimized
-                          />
-                        ) : (
-                          <div
-                            className={styles.imagePlaceholder}
-                            role="img"
-                            aria-label="첫수업 준비 중인 수업 이미지입니다."
-                          >
-                            첫수업 준비 중인 수업 이미지입니다.
-                          </div>
-                        )}
-                      </div>
-                      <div className={styles.cardBody}>
-                        <p className={styles.curatedEyebrow}>탐구형 추천</p>
-                        <h3 className={styles.cardTitle}>{item.title}</h3>
-                        <p className={styles.cardPrice}>{formatPrice(item.trialPrice)}</p>
-                        <div className={styles.cardMeta}>
-                          <span>{getSubjectLabel(item.subject)}</span>
-                          <span>·</span>
-                          <span>{formatStoredTargetGrades(item.targetAge)}</span>
-                        </div>
-                      </div>
-                    </Link>
-                  </li>
-                ))}
+              <ul className={styles.resultGrid}>
+                {visibleClasses.map((item) => {
+                  const academyName = item.organization
+                    ? [item.organization.name, item.organization.branchName].filter(Boolean).join(" ").trim()
+                    : null
+
+                  return (
+                    <li key={item.id} className={styles.resultGridItem}>
+                      <ClassCard
+                        href={detailHrefForClass(item.id)}
+                        thumbnailUrl={item.coverImageUrl}
+                        thumbnailAlt={`${item.title} 대표 이미지`}
+                        title={item.title}
+                        academyName={academyName}
+                        subjectLabel={getSubjectLabel(item.subject)}
+                        gradeLabel={formatStoredTargetGrades(item.targetAge)}
+                        priceLabel={formatPrice(item.trialPrice)}
+                        isFree={item.trialPrice <= 0}
+                        classId={item.id}
+                      />
+                    </li>
+                  )
+                })}
               </ul>
             </section>
+          ) : null}
 
-            <section>
-              <div className={styles.sectionHeader}>
-                <h2 className={styles.sectionTitle}>이번 주 예약 가능한 수업</h2>
-                <Link href={classesHref} className={styles.sectionLink}>
-                  전체보기
-                  <svg
-                    width="16"
-                    height="16"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    xmlns="http://www.w3.org/2000/svg"
-                    aria-hidden="true"
-                  >
-                    <path
-                      d="M9 18l6-6-6-6"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  </svg>
-                </Link>
-              </div>
-              {availableClassCards.length > 0 ? (
-                <ul className={styles.availableList}>
-                  {availableClassCards.map(({ classItem, academyName, scheduleSummary }) => (
-                    <li key={classItem.id} className={styles.availableItem}>
-                      <article className={styles.availableCard}>
-                        <div className={styles.availableBody}>
-                          <div className={styles.availableHeader}>
-                            <div>
-                              <p className={styles.availableAcademy}>{academyName}</p>
-                              <h3 className={styles.availableTitle}>{classItem.title}</h3>
-                            </div>
-                            <span className={styles.seatBadge}>예약 가능</span>
-                          </div>
-                          <div className={styles.availableMeta}>
-                            <span>{scheduleSummary}</span>
-                            <span>·</span>
-                            <span>{formatStoredTargetGrades(classItem.targetAge)}</span>
-                          </div>
-                        </div>
-                        <div className={styles.availableFooter}>
-                          <span className={styles.availableSlotLabel}>자세한 시간은 상세에서 확인</span>
-                          <Link href={applyHrefForClass(classItem.id)} className={styles.reserveButton}>
-                            예약하기
-                          </Link>
-                        </div>
-                      </article>
+          {!error && visibleClasses.length > 0 && !isFilteredView ? (
+            <>
+              <section className={styles.sectionBlock}>
+                <div className={styles.sectionHeader}>
+                  <h2 className={styles.sectionTitle}>
+                    이번 주 <span className={styles.sectionTitleAccent}>예약 가능</span> 수업
+                  </h2>
+                  <Link href={classesHref} className={styles.sectionLink}>
+                    전체보기
+                    <svg
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      xmlns="http://www.w3.org/2000/svg"
+                      aria-hidden="true"
+                    >
+                      <path
+                        d="M9 18l6-6-6-6"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                  </Link>
+                </div>
+                {availableClassCards.length > 0 ? (
+                  <ul className={styles.availableList}>
+                    {availableClassCards.slice(0, 4).map(({ classItem, academyName, scheduleSummary }) => (
+                      <li key={classItem.id} className={styles.availableItem}>
+                        <ClassCard
+                          href={detailHrefForClass(classItem.id)}
+                          thumbnailUrl={classItem.coverImageUrl}
+                          thumbnailAlt={`${classItem.title} 대표 이미지`}
+                          title={classItem.title}
+                          academyName={academyName}
+                          subjectLabel={getSubjectLabel(classItem.subject)}
+                          gradeLabel={formatStoredTargetGrades(classItem.targetAge)}
+                          priceLabel={formatPrice(classItem.trialPrice)}
+                          isFree={classItem.trialPrice <= 0}
+                          statusBadge={{ label: "예약 가능", tone: "open" }}
+                          scheduleLabel={scheduleSummary}
+                          classId={classItem.id}
+                        />
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <div className={styles.stateCard}>
+                    <p className={styles.stateTitle}>이번 주에 바로 예약 가능한 수업을 준비 중이에요.</p>
+                    <p className={styles.stateDesc}>조금 뒤 다시 확인해 주세요.</p>
+                  </div>
+                )}
+              </section>
+
+              <section className={styles.sectionBlock}>
+                <div className={styles.sectionHeader}>
+                  <h2 className={styles.sectionTitle}>
+                    {selectedStageChip ? (
+                      <>
+                        <span className={styles.sectionTitleAccent}>{selectedStageChip.label}</span> 추천 수업
+                      </>
+                    ) : (
+                      <>
+                        <span className={styles.sectionTitleAccent}>추천</span> 수업
+                      </>
+                    )}
+                  </h2>
+                  <Link href={classesHref} className={styles.sectionLink}>
+                    전체보기
+                    <svg
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      xmlns="http://www.w3.org/2000/svg"
+                      aria-hidden="true"
+                    >
+                      <path
+                        d="M9 18l6-6-6-6"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                  </Link>
+                </div>
+                {selectedStageClasses.length > 0 ? (
+                  <ul className={styles.grid}>
+                    {selectedStageClasses.slice(0, 4).map((item) => {
+                      const academyName = item.organization
+                        ? [item.organization.name, item.organization.branchName].filter(Boolean).join(" ").trim()
+                        : null
+
+                      return (
+                        <li key={`stage-${selectedStageChip?.label ?? "all"}-${item.id}`} className={styles.slideItem}>
+                          <ClassCard
+                            href={detailHrefForClass(item.id)}
+                            thumbnailUrl={item.coverImageUrl}
+                            thumbnailAlt={`${item.title} 대표 이미지`}
+                            title={item.title}
+                            academyName={academyName}
+                            subjectLabel={getSubjectLabel(item.subject)}
+                            gradeLabel={formatStoredTargetGrades(item.targetAge)}
+                            priceLabel={formatPrice(item.trialPrice)}
+                            isFree={item.trialPrice <= 0}
+                            statusBadge={{ label: selectedStageChip?.label ?? "추천", tone: "muted" }}
+                            classId={item.id}
+                          />
+                        </li>
+                      )
+                    })}
+                  </ul>
+                ) : (
+                  <div className={styles.stateCard}>
+                    <p className={styles.stateTitle}>
+                      {selectedStageChip
+                        ? `${selectedStageChip.label}에 맞는 수업을 준비 중이에요.`
+                        : "추천할 전체 학원 수업을 준비 중이에요."}
+                    </p>
+                    <p className={styles.stateDesc}>다른 연령/단계를 선택하거나 조금 뒤 다시 확인해 주세요.</p>
+                  </div>
+                )}
+              </section>
+
+              {/*
+              <section className={styles.sectionBlock}>
+                <div className={styles.sectionHeader}>
+                  <h2 className={styles.sectionTitle}>
+                    영재원 <span className={styles.sectionTitleAccent}>준비</span>, 체험으로 시작하기
+                  </h2>
+                  <Link href={classesHref} className={styles.sectionLink}>
+                    전체보기
+                  </Link>
+                </div>
+                <ul className={styles.grid}>
+                  {recommendedAdvancedClasses.slice(0, 4).map((item) => (
+                    <li key={item.id} className={styles.slideItem}>
+                      <ClassCard
+                        href={detailHrefForClass(item.id)}
+                        thumbnailUrl={item.coverImageUrl}
+                        thumbnailAlt={`${item.title} 대표 이미지`}
+                        title={item.title}
+                        academyName={
+                          item.organization
+                            ? [item.organization.name, item.organization.branchName].filter(Boolean).join(" ").trim()
+                            : null
+                        }
+                        subjectLabel={getSubjectLabel(item.subject)}
+                        gradeLabel={formatStoredTargetGrades(item.targetAge)}
+                        priceLabel={formatPrice(item.trialPrice)}
+                        isFree={item.trialPrice <= 0}
+                        statusBadge={{ label: "탐구형 추천", tone: "muted" }}
+                        classId={item.id}
+                      />
                     </li>
                   ))}
                 </ul>
-              ) : (
-                <div className={styles.stateCard}>
-                  <p className={styles.stateTitle}>이번 주에 바로 예약 가능한 수업을 준비 중이에요.</p>
-                  <p className={styles.stateDesc}>조금 뒤 다시 확인해 주세요.</p>
-                </div>
-              )}
-            </section>
-          </>
-        ) : null}
+              </section>
+              */}
+            </>
+          ) : null}
 
-        <ParentFooter />
+          <section className={styles.partnerSection}>
+            <Link href="/partner" className={styles.partnerBanner}>
+              <span className={styles.partnerEyebrow}>첫수업 파트너</span>
+              <strong className={styles.partnerTitle}>우리 학원도 첫수업에서 학부모를 만나보세요</strong>
+              <span className={styles.partnerCopy}>학원 소개와 공개 수업 등록으로 체험 신청을 받을 수 있어요.</span>
+            </Link>
+          </section>
+
+          <ParentFooter />
+        </div>
       </div>
 
       <ClassesBottomNav
