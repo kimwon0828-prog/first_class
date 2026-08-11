@@ -1,52 +1,59 @@
 .page {
-  background: #ffffff;
   min-height: 100dvh;
   width: 100%;
   overflow-x: hidden;
+  background: var(--bg);
 }
 
 .shell {
   box-sizing: border-box;
   width: 100%;
-  max-width: 430px;
+  max-width: var(--col);
   margin: 0 auto;
   min-height: 100dvh;
-  background: #ffffff;
-  padding: calc(14px + env(safe-area-inset-top)) 24px calc(110px + env(safe-area-inset-bottom));
+  background: var(--surface);
+  padding: 0 var(--gutter) calc(132px + env(safe-area-inset-bottom));
 }
 
 .topBar {
+  position: sticky;
+  top: 0;
+  z-index: 5;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  height: 40px;
+  min-height: 60px;
+  padding: calc(12px + env(safe-area-inset-top)) 0 12px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
 }
 
 .iconButton {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
+  min-width: 32px;
   height: 32px;
-  border-radius: 999px;
-  border: 1px solid #eeeeee;
-  background: #ffffff;
-  color: #111111;
+  border-radius: var(--r-full);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-1);
   text-decoration: none;
   padding: 0;
 }
 
-.imageCard {
-  margin-top: 12px;
-  border-radius: 24px;
-  overflow: hidden;
-  background: #f7f7f7;
-  border: 1px solid #eeeeee;
+.heroSection {
+  display: grid;
+  gap: var(--s5);
+  padding-top: var(--s4);
 }
 
 .imageFrame {
   position: relative;
   aspect-ratio: 4 / 3;
+  border-radius: var(--r-md);
+  overflow: hidden;
+  background: var(--surface-sub);
 }
 
 .imagePlaceholder {
@@ -54,156 +61,185 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 18px;
+  padding: var(--s5);
   text-align: center;
   font-size: 13px;
   line-height: 1.5;
-  color: #8a8a8a;
+  color: var(--text-3);
 }
 
 .titleBlock {
-  margin-top: 20px;
+  display: grid;
+  gap: var(--s3);
 }
 
 .badges {
   display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-bottom: 12px;
+  flex-wrap: nowrap;
+  gap: var(--s2);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.badges::-webkit-scrollbar {
+  display: none;
 }
 
 .badge {
   display: inline-flex;
   align-items: center;
-  height: 28px;
+  flex: 0 0 auto;
+  min-height: 28px;
   padding: 0 10px;
-  border-radius: 999px;
-  background: #f3fbf4;
-  color: #2aad38;
-  font-size: clamp(12px, 3.3vw, 13px);
+  border-radius: var(--r-full);
+  font-size: 12px;
   font-weight: 700;
   letter-spacing: -0.02em;
 }
 
+.badgeOpen {
+  background: var(--brand-50);
+  color: var(--brand-700);
+}
+
+.badgeMuted {
+  background: var(--surface-sub);
+  color: var(--text-2);
+  border: 1px solid var(--border);
+}
+
 .title {
   margin: 0;
-  font-size: clamp(22px, 6.2vw, 26px);
-  line-height: 1.25;
+  font-size: 20px;
+  line-height: 1.4;
   font-weight: 800;
-  letter-spacing: -0.04em;
-  color: #111111;
+  letter-spacing: -0.03em;
+  color: var(--text-1);
   overflow-wrap: anywhere;
 }
 
 .price {
-  margin: 10px 0 0;
-  font-size: clamp(16px, 4.6vw, 18px);
-  font-weight: 800;
-  letter-spacing: -0.02em;
-  color: #111111;
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.5;
+  font-weight: 700;
+  color: var(--text-1);
+}
+
+.priceFree {
+  color: var(--brand-700);
 }
 
 .sections {
-  margin-top: 32px;
   display: grid;
-  gap: 24px;
+  gap: var(--s8);
+  margin-top: var(--s8);
 }
 
-.section {
-  border-radius: 18px;
-  border: 1px solid #eeeeee;
-  background: #ffffff;
-  padding: 20px;
+.section,
+.sectionState {
+  display: grid;
+  gap: var(--s4);
+  padding-top: var(--s8);
+  border-top: 1px solid var(--border);
 }
 
 .sectionTitle {
-  margin: 0 0 10px;
-  font-size: clamp(18px, 5.2vw, 20px);
-  line-height: 1.25;
-  font-weight: 800;
-  letter-spacing: -0.04em;
-  color: #111111;
-}
-
-.contentSectionGroup {
-  display: grid;
-  gap: 24px;
-}
-
-.contentSectionBlock {
-  display: grid;
-  gap: 0;
-}
-
-.contentSectionBlock + .contentSectionBlock {
-  padding-top: 24px;
+  margin: 0;
+  font-size: 17px;
+  line-height: 1.45;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--text-1);
 }
 
 .bodyText {
   margin: 0;
-  font-size: 15px;
-  line-height: 1.6;
-  color: #4a4a4a;
+  font-size: 14px;
+  line-height: 1.7;
+  font-weight: 400;
+  color: var(--text-1);
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
 
 .teacherProfileStack {
   display: grid;
-  gap: 10px;
+  gap: var(--s3);
 }
 
 .teacherProfileName {
   margin: 0;
-  font-size: 17px;
-  line-height: 1.4;
-  font-weight: 800;
-  color: #111111;
+  font-size: 16px;
+  line-height: 1.5;
+  font-weight: 700;
+  color: var(--text-1);
 }
 
 .teacherProfileSummary {
   margin: 0;
   font-size: 14px;
-  line-height: 1.5;
-  color: #4a4a4a;
-  font-weight: 700;
+  line-height: 1.7;
+  color: var(--text-2);
+  font-weight: 600;
 }
 
 .mutedText {
   margin: 0;
   font-size: 14px;
-  line-height: 1.6;
-  color: #8a8a8a;
+  line-height: 1.7;
+  color: var(--text-3);
 }
 
 .infoGrid {
   display: grid;
-  gap: 10px;
 }
 
 .infoRow {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 12px;
+  display: grid;
+  grid-template-columns: 90px minmax(0, 1fr);
+  gap: var(--s3);
+  padding: 11px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.infoRow:last-child {
+  border-bottom: 0;
 }
 
 .infoLabel {
   font-size: 13px;
-  color: #8a8a8a;
-  flex-shrink: 0;
+  line-height: 1.5;
+  color: var(--text-3);
+  text-align: left;
 }
 
 .infoValue {
-  font-size: 15px;
-  color: #111111;
-  text-align: right;
+  font-size: 14px;
+  line-height: 1.6;
+  font-weight: 600;
+  color: var(--text-1);
+  text-align: left;
   overflow-wrap: anywhere;
+}
+
+.bulletList {
+  list-style: none;
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+}
+
+.bulletItem {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--text-1);
 }
 
 .locationStack {
   display: grid;
-  gap: 14px;
+  gap: var(--s4);
 }
 
 .locationTextBlock {
@@ -215,8 +251,13 @@
   margin: 0;
   font-size: 15px;
   line-height: 1.5;
-  font-weight: 800;
-  color: #111111;
+  font-weight: 700;
+  color: var(--text-1);
+}
+
+.mapFrame {
+  border-radius: var(--r-md);
+  overflow: hidden;
 }
 
 .mapLinkButton {
@@ -224,12 +265,13 @@
   align-items: center;
   justify-content: center;
   width: 100%;
-  min-height: 48px;
-  border-radius: 12px;
-  background: #f3fbf4;
-  color: #2aad38;
+  min-height: 44px;
+  border-radius: var(--r-sm);
+  background: var(--surface);
+  border: 1px solid var(--brand-500);
+  color: var(--brand-700);
   font-size: 15px;
-  font-weight: 800;
+  font-weight: 700;
   text-decoration: none;
 }
 
@@ -238,16 +280,15 @@
   box-sizing: border-box;
   position: fixed;
   bottom: 0;
-  left: 0;
-  right: 0;
+  left: 50%;
+  transform: translateX(-50%);
   width: 100%;
-  max-width: 430px;
-  margin: 0 auto;
-  background: #ffffff;
-  border-top: 1px solid #eeeeee;
-  padding: 14px 24px calc(20px + env(safe-area-inset-bottom));
-  z-index: 1000;
-  isolation: isolate;
+  max-width: var(--col);
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  padding: 12px var(--gutter);
+  padding-bottom: calc(12px + env(safe-area-inset-bottom));
+  z-index: 10;
 }
 
 .ctaButton {
@@ -255,41 +296,25 @@
   align-items: center;
   justify-content: center;
   width: 100%;
-  max-width: 350px;
-  margin: 0 auto;
-  height: 52px;
-  border-radius: 12px;
-  background: #2aad38;
+  min-height: 50px;
+  border-radius: var(--r-sm);
+  background: var(--brand-700);
   color: #ffffff;
   font-size: 16px;
   font-weight: 700;
   text-decoration: none;
 }
 
-.fixedCta .ctaButton {
-  max-width: 382px;
-}
-
-.ctaButton:active {
-  background: #249b31;
+@media (min-width: 520px) {
+  .shell {
+    border-left: 1px solid var(--border);
+    border-right: 1px solid var(--border);
+  }
 }
 
 @media (max-width: 360px) {
-  .shell {
-    padding-left: 20px;
-    padding-right: 20px;
-  }
-
-  .section {
-    padding: 16px;
-  }
-
   .infoRow {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
-  .infoValue {
-    text-align: left;
+    grid-template-columns: 1fr;
+    gap: var(--s2);
   }
 }

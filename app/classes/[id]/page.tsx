@@ -20,6 +20,12 @@ type ClassDetailPageProps = {
   }>
 }
 
+const splitMultilineItems = (value: string | null | undefined) =>
+  (value ?? "")
+    .split("\n")
+    .map((item) => item.trim())
+    .filter(Boolean)
+
 const formatPrice = (price: number) => {
   if (price <= 0) {
     return "무료"
@@ -88,6 +94,8 @@ export default async function ClassDetailPage({ params, searchParams }: ClassDet
       ? `${organizationLabel} / 담당 선생님은 신청 후 학원에서 배정됩니다.`
       : "담당 선생님은 신청 후 학원에서 배정됩니다."
   const targetGradeLabel = formatStoredTargetGrades(classItem?.targetAge)
+  const recommendedItems = splitMultilineItems(classItem?.recommendedFor)
+  const experienceItems = splitMultilineItems(classItem?.experiencePoints)
   const hasTeacherProfileContent = Boolean(
     teacherName ||
       teacherSummaryLine ||
@@ -100,23 +108,9 @@ export default async function ClassDetailPage({ params, searchParams }: ClassDet
   const showTeacherProfileSection = isPreassignedTeacherVisible && hasTeacherProfileContent
 
   return (
-    <main
-      className={styles.page}
-      style={{ background: "#ffffff", minHeight: "100dvh", width: "100%", overflowX: "hidden" }}
-    >
-      <div
-        className={styles.shell}
-        style={{
-          boxSizing: "border-box",
-          width: "100%",
-          maxWidth: 430,
-          margin: "0 auto",
-          minHeight: "100dvh",
-          background: "#ffffff",
-          padding: "calc(14px + env(safe-area-inset-top)) 24px calc(110px + env(safe-area-inset-bottom))"
-        }}
-      >
-        <div className={styles.topBar}>
+    <main className={styles.page}>
+      <div className={styles.shell}>
+        <header className={styles.topBar}>
           <Link href={classesHref} className={styles.iconButton} aria-label="뒤로가기">
             <svg
               width="20"
@@ -186,10 +180,10 @@ export default async function ClassDetailPage({ params, searchParams }: ClassDet
               <div style={{ width: 32, height: 32 }} />
             )}
           </div>
-        </div>
+        </header>
 
         {error ? (
-          <section className={styles.section}>
+          <section className={styles.sectionState}>
             <p className={styles.sectionTitle}>{error}</p>
             <p className={styles.mutedText}>잠시 후 다시 시도해 주세요.</p>
             <div style={{ height: 12 }} />
@@ -200,7 +194,7 @@ export default async function ClassDetailPage({ params, searchParams }: ClassDet
         ) : null}
 
         {!error && !classItem ? (
-          <section className={styles.section}>
+          <section className={styles.sectionState}>
             <h1 className={styles.sectionTitle}>수업 정보를 찾을 수 없어요</h1>
             <p className={styles.mutedText}>
               링크가 바뀌었거나 공개가 종료된 수업일 수 있습니다.
@@ -210,7 +204,7 @@ export default async function ClassDetailPage({ params, searchParams }: ClassDet
 
         {!error && classItem ? (
           <>
-            <section className={styles.imageCard}>
+            <section className={styles.heroSection}>
               <div className={styles.imageFrame}>
                 {classItem.coverImageUrl ? (
                   <Image
@@ -232,19 +226,24 @@ export default async function ClassDetailPage({ params, searchParams }: ClassDet
                   </div>
                 )}
               </div>
-            </section>
 
-            <div className={styles.titleBlock}>
-              <div className={styles.badges}>
-                <span className={styles.badge}>{formatProgramType(classItem.programType)}</span>
-                <span className={styles.badge}>{getSubjectLabel(classItem.subject)}</span>
-                <span className={styles.badge}>{classItem.region}</span>
-                <span className={styles.badge}>{targetGradeLabel}</span>
+              <div className={styles.titleBlock}>
+                <div className={styles.badges}>
+                  <span className={`${styles.badge} ${styles.badgeOpen}`}>
+                    {formatProgramType(classItem.programType)}
+                  </span>
+                  <span className={`${styles.badge} ${styles.badgeMuted}`}>
+                    {getSubjectLabel(classItem.subject)}
+                  </span>
+                  <span className={`${styles.badge} ${styles.badgeMuted}`}>{classItem.region}</span>
+                </div>
+
+                <h1 className={styles.title}>{classItem.title}</h1>
+                <p className={`${styles.price} ${classItem.trialPrice <= 0 ? styles.priceFree : ""}`}>
+                  {formatPrice(classItem.trialPrice)}
+                </p>
               </div>
-
-              <h1 className={styles.title}>{classItem.title}</h1>
-              <p className={styles.price}>{formatPrice(classItem.trialPrice)}</p>
-            </div>
+            </section>
 
             <div className={styles.sections}>
               <section className={styles.section}>
@@ -276,43 +275,51 @@ export default async function ClassDetailPage({ params, searchParams }: ClassDet
               </section>
 
               <section className={styles.section}>
-                <div className={styles.contentSectionGroup}>
-                  <div className={styles.contentSectionBlock}>
-                    <h2 className={styles.sectionTitle}>수업 소개</h2>
-                    {classItem.description?.trim() ? (
-                      <p className={styles.bodyText}>{classItem.description}</p>
-                    ) : (
-                      <p className={styles.mutedText}>수업 소개가 준비 중입니다.</p>
-                    )}
-                  </div>
+                <h2 className={styles.sectionTitle}>수업 소개</h2>
+                {classItem.description?.trim() ? (
+                  <p className={styles.bodyText}>{classItem.description}</p>
+                ) : (
+                  <p className={styles.mutedText}>수업 소개가 준비 중입니다.</p>
+                )}
+              </section>
 
-                  <div className={styles.contentSectionBlock}>
-                    <h2 className={styles.sectionTitle}>이런 아이에게 추천해요</h2>
-                    {classItem.recommendedFor?.trim() ? (
-                      <p className={styles.bodyText}>{classItem.recommendedFor}</p>
-                    ) : (
-                      <p className={styles.mutedText}>추천 대상 정보가 준비 중입니다.</p>
-                    )}
-                  </div>
+              <section className={styles.section}>
+                <h2 className={styles.sectionTitle}>이런 아이에게 추천해요</h2>
+                {recommendedItems.length > 0 ? (
+                  <ul className={styles.bulletList}>
+                    {recommendedItems.map((item, index) => (
+                      <li key={`recommended-${index}`} className={styles.bulletItem}>
+                        {item}
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className={styles.mutedText}>추천 대상 정보가 준비 중입니다.</p>
+                )}
+              </section>
 
-                  <div className={styles.contentSectionBlock}>
-                    <h2 className={styles.sectionTitle}>이 수업에서 경험하는 것</h2>
-                    {classItem.experiencePoints?.trim() ? (
-                      <p className={styles.bodyText}>{classItem.experiencePoints}</p>
-                    ) : (
-                      <p className={styles.mutedText}>수업 경험 정보가 준비 중입니다.</p>
-                    )}
-                  </div>
+              <section className={styles.section}>
+                <h2 className={styles.sectionTitle}>이 수업에서 경험하는 것</h2>
+                {experienceItems.length > 0 ? (
+                  <ul className={styles.bulletList}>
+                    {experienceItems.map((item, index) => (
+                      <li key={`experience-${index}`} className={styles.bulletItem}>
+                        {item}
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className={styles.mutedText}>수업 경험 정보가 준비 중입니다.</p>
+                )}
+              </section>
 
-                  <div className={styles.contentSectionBlock}>
-                    <h2 className={styles.sectionTitle}>커리큘럼</h2>
-                    {classItem.curriculum?.trim() ? (
-                      <p className={styles.bodyText}>{classItem.curriculum}</p>
-                    ) : (
-                      <p className={styles.mutedText}>커리큘럼 정보가 준비 중입니다.</p>
-                    )}
-                  </div>
-                </div>
+              <section className={styles.section}>
+                <h2 className={styles.sectionTitle}>커리큘럼</h2>
+                {classItem.curriculum?.trim() ? (
+                  <p className={styles.bodyText}>{classItem.curriculum}</p>
+                ) : (
+                  <p className={styles.mutedText}>커리큘럼 정보가 준비 중입니다.</p>
+                )}
               </section>
 
               {showTeacherProfileSection ? (
@@ -347,11 +354,13 @@ export default async function ClassDetailPage({ params, searchParams }: ClassDet
                       <p className={styles.locationName}>{organizationLabel || "학원 위치"}</p>
                       <p className={styles.bodyText}>{fullAddress}</p>
                     </div>
-                    <NaverMapByAddress
-                      address={fullAddress}
-                      markerLabel={organizationLabel || classItem.title}
-                      height={260}
-                    />
+                    <div className={styles.mapFrame}>
+                      <NaverMapByAddress
+                        address={fullAddress}
+                        markerLabel={organizationLabel || classItem.title}
+                        height={260}
+                      />
+                    </div>
                     <a
                       href={naverMapUrl}
                       target="_blank"
@@ -371,7 +380,7 @@ export default async function ClassDetailPage({ params, searchParams }: ClassDet
       {!error && classItem ? (
         <div className={styles.fixedCta}>
           <Link href={applyEntryHref} className={styles.ctaButton}>
-            {session ? "첫수업 신청하기" : "로그인하고 신청하기"}
+            체험 신청하기
           </Link>
         </div>
       ) : null}
