@@ -5,7 +5,9 @@ import styles from "./my-dashboard-home.module.css"
 
 type MyDashboardHomeProps = {
   profileName: string
+  profilePhone: string | null
   dashboard: MyDashboardData
+  nextUpcomingApplication: TrialApplicationSummary | null
 }
 
 const formatDateTime = (value: string) => {
@@ -14,136 +16,126 @@ const formatDateTime = (value: string) => {
     return "-"
   }
 
-  return date.toLocaleString("ko-KR", {
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit"
-  })
-}
+  const weekdays = ["일", "월", "화", "수", "목", "금", "토"]
+  const hours = date.getHours()
+  const minutes = `${date.getMinutes()}`.padStart(2, "0")
+  const meridiem = hours < 12 ? "오전" : "오후"
+  const displayHour = hours % 12 || 12
 
-const formatProgramType = (value: TrialApplicationSummary["classProgramType"]) => {
-  if (value === "level_test") {
-    return "레벨테스트"
-  }
-
-  return "체험수업"
-}
-
-const statusLabelMap: Record<TrialApplicationSummary["status"], string> = {
-  new: "신청 완료",
-  reviewing: "상담 대기",
-  confirmed: "수업 확정",
-  completed: "수업 완료",
-  canceled: "신청 취소"
+  return `${date.getMonth() + 1}월 ${date.getDate()}일 (${weekdays[date.getDay()]}) ${meridiem} ${displayHour}:${minutes}`
 }
 
 const resolveActiveCount = (dashboard: MyDashboardData) =>
   dashboard.newApplicationCount + dashboard.reviewingApplicationCount + dashboard.confirmedApplicationCount
 
-const resolveDoneCount = (dashboard: MyDashboardData) =>
-  dashboard.completedApplicationCount + dashboard.canceledApplicationCount
-
 export const MyDashboardHome = ({
   profileName,
-  dashboard
+  profilePhone,
+  dashboard,
+  nextUpcomingApplication
 }: MyDashboardHomeProps) => {
   const greetingName = profileName.trim() || "학부모"
+  const academyName =
+    nextUpcomingApplication?.academyName?.trim() || nextUpcomingApplication?.teacherDisplayName?.trim() || null
 
   return (
     <section className={styles.stack}>
-      <section className={styles.greetingCard}>
-        <h2 className={styles.greetingTitle}>{greetingName}님, 안녕하세요</h2>
-        <p className={styles.greetingDesc}>신청 현황과 자녀 정보를 한 번에 확인할 수 있어요.</p>
-        <p className={styles.greetingDesc}>
-          자녀 정보를 미리 등록해두면 신청할 때 더 편리해요.
-        </p>
+      <section className={styles.greetingSection}>
+        <h1 className={styles.greetingName}>{greetingName}님</h1>
+        <p className={styles.greetingPhone}>{profilePhone?.trim() || "연락처 미입력"}</p>
       </section>
 
       <section className={styles.statsGrid} aria-label="요약">
-        <a href="/my/applications" className={styles.statCard} aria-label="전체 신청 내역 보기">
-          <p className={styles.statLabel}>전체 신청</p>
-          <strong className={styles.statValue}>{dashboard.totalApplicationCount}</strong>
-          <span className={styles.statArrow} aria-hidden="true" />
+        <a href="/my/applications" className={styles.statCard} aria-label="신청 중 내역 보기">
+          <p className={styles.statLabel}>신청 중</p>
+          <strong className={styles.statValue}>{resolveActiveCount(dashboard)}</strong>
         </a>
         <a href="/my/children" className={styles.statCard} aria-label="등록 자녀 관리하기">
           <p className={styles.statLabel}>등록 자녀</p>
           <strong className={styles.statValue}>{dashboard.childrenCount}</strong>
-          <span className={styles.statArrow} aria-hidden="true" />
-        </a>
-        <a
-          href="/my/applications?status=active"
-          className={styles.statCard}
-          aria-label="진행 중 신청 보기"
-        >
-          <p className={styles.statLabel}>진행 중</p>
-          <strong className={styles.statValue}>{resolveActiveCount(dashboard)}</strong>
-          <span className={styles.statArrow} aria-hidden="true" />
-        </a>
-        <a
-          href="/my/applications?status=closed"
-          className={styles.statCard}
-          aria-label="완료 및 취소 신청 보기"
-        >
-          <p className={styles.statLabel}>완료/취소</p>
-          <strong className={styles.statValue}>{resolveDoneCount(dashboard)}</strong>
-          <span className={styles.statArrow} aria-hidden="true" />
         </a>
       </section>
 
-      <section className={styles.recentCard}>
+      <section className={styles.sectionBlock}>
         <header className={styles.sectionHeaderRow}>
-          <div>
-            <h3 className={styles.sectionTitle}>최근 신청 내역</h3>
-            <p className={styles.sectionDesc}>최근 신청한 첫수업을 확인해보세요.</p>
-          </div>
+          <h2 className={styles.sectionTitle}>다음 체험</h2>
           <Link href="/my/applications" className={styles.moreLink} prefetch={false}>
             전체 보기
           </Link>
         </header>
 
-        {dashboard.recentApplications.length === 0 ? (
-          <div className={styles.emptyState}>
-            <p className={styles.emptyText}>아직 신청한 내역이 없습니다.</p>
-            <Link href="/classes" className={styles.moreLink}>
-              수업 보러가기
+        {nextUpcomingApplication ? (
+          <article className={styles.nextCard}>
+            <p className={styles.nextTime}>{formatDateTime(nextUpcomingApplication.confirmedSlotAt ?? "")}</p>
+            <h3 className={styles.nextTitle}>{nextUpcomingApplication.classTitle ?? "수업 정보 없음"}</h3>
+            <p className={styles.nextMeta}>{academyName ?? "학원 정보 준비 중"}</p>
+            <div className={styles.nextActionRow}>
+              <Link href="/my/applications" className={styles.nextLink}>
+                자세히
+              </Link>
+            </div>
+          </article>
+        ) : (
+          <div className={styles.emptyBlock}>
+            <p className={styles.emptyText}>예정된 체험이 없어요</p>
+            <Link href="/classes" className={styles.primaryButton}>
+              수업 둘러보기
             </Link>
           </div>
-        ) : (
-          <div className={styles.recentList}>
-            {dashboard.recentApplications.map((item) => (
-              <article key={item.id} className={styles.recentItem}>
-                <div className={styles.recentTop}>
-                  <div className={styles.recentTitle}>
-                    {item.classTitle ?? "프로그램 정보 없음"}
-                  </div>
-                  <span className={`${styles.badge} ${styles[`badge_${item.status}`]}`}>
-                    {statusLabelMap[item.status]}
-                  </span>
-                </div>
-
-                <div className={styles.kvGrid}>
-                  <div className={styles.kvRow}>
-                    <span className={styles.kvLabel}>유형</span>
-                    <span className={styles.kvValue}>{formatProgramType(item.classProgramType)}</span>
-                  </div>
-                  <div className={styles.kvRow}>
-                    <span className={styles.kvLabel}>학생명</span>
-                    <span className={styles.kvValue}>{item.childName}</span>
-                  </div>
-                  <div className={styles.kvRow}>
-                    <span className={styles.kvLabel}>예약 시간</span>
-                    <span className={styles.kvValue}>{formatDateTime(item.requestedSlotAt)}</span>
-                  </div>
-                  <div className={styles.kvRow}>
-                    <span className={styles.kvLabel}>신청일</span>
-                    <span className={styles.kvValue}>{formatDateTime(item.createdAt)}</span>
-                  </div>
-                </div>
-              </article>
-            ))}
-          </div>
         )}
+      </section>
+
+      <section className={styles.menuGroup}>
+        <Link href="/my/applications" className={styles.menuItem}>
+          <span>내 신청</span>
+          <span className={styles.menuChevron} aria-hidden="true">
+            &gt;
+          </span>
+        </Link>
+        <Link href="/favorites" className={styles.menuItem}>
+          <span>관심 수업</span>
+          <span className={styles.menuChevron} aria-hidden="true">
+            &gt;
+          </span>
+        </Link>
+        <Link href="/my/children" className={styles.menuItem}>
+          <span>자녀 관리</span>
+          <span className={styles.menuChevron} aria-hidden="true">
+            &gt;
+          </span>
+        </Link>
+      </section>
+
+      <section className={styles.menuGroup}>
+        <Link href="/my/profile" className={styles.menuItem}>
+          <span>내 정보 수정</span>
+          <span className={styles.menuChevron} aria-hidden="true">
+            &gt;
+          </span>
+        </Link>
+      </section>
+
+      <section className={styles.menuGroup}>
+        <Link href="/terms" className={styles.menuItem}>
+          <span>이용약관</span>
+          <span className={styles.menuChevron} aria-hidden="true">
+            &gt;
+          </span>
+        </Link>
+        <Link href="/privacy" className={styles.menuItem}>
+          <span>개인정보처리방침</span>
+          <span className={styles.menuChevron} aria-hidden="true">
+            &gt;
+          </span>
+        </Link>
+      </section>
+
+      <section className={styles.menuGroup}>
+        <form method="post" action="/auth/sign-out">
+          <button type="submit" className={styles.menuButton}>
+            로그아웃
+          </button>
+        </form>
       </section>
     </section>
   )

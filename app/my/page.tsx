@@ -1,88 +1,74 @@
 import Link from "next/link"
 import { unstable_noStore as noStore } from "next/cache"
 
+import { resolveApplicationStatusDisplay } from "@/features/applications/lib/application-status-display"
+import { getMyApplications } from "@/features/applications/queries/get-my-applications"
 import { requireParentAccess } from "@/features/my/lib/require-parent-access"
 import { getMyDashboard } from "@/features/my/queries/get-my-dashboard"
-import { getMyParentProfileDetail } from "@/features/my/queries/get-my-parent-profile-detail"
 import { MyDashboardHome } from "@/features/my/ui/my-dashboard-home"
-import { ParentProfileForm } from "@/features/my/ui/parent-profile-form"
+import type { TrialApplicationSummary } from "@/shared/lib/db/adapter"
 import styles from "./page.module.css"
 
 export const dynamic = "force-dynamic"
 export const revalidate = 0
 
+const resolveNextUpcomingApplication = (items: TrialApplicationSummary[]) => {
+  const now = new Date()
+
+  return [...items]
+    .filter((item) => {
+      if (item.status !== "confirmed" || !item.confirmedSlotAt) {
+        return false
+      }
+
+      const confirmedDate = new Date(item.confirmedSlotAt)
+      if (Number.isNaN(confirmedDate.getTime()) || confirmedDate.getTime() <= now.getTime()) {
+        return false
+      }
+
+      return (
+        resolveApplicationStatusDisplay({
+          status: item.status,
+          scheduledAt: item.confirmedSlotAt,
+          registrationStatus: item.registrationStatus,
+          now
+        }).group === "upcoming"
+      )
+    })
+    .sort((left, right) => {
+      return new Date(left.confirmedSlotAt ?? "").getTime() - new Date(right.confirmedSlotAt ?? "").getTime()
+    })[0] ?? null
+}
+
 export default async function MyPage() {
   noStore()
   const profile = await requireParentAccess({ returnTo: "/my" })
-  const [{ data, error }, { data: parentProfile, error: parentProfileError }] = await Promise.all([
+  const [{ data, error }, { data: allApplications }] = await Promise.all([
     getMyDashboard(),
-    getMyParentProfileDetail()
+    getMyApplications()
   ])
-  const resolvedParentProfile = parentProfile ?? {
-    id: profile.id,
-    name: profile.name,
-    phone: profile.phone,
-    parentBirthDate: null
-  }
+  const nextUpcomingApplication = resolveNextUpcomingApplication(allApplications)
 
   return (
-    <main
-      className={styles.page}
-      style={{ background: "#ffffff", minHeight: "100dvh", width: "100%", overflowX: "hidden" }}
-    >
-      <div
-        className={styles.shell}
-        style={{
-          boxSizing: "border-box",
-          width: "100%",
-          maxWidth: 430,
-          margin: "0 auto",
-          minHeight: "100dvh",
-          background: "#ffffff",
-          padding: "calc(18px + env(safe-area-inset-top)) 24px calc(96px + env(safe-area-inset-bottom))"
-        }}
-      >
-        <header className={styles.header}>
-          <h1 className={styles.title}>마이페이지</h1>
-        </header>
-
-        {error ? (
-          <section className={`${styles.card} ${styles.dangerCard}`}>
-            <p className={styles.dangerText}>{error}</p>
-            <Link href="/classes" className={styles.link}>
-              수업 찾으러 가기
-            </Link>
-          </section>
-        ) : (
-          <MyDashboardHome profileName={profile.name} dashboard={data} />
-        )}
-
-        <section className={styles.card}>
-          <div className={styles.sectionHeader}>
-            <h2 className={styles.sectionTitle}>보호자 기본 정보</h2>
-            <p className={styles.sectionDesc}>
-              카카오 로그인으로 가입한 경우 생년월일이 비어 있을 수 있습니다. 필요하면 여기서 보완해 주세요.
-            </p>
-          </div>
-
-          {parentProfileError ? (
-            <p className={styles.inlineError}>{parentProfileError}</p>
-          ) : null}
-
-          <ParentProfileForm
-            initialName={resolvedParentProfile.name}
-            initialPhone={resolvedParentProfile.phone}
-            initialParentBirthDate={resolvedParentProfile.parentBirthDate}
-          />
-        </section>
-
-        <section className={styles.logoutSection}>
-          <form method="post" action="/auth/sign-out">
-            <button type="submit" className={styles.logoutButton}>
-              로그아웃
-            </button>
-          </form>
-        </section>
+    <main className={styles.page}>
+      <div className={styles.shell}>
+        <div className={styles.content}>
+          {error ? (
+            <section className={`${styles.card} ${styles.dangerCard}`}>
+              <p className={styles.dangerText}>{error}</p>
+              <Link href="/classes" className={styles.link}>
+                수업 찾으러 가기
+              </Link>
+            </section>
+          ) : (
+            <MyDashboardHome
+              profileName={profile.name}
+              profilePhone={profile.phone}
+              dashboard={data}
+              nextUpcomingApplication={nextUpcomingApplication}
+            />
+          )}
+        </div>
       </div>
 
       <nav className={styles.bottomNav} aria-label="하단 탭">

@@ -26,6 +26,7 @@ export const MyChildrenManager = ({ items, onSaved }: MyChildrenManagerProps) =>
   const router = useRouter()
   const [editingChildId, setEditingChildId] = useState<string | null>(null)
   const [formVersion, setFormVersion] = useState(0)
+  const [isFormExpanded, setIsFormExpanded] = useState(items.length === 0)
   const [createState, createFormAction, isCreatePending] = useActionState(
     createChildProfileAction,
     initialActionState
@@ -43,6 +44,7 @@ export const MyChildrenManager = ({ items, onSaved }: MyChildrenManagerProps) =>
   useEffect(() => {
     if (createState.status === "success") {
       setFormVersion((value) => value + 1)
+      setIsFormExpanded(false)
       if (onSaved) {
         void onSaved()
       } else {
@@ -55,6 +57,7 @@ export const MyChildrenManager = ({ items, onSaved }: MyChildrenManagerProps) =>
     if (updateState.status === "success") {
       setEditingChildId(null)
       setFormVersion((value) => value + 1)
+      setIsFormExpanded(false)
       if (onSaved) {
         void onSaved()
       } else {
@@ -62,6 +65,18 @@ export const MyChildrenManager = ({ items, onSaved }: MyChildrenManagerProps) =>
       }
     }
   }, [onSaved, router, updateState.status])
+
+  useEffect(() => {
+    if (items.length === 0) {
+      setIsFormExpanded(true)
+    }
+  }, [items.length])
+
+  useEffect(() => {
+    if (editingChildId) {
+      setIsFormExpanded(true)
+    }
+  }, [editingChildId])
 
   const formMode = editingChild ? "update" : "create"
   const activeState = editingChild ? updateState : createState
@@ -71,7 +86,15 @@ export const MyChildrenManager = ({ items, onSaved }: MyChildrenManagerProps) =>
 
   return (
     <section className={styles.stack}>
-      <section className={styles.listCard}>
+      {items.length === 0 ? (
+        <section className={styles.noticeCard}>
+          <p className={styles.noticeText}>
+            자녀 정보를 미리 등록해두면 신청서 작성 시 아이 이름과 학년을 자동으로 불러올 수 있어요.
+          </p>
+        </section>
+      ) : null}
+
+      <section className={styles.listSection}>
         <header className={styles.sectionHeader}>
           <h2 className={styles.sectionTitle}>등록된 자녀</h2>
           <p className={styles.sectionDesc}>총 {items.length}명의 자녀 정보가 등록되어 있어요.</p>
@@ -119,9 +142,7 @@ export const MyChildrenManager = ({ items, onSaved }: MyChildrenManagerProps) =>
                         </div>
                       ))}
                     </div>
-                  ) : (
-                    <p className={styles.childHint}>등록된 추가 정보가 없어요.</p>
-                  )}
+                  ) : null}
                 </article>
               )
             })}
@@ -129,21 +150,38 @@ export const MyChildrenManager = ({ items, onSaved }: MyChildrenManagerProps) =>
         )}
       </section>
 
-      <section className={styles.formCard}>
+      <section className={styles.formSection}>
         <header className={styles.sectionHeader}>
           <h2 className={styles.sectionTitle}>{editingChild ? "자녀 정보 수정" : "자녀 등록"}</h2>
-          <p className={styles.sectionDesc}>등록해두면 첫수업 신청서 작성이 더 빨라져요.</p>
         </header>
-        <div key={formKey}>
-          <ChildProfileForm
-            mode={formMode}
-            formAction={activeFormAction}
-            isPending={isPending}
-            state={activeState}
-            initialValue={editingChild}
-            onCancelEdit={() => setEditingChildId(null)}
-          />
-        </div>
+
+        {!editingChild && items.length > 0 && !isFormExpanded ? (
+          <button
+            type="button"
+            className={styles.toggleButton}
+            onClick={() => setIsFormExpanded(true)}
+          >
+            + 자녀 등록
+          </button>
+        ) : null}
+
+        {isFormExpanded ? (
+          <div key={formKey} className={styles.formPanel}>
+            <ChildProfileForm
+              mode={formMode}
+              formAction={activeFormAction}
+              isPending={isPending}
+              state={activeState}
+              initialValue={editingChild}
+              onCancelEdit={() => {
+                setEditingChildId(null)
+                if (items.length > 0) {
+                  setIsFormExpanded(false)
+                }
+              }}
+            />
+          </div>
+        ) : null}
       </section>
     </section>
   )

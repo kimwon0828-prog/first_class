@@ -248,22 +248,8 @@ export const MyChildrenClient = () => {
   )
 
   return (
-    <main
-      className={styles.page}
-      style={{ background: "#ffffff", minHeight: "100dvh", width: "100%", overflowX: "hidden" }}
-    >
-      <div
-        className={styles.shell}
-        style={{
-          boxSizing: "border-box",
-          width: "100%",
-          maxWidth: 430,
-          margin: "0 auto",
-          minHeight: "100dvh",
-          background: "#ffffff",
-          padding: "calc(18px + env(safe-area-inset-top)) 24px calc(40px + env(safe-area-inset-bottom))"
-        }}
-      >
+    <main className={styles.page}>
+      <div className={styles.shell}>
         <header className={styles.header}>
           <div className={styles.headerRow}>
             <Link href="/my" aria-label="뒤로가기" className={styles.backButton}>
@@ -288,53 +274,85 @@ export const MyChildrenClient = () => {
           </div>
 
           <h1 className={styles.title}>자녀 관리</h1>
-          <p className={styles.subtitle}>자녀 정보를 등록해두면 첫수업 신청이 더 편해져요.</p>
+          <p className={styles.subtitle}>자녀 정보를 등록해두면 신청할 때 더 빠르게 불러올 수 있어요.</p>
         </header>
 
-        <section className={styles.noticeCard}>
-          <p className={styles.noticeText}>
-            자녀 정보를 미리 등록해두면 신청서 작성 시 아이 이름과 학년을 자동으로 불러올 수 있어요.
-          </p>
-        </section>
+        <div className={styles.content}>
+          {status === "loading" ? (
+            <section className={styles.card}>
+              <p className={styles.noticeText}>자녀 정보를 불러오는 중이에요...</p>
+            </section>
+          ) : null}
 
-        {status === "loading" ? (
-          <section className={styles.card}>
-            <p className={styles.noticeText}>자녀 정보를 불러오는 중이에요...</p>
-          </section>
-        ) : null}
+          {status === "auth_required" ? (
+            <section className={`${styles.card} ${styles.dangerCard}`}>
+              <p className={styles.dangerText}>{message}</p>
+              <pre className={styles.dangerText} style={{ whiteSpace: "pre-wrap" }}>
+                {authDebugLines}
+              </pre>
+              <Link href="/auth/sign-in?returnTo=%2Fmy%2Fchildren" className={styles.link}>
+                다시 로그인하기
+              </Link>
+            </section>
+          ) : null}
 
-        {status === "auth_required" ? (
-          <section className={`${styles.card} ${styles.dangerCard}`}>
-            <p className={styles.dangerText}>{message}</p>
-            <pre className={styles.dangerText} style={{ whiteSpace: "pre-wrap" }}>
-              {authDebugLines}
-            </pre>
-            <Link href="/auth/sign-in?returnTo=%2Fmy%2Fchildren" className={styles.link}>
-              다시 로그인하기
-            </Link>
-          </section>
-        ) : null}
+          {status === "forbidden" ? (
+            <section className={`${styles.card} ${styles.dangerCard}`}>
+              <p className={styles.dangerText}>{message}</p>
+              <Link href="/classes" className={styles.link}>
+                수업 목록으로 이동
+              </Link>
+            </section>
+          ) : null}
 
-        {status === "forbidden" ? (
-          <section className={`${styles.card} ${styles.dangerCard}`}>
-            <p className={styles.dangerText}>{message}</p>
-            <Link href="/classes" className={styles.link}>
-              수업 목록으로 이동
-            </Link>
-          </section>
-        ) : null}
+          {status === "error" ? (
+            <section className={`${styles.card} ${styles.dangerCard}`}>
+              <p className={styles.dangerText}>{message}</p>
+              <Link href="/my" className={styles.link}>
+                마이페이지로 이동
+              </Link>
+            </section>
+          ) : null}
 
-        {status === "error" ? (
-          <section className={`${styles.card} ${styles.dangerCard}`}>
-            <p className={styles.dangerText}>{message}</p>
-            <Link href="/my" className={styles.link}>
-              마이페이지로 이동
-            </Link>
-          </section>
-        ) : null}
-
-        {status === "ready" ? <MyChildrenManager items={items} onSaved={loadChildren} /> : null}
+          {status === "ready" ? <MyChildrenManager items={items} onSaved={loadChildren} /> : null}
+        </div>
       </div>
+
+      <nav className={styles.bottomNav} aria-label="하단 탭">
+        <Link href="/classes" className={styles.navItem}>
+          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <path
+              d="M3 9.6 12 4l9 5.6v9.2A1.2 1.2 0 0 1 19.8 20h-4.6v-5.4H8.8V20H4.2A1.2 1.2 0 0 1 3 18.8V9.6Z"
+              stroke="currentColor"
+              strokeWidth="1.8"
+              strokeLinejoin="round"
+            />
+          </svg>
+          <span>홈</span>
+        </Link>
+        <Link href="/favorites" className={styles.navItem}>
+          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <path
+              d="m12 20-1.38-1.24C5.76 14.43 3 11.92 3 8.84 3 6.33 4.97 4.4 7.5 4.4c1.54 0 3.02.72 3.95 1.86A5.18 5.18 0 0 1 15.4 4.4C17.93 4.4 19.9 6.33 19.9 8.84c0 3.08-2.76 5.59-7.62 9.92L12 20Z"
+              stroke="currentColor"
+              strokeWidth="1.8"
+              strokeLinejoin="round"
+            />
+          </svg>
+          <span>관심수업</span>
+        </Link>
+        <Link href="/my" className={`${styles.navItem} ${styles.navItemActive}`}>
+          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <path
+              d="M12 12.2a3.6 3.6 0 1 0 0-7.2 3.6 3.6 0 0 0 0 7.2Zm-6.8 6.6c0-3.1 3.04-5 6.8-5 3.76 0 6.8 1.9 6.8 5"
+              stroke="currentColor"
+              strokeWidth="1.8"
+              strokeLinecap="round"
+            />
+          </svg>
+          <span>마이</span>
+        </Link>
+      </nav>
     </main>
   )
 }

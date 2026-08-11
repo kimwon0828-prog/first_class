@@ -8,7 +8,6 @@ import {
 } from "@/features/my/actions/update-parent-profile"
 import {
   MIN_PARENT_BIRTH_DATE,
-  formatParentBirthDateLabel,
   getTodayDateValue,
   validateParentBirthDate
 } from "@/shared/lib/parent-birth-date"
@@ -33,7 +32,6 @@ export const ParentProfileForm = ({
   const [state, formAction, isPending] = useActionState(updateParentProfileAction, initialState)
   const [clientMessage, setClientMessage] = useState("")
   const maxBirthDate = getTodayDateValue()
-  const birthDateLabel = formatParentBirthDateLabel(initialParentBirthDate)
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     if (isPending) {
@@ -94,11 +92,7 @@ export const ParentProfileForm = ({
           defaultValue={initialParentBirthDate ?? ""}
           disabled={isPending}
           className={styles.input}
-          aria-describedby="my-parent-birth-date-hint"
         />
-        <span id="my-parent-birth-date-hint" className={styles.hint}>
-          현재 등록값: {birthDateLabel}. 비어 있으면 미입력 상태로 저장됩니다.
-        </span>
       </label>
 
       {clientMessage || state.message ? (
