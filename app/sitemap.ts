@@ -10,7 +10,6 @@ const STATIC_PUBLIC_PATHS: Array<{
   priority: number
 }> = [
   { path: "/", changeFrequency: "daily", priority: 1 },
-  { path: "/classes", changeFrequency: "daily", priority: 0.9 },
   { path: "/academies", changeFrequency: "daily", priority: 0.8 },
   { path: "/partner", changeFrequency: "weekly", priority: 0.7 },
   { path: "/privacy", changeFrequency: "monthly", priority: 0.3 },

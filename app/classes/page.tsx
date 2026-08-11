@@ -1,3 +1,4 @@
+import type { Metadata } from "next"
 import Image from "next/image"
 import Link from "next/link"
 import { redirect } from "next/navigation"
@@ -20,6 +21,12 @@ import { getPublicClasses } from "@/features/classes/queries/get-public-classes"
 import { isAcademyArea } from "@/shared/config/academy-areas"
 import { ClassesBottomNav } from "./classes-bottom-nav"
 import styles from "./page.module.css"
+
+export const metadata: Metadata = {
+  alternates: {
+    canonical: "/"
+  }
+}
 
 type ClassesPageProps = {
   searchParams?: Promise<{

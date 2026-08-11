@@ -4,6 +4,7 @@ import type { ReactNode } from "react"
 import "./globals.css"
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://firstsuup.com"),
   title: {
     default: "첫수업",
     template: "%s | 첫수업"
