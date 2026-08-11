@@ -90,7 +90,7 @@ export function ClassCard({
                 strokeLinejoin="round"
               />
             </svg>
-            <span>{scheduleLabel}</span>
+            <span className={styles.scheduleText}>{scheduleLabel}</span>
           </div>
         ) : null}
       </div>
