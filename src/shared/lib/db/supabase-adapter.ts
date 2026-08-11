@@ -1236,17 +1236,16 @@ const getStudioTeacherDisplayNameMap = async (teacherIds: string[]) => {
 
 const getTeacherNamesByIds = async (teacherIds: string[]) => getStudioTeacherDisplayNameMap(teacherIds)
 
-const getAppliedCountByTeacherScheduleBlockId = async (
+const getAppliedCountByTeacherScheduleBlockIdWithClient = async (
+  supabase: SupabaseClient,
   teacherId: string,
-  scheduleRows: ScheduleBlockRow[],
-  supabase?: SupabaseClient
+  scheduleRows: ScheduleBlockRow[]
 ) => {
   if (scheduleRows.length === 0) {
     return new Map<string, number>()
   }
 
-  const resolvedSupabase = supabase ?? (await getSupabaseServerClient())
-  const { data, error } = await resolvedSupabase
+  const { data, error } = await supabase
     .from("trial_applications")
     .select("requested_schedule_block_id, requested_slot_at, classes!inner(teacher_id)")
     .eq("classes.teacher_id", teacherId)
@@ -1276,17 +1275,24 @@ const getAppliedCountByTeacherScheduleBlockId = async (
   return counts
 }
 
-const getAppliedCountByClassScheduleBlockId = async (
+const getAppliedCountByTeacherScheduleBlockId = async (
+  teacherId: string,
+  scheduleRows: ScheduleBlockRow[]
+) => {
+  const supabase = await getSupabaseServerClient()
+  return getAppliedCountByTeacherScheduleBlockIdWithClient(supabase, teacherId, scheduleRows)
+}
+
+const getAppliedCountByClassScheduleBlockIdWithClient = async (
+  supabase: SupabaseClient,
   classId: string,
-  scheduleRows: ScheduleBlockRow[],
-  supabase?: SupabaseClient
+  scheduleRows: ScheduleBlockRow[]
 ) => {
   if (scheduleRows.length === 0) {
     return new Map<string, number>()
   }
 
-  const resolvedSupabase = supabase ?? (await getSupabaseServerClient())
-  const { data, error } = await resolvedSupabase
+  const { data, error } = await supabase
     .from("trial_applications")
     .select("requested_schedule_block_id, requested_slot_at")
     .eq("class_id", classId)
@@ -1314,6 +1320,14 @@ const getAppliedCountByClassScheduleBlockId = async (
   }
 
   return counts
+}
+
+const getAppliedCountByClassScheduleBlockId = async (
+  classId: string,
+  scheduleRows: ScheduleBlockRow[]
+) => {
+  const supabase = await getSupabaseServerClient()
+  return getAppliedCountByClassScheduleBlockIdWithClient(supabase, classId, scheduleRows)
 }
 
 const assertTeacherBelongsToOrganization = async (teacherId: string, organizationId: string) => {
@@ -1442,21 +1456,24 @@ const getActiveReservationCountByClassScheduleIds = async (classScheduleIds: str
 const buildScheduleOccurrenceReservationKey = (classScheduleId: string, startAt: string) =>
   `${classScheduleId}::${startAt}`
 
-const getActiveReservationCountByScheduleOccurrence = async (
-  classScheduleIds: string[],
-  supabase?: SupabaseClient
+const getActiveReservationCountByScheduleOccurrenceWithClient = async (
+  supabase: SupabaseClient,
+  classId: string,
+  classScheduleIds: string[]
 ) => {
   const counts = new Map<string, number>()
   if (classScheduleIds.length === 0) {
     return counts
   }
 
-  const resolvedSupabase = supabase ?? (await getSupabaseServerClient())
-  const { data, error } = await resolvedSupabase
+  const targetScheduleIds = new Set(classScheduleIds)
+  const { data, error } = await supabase
     .from("trial_applications")
     .select("class_schedule_id, requested_slot_at, status")
-    .in("class_schedule_id", classScheduleIds)
+    .eq("class_id", classId)
     .in("status", ACTIVE_APPLICATION_STATUSES)
+    .not("class_schedule_id", "is", null)
+    .not("requested_slot_at", "is", null)
 
   if (error) {
     throw new Error(formatSupabaseError("failed_to_fetch_schedule_occurrence_application_counts", error))
@@ -1467,11 +1484,23 @@ const getActiveReservationCountByScheduleOccurrence = async (
       continue
     }
 
+    if (!targetScheduleIds.has(row.class_schedule_id)) {
+      continue
+    }
+
     const key = buildScheduleOccurrenceReservationKey(row.class_schedule_id, row.requested_slot_at)
     counts.set(key, (counts.get(key) ?? 0) + 1)
   }
 
   return counts
+}
+
+const getActiveReservationCountByScheduleOccurrence = async (
+  classId: string,
+  classScheduleIds: string[]
+) => {
+  const supabase = await getSupabaseServerClient()
+  return getActiveReservationCountByScheduleOccurrenceWithClient(supabase, classId, classScheduleIds)
 }
 
 const buildCalendarItemStatus = (
@@ -2160,10 +2189,15 @@ export const listAvailableScheduleSlotsByClassIdWithClient = async ({
 
     const existingBlocks = (existingBlockData ?? []) as ScheduleBlockRow[]
     const availableBlocks = existingBlocks.filter((row) => row.type === "available")
-    const appliedCountBySlotId = await getAppliedCountByClassScheduleBlockId(classId, availableBlocks, supabase)
-    const appliedCountByOccurrence = await getActiveReservationCountByScheduleOccurrence(
-      visibleClassScheduleRows.map((row) => row.id),
-      supabase
+    const appliedCountBySlotId = await getAppliedCountByClassScheduleBlockIdWithClient(
+      supabase,
+      classId,
+      availableBlocks
+    )
+    const appliedCountByOccurrence = await getActiveReservationCountByScheduleOccurrenceWithClient(
+      supabase,
+      classId,
+      visibleClassScheduleRows.map((row) => row.id)
     )
     const blockByRange = new Map<string, ScheduleBlockRow>()
 
@@ -2245,8 +2279,8 @@ export const listAvailableScheduleSlotsByClassIdWithClient = async ({
   }
 
   const appliedCountBySlotId = usesFallback
-    ? await getAppliedCountByTeacherScheduleBlockId(classData.teacher_id, scheduleRows, supabase)
-    : await getAppliedCountByClassScheduleBlockId(classId, scheduleRows, supabase)
+    ? await getAppliedCountByTeacherScheduleBlockIdWithClient(supabase, classData.teacher_id, scheduleRows)
+    : await getAppliedCountByClassScheduleBlockIdWithClient(supabase, classId, scheduleRows)
 
   return scheduleRows.map((row) => {
     const mapped = mapAvailableSlot(row)
@@ -2564,6 +2598,7 @@ export const supabaseDataAdapter: DataAdapter = {
     )
     const teacherNameById = await getTeacherNamesByIds(teacherIds)
     const activeReservationCountByOccurrence = await getActiveReservationCountByScheduleOccurrence(
+      input.classId ?? "",
       rows.map((row) => row.id)
     )
 

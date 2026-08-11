@@ -14,7 +14,11 @@ export const getPublicClassAvailableSlots = async (
     })
 
     return { data, error: null }
-  } catch {
+  } catch (error) {
+    console.error("[public-class-slots]", {
+      classId,
+      message: error instanceof Error ? error.message : "unknown_error"
+    })
     return {
       data: [],
       error: "예약 가능 시간대를 불러오지 못했어요. 잠시 후 다시 시도해 주세요."
