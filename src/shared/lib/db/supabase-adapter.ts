@@ -1,3 +1,5 @@
+import type { SupabaseClient } from "@supabase/supabase-js"
+
 import { getSupabaseServiceRoleClient } from "@/integrations/supabase/service-role"
 import { getSupabaseServerClient } from "@/integrations/supabase/server"
 import { getPublicEnv } from "@/shared/config/env"
@@ -1236,14 +1238,15 @@ const getTeacherNamesByIds = async (teacherIds: string[]) => getStudioTeacherDis
 
 const getAppliedCountByTeacherScheduleBlockId = async (
   teacherId: string,
-  scheduleRows: ScheduleBlockRow[]
+  scheduleRows: ScheduleBlockRow[],
+  supabase?: SupabaseClient
 ) => {
   if (scheduleRows.length === 0) {
     return new Map<string, number>()
   }
 
-  const supabase = await getSupabaseServerClient()
-  const { data, error } = await supabase
+  const resolvedSupabase = supabase ?? (await getSupabaseServerClient())
+  const { data, error } = await resolvedSupabase
     .from("trial_applications")
     .select("requested_schedule_block_id, requested_slot_at, classes!inner(teacher_id)")
     .eq("classes.teacher_id", teacherId)
@@ -1275,14 +1278,15 @@ const getAppliedCountByTeacherScheduleBlockId = async (
 
 const getAppliedCountByClassScheduleBlockId = async (
   classId: string,
-  scheduleRows: ScheduleBlockRow[]
+  scheduleRows: ScheduleBlockRow[],
+  supabase?: SupabaseClient
 ) => {
   if (scheduleRows.length === 0) {
     return new Map<string, number>()
   }
 
-  const supabase = await getSupabaseServerClient()
-  const { data, error } = await supabase
+  const resolvedSupabase = supabase ?? (await getSupabaseServerClient())
+  const { data, error } = await resolvedSupabase
     .from("trial_applications")
     .select("requested_schedule_block_id, requested_slot_at")
     .eq("class_id", classId)
@@ -1438,14 +1442,17 @@ const getActiveReservationCountByClassScheduleIds = async (classScheduleIds: str
 const buildScheduleOccurrenceReservationKey = (classScheduleId: string, startAt: string) =>
   `${classScheduleId}::${startAt}`
 
-const getActiveReservationCountByScheduleOccurrence = async (classScheduleIds: string[]) => {
+const getActiveReservationCountByScheduleOccurrence = async (
+  classScheduleIds: string[],
+  supabase?: SupabaseClient
+) => {
   const counts = new Map<string, number>()
   if (classScheduleIds.length === 0) {
     return counts
   }
 
-  const supabase = await getSupabaseServerClient()
-  const { data, error } = await supabase
+  const resolvedSupabase = supabase ?? (await getSupabaseServerClient())
+  const { data, error } = await resolvedSupabase
     .from("trial_applications")
     .select("class_schedule_id, requested_slot_at, status")
     .in("class_schedule_id", classScheduleIds)
@@ -2094,6 +2101,164 @@ const getStudioTeacherSeatSummaryByOrganization = async (
     activeTeacherCount: safeActiveTeacherCount,
     remainingTeacherSeats: Math.max(0, teacherSeatLimit - safeActiveTeacherCount)
   }
+}
+
+export const listAvailableScheduleSlotsByClassIdWithClient = async ({
+  classId,
+  supabase
+}: {
+  classId: string
+  supabase: SupabaseClient
+}): Promise<AvailableScheduleSlot[]> => {
+  const now = new Date()
+  const bookingCutoffIso = getTrialBookingCutoffDate(now).toISOString()
+  const { data: classData, error: classError } = await supabase
+    .from("classes")
+    .select("teacher_id")
+    .eq("id", classId)
+    .eq("is_active", true)
+    .maybeSingle()
+
+  if (classError) {
+    throw new Error("failed_to_fetch_class_for_slots")
+  }
+
+  if (!classData) {
+    return []
+  }
+
+  const { data: classScheduleData, error: classScheduleError } = await supabase
+    .from("class_schedules")
+    .select(CLASS_SCHEDULE_SELECT_FIELDS)
+    .eq("class_id", classId)
+    .order("sort_order", { ascending: true })
+    .order("created_at", { ascending: true })
+
+  if (classScheduleError) {
+    throw new Error("failed_to_fetch_available_schedule_slots")
+  }
+
+  const classScheduleRows = (classScheduleData ?? []) as ClassScheduleRow[]
+
+  if (classScheduleRows.length > 0) {
+    const visibleClassScheduleRows = classScheduleRows.filter((row) => (row.booking_status ?? "open") !== "hidden")
+
+    if (visibleClassScheduleRows.length === 0) {
+      return []
+    }
+
+    const { data: existingBlockData, error: existingBlockError } = await supabase
+      .from("schedule_blocks")
+      .select(SCHEDULE_BLOCK_SELECT_FIELDS)
+      .eq("class_id", classId)
+      .gt("end_at", bookingCutoffIso)
+      .order("start_at", { ascending: true })
+
+    if (existingBlockError) {
+      throw new Error("failed_to_fetch_available_schedule_slots")
+    }
+
+    const existingBlocks = (existingBlockData ?? []) as ScheduleBlockRow[]
+    const availableBlocks = existingBlocks.filter((row) => row.type === "available")
+    const appliedCountBySlotId = await getAppliedCountByClassScheduleBlockId(classId, availableBlocks, supabase)
+    const appliedCountByOccurrence = await getActiveReservationCountByScheduleOccurrence(
+      visibleClassScheduleRows.map((row) => row.id),
+      supabase
+    )
+    const blockByRange = new Map<string, ScheduleBlockRow>()
+
+    for (const block of existingBlocks) {
+      const key = `${block.start_at}|${block.end_at}`
+      const current = blockByRange.get(key)
+      if (!current || current.type !== "available") {
+        blockByRange.set(key, block)
+      }
+    }
+
+    return visibleClassScheduleRows
+      .flatMap((row) => {
+        return generateUpcomingClassScheduleOccurrences(row, now)
+          .filter((occurrence) => isTrialBookingBookable(occurrence.startAt, now))
+          .map((occurrence) => {
+            const key = `${occurrence.startAt}|${occurrence.endAt}`
+            const matchedBlock = blockByRange.get(key) ?? null
+            const isAvailableBlock = matchedBlock?.type === "available"
+            const capacity = matchedBlock?.capacity ?? Math.max(1, row.capacity ?? 1)
+            const appliedCount =
+              matchedBlock && isAvailableBlock
+                ? (appliedCountBySlotId.get(matchedBlock.id) ?? 0)
+                : (appliedCountByOccurrence.get(buildScheduleOccurrenceReservationKey(row.id, occurrence.startAt)) ?? 0)
+
+            return mapClassScheduleOccurrenceSlot({
+              row,
+              teacherId: classData.teacher_id,
+              startAt: occurrence.startAt,
+              endAt: occurrence.endAt,
+              label: occurrence.label,
+              capacity,
+              appliedCount,
+              scheduleBlockId: isAvailableBlock ? matchedBlock?.id ?? null : null,
+              isClosed:
+                row.booking_status === "closed" ||
+                (matchedBlock != null && !isAvailableBlock ? true : undefined)
+            })
+          })
+      })
+      .sort((a, b) => a.startAt.localeCompare(b.startAt))
+  }
+
+  const { data: primaryData, error: primaryError } = await supabase
+    .from("schedule_blocks")
+    .select("id, teacher_id, class_id, start_at, end_at, capacity")
+    .eq("class_id", classId)
+    .eq("type", "available")
+    .gt("start_at", bookingCutoffIso)
+    .order("start_at", { ascending: true })
+
+  if (primaryError) {
+    throw new Error("failed_to_fetch_available_schedule_slots")
+  }
+
+  let scheduleRows = (primaryData ?? []) as ScheduleBlockRow[]
+  let usesFallback = false
+
+  if (scheduleRows.length === 0) {
+    if (!classData.teacher_id) {
+      return []
+    }
+
+    const { data: fallbackData, error: fallbackError } = await supabase
+      .from("schedule_blocks")
+      .select("id, teacher_id, class_id, start_at, end_at, capacity")
+      .is("class_id", null)
+      .eq("teacher_id", classData.teacher_id)
+      .eq("type", "available")
+      .gt("start_at", bookingCutoffIso)
+      .order("start_at", { ascending: true })
+
+    if (fallbackError) {
+      throw new Error("failed_to_fetch_available_schedule_slots")
+    }
+
+    scheduleRows = (fallbackData ?? []) as ScheduleBlockRow[]
+    usesFallback = true
+  }
+
+  const appliedCountBySlotId = usesFallback
+    ? await getAppliedCountByTeacherScheduleBlockId(classData.teacher_id, scheduleRows, supabase)
+    : await getAppliedCountByClassScheduleBlockId(classId, scheduleRows, supabase)
+
+  return scheduleRows.map((row) => {
+    const mapped = mapAvailableSlot(row)
+    const appliedCount = appliedCountBySlotId.get(row.id) ?? 0
+    const remainingCount = Math.max(0, row.capacity - appliedCount)
+    return {
+      ...mapped,
+      appliedCount,
+      remainingCount,
+      isClosed: remainingCount <= 0
+    }
+  })
 }
 
 export const supabaseDataAdapter: DataAdapter = {
@@ -3497,161 +3662,7 @@ export const supabaseDataAdapter: DataAdapter = {
   },
   async listAvailableScheduleSlotsByClassId(classId) {
     const supabase = await getSupabaseServerClient()
-    const now = new Date()
-    const bookingCutoffIso = getTrialBookingCutoffDate(now).toISOString()
-    const { data: classData, error: classError } = await supabase
-      .from("classes")
-      .select("teacher_id")
-      .eq("id", classId)
-      .eq("is_active", true)
-      .maybeSingle()
-
-    if (classError) {
-      throw new Error("failed_to_fetch_class_for_slots")
-    }
-
-    if (!classData) {
-      return []
-    }
-
-    const { data: classScheduleData, error: classScheduleError } = await supabase
-      .from("class_schedules")
-      .select(CLASS_SCHEDULE_SELECT_FIELDS)
-      .eq("class_id", classId)
-      .order("sort_order", { ascending: true })
-      .order("created_at", { ascending: true })
-
-    if (classScheduleError) {
-      throw new Error("failed_to_fetch_available_schedule_slots")
-    }
-
-    const classScheduleRows = (classScheduleData ?? []) as ClassScheduleRow[]
-
-    if (classScheduleRows.length > 0) {
-      const visibleClassScheduleRows = classScheduleRows.filter((row) => (row.booking_status ?? "open") !== "hidden")
-
-      if (visibleClassScheduleRows.length === 0) {
-        return []
-      }
-
-      const { data: existingBlockData, error: existingBlockError } = await supabase
-        .from("schedule_blocks")
-        .select(SCHEDULE_BLOCK_SELECT_FIELDS)
-        .eq("class_id", classId)
-        .gt("end_at", bookingCutoffIso)
-        .order("start_at", { ascending: true })
-
-      if (existingBlockError) {
-        throw new Error("failed_to_fetch_available_schedule_slots")
-      }
-
-      const existingBlocks = (existingBlockData ?? []) as ScheduleBlockRow[]
-      const availableBlocks = existingBlocks.filter((row) => row.type === "available")
-      const appliedCountBySlotId = await getAppliedCountByClassScheduleBlockId(classId, availableBlocks)
-      const appliedCountByOccurrence = await getActiveReservationCountByScheduleOccurrence(
-        visibleClassScheduleRows.map((row) => row.id)
-      )
-      const blockByRange = new Map<string, ScheduleBlockRow>()
-
-      for (const block of existingBlocks) {
-        const key = `${block.start_at}|${block.end_at}`
-        const current = blockByRange.get(key)
-        if (!current || current.type !== "available") {
-          blockByRange.set(key, block)
-        }
-      }
-
-      return visibleClassScheduleRows
-        .flatMap((row) => {
-          return generateUpcomingClassScheduleOccurrences(row, now)
-            .filter((occurrence) => isTrialBookingBookable(occurrence.startAt, now))
-            .map((occurrence) => {
-              const key = `${occurrence.startAt}|${occurrence.endAt}`
-              const matchedBlock = blockByRange.get(key) ?? null
-              const isAvailableBlock = matchedBlock?.type === "available"
-              const capacity = matchedBlock?.capacity ?? Math.max(1, row.capacity ?? 1)
-              const appliedCount =
-                matchedBlock && isAvailableBlock
-                  ? (appliedCountBySlotId.get(matchedBlock.id) ?? 0)
-                  : (appliedCountByOccurrence.get(
-                      buildScheduleOccurrenceReservationKey(row.id, occurrence.startAt)
-                    ) ?? 0)
-
-              return mapClassScheduleOccurrenceSlot({
-                row,
-                teacherId: classData.teacher_id,
-                startAt: occurrence.startAt,
-                endAt: occurrence.endAt,
-                label: occurrence.label,
-                capacity,
-                appliedCount,
-                scheduleBlockId: isAvailableBlock ? matchedBlock?.id ?? null : null,
-                isClosed:
-                  row.booking_status === "closed" ||
-                  (matchedBlock != null && !isAvailableBlock ? true : undefined)
-              })
-            })
-        })
-        .sort((a, b) => a.startAt.localeCompare(b.startAt))
-    }
-
-    const { data: primaryData, error: primaryError } = await supabase
-      .from("schedule_blocks")
-      .select("id, teacher_id, class_id, start_at, end_at, capacity")
-      .eq("class_id", classId)
-      .eq("type", "available")
-      .gt("start_at", bookingCutoffIso)
-      .order("start_at", { ascending: true })
-
-    if (primaryError) {
-      throw new Error("failed_to_fetch_available_schedule_slots")
-    }
-
-    let scheduleRows = (primaryData ?? []) as ScheduleBlockRow[]
-    let usesFallback = false
-
-    if (scheduleRows.length === 0) {
-      if (!classData.teacher_id) {
-        return []
-      }
-
-      const { data: fallbackData, error: fallbackError } = await supabase
-        .from("schedule_blocks")
-        .select("id, teacher_id, class_id, start_at, end_at, capacity")
-        .is("class_id", null)
-        .eq("teacher_id", classData.teacher_id)
-        .eq("type", "available")
-        .gt("start_at", bookingCutoffIso)
-        .order("start_at", { ascending: true })
-
-      if (fallbackError) {
-        throw new Error("failed_to_fetch_available_schedule_slots")
-      }
-
-      scheduleRows = (fallbackData ?? []) as ScheduleBlockRow[]
-      usesFallback = scheduleRows.length > 0
-    }
-
-    if (scheduleRows.length === 0) {
-      return []
-    }
-
-    const appliedCountBySlotId = usesFallback
-      ? await getAppliedCountByTeacherScheduleBlockId(classData.teacher_id, scheduleRows)
-      : await getAppliedCountByClassScheduleBlockId(classId, scheduleRows)
-
-    return scheduleRows.map((row) => {
-      const mapped = mapAvailableSlot(row)
-      const appliedCount = appliedCountBySlotId.get(row.id) ?? 0
-      const remainingCount = Math.max(0, mapped.capacity - appliedCount)
-
-      return {
-        ...mapped,
-        appliedCount,
-        remainingCount,
-        isClosed: remainingCount <= 0
-      }
-    })
+    return listAvailableScheduleSlotsByClassIdWithClient({ classId, supabase })
   },
   async listMyApplications(parentId) {
     const supabase = await getSupabaseServerClient()

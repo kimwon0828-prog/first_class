@@ -1,0 +1,505 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  background: rgba(17, 17, 17, 0.52);
+}
+
+.sheet {
+  position: fixed;
+  left: 50%;
+  bottom: 0;
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: var(--col);
+  max-height: min(85vh, 920px);
+  background: var(--surface);
+  border-radius: 24px 24px 0 0;
+  overflow: hidden;
+}
+
+.sheetLayout {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  min-height: 60vh;
+  max-height: min(85vh, 920px);
+}
+
+.sheetHeader {
+  display: grid;
+  gap: 12px;
+  padding: 10px 16px 0;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.sheetHandle {
+  width: 52px;
+  height: 5px;
+  margin: 0 auto;
+  border-radius: var(--r-full);
+  background: var(--border-strong);
+}
+
+.headerRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding-bottom: 12px;
+}
+
+.sheetTitle {
+  margin: 0;
+  font-size: 18px;
+  line-height: 1.35;
+  font-weight: 800;
+  color: var(--text-1);
+}
+
+.closeButton {
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: var(--r-full);
+  background: transparent;
+  color: var(--text-2);
+  font-size: 24px;
+  line-height: 1;
+}
+
+.progressTrack {
+  width: 100%;
+  height: 3px;
+  background: var(--border);
+}
+
+.progressValue {
+  height: 100%;
+  background: var(--brand-700);
+  transition: width 160ms ease;
+}
+
+.sheetBody {
+  overflow-y: auto;
+  padding: 20px 16px 24px;
+}
+
+.sheetFooter {
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+  padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+}
+
+.sectionStack {
+  display: grid;
+  gap: 20px;
+}
+
+.headingBlock {
+  display: grid;
+  gap: 6px;
+}
+
+.stepEyebrow {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.4;
+  font-weight: 700;
+  color: var(--brand-700);
+}
+
+.stepTitle {
+  margin: 0;
+  font-size: 18px;
+  line-height: 1.45;
+  font-weight: 700;
+  color: var(--text-1);
+}
+
+.errorText {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #b42318;
+}
+
+.noticeText {
+  margin: 16px 0 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-2);
+}
+
+.emptyState,
+.loginCard,
+.summaryCard,
+.confirmCard,
+.calendarSelectionPanel {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--surface-sub);
+}
+
+.emptyTitle,
+.loginTitle,
+.confirmTitle,
+.additionalTitle,
+.calendarSelectionTitle {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.45;
+  font-weight: 700;
+  color: var(--text-1);
+}
+
+.emptyText,
+.loginText,
+.confirmSub {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--text-2);
+}
+
+.dateButton {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  padding: 14px 16px;
+  text-align: left;
+}
+
+.dateButtonLabel {
+  font-size: 16px;
+  line-height: 1.5;
+  font-weight: 700;
+  color: var(--text-1);
+}
+
+.chevron {
+  width: 10px;
+  height: 10px;
+  border-top: 1.5px solid var(--text-3);
+  border-right: 1.5px solid var(--text-3);
+  transform: rotate(45deg);
+}
+
+.timeSection {
+  display: grid;
+  gap: 12px;
+}
+
+.timeSectionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.timeSectionTitle {
+  font-size: 14px;
+  line-height: 1.5;
+  font-weight: 700;
+  color: var(--text-1);
+}
+
+.inlineTextButton,
+.inlineAddButton {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  font-size: 14px;
+  line-height: 1.5;
+  font-weight: 600;
+  color: var(--brand-700);
+  text-align: left;
+}
+
+.timeGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.timeChip {
+  min-height: 46px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  background: var(--surface);
+  color: var(--text-1);
+  font-size: 15px;
+  line-height: 1.4;
+  font-weight: 700;
+}
+
+.timeChipSelected {
+  border-color: var(--brand-700);
+  background: var(--brand-50);
+  color: var(--brand-700);
+}
+
+.timeChipDisabled {
+  background: var(--surface-sub);
+  color: var(--text-3);
+}
+
+.calendarHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.monthLabel {
+  font-size: 17px;
+  line-height: 1.45;
+  font-weight: 700;
+  color: var(--text-1);
+}
+
+.monthNavButton {
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-full);
+  background: var(--surface);
+  color: var(--text-1);
+  font-size: 20px;
+}
+
+.monthNavButton:disabled {
+  color: var(--text-3);
+}
+
+.weekdayRow {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+}
+
+.weekdayLabel {
+  text-align: center;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--text-3);
+}
+
+.calendarGrid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.calendarCell {
+  display: grid;
+  place-items: center;
+  gap: 4px;
+  aspect-ratio: 1;
+  border: 1px solid transparent;
+  border-radius: var(--r-full);
+  background: transparent;
+  color: var(--text-1);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.calendarCellMuted {
+  color: var(--text-3);
+}
+
+.calendarCellAvailable {
+  border-color: var(--brand-100);
+}
+
+.calendarCellClosed {
+  border-color: var(--border);
+  color: var(--text-2);
+}
+
+.calendarCellSelected {
+  background: var(--brand-700);
+  color: #ffffff;
+}
+
+.calendarDot {
+  width: 4px;
+  height: 4px;
+  border-radius: var(--r-full);
+  background: var(--brand-500);
+}
+
+.completeButton,
+.primaryButton,
+.primaryLinkButton,
+.secondaryButton,
+.loginButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 48px;
+  border-radius: var(--r-sm);
+  font-size: 15px;
+  line-height: 1.4;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.completeButton,
+.primaryButton,
+.primaryLinkButton,
+.loginButton {
+  border: 0;
+  background: var(--brand-700);
+  color: #ffffff;
+}
+
+.secondaryButton {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-1);
+}
+
+.primaryButton:disabled,
+.secondaryButton:disabled,
+.monthNavButton:disabled {
+  opacity: 0.45;
+}
+
+.footerActions {
+  display: grid;
+  grid-template-columns: minmax(0, 88px) minmax(0, 1fr);
+  gap: 10px;
+}
+
+.childCardList,
+.fieldStack,
+.agreementStack {
+  display: grid;
+  gap: 12px;
+}
+
+.childCard {
+  display: grid;
+  gap: 4px;
+  width: 100%;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  text-align: left;
+}
+
+.childCardSelected {
+  border-color: var(--brand-700);
+  background: var(--brand-50);
+}
+
+.childName {
+  font-size: 15px;
+  line-height: 1.45;
+  color: var(--text-1);
+}
+
+.childMeta {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-2);
+}
+
+.field {
+  display: grid;
+  gap: 8px;
+}
+
+.fieldLabel,
+.summaryLabel,
+.confirmLabel {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-3);
+}
+
+.input,
+.textarea {
+  width: 100%;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-sm);
+  background: var(--surface);
+  color: var(--text-1);
+  font-size: 15px;
+}
+
+.input {
+  height: 48px;
+  padding: 0 14px;
+}
+
+.textarea {
+  min-height: 96px;
+  padding: 12px 14px;
+  resize: vertical;
+}
+
+.fieldHelp {
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--text-3);
+}
+
+.additionalSection {
+  display: grid;
+  gap: 14px;
+  padding-top: 4px;
+}
+
+.summaryRow,
+.confirmRow {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.summaryValue,
+.confirmValue {
+  font-size: 14px;
+  line-height: 1.6;
+  font-weight: 600;
+  color: var(--text-1);
+  text-align: right;
+}
+
+.confirmDivider {
+  height: 1px;
+  background: var(--border);
+}
+
+.agreeRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--text-1);
+}
+
+.agreeRow input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--brand-700);
+  margin-top: 2px;
+}
+
+@media (max-width: 360px) {
+  .timeGrid {
+    grid-template-columns: 1fr;
+  }
+}

@@ -1,88 +1,19 @@
 "use client"
 
-import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { useActionState, useEffect, useMemo, useState, type FormEvent } from "react"
 
-import {
-  formatStoredTargetGrades,
-  isChildEligibleForClass,
-  isValidGrade
-} from "@/shared/constants/grade-options"
+import { isChildEligibleForClass } from "@/shared/constants/grade-options"
 import { CHILD_GRADES, getChildGradeLabel } from "@/shared/constants/education-taxonomy"
 import {
-  createTrialApplicationAction,
-  type CreateTrialApplicationActionState
-} from "@/features/applications/actions/create-trial-application"
-import type { AvailableScheduleSlot, ChildProfile } from "@/shared/lib/db/adapter"
+  resolveSlotDisplay,
+  useTrialApplicationForm,
+  type TrialApplicationFormProps
+} from "./use-trial-application-form"
 import styles from "./apply-form.module.css"
 
-type ApplyFormProps = {
-  classId: string
-  classTargetAge: string
-  availableSlots: AvailableScheduleSlot[]
-  slotsError: string | null
-  childProfiles: ChildProfile[]
-  childProfilesError: string | null
-  parentName: string
-  parentPhone: string | null
-}
-
-const initialState: CreateTrialApplicationActionState = {
-  status: "idle",
-  message: ""
-}
+type ApplyFormProps = TrialApplicationFormProps
 
 const gradeOptions = CHILD_GRADES
-const WEEKDAY_LABELS = ["일요일", "월요일", "화요일", "수요일", "목요일", "금요일", "토요일"]
-
-const formatSlotDateLine = (startAt: string, endAt: string) => {
-  const startDate = new Date(startAt)
-  const endDate = new Date(endAt)
-
-  if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) {
-    return null
-  }
-
-  const dateText = `${startDate.getFullYear()}. ${String(startDate.getMonth() + 1).padStart(2, "0")}. ${String(
-    startDate.getDate()
-  ).padStart(2, "0")}.`
-  const weekdayText = WEEKDAY_LABELS[startDate.getDay()] ?? ""
-
-  return `${dateText} ${weekdayText}`
-}
-
-const formatSlotTimeLine = (startAt: string, endAt: string, remainingCount: number) => {
-  const startDate = new Date(startAt)
-  const endDate = new Date(endAt)
-
-  if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) {
-    return null
-  }
-
-  const timeText = `${String(startDate.getHours()).padStart(2, "0")}:${String(
-    startDate.getMinutes()
-  ).padStart(2, "0")}~${String(endDate.getHours()).padStart(2, "0")}:${String(endDate.getMinutes()).padStart(2, "0")}`
-
-  return `${timeText} · 남은 ${remainingCount}자리`
-}
-
-const resolveSlotDisplay = (slot: AvailableScheduleSlot) => {
-  const dateLine = formatSlotDateLine(slot.startAt, slot.endAt)
-  const timeLine = formatSlotTimeLine(slot.startAt, slot.endAt, slot.remainingCount)
-
-  if (dateLine && timeLine) {
-    return {
-      primaryLine: dateLine,
-      secondaryLine: timeLine
-    }
-  }
-
-  return {
-    primaryLine: slot.label || slot.startAt,
-    secondaryLine: slot.isClosed ? null : `남은 ${slot.remainingCount}자리`
-  }
-}
 
 export const ApplyForm = ({
   classId,
@@ -94,100 +25,56 @@ export const ApplyForm = ({
   parentName,
   parentPhone
 }: ApplyFormProps) => {
-  const router = useRouter()
-  const boundAction = createTrialApplicationAction.bind(null, classId)
-  const [state, formAction, isPending] = useActionState(boundAction, initialState)
-  const [selectedChildId, setSelectedChildId] = useState("")
-  const [selectedOptionId, setSelectedOptionId] = useState("")
-  const [childName, setChildName] = useState("")
-  const [childGrade, setChildGrade] = useState("")
-  const [childSchool, setChildSchool] = useState("")
-  const [childNotes, setChildNotes] = useState("")
-  const [currentLevel, setCurrentLevel] = useState("")
-  const [goalNote, setGoalNote] = useState("")
-  const [privacyAgreed, setPrivacyAgreed] = useState(false)
-  const [thirdPartyAgreed, setThirdPartyAgreed] = useState(false)
-  const [guardianAgreed, setGuardianAgreed] = useState(false)
-  const [clientMessage, setClientMessage] = useState("")
-
-  const selectedSlot = useMemo(
-    () => availableSlots.find((slot) => slot.optionId === selectedOptionId) ?? null,
-    [availableSlots, selectedOptionId]
-  )
-  const selectedChild = useMemo(
-    () => childProfiles.find((child) => child.id === selectedChildId) ?? null,
-    [childProfiles, selectedChildId]
-  )
-  const classTargetGradeLabel = useMemo(() => formatStoredTargetGrades(classTargetAge), [classTargetAge])
-  const isGradeEligible = useMemo(() => {
-    if (!childGrade.trim()) {
-      return true
-    }
-
-    return isChildEligibleForClass(childGrade, classTargetAge)
-  }, [childGrade, classTargetAge])
-  const legacyChildGradeValue = childGrade.trim() && !isValidGrade(childGrade) ? childGrade.trim() : null
-  const hasSelectableSlots = useMemo(
-    () => availableSlots.some((slot) => !slot.isClosed),
-    [availableSlots]
-  )
-  const canSubmit =
-    !slotsError && hasSelectableSlots && Boolean(selectedSlot && !selectedSlot.isClosed) && isGradeEligible
-  const requiredAgreementsChecked = privacyAgreed && thirdPartyAgreed && guardianAgreed
-
-  useEffect(() => {
-    if (selectedSlot?.isClosed) {
-      setSelectedOptionId("")
-    }
-  }, [selectedSlot?.isClosed])
-
-  useEffect(() => {
-    const selectableSlots = availableSlots.filter((slot) => !slot.isClosed)
-
-    if (selectableSlots.length === 1) {
-      setSelectedOptionId(selectableSlots[0].optionId)
-      return
-    }
-
-    setSelectedOptionId((current) =>
-      availableSlots.some((slot) => slot.optionId === current && !slot.isClosed) ? current : ""
-    )
-  }, [availableSlots])
-
-  useEffect(() => {
-    if (!selectedChild) {
-      return
-    }
-
-    setChildName(selectedChild.name)
-    setChildGrade(selectedChild.grade)
-    setChildSchool(selectedChild.schoolName ?? "")
-    setChildNotes(selectedChild.notes ?? "")
-    setCurrentLevel(selectedChild.currentLevel ?? "")
-    setGoalNote(selectedChild.goalNote ?? "")
-  }, [selectedChild])
-
-  useEffect(() => {
-    if (state.status === "success" && state.redirectTo) {
-      router.replace(state.redirectTo)
-    }
-  }, [router, state.redirectTo, state.status])
-
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
-    if (!requiredAgreementsChecked) {
-      event.preventDefault()
-      setClientMessage("체험수업 신청에 필요한 필수 동의 항목을 확인해주세요.")
-      return
-    }
-
-    if (!isGradeEligible) {
-      event.preventDefault()
-      setClientMessage("선택한 자녀의 학년이 이 수업의 대상 학년과 맞지 않아 신청할 수 없어요.")
-      return
-    }
-
-    setClientMessage("")
-  }
+  const {
+    state,
+    formAction,
+    isPending,
+    selectedChildId,
+    setSelectedChildId,
+    selectedOptionId,
+    setSelectedOptionId,
+    childName,
+    setChildName,
+    childGrade,
+    setChildGrade,
+    childSchool,
+    setChildSchool,
+    childNotes,
+    setChildNotes,
+    subjectExperienceYn,
+    setSubjectExperienceYn,
+    subjectExperienceDuration,
+    setSubjectExperienceDuration,
+    currentLevel,
+    setCurrentLevel,
+    preferredRegularSchedule,
+    setPreferredRegularSchedule,
+    goalType,
+    setGoalType,
+    goalNote,
+    setGoalNote,
+    memo,
+    setMemo,
+    privacyAgreed,
+    setPrivacyAgreed,
+    thirdPartyAgreed,
+    setThirdPartyAgreed,
+    guardianAgreed,
+    setGuardianAgreed,
+    clientMessage,
+    classTargetGradeLabel,
+    isGradeEligible,
+    legacyChildGradeValue,
+    hasSelectableSlots,
+    canSubmit,
+    handleSubmit
+  } = useTrialApplicationForm({
+    classId,
+    classTargetAge,
+    availableSlots,
+    slotsError,
+    childProfiles
+  })
 
   return (
     <form action={formAction} onSubmit={handleSubmit} className={styles.form}>
@@ -339,7 +226,8 @@ export const ApplyForm = ({
             <span className={styles.label}>과목 경험 여부</span>
             <select
               name="subjectExperienceYn"
-              defaultValue=""
+              value={subjectExperienceYn}
+              onChange={(event) => setSubjectExperienceYn(event.target.value)}
               disabled={isPending}
               className={styles.select}
             >
@@ -355,6 +243,10 @@ export const ApplyForm = ({
               name="subjectExperienceDuration"
               type="text"
               maxLength={60}
+              value={subjectExperienceDuration}
+              onChange={(event) => {
+                setSubjectExperienceDuration(event.target.value)
+              }}
               disabled={isPending}
               placeholder="예: 6개월, 1년"
               className={styles.input}
@@ -383,6 +275,10 @@ export const ApplyForm = ({
               name="preferredRegularSchedule"
               type="text"
               maxLength={120}
+              value={preferredRegularSchedule}
+              onChange={(event) => {
+                setPreferredRegularSchedule(event.target.value)
+              }}
               disabled={isPending}
               placeholder="예: 평일 5시 이후, 토요일 오전"
               className={styles.input}
@@ -391,7 +287,15 @@ export const ApplyForm = ({
 
           <div className={styles.field}>
             <span className={styles.label}>목표</span>
-            <select name="goalType" defaultValue="" disabled={isPending} className={styles.select}>
+            <select
+              name="goalType"
+              value={goalType}
+              onChange={(event) => {
+                setGoalType(event.target.value)
+              }}
+              disabled={isPending}
+              className={styles.select}
+            >
               <option value="">선택 안 함</option>
               <option value="영재원">영재원</option>
               <option value="고입">고입</option>
@@ -474,6 +378,10 @@ export const ApplyForm = ({
               name="memo"
               rows={4}
               maxLength={500}
+              value={memo}
+              onChange={(event) => {
+                setMemo(event.target.value)
+              }}
               disabled={isPending}
               placeholder="아이의 현재 수준이나 궁금한 점을 남겨주세요."
               className={styles.textarea}

@@ -5,7 +5,10 @@ import { formatStoredTargetGrades } from "@/shared/constants/grade-options"
 import { getSubjectLabel } from "@/shared/constants/education-taxonomy"
 import { getMyProfile } from "@/features/auth/lib/profile-sync"
 import { getSession } from "@/features/auth/lib/session"
+import { getPublicClassAvailableSlots } from "@/features/applications/queries/get-public-class-available-slots"
+import { ClassDetailApplicationSheet } from "@/features/applications/ui/class-detail-application-sheet"
 import { getPublicClassDetail } from "@/features/classes/queries/get-public-class-detail"
+import { getMyChildren } from "@/features/children/queries/get-my-children"
 import { BookmarkButton } from "@/features/favorites/ui/bookmark-button"
 import { NaverMapByAddress } from "@/features/maps/ui/naver-map-by-address"
 import { normalizeAcademyArea } from "@/shared/config/academy-areas"
@@ -62,10 +65,20 @@ export default async function ClassDetailPage({ params, searchParams }: ClassDet
   const isStudioUser =
     profile?.dbRole === "teacher" || profile?.dbRole === "academy" || profile?.dbRole === "admin"
   const favoritesEnabled = !session || profile?.role === "parent"
-  const applyHref = `/classes/${resolvedParams.id}/apply`
-  const applyEntryHref = session
-    ? applyHref
-    : `/auth/sign-in?${new URLSearchParams({ returnTo: applyHref }).toString()}`
+  const detailSearchParams = new URLSearchParams()
+
+  if (rawRegionParam) {
+    detailSearchParams.set("region", rawRegionParam)
+  }
+
+  const detailHref = detailSearchParams.size
+    ? `/classes/${resolvedParams.id}?${detailSearchParams.toString()}`
+    : `/classes/${resolvedParams.id}`
+  const signInHref = `/auth/sign-in?${new URLSearchParams({ returnTo: detailHref }).toString()}`
+  const [{ data: slots, error: slotsError }, { data: children, error: childrenError }] = await Promise.all([
+    getPublicClassAvailableSlots(resolvedParams.id),
+    isParentUser ? getMyChildren() : Promise.resolve({ data: [], error: null })
+  ])
   const organization = classItem?.organization ?? null
   const fullAddress = `${organization?.address ?? ""} ${organization?.addressDetail ?? ""}`.trim()
   const hasLocation = Boolean(organization?.address?.trim())
@@ -378,11 +391,25 @@ export default async function ClassDetailPage({ params, searchParams }: ClassDet
       </div>
 
       {!error && classItem ? (
-        <div className={styles.fixedCta}>
-          <Link href={applyEntryHref} className={styles.ctaButton}>
-            체험 신청하기
-          </Link>
-        </div>
+        <ClassDetailApplicationSheet
+          classId={classItem.id}
+          classTitle={classItem.title}
+          classTargetAge={classItem.targetAge}
+          availableSlots={slots}
+          slotsError={slotsError}
+          childProfiles={children}
+          childProfilesError={childrenError}
+          parentName={profile?.name ?? ""}
+          parentPhone={profile?.phone ?? null}
+          academyName={organizationLabel || null}
+          teacherName={teacherName}
+          trialPriceLabel={formatPrice(classItem.trialPrice)}
+          hasSession={Boolean(session)}
+          isParentUser={isParentUser}
+          signInHref={signInHref}
+          fixedCtaClassName={styles.fixedCta}
+          ctaButtonClassName={styles.ctaButton}
+        />
       ) : null}
     </main>
   )
