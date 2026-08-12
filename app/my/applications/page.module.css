@@ -1,19 +1,18 @@
 .page {
-  background: #ffffff;
   min-height: 100dvh;
   width: 100%;
   overflow-x: hidden;
+  background: var(--bg);
 }
 
 .shell {
   box-sizing: border-box;
   width: 100%;
-  max-width: 430px;
+  max-width: var(--col);
   margin: 0 auto;
   min-height: 100dvh;
-  background: #ffffff;
-  padding: calc(18px + env(safe-area-inset-top)) 24px
-    calc(96px + env(safe-area-inset-bottom));
+  background: var(--surface);
+  padding-bottom: calc(var(--tabbar-h) + var(--s8) + env(safe-area-inset-bottom));
 }
 
 .shell * {
@@ -21,9 +20,15 @@
 }
 
 .header {
-  display: grid;
-  gap: 10px;
-  margin-bottom: 28px;
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  min-height: 64px;
+  padding: calc(var(--s3) + env(safe-area-inset-top)) var(--gutter) var(--s3);
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
 }
 
 .title {
@@ -32,63 +37,74 @@
   line-height: 1.25;
   font-weight: 800;
   letter-spacing: -0.04em;
-  color: #111111;
+  color: var(--text-1);
 }
 
-.subtitle {
-  margin: 0;
-  font-size: 14px;
-  line-height: 1.6;
-  color: #8a8a8a;
+.content {
+  display: grid;
+  gap: var(--s8);
+  padding: var(--s5) var(--gutter) var(--s8);
 }
 
 .card {
-  border: 1px solid #eeeeee;
-  border-radius: 20px;
-  background: #ffffff;
-  padding: 20px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  padding: var(--s5);
 }
 
 .dangerCard {
-  border-color: #fecaca;
+  border-color: var(--danger);
+  background: var(--surface);
 }
 
 .dangerText {
-  margin: 0 0 10px;
-  color: #991b1b;
+  margin: 0 0 var(--s3);
+  color: var(--danger);
   font-size: 14px;
-  line-height: 1.5;
+  line-height: 1.6;
 }
 
 .link {
-  color: #2aad38;
+  display: inline-flex;
+  align-items: center;
+  min-height: 36px;
+  color: var(--brand-700);
   font-size: 14px;
   font-weight: 700;
   text-decoration: none;
 }
 
-.emptyCard {
-  border: 1px solid #eeeeee;
-  border-radius: 20px;
-  background: #ffffff;
-  padding: 24px 20px;
+.emptyState {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: calc(100dvh - 180px - var(--tabbar-h));
+  padding: var(--s10) 0;
+}
+
+.emptyInner {
+  display: grid;
+  justify-items: center;
+  gap: var(--s3);
+  width: 100%;
+  max-width: 280px;
   text-align: center;
 }
 
 .emptyTitle {
   margin: 0;
-  font-size: 18px;
-  line-height: 1.35;
-  font-weight: 800;
-  letter-spacing: -0.03em;
-  color: #111111;
+  font-size: 15px;
+  line-height: 1.45;
+  font-weight: 700;
+  color: var(--text-1);
 }
 
 .emptyDesc {
-  margin: 10px 0 18px;
-  font-size: 14px;
+  margin: 0;
+  font-size: 13px;
   line-height: 1.6;
-  color: #666666;
+  color: var(--text-2);
 }
 
 .primaryButton {
@@ -96,17 +112,14 @@
   align-items: center;
   justify-content: center;
   width: 100%;
-  height: 52px;
-  border-radius: 12px;
-  background: #2aad38;
-  color: #ffffff;
-  font-size: 16px;
+  min-height: 46px;
+  margin-top: var(--s2);
+  border-radius: var(--r-sm);
+  background: var(--brand-700);
+  color: var(--surface);
+  font-size: 15px;
   font-weight: 700;
   text-decoration: none;
-}
-
-.primaryButton:active {
-  background: #249b31;
 }
 
 .bottomNav {
@@ -114,16 +127,16 @@
   bottom: 0;
   left: 50%;
   transform: translateX(-50%);
-  width: min(100%, 430px);
-  box-sizing: border-box;
-  min-height: 76px;
-  background: #ffffff;
-  border-top: 1px solid #eeeeee;
-  z-index: 60;
+  z-index: 50;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 10px 24px calc(14px + env(safe-area-inset-bottom));
+  width: 100%;
+  max-width: var(--col);
+  min-height: var(--tabbar-h);
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  padding: var(--s3) var(--gutter) calc(var(--s3) + env(safe-area-inset-bottom));
 }
 
 .navItem {
@@ -134,7 +147,7 @@
   justify-content: center;
   gap: 6px;
   text-decoration: none;
-  color: #111111;
+  color: var(--text-3);
   font-size: 11px;
   -webkit-tap-highlight-color: transparent;
 }
@@ -145,16 +158,16 @@
 }
 
 .navItemActive {
-  color: #2aad38;
+  color: var(--brand-700);
 }
 
 .navItemActive svg {
-  color: #2aad38;
+  color: var(--brand-700);
 }
 
-@media (max-width: 360px) {
+@media (min-width: 520px) {
   .shell {
-    padding-left: 20px;
-    padding-right: 20px;
+    border-left: 1px solid var(--border);
+    border-right: 1px solid var(--border);
   }
 }

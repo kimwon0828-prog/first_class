@@ -1,156 +1,243 @@
-.list {
+.sections {
   display: grid;
-  gap: 18px;
+  gap: var(--s8);
+}
+
+.sectionBlock {
+  display: grid;
+  gap: var(--s3);
+}
+
+.sectionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s3);
+}
+
+.sectionTitle {
+  margin: 0;
+  font-size: 17px;
+  line-height: 1.35;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--text-1);
+}
+
+.sectionCount {
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--text-3);
+}
+
+.cardList {
+  display: grid;
+  gap: var(--s3);
 }
 
 .card {
-  border: 1px solid #eeeeee;
-  border-radius: 20px;
-  background: #ffffff;
-  padding: 20px;
+  display: grid;
+  gap: var(--s2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  padding: var(--s4);
 }
 
-.cardHeader {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 12px;
-}
-
-.badge {
-  display: inline-flex;
-  align-items: center;
-  border-radius: 999px;
-  padding: 6px 10px;
-  font-size: 12px;
-  font-weight: 700;
-}
-
-.badge_new {
-  background: #f3fbf4;
-  color: #2aad38;
-}
-
-.badge_reviewing {
-  background: #fffbeb;
-  color: #b45309;
-}
-
-.badge_confirmed {
-  background: #eff6ff;
-  color: #1d4ed8;
-}
-
-.badge_completed {
-  background: #f3f4f6;
-  color: #6b7280;
-}
-
-.badge_canceled {
-  background: #fef2f2;
-  color: #dc2626;
-}
-
-.classLink {
+.dday {
+  margin: 0;
   font-size: 13px;
+  line-height: 1.4;
   font-weight: 700;
-  color: #2aad38;
-  text-decoration: none;
-  -webkit-tap-highlight-color: transparent;
+  color: var(--brand-700);
+}
+
+.scheduleEyebrow {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--text-3);
+}
+
+.scheduleText {
+  margin: 0;
+  font-size: 17px;
+  line-height: 1.35;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--text-1);
 }
 
 .classTitle {
+  margin: var(--s2) 0 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 15px;
+  line-height: 1.45;
+  font-weight: 700;
+  color: var(--text-1);
+}
+
+.academyName {
   margin: 0;
-  font-size: 18px;
-  font-weight: 800;
-  line-height: 1.35;
-  letter-spacing: -0.03em;
-  color: #111111;
-  overflow-wrap: anywhere;
-}
-
-.metaLine {
-  margin: 8px 0 0;
-  font-size: 14px;
-  line-height: 1.5;
-  color: #666666;
-}
-
-.metaGrid {
-  margin-top: 14px;
-  display: grid;
-  gap: 10px;
-}
-
-.metaRow {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  align-items: baseline;
-}
-
-.metaLabel {
   font-size: 13px;
-  color: #8a8a8a;
-  flex: 0 0 auto;
+  line-height: 1.45;
+  color: var(--text-2);
 }
 
-.metaValue {
+.childMeta {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--text-3);
+}
+
+.cardActions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s3);
+  margin-top: var(--s3);
+}
+
+.statusBadge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: var(--r-full);
+  padding: 6px 10px;
+  font-size: 12px;
+  line-height: 1;
+  font-weight: 700;
+}
+
+.statusBadgeActive {
+  background: var(--brand-50);
+  color: var(--brand-700);
+}
+
+.statusBadgeMuted {
+  border: 1px solid var(--border);
+  background: var(--surface-sub);
+  color: var(--text-2);
+}
+
+.actionButtons {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ghostButton,
+.dangerButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 64px;
+  min-height: 36px;
+  padding: 0 12px;
+  border-radius: var(--r-sm);
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  text-decoration: none;
+}
+
+.ghostButton {
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-2);
+}
+
+.dangerButton {
+  border: 1px solid var(--danger);
+  background: var(--surface);
+  color: var(--danger);
+}
+
+.dangerButton:disabled {
+  opacity: 0.6;
+}
+
+.enrolledText {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--text-3);
+}
+
+.pastDetails {
+  border-top: 1px solid var(--border);
+  padding-top: var(--s4);
+}
+
+.pastSummary {
+  cursor: pointer;
+  list-style: none;
+  font-size: 17px;
+  line-height: 1.35;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--text-1);
+}
+
+.pastSummary::-webkit-details-marker {
+  display: none;
+}
+
+.pastList {
+  margin-top: var(--s3);
+}
+
+.pastRow {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  min-height: 52px;
+  padding: var(--s3) 0;
+  border-bottom: 1px solid var(--border);
+  text-decoration: none;
+}
+
+.pastDate {
+  flex: 0 0 76px;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--text-3);
+}
+
+.pastTitle {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-size: 14px;
   line-height: 1.45;
-  color: #111111;
+  font-weight: 500;
+  color: var(--text-1);
+}
+
+.pastStatus {
+  flex: 0 0 auto;
   text-align: right;
-  overflow-wrap: anywhere;
-  display: inline-flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 6px;
-}
-
-.mapLink {
-  font-size: 13px;
-  font-weight: 700;
-  color: #2aad38;
-  text-decoration: none;
-  -webkit-tap-highlight-color: transparent;
-}
-
-.helpText {
-  margin: 16px 0 0;
-  font-size: 13px;
-  line-height: 1.5;
-  color: #666666;
-  background: #f7f7f7;
-  border-radius: 14px;
-  padding: 12px 12px;
-}
-
-.actionRow {
-  margin-top: 14px;
-  display: flex;
-  justify-content: flex-end;
-}
-
-.cancelButton {
-  border: 1px solid #e5e7eb;
-  border-radius: 999px;
-  background: #ffffff;
-  color: #111111;
-  padding: 10px 14px;
-  font-size: 13px;
-  font-weight: 700;
-  line-height: 1;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--text-3);
 }
 
 @media (max-width: 360px) {
-  .metaRow {
-    flex-direction: column;
+  .cardActions {
     align-items: flex-start;
+    flex-direction: column;
   }
 
-  .metaValue {
-    text-align: left;
-    align-items: flex-start;
+  .actionButtons {
+    width: 100%;
+    justify-content: flex-end;
+  }
+
+  .pastDate {
+    flex-basis: 68px;
   }
 }

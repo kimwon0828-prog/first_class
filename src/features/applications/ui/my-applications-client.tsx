@@ -1,59 +1,16 @@
 "use client"
 
 import Link from "next/link"
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { useSearchParams } from "next/navigation"
 
 import { MyApplicationList } from "@/features/applications/ui/my-application-list"
-import type { ApplicationStatus, TrialApplicationSummary } from "@/shared/lib/db/adapter"
+import type { TrialApplicationSummary } from "@/shared/lib/db/adapter"
 import styles from "../../../../app/my/applications/page.module.css"
 
 type LoadState = "ready" | "error"
 
 export type MyApplicationListItem = TrialApplicationSummary
-
-const ACTIVE_STATUSES: ApplicationStatus[] = ["new", "reviewing", "confirmed"]
-const CLOSED_STATUSES: ApplicationStatus[] = ["completed", "canceled"]
-
-const resolvePageCopy = (statusFilter: string | null) => {
-  if (statusFilter === "active") {
-    return {
-      title: "진행 중 신청",
-      subtitle: "접수 이후 진행 중인 첫수업 신청만 모아볼 수 있어요.",
-      emptyTitle: "진행 중인 신청이 없어요.",
-      emptyDesc: "새 체험수업을 신청하거나 전체 신청 내역을 확인해보세요."
-    }
-  }
-
-  if (statusFilter === "closed") {
-    return {
-      title: "완료/취소 신청",
-      subtitle: "완료되었거나 취소된 첫수업 신청을 확인할 수 있어요.",
-      emptyTitle: "완료 또는 취소된 신청이 없어요.",
-      emptyDesc: "진행 중인 신청은 전체 신청 내역에서 확인할 수 있어요."
-    }
-  }
-
-  return {
-    title: "내 신청",
-    subtitle: "신청한 첫수업 진행 상태를 확인할 수 있어요.",
-    emptyTitle: "아직 신청한 첫수업이 없어요.",
-    emptyDesc: "우리 아이에게 맞는 수업을 찾아보세요."
-  }
-}
-
-const filterItemsByStatus = (items: MyApplicationListItem[], statusFilter: string | null) => {
-  if (statusFilter === "active") {
-    return items.filter((item) => ACTIVE_STATUSES.includes(item.status))
-  }
-
-  if (statusFilter === "closed") {
-    return items.filter((item) => CLOSED_STATUSES.includes(item.status))
-  }
-
-  return items
-}
 
 type MyApplicationsClientProps = {
   initialItems: MyApplicationListItem[]
@@ -65,9 +22,6 @@ export const MyApplicationsClient = ({
   initialError
 }: MyApplicationsClientProps) => {
   const router = useRouter()
-  const searchParams = useSearchParams()
-  const statusFilter = searchParams.get("status")
-  const pageCopy = useMemo(() => resolvePageCopy(statusFilter), [statusFilter])
   const [items, setItems] = useState<MyApplicationListItem[]>(initialItems)
   const [status, setStatus] = useState<LoadState>(initialError ? "error" : "ready")
   const [message, setMessage] = useState(initialError ?? "")
@@ -82,55 +36,42 @@ export const MyApplicationsClient = ({
     router.refresh()
   }, [router])
 
-  const filteredItems = useMemo(() => filterItemsByStatus(items, statusFilter), [items, statusFilter])
-
   return (
-    <main
-      className={styles.page}
-      style={{ background: "#ffffff", minHeight: "100dvh", width: "100%", overflowX: "hidden" }}
-    >
-      <div
-        className={styles.shell}
-        style={{
-          boxSizing: "border-box",
-          width: "100%",
-          maxWidth: 430,
-          margin: "0 auto",
-          minHeight: "100dvh",
-          background: "#ffffff",
-          padding: "calc(18px + env(safe-area-inset-top)) 24px calc(96px + env(safe-area-inset-bottom))"
-        }}
-      >
+    <main className={styles.page}>
+      <div className={styles.shell}>
         <header className={styles.header}>
-          <h1 className={styles.title}>{pageCopy.title}</h1>
-          <p className={styles.subtitle}>{pageCopy.subtitle}</p>
+          <h1 className={styles.title}>내 신청</h1>
         </header>
 
-        {status === "error" ? (
-          <section className={`${styles.card} ${styles.dangerCard}`}>
-            <p className={styles.dangerText}>{message}</p>
-            <Link href="/classes" className={styles.link}>
-              수업 찾으러 가기
-            </Link>
-          </section>
-        ) : null}
+        <div className={styles.content}>
+          {status === "error" ? (
+            <section className={`${styles.card} ${styles.dangerCard}`}>
+              <p className={styles.dangerText}>{message}</p>
+              <Link href="/classes" className={styles.link}>
+                수업 둘러보기
+              </Link>
+            </section>
+          ) : null}
 
-        {status === "ready" && filteredItems.length === 0 ? (
-          <section className={styles.emptyCard}>
-            <h2 className={styles.emptyTitle}>{pageCopy.emptyTitle}</h2>
-            <p className={styles.emptyDesc}>{pageCopy.emptyDesc}</p>
-            <Link href="/classes" className={styles.primaryButton}>
-              수업 찾으러 가기
-            </Link>
-          </section>
-        ) : null}
+          {status === "ready" && items.length === 0 ? (
+            <section className={styles.emptyState}>
+              <div className={styles.emptyInner}>
+                <h2 className={styles.emptyTitle}>아직 신청한 체험수업이 없어요</h2>
+                <p className={styles.emptyDesc}>우리 아이에게 맞는 수업을 찾아보세요</p>
+                <Link href="/classes" className={styles.primaryButton}>
+                  수업 둘러보기
+                </Link>
+              </div>
+            </section>
+          ) : null}
 
-        {status === "ready" && filteredItems.length > 0 ? (
-          <MyApplicationList items={filteredItems} onCanceled={handleCanceled} />
-        ) : null}
+          {status === "ready" && items.length > 0 ? (
+            <MyApplicationList items={items} onCanceled={handleCanceled} />
+          ) : null}
+        </div>
       </div>
 
-      <nav className={styles.bottomNav} aria-label="Bottom tabs">
+      <nav className={styles.bottomNav} aria-label="하단 탭">
         <Link href="/classes" className={styles.navItem}>
           <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
             <path
