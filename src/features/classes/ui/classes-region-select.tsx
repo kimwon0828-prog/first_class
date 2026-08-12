@@ -486,12 +486,12 @@ export function ClassesRegionInlineSelect({
                 }}
                 style={{
                   width: "100%",
-                  minHeight: 52,
+                  height: 52,
                   padding: "0 var(--gutter)",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "space-between",
-                  gap: 12,
+                  gap: 8,
                   textAlign: "left",
                   border: 0,
                   borderBottom: index < options.length - 1 ? "1px solid var(--border)" : 0,
@@ -502,7 +502,9 @@ export function ClassesRegionInlineSelect({
                   cursor: isPending ? "default" : "pointer"
                 }}
               >
-                <span>{formatAcademyAreaLabel(option)}</span>
+                <span style={{ fontSize: 15, fontWeight: isActive ? 700 : 500, lineHeight: "1.4" }}>
+                  {formatAcademyAreaLabel(option)}
+                </span>
                 <span
                   aria-hidden="true"
                   style={{

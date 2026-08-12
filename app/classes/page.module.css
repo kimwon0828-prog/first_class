@@ -120,19 +120,25 @@
 }
 
 .filterRow {
-  min-height: 48px;
-  padding: 0 14px;
+  padding: 0;
+}
+
+.filterRow + .filterRow {
+  border-top: 1px solid var(--brand-100);
 }
 
 .regionRow {
-  display: inline-flex;
+  display: flex;
   width: 100%;
+  height: 48px;
   align-items: center;
-  gap: 10px;
+  padding: 0 14px;
+  gap: 8px;
   color: var(--text-1);
 }
 
 .regionRow svg {
+  flex: 0 0 auto;
   color: var(--brand-500);
 }
 
@@ -141,6 +147,7 @@
   min-width: 0;
   font-size: 15px;
   font-weight: 600;
+  line-height: 1.4;
   color: var(--text-1);
   text-align: left;
 }
@@ -159,7 +166,6 @@
   height: 11px;
 }
 
-.stageScroller,
 .subjectPager {
   display: flex;
   overflow-x: auto;
@@ -167,38 +173,8 @@
   scrollbar-width: none;
 }
 
-.stageScroller::-webkit-scrollbar,
 .subjectPager::-webkit-scrollbar {
   display: none;
-}
-
-.stageScroller {
-  gap: var(--s2);
-  padding-bottom: var(--s1);
-}
-
-.stageChip {
-  flex: 0 0 auto;
-  min-height: 38px;
-  padding: 0 14px;
-  border-radius: var(--r-sm);
-  border: 1px solid var(--border);
-  background: var(--surface);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 14px;
-  font-weight: 600;
-  letter-spacing: -0.02em;
-  color: var(--text-2);
-  text-decoration: none;
-  -webkit-tap-highlight-color: transparent;
-}
-
-.stageChipActive {
-  border-color: var(--brand-500);
-  background: var(--brand-50);
-  color: var(--brand-700);
 }
 
 .categorySection,
@@ -380,6 +356,60 @@
   border: 1px solid var(--border);
   background: var(--surface-sub);
   padding: var(--s5);
+}
+
+.resultSummary {
+  margin: 0 0 var(--s3);
+  padding: 0 var(--gutter);
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-3);
+}
+
+.pageEmptyState {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--s10) var(--gutter);
+}
+
+.pageEmptyInner {
+  width: 100%;
+  display: grid;
+  justify-items: center;
+  gap: var(--s2);
+  text-align: center;
+}
+
+.pageEmptyTitle {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.5;
+  font-weight: 700;
+  color: var(--text-1);
+}
+
+.pageEmptyDesc {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--text-2);
+}
+
+.resetButton {
+  min-width: 140px;
+  height: 44px;
+  padding: 0 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-1);
+  text-decoration: none;
 }
 
 .stateTitle {

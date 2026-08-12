@@ -3,8 +3,9 @@ import Image from "next/image"
 import Link from "next/link"
 import { redirect } from "next/navigation"
 
-import { formatStoredTargetGrades } from "@/shared/constants/grade-options"
+import { formatStoredTargetGrades, GRADE_OPTIONS, parseStoredTargetGrades } from "@/shared/constants/grade-options"
 import {
+  getChildGradeLabel,
   getSubjectLabel,
   normalizeSubjectCategory,
   SUBJECT_CATEGORIES,
@@ -15,6 +16,7 @@ import { getSession } from "@/features/auth/lib/session"
 import { getPublicClassCardScheduleSummaries } from "@/features/classes/queries/get-public-class-card-schedule-summaries"
 import type { ClassSummary } from "@/shared/lib/db/adapter"
 import { ClassesRegionInlineSelect, ClassesSearchPill } from "@/features/classes/ui/classes-region-select"
+import { ClassesStageSelect } from "@/features/classes/ui/classes-stage-select"
 import { ClassCard } from "@/features/classes/ui/class-card"
 import { ParentFooter } from "@/features/classes/ui/parent-footer"
 import { getPublicClasses } from "@/features/classes/queries/get-public-classes"
@@ -81,6 +83,8 @@ const homeStageChips = [
   }
 ] as const satisfies readonly HomeStageChip[]
 
+void homeStageChips
+
 const subjectEmojiByValue: Record<SubjectCategoryValue, string> = {
   thinking_math: "🧠",
   coding_robot_science: "🤖",
@@ -114,7 +118,14 @@ const resolveStageChip = (value: string) => {
     return null
   }
 
-  return homeStageChips.find((item) => item.label === normalized) ?? null
+  if (!GRADE_OPTIONS.includes(normalized as (typeof GRADE_OPTIONS)[number])) {
+    return null
+  }
+
+  return {
+    label: normalized,
+    keywords: [normalized]
+  } as const
 }
 
 const resolveSubjectCategory = (value: string) => {
@@ -127,6 +138,19 @@ const resolveSubjectCategory = (value: string) => {
 }
 
 const matchesKeyword = (item: ClassSummary, keywords: readonly string[]) => {
+  const isStageCodeFilter =
+    keywords.length > 0 &&
+    keywords.every((keyword) => GRADE_OPTIONS.includes(keyword as (typeof GRADE_OPTIONS)[number]))
+
+  if (isStageCodeFilter) {
+    const targetGrades = parseStoredTargetGrades(item.targetAge)
+    if (targetGrades.length === 0) {
+      return false
+    }
+
+    return keywords.some((keyword) => targetGrades.includes(keyword as (typeof targetGrades)[number]))
+  }
+
   const haystack = normalizeText(
     [item.title, item.subject, getSubjectLabel(item.subject), item.description, item.targetAge, item.classFormat]
       .filter(Boolean)
@@ -213,6 +237,7 @@ export default async function ClassesPage({ searchParams }: ClassesPageProps) {
   })()
   const resolvedSubjectCategory = resolveSubjectCategory(decodedSubject)
   const selectedStageChip = resolveStageChip(decodedStage)
+  const selectedStageLabel = selectedStageChip ? getChildGradeLabel(selectedStageChip.label) ?? selectedStageChip.label : null
 
   if (decodedRegion && !selectedRegion) {
     redirect(
@@ -269,10 +294,10 @@ export default async function ClassesPage({ searchParams }: ClassesPageProps) {
         : myApplicationsHref
     : `/auth/sign-in?${new URLSearchParams({ returnTo: myApplicationsHref }).toString()}`
   const isFilteredView = Boolean(selectedQuery || selectedSubject)
-  const visibleClasses = filteredClasses
-  const selectedStageClasses = selectedStageChip
-    ? visibleClasses.filter((item) => matchesKeyword(item, selectedStageChip.keywords)).slice(0, 8)
-    : visibleClasses.slice(0, 8)
+  const visibleClasses = selectedStageChip
+    ? filteredClasses.filter((item) => matchesKeyword(item, selectedStageChip.keywords))
+    : filteredClasses
+  const selectedStageClasses = visibleClasses.slice(0, 8)
   const recommendedAdvancedClasses = buildCurationList(visibleClasses, isAdvancedCurationClass, 6)
   const detailHrefForClass = (classId: string) =>
     selectedRegion ? `/classes/${classId}?region=${encodeURIComponent(selectedRegion)}` : `/classes/${classId}`
@@ -305,6 +330,15 @@ export default async function ClassesPage({ searchParams }: ClassesPageProps) {
         })
       : []
   void recommendedAdvancedClasses
+  const shouldShowResultSummary = Boolean(selectedStageChip || selectedRegion)
+  const resultSummaryLabel = shouldShowResultSummary
+    ? `${selectedStageLabel ?? "전체 학년"} · ${selectedRegion ?? "전체 학원가"} · ${visibleClasses.length}개 수업`
+    : null
+  const hasFilteredResultsSection = !error && visibleClasses.length > 0 && isFilteredView
+  const hasAvailableSection = !error && visibleClasses.length > 0 && !isFilteredView && availableClassCards.length > 0
+  const hasRecommendedSection = !error && visibleClasses.length > 0 && !isFilteredView && selectedStageClasses.length > 0
+  const hasAnyCardSection = hasFilteredResultsSection || hasAvailableSection || hasRecommendedSection
+  const shouldShowPageEmptyState = !error && !hasAnyCardSection
 
   return (
     <main className={styles.page}>
@@ -382,24 +416,13 @@ export default async function ClassesPage({ searchParams }: ClassesPageProps) {
                   chevronWrapClassName={styles.regionChevronWrap}
                 />
               </div>
-            </div>
-            <div className={styles.stageScroller}>
-              {homeStageChips.map((chip) => (
-                <Link
-                  key={chip.label}
-                  href={buildClassesHref({
-                    region: selectedRegion,
-                    subject: selectedSubject,
-                    q: selectedQuery ?? null,
-                    stage: selectedStageChip?.label === chip.label ? null : chip.label
-                  })}
-                  className={`${styles.stageChip}${
-                    selectedStageChip?.label === chip.label ? ` ${styles.stageChipActive}` : ""
-                  }`}
-                >
-                  {chip.label}
-                </Link>
-              ))}
+              <div className={styles.filterRow}>
+                <ClassesStageSelect
+                  rowClassName={styles.regionRow}
+                  nameClassName={styles.regionName}
+                  chevronWrapClassName={styles.regionChevronWrap}
+                />
+              </div>
             </div>
           </section>
 
@@ -492,37 +515,21 @@ export default async function ClassesPage({ searchParams }: ClassesPageProps) {
             </section>
           ) : null}
 
-          {!error && visibleClasses.length === 0 && (selectedQuery || selectedSubject) ? (
-            <section className={styles.sectionBlock}>
-              <div className={styles.sectionHeader}>
-                <h2 className={styles.sectionTitle}>
-                  조건에 맞는 <span className={styles.sectionTitleAccent}>수업</span>
-                </h2>
-              </div>
-              <div className={styles.stateCard}>
-                <p className={styles.stateTitle}>검색 결과가 없어요.</p>
-                <p className={styles.stateDesc}>다른 검색어로 다시 찾아보세요.</p>
+          {resultSummaryLabel ? <p className={styles.resultSummary}>{resultSummaryLabel}</p> : null}
+
+          {shouldShowPageEmptyState ? (
+            <section className={styles.pageEmptyState}>
+              <div className={styles.pageEmptyInner}>
+                <p className={styles.pageEmptyTitle}>선택하신 조건에 맞는 수업이 아직 없어요</p>
+                <p className={styles.pageEmptyDesc}>다른 학년이나 지역으로 찾아보세요</p>
+                <Link href="/classes" className={styles.resetButton}>
+                  조건 초기화
+                </Link>
               </div>
             </section>
           ) : null}
 
-          {!error && visibleClasses.length === 0 && !selectedQuery && !selectedSubject ? (
-            <section className={styles.sectionBlock}>
-              <div className={styles.sectionHeader}>
-                <h2 className={styles.sectionTitle}>
-                  공개된 <span className={styles.sectionTitleAccent}>첫수업</span>
-                </h2>
-              </div>
-              <div className={styles.stateCard}>
-                <p className={styles.stateTitle}>
-                  {selectedRegion ? `${selectedRegion}에 현재 공개된 수업이 아직 없어요.` : "현재 공개된 수업이 아직 없어요."}
-                </p>
-                <p className={styles.stateDesc}>조금 뒤 다시 확인해 주세요.</p>
-              </div>
-            </section>
-          ) : null}
-
-          {!error && visibleClasses.length > 0 && isFilteredView ? (
+          {hasFilteredResultsSection ? (
             <section className={styles.sectionBlock}>
               <div className={styles.sectionHeader}>
                 <h2 className={styles.sectionTitle}>
@@ -587,34 +594,34 @@ export default async function ClassesPage({ searchParams }: ClassesPageProps) {
             </section>
           ) : null}
 
-          {!error && visibleClasses.length > 0 && !isFilteredView ? (
+          {!isFilteredView && hasAnyCardSection ? (
             <>
-              <section className={styles.sectionBlock}>
-                <div className={styles.sectionHeader}>
-                  <h2 className={styles.sectionTitle}>
-                    이번 주 <span className={styles.sectionTitleAccent}>예약 가능</span> 수업
-                  </h2>
-                  <Link href={classesHref} className={styles.sectionLink}>
-                    전체보기
-                    <svg
-                      width="16"
-                      height="16"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      xmlns="http://www.w3.org/2000/svg"
-                      aria-hidden="true"
-                    >
-                      <path
-                        d="M9 18l6-6-6-6"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-                    </svg>
-                  </Link>
-                </div>
-                {availableClassCards.length > 0 ? (
+              {hasAvailableSection ? (
+                <section className={styles.sectionBlock}>
+                  <div className={styles.sectionHeader}>
+                    <h2 className={styles.sectionTitle}>
+                      이번 주 <span className={styles.sectionTitleAccent}>예약 가능</span> 수업
+                    </h2>
+                    <Link href={classesHref} className={styles.sectionLink}>
+                      전체보기
+                      <svg
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        xmlns="http://www.w3.org/2000/svg"
+                        aria-hidden="true"
+                      >
+                        <path
+                          d="M9 18l6-6-6-6"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      </svg>
+                    </Link>
+                  </div>
                   <ul className={styles.availableList}>
                     {availableClassCards.slice(0, 4).map(({ classItem, academyName, scheduleSummary }) => (
                       <li key={classItem.id} className={styles.availableItem}>
@@ -635,48 +642,35 @@ export default async function ClassesPage({ searchParams }: ClassesPageProps) {
                       </li>
                     ))}
                   </ul>
-                ) : (
-                  <div className={styles.stateCard}>
-                    <p className={styles.stateTitle}>이번 주에 바로 예약 가능한 수업을 준비 중이에요.</p>
-                    <p className={styles.stateDesc}>조금 뒤 다시 확인해 주세요.</p>
-                  </div>
-                )}
-              </section>
+                </section>
+              ) : null}
 
-              <section className={styles.sectionBlock}>
-                <div className={styles.sectionHeader}>
-                  <h2 className={styles.sectionTitle}>
-                    {selectedStageChip ? (
-                      <>
-                        <span className={styles.sectionTitleAccent}>{selectedStageChip.label}</span> 추천 수업
-                      </>
-                    ) : (
-                      <>
-                        <span className={styles.sectionTitleAccent}>추천</span> 수업
-                      </>
-                    )}
-                  </h2>
-                  <Link href={classesHref} className={styles.sectionLink}>
-                    전체보기
-                    <svg
-                      width="16"
-                      height="16"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      xmlns="http://www.w3.org/2000/svg"
-                      aria-hidden="true"
-                    >
-                      <path
-                        d="M9 18l6-6-6-6"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-                    </svg>
-                  </Link>
-                </div>
-                {selectedStageClasses.length > 0 ? (
+              {hasRecommendedSection ? (
+                <section className={styles.sectionBlock}>
+                  <div className={styles.sectionHeader}>
+                    <h2 className={styles.sectionTitle}>
+                      <span className={styles.sectionTitleAccent}>추천</span> 수업
+                    </h2>
+                    <Link href={classesHref} className={styles.sectionLink}>
+                      전체보기
+                      <svg
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        xmlns="http://www.w3.org/2000/svg"
+                        aria-hidden="true"
+                      >
+                        <path
+                          d="M9 18l6-6-6-6"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      </svg>
+                    </Link>
+                  </div>
                   <ul className={styles.grid}>
                     {selectedStageClasses.slice(0, 4).map((item) => {
                       const academyName = item.organization
@@ -695,24 +689,15 @@ export default async function ClassesPage({ searchParams }: ClassesPageProps) {
                             gradeLabel={formatStoredTargetGrades(item.targetAge)}
                             priceLabel={formatPrice(item.trialPrice)}
                             isFree={item.trialPrice <= 0}
-                            statusBadge={{ label: selectedStageChip?.label ?? "추천", tone: "muted" }}
+                            statusBadge={{ label: selectedStageLabel ?? "추천", tone: "muted" }}
                             classId={item.id}
                           />
                         </li>
                       )
                     })}
                   </ul>
-                ) : (
-                  <div className={styles.stateCard}>
-                    <p className={styles.stateTitle}>
-                      {selectedStageChip
-                        ? `${selectedStageChip.label}에 맞는 수업을 준비 중이에요.`
-                        : "추천할 전체 학원 수업을 준비 중이에요."}
-                    </p>
-                    <p className={styles.stateDesc}>다른 연령/단계를 선택하거나 조금 뒤 다시 확인해 주세요.</p>
-                  </div>
-                )}
-              </section>
+                </section>
+              ) : null}
 
               {/*
               <section className={styles.sectionBlock}>

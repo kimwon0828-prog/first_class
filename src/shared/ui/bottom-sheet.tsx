@@ -145,6 +145,7 @@ export function BottomSheet({ open, onClose, title, children }: BottomSheetProps
         .firstclass-bottom-sheet__close {
           width: 44px;
           height: 44px;
+          margin-right: -14px;
           border: 0;
           background: transparent;
           color: var(--text-2);
@@ -159,6 +160,7 @@ export function BottomSheet({ open, onClose, title, children }: BottomSheetProps
         .firstclass-bottom-sheet__content {
           overflow-y: auto;
           -webkit-overflow-scrolling: touch;
+          padding-bottom: 8px;
         }
 
         @media (prefers-reduced-motion: reduce) {
