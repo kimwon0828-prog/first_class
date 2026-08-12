@@ -34,32 +34,17 @@ const formatTimeLabel = (value: string) => {
 }
 
 const formatScheduleSummaryLabel = (row: ClassScheduleSummaryRow) => {
-  const customLabel = row.display_label?.trim()
-  if (customLabel) {
-    return customLabel
-  }
-
   const timeLabel = formatTimeLabel(row.start_time)
-
-  if (row.schedule_type === "weekly") {
-    const weekday =
-      row.day_of_week != null && row.day_of_week >= 0 && row.day_of_week <= 6
-        ? weekdayLabels[row.day_of_week]
-        : null
-
-    return weekday ? `매주 ${weekday} ${timeLabel}` : `정기 일정 ${timeLabel}`
-  }
 
   if (row.specific_date) {
     const date = new Date(`${row.specific_date}T00:00:00`)
 
     if (!Number.isNaN(date.getTime())) {
-      const dateLabel = new Intl.DateTimeFormat("ko-KR", {
-        month: "numeric",
-        day: "numeric"
-      }).format(date)
+      const month = date.getMonth() + 1
+      const day = date.getDate()
+      const weekday = weekdayLabels[date.getDay()]
 
-      return `${dateLabel} ${timeLabel}`
+      return `${month}/${day}(${weekday}) ${timeLabel}`
     }
   }
 
@@ -112,10 +97,16 @@ export const getPublicClassCardScheduleSummaries = async (
         ]
       }
 
-      const [firstSchedule] = schedules
-      const firstLabel = formatScheduleSummaryLabel(firstSchedule)
-      const summaryLabel =
-        schedules.length > 1 ? `${firstLabel} 외 ${schedules.length - 1}개 일정` : firstLabel
+      const datedSchedules = schedules
+        .filter((schedule) => Boolean(schedule.specific_date))
+        .sort((left, right) => {
+          const leftDateTime = `${left.specific_date ?? ""}T${left.start_time}`
+          const rightDateTime = `${right.specific_date ?? ""}T${right.start_time}`
+          return leftDateTime.localeCompare(rightDateTime)
+        })
+
+      const preferredSchedule = datedSchedules[0] ?? schedules[0]
+      const summaryLabel = formatScheduleSummaryLabel(preferredSchedule)
 
       return [
         classId,
