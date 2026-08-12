@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache"
 
-import { isAcademyArea } from "@/shared/config/academy-areas"
+import { isAcademyArea, isAcademyAreaEnabled } from "@/shared/config/academy-areas"
 import { serializeTargetGrades } from "@/shared/constants/grade-options"
 import {
   normalizeStudioClassSubjectOption,
@@ -436,6 +436,10 @@ export async function upsertStudioClassAction(
 
     if (mode === "update" && classId && !existingClass) {
       return { ok: false, message: "프로그램 정보를 찾을 수 없거나 수정 권한이 없습니다." }
+    }
+
+    if (mode === "update" && !isAcademyAreaEnabled(regionRaw) && regionRaw !== existingClass?.region) {
+      return safeError("현재는 은행사거리 학원가만 새로 선택할 수 있습니다.")
     }
 
     const teacherIntro = teacherIntroRaw == null ? existingClass?.teacherIntro ?? null : teacherIntroRaw || null

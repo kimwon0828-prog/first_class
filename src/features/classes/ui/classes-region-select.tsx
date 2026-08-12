@@ -4,17 +4,34 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import type { CSSProperties } from "react"
 import { useEffect, useRef, useState, useTransition } from "react"
 
-import { academyAreaOptions, type AcademyArea } from "@/shared/config/academy-areas"
+import { academyAreaConfigs, academyAreaOptions, getAcademyAreaConfig, type AcademyArea } from "@/shared/config/academy-areas"
 import { BottomSheet } from "@/shared/ui/bottom-sheet"
 
 type AcademyAreaFilter = AcademyArea | null
 const ALL_ACADEMY_AREA_VALUE = "all"
 const ALL_ACADEMY_AREA_LABEL = "전체 학원가"
 const PRIORITY_ACADEMY_AREA: AcademyArea = "은행사거리학원가"
-const orderedAcademyAreaOptions = [
-  PRIORITY_ACADEMY_AREA,
-  ...academyAreaOptions.filter((option) => option !== PRIORITY_ACADEMY_AREA)
-]
+const orderedAcademyAreaConfigs = [
+  getAcademyAreaConfig(PRIORITY_ACADEMY_AREA),
+  ...academyAreaOptions
+    .filter((option) => option !== PRIORITY_ACADEMY_AREA)
+    .map((option) => getAcademyAreaConfig(option))
+].filter((config): config is (typeof academyAreaConfigs)[number] => config !== null)
+const optionStatusBadgeStyle: CSSProperties = {
+  flex: "0 0 auto",
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  minWidth: 52,
+  height: 24,
+  padding: "0 8px",
+  borderRadius: 999,
+  background: "var(--surface-sub)",
+  fontSize: 12,
+  fontWeight: 600,
+  lineHeight: 1,
+  color: "var(--text-3)"
+}
 
 type ClassesRegionSelectProps = {
   selectedRegion: AcademyAreaFilter
@@ -333,9 +350,11 @@ export function ClassesRegionSelect({
         style={selectClassName ? undefined : selectStyle}
       >
         <option value={ALL_ACADEMY_AREA_VALUE}>{ALL_ACADEMY_AREA_LABEL}</option>
-        {orderedAcademyAreaOptions.map((option) => (
-          <option key={option} value={option}>
-            {formatAcademyAreaLabel(option)}
+        {orderedAcademyAreaConfigs.map((option) => (
+          <option key={option.value} value={option.value} disabled={!option.enabled}>
+            {option.statusLabel
+              ? `${formatAcademyAreaLabel(option.value)} · ${option.statusLabel}`
+              : formatAcademyAreaLabel(option.value)}
           </option>
         ))}
       </select>
@@ -471,15 +490,20 @@ export function ClassesRegionInlineSelect({
 
       <BottomSheet open={isOpen} onClose={() => setIsOpen(false)} title="학원가 선택">
         <div role="list" aria-label="학원가 목록">
-          {[null, ...orderedAcademyAreaOptions].map((option, index, options) => {
+          {[null, ...orderedAcademyAreaConfigs].map((item, index, options) => {
+            const option = item?.value ?? null
+            const isDisabled = Boolean(item && !item.enabled)
             const isActive = option === currentRegion
             return (
               <button
                 key={option ?? ALL_ACADEMY_AREA_VALUE}
                 type="button"
                 role="listitem"
-                disabled={isPending}
+                disabled={isPending || isDisabled}
                 onClick={() => {
+                  if (isDisabled) {
+                    return
+                  }
                   setCurrentRegion(option)
                   setIsOpen(false)
                   handleChange(option)
@@ -496,28 +520,41 @@ export function ClassesRegionInlineSelect({
                   border: 0,
                   borderBottom: index < options.length - 1 ? "1px solid var(--border)" : 0,
                   background: "transparent",
-                  color: "var(--text-1)",
+                  color: isDisabled ? "var(--text-2)" : "var(--text-1)",
                   fontSize: 15,
                   fontWeight: isActive ? 700 : 500,
-                  cursor: isPending ? "default" : "pointer"
+                  cursor: isPending || isDisabled ? "default" : "pointer",
+                  opacity: isDisabled ? 0.72 : 1
                 }}
               >
-                <span style={{ fontSize: 15, fontWeight: isActive ? 700 : 500, lineHeight: "1.4" }}>
-                  {formatAcademyAreaLabel(option)}
-                </span>
                 <span
-                  aria-hidden="true"
                   style={{
-                    width: 18,
-                    height: 18,
-                    display: "inline-flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    color: isActive ? "var(--brand-700)" : "transparent"
+                    fontSize: 15,
+                    fontWeight: isActive ? 700 : 500,
+                    lineHeight: "1.4"
                   }}
                 >
-                  <CheckIcon />
+                  {formatAcademyAreaLabel(option)}
                 </span>
+                {item?.statusLabel ? (
+                  <span aria-hidden="true" style={optionStatusBadgeStyle}>
+                    {item.statusLabel}
+                  </span>
+                ) : (
+                  <span
+                    aria-hidden="true"
+                    style={{
+                      width: 18,
+                      height: 18,
+                      display: "inline-flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      color: isActive ? "var(--brand-700)" : "transparent"
+                    }}
+                  >
+                    <CheckIcon />
+                  </span>
+                )}
               </button>
             )
           })}

@@ -3,7 +3,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
 
 import { getSupabaseServiceRoleClient } from "@/integrations/supabase/service-role"
-import { isAcademyArea } from "@/shared/config/academy-areas"
+import { isAcademyAreaEnabled } from "@/shared/config/academy-areas"
 import { getSupabaseServerClient } from "@/integrations/supabase/server"
 
 export type StudioSignUpActionState = {
@@ -66,7 +66,7 @@ const validateSignUpForm = (formData: FormData) => {
     return { ok: false as const, message: "학원명은 2자 이상 50자 이하로 입력해 주세요." }
   }
 
-  if (!isAcademyArea(academyArea)) {
+  if (!isAcademyAreaEnabled(academyArea)) {
     return { ok: false as const, message: "학원가를 선택해 주세요." }
   }
 

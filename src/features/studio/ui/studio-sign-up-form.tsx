@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { useActionState, useRef, useState } from "react"
 
-import { academyAreaOptions } from "@/shared/config/academy-areas"
+import { academyAreaConfigs, getDefaultAcademyArea } from "@/shared/config/academy-areas"
 import {
   studioSignUpAction,
   type StudioSignUpActionState
@@ -167,13 +167,19 @@ export const StudioSignUpForm = () => {
 
       <label className={styles.field}>
         <span className={styles.label}>학원가</span>
-        <select name="academyArea" required disabled={isPending} className={styles.input} defaultValue="">
+        <select
+          name="academyArea"
+          required
+          disabled={isPending}
+          className={styles.input}
+          defaultValue={getDefaultAcademyArea()}
+        >
           <option value="" disabled>
             학원가를 선택해 주세요
           </option>
-          {academyAreaOptions.map((option) => (
-            <option key={option} value={option}>
-              {option}
+          {academyAreaConfigs.map((option) => (
+            <option key={option.value} value={option.value} disabled={!option.enabled}>
+              {option.statusLabel ? `${option.value} · ${option.statusLabel}` : option.value}
             </option>
           ))}
         </select>
