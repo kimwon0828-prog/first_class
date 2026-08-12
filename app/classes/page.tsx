@@ -375,7 +375,6 @@ export default async function ClassesPage({ searchParams }: ClassesPageProps) {
           <section className={styles.filterSection}>
             <div className={styles.filterPanel}>
               <div className={styles.filterRow}>
-                <p className={styles.filterLabel}>지역</p>
                 <ClassesRegionInlineSelect
                   selectedRegion={selectedRegion}
                   rowClassName={styles.regionRow}
@@ -383,27 +382,24 @@ export default async function ClassesPage({ searchParams }: ClassesPageProps) {
                   chevronWrapClassName={styles.regionChevronWrap}
                 />
               </div>
-              <div className={styles.filterRow}>
-                <p className={styles.filterLabel}>연령 · 단계</p>
-                <div className={styles.stageScroller}>
-                  {homeStageChips.map((chip) => (
-                    <Link
-                      key={chip.label}
-                      href={buildClassesHref({
-                        region: selectedRegion,
-                        subject: selectedSubject,
-                        q: selectedQuery ?? null,
-                        stage: selectedStageChip?.label === chip.label ? null : chip.label
-                      })}
-                      className={`${styles.stageChip}${
-                        selectedStageChip?.label === chip.label ? ` ${styles.stageChipActive}` : ""
-                      }`}
-                    >
-                      {chip.label}
-                    </Link>
-                  ))}
-                </div>
-              </div>
+            </div>
+            <div className={styles.stageScroller}>
+              {homeStageChips.map((chip) => (
+                <Link
+                  key={chip.label}
+                  href={buildClassesHref({
+                    region: selectedRegion,
+                    subject: selectedSubject,
+                    q: selectedQuery ?? null,
+                    stage: selectedStageChip?.label === chip.label ? null : chip.label
+                  })}
+                  className={`${styles.stageChip}${
+                    selectedStageChip?.label === chip.label ? ` ${styles.stageChipActive}` : ""
+                  }`}
+                >
+                  {chip.label}
+                </Link>
+              ))}
             </div>
           </section>
 
