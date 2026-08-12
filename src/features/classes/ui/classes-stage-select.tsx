@@ -110,7 +110,7 @@ const triggerButtonStyle: CSSProperties = {
   width: "100%",
   border: 0,
   background: "transparent",
-  padding: 0
+  padding: "0 10px"
 }
 
 export function ClassesStageSelect({
