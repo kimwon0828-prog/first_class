@@ -2,7 +2,7 @@ import "server-only"
 
 import { getSupabaseServiceRoleClient } from "@/integrations/supabase/service-role"
 import type { AcademyArea } from "@/shared/config/academy-areas"
-import { formatStoredTargetGrades, parseStoredTargetGradeBands } from "@/shared/constants/grade-options"
+import { formatStoredTargetGrades, parseStoredTargetGrades } from "@/shared/constants/grade-options"
 
 import {
   formatAcademySubjectTag,
@@ -143,7 +143,7 @@ export const getAcademiesForList = async (
 }> => {
   const serviceRoleClient = getSupabaseServiceRoleClient()
   const subjectFilter = resolveAcademiesSubjectFilter(options?.subject)
-  const normalizedGradeBands = parseStoredTargetGradeBands(options?.grade)
+  const normalizedGrades = parseStoredTargetGrades(options?.grade)
 
   let classQuery = serviceRoleClient
     .from("classes")
@@ -164,11 +164,11 @@ export const getAcademiesForList = async (
     .filter((row) => Boolean(row.organization_id))
     .filter((row) => matchesAcademiesSubjectFilter(row.subject, subjectFilter))
     .filter((row) => {
-      if (normalizedGradeBands.length === 0) {
+      if (normalizedGrades.length === 0) {
         return true
       }
-      const rowGradeBands = parseStoredTargetGradeBands(row.target_age)
-      return normalizedGradeBands.some((band) => rowGradeBands.includes(band))
+      const rowGrades = parseStoredTargetGrades(row.target_age)
+      return normalizedGrades.some((grade) => rowGrades.includes(grade))
     })
 
   const organizationIds = Array.from(

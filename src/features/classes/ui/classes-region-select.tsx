@@ -5,6 +5,7 @@ import type { CSSProperties } from "react"
 import { useEffect, useRef, useState, useTransition } from "react"
 
 import { academyAreaOptions, type AcademyArea } from "@/shared/config/academy-areas"
+import { BottomSheet } from "@/shared/ui/bottom-sheet"
 
 type AcademyAreaFilter = AcademyArea | null
 const ALL_ACADEMY_AREA_VALUE = "all"
@@ -158,6 +159,26 @@ const ChevronDownIcon = ({ className }: { className?: string }) => (
   >
     <path
       d="M6 9l6 6 6-6"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+)
+
+const CheckIcon = ({ className }: { className?: string }) => (
+  <svg
+    className={className}
+    width="18"
+    height="18"
+    viewBox="0 0 24 24"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+    aria-hidden="true"
+  >
+    <path
+      d="M5 13l4 4L19 7"
       stroke="currentColor"
       strokeWidth="2"
       strokeLinecap="round"
@@ -407,7 +428,6 @@ export function ClassesRegionInlineSelect({
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
-  const containerRef = useRef<HTMLDivElement | null>(null)
   const [currentRegion, setCurrentRegion] = useState<AcademyAreaFilter>(selectedRegion)
   const [isOpen, setIsOpen] = useState(false)
   const [isPending, startTransition] = useTransition()
@@ -415,18 +435,6 @@ export function ClassesRegionInlineSelect({
   useEffect(() => {
     setCurrentRegion(selectedRegion)
   }, [selectedRegion])
-
-  useEffect(() => {
-    if (!isOpen) return
-    const onPointerDown = (event: PointerEvent) => {
-      const target = event.target as Node | null
-      if (!target) return
-      if (containerRef.current?.contains(target)) return
-      setIsOpen(false)
-    }
-    window.addEventListener("pointerdown", onPointerDown)
-    return () => window.removeEventListener("pointerdown", onPointerDown)
-  }, [isOpen])
 
   const handleChange = (nextRegion: AcademyAreaFilter) => {
     const subject = searchParams.get("subject")
@@ -438,81 +446,38 @@ export function ClassesRegionInlineSelect({
   }
 
   return (
-    <div
-      ref={containerRef}
-      className={className}
-      aria-busy={isPending}
-      style={{ position: "relative", display: "inline-block" }}
-    >
-      <div className={rowClassName}>
+    <div className={className} aria-busy={isPending}>
+      <button
+        type="button"
+        className={rowClassName}
+        aria-label="학원가 선택 열기"
+        aria-expanded={isOpen}
+        disabled={isPending}
+        onClick={() => setIsOpen(true)}
+        style={{
+          width: "100%",
+          border: 0,
+          background: "transparent",
+          padding: 0,
+          cursor: isPending ? "default" : "pointer"
+        }}
+      >
         <LocationIcon />
-        <button
-          type="button"
-          aria-label="학원가 선택 열기"
-          aria-expanded={isOpen}
-          disabled={isPending}
-          onClick={() => setIsOpen((prev) => !prev)}
-          style={{
-            border: 0,
-            background: "transparent",
-            padding: 0,
-            color: "inherit",
-            cursor: isPending ? "default" : "pointer"
-          }}
-        >
-          <span className={nameClassName}>{formatAcademyAreaLabel(currentRegion)}</span>
-          {isPending ? <span style={{ ...pendingTextStyle, marginTop: 0, marginLeft: 8 }}>불러오는 중...</span> : null}
-        </button>
+        <span className={nameClassName}>{formatAcademyAreaLabel(currentRegion)}</span>
         <span className={chevronWrapClassName}>
-          <button
-            type="button"
-            aria-label="학원가 선택 열기"
-            aria-expanded={isOpen}
-            disabled={isPending}
-            onClick={() => setIsOpen((prev) => !prev)}
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              justifyContent: "center",
-              width: 18,
-              height: 18,
-              border: 0,
-              background: "transparent",
-              padding: 0,
-              color: "inherit",
-              cursor: isPending ? "default" : "pointer"
-            }}
-          >
-            <ChevronDownIcon />
-          </button>
+          <ChevronDownIcon />
         </span>
-      </div>
+      </button>
 
-      {isOpen ? (
-        <div
-          role="menu"
-          aria-label="학원가 선택"
-          style={{
-            position: "absolute",
-            top: "calc(100% + 10px)",
-            left: 0,
-            minWidth: 200,
-            borderRadius: 14,
-            border: "1px solid #eeeeee",
-            background: "#ffffff",
-            boxShadow: "0 10px 30px rgba(0,0,0,0.10)",
-            padding: 6,
-            zIndex: 80
-          }}
-        >
-          {[null, ...orderedAcademyAreaOptions].map((option) => {
+      <BottomSheet open={isOpen} onClose={() => setIsOpen(false)} title="학원가 선택">
+        <div role="list" aria-label="학원가 목록">
+          {[null, ...orderedAcademyAreaOptions].map((option, index, options) => {
             const isActive = option === currentRegion
             return (
               <button
                 key={option ?? ALL_ACADEMY_AREA_VALUE}
                 type="button"
-                role="menuitemradio"
-                aria-checked={isActive}
+                role="listitem"
                 disabled={isPending}
                 onClick={() => {
                   setCurrentRegion(option)
@@ -521,23 +486,41 @@ export function ClassesRegionInlineSelect({
                 }}
                 style={{
                   width: "100%",
+                  minHeight: 52,
+                  padding: "0 var(--gutter)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: 12,
                   textAlign: "left",
                   border: 0,
-                  background: isActive ? "#f3fbf4" : "transparent",
-                  color: "#111111",
-                  padding: "10px 10px",
-                  borderRadius: 12,
-                  fontSize: 14,
+                  borderBottom: index < options.length - 1 ? "1px solid var(--border)" : 0,
+                  background: "transparent",
+                  color: "var(--text-1)",
+                  fontSize: 15,
                   fontWeight: isActive ? 700 : 500,
-                  cursor: "pointer"
+                  cursor: isPending ? "default" : "pointer"
                 }}
               >
-                {formatAcademyAreaLabel(option)}
+                <span>{formatAcademyAreaLabel(option)}</span>
+                <span
+                  aria-hidden="true"
+                  style={{
+                    width: 18,
+                    height: 18,
+                    display: "inline-flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    color: isActive ? "var(--brand-700)" : "transparent"
+                  }}
+                >
+                  <CheckIcon />
+                </span>
               </button>
             )
           })}
         </div>
-      ) : null}
+      </BottomSheet>
     </div>
   )
 }

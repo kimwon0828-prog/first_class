@@ -7,7 +7,7 @@ import { Fragment, useActionState, useEffect, useMemo, useRef, useState } from "
 import {
   formatStoredTargetGrades
 } from "@/shared/constants/grade-options"
-import { GRADE_BANDS, getSubjectLabel } from "@/shared/constants/education-taxonomy"
+import { CHILD_GRADES, getSubjectLabel } from "@/shared/constants/education-taxonomy"
 import { getSupabaseBrowserClient } from "@/integrations/supabase/client"
 import {
   upsertStudioClassAction,
@@ -142,6 +142,26 @@ const createDefaultDraftValues = (): DraftValues => ({
 const createDraftStorageKey = (organizationId: string) => `studio-class-create-draft:${organizationId}`
 
 const formatSubjectLabel = (subject: StudioClassSubjectOption | "") => getSubjectLabel(subject) ?? "과목 선택"
+
+const CHILD_GRADE_ORDER: string[] = CHILD_GRADES.map((item) => item.value)
+
+const getOrderedTargetGrades = (values: readonly string[]) => {
+  const selectedSet = new Set(values)
+  return CHILD_GRADE_ORDER.filter((value) => selectedSet.has(value))
+}
+
+const getTargetGradeRange = (start: string, end: string) => {
+  const startIndex = CHILD_GRADE_ORDER.indexOf(start)
+  const endIndex = CHILD_GRADE_ORDER.indexOf(end)
+
+  if (startIndex < 0 || endIndex < 0) {
+    return start ? [start] : []
+  }
+
+  const rangeStart = Math.min(startIndex, endIndex)
+  const rangeEnd = Math.max(startIndex, endIndex)
+  return CHILD_GRADE_ORDER.slice(rangeStart, rangeEnd + 1)
+}
 
 const getTabForStep = (step: WizardStepId): CreateFormTabId => {
   if (step === 1) {
@@ -291,6 +311,7 @@ export const StudioClassCreateWizard = ({
   const [isUploadingCoverImage, setIsUploadingCoverImage] = useState(false)
   const [classFormatSelection, setClassFormatSelection] = useState("")
   const [customClassFormat, setCustomClassFormat] = useState("")
+  const [targetGradeRangeStart, setTargetGradeRangeStart] = useState<string | null>(null)
   const [state, formAction, isPending] = useActionState(upsertStudioClassAction, initialActionState)
   const draftHydratedRef = useRef(false)
   const draftStorageKey = useMemo(() => createDraftStorageKey(organizationId), [organizationId])
@@ -384,6 +405,11 @@ export const StudioClassCreateWizard = ({
   }, [coverImagePreviewUrl])
 
   useEffect(() => {
+    const orderedTargetGrades = getOrderedTargetGrades(values.targetGrades)
+    setTargetGradeRangeStart(orderedTargetGrades[0] ?? null)
+  }, [values.targetGrades])
+
+  useEffect(() => {
     if (!state.ok) {
       return
     }
@@ -407,12 +433,16 @@ export const StudioClassCreateWizard = ({
   }
 
   const toggleGrade = (grade: string) => {
-    updateValue(
-      "targetGrades",
-      values.targetGrades.includes(grade)
-        ? values.targetGrades.filter((item) => item !== grade)
-        : [...values.targetGrades, grade]
-    )
+    const orderedTargetGrades = getOrderedTargetGrades(values.targetGrades)
+    const hasCompletedRange = orderedTargetGrades.length > 1
+
+    if (orderedTargetGrades.length === 0 || !targetGradeRangeStart || hasCompletedRange) {
+      setTargetGradeRangeStart(grade)
+      updateValue("targetGrades", [grade])
+      return
+    }
+
+    updateValue("targetGrades", getTargetGradeRange(targetGradeRangeStart, grade))
   }
 
   const handleClassFormatSelectionChange = (nextSelection: string) => {
@@ -763,7 +793,7 @@ export const StudioClassCreateWizard = ({
                         <div className={styles.fieldBlock}>
                           <label className={styles.fieldLabel}>대상 학년 *</label>
                           <div className={styles.chipRow}>
-                            {GRADE_BANDS.map((grade) => (
+                            {CHILD_GRADES.map((grade) => (
                               <button
                                 key={grade.value}
                                 type="button"
@@ -774,6 +804,9 @@ export const StudioClassCreateWizard = ({
                               </button>
                             ))}
                           </div>
+                          <p className={styles.helperText}>
+                            시작 학년과 마지막 학년을 선택하면 사이 학년이 자동으로 선택됩니다.
+                          </p>
                           {renderFieldError(fieldErrors.targetGrades)}
                         </div>
 

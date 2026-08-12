@@ -7,8 +7,7 @@ import {
   normalizeChildGrade,
   normalizeGradeBand,
   type AnyGradeBandValue,
-  type ChildGradeValue,
-  type GradeBandValue
+  type ChildGradeValue
 } from "@/shared/constants/education-taxonomy"
 
 export const GRADE_OPTIONS = CHILD_GRADES.map((item) => item.value) as readonly ChildGradeValue[]
@@ -236,29 +235,34 @@ export const parseStoredTargetGradeBands = (value: string | null | undefined): A
 }
 
 export const serializeTargetGrades = (values: readonly string[]) => {
-  const normalizedBands = parseStoredTargetGradeBands(values.join(",")).filter(
-    (value): value is GradeBandValue => value !== "preschool" && value !== "high"
-  )
-
-  return normalizedBands.join(",")
+  return parseStoredTargetGrades(values.join(",")).join(",")
 }
 
 export const formatGradeList = (values: readonly string[]) => {
-  if (values.length === 0) {
+  const parsedGrades = parseStoredTargetGrades(values.join(","))
+  if (parsedGrades.length === 0) {
     return ""
   }
 
-  const bandLabels = parseStoredTargetGradeBands(values.join(","))
-    .map((value) => getGradeBandLabel(value))
+  const gradeLabels = parsedGrades
+    .map((grade) => getChildGradeLabel(grade))
     .filter((value): value is string => Boolean(value))
 
-  return Array.from(new Set(bandLabels)).join(", ")
+  return Array.from(new Set(gradeLabels)).join(" · ")
 }
 
 export const formatStoredTargetGrades = (value: string | null | undefined) => {
   const normalized = normalizeText(value)
   if (!normalized) {
     return "정보 준비 중"
+  }
+
+  const parsedGrades = parseStoredTargetGrades(normalized)
+  if (parsedGrades.length > 0) {
+    const labels = parsedGrades
+      .map((grade) => getChildGradeLabel(grade))
+      .filter((label): label is string => Boolean(label))
+    return Array.from(new Set(labels)).join(" · ")
   }
 
   const bandLabels = parseStoredTargetGradeBands(normalized)
@@ -271,15 +275,7 @@ export const formatStoredTargetGrades = (value: string | null | undefined) => {
   }
 
   if (bandLabels.length > 0) {
-    return Array.from(new Set(bandLabels)).join(", ")
-  }
-
-  const parsedGrades = parseStoredTargetGrades(normalized)
-  if (parsedGrades.length > 0) {
-    const labels = parsedGrades
-      .map((grade) => getChildGradeLabel(grade))
-      .filter((label): label is string => Boolean(label))
-    return labels.join(", ")
+    return Array.from(new Set(bandLabels)).join(" · ")
   }
 
   return normalized
@@ -289,12 +285,12 @@ export const isChildEligibleForClass = (
   childGrade: string | null | undefined,
   allowedGrades: readonly string[] | string | null | undefined
 ) => {
-  const resolvedAllowedBands =
+  const resolvedAllowedGrades =
     typeof allowedGrades === "string" || allowedGrades == null
-      ? parseStoredTargetGradeBands(allowedGrades)
-      : parseStoredTargetGradeBands(allowedGrades.join(","))
+      ? parseStoredTargetGrades(allowedGrades)
+      : parseStoredTargetGrades(allowedGrades.join(","))
 
-  if (resolvedAllowedBands.length === 0) {
+  if (resolvedAllowedGrades.length === 0) {
     return true
   }
 
@@ -303,6 +299,5 @@ export const isChildEligibleForClass = (
     return false
   }
 
-  const childBand = getGradeBandFromChildGrade(normalizedChildGrade)
-  return childBand ? resolvedAllowedBands.includes(childBand) : false
+  return resolvedAllowedGrades.includes(normalizedChildGrade)
 }

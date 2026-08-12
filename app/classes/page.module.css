@@ -107,6 +107,11 @@
   padding: 0 var(--gutter);
 }
 
+.filterSection {
+  display: grid;
+  gap: var(--s3);
+}
+
 .filterPanel {
   border: 1.5px solid var(--brand-500);
   border-radius: var(--r-md);
@@ -115,27 +120,15 @@
 }
 
 .filterRow {
-  display: grid;
-  gap: var(--s3);
-  padding: var(--s4);
-}
-
-.filterRow + .filterRow {
-  border-top: 1px solid var(--brand-100);
-}
-
-.filterLabel {
-  margin: 0;
-  font-size: 13px;
-  line-height: 1.4;
-  font-weight: 700;
-  color: var(--text-2);
+  min-height: 48px;
+  padding: 0 14px;
 }
 
 .regionRow {
   display: inline-flex;
+  width: 100%;
   align-items: center;
-  gap: 6px;
+  gap: 10px;
   color: var(--text-1);
 }
 
@@ -144,18 +137,26 @@
 }
 
 .regionName {
-  font-size: 14px;
-  font-weight: 700;
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 15px;
+  font-weight: 600;
   color: var(--text-1);
+  text-align: left;
 }
 
 .regionChevronWrap {
-  position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 18px;
-  height: 18px;
+  width: 16px;
+  height: 16px;
+  color: var(--text-3);
+}
+
+.regionChevronWrap svg {
+  width: 11px;
+  height: 11px;
 }
 
 .stageScroller,

@@ -6,10 +6,10 @@ import { Fragment, useActionState, useCallback, useEffect, useMemo, useRef, useS
 
 import {
   formatStoredTargetGrades,
-  parseStoredTargetGradeBands
+  parseStoredTargetGrades
 } from "@/shared/constants/grade-options"
 import {
-  GRADE_BANDS,
+  CHILD_GRADES,
   getSubjectLabel
 } from "@/shared/constants/education-taxonomy"
 import { academyAreaOptions, normalizeAcademyArea } from "@/shared/config/academy-areas"
@@ -83,6 +83,26 @@ const editFormTabs: Array<{
   { id: "schedule", label: "예약 시간" },
   { id: "visibility", label: "공개 · 신청 설정" }
 ]
+
+const CHILD_GRADE_ORDER: string[] = CHILD_GRADES.map((item) => item.value)
+
+const getOrderedTargetGrades = (values: readonly string[]) => {
+  const selectedSet = new Set(values)
+  return CHILD_GRADE_ORDER.filter((value) => selectedSet.has(value))
+}
+
+const getTargetGradeRange = (start: string, end: string) => {
+  const startIndex = CHILD_GRADE_ORDER.indexOf(start)
+  const endIndex = CHILD_GRADE_ORDER.indexOf(end)
+
+  if (startIndex < 0 || endIndex < 0) {
+    return start ? [start] : []
+  }
+
+  const rangeStart = Math.min(startIndex, endIndex)
+  const rangeEnd = Math.max(startIndex, endIndex)
+  return CHILD_GRADE_ORDER.slice(rangeStart, rangeEnd + 1)
+}
 
 const programTypeOptions: Array<{
   value: ClassProgramType
@@ -182,11 +202,8 @@ export const StudioClassForm = ({
       ? initialItem?.classFormat ?? ""
       : ""
   )
-  const [selectedTargetGrades, setSelectedTargetGrades] = useState<string[]>(
-    parseStoredTargetGradeBands(initialItem?.targetAge).filter(
-      (value): value is (typeof GRADE_BANDS)[number]["value"] => value !== "preschool" && value !== "high"
-    )
-  )
+  const [selectedTargetGrades, setSelectedTargetGrades] = useState<string[]>(parseStoredTargetGrades(initialItem?.targetAge))
+  const [targetGradeRangeStart, setTargetGradeRangeStart] = useState<string | null>(null)
   const [coverImageFilePreviewUrl, setCoverImageFilePreviewUrl] = useState("")
   const [coverImageUrl, setCoverImageUrl] = useState(initialItem?.coverImageUrl ?? "")
   const [coverImageUploadError, setCoverImageUploadError] = useState<string | null>(null)
@@ -204,10 +221,7 @@ export const StudioClassForm = ({
       ? initialItem.subject.trim()
       : null
   const initialTargetGrades = useMemo(
-    () =>
-      parseStoredTargetGradeBands(initialItem?.targetAge).filter(
-        (value): value is (typeof GRADE_BANDS)[number]["value"] => value !== "preschool" && value !== "high"
-      ),
+    () => parseStoredTargetGrades(initialItem?.targetAge),
     [initialItem?.targetAge]
   )
   const legacyTargetAgeValue =
@@ -273,9 +287,7 @@ export const StudioClassForm = ({
       assignmentMode: initialItem?.assignmentMode ?? "post_assign",
       subject: normalizeStudioClassSubjectOption(initialItem?.subject) ?? "",
       description: initialItem?.description ?? "",
-      targetGrades: parseStoredTargetGradeBands(initialItem?.targetAge).filter(
-        (value): value is (typeof GRADE_BANDS)[number]["value"] => value !== "preschool" && value !== "high"
-      ),
+      targetGrades: parseStoredTargetGrades(initialItem?.targetAge),
       recommendedFor: initialItem?.recommendedFor ?? "",
       experiencePoints: initialItem?.experiencePoints ?? "",
       curriculum: initialItem?.curriculum ?? "",
@@ -368,6 +380,11 @@ export const StudioClassForm = ({
     },
     [updateHeaderSnapshot]
   )
+
+  useEffect(() => {
+    const orderedTargetGrades = getOrderedTargetGrades(selectedTargetGrades)
+    setTargetGradeRangeStart(orderedTargetGrades[0] ?? null)
+  }, [selectedTargetGrades])
 
   useEffect(() => {
     const snapshotKey = initialFormSnapshot.id || "__create__"
@@ -486,9 +503,16 @@ export const StudioClassForm = ({
   ])
 
   const toggleTargetGrade = (grade: string) => {
-    setSelectedTargetGrades((current) =>
-      current.includes(grade) ? current.filter((item) => item !== grade) : [...current, grade]
-    )
+    const orderedTargetGrades = getOrderedTargetGrades(selectedTargetGrades)
+    const hasCompletedRange = orderedTargetGrades.length > 1
+
+    if (orderedTargetGrades.length === 0 || !targetGradeRangeStart || hasCompletedRange) {
+      setTargetGradeRangeStart(grade)
+      setSelectedTargetGrades([grade])
+      return
+    }
+
+    setSelectedTargetGrades(getTargetGradeRange(targetGradeRangeStart, grade))
   }
 
   const handleCoverImageChange = async (file: File | null) => {
@@ -802,7 +826,7 @@ export const StudioClassForm = ({
                       <label className={styles.field}>
                         <span className={styles.fieldLabel}>대상 학년</span>
                         <div className={styles.chipGroup}>
-                          {GRADE_BANDS.map((option) => {
+                          {CHILD_GRADES.map((option) => {
                             const isSelected = selectedTargetGrades.includes(option.value)
 
                             return (
@@ -818,6 +842,9 @@ export const StudioClassForm = ({
                             )
                           })}
                         </div>
+                        <span className={styles.fieldHint}>
+                          시작 학년과 마지막 학년을 선택하면 사이 학년이 자동으로 선택됩니다.
+                        </span>
                         <span className={styles.fieldHint}>
                           {selectedTargetGrades.length > 0
                             ? `선택한 대상 학년: ${formatStoredTargetGrades(selectedTargetGrades.join(","))}`
