@@ -1,0 +1,65 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  background: rgba(17, 17, 17, 0.48);
+  padding: 24px 16px calc(24px + env(safe-area-inset-bottom));
+}
+
+.dialog {
+  width: 100%;
+  max-width: calc(var(--col) - (var(--gutter) * 2));
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  box-shadow: 0 24px 48px rgba(17, 17, 17, 0.18);
+  padding: var(--s5);
+}
+
+.title {
+  margin: 0;
+  font-size: 17px;
+  line-height: 1.35;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--text-1);
+}
+
+.description {
+  margin: var(--s3) 0 0;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--text-2);
+  white-space: pre-line;
+}
+
+.actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--s3);
+  margin-top: var(--s5);
+}
+
+.secondaryButton,
+.dangerButton {
+  min-height: 44px;
+  border-radius: var(--r-sm);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.secondaryButton {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-2);
+}
+
+.dangerButton {
+  border: 1px solid var(--danger);
+  background: var(--surface);
+  color: var(--danger);
+}
