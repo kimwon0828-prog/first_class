@@ -322,10 +322,6 @@ export default async function ClassesPage({ searchParams }: ClassesPageProps) {
         })
       : []
   void recommendedAdvancedClasses
-  const shouldShowResultSummary = Boolean(selectedRegion)
-  const resultSummaryLabel = shouldShowResultSummary
-    ? `${selectedRegion ?? "전체 학원가"} · ${visibleClasses.length}개 수업`
-    : null
   const hasFilteredResultsSection = !error && visibleClasses.length > 0 && isFilteredView
   const hasAvailableSection = !error && visibleClasses.length > 0 && !isFilteredView && availableClassCards.length > 0
   const hasRecommendedSection = !error && visibleClasses.length > 0 && !isFilteredView && selectedStageClasses.length > 0
@@ -490,8 +486,6 @@ export default async function ClassesPage({ searchParams }: ClassesPageProps) {
               </div>
             </section>
           ) : null}
-
-          {resultSummaryLabel ? <p className={styles.resultSummary}>{resultSummaryLabel}</p> : null}
 
           {shouldShowPageEmptyState ? (
             <section className={styles.pageEmptyState}>
