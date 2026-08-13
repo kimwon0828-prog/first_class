@@ -39,6 +39,41 @@ const BookmarkFilledIcon = (props: { size: number }) => (
   </svg>
 )
 
+const HeartOutlineIcon = (props: { size: number }) => (
+  <svg
+    width={props.size}
+    height={props.size}
+    viewBox="0 0 24 24"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+    aria-hidden="true"
+  >
+    <path
+      d="M12 20.5s-6.5-4.35-8.86-7.31C.96 10.47 1.2 6.7 4.36 4.7A5.23 5.23 0 0 1 12 6.43 5.23 5.23 0 0 1 19.64 4.7c3.16 2 3.4 5.77 1.22 8.49C18.5 16.15 12 20.5 12 20.5Z"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+)
+
+const HeartFilledIcon = (props: { size: number }) => (
+  <svg
+    width={props.size}
+    height={props.size}
+    viewBox="0 0 24 24"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+    aria-hidden="true"
+  >
+    <path
+      d="M12 20.5s-6.5-4.35-8.86-7.31C.96 10.47 1.2 6.7 4.36 4.7A5.23 5.23 0 0 1 12 6.43 5.23 5.23 0 0 1 19.64 4.7c3.16 2 3.4 5.77 1.22 8.49C18.5 16.15 12 20.5 12 20.5Z"
+      fill="currentColor"
+    />
+  </svg>
+)
+
 export function BookmarkButton(props: {
   classId: string
   className?: string
@@ -50,6 +85,7 @@ export function BookmarkButton(props: {
   inactiveLabel?: string
   activeLabel?: string
   onChange?: (isFavorite: boolean) => void
+  variant?: "bookmark" | "heart"
 }) {
   const [isFavorite, setIsFavorite] = useState(false)
 
@@ -83,6 +119,7 @@ export function BookmarkButton(props: {
 
   const className = `${props.className ?? ""} ${isFavorite ? props.activeClassName ?? "" : ""}`.trim()
   const iconSize = props.iconSize ?? 18
+  const variant = props.variant ?? "bookmark"
   const inactiveLabel = props.inactiveLabel ?? "관심수업 추가"
   const activeLabel = props.activeLabel ?? "관심수업 저장됨"
   const style: CSSProperties | undefined = isFavorite
@@ -97,7 +134,13 @@ export function BookmarkButton(props: {
       style={style}
       onClick={onClick}
     >
-      {isFavorite ? <BookmarkFilledIcon size={iconSize} /> : <BookmarkOutlineIcon size={iconSize} />}
+      {variant === "heart" ? (
+        isFavorite ? <HeartFilledIcon size={iconSize} /> : <HeartOutlineIcon size={iconSize} />
+      ) : isFavorite ? (
+        <BookmarkFilledIcon size={iconSize} />
+      ) : (
+        <BookmarkOutlineIcon size={iconSize} />
+      )}
       {props.showLabel ? <span>{isFavorite ? activeLabel : inactiveLabel}</span> : null}
     </button>
   )

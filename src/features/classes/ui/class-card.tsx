@@ -2,6 +2,7 @@ import Image from "next/image"
 import Link from "next/link"
 
 import { BookmarkButton } from "@/features/favorites/ui/bookmark-button"
+import { formatCompactedGradeLabel } from "@/features/classes/lib/format-compacted-grade-label"
 import styles from "./class-card.module.css"
 
 export type ClassCardProps = {
@@ -20,7 +21,7 @@ export type ClassCardProps = {
 }
 
 const buildMetaLabel = (subjectLabel: string | null, gradeLabel: string | null) =>
-  [subjectLabel?.trim() || null, gradeLabel?.trim() || null].filter(Boolean).join(" · ")
+  [subjectLabel?.trim() || null, formatCompactedGradeLabel(gradeLabel) || null].filter(Boolean).join(" · ")
 
 export function ClassCard({
   href,
@@ -32,7 +33,6 @@ export function ClassCard({
   gradeLabel,
   priceLabel,
   isFree,
-  statusBadge = null,
   scheduleLabel = null,
   classId
 }: ClassCardProps) {
@@ -59,40 +59,19 @@ export function ClassCard({
           classId={classId}
           className={styles.bookmarkButton}
           activeClassName={styles.bookmarkButtonActive}
+          iconSize={17}
+          variant="heart"
         />
       </div>
 
       <div className={styles.body}>
-        {statusBadge ? (
-          <span
-            className={`${styles.badge} ${
-              statusBadge.tone === "open" ? styles.badgeOpen : styles.badgeMuted
-            }`}
-          >
-            {statusBadge.label}
-          </span>
-        ) : null}
-
         <h3 className={styles.title}>{title}</h3>
         {academyName ? <p className={styles.academy}>{academyName}</p> : null}
         {metaLabel ? <p className={styles.meta}>{metaLabel}</p> : null}
-        <p className={`${styles.price} ${isFree ? styles.priceFree : ""}`}>{priceLabel}</p>
-
         {scheduleLabel ? (
-          <div className={styles.scheduleRow}>
-            <svg viewBox="0 0 24 24" aria-hidden="true" className={styles.scheduleIcon}>
-              <path
-                d="M12 6v6l4 2M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-            <span className={styles.scheduleText}>{scheduleLabel}</span>
-          </div>
+          <p className={styles.scheduleText}>일시 {scheduleLabel}</p>
         ) : null}
+        <p className={`${styles.price} ${isFree ? styles.priceFree : ""}`}>{priceLabel}</p>
       </div>
     </Link>
   )

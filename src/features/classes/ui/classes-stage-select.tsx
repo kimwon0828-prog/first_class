@@ -13,8 +13,10 @@ const ALL_STAGE_LABEL = "전체 학년"
 type ClassesStageSelectProps = {
   className?: string
   rowClassName?: string
+  activeRowClassName?: string
   nameClassName?: string
   chevronWrapClassName?: string
+  openChevronClassName?: string
 }
 
 const escapeQueryValue = (value: string) =>
@@ -38,33 +40,6 @@ const buildHref = (pathname: string, params: { region?: string | null; subject?:
 const isGradeOption = (value: string | null): value is GradeOption => {
   return value !== null && GRADE_OPTIONS.includes(value as GradeOption)
 }
-
-const PersonIcon = ({ className }: { className?: string }) => (
-  <svg
-    className={className}
-    width="18"
-    height="18"
-    viewBox="-1 -1 26 26"
-    fill="none"
-    xmlns="http://www.w3.org/2000/svg"
-    aria-hidden="true"
-  >
-    <path
-      d="M20 21a8 8 0 1 0-16 0"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-    <path
-      d="M12 13a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-  </svg>
-)
 
 const ChevronDownIcon = ({ className }: { className?: string }) => (
   <svg
@@ -116,8 +91,10 @@ const triggerButtonStyle: CSSProperties = {
 export function ClassesStageSelect({
   className,
   rowClassName,
+  activeRowClassName,
   nameClassName,
-  chevronWrapClassName
+  chevronWrapClassName,
+  openChevronClassName
 }: ClassesStageSelectProps) {
   const router = useRouter()
   const pathname = usePathname()
@@ -146,21 +123,22 @@ export function ClassesStageSelect({
   }
 
   const currentStageLabel = currentStage ? getChildGradeLabel(currentStage) ?? currentStage : ALL_STAGE_LABEL
+  const triggerClassName = [rowClassName, currentStage ? activeRowClassName : null].filter(Boolean).join(" ")
+  const chevronClassName = [chevronWrapClassName, isOpen ? openChevronClassName : null].filter(Boolean).join(" ")
 
   return (
     <div className={className} aria-busy={isPending}>
       <button
         type="button"
-        className={rowClassName}
+        className={triggerClassName}
         aria-label="학년 선택 열기"
         aria-expanded={isOpen}
         disabled={isPending}
         onClick={() => setIsOpen(true)}
         style={{ ...triggerButtonStyle, cursor: isPending ? "default" : "pointer" }}
       >
-        <PersonIcon />
         <span className={nameClassName}>{currentStageLabel}</span>
-        <span className={chevronWrapClassName}>
+        <span className={chevronClassName}>
           <ChevronDownIcon />
         </span>
       </button>

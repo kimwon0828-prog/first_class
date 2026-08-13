@@ -3,9 +3,8 @@ import Image from "next/image"
 import Link from "next/link"
 import { redirect } from "next/navigation"
 
-import { formatStoredTargetGrades, GRADE_OPTIONS, parseStoredTargetGrades } from "@/shared/constants/grade-options"
+import { formatStoredTargetGrades } from "@/shared/constants/grade-options"
 import {
-  getChildGradeLabel,
   getSubjectLabel,
   normalizeSubjectCategory,
   SUBJECT_CATEGORIES,
@@ -16,7 +15,6 @@ import { getSession } from "@/features/auth/lib/session"
 import { getPublicClassCardScheduleSummaries } from "@/features/classes/queries/get-public-class-card-schedule-summaries"
 import type { ClassSummary } from "@/shared/lib/db/adapter"
 import { ClassesRegionInlineSelect, ClassesSearchPill } from "@/features/classes/ui/classes-region-select"
-import { ClassesStageSelect } from "@/features/classes/ui/classes-stage-select"
 import { ClassCard } from "@/features/classes/ui/class-card"
 import { ParentFooter } from "@/features/classes/ui/parent-footer"
 import { getPublicClasses } from "@/features/classes/queries/get-public-classes"
@@ -35,7 +33,6 @@ type ClassesPageProps = {
     region?: string
     q?: string
     subject?: string
-    stage?: string
   }>
 }
 
@@ -50,7 +47,6 @@ const formatPrice = (price: number) => {
 type HomeSubjectCategory = {
   label: string
   value: SubjectCategoryValue
-  emoji: string
 }
 
 type AvailableClassCard = {
@@ -59,74 +55,101 @@ type AvailableClassCard = {
   scheduleSummary: string
 }
 
-type HomeStageChip = {
-  label: string
-  keywords: readonly string[]
-}
-
-const homeStageChips = [
-  {
-    label: "초1~2 탐색",
-    keywords: ["초1", "초2", "탐색", "입문", "기초", "창의", "체험"]
-  },
-  {
-    label: "초3~4 심화",
-    keywords: ["초3", "초4", "심화", "사고력", "탐구", "실험", "프로젝트"]
-  },
-  {
-    label: "초5~6 확장",
-    keywords: ["초5", "초6", "확장", "프로젝트", "심화", "영재", "실전"]
-  },
-  {
-    label: "중등",
-    keywords: ["중등", "중1", "중2", "중3", "내신", "특목", "심화", "실전"]
-  }
-] as const satisfies readonly HomeStageChip[]
-
-void homeStageChips
-
-const subjectEmojiByValue: Record<SubjectCategoryValue, string> = {
-  thinking_math: "🧠",
-  coding_robot_science: "🤖",
-  reading_writing: "📚",
-  english: "🗣️",
-  arts: "🖌️",
-  sports_dance: "💃"
-}
-
 const homeSubjectCategories: readonly HomeSubjectCategory[] = SUBJECT_CATEGORIES.map((item) => ({
   label: item.label,
-  value: item.value,
-  emoji: subjectEmojiByValue[item.value]
+  value: item.value
 }))
 
-const chunkItems = <T,>(items: readonly T[], size: number) => {
-  const pages: T[][] = []
-  for (let index = 0; index < items.length; index += size) {
-    pages.push(items.slice(index, index + size) as T[])
+const SubjectOutlineIcon = ({ subject }: { subject: SubjectCategoryValue }) => {
+  switch (subject) {
+    case "thinking_math":
+      return (
+        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <path
+            d="M4 6.5A2.5 2.5 0 0 1 6.5 4h11A2.5 2.5 0 0 1 20 6.5v11a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4 17.5v-11ZM8 8h8M8 12h2m4 0h2M8 16h2m4 0h2"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+      )
+    case "coding_robot_science":
+      return (
+        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <path
+            d="M9 8 5 12l4 4M15 8l4 4-4 4M10.5 19h3M9 5h6M8 5h.01M16 5h.01"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+      )
+    case "reading_writing":
+      return (
+        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <path
+            d="M4 6.5A2.5 2.5 0 0 1 6.5 4H11v16H6.5A2.5 2.5 0 0 0 4 22V6.5ZM20 6.5A2.5 2.5 0 0 0 17.5 4H13v16h4.5A2.5 2.5 0 0 1 20 22V6.5Z"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+      )
+    case "english":
+      return (
+        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <path
+            d="M7 18H5.8A1.8 1.8 0 0 1 4 16.2V7.8A1.8 1.8 0 0 1 5.8 6h12.4A1.8 1.8 0 0 1 20 7.8v8.4A1.8 1.8 0 0 1 18.2 18H11l-4 3v-3Z"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+          <path
+            d="M9 10h6M9 14h4"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+          />
+        </svg>
+      )
+    case "arts":
+      return (
+        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <path
+            d="M18.5 5.5c-1.2-1.2-3.4-1-4.8.4L6 13.6V18h4.4l7.7-7.7c1.4-1.4 1.6-3.6.4-4.8Z"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+          <path
+            d="M12.5 7.5 16.5 11.5"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+          />
+        </svg>
+      )
+    case "sports_dance":
+      return (
+        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <path
+            d="M14 5.5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0ZM12 8l2.5 2 2.5.5M12 8l-2 3.5L7 13M10.5 11.5l2 2.5-1 5M14.5 10l-1 4 3 4M9 14l-3 4"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+      )
   }
-  return pages
 }
-
-const subjectPages = chunkItems(homeSubjectCategories, 6)
 
 const normalizeText = (value: string | null | undefined) => (value ?? "").trim().toLowerCase()
-
-const resolveStageChip = (value: string) => {
-  const normalized = value.trim()
-  if (!normalized) {
-    return null
-  }
-
-  if (!GRADE_OPTIONS.includes(normalized as (typeof GRADE_OPTIONS)[number])) {
-    return null
-  }
-
-  return {
-    label: normalized,
-    keywords: [normalized]
-  } as const
-}
 
 const resolveSubjectCategory = (value: string) => {
   const normalized = normalizeSubjectCategory(value)
@@ -138,19 +161,6 @@ const resolveSubjectCategory = (value: string) => {
 }
 
 const matchesKeyword = (item: ClassSummary, keywords: readonly string[]) => {
-  const isStageCodeFilter =
-    keywords.length > 0 &&
-    keywords.every((keyword) => GRADE_OPTIONS.includes(keyword as (typeof GRADE_OPTIONS)[number]))
-
-  if (isStageCodeFilter) {
-    const targetGrades = parseStoredTargetGrades(item.targetAge)
-    if (targetGrades.length === 0) {
-      return false
-    }
-
-    return keywords.some((keyword) => targetGrades.includes(keyword as (typeof targetGrades)[number]))
-  }
-
   const haystack = normalizeText(
     [item.title, item.subject, getSubjectLabel(item.subject), item.description, item.targetAge, item.classFormat]
       .filter(Boolean)
@@ -186,13 +196,11 @@ const buildClassesHref = (params: {
   region?: string | null
   subject?: string | null
   q?: string | null
-  stage?: string | null
 }) => {
   const parts: string[] = []
   if (params.region) parts.push(`region=${escapeQueryValue(params.region)}`)
   if (params.subject) parts.push(`subject=${escapeQueryValue(params.subject)}`)
   if (params.q) parts.push(`q=${escapeQueryValue(params.q)}`)
-  if (params.stage) parts.push(`stage=${escapeQueryValue(params.stage)}`)
   return parts.length ? `/classes?${parts.join("&")}` : "/classes"
 }
 
@@ -226,26 +234,14 @@ export default async function ClassesPage({ searchParams }: ClassesPageProps) {
       return rawSubjectParam
     }
   })()
-  const rawStageParam = typeof resolvedSearchParams?.stage === "string" ? resolvedSearchParams.stage : ""
-  const decodedStage = (() => {
-    if (!rawStageParam) return ""
-    try {
-      return decodeURIComponent(rawStageParam)
-    } catch {
-      return rawStageParam
-    }
-  })()
   const resolvedSubjectCategory = resolveSubjectCategory(decodedSubject)
-  const selectedStageChip = resolveStageChip(decodedStage)
-  const selectedStageLabel = selectedStageChip ? getChildGradeLabel(selectedStageChip.label) ?? selectedStageChip.label : null
 
   if (decodedRegion && !selectedRegion) {
     redirect(
       buildClassesHref({
         region: null,
         subject: decodedSubject || null,
-        q: selectedQuery ?? null,
-        stage: selectedStageChip?.label ?? null
+        q: selectedQuery ?? null
       })
     )
   }
@@ -268,14 +264,12 @@ export default async function ClassesPage({ searchParams }: ClassesPageProps) {
   const classesHref = buildClassesHref({
     region: selectedRegion,
     subject: selectedSubject,
-    q: selectedQuery ?? null,
-    stage: selectedStageChip?.label ?? null
+    q: selectedQuery ?? null
   })
   const classesHomeHref = buildClassesHref({
     region: selectedRegion,
     subject: selectedSubject,
-    q: selectedQuery ?? null,
-    stage: null
+    q: selectedQuery ?? null
   })
   const myPageHref = "/my"
   const myApplicationsHref = "/my/applications"
@@ -294,9 +288,7 @@ export default async function ClassesPage({ searchParams }: ClassesPageProps) {
         : myApplicationsHref
     : `/auth/sign-in?${new URLSearchParams({ returnTo: myApplicationsHref }).toString()}`
   const isFilteredView = Boolean(selectedQuery || selectedSubject)
-  const visibleClasses = selectedStageChip
-    ? filteredClasses.filter((item) => matchesKeyword(item, selectedStageChip.keywords))
-    : filteredClasses
+  const visibleClasses = filteredClasses
   const selectedStageClasses = visibleClasses.slice(0, 8)
   const recommendedAdvancedClasses = buildCurationList(visibleClasses, isAdvancedCurationClass, 6)
   const detailHrefForClass = (classId: string) =>
@@ -330,9 +322,9 @@ export default async function ClassesPage({ searchParams }: ClassesPageProps) {
         })
       : []
   void recommendedAdvancedClasses
-  const shouldShowResultSummary = Boolean(selectedStageChip || selectedRegion)
+  const shouldShowResultSummary = Boolean(selectedRegion)
   const resultSummaryLabel = shouldShowResultSummary
-    ? `${selectedStageLabel ?? "전체 학년"} · ${selectedRegion ?? "전체 학원가"} · ${visibleClasses.length}개 수업`
+    ? `${selectedRegion ?? "전체 학원가"} · ${visibleClasses.length}개 수업`
     : null
   const hasFilteredResultsSection = !error && visibleClasses.length > 0 && isFilteredView
   const hasAvailableSection = !error && visibleClasses.length > 0 && !isFilteredView && availableClassCards.length > 0
@@ -406,72 +398,18 @@ export default async function ClassesPage({ searchParams }: ClassesPageProps) {
         </header>
 
         <div className={styles.content}>
-          <section className={styles.filterSection}>
+          <section className={styles.filterSection} aria-label="학원가 선택">
             <div className={styles.filterPanel}>
-              <div className={styles.filterRow}>
-                <ClassesRegionInlineSelect
-                  selectedRegion={selectedRegion}
-                  rowClassName={styles.regionRow}
-                  nameClassName={styles.regionName}
-                  chevronWrapClassName={styles.regionChevronWrap}
-                />
-              </div>
-              <div className={styles.filterRow}>
-                <ClassesStageSelect
-                  rowClassName={styles.regionRow}
-                  nameClassName={styles.regionName}
-                  chevronWrapClassName={styles.regionChevronWrap}
-                />
-              </div>
+              <ClassesRegionInlineSelect
+                selectedRegion={selectedRegion}
+                className={styles.filterInlineItem}
+                rowClassName={styles.filterInlineTrigger}
+                nameClassName={styles.filterInlineLabel}
+                iconClassName={styles.filterInlineIcon}
+                chevronWrapClassName={styles.filterInlineChevron}
+                openChevronClassName={styles.filterInlineChevronOpen}
+              />
             </div>
-          </section>
-
-          <section className={styles.categorySection} aria-label="과목 카테고리">
-            <div className={styles.sectionHeader}>
-              <h2 className={styles.sectionTitle}>
-                찾고 싶은 <span className={styles.sectionTitleAccent}>과목</span>부터
-              </h2>
-              <Link href="/academies" className={styles.sectionLink}>
-                전체보기
-                <svg
-                  width="16"
-                  height="16"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  xmlns="http://www.w3.org/2000/svg"
-                  aria-hidden="true"
-                >
-                  <path
-                    d="M9 18l6-6-6-6"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-              </Link>
-            </div>
-            <div className={styles.subjectPager} aria-label="과목 빠른 탐색">
-              {subjectPages.map((page, pageIndex) => (
-                <div key={`subject-page-${pageIndex}`} className={styles.subjectPage}>
-                  <div className={styles.subjectGrid}>
-                    {page.map((item) => (
-                      <Link key={item.label} href={buildAcademiesHref(item.value)} className={styles.subjectItem}>
-                        <span className={styles.subjectEmoji}>{item.emoji}</span>
-                        <span className={styles.subjectLabel}>{item.label}</span>
-                      </Link>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
-            {subjectPages.length > 1 ? (
-              <div className={styles.subjectDots} aria-hidden="true">
-                {subjectPages.map((_, index) => (
-                  <span key={`subject-dot-${index}`} className={styles.subjectDot} />
-                ))}
-              </div>
-            ) : null}
           </section>
 
           <section className={styles.heroSection} aria-label="첫수업 소개 배너">
@@ -496,6 +434,44 @@ export default async function ClassesPage({ searchParams }: ClassesPageProps) {
                 </p>
               </div>
             </article>
+          </section>
+
+          <section className={styles.categorySection} aria-label="과목 카테고리">
+            <div className={styles.sectionHeading}>
+              <div className={styles.sectionHeadingMain}>
+                <span className={styles.sectionHeadingBar} aria-hidden="true" />
+                <h2 className={styles.sectionHeadingTitle}>과목별 찾기</h2>
+              </div>
+            </div>
+            <div className={styles.subjectList} aria-label="과목 빠른 탐색">
+              {homeSubjectCategories.map((item) => (
+                <Link key={item.value} href={buildAcademiesHref(item.value)} className={styles.subjectListItem}>
+                  <span className={styles.subjectListLeading}>
+                    <span className={styles.subjectListIcon} aria-hidden="true">
+                      <SubjectOutlineIcon subject={item.value} />
+                    </span>
+                    <span className={styles.subjectListLabel}>{item.label}</span>
+                  </span>
+                  <svg
+                    width="12"
+                    height="12"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                    aria-hidden="true"
+                    className={styles.subjectListChevron}
+                  >
+                    <path
+                      d="M9 18l6-6-6-6"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                </Link>
+              ))}
+            </div>
           </section>
 
           {error ? (
@@ -543,8 +519,7 @@ export default async function ClassesPage({ searchParams }: ClassesPageProps) {
                   href={buildClassesHref({
                     region: selectedRegion,
                     subject: null,
-                    q: null,
-                    stage: selectedStageChip?.label ?? null
+                    q: null
                   })}
                   className={styles.sectionLink}
                 >
@@ -598,11 +573,12 @@ export default async function ClassesPage({ searchParams }: ClassesPageProps) {
             <>
               {hasAvailableSection ? (
                 <section className={styles.sectionBlock}>
-                  <div className={styles.sectionHeader}>
-                    <h2 className={styles.sectionTitle}>
-                      이번 주 <span className={styles.sectionTitleAccent}>예약 가능</span> 수업
-                    </h2>
-                    <Link href={classesHref} className={styles.sectionLink}>
+                  <div className={styles.sectionHeading}>
+                    <div className={styles.sectionHeadingMain}>
+                      <span className={styles.sectionHeadingBar} aria-hidden="true" />
+                      <h2 className={styles.sectionHeadingTitle}>새로 열린 수업</h2>
+                    </div>
+                    <Link href={classesHref} className={styles.sectionHeadingLink}>
                       전체보기
                       <svg
                         width="16"
@@ -647,11 +623,12 @@ export default async function ClassesPage({ searchParams }: ClassesPageProps) {
 
               {hasRecommendedSection ? (
                 <section className={styles.sectionBlock}>
-                  <div className={styles.sectionHeader}>
-                    <h2 className={styles.sectionTitle}>
-                      <span className={styles.sectionTitleAccent}>추천</span> 수업
-                    </h2>
-                    <Link href={classesHref} className={styles.sectionLink}>
+                  <div className={styles.sectionHeading}>
+                    <div className={styles.sectionHeadingMain}>
+                      <span className={styles.sectionHeadingBar} aria-hidden="true" />
+                      <h2 className={styles.sectionHeadingTitle}>추천 수업</h2>
+                    </div>
+                    <Link href={classesHref} className={styles.sectionHeadingLink}>
                       전체보기
                       <svg
                         width="16"
@@ -678,7 +655,7 @@ export default async function ClassesPage({ searchParams }: ClassesPageProps) {
                         : null
 
                       return (
-                        <li key={`stage-${selectedStageChip?.label ?? "all"}-${item.id}`} className={styles.slideItem}>
+                        <li key={`recommended-${item.id}`} className={styles.slideItem}>
                           <ClassCard
                             href={detailHrefForClass(item.id)}
                             thumbnailUrl={item.coverImageUrl}
@@ -689,7 +666,7 @@ export default async function ClassesPage({ searchParams }: ClassesPageProps) {
                             gradeLabel={formatStoredTargetGrades(item.targetAge)}
                             priceLabel={formatPrice(item.trialPrice)}
                             isFree={item.trialPrice <= 0}
-                            statusBadge={{ label: selectedStageLabel ?? "추천", tone: "muted" }}
+                            statusBadge={{ label: "추천", tone: "muted" }}
                             classId={item.id}
                           />
                         </li>
@@ -738,11 +715,30 @@ export default async function ClassesPage({ searchParams }: ClassesPageProps) {
           ) : null}
 
           <section className={styles.partnerSection}>
-            <Link href="/partner" className={styles.partnerBanner}>
+            <div className={styles.partnerCard}>
               <span className={styles.partnerEyebrow}>첫수업 파트너</span>
               <strong className={styles.partnerTitle}>우리 학원도 첫수업에서 학부모를 만나보세요</strong>
               <span className={styles.partnerCopy}>학원 소개와 공개 수업 등록으로 체험 신청을 받을 수 있어요.</span>
-            </Link>
+              <Link href="/partner" className={styles.partnerButton}>
+                파트너 신청하기
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                  aria-hidden="true"
+                >
+                  <path
+                    d="M5 12h14M13 6l6 6-6 6"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </Link>
+            </div>
           </section>
 
           <ParentFooter />
