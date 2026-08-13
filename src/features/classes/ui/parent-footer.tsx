@@ -31,7 +31,7 @@ export function ParentFooter() {
           <p className={styles.infoText}>
             주소: 경기도 고양시 일산동구 무궁화로 20-38, 5층 500-17호(장항동, 로데오탑)
           </p>
-          <p className={styles.infoText}>대표 이메일: kimwon0828@naver.com</p>
+          <p className={styles.infoText}>대표 이메일: hello@firstsuup.com</p>
           <p className={styles.infoText}>대표 연락처: 01083840825</p>
         </div>
       </details>

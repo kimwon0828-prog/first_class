@@ -277,13 +277,6 @@
   min-width: 0;
 }
 
-.sectionHeadingBar {
-  width: 3px;
-  height: 17px;
-  flex: 0 0 auto;
-  background: #2aad38;
-}
-
 .sectionHeadingTitle {
   margin: 0;
   font-size: 18px;

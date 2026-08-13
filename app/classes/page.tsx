@@ -435,7 +435,6 @@ export default async function ClassesPage({ searchParams }: ClassesPageProps) {
           <section className={styles.categorySection} aria-label="과목 카테고리">
             <div className={styles.sectionHeading}>
               <div className={styles.sectionHeadingMain}>
-                <span className={styles.sectionHeadingBar} aria-hidden="true" />
                 <h2 className={styles.sectionHeadingTitle}>과목별 찾기</h2>
               </div>
             </div>
@@ -569,7 +568,6 @@ export default async function ClassesPage({ searchParams }: ClassesPageProps) {
                 <section className={styles.sectionBlock}>
                   <div className={styles.sectionHeading}>
                     <div className={styles.sectionHeadingMain}>
-                      <span className={styles.sectionHeadingBar} aria-hidden="true" />
                       <h2 className={styles.sectionHeadingTitle}>새로 열린 수업</h2>
                     </div>
                     <Link href={classesHref} className={styles.sectionHeadingLink}>
@@ -619,7 +617,6 @@ export default async function ClassesPage({ searchParams }: ClassesPageProps) {
                 <section className={styles.sectionBlock}>
                   <div className={styles.sectionHeading}>
                     <div className={styles.sectionHeadingMain}>
-                      <span className={styles.sectionHeadingBar} aria-hidden="true" />
                       <h2 className={styles.sectionHeadingTitle}>추천 수업</h2>
                     </div>
                     <Link href={classesHref} className={styles.sectionHeadingLink}>
