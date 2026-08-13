@@ -398,7 +398,6 @@
 }
 
 .grid,
-.availableList,
 .resultGrid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -409,9 +408,37 @@
 }
 
 .slideItem,
-.availableItem,
 .resultGridItem {
   min-width: 0;
+}
+
+.cardRail {
+  display: flex;
+  gap: 10px;
+  margin: 0;
+  padding: 0 16px;
+  list-style: none;
+}
+
+.cardRailScrollable {
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.cardRailScrollable::-webkit-scrollbar {
+  display: none;
+}
+
+.cardRailStatic {
+  overflow: visible;
+}
+
+.cardRailItem {
+  min-width: 0;
+  flex: 0 0 150px;
+  scroll-snap-align: start;
 }
 
 .stateCard {

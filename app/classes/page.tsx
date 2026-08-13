@@ -3,7 +3,6 @@ import Image from "next/image"
 import Link from "next/link"
 import { redirect } from "next/navigation"
 
-import { formatStoredTargetGrades } from "@/shared/constants/grade-options"
 import {
   getSubjectLabel,
   normalizeSubjectCategory,
@@ -207,6 +206,14 @@ const buildClassesHref = (params: {
 const buildAcademiesHref = (subjectValue: SubjectCategoryValue) =>
   `/academies?subject=${escapeQueryValue(subjectValue)}`
 
+const formatCardRegionLabel = (region: ClassSummary["region"]) => {
+  if (region === "은행사거리학원가") {
+    return "중계"
+  }
+
+  return region.replace(/학원가$/, "")
+}
+
 export default async function ClassesPage({ searchParams }: ClassesPageProps) {
   const resolvedSearchParams = searchParams ? await searchParams : undefined
   const rawRegionParam =
@@ -327,6 +334,8 @@ export default async function ClassesPage({ searchParams }: ClassesPageProps) {
   const hasRecommendedSection = !error && visibleClasses.length > 0 && !isFilteredView && selectedStageClasses.length > 0
   const hasAnyCardSection = hasFilteredResultsSection || hasAvailableSection || hasRecommendedSection
   const shouldShowPageEmptyState = !error && !hasAnyCardSection
+  const visibleAvailableClassCards = availableClassCards.slice(0, 4)
+  const visibleRecommendedClasses = selectedStageClasses.slice(0, 4)
 
   return (
     <main className={styles.page}>
@@ -550,7 +559,7 @@ export default async function ClassesPage({ searchParams }: ClassesPageProps) {
                         title={item.title}
                         academyName={academyName}
                         subjectLabel={getSubjectLabel(item.subject)}
-                        gradeLabel={formatStoredTargetGrades(item.targetAge)}
+                        secondaryLabel={`${formatCardRegionLabel(item.region)} · ${getSubjectLabel(item.subject) ?? "과목 정보 준비 중"}`}
                         priceLabel={formatPrice(item.trialPrice)}
                         isFree={item.trialPrice <= 0}
                         classId={item.id}
@@ -590,9 +599,11 @@ export default async function ClassesPage({ searchParams }: ClassesPageProps) {
                       </svg>
                     </Link>
                   </div>
-                  <ul className={styles.availableList}>
-                    {availableClassCards.slice(0, 4).map(({ classItem, academyName, scheduleSummary }) => (
-                      <li key={classItem.id} className={styles.availableItem}>
+                  <ul
+                    className={`${styles.cardRail} ${visibleAvailableClassCards.length < 3 ? styles.cardRailStatic : styles.cardRailScrollable}`}
+                  >
+                    {visibleAvailableClassCards.map(({ classItem, academyName, scheduleSummary }) => (
+                      <li key={classItem.id} className={styles.cardRailItem}>
                         <ClassCard
                           href={detailHrefForClass(classItem.id)}
                           thumbnailUrl={classItem.coverImageUrl}
@@ -600,7 +611,7 @@ export default async function ClassesPage({ searchParams }: ClassesPageProps) {
                           title={classItem.title}
                           academyName={academyName}
                           subjectLabel={getSubjectLabel(classItem.subject)}
-                          gradeLabel={formatStoredTargetGrades(classItem.targetAge)}
+                          secondaryLabel={`${formatCardRegionLabel(classItem.region)} · ${getSubjectLabel(classItem.subject) ?? "과목 정보 준비 중"}`}
                           priceLabel={formatPrice(classItem.trialPrice)}
                           isFree={classItem.trialPrice <= 0}
                           statusBadge={{ label: "예약 가능", tone: "open" }}
@@ -639,14 +650,16 @@ export default async function ClassesPage({ searchParams }: ClassesPageProps) {
                       </svg>
                     </Link>
                   </div>
-                  <ul className={styles.grid}>
-                    {selectedStageClasses.slice(0, 4).map((item) => {
+                  <ul
+                    className={`${styles.cardRail} ${visibleRecommendedClasses.length < 3 ? styles.cardRailStatic : styles.cardRailScrollable}`}
+                  >
+                    {visibleRecommendedClasses.map((item) => {
                       const academyName = item.organization
                         ? [item.organization.name, item.organization.branchName].filter(Boolean).join(" ").trim()
                         : null
 
                       return (
-                        <li key={`recommended-${item.id}`} className={styles.slideItem}>
+                        <li key={`recommended-${item.id}`} className={styles.cardRailItem}>
                           <ClassCard
                             href={detailHrefForClass(item.id)}
                             thumbnailUrl={item.coverImageUrl}
@@ -654,7 +667,7 @@ export default async function ClassesPage({ searchParams }: ClassesPageProps) {
                             title={item.title}
                             academyName={academyName}
                             subjectLabel={getSubjectLabel(item.subject)}
-                            gradeLabel={formatStoredTargetGrades(item.targetAge)}
+                            secondaryLabel={`${formatCardRegionLabel(item.region)} · ${getSubjectLabel(item.subject) ?? "과목 정보 준비 중"}`}
                             priceLabel={formatPrice(item.trialPrice)}
                             isFree={item.trialPrice <= 0}
                             statusBadge={{ label: "추천", tone: "muted" }}
