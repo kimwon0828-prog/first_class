@@ -423,6 +423,8 @@
 .cardRailScrollable {
   overflow-x: auto;
   scroll-snap-type: x mandatory;
+  scroll-padding-left: 16px;
+  scroll-padding-right: 16px;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
 }
