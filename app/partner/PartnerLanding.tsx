@@ -285,7 +285,7 @@ export default function PartnerLanding() {
               </div>
             ))}
           </div>
-          <p className={styles.note}>2026년 7월 첫수업 × 깔로(kaloidea) 자체 설문 · 학원 관계자 38명 응답</p>
+          <p className={styles.note}>2026년 7월 첫수업 자체 설문 (조사 진행: 깔로) · 학원 관계자 38명 응답</p>
         </div>
       </section>
 
