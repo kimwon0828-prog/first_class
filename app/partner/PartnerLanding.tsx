@@ -497,6 +497,37 @@ export default function PartnerLanding() {
               </div>
             ))}
           </div>
+
+          <div className={styles.compareCards}>
+            {compareRows.map((row) => (
+              <article
+                key={`mobile-${row.moment}-${row.currentTitle}`}
+                className={`${styles.compareCard} ${row.isFinal ? styles.compareCardFinal : ""}`}
+              >
+                <h3 className={styles.compareCardTitle}>{row.moment}</h3>
+
+                <div className={styles.compareCardBlock}>
+                  <span className={`${styles.compareBadge} ${styles.compareBadgeMuted}`}>지금</span>
+                  <h4>{row.currentTitle}</h4>
+                  <p>{row.currentDescription}</p>
+                  {row.isFinal ? (
+                    <span className={styles.compareCardConclusionMuted}>여기서 끝납니다</span>
+                  ) : null}
+                </div>
+
+                <div className={styles.compareCardDivider} />
+
+                <div className={styles.compareCardBlock}>
+                  <span className={`${styles.compareBadge} ${styles.compareBadgeGreen}`}>첫수업</span>
+                  <h4>{row.partnerTitle}</h4>
+                  <p>{row.partnerDescription}</p>
+                  {row.isFinal ? (
+                    <span className={styles.compareCardConclusionGreen}>여기서 다시 시작합니다</span>
+                  ) : null}
+                </div>
+              </article>
+            ))}
+          </div>
         </div>
       </section>
 

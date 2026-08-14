@@ -1085,6 +1085,10 @@ section[id="faq"] > .wrap > .kick {
   margin-top: 48px;
 }
 
+.compareCards {
+  display: none;
+}
+
 .tkHead,
 .tkRow {
   display: grid;
@@ -1222,6 +1226,110 @@ section[id="faq"] > .wrap > .kick {
 .tkEndGreen {
   color: #fff;
   background: var(--g);
+}
+
+.compareCard {
+  border: 1px solid var(--rule);
+  border-radius: 24px;
+  background: #fff;
+}
+
+.compareCardFinal {
+  border-color: rgba(20, 184, 85, 0.32);
+  background: linear-gradient(180deg, #ffffff 0%, #f7fcf8 100%);
+}
+
+.compareCardTitle {
+  margin: 0;
+  padding: 24px 24px 0;
+  font-size: 20px;
+  font-weight: 800;
+  line-height: 1.45;
+  letter-spacing: -0.03em;
+  white-space: pre-line;
+}
+
+.compareCardBlock {
+  padding: 18px 24px 24px;
+}
+
+.compareCardBlock h4 {
+  margin: 12px 0 0;
+  font-size: 17px;
+  line-height: 1.5;
+  letter-spacing: -0.03em;
+}
+
+.compareCardBlock p {
+  margin: 10px 0 0;
+  font-size: 14.5px;
+  line-height: 1.78;
+}
+
+.compareCardBlock:first-of-type h4 {
+  color: var(--muted);
+}
+
+.compareCardBlock:first-of-type p {
+  color: var(--faint);
+}
+
+.compareCardBlock:last-of-type h4 {
+  color: var(--ink);
+}
+
+.compareCardBlock:last-of-type p {
+  color: var(--ink-2);
+}
+
+.compareBadge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+
+.compareBadgeMuted {
+  background: #eef0ed;
+  color: var(--muted);
+}
+
+.compareBadgeGreen {
+  background: rgba(20, 184, 85, 0.12);
+  color: var(--g-dk);
+}
+
+.compareCardDivider {
+  margin: 0 24px;
+  border-top: 1px solid var(--rule);
+}
+
+.compareCardConclusionMuted,
+.compareCardConclusionGreen {
+  margin-top: 18px;
+  display: inline-flex;
+  align-items: center;
+  min-height: 38px;
+  padding: 8px 14px;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: 800;
+  line-height: 1.45;
+  letter-spacing: -0.03em;
+}
+
+.compareCardConclusionMuted {
+  background: #edf0ec;
+  color: var(--muted);
+}
+
+.compareCardConclusionGreen {
+  background: var(--g);
+  color: #fff;
 }
 
 .price {
@@ -1602,55 +1710,40 @@ section[id="faq"] > .wrap > .kick {
     margin-left: 0;
   }
 
-  .tkHead {
+  .tracks {
     display: none;
   }
 
-  .tkRow {
-    grid-template-columns: 1fr;
+  .compareCards {
+    margin-top: 40px;
+    display: grid;
+    gap: 18px;
   }
 
-  .tkC {
-    order: -1;
-    padding: 20px 0 2px;
+  .compareCard {
+    border-radius: 22px;
   }
 
-  .tkC::before {
-    display: none;
+  .compareCardTitle {
+    padding: 22px 22px 0;
+    font-size: 18px;
   }
 
-  .tkC span {
-    background: none;
-    text-align: left;
-    padding: 0;
+  .compareCardBlock {
+    padding: 16px 22px 22px;
   }
 
-  .tkL {
-    padding: 12px 0 18px;
-    border-bottom: 1px dashed var(--rule-2);
+  .compareCardBlock h4 {
+    font-size: 16px;
   }
 
-  .tkR {
-    padding: 16px 0 4px;
+  .compareCardDivider {
+    margin: 0 22px;
   }
 
-  .tkL::before,
-  .tkR::before {
-    display: block;
-    margin-bottom: 8px;
-    font-size: 11px;
-    font-weight: 800;
-    letter-spacing: 0.06em;
-  }
-
-  .tkL::before {
-    content: "지금";
-    color: var(--faint);
-  }
-
-  .tkR::before {
-    content: "첫수업";
-    color: var(--g-dk);
+  .compareCardConclusionMuted,
+  .compareCardConclusionGreen {
+    font-size: 15px;
   }
 }
 
