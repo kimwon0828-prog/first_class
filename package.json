@@ -16,11 +16,13 @@
     "@supabase/supabase-js": "^2.57.4",
     "iconv-lite": "^0.7.3",
     "next": "^15.3.0",
+    "nodemailer": "^9.0.5",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   },
   "devDependencies": {
     "@types/node": "^22.15.3",
+    "@types/nodemailer": "^8.0.1",
     "@types/react": "^19.1.2",
     "@types/react-dom": "^19.1.2",
     "eslint": "^9.24.0",

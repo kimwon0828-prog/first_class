@@ -2,6 +2,7 @@ import Image from "next/image"
 import Link from "next/link"
 
 import PartnerCopyButton from "./PartnerCopyButton"
+import PartnerInquiryForm from "./PartnerInquiryForm"
 import PartnerLossCalculator from "./PartnerLossCalculator"
 import styles from "./partner.module.css"
 
@@ -587,24 +588,7 @@ export default function PartnerLanding() {
                 학원명과 연락처를 남겨주시면 현재 운영 방식에 첫수업을 어떻게 연결할 수 있는지
                 안내드립니다.
               </p>
-              <div className={styles.ff}>
-                <label htmlFor="partner-academy-name">학원명</label>
-                <input id="partner-academy-name" type="text" placeholder="예) 은행사거리 ○○수학" />
-              </div>
-              <div className={styles.ff}>
-                <label htmlFor="partner-phone">연락처</label>
-                <input id="partner-phone" type="tel" placeholder="예) 010-1234-5678" />
-              </div>
-              <label className={styles.consentRow} htmlFor="partner-consent">
-                <input id="partner-consent" type="checkbox" />
-                <span>이용약관 및 개인정보 처리방침 동의 (필수)</span>
-              </label>
-              <a href={TALLY_URL} className={`${styles.btn} ${styles.btnBlk}`}>
-                문의하기
-              </a>
-              <p className={styles.fnote}>
-                개인정보는 파일럿 상담 목적으로만 사용하고, 종료 후 폐기합니다.
-              </p>
+              <PartnerInquiryForm />
             </div>
           </div>
         </div>

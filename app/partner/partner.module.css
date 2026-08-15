@@ -1532,10 +1532,19 @@ section[id="faq"] > .wrap > .kick {
 
 .formcard .btnBlk {
   background: #b8beb9;
+  border: 0;
 }
 
-.formcard:has(#partner-consent:checked) .btnBlk {
+.formcard:has(#partner-consent:checked) .btnBlk:not(:disabled) {
   background: var(--g);
+}
+
+.formcard .btnBlk:disabled {
+  cursor: wait;
+}
+
+.partnerInquiryForm {
+  margin-top: 0;
 }
 
 .consentRow {
@@ -1552,6 +1561,39 @@ section[id="faq"] > .wrap > .kick {
 .consentRow input {
   margin: 2px 0 0;
   flex: 0 0 auto;
+}
+
+.consentRow span a {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.partnerHoneypot {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.partnerInquiryStatus {
+  margin: 12px 0 0;
+  font-size: 13px;
+  line-height: 1.7;
+  text-align: center;
+}
+
+.partnerInquiryStatusSuccess {
+  color: var(--g-dk);
+}
+
+.partnerInquiryStatusError {
+  color: #c2410c;
 }
 
 .fnote {
