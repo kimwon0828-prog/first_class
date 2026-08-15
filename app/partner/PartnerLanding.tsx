@@ -203,7 +203,6 @@ export default function PartnerLanding() {
       <section className={styles.hero} id="top">
         <div className={`${styles.wrap} ${styles.heroIn}`}>
           <div>
-            <span className={styles.pill}>학원 체험수업 예약 · 상담 · 등록 전환 관리 SaaS</span>
             <p className={styles.heroCat}>체험 신청부터 상담 기록, 등록 여부까지 한곳에서</p>
             <h1 className={styles.heroTitle}>
               작년에 체험만 하고
@@ -270,8 +269,8 @@ export default function PartnerLanding() {
           </div>
 
           <p className={styles.strongSub}>
-            희망 요일과 시간이 남으면,
-            <em> 다시 연락할 명단이자 새 반을 열 근거</em>가 됩니다.
+            희망 요일과 시간이 남습니다. 광고비를 쓰기 전에,
+            <em> 이미 관심을 보인 학부모부터 다시 연결할 수 있습니다.</em>
           </p>
 
           <div className={styles.stats}>
