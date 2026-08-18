@@ -30,11 +30,13 @@ const initialTrialResultState: UpsertTrialResultActionState = {
 type ApplicationTrialResultWorkflowProps = {
   application: StudioApplicationDetail
   nextActionDescription: string
+  sidebarContent?: ReactNode
 }
 
 export const ApplicationTrialResultWorkflow = ({
   application,
-  nextActionDescription
+  nextActionDescription,
+  sidebarContent = null
 }: ApplicationTrialResultWorkflowProps) => {
   const router = useRouter()
   const [isPromptOpen, setIsPromptOpen] = useState(false)
@@ -164,72 +166,78 @@ export const ApplicationTrialResultWorkflow = ({
         </div>
       </section>
 
-      {shouldShowTrialResultSection ? (
-        <section className={styles.card} aria-label="체험 결과">
-          <div className={styles.sectionHeading}>
-            <div>
-              <h2 className={styles.sectionTitle}>체험 결과</h2>
-              <p className={styles.sectionDescription}>
-                수업 직후 관찰 내용과 추천, 등록 전환 상태를 간단히 기록해 이후 상담에 활용하세요.
-              </p>
-            </div>
-            <button type="button" className={styles.ghostButton} onClick={() => openEditor()}>
-              {hasTrialResult ? "보기/수정" : "결과 기록"}
-            </button>
-          </div>
-
-          {hasTrialResult ? (
-            <div className={styles.resultStack}>
-              <ResultRow label="수업 관찰">
-                <div className={styles.chipWrap}>
-                  {application.trialResult?.observations.length ? (
-                    application.trialResult.observations.map((item) => (
-                      <span key={item} className={styles.summaryChip}>
-                        {item}
-                      </span>
-                    ))
-                  ) : (
-                    <span className={styles.emptyInline}>기록 없음</span>
-                  )}
-                </div>
-              </ResultRow>
-
-              <ResultRow label="추천">
-                <p className={styles.resultValue}>{recommendationSummary || "기록 없음"}</p>
-              </ResultRow>
-
-              <ResultRow label="등록 전환">
-                <p className={styles.resultValue}>{registrationLabel ?? "기록 없음"}</p>
-              </ResultRow>
-
-              {application.registrationStatus === "not_enrolled" ? (
-                <ResultRow label="미등록 사유">
-                  <p className={styles.resultMemo}>
-                    {[
-                      unregisteredReasonLabel,
-                      application.unregisteredReason === "other"
-                        ? application.unregisteredReasonNote
-                        : null
-                    ]
-                      .filter((item): item is string => Boolean(item))
-                      .join(" · ") || "기록 없음"}
+      {shouldShowTrialResultSection || sidebarContent ? (
+        <div className={styles.priorityGrid}>
+          {shouldShowTrialResultSection ? (
+            <section className={styles.card} aria-label="체험 결과">
+              <div className={styles.sectionHeading}>
+                <div>
+                  <h2 className={styles.sectionTitle}>체험 결과</h2>
+                  <p className={styles.sectionDescription}>
+                    수업 직후 관찰 내용과 추천, 등록 전환 상태를 간단히 기록해 이후 상담에 활용하세요.
                   </p>
-                </ResultRow>
-              ) : null}
+                </div>
+                <button type="button" className={styles.ghostButton} onClick={() => openEditor()}>
+                  {hasTrialResult ? "보기/수정" : "결과 기록"}
+                </button>
+              </div>
 
-              <ResultRow label="메모">
-                <p className={styles.resultMemo}>{application.trialResult?.note ?? "기록 없음"}</p>
-              </ResultRow>
-            </div>
-          ) : (
-            <div className={styles.emptyState}>
-              <p className={styles.emptyTitle}>체험 결과가 아직 기록되지 않았습니다.</p>
-              <p className={styles.emptyDescription}>
-                체험 완료 직후 30초 정도면 핵심 내용만 바로 남길 수 있습니다.
-              </p>
-            </div>
-          )}
-        </section>
+              {hasTrialResult ? (
+                <div className={styles.resultStack}>
+                  <ResultRow label="수업 관찰">
+                    <div className={styles.chipWrap}>
+                      {application.trialResult?.observations.length ? (
+                        application.trialResult.observations.map((item) => (
+                          <span key={item} className={styles.summaryChip}>
+                            {item}
+                          </span>
+                        ))
+                      ) : (
+                        <span className={styles.emptyInline}>기록 없음</span>
+                      )}
+                    </div>
+                  </ResultRow>
+
+                  <ResultRow label="추천">
+                    <p className={styles.resultValue}>{recommendationSummary || "기록 없음"}</p>
+                  </ResultRow>
+
+                  <ResultRow label="등록 전환">
+                    <p className={styles.resultValue}>{registrationLabel ?? "기록 없음"}</p>
+                  </ResultRow>
+
+                  {application.registrationStatus === "not_enrolled" ? (
+                    <ResultRow label="미등록 사유">
+                      <p className={styles.resultMemo}>
+                        {[
+                          unregisteredReasonLabel,
+                          application.unregisteredReason === "other"
+                            ? application.unregisteredReasonNote
+                            : null
+                        ]
+                          .filter((item): item is string => Boolean(item))
+                          .join(" · ") || "기록 없음"}
+                      </p>
+                    </ResultRow>
+                  ) : null}
+
+                  <ResultRow label="메모">
+                    <p className={styles.resultMemo}>{application.trialResult?.note ?? "기록 없음"}</p>
+                  </ResultRow>
+                </div>
+              ) : (
+                <div className={styles.emptyState}>
+                  <p className={styles.emptyTitle}>체험 결과가 아직 기록되지 않았습니다.</p>
+                  <p className={styles.emptyDescription}>
+                    체험 완료 직후 30초 정도면 핵심 내용만 바로 남길 수 있습니다.
+                  </p>
+                </div>
+              )}
+            </section>
+          ) : null}
+
+          {sidebarContent ? <div className={styles.prioritySidebar}>{sidebarContent}</div> : null}
+        </div>
       ) : null}
 
       {isPromptOpen ? (

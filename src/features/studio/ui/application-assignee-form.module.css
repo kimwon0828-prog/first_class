@@ -32,12 +32,17 @@
   margin-top: 16px;
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
   gap: 12px;
   padding: 12px 14px;
   border-radius: 14px;
   background: #fafafa;
   border: 1px solid #f2f2f2;
+}
+
+.currentInfo {
+  display: grid;
+  gap: 6px;
 }
 
 .currentLabel {
@@ -138,4 +143,25 @@
 .primaryButton:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+.secondaryButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 38px;
+  padding: 0 14px;
+  border-radius: 10px;
+  border: 1px solid #d9d9d9;
+  background: #ffffff;
+  color: #304030;
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.secondaryButton:hover {
+  border-color: #cfe9d2;
+  background: #f7faf7;
 }

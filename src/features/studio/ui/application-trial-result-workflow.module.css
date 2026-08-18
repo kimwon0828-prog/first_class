@@ -90,6 +90,17 @@
   gap: 16px;
 }
 
+.priorityGrid {
+  display: grid;
+  gap: 18px;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  align-items: start;
+}
+
+.prioritySidebar {
+  min-width: 0;
+}
+
 .resultRow {
   display: grid;
   gap: 8px;
@@ -345,6 +356,10 @@
 }
 
 @media (max-width: 860px) {
+  .priorityGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
   .dialogCardWide {
     padding: 20px;
   }

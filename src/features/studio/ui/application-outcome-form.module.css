@@ -107,6 +107,30 @@
   color: #111111;
 }
 
+.compactHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.compactValue {
+  margin: 8px 0 0;
+  font-size: 18px;
+  line-height: 24px;
+  font-weight: 900;
+  color: #182118;
+}
+
+.compactDescription {
+  margin: 0;
+  font-size: 13px;
+  line-height: 20px;
+  color: #667366;
+  font-weight: 700;
+}
+
 .inlineNotice {
   margin: 0;
   padding: 10px 12px;
@@ -254,4 +278,24 @@
 .primaryButton:disabled {
   opacity: 0.7;
   cursor: not-allowed;
+}
+
+.secondaryButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 38px;
+  padding: 0 14px;
+  border-radius: 10px;
+  border: 1px solid #d9e0d9;
+  background: #ffffff;
+  color: #314031;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.secondaryButton:hover {
+  border-color: #cfe9d2;
+  background: #f7faf7;
 }
