@@ -127,7 +127,8 @@ export async function updateApplicationOutcomeAction(
     finalSchedule: normalizeOptionalText(formData.get("finalSchedule")),
     followUpNote: normalizeOptionalText(formData.get("followUpNote")),
     registrationStatus,
-    unregisteredReason: null
+    unregisteredReason: null,
+    unregisteredReasonNote: null
   }
 
   const changedFieldLabels = getChangedFieldLabels(current, nextValue)
@@ -143,6 +144,8 @@ export async function updateApplicationOutcomeAction(
       applicationId,
       actorId: teacher.id,
       currentStatus: current.status,
+      previousRegistrationStatus: current.registrationStatus,
+      previousLostAt: current.lostAt,
       allowBeforeCompleted: true,
       consultationNote: nextValue.consultationNote,
       trialFeedback: nextValue.trialFeedback,
@@ -152,6 +155,7 @@ export async function updateApplicationOutcomeAction(
       followUpNote: nextValue.followUpNote,
       registrationStatus: nextValue.registrationStatus,
       unregisteredReason: nextValue.unregisteredReason,
+      unregisteredReasonNote: nextValue.unregisteredReasonNote,
       note: logNote
     })
 

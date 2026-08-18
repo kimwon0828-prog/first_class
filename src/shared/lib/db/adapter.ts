@@ -26,6 +26,7 @@ export type ApplicationUnregisteredReason =
   | "child_reaction"
   | "comparing_other_academies"
   | "no_response"
+  | "class_level_mismatch"
   | "other"
 
 export type TeacherPublicProfile = {
@@ -530,6 +531,7 @@ export type ApplicationLogEntry = {
 export type StudioApplicationSummary = TrialApplicationSummary & {
   classSubject: string | null
   classRegion: string | null
+  classAssignmentMode: ClassAssignmentMode
   assignedTeacherId: string | null
   assignedTeacherName: string | null
   contactedAt: string | null
@@ -586,9 +588,35 @@ export type StudioApplicationDetail = StudioApplicationSummary & {
   registrationStatus: ApplicationRegistrationStatus
   registeredCourse: string | null
   unregisteredReason: ApplicationUnregisteredReason | null
+  unregisteredReasonNote: string | null
+  lostAt: string | null
   followUpNote: string | null
   memo: string | null
+  trialResult: StudioTrialResult | null
   logs: ApplicationLogEntry[]
+}
+
+export type StudioTrialResultParentReaction = "positive" | "considering" | "negative"
+
+export type StudioTrialResultNextAction =
+  | "consultation"
+  | "follow_up"
+  | "registration_discussion"
+  | "undecided"
+
+export type StudioTrialResult = {
+  id: string
+  applicationId: string
+  observations: string[]
+  parentReaction: StudioTrialResultParentReaction | null
+  recommendedCourse: string | null
+  recommendedLevel: string | null
+  recommendedSchedule: string | null
+  nextAction: StudioTrialResultNextAction | null
+  note: string | null
+  createdBy: string | null
+  createdAt: string
+  updatedAt: string
 }
 
 export type UpdateStudioApplicationStatusInput = {
@@ -604,6 +632,8 @@ export type UpdateStudioApplicationOutcomeInput = {
   applicationId: string
   actorId: string
   currentStatus: ApplicationStatus
+  previousRegistrationStatus: ApplicationRegistrationStatus
+  previousLostAt: string | null
   allowBeforeCompleted?: boolean
   consultationNote: string | null
   trialFeedback: string | null
@@ -613,7 +643,20 @@ export type UpdateStudioApplicationOutcomeInput = {
   followUpNote: string | null
   registrationStatus: ApplicationRegistrationStatus
   unregisteredReason: ApplicationUnregisteredReason | null
+  unregisteredReasonNote: string | null
   note: string
+}
+
+export type UpsertStudioTrialResultInput = {
+  applicationId: string
+  actorId: string
+  observations: string[]
+  parentReaction: StudioTrialResultParentReaction | null
+  recommendedCourse: string | null
+  recommendedLevel: string | null
+  recommendedSchedule: string | null
+  nextAction: StudioTrialResultNextAction | null
+  note: string | null
 }
 
 export type UpdateStudioApplicationAssigneeInput = {
@@ -722,6 +765,7 @@ export interface DataAdapter {
   updateStudioApplicationAssignee(input: UpdateStudioApplicationAssigneeInput): Promise<void>
   updateStudioApplicationStatus(input: UpdateStudioApplicationStatusInput): Promise<void>
   updateStudioApplicationOutcome(input: UpdateStudioApplicationOutcomeInput): Promise<void>
+  upsertStudioTrialResult(input: UpsertStudioTrialResultInput): Promise<"created" | "updated">
   createTrialApplication(
     input: TrialApplicationInput
   ): Promise<TrialApplicationSummary>

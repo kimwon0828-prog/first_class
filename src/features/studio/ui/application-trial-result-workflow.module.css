@@ -1,0 +1,384 @@
+.card {
+  border: 1px solid #e7eae7;
+  background: #ffffff;
+  border-radius: 14px;
+  padding: 20px;
+  box-shadow: 0 1px 0 rgba(24, 33, 24, 0.03);
+}
+
+.sectionHeading {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.sectionTitle {
+  margin: 0;
+  font-size: 20px;
+  line-height: 26px;
+  font-weight: 900;
+  color: #182118;
+}
+
+.sectionDescription {
+  margin: 8px 0 0;
+  font-size: 14px;
+  line-height: 22px;
+  color: #667366;
+}
+
+.todoBody {
+  display: grid;
+  gap: 14px;
+}
+
+.todoNotice {
+  padding: 14px 16px;
+  border-radius: 12px;
+  border: 1px solid #e7eae7;
+  background: #fafcfa;
+  font-size: 14px;
+  line-height: 22px;
+  color: #617061;
+  font-weight: 700;
+}
+
+.ghostButton,
+.primaryButton,
+.secondaryButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 42px;
+  padding: 0 14px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.ghostButton {
+  border: 1px solid #d9e0d9;
+  background: #ffffff;
+  color: #314031;
+}
+
+.primaryButton {
+  border: 0;
+  background: #2aad38;
+  color: #ffffff;
+}
+
+.secondaryButton {
+  border: 1px solid #d9e0d9;
+  background: #f8faf8;
+  color: #314031;
+}
+
+.primaryButton:disabled,
+.secondaryButton:disabled,
+.ghostButton:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.resultStack {
+  display: grid;
+  gap: 16px;
+}
+
+.resultRow {
+  display: grid;
+  gap: 8px;
+}
+
+.resultLabel {
+  margin: 0;
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 800;
+  color: #7a867a;
+}
+
+.resultBody {
+  display: grid;
+  gap: 8px;
+}
+
+.chipWrap,
+.selectionWrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.summaryChip,
+.choiceChip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 34px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid #dbe4db;
+  background: #f7faf7;
+  color: #324032;
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 700;
+}
+
+.choiceChip {
+  cursor: pointer;
+}
+
+.choiceChipActive {
+  border-color: #2aad38;
+  background: #eef9f0;
+  color: #1f8f2c;
+}
+
+.resultValue {
+  margin: 0;
+  font-size: 14px;
+  line-height: 20px;
+  color: #182118;
+  font-weight: 700;
+}
+
+.resultMemo {
+  margin: 0;
+  font-size: 14px;
+  line-height: 22px;
+  color: #182118;
+  font-weight: 700;
+  white-space: pre-wrap;
+}
+
+.emptyInline {
+  font-size: 13px;
+  line-height: 18px;
+  color: #849084;
+  font-weight: 700;
+}
+
+.emptyState {
+  border: 1px dashed #d9e0d9;
+  border-radius: 14px;
+  padding: 16px;
+  background: #fafcfa;
+}
+
+.emptyTitle {
+  margin: 0;
+  font-size: 15px;
+  line-height: 22px;
+  font-weight: 800;
+  color: #182118;
+}
+
+.emptyDescription {
+  margin: 8px 0 0;
+  font-size: 14px;
+  line-height: 22px;
+  color: #667366;
+}
+
+.dialogOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(15, 23, 15, 0.44);
+}
+
+.dialogCard,
+.dialogCardWide {
+  position: relative;
+  width: min(100%, 460px);
+  border-radius: 18px;
+  background: #ffffff;
+  border: 1px solid #e7eae7;
+  box-shadow: 0 20px 44px rgba(17, 24, 17, 0.16);
+  padding: 24px;
+}
+
+.dialogCardWide {
+  width: min(100%, 720px);
+  max-height: min(90dvh, 860px);
+  overflow-y: auto;
+}
+
+.dialogClose {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  border: 0;
+  background: transparent;
+  color: #7b877b;
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.dialogBody {
+  display: grid;
+  gap: 10px;
+  padding-right: 36px;
+}
+
+.dialogTitle {
+  margin: 0;
+  font-size: 22px;
+  line-height: 28px;
+  font-weight: 900;
+  color: #182118;
+}
+
+.dialogDescription {
+  margin: 0;
+  font-size: 14px;
+  line-height: 22px;
+  color: #667366;
+}
+
+.dialogActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 18px;
+}
+
+.form {
+  display: grid;
+  gap: 18px;
+  margin-top: 20px;
+}
+
+.message {
+  border-radius: 12px;
+  padding: 12px 14px;
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 700;
+  border: 1px solid #dbe4db;
+}
+
+.messageError {
+  background: #fff4f4;
+  border-color: #f3c3c3;
+  color: #d64545;
+}
+
+.messageSuccess {
+  background: #eef9f0;
+  border-color: #cfe9d2;
+  color: #1f8f2c;
+}
+
+.formSection {
+  display: grid;
+  gap: 12px;
+}
+
+.formHeader {
+  display: grid;
+  gap: 4px;
+}
+
+.formTitle {
+  margin: 0;
+  font-size: 15px;
+  line-height: 22px;
+  font-weight: 800;
+  color: #182118;
+}
+
+.formDescription {
+  margin: 0;
+  font-size: 13px;
+  line-height: 20px;
+  color: #758275;
+}
+
+.fieldGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.field {
+  display: grid;
+  gap: 8px;
+}
+
+.fieldLabel {
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 800;
+  color: #475647;
+}
+
+.input,
+.textarea {
+  width: 100%;
+  border-radius: 12px;
+  border: 1px solid #dbe4db;
+  background: #ffffff;
+  color: #182118;
+  font-size: 14px;
+  line-height: 20px;
+  padding: 12px 14px;
+}
+
+.textarea {
+  resize: vertical;
+  min-height: 108px;
+}
+
+@media (max-width: 860px) {
+  .dialogCardWide {
+    padding: 20px;
+  }
+
+  .fieldGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .card {
+    padding: 18px;
+  }
+
+  .dialogOverlay {
+    align-items: flex-end;
+    padding: 12px;
+  }
+
+  .dialogCard,
+  .dialogCardWide {
+    width: 100%;
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+    max-height: min(86dvh, 860px);
+  }
+
+  .dialogActions {
+    flex-direction: column-reverse;
+  }
+
+  .ghostButton,
+  .primaryButton,
+  .secondaryButton {
+    width: 100%;
+  }
+}

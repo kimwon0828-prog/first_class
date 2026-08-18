@@ -13,7 +13,7 @@ import { getStudioApplicationDetail } from "@/features/studio/queries/get-studio
 import { ApplicationAssigneeForm } from "@/features/studio/ui/application-assignee-form"
 import { ApplicationOutcomeForm } from "@/features/studio/ui/application-outcome-form"
 import { ApplicationRegistrationStatusSection } from "@/features/studio/ui/application-registration-status-section"
-import { ApplicationStatusActionForm } from "@/features/studio/ui/application-status-action-form"
+import { ApplicationTrialResultWorkflow } from "@/features/studio/ui/application-trial-result-workflow"
 import type { ApplicationStatus, StudioApplicationSummary } from "@/shared/lib/db/adapter"
 
 import styles from "./page.module.css"
@@ -422,22 +422,10 @@ export default async function StudioApplicationDetailPage({ params }: StudioAppl
 
           <div className={styles.body}>
             <section className={styles.main} aria-label="처리 영역">
-              <section className={styles.card} aria-label="다음에 할 일">
-                <div className={styles.sectionHeading}>
-                  <div>
-                    <h2 className={styles.sectionTitle}>다음에 할 일</h2>
-                    <p className={styles.sectionDescription}>{detailView.nextActionDescription}</p>
-                  </div>
-                </div>
-
-                <div className={styles.todoBody}>
-                  {data.status === "canceled" ? (
-                    <div className={styles.todoNotice}>이미 종료된 신청이라 추가 상태 변경은 필요하지 않습니다.</div>
-                  ) : (
-                    <ApplicationStatusActionForm applicationId={data.id} currentStatus={data.status} />
-                  )}
-                </div>
-              </section>
+              <ApplicationTrialResultWorkflow
+                application={data}
+                nextActionDescription={detailView.nextActionDescription}
+              />
 
               <section className={styles.card} aria-label="신청 정보">
                 <div className={styles.sectionHeading}>

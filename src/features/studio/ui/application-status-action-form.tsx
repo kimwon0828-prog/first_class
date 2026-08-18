@@ -1,6 +1,8 @@
 "use client"
 
+import { useEffect, useRef } from "react"
 import { useActionState } from "react"
+import { useRouter } from "next/navigation"
 
 import {
   updateApplicationStatusAction,
@@ -12,7 +14,8 @@ import styles from "./application-status-action-form.module.css"
 
 const initialState: UpdateApplicationStatusActionState = {
   status: "idle",
-  message: ""
+  message: "",
+  completedPromptToken: null
 }
 
 const STATUS_LABELS: Record<ApplicationStatus, string> = {
@@ -49,14 +52,44 @@ const ACTIONS_BY_STATUS: Record<ApplicationStatus, ActionButtonConfig[]> = {
 type ApplicationStatusActionFormProps = {
   applicationId: string
   currentStatus: ApplicationStatus
+  onCompletedSaved?: () => void
 }
 
-export const ApplicationStatusActionForm = ({ applicationId, currentStatus }: ApplicationStatusActionFormProps) => {
+export const ApplicationStatusActionForm = ({
+  applicationId,
+  currentStatus,
+  onCompletedSaved
+}: ApplicationStatusActionFormProps) => {
+  const router = useRouter()
   const action = updateApplicationStatusAction.bind(null, applicationId)
   const [state, formAction, isPending] = useActionState(action, initialState)
+  const handledPromptTokenRef = useRef<string | null>(null)
+  const completedSavedHandlerRef = useRef(onCompletedSaved)
 
   const availableActions = ACTIONS_BY_STATUS[currentStatus]
   const statusLabel = STATUS_LABELS[currentStatus]
+
+  useEffect(() => {
+    completedSavedHandlerRef.current = onCompletedSaved
+  }, [onCompletedSaved])
+
+  useEffect(() => {
+    if (state.status !== "success") {
+      return
+    }
+
+    if (state.completedPromptToken) {
+      if (handledPromptTokenRef.current === state.completedPromptToken) {
+        return
+      }
+
+      handledPromptTokenRef.current = state.completedPromptToken
+      completedSavedHandlerRef.current?.()
+      return
+    }
+
+    router.refresh()
+  }, [router, state.completedPromptToken, state.status])
 
   return (
     <section className={styles.card} aria-label="상태 관리">

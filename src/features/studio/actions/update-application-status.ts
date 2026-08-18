@@ -11,11 +11,13 @@ import type { ApplicationStatus, ApplicationStatusActionType } from "@/shared/li
 export type UpdateApplicationStatusActionState = {
   status: "idle" | "error" | "success"
   message: string
+  completedPromptToken?: string | null
 }
 
 const defaultState: UpdateApplicationStatusActionState = {
   status: "idle",
-  message: ""
+  message: "",
+  completedPromptToken: null
 }
 
 const ACTION_CONFIG: Record<
@@ -134,6 +136,17 @@ export async function updateApplicationStatusAction(
       }
     }
 
+    if (
+      requestedActionType === "move_to_confirmed" &&
+      current.classAssignmentMode === "post_assign" &&
+      !current.assignedTeacherId
+    ) {
+      return {
+        status: "error",
+        message: "담당 선생님을 먼저 지정해 주세요."
+      }
+    }
+
     await dataAdapter.updateStudioApplicationStatus({
       applicationId,
       currentStatus: current.status,
@@ -227,6 +240,8 @@ export async function updateApplicationStatusAction(
 
     return {
       status: "success",
+      completedPromptToken:
+        requestedActionType === "move_to_completed" ? `${applicationId}:${Date.now()}` : null,
       message:
         requestedActionType === "no_show"
           ? "신청을 노쇼로 처리했습니다."

@@ -46,7 +46,9 @@ import type {
   TeacherSignupRequest,
   TeacherSignupRequestStatus,
   TrialApplicationInput,
+  UpsertStudioTrialResultInput,
   TrialApplicationSummary,
+  StudioTrialResult,
   UpdateChildProfileInput,
   UpdateStudioApplicationAssigneeInput,
   UpdateStudioApplicationOutcomeInput,
@@ -173,6 +175,8 @@ type TrialApplicationRow = {
   registration_status?: ApplicationRegistrationStatus
   registered_course?: string | null
   unregistered_reason?: ApplicationUnregisteredReason | null
+  unregistered_reason_note?: string | null
+  lost_at?: string | null
   follow_up_note?: string | null
   memo?: string | null
   status: TrialApplicationSummary["status"]
@@ -203,6 +207,21 @@ type ApplicationLogRow = {
   actor_id: string
   note: string | null
   created_at: string
+}
+
+type TrialResultRow = {
+  id: string
+  application_id: string
+  observations: string[] | null
+  parent_reaction: string | null
+  recommended_course: string | null
+  recommended_level: string | null
+  recommended_schedule: string | null
+  next_action: string | null
+  note: string | null
+  created_by: string | null
+  created_at: string
+  updated_at: string
 }
 
 type ScheduleBlockRow = {
@@ -617,6 +636,7 @@ const mapStudioApplication = (
     ...mapApplication(row),
     classSubject: embeddedClass?.subject ?? null,
     classRegion: embeddedClass?.region ?? null,
+    classAssignmentMode: resolveClassAssignmentMode(embeddedClass ?? {}),
     assignedTeacherId: row.assigned_teacher_id ?? null,
     assignedTeacherName: row.assigned_teacher_id
       ? teacherNameById.get(row.assigned_teacher_id) ?? null
@@ -643,6 +663,32 @@ const mapApplicationLog = (
   actorName: actorNameById.get(row.actor_id) ?? null,
   note: row.note,
   createdAt: row.created_at
+})
+
+const mapStudioTrialResult = (row: TrialResultRow): StudioTrialResult => ({
+  id: row.id,
+  applicationId: row.application_id,
+  observations: Array.isArray(row.observations) ? row.observations.filter((item): item is string => typeof item === "string") : [],
+  parentReaction:
+    row.parent_reaction === "positive" ||
+    row.parent_reaction === "considering" ||
+    row.parent_reaction === "negative"
+      ? row.parent_reaction
+      : null,
+  recommendedCourse: row.recommended_course?.trim() ? row.recommended_course.trim() : null,
+  recommendedLevel: row.recommended_level?.trim() ? row.recommended_level.trim() : null,
+  recommendedSchedule: row.recommended_schedule?.trim() ? row.recommended_schedule.trim() : null,
+  nextAction:
+    row.next_action === "consultation" ||
+    row.next_action === "follow_up" ||
+    row.next_action === "registration_discussion" ||
+    row.next_action === "undecided"
+      ? row.next_action
+      : null,
+  note: row.note?.trim() ? row.note.trim() : null,
+  createdBy: row.created_by ?? null,
+  createdAt: row.created_at,
+  updatedAt: row.updated_at
 })
 
 const mapAvailableSlot = (row: ScheduleBlockRow): AvailableScheduleSlot => ({
@@ -1160,9 +1206,12 @@ const buildRequestedOccurrenceEndAt = (
     return null
   }
 
+  // `requested_slot_at` is stored as UTC while class_schedules keep local KST clock time.
+  const kstStartDate = new Date(startDate.getTime() + 9 * 60 * 60 * 1000)
+
   if (
-    startDate.getUTCHours() !== startHour ||
-    startDate.getUTCMinutes() !== startMinute
+    kstStartDate.getUTCHours() !== startHour ||
+    kstStartDate.getUTCMinutes() !== startMinute
   ) {
     return null
   }
@@ -3885,7 +3934,7 @@ export const supabaseDataAdapter: DataAdapter = {
     const { data, error } = await supabase
       .from("trial_applications")
       .select(
-        "id, class_id, parent_id, child_name, child_grade, parent_name, parent_phone, child_school, child_notes, subject_experience_yn, subject_experience_duration, current_level, preferred_regular_schedule, goal_type, goal_note, class_schedule_id, requested_slot_at, requested_schedule_block_id, selected_schedule_label, confirmed_slot_at, confirmed_schedule_block_id, assigned_teacher_id, contacted_at, scheduled_at, completed_at, enrolled_at, canceled_at, no_show_at, consultation_note, trial_feedback, final_level, final_schedule, registration_status, registered_course, unregistered_reason, follow_up_note, memo, status, created_at, updated_at, classes!inner(title, subject, region, organization_id, program_type)"
+        "id, class_id, parent_id, child_name, child_grade, parent_name, parent_phone, child_school, child_notes, subject_experience_yn, subject_experience_duration, current_level, preferred_regular_schedule, goal_type, goal_note, class_schedule_id, requested_slot_at, requested_schedule_block_id, selected_schedule_label, confirmed_slot_at, confirmed_schedule_block_id, assigned_teacher_id, contacted_at, scheduled_at, completed_at, enrolled_at, canceled_at, no_show_at, consultation_note, trial_feedback, final_level, final_schedule, registration_status, registered_course, unregistered_reason, unregistered_reason_note, lost_at, follow_up_note, memo, status, created_at, updated_at, classes!inner(title, subject, region, organization_id, program_type, assignment_mode)"
       )
       .eq("id", applicationId)
       .eq("classes.organization_id", organizationId)
@@ -3919,6 +3968,18 @@ export const supabaseDataAdapter: DataAdapter = {
     const actorIds = Array.from(new Set(logRows.map((row) => row.actor_id)))
     const actorNameById = await getActorNameMap(actorIds)
 
+    const { data: trialResultData, error: trialResultError } = await supabase
+      .from("trial_results")
+      .select(
+        "id, application_id, observations, parent_reaction, recommended_course, recommended_level, recommended_schedule, next_action, note, created_by, created_at, updated_at"
+      )
+      .eq("application_id", applicationId)
+      .maybeSingle()
+
+    if (trialResultError) {
+      throw new Error("failed_to_fetch_trial_result")
+    }
+
     const detail: StudioApplicationDetail = {
       ...mapStudioApplication(data as TrialApplicationRow, teacherNameById),
       confirmedScheduleBlockId: (data as TrialApplicationRow).confirmed_schedule_block_id ?? null,
@@ -3938,8 +3999,12 @@ export const supabaseDataAdapter: DataAdapter = {
       registeredCourse: (data as TrialApplicationRow).registered_course ?? null,
       unregisteredReason:
         (data as TrialApplicationRow).unregistered_reason ?? null,
+      unregisteredReasonNote:
+        (data as TrialApplicationRow).unregistered_reason_note ?? null,
+      lostAt: (data as TrialApplicationRow).lost_at ?? null,
       followUpNote: (data as TrialApplicationRow).follow_up_note ?? null,
       memo: (data as TrialApplicationRow).memo ?? null,
+      trialResult: trialResultData ? mapStudioTrialResult(trialResultData as TrialResultRow) : null,
       logs: logRows.map((row) => mapApplicationLog(row, actorNameById))
     }
 
@@ -4234,6 +4299,7 @@ export const supabaseDataAdapter: DataAdapter = {
     const registrationFieldsTouched =
       input.registrationStatus !== "undecided" ||
       input.unregisteredReason !== null ||
+      input.unregisteredReasonNote !== null ||
       input.trialFeedback !== null ||
       input.registeredCourse !== null ||
       input.finalLevel !== null ||
@@ -4258,7 +4324,18 @@ export const supabaseDataAdapter: DataAdapter = {
             follow_up_note: input.followUpNote,
             registration_status: input.registrationStatus,
             enrolled_at: input.registrationStatus === "enrolled" ? nowIso : null,
-            unregistered_reason: input.unregisteredReason,
+            unregistered_reason:
+              input.registrationStatus === "not_enrolled" ? input.unregisteredReason : null,
+            unregistered_reason_note:
+              input.registrationStatus === "not_enrolled" && input.unregisteredReason === "other"
+                ? input.unregisteredReasonNote
+                : null,
+            lost_at:
+              input.registrationStatus === "not_enrolled"
+                ? input.previousRegistrationStatus === "not_enrolled"
+                  ? input.previousLostAt
+                  : nowIso
+                : null,
             updated_at: nowIso
           }
     const { data, error } = await supabase
@@ -4299,6 +4376,77 @@ export const supabaseDataAdapter: DataAdapter = {
         })
       )
     }
+  },
+  async upsertStudioTrialResult(input: UpsertStudioTrialResultInput) {
+    const supabase = await getSupabaseServerClient()
+    const nowIso = new Date().toISOString()
+    const { data: existing, error: existingError } = await supabase
+      .from("trial_results")
+      .select("id")
+      .eq("application_id", input.applicationId)
+      .maybeSingle()
+
+    if (existingError) {
+      throw new Error("failed_to_check_trial_result")
+    }
+
+    const normalizedObservations = Array.from(new Set(input.observations.filter((item) => item.trim().length > 0)))
+    const payload = {
+      application_id: input.applicationId,
+      observations: normalizedObservations,
+      parent_reaction: input.parentReaction,
+      recommended_course: input.recommendedCourse,
+      recommended_level: input.recommendedLevel,
+      recommended_schedule: input.recommendedSchedule,
+      next_action: input.nextAction,
+      note: input.note,
+      updated_at: nowIso
+    }
+
+    if (existing) {
+      const { data, error } = await supabase
+        .from("trial_results")
+        .update(payload)
+        .eq("application_id", input.applicationId)
+        .select("id")
+        .maybeSingle()
+
+      if (error || !data) {
+        throw new Error("failed_to_update_trial_result")
+      }
+
+      return "updated"
+    }
+
+    const { data, error } = await supabase
+      .from("trial_results")
+      .insert({
+        ...payload,
+        created_by: input.actorId
+      })
+      .select("id")
+      .maybeSingle()
+
+    if (error?.code === "23505") {
+      const { data: conflictedData, error: conflictedError } = await supabase
+        .from("trial_results")
+        .update(payload)
+        .eq("application_id", input.applicationId)
+        .select("id")
+        .maybeSingle()
+
+      if (conflictedError || !conflictedData) {
+        throw new Error("failed_to_update_trial_result")
+      }
+
+      return "updated"
+    }
+
+    if (error || !data) {
+      throw new Error("failed_to_create_trial_result")
+    }
+
+    return "created"
   },
   async createTrialApplication(input: TrialApplicationInput) {
     const supabase = await getSupabaseServerClient()

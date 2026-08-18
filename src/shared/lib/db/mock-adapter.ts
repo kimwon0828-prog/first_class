@@ -19,6 +19,7 @@ import type {
   MyDashboardData,
   StudioApplicationDetail,
   StudioApplicationListOptions,
+  StudioTrialResult,
   StudioApplicationSummary,
   StudioClassListItem,
   StudioClassScheduleItem,
@@ -38,6 +39,7 @@ import type {
   UpdateStudioTeacherInput,
   TrialApplicationInput,
   TrialApplicationSummary,
+  UpsertStudioTrialResultInput,
   UpdateStudioApplicationAssigneeInput,
   UpdateStudioApplicationOutcomeInput,
   UpdateStudioApplicationStatusInput,
@@ -152,6 +154,7 @@ type GlobalMockStore = typeof globalThis & {
   __firstClassMockScheduleBlocks__?: MockScheduleBlock[]
   __firstClassMockApplications__?: MockApplicationRecord[]
   __firstClassMockApplicationLogs__?: ApplicationLogEntry[]
+  __firstClassMockTrialResults__?: StudioTrialResult[]
   __firstClassMockChildren__?: ChildProfile[]
   __firstClassMockTeacherSignupRequests__?: TeacherSignupRequest[]
 }
@@ -291,6 +294,9 @@ const applications =
 const applicationLogs =
   globalMockStore.__firstClassMockApplicationLogs__ ??
   (globalMockStore.__firstClassMockApplicationLogs__ = [])
+const trialResults =
+  globalMockStore.__firstClassMockTrialResults__ ??
+  (globalMockStore.__firstClassMockTrialResults__ = [])
 const children =
   globalMockStore.__firstClassMockChildren__ ?? (globalMockStore.__firstClassMockChildren__ = [])
 const teacherSignupRequests =
@@ -617,7 +623,9 @@ const buildRequestedOccurrenceEndAt = (
     return null
   }
 
-  if (startDate.getUTCHours() !== startHour || startDate.getUTCMinutes() !== startMinute) {
+  const kstStartDate = new Date(startDate.getTime() + 9 * 60 * 60 * 1000)
+
+  if (kstStartDate.getUTCHours() !== startHour || kstStartDate.getUTCMinutes() !== startMinute) {
     return null
   }
 
@@ -1642,6 +1650,7 @@ export const mockDataAdapter: DataAdapter = {
     const logs = applicationLogs
       .filter((item) => item.applicationId === applicationId)
       .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))
+    const trialResult = trialResults.find((item) => item.applicationId === applicationId) ?? null
 
     const detail: StudioApplicationDetail = {
       ...application,
@@ -1682,6 +1691,7 @@ export const mockDataAdapter: DataAdapter = {
         "unregisteredReason" in application ? application.unregisteredReason ?? null : null,
       followUpNote: "followUpNote" in application ? application.followUpNote ?? null : null,
       memo: "memo" in application ? application.memo ?? null : null,
+      trialResult,
       logs
     }
 
@@ -1732,9 +1742,11 @@ export const mockDataAdapter: DataAdapter = {
     if (input.actionType === "move_to_confirmed") {
       target.scheduledAt = nowIso
 
+      const assignedTeacherId = target.assignedTeacherId ?? null
+
       if (target.requestedScheduleBlockId) {
         target.confirmedSlotAt = target.requestedSlotAt
-        if (!target.assignedTeacherId) {
+        if (!assignedTeacherId) {
           target.confirmedScheduleBlockId = null
         } else {
           target.confirmedScheduleBlockId = target.requestedScheduleBlockId
@@ -1753,13 +1765,13 @@ export const mockDataAdapter: DataAdapter = {
         }
 
         target.confirmedSlotAt = target.requestedSlotAt
-        if (!target.assignedTeacherId) {
+        if (!assignedTeacherId) {
           target.confirmedScheduleBlockId = null
         } else {
           const existingBlocks = scheduleBlocks.filter(
             (slot) =>
               slot.classId === target.classId &&
-              slot.teacherId === target.assignedTeacherId &&
+              slot.teacherId === assignedTeacherId &&
               slot.startAt === target.requestedSlotAt &&
               slot.endAt === requestedEndAt
           )
@@ -1773,7 +1785,7 @@ export const mockDataAdapter: DataAdapter = {
           if (!resolvedBlock) {
             resolvedBlock = {
               id: `slot-${scheduleBlocks.length + 1}`,
-              teacherId: target.assignedTeacherId,
+              teacherId: assignedTeacherId,
               classId: target.classId,
               type: "available",
               startAt: target.requestedSlotAt,
@@ -1835,6 +1847,7 @@ export const mockDataAdapter: DataAdapter = {
     const registrationFieldsTouched =
       input.registrationStatus !== "undecided" ||
       input.unregisteredReason !== null ||
+      input.unregisteredReasonNote !== null ||
       input.trialFeedback !== null ||
       input.registeredCourse !== null ||
       input.finalLevel !== null ||
@@ -1854,7 +1867,18 @@ export const mockDataAdapter: DataAdapter = {
       target.followUpNote = input.followUpNote
       target.registrationStatus = input.registrationStatus
       target.enrolledAt = input.registrationStatus === "enrolled" ? new Date().toISOString() : null
-      target.unregisteredReason = input.unregisteredReason
+      target.unregisteredReason =
+        input.registrationStatus === "not_enrolled" ? input.unregisteredReason : null
+      target.unregisteredReasonNote =
+        input.registrationStatus === "not_enrolled" && input.unregisteredReason === "other"
+          ? input.unregisteredReasonNote
+          : null
+      target.lostAt =
+        input.registrationStatus === "not_enrolled"
+          ? input.previousRegistrationStatus === "not_enrolled"
+            ? input.previousLostAt
+            : new Date().toISOString()
+          : null
     }
     target.updatedAt = new Date().toISOString()
 
@@ -1868,6 +1892,40 @@ export const mockDataAdapter: DataAdapter = {
       note: input.note,
       createdAt: new Date().toISOString()
     })
+  },
+  async upsertStudioTrialResult(input: UpsertStudioTrialResultInput) {
+    const normalizedObservations = Array.from(new Set(input.observations.filter((item) => item.trim().length > 0)))
+    const existing = trialResults.find((item) => item.applicationId === input.applicationId) ?? null
+    const nowIso = new Date().toISOString()
+
+    if (existing) {
+      existing.observations = normalizedObservations
+      existing.parentReaction = input.parentReaction
+      existing.recommendedCourse = input.recommendedCourse
+      existing.recommendedLevel = input.recommendedLevel
+      existing.recommendedSchedule = input.recommendedSchedule
+      existing.nextAction = input.nextAction
+      existing.note = input.note
+      existing.updatedAt = nowIso
+      return "updated"
+    }
+
+    trialResults.push({
+      id: `trial-result-${trialResults.length + 1}`,
+      applicationId: input.applicationId,
+      observations: normalizedObservations,
+      parentReaction: input.parentReaction,
+      recommendedCourse: input.recommendedCourse,
+      recommendedLevel: input.recommendedLevel,
+      recommendedSchedule: input.recommendedSchedule,
+      nextAction: input.nextAction,
+      note: input.note,
+      createdBy: input.actorId,
+      createdAt: nowIso,
+      updatedAt: nowIso
+    })
+
+    return "created"
   },
   async createTrialApplication(input: TrialApplicationInput) {
     const parsedScheduleOption = parseSelectedScheduleOptionId(
@@ -1953,6 +2011,7 @@ export const mockDataAdapter: DataAdapter = {
       childId: input.childId ?? null,
       classSubject: classItem?.subject ?? null,
       classRegion: classItem?.region ?? null,
+      classAssignmentMode: classItem.assignmentMode,
       assignedTeacherId: classItem.assignmentMode === "preassigned" ? classItem.teacherId : null,
       assignedTeacherName:
         classItem.assignmentMode === "preassigned"
@@ -1972,6 +2031,8 @@ export const mockDataAdapter: DataAdapter = {
       registrationStatus: "undecided" as ApplicationRegistrationStatus,
       registeredCourse: null,
       unregisteredReason: null as ApplicationUnregisteredReason | null,
+      unregisteredReasonNote: null,
+      lostAt: null,
       followUpNote: null,
       contactedAt: null,
       scheduledAt: null,
@@ -1981,6 +2042,7 @@ export const mockDataAdapter: DataAdapter = {
       enrolledAt: null,
       confirmedScheduleBlockId: null,
       memo: input.memo,
+      trialResult: null,
       logs: []
     })
 
