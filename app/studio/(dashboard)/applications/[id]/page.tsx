@@ -37,6 +37,39 @@ const formatDateTime = (value: string) => {
   }).format(date)
 }
 
+const formatMonthDay = (value: string | null | undefined) => {
+  if (!value) {
+    return null
+  }
+
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) {
+    return null
+  }
+
+  return `${date.getMonth() + 1}월 ${date.getDate()}일`
+}
+
+const formatDateWithWeekdayTime = (value: string | null | undefined, options?: { hour12?: boolean }) => {
+  if (!value) {
+    return null
+  }
+
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) {
+    return null
+  }
+
+  const weekday = new Intl.DateTimeFormat("ko-KR", { weekday: "short" }).format(date)
+  const time = new Intl.DateTimeFormat("ko-KR", {
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: options?.hour12 ?? false
+  }).format(date)
+
+  return `${date.getMonth() + 1}월 ${date.getDate()}일 (${weekday}) ${time}`
+}
+
 const resolveScheduleSummary = (
   requestedSlotAt: string,
   confirmedSlotAt: string | null,
@@ -86,6 +119,14 @@ const normalizeText = (value: string | null | undefined) => {
 
   const normalized = value.trim()
   return normalized.length > 0 && normalized !== "-" ? normalized : null
+}
+
+const detailViewSubjectAndProgramLabel = (subject: string | null, programTypeLabel: string) => {
+  if (subject) {
+    return `${subject} ${programTypeLabel}`
+  }
+
+  return programTypeLabel
 }
 
 const getRegistrationBadge = (registrationStatus: string, status: ApplicationStatus) => {
@@ -196,7 +237,11 @@ export default async function StudioApplicationDetailPage({ params }: StudioAppl
           data.selectedScheduleLabel
         )
         const applicationDate = formatDateTime(data.createdAt) ?? "신청일 미기록"
+        const applicationDateLabel = formatMonthDay(data.createdAt)
+        const applicationDateDetail = formatDateWithWeekdayTime(data.createdAt, { hour12: true }) ?? applicationDate
+        const completedDateLabel = formatMonthDay(data.completedAt)
         const statusBadge = getStatusBadge(data)
+        const completedStatusText = completedDateLabel ? `${completedDateLabel} 체험 완료` : statusBadge.label
         const registrationBadge = getRegistrationBadge(data.registrationStatus, data.status)
         const statusLabel = getStudioStatusLabel(data)
         const programTypeLabel =
@@ -223,6 +268,11 @@ export default async function StudioApplicationDetailPage({ params }: StudioAppl
             : data.classProgramType === "level_test"
               ? "레벨테스트"
               : "수업 정보 미연결")
+        const completedMetaParts = [
+          detailViewSubjectAndProgramLabel(normalizeText(data.classSubject), programTypeLabel),
+          parentName,
+          completedStatusText
+        ].filter((value): value is string => Boolean(value))
         const phoneHref = parentPhone ? `tel:${parentPhone}` : null
         const smsHref = parentPhone ? `sms:${parentPhone}` : null
         const timelineDateByStep: Record<(typeof TIMELINE_STEPS)[number]["key"], string | null> = {
@@ -255,6 +305,9 @@ export default async function StudioApplicationDetailPage({ params }: StudioAppl
         return {
           scheduleSummary,
           applicationDate,
+          applicationDateLabel,
+          applicationDateDetail,
+          completedStatusText,
           statusBadge,
           registrationBadge,
           statusLabel,
@@ -271,6 +324,7 @@ export default async function StudioApplicationDetailPage({ params }: StudioAppl
           normalizedPreferredRegularSchedule,
           normalizedGoalNote,
           classTitle,
+          completedMeta: completedMetaParts.join(" · "),
           phoneHref,
           smsHref,
           timelineDateByStep,
@@ -289,12 +343,14 @@ export default async function StudioApplicationDetailPage({ params }: StudioAppl
           </Link>
         </div>
 
-        <div className={styles.headerTitleRow}>
-          <div>
-            <h1 className={styles.title}>체험신청 상세</h1>
-            <p className={styles.subtitle}>신청 정보를 확인하고 상담 상태를 관리해요.</p>
+        {data?.status !== "completed" ? (
+          <div className={styles.headerTitleRow}>
+            <div>
+              <h1 className={styles.title}>체험신청 상세</h1>
+              <p className={styles.subtitle}>신청 정보를 확인하고 상담 상태를 관리해요.</p>
+            </div>
           </div>
-        </div>
+        ) : null}
       </header>
 
       {error ? (
@@ -306,207 +362,204 @@ export default async function StudioApplicationDetailPage({ params }: StudioAppl
       {data && detailView ? (
         <>
           <section className={styles.summaryCard} aria-label="신청 요약">
-            <div className={styles.summaryTop}>
-              <div className={styles.heroBody}>
-                <div className={styles.heroIdentity}>
-                  <h2 className={styles.summaryTitle}>
-                    {data.childName}
-                    {detailView.childGrade ? (
-                      <span className={styles.summaryTitleSub}>{detailView.childGrade}</span>
-                    ) : null}
-                  </h2>
-                  <p className={styles.summarySubtitle}>
-                    {detailView.parentName ?? "보호자 미기록"}
-                    <span className={styles.summaryDivider}>·</span>
-                    {detailView.programTypeLabel}
-                    <span className={styles.summaryDivider}>·</span>
-                    {detailView.classTitle}
+            {data.status === "completed" ? (
+              <div className={styles.completedSummaryTop}>
+                <div className={styles.completedSummaryHeader}>
+                  <div className={styles.heroIdentity}>
+                    <h2 className={styles.summaryTitle}>
+                      {data.childName}
+                      {detailView.childGrade ? (
+                        <span className={styles.summaryTitleSub}>{detailView.childGrade}</span>
+                      ) : null}
+                    </h2>
+                    <p className={styles.summarySubtitle}>{detailView.completedMeta}</p>
+                  </div>
+                  <div className={styles.completedBadgeWrap}>
+                    <Badge
+                      label={detailView.registrationBadge.label}
+                      tone={detailView.registrationBadge.tone}
+                    />
+                  </div>
+                </div>
+
+                <div className={styles.summaryActions}>
+                  {detailView.phoneHref ? (
+                    <a href={detailView.phoneHref} className={styles.actionButtonSecondary}>
+                      전화 걸기
+                    </a>
+                  ) : null}
+                  {detailView.smsHref ? (
+                    <a href={detailView.smsHref} className={styles.actionButtonSecondary}>
+                      문자
+                    </a>
+                  ) : null}
+                  <Link href="/studio/schedule" className={styles.actionButtonSecondary}>
+                    일정 관리
+                  </Link>
+                </div>
+              </div>
+            ) : (
+              <div className={styles.summaryTop}>
+                <div className={styles.heroBody}>
+                  <div className={styles.heroIdentity}>
+                    <h2 className={styles.summaryTitle}>
+                      {data.childName}
+                      {detailView.childGrade ? (
+                        <span className={styles.summaryTitleSub}>{detailView.childGrade}</span>
+                      ) : null}
+                    </h2>
+                    <p className={styles.summarySubtitle}>
+                      {detailView.parentName ?? "보호자 미기록"}
+                      <span className={styles.summaryDivider}>·</span>
+                      {detailView.programTypeLabel}
+                      <span className={styles.summaryDivider}>·</span>
+                      {detailView.classTitle}
+                    </p>
+                  </div>
+
+                  <div className={styles.badgeRow}>
+                    <Badge label={detailView.statusBadge.label} tone={detailView.statusBadge.tone} />
+                    <Badge
+                      label={detailView.registrationBadge.label}
+                      tone={detailView.registrationBadge.tone}
+                    />
+                  </div>
+                </div>
+
+                <div className={styles.summaryActions}>
+                  {detailView.phoneHref ? (
+                    <a href={detailView.phoneHref} className={styles.actionButtonTint}>
+                      전화 걸기
+                    </a>
+                  ) : null}
+                  {detailView.smsHref ? (
+                    <a href={detailView.smsHref} className={styles.actionButtonSecondary}>
+                      문자
+                    </a>
+                  ) : null}
+                  {data.classId ? (
+                    <Link href={`/classes/${data.classId}`} className={styles.actionButtonSecondary}>
+                      수업 미리보기
+                    </Link>
+                  ) : null}
+                  <Link href="/studio/schedule" className={styles.actionButtonSecondary}>
+                    일정 관리
+                  </Link>
+                </div>
+              </div>
+            )}
+          </section>
+
+          {data.status !== "completed" ? (
+            <section className={styles.timelineCard} aria-label="상태 타임라인">
+              <div className={styles.sectionHeading}>
+                <div>
+                  <h2 className={styles.sectionTitle}>상태 타임라인</h2>
+                  <p className={styles.sectionDescription}>
+                    신청부터 등록 결정까지 현재 진행 단계를 한눈에 확인해요.
                   </p>
                 </div>
-
-                <div className={styles.badgeRow}>
-                  <Badge label={detailView.statusBadge.label} tone={detailView.statusBadge.tone} />
-                  <Badge
-                    label={detailView.registrationBadge.label}
-                    tone={detailView.registrationBadge.tone}
-                  />
-                </div>
+                {detailView.isTerminalCanceled ? (
+                  <span className={styles.terminalNotice}>
+                    {detailView.statusLabel}로 종료된 신청입니다.
+                  </span>
+                ) : null}
               </div>
 
-              <div className={styles.summaryActions}>
-                {detailView.phoneHref ? (
-                  <a href={detailView.phoneHref} className={styles.actionButtonTint}>
-                    전화 걸기
-                  </a>
-                ) : null}
-                {detailView.smsHref ? (
-                  <a href={detailView.smsHref} className={styles.actionButtonSecondary}>
-                    문자
-                  </a>
-                ) : null}
-                {data.classId ? (
-                  <Link href={`/classes/${data.classId}`} className={styles.actionButtonSecondary}>
-                    수업 미리보기
-                  </Link>
-                ) : null}
-                <Link href="/studio/schedule" className={styles.actionButtonSecondary}>
-                  일정 관리
-                </Link>
-              </div>
-            </div>
-          </section>
-
-          <section className={styles.timelineCard} aria-label="상태 타임라인">
-            <div className={styles.sectionHeading}>
-              <div>
-                <h2 className={styles.sectionTitle}>상태 타임라인</h2>
-                <p className={styles.sectionDescription}>
-                  신청부터 등록 결정까지 현재 진행 단계를 한눈에 확인해요.
-                </p>
-              </div>
-              {detailView.isTerminalCanceled ? (
-                <span className={styles.terminalNotice}>
-                  {detailView.statusLabel}로 종료된 신청입니다.
-                </span>
-              ) : null}
-            </div>
-
-            <div className={styles.timelineScroller}>
-              <ol className={styles.timelineList}>
-                {TIMELINE_STEPS.map((step, index) => {
-                  const isRegistrationStep = step.key === "registration"
-                  const isDone = detailView.isTerminalCanceled
-                    ? index <= detailView.currentTimelineIndex
-                    : isRegistrationStep
-                      ? data.registrationStatus !== "undecided"
-                      : index <= detailView.currentTimelineIndex
-                  const isCurrent =
-                    !detailView.isTerminalCanceled &&
-                    !isRegistrationStep &&
-                    index === detailView.currentTimelineIndex
-                  const nodeLabel = isCurrent ? `${index + 1}` : isDone ? "✓" : `${index + 1}`
-                  const timeText = formatLogTime(detailView.timelineDateByStep[step.key])
-                  return (
-                    <li
-                      key={step.key}
-                      className={`${styles.timelineItem} ${isDone ? styles.timelineItemDone : ""} ${
-                        isCurrent ? styles.timelineItemCurrent : ""
-                      }`}
-                    >
-                      <div className={styles.timelineIconRow} aria-hidden="true">
-                        <div className={styles.timelineConnector} />
-                        <div className={styles.timelineNode} aria-current={isCurrent ? "step" : undefined}>
-                          {nodeLabel}
+              <div className={styles.timelineScroller}>
+                <ol className={styles.timelineList}>
+                  {TIMELINE_STEPS.map((step, index) => {
+                    const isRegistrationStep = step.key === "registration"
+                    const isDone = detailView.isTerminalCanceled
+                      ? index <= detailView.currentTimelineIndex
+                      : isRegistrationStep
+                        ? data.registrationStatus !== "undecided"
+                        : index <= detailView.currentTimelineIndex
+                    const isCurrent =
+                      !detailView.isTerminalCanceled &&
+                      !isRegistrationStep &&
+                      index === detailView.currentTimelineIndex
+                    const nodeLabel = isCurrent ? `${index + 1}` : isDone ? "✓" : `${index + 1}`
+                    const timeText = formatLogTime(detailView.timelineDateByStep[step.key])
+                    return (
+                      <li
+                        key={step.key}
+                        className={`${styles.timelineItem} ${isDone ? styles.timelineItemDone : ""} ${
+                          isCurrent ? styles.timelineItemCurrent : ""
+                        }`}
+                      >
+                        <div className={styles.timelineIconRow} aria-hidden="true">
+                          <div className={styles.timelineConnector} />
+                          <div className={styles.timelineNode} aria-current={isCurrent ? "step" : undefined}>
+                            {nodeLabel}
+                          </div>
                         </div>
-                      </div>
-                      <div className={styles.timelineTextRow}>
-                        <p className={styles.timelineLabel}>{step.label}</p>
-                        <p className={styles.timelineMeta}>{timeText ?? step.fallbackLabel}</p>
-                      </div>
-                    </li>
-                  )
-                })}
-              </ol>
-            </div>
-          </section>
+                        <div className={styles.timelineTextRow}>
+                          <p className={styles.timelineLabel}>{step.label}</p>
+                          <p className={styles.timelineMeta}>{timeText ?? step.fallbackLabel}</p>
+                        </div>
+                      </li>
+                    )
+                  })}
+                </ol>
+              </div>
+            </section>
+          ) : null}
 
-          <div className={styles.body}>
+          <div className={`${styles.body} ${data.status === "completed" ? styles.bodyCompleted : ""}`}>
             {data.status === "completed" ? (
               <>
                 <ApplicationTrialResultWorkflow
                   application={data}
-                  sidebarContent={
-                    <div className={styles.sideStack}>
-                      <section className={styles.card} aria-label="신청 정보">
-                        <div className={styles.sectionHeading}>
-                          <div>
-                            <h2 className={styles.sectionTitle}>신청 정보</h2>
-                            <p className={styles.sectionDescription}>
-                              확정 일정과 보호자 연락처를 다시 확인할 수 있는 참고 정보입니다.
-                            </p>
-                          </div>
-                        </div>
-
-                        <dl className={styles.infoGrid}>
-                          <div className={styles.infoCell}>
-                            <dt className={styles.summaryLabel}>{data.confirmedSlotAt ? "확정 일정" : "희망 일정"}</dt>
-                            <dd className={styles.summaryValue}>
-                              {detailView.scheduleSummary.primary}
-                              {detailView.scheduleSummary.secondary ? (
-                                <>
-                                  <br />
-                                  {detailView.scheduleSummary.secondary}
-                                </>
-                              ) : null}
-                            </dd>
-                          </div>
-                          <div className={styles.infoCell}>
-                            <dt className={styles.summaryLabel}>보호자 연락처</dt>
-                            <dd className={styles.summaryValueStrong}>{detailView.parentPhone ?? "미기록"}</dd>
-                          </div>
-                          <div className={styles.infoCell}>
-                            <dt className={styles.summaryLabel}>신청일</dt>
-                            <dd className={styles.summaryValue}>{detailView.applicationDate}</dd>
-                          </div>
-                          <div className={styles.infoCell}>
-                            <dt className={styles.summaryLabel}>신청 유형 / 과목</dt>
-                            <dd className={styles.summaryValue}>
-                              {detailView.programTypeLabel}
-                              {detailView.classSubject ? ` · ${detailView.classSubject}` : ""}
-                            </dd>
-                          </div>
-                        </dl>
-
-                        <details className={styles.foldCard}>
-                          <summary className={styles.foldSummary}>추가 정보 보기</summary>
-                          <dl className={styles.extraInfoGrid}>
-                            <div className={styles.infoCell}>
-                              <dt className={styles.summaryLabel}>학교</dt>
-                              <dd className={styles.summaryValue}>{detailView.childSchool ?? "미기록"}</dd>
-                            </div>
-                            <div className={styles.infoCell}>
-                              <dt className={styles.summaryLabel}>현재 수준</dt>
-                              <dd className={styles.summaryValue}>{detailView.currentLevel ?? "미기록"}</dd>
-                            </div>
-                            <div className={styles.infoCell}>
-                              <dt className={styles.summaryLabel}>지역</dt>
-                              <dd className={styles.summaryValue}>{detailView.classRegion ?? "미기록"}</dd>
-                            </div>
-                            <div className={styles.infoCell}>
-                              <dt className={styles.summaryLabel}>선호 정규 일정</dt>
-                              <dd className={styles.summaryValue}>
-                                {detailView.normalizedPreferredRegularSchedule ?? "미기록"}
-                              </dd>
-                            </div>
-                            <div className={`${styles.infoCell} ${styles.infoCellWide}`}>
-                              <dt className={styles.summaryLabel}>학생 메모</dt>
-                              <dd className={styles.summaryValueMultiline}>{detailView.childNotes ?? "미기록"}</dd>
-                            </div>
-                            <div className={`${styles.infoCell} ${styles.infoCellWide}`}>
-                              <dt className={styles.summaryLabel}>학부모 메모</dt>
-                              <dd className={styles.summaryValueMultiline}>{detailView.parentMemo ?? "미기록"}</dd>
-                            </div>
-                            <div className={`${styles.infoCell} ${styles.infoCellWide}`}>
-                              <dt className={styles.summaryLabel}>상담 목표</dt>
-                              <dd className={styles.summaryValueMultiline}>
-                                {detailView.normalizedGoalNote ?? "미기록"}
-                              </dd>
-                            </div>
-                          </dl>
-                        </details>
-                      </section>
-
-                      <ApplicationAssigneeForm
-                        applicationId={data.id}
-                        currentAssignedTeacherId={data.assignedTeacherId}
-                        currentAssignedTeacherName={data.assignedTeacherName}
-                        options={assigneeOptionsResult.data}
-                        optionsError={assigneeOptionsResult.error}
-                        isReadOnly
-                      />
-                    </div>
-                  }
                 />
+
+                <details className={styles.completedInfoFold}>
+                  <summary className={styles.completedInfoSummary}>
+                    <div className={styles.completedInfoSummaryText}>
+                      <span className={styles.completedInfoTitle}>신청 정보</span>
+                      <span className={styles.completedInfoPreview}>
+                        {[
+                          detailView.parentPhone ?? "연락처 미기록",
+                          detailView.applicationDateLabel ? `${detailView.applicationDateLabel} 신청` : null,
+                          data.assignedTeacherName ? `체험 담당 ${data.assignedTeacherName}` : "체험 담당 미배정"
+                        ]
+                          .filter((value): value is string => Boolean(value))
+                          .join(" · ")}
+                      </span>
+                    </div>
+                    <span className={styles.completedInfoChevron} aria-hidden="true">
+                      ⌄
+                    </span>
+                  </summary>
+                  <dl className={styles.completedInfoGrid}>
+                    <div className={styles.completedInfoRow}>
+                      <dt className={styles.summaryLabel}>보호자 연락처</dt>
+                      <dd className={styles.summaryValueStrong}>{detailView.parentPhone ?? "미기록"}</dd>
+                    </div>
+                    <div className={styles.completedInfoRow}>
+                      <dt className={styles.summaryLabel}>{data.confirmedSlotAt ? "확정 일정" : "희망 일정"}</dt>
+                      <dd className={styles.summaryValue}>
+                        {formatDateWithWeekdayTime(data.confirmedSlotAt ?? data.requestedSlotAt) ??
+                          detailView.scheduleSummary.primary}
+                      </dd>
+                    </div>
+                    <div className={styles.completedInfoRow}>
+                      <dt className={styles.summaryLabel}>신청일</dt>
+                      <dd className={styles.summaryValue}>{detailView.applicationDateDetail}</dd>
+                    </div>
+                    <div className={styles.completedInfoRow}>
+                      <dt className={styles.summaryLabel}>신청 유형 / 과목</dt>
+                      <dd className={styles.summaryValue}>
+                        {detailView.programTypeLabel}
+                        {detailView.classSubject ? ` · ${detailView.classSubject}` : ""}
+                      </dd>
+                    </div>
+                    <div className={styles.completedInfoRow}>
+                      <dt className={styles.summaryLabel}>체험 담당</dt>
+                      <dd className={styles.summaryValue}>{data.assignedTeacherName ?? "미배정"}</dd>
+                    </div>
+                  </dl>
+                </details>
               </>
             ) : (
               <>

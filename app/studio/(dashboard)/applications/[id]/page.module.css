@@ -105,6 +105,18 @@
   flex-wrap: wrap;
 }
 
+.completedSummaryTop {
+  display: grid;
+  gap: 18px;
+}
+
+.completedSummaryHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+}
+
 .heroBody {
   display: grid;
   gap: 12px;
@@ -153,6 +165,12 @@
   flex-wrap: wrap;
   gap: 10px;
   justify-content: flex-end;
+}
+
+.completedBadgeWrap {
+  display: flex;
+  justify-content: flex-end;
+  flex-shrink: 0;
 }
 
 .actionButtonSecondary,
@@ -373,6 +391,84 @@
   margin: 0 auto;
   display: grid;
   gap: 18px;
+}
+
+.bodyCompleted {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.completedInfoFold {
+  border: 1px solid #e7eae7;
+  background: #ffffff;
+  border-radius: 14px;
+  box-shadow: 0 1px 0 rgba(24, 33, 24, 0.03);
+  overflow: hidden;
+}
+
+.completedInfoSummary {
+  list-style: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px 20px;
+  cursor: pointer;
+}
+
+.completedInfoSummary::-webkit-details-marker {
+  display: none;
+}
+
+.completedInfoSummaryText {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.completedInfoTitle {
+  font-size: 18px;
+  line-height: 24px;
+  font-weight: 900;
+  color: #182118;
+}
+
+.completedInfoPreview {
+  font-size: 14px;
+  line-height: 20px;
+  color: #5f6d5f;
+  font-weight: 700;
+}
+
+.completedInfoChevron {
+  color: #687668;
+  font-size: 18px;
+  line-height: 1;
+  transition: transform 0.2s ease;
+}
+
+.completedInfoFold[open] .completedInfoChevron {
+  transform: rotate(180deg);
+}
+
+.completedInfoGrid {
+  margin: 0;
+  display: grid;
+  gap: 0;
+  border-top: 1px solid #eef1ee;
+  padding: 0 20px 10px;
+}
+
+.completedInfoRow {
+  display: grid;
+  grid-template-columns: 140px minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+  padding: 14px 0;
+  border-top: 1px solid #f0f3f0;
+}
+
+.completedInfoRow:first-child {
+  border-top: 0;
 }
 
 .supportGrid {
@@ -649,6 +745,14 @@
     align-items: flex-start;
   }
 
+  .completedSummaryHeader {
+    flex-direction: column;
+  }
+
+  .completedBadgeWrap {
+    justify-content: flex-start;
+  }
+
   .supportGrid {
     grid-template-columns: 1fr;
   }
@@ -675,5 +779,18 @@
 
   .summaryActions {
     justify-content: flex-start;
+  }
+
+  .completedInfoSummary {
+    padding: 16px 18px;
+  }
+
+  .completedInfoGrid {
+    padding: 0 18px 8px;
+  }
+
+  .completedInfoRow {
+    grid-template-columns: 1fr;
+    gap: 6px;
   }
 }

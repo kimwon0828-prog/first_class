@@ -30,6 +30,71 @@
   color: #667366;
 }
 
+.sectionBlock {
+  display: grid;
+  gap: 10px;
+}
+
+.sectionIntro {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.sectionTitleRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sectionStatusDot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.sectionStatusDotSafe {
+  background: #2aad38;
+}
+
+.sectionStatusDotWarning {
+  background: #d97706;
+}
+
+.sectionOutsideTitle {
+  margin: 0;
+  font-size: 19px;
+  line-height: 26px;
+  font-weight: 900;
+  color: #182118;
+}
+
+.sectionOutsideDescription {
+  margin: 6px 0 0;
+  font-size: 13px;
+  line-height: 20px;
+  color: #6c796c;
+  font-weight: 700;
+}
+
+.inlineTextButton {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: #495849;
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.inlineTextButton:hover {
+  color: #1f2b1f;
+}
+
 .todoBody {
   display: grid;
   gap: 14px;
@@ -141,6 +206,59 @@
   color: #667366;
 }
 
+.desktopOnlyCta {
+  margin-top: 4px;
+}
+
+.metricStrip {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.metricCard {
+  display: grid;
+  gap: 8px;
+  padding: 16px;
+  border-radius: 14px;
+  border: 1px solid #e7eae7;
+  background: #ffffff;
+}
+
+.metricCardPositive {
+  background: #eef8f0;
+  border-color: #d7eadb;
+}
+
+.metricCardNegative {
+  background: #fff4ec;
+  border-color: #f2d4bc;
+}
+
+.metricHeader {
+  margin: 0;
+  font-size: 13px;
+  line-height: 18px;
+  color: #758275;
+  font-weight: 800;
+}
+
+.metricValue {
+  margin: 0;
+  font-size: 26px;
+  line-height: 30px;
+  color: #182118;
+  font-weight: 900;
+}
+
+.metricCaption {
+  margin: 0;
+  font-size: 13px;
+  line-height: 19px;
+  color: #5e6c5e;
+  font-weight: 700;
+}
+
 .resultRow {
   display: grid;
   gap: 8px;
@@ -240,6 +358,44 @@
 
 .emptyActionRow {
   margin-top: 14px;
+}
+
+.simpleEmptyLine {
+  margin: 0;
+  font-size: 15px;
+  line-height: 22px;
+  color: #5f6c5f;
+  font-weight: 700;
+}
+
+.completedResultStack {
+  display: grid;
+  gap: 14px;
+}
+
+.latestConsultationCard {
+  display: grid;
+  gap: 10px;
+}
+
+.latestConsultationMeta {
+  margin: 0;
+  font-size: 12px;
+  line-height: 18px;
+  color: #7a867a;
+  font-weight: 800;
+}
+
+.latestConsultationNote {
+  margin: 0;
+  font-size: 15px;
+  line-height: 24px;
+  color: #182118;
+  font-weight: 700;
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
 }
 
 .consultationSummaryCard {
@@ -397,6 +553,48 @@
   font-size: 12px;
   line-height: 16px;
   font-weight: 800;
+}
+
+.mobileActionBar {
+  position: fixed;
+  left: 16px;
+  right: 16px;
+  bottom: calc(env(safe-area-inset-bottom) + 12px);
+  z-index: 60;
+  display: none;
+  gap: 10px;
+  padding: 10px;
+  border-radius: 18px;
+  border: 1px solid rgba(223, 228, 223, 0.9);
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(18px);
+  box-shadow: 0 12px 28px rgba(17, 24, 17, 0.12);
+}
+
+.mobileActionButtonSecondary,
+.mobileActionButtonPrimary {
+  flex: 1;
+  min-height: 46px;
+  border-radius: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.mobileActionButtonSecondary {
+  border: 1px solid #d9e0d9;
+  background: #ffffff;
+  color: #314031;
+}
+
+.mobileActionButtonPrimary {
+  border: 0;
+  background: #2aad38;
+  color: #ffffff;
 }
 
 .dialogOverlay {
@@ -577,6 +775,42 @@
   }
 }
 
+@media (max-width: 900px) {
+  .metricStrip {
+    grid-template-columns: 1fr;
+  }
+
+  .metricCard {
+    grid-template-columns: 72px auto minmax(0, 1fr);
+    align-items: center;
+    gap: 0 12px;
+  }
+
+  .metricValue {
+    font-size: 19px;
+    line-height: 24px;
+  }
+
+  .metricHeader {
+    grid-row: auto;
+  }
+
+  .metricCaption {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .desktopOnlyCta {
+    display: none;
+  }
+
+  .mobileActionBar {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
 @media (max-width: 640px) {
   .card {
     padding: 18px;
@@ -603,5 +837,14 @@
   .primaryButton,
   .secondaryButton {
     width: 100%;
+  }
+
+  .sectionIntro {
+    gap: 8px;
+  }
+
+  .mobileActionBar {
+    left: 12px;
+    right: 12px;
   }
 }

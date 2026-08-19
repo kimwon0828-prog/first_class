@@ -11,7 +11,8 @@ import {
 import {
   CONSULTATION_CHANNEL_OPTIONS,
   CONSULTATION_SENTIMENT_OPTIONS,
-  getConsultationChannelLabel
+  getConsultationChannelLabel,
+  getConsultationSentimentLabel
 } from "@/features/studio/lib/consultation-log-options"
 import {
   formatSeoulDateTime
@@ -63,6 +64,8 @@ type NextActionState = {
   actionLabel?: string
   actionType?: "trial_result" | "consultation"
 }
+
+type CompletedSentimentTone = "positive" | "neutral" | "negative" | "default"
 
 const getCompletedNextActionState = (application: StudioApplicationDetail): NextActionState => {
   const hasConsultationHistory = application.consultationLogs.length > 0
@@ -170,6 +173,141 @@ const getConsultationMeta = (item: StudioConsultationLog) => {
   const channelLabel = getConsultationChannelLabel(item.channel)
 
   return [occurredAt, channelLabel].filter((value): value is string => Boolean(value)).join(" · ")
+}
+
+const formatMonthDay = (value: string | null | undefined) => {
+  if (!value) {
+    return null
+  }
+
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) {
+    return null
+  }
+
+  return `${date.getMonth() + 1}월 ${date.getDate()}일`
+}
+
+const getCompletedDaysSinceLabel = (value: string | null | undefined) => {
+  if (!value) {
+    return null
+  }
+
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) {
+    return null
+  }
+
+  const elapsed = Math.max(0, Math.floor((Date.now() - date.getTime()) / (1000 * 60 * 60 * 24)))
+  return `${elapsed}일`
+}
+
+const getCompletedTodoHeadingDescription = (application: StudioApplicationDetail) => {
+  if (application.registrationStatus === "enrolled" || application.registrationStatus === "not_enrolled") {
+    return null
+  }
+
+  if (application.nextContactAt && new Date(application.nextContactAt).getTime() <= Date.now()) {
+    return "늦어질수록 다른 학원으로 갈 가능성이 높아져요."
+  }
+
+  if (!application.nextContactAt) {
+    return "다시 연락할 날이 정해지지 않으면 그대로 잊혀져요."
+  }
+
+  return null
+}
+
+const getCompletedTodoCardCopy = (
+  application: StudioApplicationDetail,
+  hasConsultationHistory: boolean
+): { title: string; description: string | null } => {
+  if (!application.trialResult) {
+    return {
+      title: "체험 결과가 아직 기록되지 않았어요.",
+      description: "수업에서 관찰한 내용을 먼저 남기면 이후 상담 흐름을 이어갈 수 있어요."
+    }
+  }
+
+  if (application.registrationStatus === "enrolled") {
+    return {
+      title: "등록이 완료된 신청이에요.",
+      description: "후속 상담은 종료되었고, 현재 상태만 확인할 수 있어요."
+    }
+  }
+
+  if (application.registrationStatus === "not_enrolled") {
+    return {
+      title: "미등록으로 종료된 신청이에요.",
+      description: "추가 상담 대신 현재까지 기록만 확인해 주세요."
+    }
+  }
+
+  if (application.nextContactAt && new Date(application.nextContactAt).getTime() <= Date.now()) {
+    return {
+      title: "다시 연락할 시간이 지났어요.",
+      description: formatSeoulDateTime(application.nextContactAt)
+    }
+  }
+
+  if (!application.nextContactAt && !hasConsultationHistory) {
+    return {
+      title: "첫 상담 기록을 남겨 주세요.",
+      description: "체험 직후 반응을 남겨 두면 다음 연락 흐름을 이어서 관리할 수 있어요."
+    }
+  }
+
+  if (!application.nextContactAt) {
+    return {
+      title: "다음 연락 일정이 없어요.",
+      description: application.lastActivityAt
+        ? `${formatMonthDay(application.lastActivityAt) ?? "최근"} 상담 이후 후속 일정이 비어 있어요.`
+        : "다음 연락 일정을 정해 두면 후속 관리가 쉬워져요."
+    }
+  }
+
+  return {
+    title: "다음 연락이 예정되어 있어요.",
+    description: formatSeoulDateTime(application.nextContactAt)
+  }
+}
+
+const getCompletedSentimentMetric = (
+  sentiment: ConsultationSentiment | null | undefined
+): {
+  title: string
+  caption: string | null
+  tone: CompletedSentimentTone
+} => {
+  if (sentiment === "POSITIVE") {
+    return {
+      title: getConsultationSentimentLabel(sentiment) ?? "긍정적",
+      caption: "등록 의향이 보여요",
+      tone: "positive"
+    }
+  }
+
+  if (sentiment === "NEUTRAL") {
+    return {
+      title: getConsultationSentimentLabel(sentiment) ?? "보통",
+      caption: "판단하기 일러요",
+      tone: "neutral"
+    }
+  }
+
+  if (sentiment === "NEGATIVE") {
+    return {
+      title: getConsultationSentimentLabel(sentiment) ?? "부정적",
+      caption: "가능성이 낮아요",
+      tone: "negative"
+    }
+  }
+
+  return {
+    title: "기록 없음",
+    caption: null,
+    tone: "default"
+  }
 }
 
 export const ApplicationTrialResultWorkflow = ({
@@ -346,6 +484,7 @@ export const ApplicationTrialResultWorkflow = ({
   const shouldShowTrialResultSection = application.status === "completed" || hasTrialResult
   const shouldShowConsultationSection =
     application.status === "completed" || application.consultationLogs.length > 0
+  const isCompletedView = application.status === "completed"
   const canAddConsultation =
     application.status === "completed" &&
     application.registrationStatus !== "enrolled" &&
@@ -353,10 +492,48 @@ export const ApplicationTrialResultWorkflow = ({
   const registrationLabel = getTrialResultRegistrationLabel(application.registrationStatus)
   const unregisteredReasonLabel = getTrialResultUnregisteredReasonLabel(application.unregisteredReason)
   const nextActionState = getNextActionState(application)
-  const latestConsultationLog =
-    application.consultationLogs.find((item) => item.activityType === "CONSULTATION") ??
-    application.consultationLogs[0] ??
-    null
+  const consultationOnlyLogs = useMemo(
+    () => application.consultationLogs.filter((item) => item.activityType === "CONSULTATION"),
+    [application.consultationLogs]
+  )
+  const latestConsultationLog = consultationOnlyLogs[0] ?? null
+  const latestHistoryLog = application.consultationLogs[0] ?? null
+  const completedTodoHeadingDescription = getCompletedTodoHeadingDescription(application)
+  const completedTodoCard = getCompletedTodoCardCopy(application, consultationOnlyLogs.length > 0)
+  const isCompletedTodoWarning = Boolean(
+    application.registrationStatus !== "enrolled" &&
+      application.registrationStatus !== "not_enrolled" &&
+      ((!application.nextContactAt && hasTrialResult) ||
+        (application.nextContactAt && new Date(application.nextContactAt).getTime() <= Date.now()))
+  )
+  const consultationChannelSummary = useMemo(() => {
+    const labels = Array.from(
+      new Set(
+        consultationOnlyLogs
+          .map((item) => getConsultationChannelLabel(item.channel))
+          .filter((value): value is string => Boolean(value))
+      )
+    )
+    return labels.length > 0 ? labels.join(" · ") : null
+  }, [consultationOnlyLogs])
+  const completedDaysSinceLabel = getCompletedDaysSinceLabel(application.completedAt)
+  const completedDateLabel = formatMonthDay(application.completedAt)
+  const latestSentimentMetric = getCompletedSentimentMetric(latestConsultationLog?.sentiment)
+  const latestHistoryNote =
+    typeof latestHistoryLog?.note === "string" && latestHistoryLog.note.trim().length > 0
+      ? latestHistoryLog.note.trim()
+      : latestHistoryLog
+        ? "기록된 상담 내용이 없어요."
+        : null
+  const hasVisibleTrialResultContent = Boolean(
+    (application.trialResult?.observations.length ?? 0) > 0 ||
+      recommendationSummary ||
+      application.trialResult?.note?.trim()
+  )
+  const phoneHref =
+    typeof application.parentPhone === "string" && application.parentPhone.trim().length > 0
+      ? `tel:${application.parentPhone.trim()}`
+      : null
 
   const handleCompletedSaved = useCallback(() => {
     setIsPromptOpen(true)
@@ -364,185 +541,380 @@ export const ApplicationTrialResultWorkflow = ({
 
   return (
     <>
-      <section className={styles.card} aria-label="다음에 할 일">
-        <div className={styles.sectionHeading}>
-          <div>
-            <h2 className={styles.sectionTitle}>다음에 할 일</h2>
-            <p className={styles.sectionDescription}>
-              현재 파이프라인 상태를 기준으로 다음 액션을 안내합니다.
-            </p>
-          </div>
-        </div>
-
-        <div className={styles.todoBody}>
-          {application.status === "canceled" ? (
-            <div className={styles.todoNotice}>{nextActionState.title}</div>
-          ) : application.status === "completed" ? (
-            <div
-              className={`${styles.todoStatusCard} ${
-                nextActionState.tone === "warning"
-                  ? styles.todoStatusCardWarning
-                  : nextActionState.tone === "success"
-                    ? styles.todoStatusCardSuccess
-                    : ""
-              }`}
-            >
-              <p className={styles.todoStatusTitle}>{nextActionState.title}</p>
-              {nextActionState.description ? (
-                <p className={styles.todoStatusDescription}>{nextActionState.description}</p>
-              ) : null}
-              {nextActionState.actionType === "trial_result" ? (
-                <button type="button" className={styles.primaryButton} onClick={() => openEditor()}>
-                  {nextActionState.actionLabel}
-                </button>
-              ) : null}
-              {nextActionState.actionType === "consultation" && canAddConsultation ? (
-                <button type="button" className={styles.primaryButton} onClick={openConsultationEditor}>
-                  {nextActionState.actionLabel}
-                </button>
-              ) : null}
-            </div>
-          ) : (
-            <ApplicationStatusActionForm
-              applicationId={application.id}
-              currentStatus={application.status}
-              onCompletedSaved={handleCompletedSaved}
-            />
-          )}
-        </div>
-      </section>
-
-      {shouldShowTrialResultSection || shouldShowConsultationSection || sidebarContent ? (
-        <div className={styles.priorityGrid}>
-          <div className={styles.priorityContent}>
-            {shouldShowTrialResultSection ? (
-              <section className={styles.card} aria-label="체험 결과">
-                <div className={styles.sectionHeading}>
-                  <div>
-                    <h2 className={styles.sectionTitle}>체험 결과</h2>
-                    <p className={styles.sectionDescription}>
-                      수업 직후 관찰 내용과 추천, 등록 전환 상태를 간단히 기록해 이후 상담에 활용하세요.
-                    </p>
-                  </div>
-                  <button type="button" className={styles.ghostButton} onClick={() => openEditor()}>
-                    {hasTrialResult ? "보기/수정" : "결과 기록"}
-                  </button>
+      {isCompletedView ? (
+        <>
+          <section className={styles.sectionBlock} aria-label="지금 할 일">
+            <div className={styles.sectionIntro}>
+              <div>
+                <div className={styles.sectionTitleRow}>
+                  <span
+                    className={`${styles.sectionStatusDot} ${
+                      isCompletedTodoWarning ? styles.sectionStatusDotWarning : styles.sectionStatusDotSafe
+                    }`}
+                    aria-hidden="true"
+                  />
+                  <h2 className={styles.sectionOutsideTitle}>지금 할 일</h2>
                 </div>
+                {completedTodoHeadingDescription ? (
+                  <p className={styles.sectionOutsideDescription}>{completedTodoHeadingDescription}</p>
+                ) : null}
+              </div>
+            </div>
 
-                {hasTrialResult ? (
-                  <div className={styles.resultStack}>
-                    <ResultRow label="수업 관찰">
-                      <div className={styles.chipWrap}>
-                        {application.trialResult?.observations.length ? (
-                          application.trialResult.observations.map((item) => (
-                            <span key={item} className={styles.summaryChip}>
-                              {item}
-                            </span>
-                          ))
-                        ) : (
-                          <span className={styles.emptyInline}>기록 없음</span>
-                        )}
-                      </div>
-                    </ResultRow>
+            <section className={styles.card} aria-label="지금 할 일 카드">
+              <div
+                className={`${styles.todoStatusCard} ${
+                  isCompletedTodoWarning
+                    ? styles.todoStatusCardWarning
+                    : application.registrationStatus === "enrolled"
+                      ? styles.todoStatusCardSuccess
+                      : ""
+                }`}
+              >
+                <p className={styles.todoStatusTitle}>{completedTodoCard.title}</p>
+                {completedTodoCard.description ? (
+                  <p className={styles.todoStatusDescription}>{completedTodoCard.description}</p>
+                ) : null}
+                {hasTrialResult && canAddConsultation ? (
+                  <button
+                    type="button"
+                    className={`${styles.primaryButton} ${styles.desktopOnlyCta}`}
+                    onClick={openConsultationEditor}
+                  >
+                    상담 기록 추가
+                  </button>
+                ) : null}
+              </div>
+            </section>
+          </section>
 
-                    <ResultRow label="추천">
-                      <p className={styles.resultValue}>{recommendationSummary || "기록 없음"}</p>
-                    </ResultRow>
+          {consultationOnlyLogs.length > 0 ? (
+            <section className={styles.metricStrip} aria-label="상담 지표">
+              <article className={styles.metricCard}>
+                <div className={styles.metricHeader}>상담 횟수</div>
+                <div className={styles.metricValue}>{consultationOnlyLogs.length}</div>
+                <div className={styles.metricCaption}>{consultationChannelSummary ?? "방식 미기록"}</div>
+              </article>
+              <article className={styles.metricCard}>
+                <div className={styles.metricHeader}>체험 후</div>
+                <div className={styles.metricValue}>{completedDaysSinceLabel ?? "-"}</div>
+                <div className={styles.metricCaption}>
+                  {completedDateLabel ? `${completedDateLabel} 완료` : "완료일 미기록"}
+                </div>
+              </article>
+              <article
+                className={`${styles.metricCard} ${
+                  latestSentimentMetric.tone === "positive"
+                    ? styles.metricCardPositive
+                    : latestSentimentMetric.tone === "negative"
+                      ? styles.metricCardNegative
+                      : ""
+                }`}
+              >
+                <div className={styles.metricHeader}>학부모 반응</div>
+                <div className={styles.metricValue}>{latestSentimentMetric.title}</div>
+                {latestSentimentMetric.caption ? (
+                  <div className={styles.metricCaption}>{latestSentimentMetric.caption}</div>
+                ) : null}
+              </article>
+            </section>
+          ) : null}
 
-                    <ResultRow label="등록 전환">
-                      <p className={styles.resultValue}>{registrationLabel ?? "기록 없음"}</p>
-                    </ResultRow>
-
-                    {application.registrationStatus === "not_enrolled" ? (
-                      <ResultRow label="미등록 사유">
-                        <p className={styles.resultMemo}>
-                          {[
-                            unregisteredReasonLabel,
-                            application.unregisteredReason === "other"
-                              ? application.unregisteredReasonNote
-                              : null
-                          ]
-                            .filter((item): item is string => Boolean(item))
-                            .join(" · ") || "기록 없음"}
-                        </p>
-                      </ResultRow>
-                    ) : null}
-
-                    <ResultRow label="메모">
-                      <p className={styles.resultMemo}>{application.trialResult?.note ?? "기록 없음"}</p>
-                    </ResultRow>
+          {shouldShowConsultationSection ? (
+            <section className={styles.sectionBlock} aria-label="상담 이력">
+              <div className={styles.sectionIntro}>
+                <div>
+                  <div className={styles.sectionTitleRow}>
+                    <span className={`${styles.sectionStatusDot} ${styles.sectionStatusDotSafe}`} aria-hidden="true" />
+                    <h2 className={styles.sectionOutsideTitle}>상담 이력</h2>
                   </div>
+                  <p className={styles.sectionOutsideDescription}>전화 걸기 전에 지난 대화를 확인해 보세요.</p>
+                </div>
+                {application.consultationLogs.length > 0 ? (
+                  <button type="button" className={styles.inlineTextButton} onClick={openConsultationHistory}>
+                    {application.consultationLogs.length}건 전체 보기 →
+                  </button>
+                ) : null}
+              </div>
+
+              <section className={styles.card} aria-label="마지막 상담">
+                {application.consultationLogs.length === 0 ? (
+                  <p className={styles.simpleEmptyLine}>아직 상담 기록이 없어요.</p>
                 ) : (
-                  <div className={styles.emptyState}>
-                    <p className={styles.emptyTitle}>체험 결과가 아직 기록되지 않았습니다.</p>
-                    <p className={styles.emptyDescription}>
-                      체험 완료 직후 30초 정도면 핵심 내용만 바로 남길 수 있습니다.
+                  <div className={styles.latestConsultationCard}>
+                    <p className={styles.latestConsultationMeta}>
+                      {latestHistoryLog ? getConsultationMeta(latestHistoryLog) : "기록 없음"}
                     </p>
+                    {latestHistoryNote ? (
+                      <p className={styles.latestConsultationNote}>{latestHistoryNote}</p>
+                    ) : null}
                   </div>
                 )}
               </section>
-            ) : null}
+            </section>
+          ) : null}
 
-            {shouldShowConsultationSection ? (
-              <section className={styles.card} aria-label="상담 이력">
-                <div className={styles.sectionHeading}>
-                  <div>
-                    <h2 className={styles.sectionTitle}>상담 이력</h2>
-                    <p className={styles.sectionDescription}>
-                      학부모와 상담한 내용을 append-only로 누적해 확인합니다.
-                    </p>
+          {shouldShowTrialResultSection ? (
+            <section className={styles.sectionBlock} aria-label="체험 결과">
+              <div className={styles.sectionIntro}>
+                <div>
+                  <div className={styles.sectionTitleRow}>
+                    <span className={`${styles.sectionStatusDot} ${styles.sectionStatusDotSafe}`} aria-hidden="true" />
+                    <h2 className={styles.sectionOutsideTitle}>체험 결과</h2>
                   </div>
-                  {canAddConsultation && application.consultationLogs.length > 0 ? (
-                    <button type="button" className={styles.ghostButton} onClick={openConsultationEditor}>
-                      상담 기록 추가
+                  <p className={styles.sectionOutsideDescription}>수업에서 관찰한 내용이에요.</p>
+                </div>
+                {hasTrialResult ? (
+                  <button type="button" className={styles.inlineTextButton} onClick={() => openEditor()}>
+                    수정
+                  </button>
+                ) : null}
+              </div>
+
+              <section className={styles.card} aria-label="체험 결과 내용">
+                {hasTrialResult ? (
+                  hasVisibleTrialResultContent ? (
+                    <div className={styles.completedResultStack}>
+                      {application.trialResult?.observations.length ? (
+                        <div className={styles.chipWrap}>
+                          {application.trialResult.observations.map((item) => (
+                            <span key={item} className={styles.summaryChip}>
+                              {item}
+                            </span>
+                          ))}
+                        </div>
+                      ) : null}
+                      {recommendationSummary ? (
+                        <p className={styles.resultValue}>{recommendationSummary}</p>
+                      ) : null}
+                      {application.trialResult?.note?.trim() ? (
+                        <p className={styles.resultMemo}>{application.trialResult.note.trim()}</p>
+                      ) : null}
+                    </div>
+                  ) : (
+                    <p className={styles.simpleEmptyLine}>체험 결과가 아직 기록되지 않았어요.</p>
+                  )
+                ) : (
+                  <div className={styles.emptyState}>
+                    <p className={styles.emptyTitle}>체험 결과가 아직 기록되지 않았어요.</p>
+                    <div className={styles.emptyActionRow}>
+                      <button
+                        type="button"
+                        className={`${styles.primaryButton} ${styles.desktopOnlyCta}`}
+                        onClick={() => openEditor()}
+                      >
+                        결과 기록
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </section>
+            </section>
+          ) : null}
+
+          {(phoneHref || !hasTrialResult || canAddConsultation) && (
+            <div className={styles.mobileActionBar} aria-label="모바일 빠른 액션">
+              {phoneHref ? (
+                <a href={phoneHref} className={styles.mobileActionButtonSecondary}>
+                  전화 걸기
+                </a>
+              ) : null}
+              {!hasTrialResult ? (
+                <button type="button" className={styles.mobileActionButtonPrimary} onClick={() => openEditor()}>
+                  결과 기록
+                </button>
+              ) : null}
+              {hasTrialResult && canAddConsultation ? (
+                <button type="button" className={styles.mobileActionButtonPrimary} onClick={openConsultationEditor}>
+                  상담 기록 추가
+                </button>
+              ) : null}
+            </div>
+          )}
+        </>
+      ) : (
+        <>
+          <section className={styles.card} aria-label="다음에 할 일">
+            <div className={styles.sectionHeading}>
+              <div>
+                <h2 className={styles.sectionTitle}>다음에 할 일</h2>
+                <p className={styles.sectionDescription}>
+                  현재 파이프라인 상태를 기준으로 다음 액션을 안내합니다.
+                </p>
+              </div>
+            </div>
+
+            <div className={styles.todoBody}>
+              {application.status === "canceled" ? (
+                <div className={styles.todoNotice}>{nextActionState.title}</div>
+              ) : application.status === "completed" ? (
+                <div
+                  className={`${styles.todoStatusCard} ${
+                    nextActionState.tone === "warning"
+                      ? styles.todoStatusCardWarning
+                      : nextActionState.tone === "success"
+                        ? styles.todoStatusCardSuccess
+                        : ""
+                  }`}
+                >
+                  <p className={styles.todoStatusTitle}>{nextActionState.title}</p>
+                  {nextActionState.description ? (
+                    <p className={styles.todoStatusDescription}>{nextActionState.description}</p>
+                  ) : null}
+                  {nextActionState.actionType === "trial_result" ? (
+                    <button type="button" className={styles.primaryButton} onClick={() => openEditor()}>
+                      {nextActionState.actionLabel}
+                    </button>
+                  ) : null}
+                  {nextActionState.actionType === "consultation" && canAddConsultation ? (
+                    <button type="button" className={styles.primaryButton} onClick={openConsultationEditor}>
+                      {nextActionState.actionLabel}
                     </button>
                   ) : null}
                 </div>
+              ) : (
+                <ApplicationStatusActionForm
+                  applicationId={application.id}
+                  currentStatus={application.status}
+                  onCompletedSaved={handleCompletedSaved}
+                />
+              )}
+            </div>
+          </section>
 
-                {application.consultationLogs.length === 0 ? (
-                  <div className={styles.emptyState}>
-                    <p className={styles.emptyTitle}>아직 상담 기록이 없습니다.</p>
-                    {canAddConsultation ? (
-                      <div className={styles.emptyActionRow}>
-                        <button type="button" className={styles.primaryButton} onClick={openConsultationEditor}>
-                          상담 기록 추가
-                        </button>
+          {shouldShowTrialResultSection || shouldShowConsultationSection || sidebarContent ? (
+            <div className={styles.priorityGrid}>
+              <div className={styles.priorityContent}>
+                {shouldShowTrialResultSection ? (
+                  <section className={styles.card} aria-label="체험 결과">
+                    <div className={styles.sectionHeading}>
+                      <div>
+                        <h2 className={styles.sectionTitle}>체험 결과</h2>
+                        <p className={styles.sectionDescription}>
+                          수업 직후 관찰 내용과 추천, 등록 전환 상태를 간단히 기록해 이후 상담에 활용하세요.
+                        </p>
                       </div>
-                    ) : null}
-                  </div>
-                ) : (
-                  <div className={styles.consultationSummaryCard}>
-                    <div className={styles.consultationSummaryRow}>
-                      <span className={styles.consultationSummaryLabel}>총 상담 기록</span>
-                      <span className={styles.consultationSummaryValue}>
-                        총 {application.consultationLogs.length}건의 상담 기록
-                      </span>
-                    </div>
-                    <div className={styles.consultationSummaryRow}>
-                      <span className={styles.consultationSummaryLabel}>마지막 상담</span>
-                      <span className={styles.consultationSummaryValue}>
-                        {latestConsultationLog ? getConsultationMeta(latestConsultationLog) : "기록 없음"}
-                      </span>
-                    </div>
-                    <div className={styles.consultationSummaryActions}>
-                      <button type="button" className={styles.secondaryButton} onClick={openConsultationHistory}>
-                        상담 내역 보기
+                      <button type="button" className={styles.ghostButton} onClick={() => openEditor()}>
+                        {hasTrialResult ? "보기/수정" : "결과 기록"}
                       </button>
-                      {canAddConsultation ? (
-                        <button type="button" className={styles.primaryButton} onClick={openConsultationEditor}>
+                    </div>
+
+                    {hasTrialResult ? (
+                      <div className={styles.resultStack}>
+                        <ResultRow label="수업 관찰">
+                          <div className={styles.chipWrap}>
+                            {application.trialResult?.observations.length ? (
+                              application.trialResult.observations.map((item) => (
+                                <span key={item} className={styles.summaryChip}>
+                                  {item}
+                                </span>
+                              ))
+                            ) : (
+                              <span className={styles.emptyInline}>기록 없음</span>
+                            )}
+                          </div>
+                        </ResultRow>
+
+                        <ResultRow label="추천">
+                          <p className={styles.resultValue}>{recommendationSummary || "기록 없음"}</p>
+                        </ResultRow>
+
+                        <ResultRow label="등록 전환">
+                          <p className={styles.resultValue}>{registrationLabel ?? "기록 없음"}</p>
+                        </ResultRow>
+
+                        {application.registrationStatus === "not_enrolled" ? (
+                          <ResultRow label="미등록 사유">
+                            <p className={styles.resultMemo}>
+                              {[
+                                unregisteredReasonLabel,
+                                application.unregisteredReason === "other"
+                                  ? application.unregisteredReasonNote
+                                  : null
+                              ]
+                                .filter((item): item is string => Boolean(item))
+                                .join(" · ") || "기록 없음"}
+                            </p>
+                          </ResultRow>
+                        ) : null}
+
+                        <ResultRow label="메모">
+                          <p className={styles.resultMemo}>{application.trialResult?.note ?? "기록 없음"}</p>
+                        </ResultRow>
+                      </div>
+                    ) : (
+                      <div className={styles.emptyState}>
+                        <p className={styles.emptyTitle}>체험 결과가 아직 기록되지 않았습니다.</p>
+                        <p className={styles.emptyDescription}>
+                          체험 완료 직후 30초 정도면 핵심 내용만 바로 남길 수 있습니다.
+                        </p>
+                      </div>
+                    )}
+                  </section>
+                ) : null}
+
+                {shouldShowConsultationSection ? (
+                  <section className={styles.card} aria-label="상담 이력">
+                    <div className={styles.sectionHeading}>
+                      <div>
+                        <h2 className={styles.sectionTitle}>상담 이력</h2>
+                        <p className={styles.sectionDescription}>
+                          학부모와 상담한 내용을 append-only로 누적해 확인합니다.
+                        </p>
+                      </div>
+                      {canAddConsultation && application.consultationLogs.length > 0 ? (
+                        <button type="button" className={styles.ghostButton} onClick={openConsultationEditor}>
                           상담 기록 추가
                         </button>
                       ) : null}
                     </div>
-                  </div>
-                )}
-              </section>
-            ) : null}
-          </div>
 
-          {sidebarContent ? <div className={styles.prioritySidebar}>{sidebarContent}</div> : null}
-        </div>
-      ) : null}
+                    {application.consultationLogs.length === 0 ? (
+                      <div className={styles.emptyState}>
+                        <p className={styles.emptyTitle}>아직 상담 기록이 없습니다.</p>
+                        {canAddConsultation ? (
+                          <div className={styles.emptyActionRow}>
+                            <button type="button" className={styles.primaryButton} onClick={openConsultationEditor}>
+                              상담 기록 추가
+                            </button>
+                          </div>
+                        ) : null}
+                      </div>
+                    ) : (
+                      <div className={styles.consultationSummaryCard}>
+                        <div className={styles.consultationSummaryRow}>
+                          <span className={styles.consultationSummaryLabel}>총 상담 기록</span>
+                          <span className={styles.consultationSummaryValue}>
+                            총 {application.consultationLogs.length}건의 상담 기록
+                          </span>
+                        </div>
+                        <div className={styles.consultationSummaryRow}>
+                          <span className={styles.consultationSummaryLabel}>마지막 상담</span>
+                          <span className={styles.consultationSummaryValue}>
+                            {latestConsultationLog ? getConsultationMeta(latestConsultationLog) : "기록 없음"}
+                          </span>
+                        </div>
+                        <div className={styles.consultationSummaryActions}>
+                          <button type="button" className={styles.secondaryButton} onClick={openConsultationHistory}>
+                            상담 내역 보기
+                          </button>
+                          {canAddConsultation ? (
+                            <button type="button" className={styles.primaryButton} onClick={openConsultationEditor}>
+                              상담 기록 추가
+                            </button>
+                          ) : null}
+                        </div>
+                      </div>
+                    )}
+                  </section>
+                ) : null}
+              </div>
+
+              {sidebarContent ? <div className={styles.prioritySidebar}>{sidebarContent}</div> : null}
+            </div>
+          ) : null}
+        </>
+      )}
 
       {isPromptOpen ? (
         <div className={styles.dialogOverlay} role="presentation">
