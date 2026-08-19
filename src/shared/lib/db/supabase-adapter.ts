@@ -11,6 +11,12 @@ import type {
   ApplicationLogEntry,
   ClassAssignmentMode,
   ApplicationRegistrationStatus,
+  ConsultationLogActivityType,
+  ConsultationLogChannel,
+  ConsultationLogNextAction,
+  ConsultationSentiment,
+  CreateStudioConsultationLogInput,
+  UpdateStudioConsultationLogInput,
   ApplicationUnregisteredReason,
   AvailableScheduleSlot,
   BulkCreateClassSchedulesInput,
@@ -37,6 +43,7 @@ import type {
   StudioScheduleCalendarDay,
   StudioScheduleCalendarItem,
   StudioScheduleBlockSummary,
+  StudioConsultationLog,
   StudioScheduleBlockType,
   StudioClassScheduleType,
   StudioDashboardTeacherFilterOption,
@@ -51,6 +58,8 @@ import type {
   StudioTrialResult,
   UpdateChildProfileInput,
   UpdateStudioApplicationAssigneeInput,
+  UpdateStudioApplicationConsultationSnapshotInput,
+  UpdateStudioApplicationLatestConsultationSnapshotInput,
   UpdateStudioApplicationOutcomeInput,
   UpdateStudioApplicationStatusInput
 } from "@/shared/lib/db/adapter"
@@ -178,6 +187,8 @@ type TrialApplicationRow = {
   unregistered_reason_note?: string | null
   lost_at?: string | null
   follow_up_note?: string | null
+  next_contact_at?: string | null
+  last_activity_at?: string | null
   memo?: string | null
   status: TrialApplicationSummary["status"]
   created_at: string
@@ -222,6 +233,22 @@ type TrialResultRow = {
   created_by: string | null
   created_at: string
   updated_at: string
+}
+
+type ConsultationLogRow = {
+  id: string
+  application_id: string
+  occurred_at: string
+  activity_type: string
+  channel: string | null
+  sentiment: string | null
+  registration_status_snapshot: string | null
+  next_action: string | null
+  next_contact_at: string | null
+  note: string | null
+  created_by: string | null
+  created_at: string
+  updated_at: string | null
 }
 
 type ScheduleBlockRow = {
@@ -689,6 +716,51 @@ const mapStudioTrialResult = (row: TrialResultRow): StudioTrialResult => ({
   createdBy: row.created_by ?? null,
   createdAt: row.created_at,
   updatedAt: row.updated_at
+})
+
+const mapStudioConsultationLog = (row: ConsultationLogRow): StudioConsultationLog => ({
+  id: row.id,
+  applicationId: row.application_id,
+  occurredAt: row.occurred_at,
+  activityType:
+    row.activity_type === "CONSULTATION" ||
+    row.activity_type === "LEGACY_IMPORT" ||
+    row.activity_type === "CALL_ATTEMPT"
+      ? (row.activity_type as ConsultationLogActivityType)
+      : "CONSULTATION",
+  channel:
+    row.channel === "PHONE" ||
+    row.channel === "KAKAO" ||
+    row.channel === "SMS" ||
+    row.channel === "VISIT" ||
+    row.channel === "OTHER"
+      ? (row.channel as ConsultationLogChannel)
+      : null,
+  sentiment:
+    row.sentiment === "POSITIVE" ||
+    row.sentiment === "NEUTRAL" ||
+    row.sentiment === "NEGATIVE"
+      ? (row.sentiment as ConsultationSentiment)
+      : null,
+  registrationStatusSnapshot:
+    row.registration_status_snapshot === "undecided" ||
+    row.registration_status_snapshot === "pending" ||
+    row.registration_status_snapshot === "enrolled" ||
+    row.registration_status_snapshot === "not_enrolled"
+      ? (row.registration_status_snapshot as ApplicationRegistrationStatus)
+      : null,
+  nextAction:
+    row.next_action === "REGISTER" ||
+    row.next_action === "LOST" ||
+    row.next_action === "FOLLOW_UP" ||
+    row.next_action === "NONE"
+      ? (row.next_action as ConsultationLogNextAction)
+      : null,
+  nextContactAt: row.next_contact_at ?? null,
+  note: row.note?.trim() ? row.note.trim() : null,
+  createdBy: row.created_by ?? null,
+  createdAt: row.created_at,
+  updatedAt: row.updated_at ?? row.created_at
 })
 
 const mapAvailableSlot = (row: ScheduleBlockRow): AvailableScheduleSlot => ({
@@ -3934,7 +4006,7 @@ export const supabaseDataAdapter: DataAdapter = {
     const { data, error } = await supabase
       .from("trial_applications")
       .select(
-        "id, class_id, parent_id, child_name, child_grade, parent_name, parent_phone, child_school, child_notes, subject_experience_yn, subject_experience_duration, current_level, preferred_regular_schedule, goal_type, goal_note, class_schedule_id, requested_slot_at, requested_schedule_block_id, selected_schedule_label, confirmed_slot_at, confirmed_schedule_block_id, assigned_teacher_id, contacted_at, scheduled_at, completed_at, enrolled_at, canceled_at, no_show_at, consultation_note, trial_feedback, final_level, final_schedule, registration_status, registered_course, unregistered_reason, unregistered_reason_note, lost_at, follow_up_note, memo, status, created_at, updated_at, classes!inner(title, subject, region, organization_id, program_type, assignment_mode)"
+        "id, class_id, parent_id, child_name, child_grade, parent_name, parent_phone, child_school, child_notes, subject_experience_yn, subject_experience_duration, current_level, preferred_regular_schedule, goal_type, goal_note, class_schedule_id, requested_slot_at, requested_schedule_block_id, selected_schedule_label, confirmed_slot_at, confirmed_schedule_block_id, assigned_teacher_id, contacted_at, scheduled_at, completed_at, enrolled_at, canceled_at, no_show_at, consultation_note, trial_feedback, final_level, final_schedule, registration_status, registered_course, unregistered_reason, unregistered_reason_note, lost_at, follow_up_note, next_contact_at, last_activity_at, memo, status, created_at, updated_at, classes!inner(title, subject, region, organization_id, program_type, assignment_mode)"
       )
       .eq("id", applicationId)
       .eq("classes.organization_id", organizationId)
@@ -3980,6 +4052,18 @@ export const supabaseDataAdapter: DataAdapter = {
       throw new Error("failed_to_fetch_trial_result")
     }
 
+    const { data: consultationLogData, error: consultationLogError } = await supabase
+      .from("consultation_logs")
+      .select(
+        "id, application_id, occurred_at, activity_type, channel, sentiment, registration_status_snapshot, next_action, next_contact_at, note, created_by, created_at, updated_at"
+      )
+      .eq("application_id", applicationId)
+      .order("occurred_at", { ascending: false })
+
+    if (consultationLogError) {
+      throw new Error("failed_to_fetch_consultation_logs")
+    }
+
     const detail: StudioApplicationDetail = {
       ...mapStudioApplication(data as TrialApplicationRow, teacherNameById),
       confirmedScheduleBlockId: (data as TrialApplicationRow).confirmed_schedule_block_id ?? null,
@@ -4003,8 +4087,11 @@ export const supabaseDataAdapter: DataAdapter = {
         (data as TrialApplicationRow).unregistered_reason_note ?? null,
       lostAt: (data as TrialApplicationRow).lost_at ?? null,
       followUpNote: (data as TrialApplicationRow).follow_up_note ?? null,
+      nextContactAt: (data as TrialApplicationRow).next_contact_at ?? null,
+      lastActivityAt: (data as TrialApplicationRow).last_activity_at ?? null,
       memo: (data as TrialApplicationRow).memo ?? null,
       trialResult: trialResultData ? mapStudioTrialResult(trialResultData as TrialResultRow) : null,
+      consultationLogs: ((consultationLogData ?? []) as ConsultationLogRow[]).map(mapStudioConsultationLog),
       logs: logRows.map((row) => mapApplicationLog(row, actorNameById))
     }
 
@@ -4375,6 +4462,116 @@ export const supabaseDataAdapter: DataAdapter = {
           actorId: input.actorId
         })
       )
+    }
+  },
+  async updateStudioApplicationConsultationSnapshot(
+    input: UpdateStudioApplicationConsultationSnapshotInput
+  ) {
+    const supabase = await getSupabaseServerClient()
+    const { data, error } = await supabase
+      .from("trial_applications")
+      .update({
+        next_contact_at: input.nextContactAt,
+        last_activity_at: input.lastActivityAt,
+        updated_at: input.lastActivityAt
+      })
+      .eq("id", input.applicationId)
+      .eq("status", input.currentStatus)
+      .select("id")
+      .maybeSingle()
+
+    if (error) {
+      throw new Error("failed_to_update_application_consultation_snapshot")
+    }
+
+    if (!data) {
+      throw new Error("application_consultation_snapshot_conflict")
+    }
+  },
+  async updateStudioApplicationLatestConsultationSnapshot(
+    input: UpdateStudioApplicationLatestConsultationSnapshotInput
+  ) {
+    const supabase = await getSupabaseServerClient()
+    const { data, error } = await supabase
+      .from("trial_applications")
+      .update({
+        next_contact_at: input.nextContactAt
+      })
+      .eq("id", input.applicationId)
+      .eq("status", input.currentStatus)
+      .select("id")
+      .maybeSingle()
+
+    if (error) {
+      throw new Error("failed_to_update_application_latest_consultation_snapshot")
+    }
+
+    if (!data) {
+      throw new Error("application_consultation_snapshot_conflict")
+    }
+  },
+  async createStudioConsultationLog(input: CreateStudioConsultationLogInput) {
+    const supabase = await getSupabaseServerClient()
+    const { data, error } = await supabase
+      .from("consultation_logs")
+      .insert({
+        id: input.id,
+        application_id: input.applicationId,
+        occurred_at: input.occurredAt,
+        activity_type: input.activityType,
+        channel: input.channel,
+        sentiment: input.sentiment,
+        registration_status_snapshot: input.registrationStatusSnapshot,
+        next_action: input.nextAction,
+        next_contact_at: input.nextContactAt,
+        note: input.note,
+        created_by: input.actorId
+      })
+      .select("id")
+      .maybeSingle()
+
+    if (error?.code === "23505") {
+      const { data: existing, error: existingError } = await supabase
+        .from("consultation_logs")
+        .select("id, application_id")
+        .eq("id", input.id)
+        .maybeSingle()
+
+      if (existingError || !existing || existing.application_id !== input.applicationId) {
+        throw new Error("failed_to_create_consultation_log")
+      }
+
+      return "duplicate"
+    }
+
+    if (error || !data) {
+      throw new Error("failed_to_create_consultation_log")
+    }
+
+    return "created"
+  },
+  async updateStudioConsultationLog(input: UpdateStudioConsultationLogInput) {
+    const supabase = await getSupabaseServerClient()
+    const { data, error } = await supabase
+      .from("consultation_logs")
+      .update({
+        channel: input.channel,
+        sentiment: input.sentiment,
+        next_contact_at: input.nextContactAt,
+        note: input.note
+      })
+      .eq("id", input.consultationLogId)
+      .eq("application_id", input.applicationId)
+      .eq("activity_type", "CONSULTATION")
+      .select("id")
+      .maybeSingle()
+
+    if (error) {
+      throw new Error("failed_to_update_consultation_log")
+    }
+
+    if (!data) {
+      throw new Error("consultation_log_update_conflict")
     }
   },
   async upsertStudioTrialResult(input: UpsertStudioTrialResultInput) {

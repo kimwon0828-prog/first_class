@@ -29,6 +29,30 @@ export type ApplicationUnregisteredReason =
   | "class_level_mismatch"
   | "other"
 
+export type ConsultationLogActivityType = "CONSULTATION" | "LEGACY_IMPORT" | "CALL_ATTEMPT"
+
+export type ConsultationLogChannel = "PHONE" | "KAKAO" | "SMS" | "VISIT" | "OTHER"
+
+export type ConsultationSentiment = "POSITIVE" | "NEUTRAL" | "NEGATIVE"
+
+export type ConsultationLogNextAction = "REGISTER" | "LOST" | "FOLLOW_UP" | "NONE"
+
+export type StudioConsultationLog = {
+  id: string
+  applicationId: string
+  occurredAt: string
+  activityType: ConsultationLogActivityType
+  channel: ConsultationLogChannel | null
+  sentiment: ConsultationSentiment | null
+  registrationStatusSnapshot: ApplicationRegistrationStatus | null
+  nextAction: ConsultationLogNextAction | null
+  nextContactAt: string | null
+  note: string | null
+  createdBy: string | null
+  createdAt: string
+  updatedAt: string
+}
+
 export type TeacherPublicProfile = {
   teacherId: string
   teacherName: string | null
@@ -591,8 +615,11 @@ export type StudioApplicationDetail = StudioApplicationSummary & {
   unregisteredReasonNote: string | null
   lostAt: string | null
   followUpNote: string | null
+  nextContactAt: string | null
+  lastActivityAt: string | null
   memo: string | null
   trialResult: StudioTrialResult | null
+  consultationLogs: StudioConsultationLog[]
   logs: ApplicationLogEntry[]
 }
 
@@ -657,6 +684,43 @@ export type UpsertStudioTrialResultInput = {
   recommendedSchedule: string | null
   nextAction: StudioTrialResultNextAction | null
   note: string | null
+}
+
+export type UpdateStudioApplicationConsultationSnapshotInput = {
+  applicationId: string
+  currentStatus: ApplicationStatus
+  nextContactAt: string | null
+  lastActivityAt: string
+}
+
+export type CreateStudioConsultationLogInput = {
+  id: string
+  applicationId: string
+  actorId: string
+  occurredAt: string
+  activityType: ConsultationLogActivityType
+  channel: ConsultationLogChannel | null
+  sentiment: ConsultationSentiment | null
+  registrationStatusSnapshot: ApplicationRegistrationStatus | null
+  nextAction: ConsultationLogNextAction | null
+  nextContactAt: string | null
+  note: string | null
+}
+
+export type UpdateStudioConsultationLogInput = {
+  applicationId: string
+  consultationLogId: string
+  actorId: string
+  channel: ConsultationLogChannel
+  sentiment: ConsultationSentiment
+  nextContactAt: string | null
+  note: string
+}
+
+export type UpdateStudioApplicationLatestConsultationSnapshotInput = {
+  applicationId: string
+  currentStatus: ApplicationStatus
+  nextContactAt: string | null
 }
 
 export type UpdateStudioApplicationAssigneeInput = {
@@ -765,6 +829,14 @@ export interface DataAdapter {
   updateStudioApplicationAssignee(input: UpdateStudioApplicationAssigneeInput): Promise<void>
   updateStudioApplicationStatus(input: UpdateStudioApplicationStatusInput): Promise<void>
   updateStudioApplicationOutcome(input: UpdateStudioApplicationOutcomeInput): Promise<void>
+  updateStudioApplicationConsultationSnapshot(
+    input: UpdateStudioApplicationConsultationSnapshotInput
+  ): Promise<void>
+  updateStudioApplicationLatestConsultationSnapshot(
+    input: UpdateStudioApplicationLatestConsultationSnapshotInput
+  ): Promise<void>
+  createStudioConsultationLog(input: CreateStudioConsultationLogInput): Promise<"created" | "duplicate">
+  updateStudioConsultationLog(input: UpdateStudioConsultationLogInput): Promise<void>
   upsertStudioTrialResult(input: UpsertStudioTrialResultInput): Promise<"created" | "updated">
   createTrialApplication(
     input: TrialApplicationInput

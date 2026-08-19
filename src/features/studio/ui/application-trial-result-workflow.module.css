@@ -97,8 +97,48 @@
   align-items: start;
 }
 
+.priorityContent {
+  display: grid;
+  gap: 18px;
+  min-width: 0;
+}
+
 .prioritySidebar {
   min-width: 0;
+}
+
+.todoStatusCard {
+  display: grid;
+  gap: 10px;
+  padding: 16px;
+  border-radius: 14px;
+  border: 1px solid #e7eae7;
+  background: #fafcfa;
+}
+
+.todoStatusCardWarning {
+  border-color: #f1d6a8;
+  background: #fff9f0;
+}
+
+.todoStatusCardSuccess {
+  border-color: #cfe9d2;
+  background: #eef9f0;
+}
+
+.todoStatusTitle {
+  margin: 0;
+  font-size: 16px;
+  line-height: 24px;
+  font-weight: 900;
+  color: #182118;
+}
+
+.todoStatusDescription {
+  margin: 0;
+  font-size: 14px;
+  line-height: 22px;
+  color: #667366;
 }
 
 .resultRow {
@@ -196,6 +236,167 @@
   font-size: 14px;
   line-height: 22px;
   color: #667366;
+}
+
+.emptyActionRow {
+  margin-top: 14px;
+}
+
+.consultationSummaryCard {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  border-radius: 14px;
+  border: 1px solid #e7eae7;
+  background: #fafcfa;
+}
+
+.consultationSummaryRow {
+  display: grid;
+  gap: 4px;
+}
+
+.consultationSummaryLabel {
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 800;
+  color: #7a867a;
+}
+
+.consultationSummaryValue {
+  font-size: 14px;
+  line-height: 22px;
+  font-weight: 700;
+  color: #182118;
+}
+
+.consultationSummaryActions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding-top: 4px;
+}
+
+.consultationList {
+  display: grid;
+  gap: 12px;
+}
+
+.consultationItem {
+  display: grid;
+  gap: 10px;
+  padding: 16px;
+  border-radius: 14px;
+  border: 1px solid #e7eae7;
+  background: #fafcfa;
+}
+
+.consultationItemLegacy {
+  background: #f7f8f7;
+}
+
+.consultationMeta {
+  margin: 0;
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 800;
+  color: #7a867a;
+}
+
+.consultationNote {
+  margin: 0;
+  font-size: 14px;
+  line-height: 22px;
+  color: #182118;
+  font-weight: 700;
+  white-space: pre-wrap;
+}
+
+.consultationNextContact {
+  display: grid;
+  gap: 4px;
+  padding-top: 2px;
+}
+
+.consultationNextContactLabel {
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 800;
+  color: #7a867a;
+}
+
+.consultationNextContactValue {
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 700;
+  color: #182118;
+}
+
+.consultationHistoryList {
+  display: grid;
+  gap: 10px;
+}
+
+.consultationHistoryItem {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border-radius: 14px;
+  border: 1px solid #e7eae7;
+  background: #fafcfa;
+}
+
+.consultationHistoryItemLegacy {
+  background: #f7f8f7;
+}
+
+.consultationHistoryHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.consultationHistoryMeta {
+  margin: 0;
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 800;
+  color: #7a867a;
+}
+
+.consultationHistoryEditedBadge {
+  display: inline-flex;
+  margin-top: 4px;
+  border-radius: 999px;
+  padding: 4px 8px;
+  background: #eef2ee;
+  color: #5f6b5f;
+  font-size: 11px;
+  line-height: 16px;
+  font-weight: 800;
+}
+
+.consultationHistoryNote {
+  margin: 0;
+  font-size: 14px;
+  line-height: 21px;
+  font-weight: 700;
+  color: #182118;
+  white-space: pre-wrap;
+}
+
+.consultationSentimentBadge {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  border-radius: 999px;
+  padding: 4px 10px;
+  background: #f2f5f2;
+  color: #556355;
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 800;
 }
 
 .dialogOverlay {
@@ -336,6 +537,13 @@
   line-height: 18px;
   font-weight: 800;
   color: #475647;
+}
+
+.fieldHelp {
+  margin: 0;
+  font-size: 12px;
+  line-height: 18px;
+  color: #758275;
 }
 
 .input,

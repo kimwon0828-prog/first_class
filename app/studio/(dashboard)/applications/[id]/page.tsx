@@ -11,10 +11,8 @@ import { requireTeacherStudioAccess } from "@/features/studio/lib/require-teache
 import { getStudioApplicationAssigneeOptions } from "@/features/studio/queries/get-studio-application-assignee-options"
 import { getStudioApplicationDetail } from "@/features/studio/queries/get-studio-application-detail"
 import { ApplicationAssigneeForm } from "@/features/studio/ui/application-assignee-form"
-import { ApplicationOutcomeForm } from "@/features/studio/ui/application-outcome-form"
 import { ApplicationTrialResultWorkflow } from "@/features/studio/ui/application-trial-result-workflow"
 import type {
-  ApplicationRegistrationStatus,
   ApplicationStatus,
   StudioApplicationSummary
 } from "@/shared/lib/db/adapter"
@@ -136,40 +134,6 @@ const getStatusBadge = (application: Pick<StudioApplicationSummary, "status" | "
   return { label: STUDIO_APPLICATION_STATUS_LABELS.canceled, tone: "dangerSoft" as const }
 }
 
-const getNextActionDescription = (
-  status: ApplicationStatus,
-  registrationStatus: ApplicationRegistrationStatus,
-  statusLabel: string
-) => {
-  if (status === "new" || status === "reviewing") {
-    return "담당 선생님과 일정을 확인한 뒤 수업 확정으로 넘겨 주세요."
-  }
-
-  if (status === "confirmed") {
-    return "체험 진행이 끝나면 체험 완료 처리하거나, 노쇼/일정 변경 여부를 정리해 주세요."
-  }
-
-  if (status === "completed") {
-    if (registrationStatus === "pending") {
-      return "등록 여부 확인이 필요해요. 현재 등록 상태는 고민 중입니다."
-    }
-
-    if (registrationStatus === "enrolled") {
-      return "등록이 완료되었습니다."
-    }
-
-    if (registrationStatus === "not_enrolled") {
-      return "미등록으로 종료되었습니다."
-    }
-
-    return "등록 여부를 확인해 주세요."
-  }
-
-  return statusLabel === "노쇼"
-    ? "노쇼로 종료된 신청입니다. 필요한 메모만 정리해 주세요."
-    : "종료된 신청입니다. 이력과 메모만 확인할 수 있습니다."
-}
-
 const TIMELINE_STEPS = [
   { key: "new", label: "신청", fallbackLabel: "신규 신청" },
   { key: "confirmed", label: "수업 확정", fallbackLabel: "수업 확정" },
@@ -259,11 +223,6 @@ export default async function StudioApplicationDetailPage({ params }: StudioAppl
             : data.classProgramType === "level_test"
               ? "레벨테스트"
               : "수업 정보 미연결")
-        const nextActionDescription = getNextActionDescription(
-          data.status,
-          data.registrationStatus,
-          statusLabel
-        )
         const phoneHref = parentPhone ? `tel:${parentPhone}` : null
         const smsHref = parentPhone ? `sms:${parentPhone}` : null
         const timelineDateByStep: Record<(typeof TIMELINE_STEPS)[number]["key"], string | null> = {
@@ -312,7 +271,6 @@ export default async function StudioApplicationDetailPage({ params }: StudioAppl
           normalizedPreferredRegularSchedule,
           normalizedGoalNote,
           classTitle,
-          nextActionDescription,
           phoneHref,
           smsHref,
           timelineDateByStep,
@@ -457,7 +415,6 @@ export default async function StudioApplicationDetailPage({ params }: StudioAppl
               <>
                 <ApplicationTrialResultWorkflow
                   application={data}
-                  nextActionDescription={detailView.nextActionDescription}
                   sidebarContent={
                     <div className={styles.sideStack}>
                       <section className={styles.card} aria-label="신청 정보">
@@ -555,7 +512,6 @@ export default async function StudioApplicationDetailPage({ params }: StudioAppl
               <>
                 <ApplicationTrialResultWorkflow
                   application={data}
-                  nextActionDescription={detailView.nextActionDescription}
                 />
 
                 <div className={styles.supportGrid}>
@@ -646,8 +602,6 @@ export default async function StudioApplicationDetailPage({ params }: StudioAppl
                     optionsError={assigneeOptionsResult.error}
                   />
                 </div>
-
-                <ApplicationOutcomeForm item={data} formId="application-outcome-form" />
               </>
             )}
           </div>

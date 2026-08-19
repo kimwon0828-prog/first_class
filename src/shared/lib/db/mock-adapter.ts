@@ -9,6 +9,8 @@ import type {
   BulkCreateClassSchedulesResult,
   ChildProfile,
   ChildProfileInput,
+  CreateStudioConsultationLogInput,
+  UpdateStudioConsultationLogInput,
   CreateStudioTeacherInput,
   CreateStudioClassScheduleInput,
   DeactivateStudioTeacherInput,
@@ -19,6 +21,7 @@ import type {
   MyDashboardData,
   StudioApplicationDetail,
   StudioApplicationListOptions,
+  StudioConsultationLog,
   StudioTrialResult,
   StudioApplicationSummary,
   StudioClassListItem,
@@ -41,6 +44,8 @@ import type {
   TrialApplicationSummary,
   UpsertStudioTrialResultInput,
   UpdateStudioApplicationAssigneeInput,
+  UpdateStudioApplicationConsultationSnapshotInput,
+  UpdateStudioApplicationLatestConsultationSnapshotInput,
   UpdateStudioApplicationOutcomeInput,
   UpdateStudioApplicationStatusInput,
   UpdateStudioClassScheduleInput
@@ -154,6 +159,7 @@ type GlobalMockStore = typeof globalThis & {
   __firstClassMockScheduleBlocks__?: MockScheduleBlock[]
   __firstClassMockApplications__?: MockApplicationRecord[]
   __firstClassMockApplicationLogs__?: ApplicationLogEntry[]
+  __firstClassMockConsultationLogs__?: StudioConsultationLog[]
   __firstClassMockTrialResults__?: StudioTrialResult[]
   __firstClassMockChildren__?: ChildProfile[]
   __firstClassMockTeacherSignupRequests__?: TeacherSignupRequest[]
@@ -294,6 +300,9 @@ const applications =
 const applicationLogs =
   globalMockStore.__firstClassMockApplicationLogs__ ??
   (globalMockStore.__firstClassMockApplicationLogs__ = [])
+const consultationLogs =
+  globalMockStore.__firstClassMockConsultationLogs__ ??
+  (globalMockStore.__firstClassMockConsultationLogs__ = [])
 const trialResults =
   globalMockStore.__firstClassMockTrialResults__ ??
   (globalMockStore.__firstClassMockTrialResults__ = [])
@@ -1650,6 +1659,15 @@ export const mockDataAdapter: DataAdapter = {
     const logs = applicationLogs
       .filter((item) => item.applicationId === applicationId)
       .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))
+    const itemConsultationLogs = consultationLogs
+      .filter((item) => item.applicationId === applicationId)
+      .map((item) => ({
+        ...item,
+        sentiment: item.sentiment ?? null,
+        registrationStatusSnapshot: item.registrationStatusSnapshot ?? null,
+        updatedAt: item.updatedAt ?? item.createdAt
+      }))
+      .sort((a, b) => (a.occurredAt < b.occurredAt ? 1 : -1))
     const trialResult = trialResults.find((item) => item.applicationId === applicationId) ?? null
 
     const detail: StudioApplicationDetail = {
@@ -1690,8 +1708,11 @@ export const mockDataAdapter: DataAdapter = {
       unregisteredReason:
         "unregisteredReason" in application ? application.unregisteredReason ?? null : null,
       followUpNote: "followUpNote" in application ? application.followUpNote ?? null : null,
+      nextContactAt: "nextContactAt" in application ? application.nextContactAt ?? null : null,
+      lastActivityAt: "lastActivityAt" in application ? application.lastActivityAt ?? null : null,
       memo: "memo" in application ? application.memo ?? null : null,
       trialResult,
+      consultationLogs: itemConsultationLogs,
       logs
     }
 
@@ -1893,6 +1914,80 @@ export const mockDataAdapter: DataAdapter = {
       createdAt: new Date().toISOString()
     })
   },
+  async updateStudioApplicationConsultationSnapshot(
+    input: UpdateStudioApplicationConsultationSnapshotInput
+  ) {
+    const target = applications.find(
+      (item) => item.id === input.applicationId && item.status === input.currentStatus
+    )
+
+    if (!target) {
+      throw new Error("application_consultation_snapshot_conflict")
+    }
+
+    target.nextContactAt = input.nextContactAt
+    target.lastActivityAt = input.lastActivityAt
+    target.updatedAt = input.lastActivityAt
+  },
+  async createStudioConsultationLog(input: CreateStudioConsultationLogInput) {
+    const existing = consultationLogs.find((item) => item.id === input.id)
+    if (existing) {
+      if (existing.applicationId !== input.applicationId) {
+        throw new Error("failed_to_create_consultation_log")
+      }
+
+      return "duplicate"
+    }
+
+    consultationLogs.unshift({
+      id: input.id,
+      applicationId: input.applicationId,
+      occurredAt: input.occurredAt,
+      activityType: input.activityType,
+      channel: input.channel,
+      sentiment: input.sentiment,
+      registrationStatusSnapshot: input.registrationStatusSnapshot,
+      nextAction: input.nextAction,
+      nextContactAt: input.nextContactAt,
+      note: input.note,
+      createdBy: input.actorId,
+      createdAt: input.occurredAt,
+      updatedAt: input.occurredAt
+    })
+
+    return "created"
+  },
+  async updateStudioConsultationLog(input: UpdateStudioConsultationLogInput) {
+    const target = consultationLogs.find(
+      (item) =>
+        item.id === input.consultationLogId &&
+        item.applicationId === input.applicationId &&
+        item.activityType === "CONSULTATION"
+    )
+
+    if (!target) {
+      throw new Error("consultation_log_update_conflict")
+    }
+
+    target.channel = input.channel
+    target.sentiment = input.sentiment
+    target.note = input.note
+    target.nextContactAt = input.nextContactAt
+    target.updatedAt = new Date().toISOString()
+  },
+  async updateStudioApplicationLatestConsultationSnapshot(
+    input: UpdateStudioApplicationLatestConsultationSnapshotInput
+  ) {
+    const target = applications.find(
+      (item) => item.id === input.applicationId && item.status === input.currentStatus
+    )
+
+    if (!target) {
+      throw new Error("application_consultation_snapshot_conflict")
+    }
+
+    target.nextContactAt = input.nextContactAt
+  },
   async upsertStudioTrialResult(input: UpsertStudioTrialResultInput) {
     const normalizedObservations = Array.from(new Set(input.observations.filter((item) => item.trim().length > 0)))
     const existing = trialResults.find((item) => item.applicationId === input.applicationId) ?? null
@@ -2034,6 +2129,8 @@ export const mockDataAdapter: DataAdapter = {
       unregisteredReasonNote: null,
       lostAt: null,
       followUpNote: null,
+      nextContactAt: null,
+      lastActivityAt: null,
       contactedAt: null,
       scheduledAt: null,
       completedAt: null,
@@ -2043,6 +2140,7 @@ export const mockDataAdapter: DataAdapter = {
       confirmedScheduleBlockId: null,
       memo: input.memo,
       trialResult: null,
+      consultationLogs: [],
       logs: []
     })
 
