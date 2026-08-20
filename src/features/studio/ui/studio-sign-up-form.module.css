@@ -1,4 +1,8 @@
 .form {
+  position: relative;
+}
+
+.formContent {
   display: grid;
   gap: 18px;
 }
@@ -297,70 +301,6 @@
   font-weight: 800;
 }
 
-.successCard {
-  border: 1px solid #d8f0dc;
-  background: #f3fbf4;
-  border-radius: 20px;
-  padding: 16px 16px;
-  display: flex;
-  gap: 12px;
-  align-items: flex-start;
-}
-
-.successIcon {
-  width: 34px;
-  height: 34px;
-  border-radius: 12px;
-  background: #ffffff;
-  border: 1px solid #d8f0dc;
-  position: relative;
-  flex: 0 0 auto;
-}
-
-.successIcon::after {
-  content: "";
-  position: absolute;
-  left: 9px;
-  top: 14px;
-  width: 14px;
-  height: 8px;
-  border-left: 3px solid #2aad38;
-  border-bottom: 3px solid #2aad38;
-  transform: rotate(-45deg);
-}
-
-.successBody {
-  display: grid;
-  gap: 6px;
-  min-width: 0;
-}
-
-.successTitle {
-  margin: 0;
-  font-size: 14px;
-  line-height: 20px;
-  font-weight: 900;
-  color: #111111;
-}
-
-.successDescription {
-  margin: 0;
-  font-size: 13px;
-  line-height: 20px;
-  color: #4a4a4a;
-  font-weight: 700;
-}
-
-.inlineLink {
-  color: #2aad38;
-  text-decoration: none;
-  font-weight: 900;
-}
-
-.inlineLink:hover {
-  text-decoration: underline;
-}
-
 .errorMessage {
   margin: 0;
   border: 1px solid #fecaca;
@@ -513,6 +453,110 @@
   border: 0;
 }
 
+.modalOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(0, 0, 0, 0.5);
+  animation: modalOverlayFadeIn 200ms ease-out both;
+}
+
+.modalDialog {
+  width: min(100%, 420px);
+  border-radius: 24px;
+  background: #ffffff;
+  box-shadow: 0 24px 48px rgba(17, 17, 17, 0.18);
+  padding: 28px 24px 24px;
+  display: grid;
+  gap: 16px;
+  justify-items: center;
+  text-align: center;
+  animation: modalDialogEnter 200ms ease-out both;
+}
+
+.modalCheckIcon {
+  width: 56px;
+  height: 56px;
+  border-radius: 999px;
+  background: #2aad38;
+  position: relative;
+}
+
+.modalCheckIcon::after {
+  content: "";
+  position: absolute;
+  left: 17px;
+  top: 19px;
+  width: 18px;
+  height: 10px;
+  border-left: 4px solid #ffffff;
+  border-bottom: 4px solid #ffffff;
+  transform: rotate(-45deg);
+}
+
+.modalTitle {
+  margin: 0;
+  font-size: 22px;
+  line-height: 30px;
+  font-weight: 900;
+  color: #111111;
+  letter-spacing: -0.03em;
+}
+
+.modalDescription {
+  margin: 0;
+  font-size: 14px;
+  line-height: 22px;
+  font-weight: 700;
+  color: #4a4a4a;
+}
+
+.modalActionButton {
+  width: 100%;
+  min-height: 52px;
+  border-radius: 12px;
+  background: #2aad38;
+  color: #ffffff;
+  text-decoration: none;
+  font-size: 15px;
+  line-height: 20px;
+  font-weight: 900;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modalActionButton:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 4px rgba(42, 173, 56, 0.2);
+}
+
+@keyframes modalOverlayFadeIn {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes modalDialogEnter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 @media (max-width: 640px) {
   .uploadBox {
     grid-template-columns: 1fr;
@@ -523,5 +567,21 @@
   .agreementRow {
     width: 100%;
     justify-content: space-between;
+  }
+
+  .modalOverlay {
+    padding: 20px;
+  }
+
+  .modalDialog {
+    width: 100%;
+    padding: 24px 20px 20px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .modalOverlay,
+  .modalDialog {
+    animation: none;
   }
 }
