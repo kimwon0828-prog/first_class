@@ -18,6 +18,7 @@ const defaultState: StudioSignUpActionState = {
 
 const MAX_BUSINESS_REGISTRATION_FILE_SIZE = 5 * 1024 * 1024
 const BUSINESS_REGISTRATION_MIME_TO_EXTENSION = {
+  "application/pdf": "pdf",
   "image/jpeg": "jpg",
   "image/png": "png",
   "image/webp": "webp"
@@ -111,17 +112,17 @@ const validateSignUpForm = (formData: FormData) => {
   const address = [addressLine1, addressLine2].filter(Boolean).join(" ").trim()
 
   if (!(businessRegistrationFile instanceof File) || businessRegistrationFile.size <= 0) {
-    return { ok: false as const, message: "사업자등록증 이미지를 첨부해 주세요." }
+    return { ok: false as const, message: "사업자등록증 파일을 첨부해 주세요." }
   }
 
   if (businessRegistrationFile.size > MAX_BUSINESS_REGISTRATION_FILE_SIZE) {
-    return { ok: false as const, message: "사업자등록증 이미지는 5MB 이하만 업로드할 수 있습니다." }
+    return { ok: false as const, message: "사업자등록증 파일은 5MB 이하만 업로드할 수 있습니다." }
   }
 
   if (!isAllowedBusinessRegistrationMime(businessRegistrationFile.type)) {
     return {
       ok: false as const,
-      message: "사업자등록증 이미지는 JPG, PNG, WEBP 형식만 업로드할 수 있습니다."
+      message: "사업자등록증 파일은 PDF, JPG, PNG, WEBP 형식만 업로드할 수 있습니다."
     }
   }
 

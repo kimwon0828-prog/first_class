@@ -145,10 +145,19 @@
   color: #8a8a8a;
 }
 
+.requiredNotice {
+  margin: 8px 0 0;
+  font-size: 12px;
+  line-height: 18px;
+  color: #8a8a8a;
+  font-weight: 700;
+}
+
 .footer {
   margin-top: 24px;
-  display: flex;
-  justify-content: center;
+  display: grid;
+  gap: 8px;
+  justify-items: center;
 }
 
 .footerText {

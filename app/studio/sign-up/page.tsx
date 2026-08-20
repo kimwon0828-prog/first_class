@@ -70,7 +70,11 @@ export default async function StudioSignUpPage() {
             <div className={styles.noteCard}>
               <p className={styles.noteTitle}>안내</p>
               <p className={styles.noteBody}>
-                신청 후 계정이 바로 활성화되지 않을 수 있어요. 운영팀 확인 후 승인되면 운영보드를 이용할 수 있습니다.
+                신청 후 운영팀이 학원 정보를 확인합니다.
+                <br />
+                영업일 기준 1일 이내에 담당자 전화번호로 연락드리며,
+                <br />
+                승인 완료 후 운영보드를 이용하실 수 있습니다.
               </p>
             </div>
           </section>
@@ -79,6 +83,7 @@ export default async function StudioSignUpPage() {
             <header className={styles.formHeader}>
               <h2 className={styles.formTitle}>학원 계정 신청</h2>
               <p className={styles.formDescription}>운영보드 사용을 위해 기본 정보를 입력해 주세요.</p>
+              <p className={styles.requiredNotice}>* 표시는 필수 입력 항목입니다.</p>
             </header>
             <StudioSignUpForm />
           </section>
@@ -89,6 +94,12 @@ export default async function StudioSignUpPage() {
             이미 계정이 있으신가요?{" "}
             <Link href="/studio/sign-in" className={styles.footerLink}>
               운영보드 로그인
+            </Link>
+          </p>
+          <p className={styles.footerText}>
+            가입 문의가 있으신가요?{" "}
+            <Link href="#" className={styles.footerLink}>
+              카카오톡 채널로 문의하기
             </Link>
           </p>
         </footer>

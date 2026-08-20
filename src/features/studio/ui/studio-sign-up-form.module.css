@@ -42,6 +42,23 @@
   color: #111111;
 }
 
+.labelError {
+  color: #dc2626;
+}
+
+.requiredMark {
+  margin-left: 4px;
+  color: #2aad38;
+}
+
+.optionalText {
+  margin-left: 6px;
+  color: #8a8a8a;
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 700;
+}
+
 .input {
   width: 100%;
   height: 52px;
@@ -60,9 +77,208 @@
   box-shadow: 0 0 0 3px rgba(42, 173, 56, 0.16);
 }
 
-.fileInput {
-  height: auto;
-  padding: 12px 14px;
+.inputError {
+  border-color: #dc2626;
+  box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.08);
+}
+
+.inputWithAction {
+  position: relative;
+}
+
+.inputWithActionError .input {
+  border-color: #dc2626;
+  box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.08);
+}
+
+.inputWithButtonPadding {
+  padding-right: 52px;
+}
+
+.inputActionButton {
+  position: absolute;
+  top: 50%;
+  right: 12px;
+  width: 32px;
+  height: 32px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  transform: translateY(-50%);
+  cursor: pointer;
+}
+
+.eyeIcon {
+  position: relative;
+  display: block;
+  width: 20px;
+  height: 12px;
+  margin: 0 auto;
+  border: 2px solid #8a8a8a;
+  border-radius: 999px / 80%;
+}
+
+.eyeIcon::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 4px;
+  height: 4px;
+  border-radius: 999px;
+  background: #8a8a8a;
+  transform: translate(-50%, -50%);
+}
+
+.eyeIconClosed::after {
+  content: "";
+  position: absolute;
+  left: -2px;
+  top: 50%;
+  width: 24px;
+  height: 2px;
+  background: #8a8a8a;
+  transform: rotate(-25deg);
+  transform-origin: center;
+}
+
+.hiddenFileInput {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.uploadBox {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr) auto;
+  gap: 14px;
+  align-items: center;
+  padding: 14px;
+  border: 1px dashed #cfd8cf;
+  border-radius: 16px;
+  background: #fafafa;
+}
+
+.uploadBoxError {
+  border-color: #dc2626;
+  background: #fff7f7;
+}
+
+.uploadPreview {
+  width: 72px;
+  height: 72px;
+  border-radius: 14px;
+  background: #ffffff;
+  border: 1px solid #e6e6e6;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+}
+
+.uploadPreviewImage {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.uploadDocumentIcon,
+.uploadPlaceholderIcon {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  font-size: 11px;
+  line-height: 1;
+  font-weight: 900;
+}
+
+.uploadDocumentIcon {
+  background: #f3fbf4;
+  color: #2aad38;
+}
+
+.uploadPlaceholderIcon {
+  position: relative;
+  background: #f3f5f3;
+}
+
+.uploadPlaceholderIcon::before,
+.uploadPlaceholderIcon::after {
+  content: "";
+  position: absolute;
+  background: #8a8a8a;
+}
+
+.uploadPlaceholderIcon::before {
+  width: 18px;
+  height: 2px;
+}
+
+.uploadPlaceholderIcon::after {
+  width: 2px;
+  height: 18px;
+}
+
+.uploadTextBlock {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.uploadPlaceholderTitle,
+.uploadFileName {
+  margin: 0;
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 900;
+  color: #111111;
+}
+
+.uploadPlaceholderText,
+.uploadFileMeta {
+  margin: 0;
+  font-size: 12px;
+  line-height: 18px;
+  font-weight: 700;
+  color: #8a8a8a;
+}
+
+.uploadActionRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.uploadActionButton,
+.uploadDeleteButton {
+  min-height: 36px;
+  padding: 0 12px;
+  border-radius: 10px;
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.uploadActionButton {
+  border: 1px solid #d9d9d9;
+  background: #ffffff;
+  color: #111111;
+}
+
+.uploadDeleteButton {
+  border: 1px solid #f3c7c7;
+  background: #fff7f7;
+  color: #dc2626;
 }
 
 .fieldHint {
@@ -71,6 +287,14 @@
   line-height: 18px;
   color: #666666;
   font-weight: 700;
+}
+
+.inlineErrorText {
+  margin: 0;
+  font-size: 12px;
+  line-height: 18px;
+  color: #dc2626;
+  font-weight: 800;
 }
 
 .successCard {
@@ -182,11 +406,122 @@
   cursor: not-allowed;
 }
 
+.submitArea {
+  position: relative;
+}
+
+.disabledSubmitOverlay {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
 .bottomHint {
   margin: 0;
-  text-align: center;
-  font-size: 13px;
+  text-align: left;
+  font-size: 12px;
   line-height: 18px;
   color: #8a8a8a;
   font-weight: 700;
+}
+
+.agreementSection {
+  display: grid;
+  gap: 14px;
+}
+
+.agreementAllRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.agreementAllText {
+  font-size: 15px;
+  line-height: 22px;
+  font-weight: 900;
+  color: #111111;
+}
+
+.agreementDivider {
+  height: 1px;
+  background: #eeeeee;
+}
+
+.agreementList {
+  display: grid;
+  gap: 12px;
+}
+
+.agreementRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.checkRow {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.checkbox {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  accent-color: #2aad38;
+  flex: 0 0 auto;
+}
+
+.checkText {
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 800;
+  color: #111111;
+}
+
+.checkTextError {
+  color: #dc2626;
+}
+
+.agreementLink {
+  flex: 0 0 auto;
+  color: #2aad38;
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.agreementLink:hover {
+  text-decoration: underline;
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (max-width: 640px) {
+  .uploadBox {
+    grid-template-columns: 1fr;
+    justify-items: start;
+  }
+
+  .uploadActionRow,
+  .agreementRow {
+    width: 100%;
+    justify-content: space-between;
+  }
 }
