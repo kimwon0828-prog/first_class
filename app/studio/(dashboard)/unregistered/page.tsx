@@ -1,21 +1,30 @@
 import { requireTeacherStudioAccess } from "@/features/studio/lib/require-teacher-studio-access"
-import {
-  resolveUnregisteredPeriod,
-  resolveUnregisteredRegistrationFilter
-} from "@/features/studio/lib/unregistered-students"
-import { getStudioDashboardTeacherOptions } from "@/features/studio/queries/get-studio-dashboard-teacher-options"
-import { getUnregisteredApplications } from "@/features/studio/queries/get-unregistered-applications"
+import { getConsultationPipelineApplications } from "@/features/studio/queries/get-consultation-pipeline-applications"
 import { UnregisteredStudentsManager } from "@/features/studio/ui/unregistered-students-manager"
 
-const uuidPattern =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+const matchesSearch = (
+  item: {
+    childName: string
+    parentName: string | null
+    parentPhone: string | null
+    classTitle: string | null
+  },
+  query: string
+) => {
+  const normalized = query.trim().toLowerCase()
+  if (!normalized) {
+    return true
+  }
+
+  return [item.childName, item.parentName, item.parentPhone, item.classTitle]
+    .filter((value): value is string => Boolean(value))
+    .some((value) => value.toLowerCase().includes(normalized))
+}
 
 type StudioUnregisteredPageProps = {
   searchParams?: Promise<{
     q?: string
-    teacherId?: string
-    registrationStatus?: string
-    period?: string
+    counselorId?: string
   }>
 }
 
@@ -25,42 +34,56 @@ export default async function StudioUnregisteredPage({
   const teacher = await requireTeacherStudioAccess()
   const resolvedSearchParams = searchParams ? await searchParams : undefined
   const selectedQuery = String(resolvedSearchParams?.q ?? "").trim()
-  const selectedRegistrationStatus = resolveUnregisteredRegistrationFilter(
-    resolvedSearchParams?.registrationStatus
-  )
-  const selectedPeriod = resolveUnregisteredPeriod(resolvedSearchParams?.period)
-  const { data: teacherOptions, error: teacherOptionsError } = await getStudioDashboardTeacherOptions(
+  const { data, error } = await getConsultationPipelineApplications(
     teacher.organizationId
   )
+  const counselorOptions = Array.from(
+    new Map(
+      data.items
+        .filter(
+          (item) =>
+            Boolean(item.latestConsultationCreatedBy) && Boolean(item.latestConsultationCreatedByName)
+        )
+        .map((item) => [
+          item.latestConsultationCreatedBy as string,
+          {
+            id: item.latestConsultationCreatedBy as string,
+            name: item.latestConsultationCreatedByName as string
+          }
+        ])
+    ).values()
+  ).sort((left, right) => left.name.localeCompare(right.name, "ko"))
 
-  const availableTeacherIdSet = new Set(teacherOptions.map((option) => option.teacherId))
-  const teacherIdParam = String(resolvedSearchParams?.teacherId ?? "").trim()
-  const validatedTeacherId =
-    teacherIdParam &&
-    teacherIdParam !== "all" &&
-    uuidPattern.test(teacherIdParam) &&
-    availableTeacherIdSet.has(teacherIdParam)
-      ? teacherIdParam
-      : null
+  const counselorIdParam = String(resolvedSearchParams?.counselorId ?? "").trim()
+  const availableCounselorIdSet = new Set(counselorOptions.map((option) => option.id))
+  const selectedCounselorId =
+    counselorIdParam && counselorIdParam !== "all" && availableCounselorIdSet.has(counselorIdParam)
+      ? counselorIdParam
+      : "all"
 
-  const { data, error } = await getUnregisteredApplications(teacher.organizationId, {
-    teacherId: validatedTeacherId,
-    completedAtFrom: selectedPeriod.completedAtFrom,
-    completedAtTo: selectedPeriod.completedAtTo,
-    query: selectedQuery,
-    registrationStatus: selectedRegistrationStatus
+  const filteredItems = data.items.filter((item) => {
+    if (!matchesSearch(item, selectedQuery)) {
+      return false
+    }
+
+    if (selectedCounselorId === "all") {
+      return true
+    }
+
+    if (!item.latestConsultationCreatedBy) {
+      return true
+    }
+
+    return item.latestConsultationCreatedBy === selectedCounselorId
   })
 
   return (
     <UnregisteredStudentsManager
-      items={data.items}
-      summary={data.summary}
-      teacherOptions={teacherOptions}
+      items={filteredItems}
+      counselorOptions={counselorOptions}
       selectedQuery={selectedQuery}
-      selectedTeacherId={validatedTeacherId ?? "all"}
-      selectedRegistrationStatus={selectedRegistrationStatus}
-      selectedPeriod={selectedPeriod}
-      error={teacherOptionsError ?? error}
+      selectedCounselorId={selectedCounselorId}
+      error={error}
     />
   )
 }

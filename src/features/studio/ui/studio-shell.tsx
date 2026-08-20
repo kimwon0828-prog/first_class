@@ -11,7 +11,7 @@ import styles from "./studio-shell.module.css"
 type StudioShellProps = {
   children: ReactNode
   organizationName?: string | null
-  unregisteredLeadCount?: number
+  consultationLeadCount?: number
 }
 
 type NavItem = {
@@ -31,7 +31,7 @@ const isActivePath = (pathname: string, href: string) => {
 export const StudioShell = ({
   children,
   organizationName,
-  unregisteredLeadCount = 0
+  consultationLeadCount = 0
 }: StudioShellProps) => {
   const pathname = usePathname() ?? ""
   const accountLabel = organizationName?.trim() || "학원"
@@ -43,8 +43,8 @@ export const StudioShell = ({
     { href: "/studio/applications", label: "신청 관리" },
     {
       href: "/studio/unregistered",
-      label: "미등록 학생관리",
-      badgeCount: unregisteredLeadCount > 0 ? unregisteredLeadCount : undefined
+      label: "상담 관리",
+      badgeCount: consultationLeadCount > 0 ? consultationLeadCount : undefined
     },
     { href: "/studio/classes", label: "수업 관리" },
     { href: "/studio/schedule", label: "일정 관리" },

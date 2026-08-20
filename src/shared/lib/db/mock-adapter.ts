@@ -21,6 +21,7 @@ import type {
   MyDashboardData,
   StudioApplicationDetail,
   StudioApplicationListOptions,
+  StudioConsultationPipelineApplicationItem,
   StudioConsultationLog,
   StudioTrialResult,
   StudioApplicationSummary,
@@ -50,6 +51,7 @@ import type {
   UpdateStudioApplicationStatusInput,
   UpdateStudioClassScheduleInput
 } from "@/shared/lib/db/adapter"
+import { getConsultationPipelineGroup } from "@/shared/lib/consultation-pipeline"
 import {
   DEFAULT_TEACHER_PUBLIC_VISIBILITY,
   normalizeTeacherPublicVisibility
@@ -675,6 +677,15 @@ const getTeacherDisplayNameById = (teacherId: string | null | undefined) => {
   }
 
   const teacher = teacherSummaries.find((item) => item.id === teacherId) ?? null
+  return teacher?.displayName ?? null
+}
+
+const getProfileDisplayNameById = (profileId: string | null | undefined) => {
+  if (!profileId) {
+    return null
+  }
+
+  const teacher = teacherSummaries.find((item) => item.profileId === profileId) ?? null
   return teacher?.displayName ?? null
 }
 
@@ -1643,6 +1654,92 @@ export const mockDataAdapter: DataAdapter = {
       }
 
       return item.registrationStatus == null || item.registrationStatus === "pending" || item.registrationStatus === "undecided"
+    }).length
+  },
+  async listStudioConsultationPipelineApplications(organizationId) {
+    if (organizationId !== mockOrganizationId) {
+      return []
+    }
+
+    const validRegistrationStatuses: ApplicationRegistrationStatus[] = [
+      "undecided",
+      "pending",
+      "enrolled",
+      "not_enrolled"
+    ]
+
+    return applications
+      .filter(
+        (item) =>
+          item.status === "completed" &&
+          validRegistrationStatuses.includes(item.registrationStatus as ApplicationRegistrationStatus)
+      )
+      .map((item) => {
+        const classItem = classes.find((classRow) => classRow.id === item.classId) ?? null
+        const itemConsultationLogs = consultationLogs
+          .filter((log) => log.applicationId === item.id)
+          .sort((a, b) => (a.occurredAt < b.occurredAt ? 1 : -1))
+        const consultationOnlyLogs = itemConsultationLogs.filter(
+          (log) => log.activityType === "CONSULTATION"
+        )
+        const hasAnyConsultationHistory = itemConsultationLogs.some(
+          (log) => log.activityType === "CONSULTATION" || log.activityType === "LEGACY_IMPORT"
+        )
+        const legacyImportExists = itemConsultationLogs.some(
+          (log) => log.activityType === "LEGACY_IMPORT"
+        )
+        const latestConsultation = consultationOnlyLogs[0] ?? null
+
+        const mapped: StudioConsultationPipelineApplicationItem = {
+          id: item.id,
+          childName: item.childName,
+          childGrade: item.childGrade,
+          parentName: item.parentName ?? null,
+          parentPhone: item.parentPhone ?? null,
+          classTitle: classItem?.title ?? null,
+          classSubject: classItem?.subject ?? null,
+          registrationStatus: item.registrationStatus as ApplicationRegistrationStatus,
+          completedAt: item.completedAt ?? item.updatedAt,
+          nextContactAt: item.nextContactAt ?? null,
+          lastActivityAt: item.lastActivityAt ?? null,
+          enrolledAt: item.enrolledAt ?? null,
+          lostAt: item.lostAt ?? null,
+          unregisteredReason: item.unregisteredReason ?? null,
+          unregisteredReasonNote: item.unregisteredReasonNote ?? null,
+          assignedTeacherId: item.assignedTeacherId ?? null,
+          assignedTeacherName: getTeacherDisplayNameById(item.assignedTeacherId),
+          trialResultExists: trialResults.some((trialResult) => trialResult.applicationId === item.id),
+          consultationCount: consultationOnlyLogs.length,
+          hasAnyConsultationHistory,
+          legacyImportExists,
+          latestConsultationOccurredAt: latestConsultation?.occurredAt ?? null,
+          latestConsultationChannel: latestConsultation?.channel ?? null,
+          latestConsultationSentiment: latestConsultation?.sentiment ?? null,
+          latestConsultationNote: latestConsultation?.note ?? null,
+          latestConsultationCreatedBy: latestConsultation?.createdBy ?? null,
+          latestConsultationCreatedByName: getProfileDisplayNameById(
+            latestConsultation?.createdBy ?? null
+          ),
+          pipelineGroup: "NEEDS_CONSULTATION"
+        }
+
+        return {
+          ...mapped,
+          pipelineGroup: getConsultationPipelineGroup(mapped)
+        }
+      })
+  },
+  async getStudioConsultationPipelineActiveCount(organizationId) {
+    if (organizationId !== mockOrganizationId) {
+      return 0
+    }
+
+    return applications.filter((item) => {
+      if (item.status !== "completed") {
+        return false
+      }
+
+      return item.registrationStatus === "pending" || item.registrationStatus === "undecided"
     }).length
   },
   async getStudioApplicationDetail(applicationId, organizationId) {

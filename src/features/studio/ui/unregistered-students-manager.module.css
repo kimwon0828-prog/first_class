@@ -1,7 +1,10 @@
 .page {
   display: grid;
   gap: 24px;
-  padding: 32px;
+  min-height: 100dvh;
+  background: #fafafa;
+  padding: 32px 24px 56px;
+  width: 100%;
 }
 
 .header {
@@ -9,6 +12,9 @@
   align-items: flex-start;
   justify-content: space-between;
   gap: 16px;
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
 }
 
 .eyebrow {
@@ -32,17 +38,25 @@
   color: #5f655f;
   font-size: 15px;
   line-height: 24px;
-  max-width: 760px;
 }
 
 .errorCard,
-.actionSection,
-.stripSection,
 .filterSection,
 .emptyCard,
 .groupSection,
-.futureCard {
-  border-radius: 16px;
+.closedSection,
+.groupList {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.errorCard,
+.filterSection,
+.emptyCard,
+.groupSection,
+.closedSection {
+  border-radius: 18px;
   background: #ffffff;
   border: 1px solid #e7ebe7;
   box-shadow: 0 16px 40px rgba(17, 17, 17, 0.04);
@@ -62,132 +76,25 @@
   font-weight: 700;
 }
 
-.actionSection,
-.stripSection,
 .filterSection,
 .emptyCard,
-.groupSection,
-.futureCard {
+.groupSection {
   padding: 24px;
 }
 
-.sectionHeading {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 16px;
-  margin-bottom: 18px;
-}
-
-.sectionTitle {
-  margin: 0;
-  color: #111111;
-  font-size: 21px;
-  line-height: 30px;
-  font-weight: 800;
-}
-
-.sectionDescription {
-  margin: 8px 0 0;
-  color: #687068;
-  font-size: 14px;
-  line-height: 22px;
-}
-
-.actionGrid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px;
-}
-
-.actionCard {
-  display: grid;
-  gap: 8px;
-  text-decoration: none;
-  border-radius: 14px;
-  padding: 20px;
-  border: 1px solid transparent;
-  color: inherit;
-}
-
-.actionCardPending {
-  background: linear-gradient(135deg, #fbf3e4 0%, #fff9ef 100%);
-  border-color: #f0d8ad;
-}
-
-.actionCardUndecided {
-  background: linear-gradient(135deg, #eef4fc 0%, #f7faff 100%);
-  border-color: #d8e5f8;
-}
-
-.actionLabel {
-  margin: 0;
-  color: #4d564d;
-  font-size: 14px;
-  line-height: 20px;
-  font-weight: 700;
-}
-
-.actionValue {
-  color: #111111;
-  font-size: 36px;
-  line-height: 1;
-  font-weight: 800;
-}
-
-.actionText {
-  margin: 0;
-  color: #5f655f;
-  font-size: 14px;
-  line-height: 22px;
-}
-
-.stripGrid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 12px;
-}
-
-.stripItem {
-  display: grid;
-  gap: 6px;
-  padding: 16px 18px;
-  border-radius: 14px;
-  background: #f8faf8;
-  border: 1px solid #edf1ed;
-}
-
-.stripLabel {
-  margin: 0;
-  color: #6a716a;
-  font-size: 13px;
-  line-height: 18px;
-  font-weight: 700;
-}
-
-.stripValue {
-  margin: 0;
-  color: #111111;
-  font-size: 24px;
-  line-height: 1.1;
-  font-weight: 800;
-}
-
-.stripDescription {
-  margin: 0;
-  color: #7a817a;
-  font-size: 12px;
-  line-height: 18px;
+.groupSectionCompact {
+  padding-top: 16px;
+  padding-bottom: 16px;
 }
 
 .filterSection {
   display: grid;
-  gap: 16px;
+  gap: 14px;
 }
 
 .filterForm {
   display: grid;
-  grid-template-columns: minmax(0, 2fr) repeat(2, minmax(180px, 1fr)) auto;
+  grid-template-columns: minmax(0, 2fr) minmax(220px, 1fr) auto;
   gap: 12px;
   align-items: end;
 }
@@ -220,8 +127,8 @@
 .submitButton,
 .emptyButton,
 .primaryButtonGreen,
-.primaryButtonBlue,
-.outlineButton {
+.secondaryButton,
+.tertiaryButton {
   border-radius: 10px;
   padding: 11px 16px;
   text-decoration: none;
@@ -242,59 +149,43 @@
   color: #ffffff;
 }
 
-.primaryButtonBlue {
-  background: #3b7dd8;
-  color: #ffffff;
+.primaryButtonGreen:hover {
+  background: #1b7a26;
 }
 
-.outlineButton {
+.secondaryButton {
+  background: #f2fbf3;
+  color: #1e8c2b;
+  border-color: #cfead3;
+}
+
+.tertiaryButton {
   background: #ffffff;
   color: #2d342d;
   border-color: #d6ddd6;
 }
 
-.tabs {
+.filterFooter {
   display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
   flex-wrap: wrap;
-  gap: 10px;
 }
 
-.tabChip {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 14px;
-  border-radius: 999px;
-  border: 1px solid #dde4de;
-  background: #ffffff;
-  color: #4f574f;
-  text-decoration: none;
+.filterHint {
+  margin: 0;
+  color: #758275;
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.resetLink {
+  color: #556355;
   font-size: 13px;
   line-height: 18px;
-  font-weight: 800;
-}
-
-.tabChipActive {
-  background: #f2fbf3;
-  border-color: #cfead3;
-  color: #1e8c2b;
-}
-
-.tabCount {
-  min-width: 22px;
-  height: 22px;
-  border-radius: 999px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  background: #f3f5f3;
-  color: #5b635b;
-  padding: 0 6px;
-}
-
-.tabChipActive .tabCount {
-  background: #ddf4e0;
-  color: #1e8c2b;
+  font-weight: 700;
+  text-decoration: none;
 }
 
 .emptyCard {
@@ -324,11 +215,11 @@
 }
 
 .groupHeader {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
   margin-bottom: 16px;
+}
+
+.groupSectionCompact .groupHeader {
+  margin-bottom: 0;
 }
 
 .groupTitle {
@@ -344,7 +235,7 @@
 
 .groupCount {
   color: #6a716a;
-  font-size: 14px;
+  font-size: 15px;
   line-height: 20px;
   font-weight: 700;
 }
@@ -356,37 +247,81 @@
   line-height: 22px;
 }
 
+.groupEmpty {
+  margin: 0;
+  color: #7a817a;
+  font-size: 14px;
+  line-height: 22px;
+}
+
+.groupSectionCompact .groupEmpty {
+  margin-top: 6px;
+  font-size: 13px;
+  line-height: 20px;
+}
+
 .cardList {
   display: grid;
-  gap: 16px;
+  gap: 14px;
 }
 
 .studentCard {
   display: grid;
-  gap: 16px;
+  gap: 14px;
   padding: 20px;
-  border-radius: 14px;
+  border-radius: 16px;
   border: 1px solid #e7ebe7;
   background: #ffffff;
 }
 
-.studentCardPending {
-  border-left: 3px solid #c98a1e;
+.studentCardToday {
+  background: linear-gradient(180deg, #fffdf8 0%, #ffffff 100%);
+  border-color: #f1ddba;
 }
 
-.studentCardUndecided {
-  border-left: 3px solid #3b7dd8;
+.studentCardWarning {
+  background: linear-gradient(180deg, #fffaf4 0%, #ffffff 100%);
+  border-color: #edd8b7;
 }
 
-.studentCardNotEnrolled {
-  border-left: 3px solid transparent;
+.studentCardDefault {
+  background: #ffffff;
 }
 
-.cardTopLink {
-  display: flex;
+.studentCardClosed {
+  background: #fbfcfb;
+}
+
+.cardLayout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1.25fr) minmax(260px, 0.95fr);
+  gap: 20px;
+  align-items: start;
+}
+
+.infoColumn,
+.contextColumn,
+.actionColumn {
+  min-width: 0;
+}
+
+.infoColumn {
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr);
   gap: 16px;
   text-decoration: none;
   color: inherit;
+}
+
+.contextColumn {
+  display: grid;
+  gap: 10px;
+}
+
+.actionColumn {
+  display: grid;
+  gap: 14px;
+  justify-items: end;
 }
 
 .avatar {
@@ -405,10 +340,8 @@
 }
 
 .cardTopBody {
-  min-width: 0;
-  flex: 1 1 auto;
   display: grid;
-  gap: 10px;
+  gap: 8px;
 }
 
 .cardTitleRow {
@@ -421,75 +354,93 @@
 .cardTitle {
   margin: 0;
   color: #111111;
-  font-size: 20px;
-  line-height: 28px;
+  font-size: 18px;
+  line-height: 26px;
   font-weight: 800;
 }
 
 .cardTitleSub {
-  color: #687068;
-  font-size: 15px;
-  line-height: 22px;
+  color: #6a716a;
+  font-size: 16px;
   font-weight: 700;
 }
 
 .cardSubTitle {
-  margin: 6px 0 0;
-  color: #566056;
+  margin: 4px 0 0;
+  color: #596259;
   font-size: 14px;
-  line-height: 22px;
+  line-height: 20px;
 }
 
-.cardBadges {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: 8px;
-}
-
-.statusBadge,
-.elapsedBadge {
+.statusBadge {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 30px;
-  padding: 0 12px;
+  min-height: 28px;
+  padding: 4px 10px;
   border-radius: 999px;
   font-size: 12px;
   line-height: 16px;
   font-weight: 800;
+  flex: 0 0 auto;
 }
 
-.statusBadgePending {
-  background: #fbf3e4;
-  color: #c98a1e;
+.statusBadgeWarning {
+  background: #fff4df;
+  color: #98661b;
 }
 
-.statusBadgeUndecided {
-  background: #eef4fc;
-  color: #3b7dd8;
+.statusBadgeMuted {
+  background: #f3f5f3;
+  color: #5f675f;
 }
 
-.statusBadgeNotEnrolled {
-  background: #f1f2f1;
-  color: #6b716b;
+.statusBadgePositive {
+  background: #edf8ef;
+  color: #1e8c2b;
 }
 
-.elapsedBadge {
-  background: #f4f7f4;
-  color: #5b635b;
+.contextLabel,
+.actionLabel {
+  margin: 0;
+  color: #7a817a;
+  font-size: 12px;
+  line-height: 18px;
+  font-weight: 800;
 }
 
-.elapsedBadgeAlert {
-  background: #fff1f1;
-  color: #c0372c;
+.contextPrimary,
+.primaryLine {
+  margin: 0;
+  color: #1f251f;
+  font-size: 15px;
+  line-height: 22px;
+  font-weight: 800;
 }
 
+.actionTitle {
+  margin: 0;
+  color: #1f251f;
+  font-size: 16px;
+  line-height: 24px;
+  font-weight: 800;
+  text-align: right;
+}
+
+.secondaryLine,
+.warningLine,
+.overdueLine,
 .metaRow {
   margin: 0;
-  color: #646c64;
-  font-size: 14px;
-  line-height: 22px;
+  color: #6a716a;
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.warningLine,
+.overdueLine {
+  color: #b06d15;
+  font-weight: 700;
 }
 
 .memoBlock {
@@ -497,73 +448,168 @@
   padding: 14px 16px;
   border-radius: 12px;
   background: #f8faf8;
-  border: 1px solid #edf1ed;
-}
-
-.memoLabel {
-  margin: 0 0 8px;
-  color: #6a716a;
-  font-size: 12px;
-  line-height: 18px;
-  font-weight: 800;
+  border: 1px solid #eef2ee;
 }
 
 .memoText {
   margin: 0;
-  color: #2d342d;
-  font-size: 14px;
+  color: #202620;
+  font-size: 15px;
   line-height: 24px;
-  white-space: pre-wrap;
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.supportMeta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  color: #6c746c;
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.sentimentBadge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 800;
+}
+
+.sentimentPositive {
+  background: #edf8ef;
+  color: #1e8c2b;
+}
+
+.sentimentNeutral {
+  background: #f3f5f3;
+  color: #5f675f;
+}
+
+.sentimentNegative {
+  background: #fff1e8;
+  color: #b65c14;
 }
 
 .cardActions {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
+  justify-content: flex-end;
 }
 
-.futureCard {
-  border-style: dashed;
+.actionSummary {
+  display: grid;
+  gap: 6px;
+  justify-items: end;
+  text-align: right;
 }
 
-.futureTitle {
-  margin: 0 0 10px;
-  color: #111111;
-  font-size: 18px;
-  line-height: 26px;
+.closedSection {
+  padding: 0;
+  overflow: hidden;
+}
+
+.closedSummary {
+  list-style: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 24px;
+  cursor: pointer;
+}
+
+.closedSummary::-webkit-details-marker {
+  display: none;
+}
+
+.closedToggle {
+  color: #556355;
+  font-size: 13px;
+  line-height: 18px;
   font-weight: 800;
 }
 
-.futureDescription {
-  margin: 0;
-  color: #687068;
-  font-size: 14px;
-  line-height: 24px;
+.closedSection[open] .closedToggle {
+  color: #2d342d;
+}
+
+.closedSection[open] .closedSummary {
+  border-bottom: 1px solid #edf1ed;
+}
+
+.closedSection .cardList,
+.closedSection .groupEmpty {
+  padding: 20px 24px 24px;
 }
 
 @media (max-width: 900px) {
   .page {
-    padding: 20px;
+    padding: 28px 20px 48px;
+    gap: 20px;
   }
 
-  .actionGrid,
-  .stripGrid,
   .filterForm {
     grid-template-columns: 1fr;
   }
 
-  .cardTitleRow,
-  .cardTopLink {
-    flex-direction: column;
+  .groupSectionCompact {
+    padding-top: 14px;
+    padding-bottom: 14px;
   }
 
-  .cardBadges {
-    justify-content: flex-start;
+  .cardLayout {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .infoColumn {
+    grid-template-columns: 44px minmax(0, 1fr);
+    gap: 12px;
+  }
+
+  .avatar {
+    width: 44px;
+    height: 44px;
+    border-radius: 14px;
+    font-size: 14px;
+  }
+
+  .cardTitleRow,
+  .closedSummary {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .actionColumn {
+    justify-items: stretch;
+  }
+
+  .actionSummary {
+    justify-items: start;
+    text-align: left;
+  }
+
+  .actionTitle {
+    text-align: left;
   }
 
   .cardActions {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: 1fr;
+    justify-content: stretch;
+  }
+
+  .closedSection .cardList,
+  .closedSection .groupEmpty {
+    padding: 16px 20px 20px;
   }
 }
 
@@ -573,11 +619,8 @@
   }
 
   .groupSection,
-  .actionSection,
-  .stripSection,
   .filterSection,
-  .emptyCard,
-  .futureCard {
+  .emptyCard {
     padding: 18px;
   }
 

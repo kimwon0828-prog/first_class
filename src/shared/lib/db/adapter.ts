@@ -596,6 +596,44 @@ export type StudioUnregisteredApplicationItem = {
   latestApplicationLogNote: string | null
 }
 
+export type StudioConsultationPipelineGroup =
+  | "TODAY_CONTACT"
+  | "NEEDS_CONSULTATION"
+  | "NO_NEXT_CONTACT"
+  | "UPCOMING_CONTACT"
+  | "CLOSED"
+
+export type StudioConsultationPipelineApplicationItem = {
+  id: string
+  childName: string
+  childGrade: string
+  parentName: string | null
+  parentPhone: string | null
+  classTitle: string | null
+  classSubject: string | null
+  registrationStatus: ApplicationRegistrationStatus
+  completedAt: string
+  nextContactAt: string | null
+  lastActivityAt: string | null
+  enrolledAt: string | null
+  lostAt: string | null
+  unregisteredReason: ApplicationUnregisteredReason | null
+  unregisteredReasonNote: string | null
+  assignedTeacherId: string | null
+  assignedTeacherName: string | null
+  trialResultExists: boolean
+  consultationCount: number
+  hasAnyConsultationHistory: boolean
+  legacyImportExists: boolean
+  latestConsultationOccurredAt: string | null
+  latestConsultationChannel: ConsultationLogChannel | null
+  latestConsultationSentiment: ConsultationSentiment | null
+  latestConsultationNote: string | null
+  latestConsultationCreatedBy: string | null
+  latestConsultationCreatedByName: string | null
+  pipelineGroup: StudioConsultationPipelineGroup
+}
+
 export type StudioApplicationDetail = StudioApplicationSummary & {
   confirmedScheduleBlockId: string | null
   childSchool: string | null
@@ -822,6 +860,10 @@ export interface DataAdapter {
     options?: StudioUnregisteredListOptions
   ): Promise<StudioUnregisteredApplicationItem[]>
   getStudioUnregisteredActionRequiredCount(organizationId: string): Promise<number>
+  listStudioConsultationPipelineApplications(
+    organizationId: string
+  ): Promise<StudioConsultationPipelineApplicationItem[]>
+  getStudioConsultationPipelineActiveCount(organizationId: string): Promise<number>
   getStudioApplicationDetail(
     applicationId: string,
     organizationId: string

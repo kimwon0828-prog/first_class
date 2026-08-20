@@ -4,6 +4,7 @@ import { getSupabaseServiceRoleClient } from "@/integrations/supabase/service-ro
 import { getSupabaseServerClient } from "@/integrations/supabase/server"
 import { getPublicEnv } from "@/shared/config/env"
 import type { AcademyArea } from "@/shared/config/academy-areas"
+import { getConsultationPipelineGroup } from "@/shared/lib/consultation-pipeline"
 import { normalizeTeacherPublicVisibility } from "@/shared/lib/teacher-public-visibility"
 import { getSubjectLabel, normalizeSubjectCategory } from "@/shared/constants/education-taxonomy"
 import type {
@@ -34,6 +35,7 @@ import type {
   StudioApplicationListOptions,
   StudioApplicationDetail,
   StudioApplicationSummary,
+  StudioConsultationPipelineApplicationItem,
   StudioUnregisteredApplicationItem,
   StudioUnregisteredListOptions,
   StudioClassListItem,
@@ -3997,6 +3999,162 @@ export const supabaseDataAdapter: DataAdapter = {
 
     if (error) {
       throw new Error("failed_to_fetch_studio_unregistered_action_required_count")
+    }
+
+    return count ?? 0
+  },
+  async listStudioConsultationPipelineApplications(organizationId) {
+    const supabase = await getSupabaseServerClient()
+    const { data, error } = await supabase
+      .from("trial_applications")
+      .select(
+        "id, child_name, child_grade, parent_name, parent_phone, assigned_teacher_id, completed_at, next_contact_at, last_activity_at, enrolled_at, lost_at, registration_status, unregistered_reason, unregistered_reason_note, updated_at, classes!inner(title, subject, organization_id)"
+      )
+      .eq("classes.organization_id", organizationId)
+      .eq("status", "completed")
+      .in("registration_status", ["undecided", "pending", "enrolled", "not_enrolled"])
+      .order("completed_at", { ascending: false })
+
+    if (error) {
+      throw new Error("failed_to_fetch_studio_consultation_pipeline_applications")
+    }
+
+    const rows = (data ?? []) as TrialApplicationRow[]
+    const applicationIds = rows.map((row) => row.id)
+    const teacherNameById = await getStudioTeacherDisplayNameMap(
+      rows
+        .map((row) => row.assigned_teacher_id)
+        .filter((teacherId): teacherId is string => Boolean(teacherId))
+    )
+
+    const consultationCountByApplicationId = new Map<string, number>()
+    const hasAnyConsultationHistoryByApplicationId = new Map<string, boolean>()
+    const legacyImportExistsByApplicationId = new Map<string, boolean>()
+    const latestConsultationByApplicationId = new Map<string, ConsultationLogRow>()
+    const trialResultApplicationIds = new Set<string>()
+
+    if (applicationIds.length > 0) {
+      const [{ data: consultationLogData, error: consultationLogError }, { data: trialResultData, error: trialResultError }] =
+        await Promise.all([
+          supabase
+            .from("consultation_logs")
+            .select(
+              "id, application_id, occurred_at, activity_type, channel, sentiment, registration_status_snapshot, next_action, next_contact_at, note, created_by, created_at, updated_at"
+            )
+            .in("application_id", applicationIds)
+            .order("occurred_at", { ascending: false }),
+          supabase.from("trial_results").select("application_id").in("application_id", applicationIds)
+        ])
+
+      if (consultationLogError) {
+        throw new Error("failed_to_fetch_studio_consultation_pipeline_logs")
+      }
+
+      if (trialResultError) {
+        throw new Error("failed_to_fetch_studio_consultation_pipeline_trial_results")
+      }
+
+      for (const row of (trialResultData ?? []) as Pick<TrialResultRow, "application_id">[]) {
+        trialResultApplicationIds.add(row.application_id)
+      }
+
+      for (const row of (consultationLogData ?? []) as ConsultationLogRow[]) {
+        if (row.activity_type !== "CONSULTATION" && row.activity_type !== "LEGACY_IMPORT") {
+          continue
+        }
+
+        hasAnyConsultationHistoryByApplicationId.set(row.application_id, true)
+
+        if (row.activity_type === "LEGACY_IMPORT") {
+          legacyImportExistsByApplicationId.set(row.application_id, true)
+          continue
+        }
+
+        consultationCountByApplicationId.set(
+          row.application_id,
+          (consultationCountByApplicationId.get(row.application_id) ?? 0) + 1
+        )
+
+        if (!latestConsultationByApplicationId.has(row.application_id)) {
+          latestConsultationByApplicationId.set(row.application_id, row)
+        }
+      }
+    }
+
+    const latestConsultationCreatedByName = await getProfileNameMap(
+      Array.from(
+        new Set(
+          Array.from(latestConsultationByApplicationId.values())
+            .map((row) => row.created_by)
+            .filter((createdBy): createdBy is string => Boolean(createdBy))
+        )
+      )
+    )
+
+    return rows.map((row): StudioConsultationPipelineApplicationItem => {
+      const embeddedClass = getEmbeddedClass(row)
+      const completedAt = row.completed_at ?? row.updated_at
+      const latestConsultationRow = latestConsultationByApplicationId.get(row.id)
+      const latestConsultation = latestConsultationRow
+        ? mapStudioConsultationLog(latestConsultationRow)
+        : null
+      const hasAnyConsultationHistory = hasAnyConsultationHistoryByApplicationId.get(row.id) ?? false
+
+      const item: StudioConsultationPipelineApplicationItem = {
+        id: row.id,
+        childName: row.child_name,
+        childGrade: row.child_grade,
+        parentName: row.parent_name ?? null,
+        parentPhone: row.parent_phone ?? null,
+        classTitle: embeddedClass?.title ?? null,
+        classSubject: embeddedClass?.subject ?? null,
+        registrationStatus: row.registration_status as ApplicationRegistrationStatus,
+        completedAt,
+        nextContactAt: row.next_contact_at ?? null,
+        lastActivityAt: row.last_activity_at ?? null,
+        enrolledAt: row.enrolled_at ?? null,
+        lostAt: row.lost_at ?? null,
+        unregisteredReason: row.unregistered_reason ?? null,
+        unregisteredReasonNote: row.unregistered_reason_note?.trim()
+          ? row.unregistered_reason_note.trim()
+          : null,
+        assignedTeacherId: row.assigned_teacher_id ?? null,
+        assignedTeacherName: row.assigned_teacher_id
+          ? teacherNameById.get(row.assigned_teacher_id) ?? null
+          : null,
+        trialResultExists: trialResultApplicationIds.has(row.id),
+        consultationCount: consultationCountByApplicationId.get(row.id) ?? 0,
+        hasAnyConsultationHistory,
+        legacyImportExists: legacyImportExistsByApplicationId.get(row.id) ?? false,
+        latestConsultationOccurredAt: latestConsultation?.occurredAt ?? null,
+        latestConsultationChannel: latestConsultation?.channel ?? null,
+        latestConsultationSentiment: latestConsultation?.sentiment ?? null,
+        latestConsultationNote: latestConsultation?.note ?? null,
+        latestConsultationCreatedBy: latestConsultation?.createdBy ?? null,
+        latestConsultationCreatedByName:
+          latestConsultation?.createdBy != null
+            ? latestConsultationCreatedByName.get(latestConsultation.createdBy) ?? null
+            : null,
+        pipelineGroup: "NEEDS_CONSULTATION"
+      }
+
+      return {
+        ...item,
+        pipelineGroup: getConsultationPipelineGroup(item)
+      }
+    })
+  },
+  async getStudioConsultationPipelineActiveCount(organizationId) {
+    const supabase = await getSupabaseServerClient()
+    const { count, error } = await supabase
+      .from("trial_applications")
+      .select("id, classes!inner(id)", { count: "exact", head: true })
+      .eq("classes.organization_id", organizationId)
+      .eq("status", "completed")
+      .in("registration_status", ["undecided", "pending"])
+
+    if (error) {
+      throw new Error("failed_to_fetch_studio_consultation_pipeline_active_count")
     }
 
     return count ?? 0

@@ -1,56 +1,85 @@
 import Link from "next/link"
 
+import { getStudioRegistrationStatusLabel } from "@/features/studio/lib/application-status-labels"
 import {
-  getStudioRegistrationStatusLabel
-} from "@/features/studio/lib/application-status-labels"
+  getConsultationChannelLabel,
+  getConsultationSentimentLabel
+} from "@/features/studio/lib/consultation-log-options"
+import { formatSeoulDateTime } from "@/features/studio/lib/seoul-datetime"
 import {
-  UNREGISTERED_PERIOD_OPTIONS,
-  UNREGISTERED_REGISTRATION_FILTERS,
-  getDaysSinceCompleted,
-  resolveUnregisteredGroupKey,
-  type ResolvedUnregisteredPeriod,
-  type UnregisteredRegistrationFilterKey
-} from "@/features/studio/lib/unregistered-students"
-import type { StudioUnregisteredSummary } from "@/features/studio/queries/get-unregistered-applications"
+  getChildGradeLabel,
+  getSubjectLabel
+} from "@/shared/constants/education-taxonomy"
 import type {
-  StudioDashboardTeacherFilterOption,
-  StudioUnregisteredApplicationItem
+  StudioConsultationPipelineApplicationItem,
+  StudioConsultationPipelineGroup
 } from "@/shared/lib/db/adapter"
 
 import styles from "./unregistered-students-manager.module.css"
 
 type UnregisteredStudentsManagerProps = {
-  items: StudioUnregisteredApplicationItem[]
-  summary: StudioUnregisteredSummary
-  teacherOptions: StudioDashboardTeacherFilterOption[]
+  items: StudioConsultationPipelineApplicationItem[]
+  counselorOptions: Array<{ id: string; name: string }>
   selectedQuery: string
-  selectedTeacherId: string
-  selectedRegistrationStatus: UnregisteredRegistrationFilterKey
-  selectedPeriod: ResolvedUnregisteredPeriod
+  selectedCounselorId: string
   error?: string | null
   basePath?: string
 }
 
-const GROUP_META = {
-  pending: {
-    title: "고민 중",
-    description: "가장 전환 가능성이 높아요",
-    tone: "pending" as const,
-    primaryActionLabel: "전화 걸기"
-  },
-  undecided: {
-    title: "결과 미기록",
-    description: "기록해야 전환율이 정확해져요",
-    tone: "undecided" as const,
-    primaryActionLabel: "등록 여부 기록"
-  },
-  not_enrolled: {
-    title: "미등록 확정",
-    description: "새 프로그램이 생기면 다시 제안할 수 있어요",
-    tone: "notEnrolled" as const,
-    primaryActionLabel: "전화 걸기"
+const GROUP_ORDER: StudioConsultationPipelineGroup[] = [
+  "TODAY_CONTACT",
+  "NEEDS_CONSULTATION",
+  "NO_NEXT_CONTACT",
+  "UPCOMING_CONTACT",
+  "CLOSED"
+]
+
+const GROUP_META: Record<
+  StudioConsultationPipelineGroup,
+  {
+    title: string
+    description: string
+    emptyMessage: string
+    actionTitle: string
+    tone: "today" | "needs" | "warning" | "upcoming" | "closed"
   }
-} as const
+> = {
+  TODAY_CONTACT: {
+    title: "오늘 연락",
+    description: "예정된 연락 시각이 지났거나 지금 바로 챙겨야 하는 학생이에요.",
+    emptyMessage: "현재 연락할 학생이 없습니다.",
+    actionTitle: "지금 연락해 주세요.",
+    tone: "today"
+  },
+  NEEDS_CONSULTATION: {
+    title: "상담 필요",
+    description: "체험은 끝났지만 아직 상담 기록이 없는 학생이에요.",
+    emptyMessage: "아직 상담이 필요한 학생이 없습니다.",
+    actionTitle: "첫 상담을 남겨 주세요.",
+    tone: "needs"
+  },
+  NO_NEXT_CONTACT: {
+    title: "예정 없음",
+    description: "상담은 했지만 다음 연락 일정이 없습니다.",
+    emptyMessage: "다음 연락 일정이 비어 있는 학생이 없습니다.",
+    actionTitle: "다음 연락 일정을 정해 주세요.",
+    tone: "warning"
+  },
+  UPCOMING_CONTACT: {
+    title: "연락 예정",
+    description: "다가오는 연락 일정을 날짜순으로 확인하세요.",
+    emptyMessage: "예정된 연락 학생이 없습니다.",
+    actionTitle: "예정된 시각에 다시 연락하세요.",
+    tone: "upcoming"
+  },
+  CLOSED: {
+    title: "종료",
+    description: "등록 또는 미등록으로 전환이 끝난 학생이에요.",
+    emptyMessage: "종료된 학생이 아직 없습니다.",
+    actionTitle: "상세 기록을 확인하세요.",
+    tone: "closed"
+  }
+}
 
 const formatDate = (value: string) => {
   const date = new Date(value)
@@ -74,95 +103,127 @@ const normalizePhoneHref = (value: string | null) => {
 
 const getAvatarLabel = (name: string) => name.trim().slice(0, 2) || "학생"
 
-const getLastMemoText = (item: StudioUnregisteredApplicationItem) =>
-  item.followUpNote?.trim() ||
-  item.consultationNote?.trim() ||
-  item.latestApplicationLogNote?.trim() ||
-  "기록이 없어요"
+const getDisplayGradeLabel = (value: string | null | undefined) => {
+  return getChildGradeLabel(value) ?? value ?? "학년 미기록"
+}
+
+const getDisplaySubjectLabel = (value: string | null | undefined) => {
+  return getSubjectLabel(value) ?? value ?? null
+}
 
 const buildHref = (
   basePath: string,
   nextParams: Partial<{
     q: string | null
-    teacherId: string | null
-    registrationStatus: UnregisteredRegistrationFilterKey | null
-    period: string | null
+    counselorId: string | null
   }>,
   currentParams: {
     q: string
-    teacherId: string
-    registrationStatus: UnregisteredRegistrationFilterKey
-    period: string
+    counselorId: string
   }
 ) => {
   const params = new URLSearchParams()
   const resolved = {
     q: nextParams.q ?? currentParams.q,
-    teacherId: nextParams.teacherId ?? currentParams.teacherId,
-    registrationStatus:
-      nextParams.registrationStatus === null
-        ? "all"
-        : nextParams.registrationStatus ?? currentParams.registrationStatus,
-    period: nextParams.period ?? currentParams.period
+    counselorId: nextParams.counselorId ?? currentParams.counselorId
   }
 
   if (resolved.q.trim()) {
     params.set("q", resolved.q.trim())
   }
 
-  if (resolved.teacherId && resolved.teacherId !== "all") {
-    params.set("teacherId", resolved.teacherId)
-  }
-
-  if (resolved.registrationStatus !== "all") {
-    params.set("registrationStatus", resolved.registrationStatus)
-  }
-
-  if (resolved.period && resolved.period !== "all") {
-    params.set("period", resolved.period)
+  if (resolved.counselorId && resolved.counselorId !== "all") {
+    params.set("counselorId", resolved.counselorId)
   }
 
   const query = params.toString()
   return query ? `${basePath}?${query}` : basePath
 }
 
+const formatDateTime = (value: string | null | undefined) => {
+  return formatSeoulDateTime(value, {
+    month: "long",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit"
+  })
+}
+
+const formatShortDateTime = (value: string | null | undefined) => {
+  return formatSeoulDateTime(value, {
+    month: "long",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit"
+  })
+}
+
+const getOverdueLabel = (value: string | null) => {
+  if (!value) {
+    return null
+  }
+
+  const target = new Date(value).getTime()
+  if (Number.isNaN(target)) {
+    return null
+  }
+
+  const diffMs = Date.now() - target
+  if (diffMs <= 0) {
+    return null
+  }
+
+  const diffHours = Math.floor(diffMs / (1000 * 60 * 60))
+  if (diffHours < 24) {
+    return `${Math.max(1, diffHours)}시간 지남`
+  }
+
+  const diffDays = Math.floor(diffHours / 24)
+  return `${Math.max(1, diffDays)}일 지남`
+}
+
+const renderLatestConsultationMeta = (item: StudioConsultationPipelineApplicationItem) => {
+  const meta = [
+    item.latestConsultationOccurredAt ? formatShortDateTime(item.latestConsultationOccurredAt) : null,
+    getConsultationChannelLabel(item.latestConsultationChannel)
+  ].filter(Boolean)
+
+  if (meta.length === 0) {
+    return null
+  }
+
+  return meta.join(" · ")
+}
+
 export const UnregisteredStudentsManager = ({
   items,
-  summary,
-  teacherOptions,
+  counselorOptions,
   selectedQuery,
-  selectedTeacherId,
-  selectedRegistrationStatus,
-  selectedPeriod,
+  selectedCounselorId,
   error,
   basePath = "/studio/unregistered"
 }: UnregisteredStudentsManagerProps) => {
   const currentParams = {
     q: selectedQuery,
-    teacherId: selectedTeacherId,
-    registrationStatus: selectedRegistrationStatus,
-    period: selectedPeriod.key
+    counselorId: selectedCounselorId
   }
-
-  const groupedItems = {
-    pending: items.filter((item) => resolveUnregisteredGroupKey(item.registrationStatus) === "pending"),
-    undecided: items.filter((item) => resolveUnregisteredGroupKey(item.registrationStatus) === "undecided"),
-    not_enrolled: items.filter((item) => resolveUnregisteredGroupKey(item.registrationStatus) === "not_enrolled")
-  }
-
-  const visibleGroups =
-    selectedRegistrationStatus === "all"
-      ? (["pending", "undecided", "not_enrolled"] as const)
-      : ([selectedRegistrationStatus] as const)
+  const groupedItems = Object.fromEntries(
+    GROUP_ORDER.map((group) => [group, items.filter((item) => item.pipelineGroup === group)])
+  ) as Record<StudioConsultationPipelineGroup, StudioConsultationPipelineApplicationItem[]>
+  const closedItems = groupedItems.CLOSED
+  const closedEnrolledCount = closedItems.filter((item) => item.registrationStatus === "enrolled").length
+  const closedNotEnrolledCount = closedItems.filter(
+    (item) => item.registrationStatus === "not_enrolled"
+  ).length
 
   return (
     <div className={styles.page}>
       <header className={styles.header}>
         <div>
-          <p className={styles.eyebrow}>리드 관리</p>
-          <h1 className={styles.title}>미등록 학생관리</h1>
+          <p className={styles.eyebrow}>등록 전환 파이프라인</p>
+          <h1 className={styles.title}>상담 관리</h1>
           <p className={styles.description}>
-            체험수업을 마쳤지만 아직 등록하지 않은 학부모예요. 다시 연락하면 등록으로 이어질 수 있어요.
+            체험수업 이후 상담과 등록 전환을 관리하세요.
           </p>
         </div>
       </header>
@@ -172,63 +233,6 @@ export const UnregisteredStudentsManager = ({
           <p className={styles.errorText}>{error}</p>
         </section>
       ) : null}
-
-      <section className={styles.actionSection}>
-        <div className={styles.sectionHeading}>
-          <div>
-            <h2 className={styles.sectionTitle}>지금 챙길 학생</h2>
-            <p className={styles.sectionDescription}>
-              이 두 그룹은 아직 결과가 확정되지 않았어요. 먼저 처리해 주세요.
-            </p>
-          </div>
-        </div>
-
-        <div className={styles.actionGrid}>
-          <Link
-            href={buildHref(basePath, { registrationStatus: "pending" }, currentParams)}
-            className={`${styles.actionCard} ${styles.actionCardPending}`}
-          >
-            <p className={styles.actionLabel}>고민 중</p>
-            <strong className={styles.actionValue}>{summary.pendingCount}</strong>
-            <p className={styles.actionText}>등록을 망설이는 학부모예요</p>
-          </Link>
-          <Link
-            href={buildHref(basePath, { registrationStatus: "undecided" }, currentParams)}
-            className={`${styles.actionCard} ${styles.actionCardUndecided}`}
-          >
-            <p className={styles.actionLabel}>결과 미기록</p>
-            <strong className={styles.actionValue}>{summary.undecidedCount}</strong>
-            <p className={styles.actionText}>등록 여부를 아직 안 적었어요</p>
-          </Link>
-        </div>
-      </section>
-
-      <section className={styles.stripSection} aria-label="참고 지표">
-        <div className={styles.stripGrid}>
-          <article className={styles.stripItem}>
-            <p className={styles.stripLabel}>전체 관리 대상</p>
-            <p className={styles.stripValue}>{summary.totalCount}</p>
-            <p className={styles.stripDescription}>체험 완료 · 미등록</p>
-          </article>
-          <article className={styles.stripItem}>
-            <p className={styles.stripLabel}>미등록 확정</p>
-            <p className={styles.stripValue}>{summary.notEnrolledCount}</p>
-            <p className={styles.stripDescription}>등록 안 하기로 결정</p>
-          </article>
-          <article className={styles.stripItem}>
-            <p className={styles.stripLabel}>평균 경과</p>
-            <p className={styles.stripValue}>
-              {summary.averageElapsedDays != null ? `${summary.averageElapsedDays}일` : "—"}
-            </p>
-            <p className={styles.stripDescription}>체험 완료 후</p>
-          </article>
-          <article className={styles.stripItem}>
-            <p className={styles.stripLabel}>재상담 여지</p>
-            <p className={styles.stripValue}>{summary.reengageableCount}</p>
-            <p className={styles.stripDescription}>고민 중 + 미기록</p>
-          </article>
-        </div>
-      </section>
 
       <section className={styles.filterSection}>
         <form action={basePath} method="get" className={styles.filterForm}>
@@ -244,77 +248,34 @@ export const UnregisteredStudentsManager = ({
           </label>
 
           <label className={styles.selectField}>
-            <span className={styles.fieldLabel}>기간</span>
-            <select name="period" defaultValue={selectedPeriod.key} className={styles.select}>
-              {UNREGISTERED_PERIOD_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label className={styles.selectField}>
-            <span className={styles.fieldLabel}>담당 선생님</span>
-            <select name="teacherId" defaultValue={selectedTeacherId} className={styles.select}>
+            <span className={styles.fieldLabel}>마지막 상담자</span>
+            <select name="counselorId" defaultValue={selectedCounselorId} className={styles.select}>
               <option value="all">전체</option>
-              {teacherOptions.map((option) => (
-                <option key={option.teacherId} value={option.teacherId}>
-                  {option.teacherName}
+              {counselorOptions.map((option) => (
+                <option key={option.id} value={option.id}>
+                  {option.name}
                 </option>
               ))}
             </select>
           </label>
-
-          {selectedRegistrationStatus !== "all" ? (
-            <input type="hidden" name="registrationStatus" value={selectedRegistrationStatus} />
-          ) : null}
 
           <button type="submit" className={styles.submitButton}>
             필터 적용
           </button>
         </form>
-
-        <div className={styles.tabs} role="tablist" aria-label="등록 상태 필터">
-          {UNREGISTERED_REGISTRATION_FILTERS.map((filter) => {
-            const count =
-              filter.key === "all"
-                ? summary.totalCount
-                : filter.key === "pending"
-                  ? summary.pendingCount
-                  : filter.key === "undecided"
-                    ? summary.undecidedCount
-                    : summary.notEnrolledCount
-
-            return (
-              <Link
-                key={filter.key}
-                href={buildHref(
-                  basePath,
-                  {
-                    registrationStatus: filter.key === "all" ? null : filter.key
-                  },
-                  currentParams
-                )}
-                className={`${styles.tabChip} ${
-                  selectedRegistrationStatus === filter.key ? styles.tabChipActive : ""
-                }`}
-                role="tab"
-                aria-selected={selectedRegistrationStatus === filter.key}
-              >
-                <span>{filter.label}</span>
-                <span className={styles.tabCount}>{count}</span>
-              </Link>
-            )
-          })}
+        <div className={styles.filterFooter}>
+          <p className={styles.filterHint}>상담자 정보가 없는 항목은 항상 표시됩니다.</p>
+          <Link href={buildHref(basePath, { q: null, counselorId: null }, currentParams)} className={styles.resetLink}>
+            필터 초기화
+          </Link>
         </div>
       </section>
 
       {items.length === 0 ? (
         <section className={styles.emptyCard}>
-          <h2 className={styles.emptyTitle}>아직 관리할 미등록 학생이 없어요.</h2>
+          <h2 className={styles.emptyTitle}>지금 표시할 상담 관리 항목이 없어요.</h2>
           <p className={styles.emptyDescription}>
-            체험 완료 후 등록하지 않은 학생이 생기면 이곳에서 다시 상담할 수 있어요.
+            검색어나 상담자 필터를 비우거나 신청 관리에서 체험 완료 학생을 확인해 주세요.
           </p>
           <Link href="/studio/applications" className={styles.emptyButton}>
             신청 관리로 이동
@@ -322,145 +283,285 @@ export const UnregisteredStudentsManager = ({
         </section>
       ) : (
         <div className={styles.groupList}>
-          {visibleGroups.map((groupKey) => {
+          {GROUP_ORDER.map((groupKey) => {
             const groupItems = groupedItems[groupKey]
-            if (groupItems.length === 0) {
-              return null
+            const groupMeta = GROUP_META[groupKey]
+            if (groupKey === "CLOSED") {
+              return (
+                <details key={groupKey} className={styles.closedSection}>
+                  <summary className={styles.closedSummary}>
+                    <div>
+                      <h2 className={styles.groupTitle}>
+                        {groupMeta.title}
+                        <span className={styles.groupCount}>{groupItems.length}명</span>
+                      </h2>
+                      <p className={styles.groupDescription}>
+                        등록 {closedEnrolledCount} · 미등록 {closedNotEnrolledCount}
+                      </p>
+                    </div>
+                    <span className={styles.closedToggle}>펼쳐보기</span>
+                  </summary>
+
+                  {groupItems.length === 0 ? (
+                    <p className={styles.groupEmpty}>{groupMeta.emptyMessage}</p>
+                  ) : (
+                    <div className={styles.cardList}>
+                      {groupItems.map((item) => {
+                        const registrationLabel = getStudioRegistrationStatusLabel(item.registrationStatus)
+                        const gradeLabel = getDisplayGradeLabel(item.childGrade)
+                        const subjectLabel = getDisplaySubjectLabel(item.classSubject)
+                        return (
+                          <article key={item.id} className={`${styles.studentCard} ${styles.studentCardClosed}`}>
+                            <div className={styles.cardLayout}>
+                              <div className={styles.infoColumn}>
+                                <div className={styles.avatar}>{getAvatarLabel(item.childName)}</div>
+                                <div className={styles.cardTopBody}>
+                                  <div className={styles.cardTitleRow}>
+                                    <div>
+                                      <h3 className={styles.cardTitle}>
+                                        {item.childName}
+                                        <span className={styles.cardTitleSub}> · {gradeLabel}</span>
+                                      </h3>
+                                      <p className={styles.cardSubTitle}>{item.classTitle ?? "체험 수업 미확인"}</p>
+                                    </div>
+                                    <span
+                                      className={`${styles.statusBadge} ${
+                                        item.registrationStatus === "enrolled"
+                                          ? styles.statusBadgePositive
+                                          : styles.statusBadgeMuted
+                                      }`}
+                                    >
+                                      {registrationLabel}
+                                    </span>
+                                  </div>
+                                  <p className={styles.metaRow}>
+                                    {[item.parentName, item.parentPhone, subjectLabel]
+                                      .filter(Boolean)
+                                      .join(" · ")}
+                                  </p>
+                                </div>
+                              </div>
+
+                              <div className={styles.contextColumn}>
+                                <p className={styles.contextLabel}>상태</p>
+                                <p className={styles.contextPrimary}>
+                                  {item.registrationStatus === "enrolled"
+                                    ? `등록 완료 · ${formatDate(item.enrolledAt ?? item.completedAt)}`
+                                    : `미등록 종료 · ${formatDate(item.lostAt ?? item.completedAt)}`}
+                                </p>
+                                {item.registrationStatus === "not_enrolled" ? (
+                                  <p className={styles.secondaryLine}>
+                                    {[item.unregisteredReason, item.unregisteredReasonNote]
+                                      .filter(Boolean)
+                                      .join(" · ") || "미등록 사유 미기록"}
+                                  </p>
+                                ) : null}
+                              </div>
+
+                              <div className={styles.actionColumn}>
+                                <div className={styles.actionSummary}>
+                                  <p className={styles.actionLabel}>다음 행동</p>
+                                  <p className={styles.actionTitle}>{groupMeta.actionTitle}</p>
+                                </div>
+                                <div className={styles.cardActions}>
+                                  <Link href={`/studio/applications/${item.id}`} className={styles.tertiaryButton}>
+                                    상세 보기
+                                  </Link>
+                                </div>
+                              </div>
+                            </div>
+                          </article>
+                        )
+                      })}
+                    </div>
+                  )}
+                </details>
+              )
             }
 
-            const groupMeta = GROUP_META[groupKey]
             return (
-              <section key={groupKey} className={styles.groupSection}>
+              <section
+                key={groupKey}
+                className={`${styles.groupSection} ${groupItems.length === 0 ? styles.groupSectionCompact : ""}`}
+              >
                 <header className={styles.groupHeader}>
                   <div>
                     <h2 className={styles.groupTitle}>
                       {groupMeta.title}
-                      <span className={styles.groupCount}>{groupItems.length}건</span>
+                      <span className={styles.groupCount}>{groupItems.length}</span>
                     </h2>
-                    <p className={styles.groupDescription}>{groupMeta.description}</p>
+                    {groupItems.length > 0 ? (
+                      <p className={styles.groupDescription}>{groupMeta.description}</p>
+                    ) : null}
                   </div>
                 </header>
 
-                <div className={styles.cardList}>
-                  {groupItems.map((item) => {
-                    const phoneHref = normalizePhoneHref(item.parentPhone)
-                    const dayCount = getDaysSinceCompleted(item.completedAt)
-                    const memoText = getLastMemoText(item)
-                    const registrationLabel = getStudioRegistrationStatusLabel(item.registrationStatus)
-                    const isUndecided = groupKey === "undecided"
-                    const isPending = groupKey === "pending"
-                    return (
-                      <article
-                        key={item.id}
-                        className={`${styles.studentCard} ${
-                          isPending
-                            ? styles.studentCardPending
-                            : isUndecided
-                              ? styles.studentCardUndecided
-                              : styles.studentCardNotEnrolled
-                        }`}
-                      >
-                        <Link href={`/studio/applications/${item.id}`} className={styles.cardTopLink}>
-                          <div className={styles.avatar}>{getAvatarLabel(item.childName)}</div>
-                          <div className={styles.cardTopBody}>
-                            <div className={styles.cardTitleRow}>
-                              <div>
-                                <h3 className={styles.cardTitle}>
-                                  {item.childName}
-                                  <span className={styles.cardTitleSub}> · {item.childGrade}</span>
-                                </h3>
-                                <p className={styles.cardSubTitle}>{item.classTitle ?? "수업 정보 없음"}</p>
+                {groupItems.length === 0 ? (
+                  <p className={styles.groupEmpty}>{groupMeta.emptyMessage}</p>
+                ) : (
+                  <div className={styles.cardList}>
+                    {groupItems.map((item) => {
+                      const phoneHref = normalizePhoneHref(item.parentPhone)
+                      const registrationLabel = getStudioRegistrationStatusLabel(item.registrationStatus)
+                      const sentimentLabel = getConsultationSentimentLabel(item.latestConsultationSentiment)
+                      const latestConsultationMeta = renderLatestConsultationMeta(item)
+                      const overdueLabel = getOverdueLabel(item.nextContactAt)
+                      const detailHref = `/studio/applications/${item.id}`
+                      const gradeLabel = getDisplayGradeLabel(item.childGrade)
+                      const subjectLabel = getDisplaySubjectLabel(item.classSubject)
+                      const nextContactLabel = formatDateTime(item.nextContactAt)
+                      const needsLegacyFallback =
+                        !item.latestConsultationOccurredAt && item.legacyImportExists
+                      const actionSummaryLabel =
+                        groupKey === "TODAY_CONTACT"
+                          ? "지금 연락해 주세요."
+                          : groupKey === "NEEDS_CONSULTATION"
+                            ? "첫 상담을 남겨 주세요."
+                            : groupKey === "NO_NEXT_CONTACT"
+                              ? "다음 연락 일정을 정해 주세요."
+                              : "예정된 시각에 다시 연락하세요."
+
+                      return (
+                        <article
+                          key={item.id}
+                          className={`${styles.studentCard} ${
+                            groupKey === "TODAY_CONTACT"
+                              ? styles.studentCardToday
+                              : groupKey === "NO_NEXT_CONTACT"
+                                ? styles.studentCardWarning
+                                : styles.studentCardDefault
+                          }`}
+                        >
+                          <div className={styles.cardLayout}>
+                            <Link href={detailHref} className={styles.infoColumn}>
+                              <div className={styles.avatar}>{getAvatarLabel(item.childName)}</div>
+                              <div className={styles.cardTopBody}>
+                                <div className={styles.cardTitleRow}>
+                                  <div>
+                                    <h3 className={styles.cardTitle}>
+                                      {item.childName}
+                                      <span className={styles.cardTitleSub}> · {gradeLabel}</span>
+                                    </h3>
+                                    <p className={styles.cardSubTitle}>{item.classTitle ?? "체험 수업 미확인"}</p>
+                                  </div>
+                                  <span
+                                    className={`${styles.statusBadge} ${
+                                      item.registrationStatus === "pending"
+                                        ? styles.statusBadgeWarning
+                                        : styles.statusBadgeMuted
+                                    }`}
+                                  >
+                                    {registrationLabel}
+                                  </span>
+                                </div>
+                                <p className={styles.metaRow}>
+                                  {[item.parentName, item.parentPhone, subjectLabel]
+                                    .filter(Boolean)
+                                    .join(" · ")}
+                                </p>
                               </div>
-                              <div className={styles.cardBadges}>
-                                <span
-                                  className={`${styles.statusBadge} ${
-                                    isPending
-                                      ? styles.statusBadgePending
-                                      : isUndecided
-                                        ? styles.statusBadgeUndecided
-                                        : styles.statusBadgeNotEnrolled
-                                  }`}
-                                >
-                                  {registrationLabel}
-                                </span>
-                                <span
-                                  className={`${styles.elapsedBadge} ${
-                                    dayCount > 30 ? styles.elapsedBadgeAlert : ""
-                                  }`}
-                                >
-                                  체험 후 {dayCount}일
-                                </span>
-                              </div>
+                            </Link>
+
+                            <div className={styles.contextColumn}>
+                              <p className={styles.contextLabel}>
+                                {groupKey === "NEEDS_CONSULTATION"
+                                  ? "현재 상태"
+                                  : item.latestConsultationOccurredAt
+                                    ? "마지막 상담"
+                                    : needsLegacyFallback
+                                      ? "이전 상담"
+                                      : "상담 맥락"}
+                              </p>
+
+                              {groupKey === "NEEDS_CONSULTATION" ? (
+                                <>
+                                  <p className={styles.contextPrimary}>아직 상담 기록이 없습니다.</p>
+                                  <p className={styles.secondaryLine}>
+                                    체험 완료 {formatDate(item.completedAt)}
+                                  </p>
+                                </>
+                              ) : item.latestConsultationOccurredAt ? (
+                                <>
+                                  <p className={styles.contextPrimary}>{latestConsultationMeta}</p>
+                                  {item.latestConsultationNote ? (
+                                    <blockquote className={styles.memoBlock}>
+                                      <p className={styles.memoText}>{item.latestConsultationNote}</p>
+                                    </blockquote>
+                                  ) : null}
+                                  <div className={styles.supportMeta}>
+                                    {sentimentLabel ? (
+                                      <span
+                                        className={`${styles.sentimentBadge} ${
+                                          item.latestConsultationSentiment === "POSITIVE"
+                                            ? styles.sentimentPositive
+                                            : item.latestConsultationSentiment === "NEGATIVE"
+                                              ? styles.sentimentNegative
+                                              : styles.sentimentNeutral
+                                        }`}
+                                      >
+                                        {sentimentLabel}
+                                      </span>
+                                    ) : null}
+                                  </div>
+                                </>
+                              ) : needsLegacyFallback ? (
+                                <>
+                                  <p className={styles.contextPrimary}>이전 상담 기록이 있어요.</p>
+                                  <p className={styles.secondaryLine}>최근 실제 상담 내용은 아직 없습니다.</p>
+                                </>
+                              ) : (
+                                <p className={styles.contextPrimary}>상담 정보가 없습니다.</p>
+                              )}
                             </div>
 
-                            <p className={styles.metaRow}>
-                              {[item.classTitle, `체험 완료일 ${formatDate(item.completedAt)}`, item.parentName, item.parentPhone, item.assignedTeacherName]
-                                .filter(Boolean)
-                                .join(" · ")}
-                            </p>
+                            <div className={styles.actionColumn}>
+                              <div className={styles.actionSummary}>
+                                <p className={styles.actionLabel}>다음 행동</p>
+                                <p className={styles.actionTitle}>{actionSummaryLabel}</p>
+
+                                {groupKey === "TODAY_CONTACT" ? (
+                                  <>
+                                    <p className={styles.primaryLine}>다음 연락 {nextContactLabel ?? "-"}</p>
+                                    {overdueLabel ? (
+                                      <p className={styles.overdueLine}>지금 연락 권장 · {overdueLabel}</p>
+                                    ) : null}
+                                  </>
+                                ) : null}
+
+                                {groupKey === "NO_NEXT_CONTACT" ? (
+                                  <p className={styles.warningLine}>다음 연락 일정이 없습니다.</p>
+                                ) : null}
+
+                                {groupKey === "UPCOMING_CONTACT" ? (
+                                  <p className={styles.primaryLine}>다음 연락 {nextContactLabel ?? "-"}</p>
+                                ) : null}
+                              </div>
+
+                              <div className={styles.cardActions}>
+                                {phoneHref ? (
+                                  <a href={`tel:${phoneHref}`} className={styles.primaryButtonGreen}>
+                                    전화
+                                  </a>
+                                ) : null}
+                                <Link href={detailHref} className={styles.secondaryButton}>
+                                  상담 기록
+                                </Link>
+                                <Link href={detailHref} className={styles.tertiaryButton}>
+                                  상세 보기
+                                </Link>
+                              </div>
+                            </div>
                           </div>
-                        </Link>
-
-                        <blockquote className={styles.memoBlock}>
-                          <p className={styles.memoLabel}>마지막 상담 메모</p>
-                          <p className={styles.memoText}>{memoText}</p>
-                        </blockquote>
-
-                        <div className={styles.cardActions}>
-                          {groupKey === "undecided" ? (
-                            <Link href={`/studio/applications/${item.id}`} className={styles.primaryButtonBlue}>
-                              등록 여부 기록
-                            </Link>
-                          ) : phoneHref ? (
-                            <a
-                              href={`tel:${phoneHref}`}
-                              className={
-                                groupKey === "not_enrolled"
-                                  ? styles.outlineButton
-                                  : styles.primaryButtonGreen
-                              }
-                            >
-                              {groupMeta.primaryActionLabel}
-                            </a>
-                          ) : (
-                            <Link href={`/studio/applications/${item.id}`} className={styles.outlineButton}>
-                              상세 보기
-                            </Link>
-                          )}
-
-                          {groupKey !== "not_enrolled" && phoneHref ? (
-                            groupKey === "undecided" ? (
-                              <a href={`tel:${phoneHref}`} className={styles.outlineButton}>
-                                전화 걸기
-                              </a>
-                            ) : (
-                              <a href={`sms:${phoneHref}`} className={styles.outlineButton}>
-                                문자
-                              </a>
-                            )
-                          ) : null}
-
-                          <Link href={`/studio/applications/${item.id}`} className={styles.outlineButton}>
-                            상세 보기
-                          </Link>
-                        </div>
-                      </article>
-                    )
-                  })}
-                </div>
+                        </article>
+                      )
+                    })}
+                  </div>
+                )}
               </section>
             )
           })}
         </div>
       )}
-
-      <section className={styles.futureCard}>
-        <h2 className={styles.futureTitle}>앞으로 추가될 기능</h2>
-        <p className={styles.futureDescription}>
-          미등록 사유 분류, 재상담 예정일 알림, 관심 태그, 마지막 연락일 추적, 새 특강 추천 발송,
-          마케팅 수신 동의 관리를 이 화면에서 이어서 제공할 예정이에요.
-        </p>
-      </section>
     </div>
   )
 }
