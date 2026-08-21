@@ -36,6 +36,22 @@
 - 더미 데이터로 먼저 연결하고, 이후 실제 Supabase 데이터로 연결한다.
 - 큰 변경 전에는 어떤 파일을 바꿀지 먼저 알려준다.
 
+## 지속 작업 안전 규칙
+- 변경 전에는 반드시 실제 route, caller, server action, adapter 호출부를 먼저 확인한다.
+- 신청 상태 기본 계약 `new -> reviewing -> confirmed -> completed`는 유지한다. 상태 이름/의미를 임의로 바꾸거나 별도 상태 체계로 재설계하지 않는다.
+- 신청 상태 관련 작업에서는 항상 `trial_applications`, `application_logs`, 일정 데이터, SMS/알림톡 로그, 등록 전환 데이터를 함께 확인한다.
+- 체험 완료 이후 전환 흐름에서는 `trial_applications.completed_at`, `last_activity_at`, `next_contact_at`를 핵심 원천 데이터로 취급한다. `next_contact_at`은 nullable이며 임의로 필수화하지 않는다.
+- 상담 파이프라인은 신청 관리와 목적이 다르다. 신청일 기준 월/기간 필터 때문에 상담 중 리드가 사라지는 구조로 바꾸지 않는다.
+- 전화 버튼/전화 액션은 `전화 시도`를 의미한다. 버튼 클릭만으로 상담 완료/통화 성공으로 간주하지 않는다.
+- SMS/알림톡은 safe wrapper 패턴을 유지한다. 알림 실패 때문에 신청 생성, 담당자 변경, 일정 확정, 체험 완료, 상담 기록, 등록 전환 같은 핵심 작업이 실패하면 안 된다.
+- 일정 occurrence 및 시간 비교는 항상 `Asia/Seoul` 기준 해석을 먼저 확인한다. UTC timestamp와 `class_schedule.start_time` 문자열을 직접 비교하지 않는다.
+- 데이터 접근 계층을 바꾸기 전에는 `src/shared/lib/db/adapter.ts`, `src/shared/lib/db/supabase-adapter.ts`, `src/shared/lib/db/mock-adapter.ts`를 함께 확인한다. adapter interface를 바꾸면 mock 구현과 호출부까지 같이 맞춘다.
+- DB schema 변경, migration 생성/수정, `db push`류 명령은 사용자 승인 없이 진행하지 않는다.
+- 기존 route는 리팩터링, naming consistency, 정리 목적만으로 rename/remove 하지 않는다. 필요 시 먼저 제안하고 승인 후 진행한다.
+- legacy처럼 보이는 코드도 import/caller/route/UI/adapter 연결을 확인하기 전에는 삭제·통합하지 않는다.
+- 기능 작업 후에는 최소 `lint`, `typecheck` 필요 여부를 판단하고, 실행하지 못했으면 이유를 보고한다.
+- `git add`, `commit`, `push`는 사용자 승인 없이 진행하지 않는다.
+
 ## 완료 기준
 - 페이지가 실행된다.
 - 핵심 흐름이 이어진다.
