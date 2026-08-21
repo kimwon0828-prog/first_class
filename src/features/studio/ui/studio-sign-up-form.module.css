@@ -293,6 +293,24 @@
   font-weight: 700;
 }
 
+.messageText {
+  margin: 0;
+}
+
+.messageLink {
+  display: inline-flex;
+  margin-top: 8px;
+  color: #2aad38;
+  text-decoration: none;
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 800;
+}
+
+.messageLink:hover {
+  text-decoration: underline;
+}
+
 .inlineErrorText {
   margin: 0;
   font-size: 12px;

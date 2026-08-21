@@ -2,6 +2,7 @@
 
 import Link from "next/link"
 import { useMemo, useState, type FormEvent } from "react"
+import { useFormStatus } from "react-dom"
 
 import { AdminApprovalNav } from "../_components/admin-approval-nav"
 import { ApprovalSubmitButton } from "./approval-submit-button"
@@ -29,6 +30,7 @@ type SignupRequestView = {
   addressLine1: string | null
   addressLine2: string | null
   adminNote: string | null
+  rejectionReason: string | null
   reviewedBy: string | null
   reviewedAt: string | null
   businessRegistrationSignedUrl: string | null
@@ -40,7 +42,7 @@ type AcademyApprovalsClientProps = {
   actionError: string | null
   listError: string | null
   approveAction: (formData: FormData) => void | Promise<void>
-  rejectAction: (formData: FormData) => void | Promise<void>
+  rejectAction: (requestId: string, reason: string) => void | Promise<void>
 }
 
 type StatusFilter = "all" | "pending" | "approved" | "rejected"
@@ -129,29 +131,33 @@ const getSearchableText = (row: SignupRequestView) =>
 
 const isPendingStatus = (status: string) => status === "pending"
 
+function RejectSubmitButton({ disabled }: { disabled: boolean }) {
+  const { pending } = useFormStatus()
+
+  return (
+    <button
+      type="submit"
+      disabled={disabled || pending}
+      className={`${styles.actionButton} ${styles.actionButtonReject}`}
+    >
+      {pending ? "거절 처리 중" : "거절 처리"}
+    </button>
+  )
+}
+
 function ApprovalActions({
   requestId,
   approveAction,
-  rejectAction
+  onOpenRejectModal
 }: {
   requestId: string
   approveAction: (formData: FormData) => void | Promise<void>
-  rejectAction: (formData: FormData) => void | Promise<void>
+  onOpenRejectModal: () => void
 }) {
   const handleApproveConfirm = (event: FormEvent<HTMLFormElement>) => {
     if (
       !window.confirm(
         "이 학원 계정 신청을 승인할까요?\n승인하면 운영보드 계정과 학원 정보가 생성됩니다."
-      )
-    ) {
-      event.preventDefault()
-    }
-  }
-
-  const handleRejectConfirm = (event: FormEvent<HTMLFormElement>) => {
-    if (
-      !window.confirm(
-        "이 신청을 거절할까요?\n거절된 신청은 운영보드 계정으로 전환되지 않습니다."
       )
     ) {
       event.preventDefault()
@@ -164,10 +170,9 @@ function ApprovalActions({
         <input type="hidden" name="requestId" value={requestId} />
         <ApprovalSubmitButton idleLabel="승인" pendingLabel="승인 중" variant="approve" />
       </form>
-      <form action={rejectAction} onSubmit={handleRejectConfirm}>
-        <input type="hidden" name="requestId" value={requestId} />
-        <ApprovalSubmitButton idleLabel="거절" pendingLabel="거절 중" variant="reject" />
-      </form>
+      <button type="button" className={`${styles.actionButton} ${styles.actionButtonReject}`} onClick={onOpenRejectModal}>
+        거절
+      </button>
     </div>
   )
 }
@@ -181,6 +186,11 @@ export function AcademyApprovalsClient({
 }: AcademyApprovalsClientProps) {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all")
   const [query, setQuery] = useState("")
+  const [rejectTarget, setRejectTarget] = useState<{
+    requestId: string
+    organizationName: string
+  } | null>(null)
+  const [rejectReason, setRejectReason] = useState("")
 
   const summary = useMemo(() => {
     const todayKey = new Date().toDateString()
@@ -262,6 +272,15 @@ export function AcademyApprovalsClient({
     requests.length === 0
       ? "새로운 학원 계정 신청이 들어오면 이곳에서 확인할 수 있어요."
       : "필터나 검색어를 조정해서 다시 확인해 주세요."
+
+  const trimmedRejectReason = rejectReason.trim()
+  const rejectReasonLength = rejectReason.length
+  const isRejectReasonInvalid = trimmedRejectReason.length < 5 || trimmedRejectReason.length > 300
+
+  const closeRejectModal = () => {
+    setRejectTarget(null)
+    setRejectReason("")
+  }
 
   return (
     <div className={styles.page}>
@@ -410,6 +429,14 @@ export function AcademyApprovalsClient({
                                     <span className={styles.detailValue}>{row.adminNote}</span>
                                   </div>
                                 ) : null}
+                                {row.status === "rejected" ? (
+                                  <div className={styles.detailItem}>
+                                    <span className={styles.detailLabel}>거절 사유</span>
+                                    <span className={styles.detailValue}>
+                                      {toText(row.rejectionReason) ?? "운영팀에 문의해 주세요."}
+                                    </span>
+                                  </div>
+                                ) : null}
                                 {reviewedAt ? (
                                   <div className={styles.detailItem}>
                                     <span className={styles.detailLabel}>처리 시각</span>
@@ -465,7 +492,13 @@ export function AcademyApprovalsClient({
                             <ApprovalActions
                               requestId={row.requestId}
                               approveAction={approveAction}
-                              rejectAction={rejectAction}
+                              onOpenRejectModal={() => {
+                                setRejectTarget({
+                                  requestId: row.requestId,
+                                  organizationName: row.organizationName
+                                })
+                                setRejectReason("")
+                              }}
                             />
                           ) : (
                             <span className={styles.doneText}>처리 완료</span>
@@ -552,18 +585,18 @@ export function AcademyApprovalsClient({
                           <input type="hidden" name="requestId" value={row.requestId} />
                           <ApprovalSubmitButton idleLabel="승인" pendingLabel="승인 중" variant="approve" />
                         </form>
-                        <form action={rejectAction} onSubmit={(event) => {
-                          if (
-                            !window.confirm(
-                              "이 신청을 거절할까요?\n거절된 신청은 운영보드 계정으로 전환되지 않습니다."
-                            )
-                          ) {
-                            event.preventDefault()
-                          }
+                        <button
+                          type="button"
+                          className={`${styles.actionButton} ${styles.actionButtonReject}`}
+                          onClick={() => {
+                            setRejectTarget({
+                              requestId: row.requestId,
+                              organizationName: row.organizationName
+                            })
+                            setRejectReason("")
                         }}>
-                          <input type="hidden" name="requestId" value={row.requestId} />
-                          <ApprovalSubmitButton idleLabel="거절" pendingLabel="거절 중" variant="reject" />
-                        </form>
+                          거절
+                        </button>
                       </div>
                     ) : (
                       <span className={styles.doneText}>처리 완료</span>
@@ -575,6 +608,60 @@ export function AcademyApprovalsClient({
           </section>
         )}
       </div>
+
+      {rejectTarget ? (
+        <div className={styles.modalOverlay} role="presentation" onClick={closeRejectModal}>
+          <div
+            className={styles.modalCard}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="academy-reject-modal-title"
+            onClick={(event) => {
+              event.stopPropagation()
+            }}
+          >
+            <div className={styles.modalHeader}>
+              <div>
+                <h2 id="academy-reject-modal-title" className={styles.modalTitle}>
+                  신청 거절
+                </h2>
+                <p className={styles.modalDescription}>
+                  입력한 사유는 신청자에게 그대로 표시됩니다.
+                </p>
+              </div>
+            </div>
+
+            <form action={rejectAction.bind(null, rejectTarget.requestId, trimmedRejectReason)} className={styles.modalForm}>
+              <div className={styles.modalField}>
+                <textarea
+                  value={rejectReason}
+                  onChange={(event) => {
+                    setRejectReason(event.target.value.slice(0, 300))
+                  }}
+                  className={styles.reasonTextarea}
+                  placeholder="예: 사업자등록증 이미지가 흐려 확인이 어렵습니다. 다시 업로드해 주세요."
+                  minLength={5}
+                  maxLength={300}
+                  required
+                />
+                <div className={styles.reasonMetaRow}>
+                  <span className={styles.reasonTargetName}>{rejectTarget.organizationName}</span>
+                  <span className={`${styles.reasonCount} ${isRejectReasonInvalid ? styles.reasonCountError : ""}`}>
+                    {rejectReasonLength}/300
+                  </span>
+                </div>
+              </div>
+
+              <div className={styles.modalActions}>
+                <button type="button" className={styles.buttonGhost} onClick={closeRejectModal}>
+                  취소
+                </button>
+                <RejectSubmitButton disabled={isRejectReasonInvalid} />
+              </div>
+            </form>
+          </div>
+        </div>
+      ) : null}
     </div>
   )
 }

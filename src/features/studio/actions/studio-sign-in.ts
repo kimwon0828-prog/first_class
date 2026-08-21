@@ -176,7 +176,9 @@ export async function studioSignInAction(
       .from("teacher_signup_requests")
       .select("status")
       .eq("user_id", data.user.id)
-      .eq("status", "pending")
+      .in("status", ["pending", "rejected"])
+      .order("updated_at", { ascending: false })
+      .limit(1)
       .maybeSingle()
 
     if (pendingError) {

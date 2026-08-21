@@ -9,6 +9,8 @@ import { getSupabaseServerClient } from "@/integrations/supabase/server"
 export type StudioSignUpActionState = {
   status: "idle" | "error" | "success"
   message: string
+  actionLinkHref?: string
+  actionLinkLabel?: string
 }
 
 const defaultState: StudioSignUpActionState = {
@@ -35,6 +37,18 @@ const postalCodePattern = /^[0-9A-Za-z-\s]+$/
 
 const wait = async (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
+const logValidationFailure = (
+  field: string,
+  reason: string,
+  details?: Record<string, unknown>
+) => {
+  console.error("[studio sign-up] validation failed", {
+    field,
+    reason,
+    ...(details ?? {})
+  })
+}
+
 const validatePhone = (value: string, label: string) => {
   if (value.length < 7 || value.length > 20 || !phonePattern.test(value)) {
     return `${label}를 올바르게 입력해 주세요.`
@@ -46,6 +60,10 @@ const validatePhone = (value: string, label: string) => {
 type PendingTeacherSignupRequestRow = {
   id: string
   user_id: string
+}
+
+type ExistingTeacherSignupRequestRow = {
+  id: string
 }
 
 const validateSignUpForm = (formData: FormData) => {
@@ -64,18 +82,30 @@ const validateSignUpForm = (formData: FormData) => {
   const password = String(formData.get("password") ?? "")
 
   if (organizationName.length < 2 || organizationName.length > 50) {
+    logValidationFailure("organizationName", "length_out_of_range", {
+      length: organizationName.length
+    })
     return { ok: false as const, message: "학원명은 2자 이상 50자 이하로 입력해 주세요." }
   }
 
   if (!isAcademyAreaEnabled(academyArea)) {
+    logValidationFailure("academyArea", "academy_area_not_enabled", {
+      academyArea
+    })
     return { ok: false as const, message: "학원가를 선택해 주세요." }
   }
 
   if (branchName.length > 30) {
+    logValidationFailure("branchName", "length_exceeded", {
+      length: branchName.length
+    })
     return { ok: false as const, message: "지점명은 30자 이하로 입력해 주세요." }
   }
 
   if (representativeName.length < 2 || representativeName.length > 40) {
+    logValidationFailure("representativeName", "length_out_of_range", {
+      length: representativeName.length
+    })
     return { ok: false as const, message: "대표자명은 2자 이상 40자 이하로 입력해 주세요." }
   }
 
@@ -84,42 +114,67 @@ const validateSignUpForm = (formData: FormData) => {
     businessRegistrationNumber.length > 20 ||
     !businessRegistrationNumberPattern.test(businessRegistrationNumber)
   ) {
+    logValidationFailure("businessRegistrationNumber", "invalid_format_or_length", {
+      length: businessRegistrationNumber.length
+    })
     return { ok: false as const, message: "사업자등록번호를 올바르게 입력해 주세요." }
   }
 
   const academyPhoneError = validatePhone(academyPhone, "학원 대표 전화번호")
   if (academyPhoneError) {
+    logValidationFailure("academyPhone", "invalid_phone", {
+      length: academyPhone.length
+    })
     return { ok: false as const, message: academyPhoneError }
   }
 
   const contactPhoneError = validatePhone(contactPhone, "담당자 전화번호")
   if (contactPhoneError) {
+    logValidationFailure("contactPhone", "invalid_phone", {
+      length: contactPhone.length
+    })
     return { ok: false as const, message: contactPhoneError }
   }
 
   if (postalCode && (postalCode.length > 20 || !postalCodePattern.test(postalCode))) {
+    logValidationFailure("postalCode", "invalid_format_or_length", {
+      length: postalCode.length
+    })
     return { ok: false as const, message: "우편번호를 올바르게 입력해 주세요." }
   }
 
   if (!addressLine1 || addressLine1.length > 120) {
+    logValidationFailure("addressLine1", "missing_or_length_exceeded", {
+      length: addressLine1.length
+    })
     return { ok: false as const, message: "기본 주소를 입력해 주세요." }
   }
 
   if (addressLine2.length > 120) {
+    logValidationFailure("addressLine2", "length_exceeded", {
+      length: addressLine2.length
+    })
     return { ok: false as const, message: "상세 주소는 120자 이하로 입력해 주세요." }
   }
 
   const address = [addressLine1, addressLine2].filter(Boolean).join(" ").trim()
 
   if (!(businessRegistrationFile instanceof File) || businessRegistrationFile.size <= 0) {
+    logValidationFailure("businessRegistrationFile", "missing_file")
     return { ok: false as const, message: "사업자등록증 파일을 첨부해 주세요." }
   }
 
   if (businessRegistrationFile.size > MAX_BUSINESS_REGISTRATION_FILE_SIZE) {
+    logValidationFailure("businessRegistrationFile", "file_size_exceeded", {
+      size: businessRegistrationFile.size
+    })
     return { ok: false as const, message: "사업자등록증 파일은 5MB 이하만 업로드할 수 있습니다." }
   }
 
   if (!isAllowedBusinessRegistrationMime(businessRegistrationFile.type)) {
+    logValidationFailure("businessRegistrationFile", "invalid_mime_type", {
+      type: businessRegistrationFile.type
+    })
     return {
       ok: false as const,
       message: "사업자등록증 파일은 PDF, JPG, PNG, WEBP 형식만 업로드할 수 있습니다."
@@ -127,10 +182,16 @@ const validateSignUpForm = (formData: FormData) => {
   }
 
   if (!email || !email.includes("@")) {
+    logValidationFailure("email", "invalid_email", {
+      email
+    })
     return { ok: false as const, message: "올바른 이메일을 입력해 주세요." }
   }
 
   if (password.length < 8) {
+    logValidationFailure("password", "length_too_short", {
+      length: password.length
+    })
     return { ok: false as const, message: "비밀번호는 8자 이상이어야 합니다." }
   }
 
@@ -182,6 +243,25 @@ const findPendingTeacherSignupRequestWithRetry = async (
   return null
 }
 
+const findAnyTeacherSignupRequest = async (
+  supabase: SupabaseClient,
+  userId: string
+): Promise<ExistingTeacherSignupRequestRow | null> => {
+  const { data, error } = await supabase
+    .from("teacher_signup_requests")
+    .select("id")
+    .eq("user_id", userId)
+    .order("updated_at", { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  if (error) {
+    throw new Error(`failed_to_find_existing_signup_request:${error.message}`)
+  }
+
+  return (data as ExistingTeacherSignupRequestRow | null) ?? null
+}
+
 export async function studioSignUpAction(
   previousState: StudioSignUpActionState = defaultState,
   formData: FormData
@@ -189,6 +269,9 @@ export async function studioSignUpAction(
   void previousState
   const validated = validateSignUpForm(formData)
   if (!validated.ok) {
+    console.error("[studio sign-up] validateSignUpForm failed", {
+      message: validated.message
+    })
     return { status: "error", message: validated.message }
   }
 
@@ -198,6 +281,7 @@ export async function studioSignUpAction(
   try {
     serviceRoleClient = getSupabaseServiceRoleClient()
   } catch (serviceRoleError) {
+    console.error("[studio sign-up] getSupabaseServiceRoleClient failed", serviceRoleError)
     return {
       status: "error",
       message:
@@ -239,6 +323,7 @@ export async function studioSignUpAction(
   })
 
   if (error) {
+    console.error("[studio sign-up] auth.signUp failed", error)
     if (error.message.includes("User already registered")) {
       return { status: "error", message: "이미 가입된 이메일입니다." }
     }
@@ -249,6 +334,9 @@ export async function studioSignUpAction(
   }
 
   if (!data.user) {
+    console.error("[studio sign-up] auth.signUp returned without user", {
+      signupEmail: validated.email
+    })
     return {
       status: "error",
       message: "계정을 생성하지 못했습니다. 잠시 후 다시 시도해 주세요."
@@ -260,10 +348,26 @@ export async function studioSignUpAction(
   try {
     const pendingRequest = await findPendingTeacherSignupRequestWithRetry(serviceRoleClient, data.user.id)
     if (!pendingRequest) {
+      const existingRequest = await findAnyTeacherSignupRequest(serviceRoleClient, data.user.id)
+      console.log("[studio sign-up] fallback lookup", {
+        userId: data.user.id,
+        found: Boolean(existingRequest)
+      })
       console.error("[studio sign-up request lookup failed]", {
         userId: data.user.id,
-        signupEmail: validated.email
+        signupEmail: validated.email,
+        hasExistingRequest: Boolean(existingRequest)
       })
+
+      if (existingRequest) {
+        return {
+          status: "error",
+          message: "이미 신청 내역이 있는 계정입니다. 운영보드 로그인 후 진행해 주세요.",
+          actionLinkHref: "/studio/sign-in",
+          actionLinkLabel: "운영보드 로그인"
+        }
+      }
+
       return {
         status: "error",
         message: "계정은 생성되었지만 신청 정보를 연결하지 못했습니다. 운영팀에 문의해 주세요."
@@ -288,11 +392,10 @@ export async function studioSignUpAction(
       })
 
     if (uploadError) {
-      console.error("[studio sign-up upload failed]", {
+      console.error("[studio sign-up] storage upload failed", uploadError, {
         userId: data.user.id,
         requestId: pendingRequest.id,
-        path: uploadedObjectPath,
-        message: uploadError.message
+        path: uploadedObjectPath
       })
       return {
         status: "error",
@@ -325,11 +428,10 @@ export async function studioSignUpAction(
         .from("academy-documents")
         .remove([uploadedObjectPath])
 
-      console.error("[studio sign-up request update failed]", {
+      console.error("[studio sign-up] request update failed", updateError, {
         userId: data.user.id,
         requestId: pendingRequest.id,
         path: uploadedObjectPath,
-        updateError: updateError.message,
         cleanupError: cleanupError?.message ?? null
       })
 
@@ -339,6 +441,7 @@ export async function studioSignUpAction(
       }
     }
   } catch (postSignUpError) {
+    console.error("[studio sign-up] unexpected error", postSignUpError)
     console.error("[studio sign-up post-processing failed]", {
       userId: data.user.id,
       signupEmail: validated.email,

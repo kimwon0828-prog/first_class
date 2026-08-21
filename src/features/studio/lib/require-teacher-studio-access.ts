@@ -40,6 +40,30 @@ type StudioProfileLookupResult =
       errorCode: string | null
     }
 
+type SignupRequestStatusRow = {
+  status: string
+}
+
+const getPendingOrRejectedTeacherSignupRequest = async (
+  userId: string
+): Promise<SignupRequestStatusRow | null> => {
+  const supabase = await getSupabaseServerClient()
+  const { data, error } = await supabase
+    .from("teacher_signup_requests")
+    .select("status")
+    .eq("user_id", userId)
+    .in("status", ["pending", "rejected"])
+    .order("updated_at", { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  if (error) {
+    return null
+  }
+
+  return (data as SignupRequestStatusRow | null) ?? null
+}
+
 const debugStudioAuth = (
   payload: Record<string, string | boolean | null | undefined>
 ) => {
@@ -129,8 +153,7 @@ const requireTeacherStudioAccessCached = cache(async (): Promise<TeacherStudioAc
   }
 
   if (profileLookup.kind === "missing") {
-    const { dataAdapter } = await import("@/shared/lib/db")
-    const pendingRequest = await dataAdapter.getPendingTeacherSignupRequest(user.id)
+    const pendingRequest = await getPendingOrRejectedTeacherSignupRequest(user.id)
     if (pendingRequest) {
       debugStudioAuth({
         pathname: requestPath,
@@ -143,7 +166,7 @@ const requireTeacherStudioAccessCached = cache(async (): Promise<TeacherStudioAc
         hasOrganizationId: null,
         hasNextRouterPrefetchHeader,
         hasPurposePrefetchHeader,
-        redirectReason: "pending_teacher_request"
+        redirectReason: "pending_or_rejected_teacher_request"
       })
       redirect("/studio/pending")
     }

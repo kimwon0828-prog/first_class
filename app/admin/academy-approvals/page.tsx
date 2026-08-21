@@ -31,6 +31,7 @@ type SignupRequestRow = {
   address_line1: string | null
   address_line2: string | null
   admin_note: string | null
+  rejection_reason: string | null
   reviewed_by: string | null
   reviewed_at: string | null
   approved_organization_id: string | null
@@ -59,6 +60,7 @@ type SignupRequestView = {
   addressLine1: string | null
   addressLine2: string | null
   adminNote: string | null
+  rejectionReason: string | null
   reviewedBy: string | null
   reviewedAt: string | null
   businessRegistrationSignedUrl: string | null
@@ -135,6 +137,7 @@ const getSignupRequests = async (): Promise<SignupRequestView[]> => {
         "address_line1",
         "address_line2",
         "admin_note",
+        "rejection_reason",
         "reviewed_by",
         "reviewed_at",
         "approved_organization_id",
@@ -189,6 +192,7 @@ const getSignupRequests = async (): Promise<SignupRequestView[]> => {
         addressLine1: row.address_line1,
         addressLine2: row.address_line2,
         adminNote: row.admin_note,
+        rejectionReason: row.rejection_reason,
         reviewedBy: row.reviewed_by,
         reviewedAt: row.reviewed_at,
         businessRegistrationSignedUrl,
@@ -230,6 +234,20 @@ const syncRequestReviewMetadata = async (requestId: string, reviewedBy: string) 
 
   if (updateError) {
     throw new Error(`failed_to_update_teacher_signup_review_metadata:${updateError.message}`)
+  }
+}
+
+const syncRejectedRequestReason = async (requestId: string, reason: string) => {
+  const serviceRoleClient = getSupabaseServiceRoleClient()
+  const { error } = await serviceRoleClient
+    .from("teacher_signup_requests")
+    .update({
+      rejection_reason: reason
+    })
+    .eq("id", requestId)
+
+  if (error) {
+    throw new Error(`failed_to_update_teacher_signup_rejection_reason:${error.message}`)
   }
 }
 
@@ -378,11 +396,15 @@ export default async function AdminAcademyApprovalsPage({
     revalidatePath("/admin/academy-approvals")
   }
 
-  const reject = async (formData: FormData) => {
+  const reject = async (requestId: string, reason: string) => {
     "use server"
     const admin = await requireAdmin()
-    const requestId = String(formData.get("requestId") ?? "")
     if (!requestId) return
+
+    const trimmedReason = reason.trim()
+    if (trimmedReason.length < 5 || trimmedReason.length > 300) {
+      redirect("/admin/academy-approvals?error=거절 사유는 5자 이상 300자 이하로 입력해 주세요.")
+    }
 
     const supabase = await getSupabaseServerClient()
     const { error } = await supabase.rpc("reject_teacher_signup_request", { request_id: requestId })
@@ -391,6 +413,7 @@ export default async function AdminAcademyApprovalsPage({
     }
 
     try {
+      await syncRejectedRequestReason(requestId, trimmedReason)
       await syncRequestReviewMetadata(requestId, admin.id)
     } catch (syncError) {
       const message = syncError instanceof Error ? syncError.message : "failed_to_sync_rejected_teacher_signup_request"

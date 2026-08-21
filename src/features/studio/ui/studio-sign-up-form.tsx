@@ -9,9 +9,15 @@ import {
   studioSignUpAction,
   type StudioSignUpActionState
 } from "@/features/studio/actions/studio-sign-up"
+import {
+  studioResubmitSignUpAction,
+  type StudioResubmitSignUpActionState
+} from "@/features/studio/actions/studio-resubmit-sign-up"
 import styles from "@/features/studio/ui/studio-sign-up-form.module.css"
 
-const initialState: StudioSignUpActionState = {
+type SharedActionState = StudioSignUpActionState | StudioResubmitSignUpActionState
+
+const initialState: SharedActionState = {
   status: "idle",
   message: ""
 }
@@ -51,6 +57,23 @@ declare global {
 }
 
 let kakaoPostcodeScriptPromise: Promise<KakaoPostcodeConstructor> | null = null
+
+type StudioSignUpFormProps = {
+  mode?: "signup" | "resubmit"
+  initialValues?: {
+    organizationName?: string | null
+    academyArea?: string | null
+    branchName?: string | null
+    representativeName?: string | null
+    businessRegistrationNumber?: string | null
+    academyPhone?: string | null
+    contactPhone?: string | null
+    postalCode?: string | null
+    addressLine1?: string | null
+    addressLine2?: string | null
+    businessRegistrationFilePath?: string | null
+  }
+}
 
 const formatBusinessRegistrationNumber = (value: string) => {
   const digits = value.replace(/\D/g, "").slice(0, 10)
@@ -163,8 +186,12 @@ const loadKakaoPostcode = () => {
   return kakaoPostcodeScriptPromise
 }
 
-export const StudioSignUpForm = () => {
-  const [state, formAction, isPending] = useActionState(studioSignUpAction, initialState)
+export const StudioSignUpForm = ({
+  mode = "signup",
+  initialValues
+}: StudioSignUpFormProps) => {
+  const action = mode === "resubmit" ? studioResubmitSignUpAction : studioSignUpAction
+  const [state, formAction, isPending] = useActionState(action, initialState)
   const [postalCode, setPostalCode] = useState("")
   const [addressLine1, setAddressLine1] = useState("")
   const [addressLine2, setAddressLine2] = useState("")
@@ -181,6 +208,9 @@ export const StudioSignUpForm = () => {
   const [fileError, setFileError] = useState<string | null>(null)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [filePreviewUrl, setFilePreviewUrl] = useState<string | null>(null)
+  const [keepExistingBusinessRegistrationFile, setKeepExistingBusinessRegistrationFile] = useState(
+    Boolean(initialValues?.businessRegistrationFilePath)
+  )
   const [hasAttemptedSubmit, setHasAttemptedSubmit] = useState(false)
   const [postcodeError, setPostcodeError] = useState<string | null>(null)
   const [isSearchingAddress, setIsSearchingAddress] = useState(false)
@@ -190,6 +220,7 @@ export const StudioSignUpForm = () => {
   const formContentRef = useRef<HTMLDivElement | null>(null)
   const successActionButtonRef = useRef<HTMLAnchorElement | null>(null)
 
+  const isResubmitMode = mode === "resubmit"
   const isSuccess = state.status === "success"
   const formLocked = isPending || isSuccess
   const passwordMismatch = passwordConfirm.length > 0 && password !== passwordConfirm
@@ -205,8 +236,30 @@ export const StudioSignUpForm = () => {
       : null
   const requiredAgreementMissing = !termsAgreed || !privacyAgreed
   const allAgreed = termsAgreed && privacyAgreed && marketingAgreed
-  const isSubmitDisabledByValidation = requiredAgreementMissing || passwordMismatch
+  const requiresNewBusinessRegistrationFile =
+    isResubmitMode && !keepExistingBusinessRegistrationFile && !selectedFile
+  const isSubmitDisabledByValidation =
+    (!isResubmitMode && requiredAgreementMissing) ||
+    (!isResubmitMode && passwordMismatch) ||
+    requiresNewBusinessRegistrationFile
   const isSubmitDisabled = formLocked || isSubmitDisabledByValidation
+
+  useEffect(() => {
+    if (!isResubmitMode) {
+      return
+    }
+
+    setPostalCode(initialValues?.postalCode?.trim() ?? "")
+    setAddressLine1(initialValues?.addressLine1?.trim() ?? "")
+    setAddressLine2(initialValues?.addressLine2?.trim() ?? "")
+    setBusinessRegistrationNumber(initialValues?.businessRegistrationNumber?.trim() ?? "")
+  }, [
+    initialValues?.addressLine1,
+    initialValues?.addressLine2,
+    initialValues?.businessRegistrationNumber,
+    initialValues?.postalCode,
+    isResubmitMode
+  ])
 
   useEffect(() => {
     if (!allAgreementRef.current) {
@@ -308,6 +361,9 @@ export const StudioSignUpForm = () => {
     setSelectedFile(null)
     setFilePreviewUrl(null)
     setFileError(null)
+    if (isResubmitMode) {
+      setKeepExistingBusinessRegistrationFile(false)
+    }
 
     if (businessRegistrationFileRef.current) {
       businessRegistrationFileRef.current.value = ""
@@ -330,6 +386,7 @@ export const StudioSignUpForm = () => {
     }
 
     setSelectedFile(file)
+    setKeepExistingBusinessRegistrationFile(false)
     setFileError(null)
   }
 
@@ -338,7 +395,7 @@ export const StudioSignUpForm = () => {
 
     let hasCustomError = false
 
-    if (!handleAgreementValidation()) {
+    if (!isResubmitMode && !handleAgreementValidation()) {
       hasCustomError = true
     }
 
@@ -346,16 +403,16 @@ export const StudioSignUpForm = () => {
       hasCustomError = true
     }
 
-    if (!selectedFile) {
+    if (!selectedFile && !keepExistingBusinessRegistrationFile) {
       setFileError("사업자등록증 파일을 첨부해 주세요.")
       hasCustomError = true
     }
 
-    if (!isPasswordValid(password)) {
+    if (!isResubmitMode && !isPasswordValid(password)) {
       hasCustomError = true
     }
 
-    if (password !== passwordConfirm) {
+    if (!isResubmitMode && password !== passwordConfirm) {
       hasCustomError = true
     }
 
@@ -397,7 +454,7 @@ export const StudioSignUpForm = () => {
   }
 
   return (
-    <form action={formAction} className={styles.form} encType="multipart/form-data" onSubmit={handleSubmit}>
+    <form action={formAction} className={styles.form} onSubmit={handleSubmit}>
       <div ref={formContentRef} className={styles.formContent}>
         <label className={styles.field}>
           <FieldLabel text="학원명" required />
@@ -410,6 +467,7 @@ export const StudioSignUpForm = () => {
             disabled={formLocked}
             className={styles.input}
             placeholder="예: 첫수업 강남학원"
+            defaultValue={initialValues?.organizationName ?? ""}
           />
         </label>
 
@@ -420,7 +478,7 @@ export const StudioSignUpForm = () => {
             required
             disabled={formLocked}
             className={styles.input}
-            defaultValue={getDefaultAcademyArea()}
+            defaultValue={initialValues?.academyArea ?? getDefaultAcademyArea()}
           >
             <option value="" disabled>
               학원가를 선택해 주세요
@@ -442,6 +500,7 @@ export const StudioSignUpForm = () => {
             disabled={formLocked}
             className={styles.input}
             placeholder="예: 강남점"
+            defaultValue={initialValues?.branchName ?? ""}
           />
         </label>
 
@@ -456,6 +515,7 @@ export const StudioSignUpForm = () => {
             disabled={formLocked}
             className={styles.input}
             placeholder="예: 홍길동"
+            defaultValue={initialValues?.representativeName ?? ""}
           />
         </label>
 
@@ -496,6 +556,7 @@ export const StudioSignUpForm = () => {
             disabled={formLocked}
             className={styles.input}
             placeholder="예: 02-1234-5678"
+            defaultValue={initialValues?.academyPhone ?? ""}
           />
           <p className={styles.fieldHint}>학부모에게 노출되는 번호입니다.</p>
         </label>
@@ -510,6 +571,7 @@ export const StudioSignUpForm = () => {
             disabled={formLocked}
             className={styles.input}
             placeholder="예: 010-1234-5678"
+            defaultValue={initialValues?.contactPhone ?? ""}
           />
           <p className={styles.fieldHint}>
             체험수업 신청 알림 문자를 받으실 번호입니다. 실제로 확인 가능한 번호를 입력해 주세요.
@@ -576,11 +638,18 @@ export const StudioSignUpForm = () => {
 
         <div className={styles.field}>
           <FieldLabel text="사업자등록증" required error={Boolean(fileError)} />
+          {isResubmitMode ? (
+            <input
+              type="hidden"
+              name="keepExistingBusinessRegistrationFile"
+              value={keepExistingBusinessRegistrationFile ? "yes" : "no"}
+            />
+          ) : null}
           <input
             ref={businessRegistrationFileRef}
             name="businessRegistrationFile"
             type="file"
-            required
+            required={!isResubmitMode}
             accept={BUSINESS_REGISTRATION_ACCEPT}
             disabled={formLocked}
             className={styles.hiddenFileInput}
@@ -603,6 +672,10 @@ export const StudioSignUpForm = () => {
                     PDF
                   </div>
                 )
+              ) : keepExistingBusinessRegistrationFile && initialValues?.businessRegistrationFilePath ? (
+                <div className={styles.uploadDocumentIcon} aria-hidden="true">
+                  기존
+                </div>
               ) : (
                 <div className={styles.uploadPlaceholderIcon} aria-hidden="true" />
               )}
@@ -612,6 +685,13 @@ export const StudioSignUpForm = () => {
                 <>
                   <p className={styles.uploadFileName}>{selectedFile.name}</p>
                   <p className={styles.uploadFileMeta}>{formatFileSize(selectedFile.size)}</p>
+                </>
+              ) : keepExistingBusinessRegistrationFile && initialValues?.businessRegistrationFilePath ? (
+                <>
+                  <p className={styles.uploadFileName}>
+                    {initialValues.businessRegistrationFilePath.split("/").pop() ?? "기존 파일"}
+                  </p>
+                  <p className={styles.uploadFileMeta}>기존 사업자등록증 파일을 유지합니다.</p>
                 </>
               ) : (
                 <>
@@ -631,9 +711,9 @@ export const StudioSignUpForm = () => {
                   businessRegistrationFileRef.current?.click()
                 }}
               >
-                {selectedFile ? "파일 변경" : "파일 선택"}
+                {selectedFile || keepExistingBusinessRegistrationFile ? "다시 업로드" : "파일 선택"}
               </button>
-              {selectedFile ? (
+              {selectedFile || keepExistingBusinessRegistrationFile ? (
                 <button
                   type="button"
                   disabled={formLocked}
@@ -655,191 +735,214 @@ export const StudioSignUpForm = () => {
 
         <p className={styles.bottomHint}>입력한 주소와 연락처는 가입 심사 및 학원 공식 정보 검토에 사용됩니다.</p>
 
-        <label className={styles.field}>
-          <FieldLabel text="이메일 (아이디)" required />
-          <input
-            name="email"
-            type="email"
-            required
-            autoComplete="email"
-            placeholder="you@example.com"
-            disabled={formLocked}
-            className={styles.input}
-          />
-        </label>
-
-        <div className={styles.field}>
-          <FieldLabel text="비밀번호" required error={Boolean(passwordRuleError)} />
-          <div className={`${styles.inputWithAction} ${passwordRuleError ? styles.inputWithActionError : ""}`}>
+        {!isResubmitMode ? (
+          <label className={styles.field}>
+            <FieldLabel text="이메일 (아이디)" required />
             <input
-              name="password"
-              type={showPassword ? "text" : "password"}
+              name="email"
+              type="email"
               required
-              minLength={8}
-              autoComplete="new-password"
+              autoComplete="email"
+              placeholder="you@example.com"
               disabled={formLocked}
-              className={`${styles.input} ${styles.inputWithButtonPadding}`}
-              placeholder="영문, 숫자 포함 8자 이상"
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
+              className={styles.input}
             />
-            <button
-              type="button"
-              disabled={formLocked}
-              className={styles.inputActionButton}
-              onClick={() => {
-                setShowPassword((current) => !current)
-              }}
-            >
-              <span
-                className={`${styles.eyeIcon} ${showPassword ? styles.eyeIconOpen : styles.eyeIconClosed}`}
-                aria-hidden="true"
-              />
-              <span className={styles.srOnly}>{showPassword ? "비밀번호 숨기기" : "비밀번호 보기"}</span>
-            </button>
-          </div>
-          <p className={styles.fieldHint}>영문과 숫자를 포함해 8자 이상 입력해 주세요.</p>
-          {passwordRuleError ? <p className={styles.inlineErrorText}>{passwordRuleError}</p> : null}
-        </div>
-
-        <div className={styles.field}>
-          <FieldLabel
-            text="비밀번호 확인"
-            required
-            error={hasAttemptedSubmit && passwordConfirm.length === 0 ? true : passwordMismatch}
-          />
-          <div
-            className={`${styles.inputWithAction} ${
-              hasAttemptedSubmit && passwordConfirm.length === 0 ? styles.inputWithActionError : ""
-            } ${passwordMismatch ? styles.inputWithActionError : ""}`}
-          >
-            <input
-              type={showPasswordConfirm ? "text" : "password"}
-              required
-              autoComplete="new-password"
-              disabled={formLocked}
-              className={`${styles.input} ${styles.inputWithButtonPadding}`}
-              placeholder="비밀번호를 한 번 더 입력해 주세요"
-              value={passwordConfirm}
-              onChange={(event) => setPasswordConfirm(event.target.value)}
-            />
-            <button
-              type="button"
-              disabled={formLocked}
-              className={styles.inputActionButton}
-              onClick={() => {
-                setShowPasswordConfirm((current) => !current)
-              }}
-            >
-              <span
-                className={`${styles.eyeIcon} ${showPasswordConfirm ? styles.eyeIconOpen : styles.eyeIconClosed}`}
-                aria-hidden="true"
-              />
-              <span className={styles.srOnly}>
-                {showPasswordConfirm ? "비밀번호 확인 숨기기" : "비밀번호 확인 보기"}
-              </span>
-            </button>
-          </div>
-          {passwordMismatch ? (
-            <p className={styles.inlineErrorText}>비밀번호가 일치하지 않습니다.</p>
-          ) : null}
-        </div>
-
-        <section className={styles.agreementSection} aria-label="약관 동의">
-          <label className={styles.agreementAllRow}>
-            <input
-              ref={allAgreementRef}
-              type="checkbox"
-              checked={allAgreed}
-              disabled={formLocked}
-              className={styles.checkbox}
-              onChange={(event) => {
-                const checked = event.target.checked
-                setTermsAgreed(checked)
-                setPrivacyAgreed(checked)
-                setMarketingAgreed(checked)
-              }}
-            />
-            <span className={styles.agreementAllText}>전체 동의</span>
           </label>
+        ) : null}
 
-          <div className={styles.agreementDivider} />
-
-          <div className={styles.agreementList}>
-            <div className={styles.agreementRow}>
-              <label className={styles.checkRow}>
+        {!isResubmitMode ? (
+          <>
+            <div className={styles.field}>
+              <FieldLabel text="비밀번호" required error={Boolean(passwordRuleError)} />
+              <div className={`${styles.inputWithAction} ${passwordRuleError ? styles.inputWithActionError : ""}`}>
                 <input
-                  type="checkbox"
-                  name="termsAgreed"
-                  value="yes"
-                  checked={termsAgreed}
+                  name="password"
+                  type={showPassword ? "text" : "password"}
+                  required
+                  minLength={8}
+                  autoComplete="new-password"
                   disabled={formLocked}
-                  className={styles.checkbox}
-                  onChange={(event) => {
-                    setTermsAgreed(event.target.checked)
-                  }}
+                  className={`${styles.input} ${styles.inputWithButtonPadding}`}
+                  placeholder="영문, 숫자 포함 8자 이상"
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
                 />
-                <span className={`${styles.checkText} ${hasAttemptedSubmit && !termsAgreed ? styles.checkTextError : ""}`}>
-                  (필수) 이용약관 동의
-                </span>
-              </label>
-              <Link href="/terms" target="_blank" rel="noreferrer" className={styles.agreementLink}>
-                보기
-              </Link>
+                <button
+                  type="button"
+                  disabled={formLocked}
+                  className={styles.inputActionButton}
+                  onClick={() => {
+                    setShowPassword((current) => !current)
+                  }}
+                >
+                  <span
+                    className={`${styles.eyeIcon} ${showPassword ? styles.eyeIconOpen : styles.eyeIconClosed}`}
+                    aria-hidden="true"
+                  />
+                  <span className={styles.srOnly}>{showPassword ? "비밀번호 숨기기" : "비밀번호 보기"}</span>
+                </button>
+              </div>
+              <p className={styles.fieldHint}>영문과 숫자를 포함해 8자 이상 입력해 주세요.</p>
+              {passwordRuleError ? <p className={styles.inlineErrorText}>{passwordRuleError}</p> : null}
             </div>
 
-            <div className={styles.agreementRow}>
-              <label className={styles.checkRow}>
+            <div className={styles.field}>
+              <FieldLabel
+                text="비밀번호 확인"
+                required
+                error={hasAttemptedSubmit && passwordConfirm.length === 0 ? true : passwordMismatch}
+              />
+              <div
+                className={`${styles.inputWithAction} ${
+                  hasAttemptedSubmit && passwordConfirm.length === 0 ? styles.inputWithActionError : ""
+                } ${passwordMismatch ? styles.inputWithActionError : ""}`}
+              >
                 <input
-                  type="checkbox"
-                  name="privacyAgreed"
-                  value="yes"
-                  checked={privacyAgreed}
+                  type={showPasswordConfirm ? "text" : "password"}
+                  required
+                  autoComplete="new-password"
                   disabled={formLocked}
-                  className={styles.checkbox}
-                  onChange={(event) => {
-                    setPrivacyAgreed(event.target.checked)
-                  }}
+                  className={`${styles.input} ${styles.inputWithButtonPadding}`}
+                  placeholder="비밀번호를 한 번 더 입력해 주세요"
+                  value={passwordConfirm}
+                  onChange={(event) => setPasswordConfirm(event.target.value)}
                 />
-                <span className={`${styles.checkText} ${hasAttemptedSubmit && !privacyAgreed ? styles.checkTextError : ""}`}>
-                  (필수) 개인정보 수집·이용 동의
-                </span>
-              </label>
-              <Link href="/privacy" target="_blank" rel="noreferrer" className={styles.agreementLink}>
-                보기
-              </Link>
+                <button
+                  type="button"
+                  disabled={formLocked}
+                  className={styles.inputActionButton}
+                  onClick={() => {
+                    setShowPasswordConfirm((current) => !current)
+                  }}
+                >
+                  <span
+                    className={`${styles.eyeIcon} ${showPasswordConfirm ? styles.eyeIconOpen : styles.eyeIconClosed}`}
+                    aria-hidden="true"
+                  />
+                  <span className={styles.srOnly}>
+                    {showPasswordConfirm ? "비밀번호 확인 숨기기" : "비밀번호 확인 보기"}
+                  </span>
+                </button>
+              </div>
+              {passwordMismatch ? (
+                <p className={styles.inlineErrorText}>비밀번호가 일치하지 않습니다.</p>
+              ) : null}
+            </div>
+          </>
+        ) : null}
+
+        {!isResubmitMode ? (
+          <section className={styles.agreementSection} aria-label="약관 동의">
+            <label className={styles.agreementAllRow}>
+              <input
+                ref={allAgreementRef}
+                type="checkbox"
+                checked={allAgreed}
+                disabled={formLocked}
+                className={styles.checkbox}
+                onChange={(event) => {
+                  const checked = event.target.checked
+                  setTermsAgreed(checked)
+                  setPrivacyAgreed(checked)
+                  setMarketingAgreed(checked)
+                }}
+              />
+              <span className={styles.agreementAllText}>전체 동의</span>
+            </label>
+
+            <div className={styles.agreementDivider} />
+
+            <div className={styles.agreementList}>
+              <div className={styles.agreementRow}>
+                <label className={styles.checkRow}>
+                  <input
+                    type="checkbox"
+                    name="termsAgreed"
+                    value="yes"
+                    checked={termsAgreed}
+                    disabled={formLocked}
+                    className={styles.checkbox}
+                    onChange={(event) => {
+                      setTermsAgreed(event.target.checked)
+                    }}
+                  />
+                  <span className={`${styles.checkText} ${hasAttemptedSubmit && !termsAgreed ? styles.checkTextError : ""}`}>
+                    (필수) 이용약관 동의
+                  </span>
+                </label>
+                <Link href="/terms" target="_blank" rel="noreferrer" className={styles.agreementLink}>
+                  보기
+                </Link>
+              </div>
+
+              <div className={styles.agreementRow}>
+                <label className={styles.checkRow}>
+                  <input
+                    type="checkbox"
+                    name="privacyAgreed"
+                    value="yes"
+                    checked={privacyAgreed}
+                    disabled={formLocked}
+                    className={styles.checkbox}
+                    onChange={(event) => {
+                      setPrivacyAgreed(event.target.checked)
+                    }}
+                  />
+                  <span className={`${styles.checkText} ${hasAttemptedSubmit && !privacyAgreed ? styles.checkTextError : ""}`}>
+                    (필수) 개인정보 수집·이용 동의
+                  </span>
+                </label>
+                <Link href="/privacy" target="_blank" rel="noreferrer" className={styles.agreementLink}>
+                  보기
+                </Link>
+              </div>
+
+              <div className={styles.agreementRow}>
+                <label className={styles.checkRow}>
+                  <input
+                    type="checkbox"
+                    name="marketingAgreed"
+                    value="yes"
+                    checked={marketingAgreed}
+                    disabled={formLocked}
+                    className={styles.checkbox}
+                    onChange={(event) => {
+                      setMarketingAgreed(event.target.checked)
+                    }}
+                  />
+                  <span className={styles.checkText}>(선택) 서비스 소식 및 마케팅 정보 수신 동의</span>
+                </label>
+              </div>
             </div>
 
-            <div className={styles.agreementRow}>
-              <label className={styles.checkRow}>
-                <input
-                  type="checkbox"
-                  name="marketingAgreed"
-                  value="yes"
-                  checked={marketingAgreed}
-                  disabled={formLocked}
-                  className={styles.checkbox}
-                  onChange={(event) => {
-                    setMarketingAgreed(event.target.checked)
-                  }}
-                />
-                <span className={styles.checkText}>(선택) 서비스 소식 및 마케팅 정보 수신 동의</span>
-              </label>
-            </div>
-          </div>
-
-          {agreementError ? <p className={styles.inlineErrorText}>{agreementError}</p> : null}
-        </section>
+            {agreementError ? <p className={styles.inlineErrorText}>{agreementError}</p> : null}
+          </section>
+        ) : null}
 
         {state.message && state.status !== "success" ? (
-          <p className={state.status === "error" ? styles.errorMessage : styles.infoMessage} role="status">
-            {state.message}
-          </p>
+          <div className={state.status === "error" ? styles.errorMessage : styles.infoMessage} role="status">
+            <p className={styles.messageText}>{state.message}</p>
+            {"actionLinkHref" in state && state.actionLinkHref && state.actionLinkLabel ? (
+              <Link href={state.actionLinkHref} className={styles.messageLink}>
+                {state.actionLinkLabel}
+              </Link>
+            ) : null}
+          </div>
         ) : null}
 
         <div className={styles.submitArea}>
           <button type="submit" disabled={isSubmitDisabled} className={styles.submitButton}>
-            {isSuccess ? "신청 접수 완료" : isPending ? "신청 중..." : "운영보드 계정 신청"}
+            {isSuccess
+              ? isResubmitMode
+                ? "재신청 접수 완료"
+                : "신청 접수 완료"
+              : isPending
+                ? isResubmitMode
+                  ? "재신청 중..."
+                  : "신청 중..."
+                : isResubmitMode
+                  ? "수정 후 재신청"
+                  : "운영보드 계정 신청"}
           </button>
           {isSubmitDisabledByValidation && !formLocked ? (
             <button
@@ -875,7 +978,7 @@ export const StudioSignUpForm = () => {
               href="/studio/sign-in"
               className={styles.modalActionButton}
             >
-              운영보드 로그인으로 이동
+              {isResubmitMode ? "운영보드 로그인으로 이동" : "운영보드 로그인으로 이동"}
             </Link>
           </div>
         </div>
