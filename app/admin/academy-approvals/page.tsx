@@ -4,6 +4,7 @@ import { redirect } from "next/navigation"
 import { AcademyApprovalsClient } from "./academy-approvals-client"
 
 import { getMyProfile } from "@/features/auth/lib/profile-sync"
+import { sendSms } from "@/features/notifications/sms/sender"
 import { requireSession } from "@/features/auth/lib/session"
 import { getSupabaseServiceRoleClient } from "@/integrations/supabase/service-role"
 import { getSupabaseServerClient } from "@/integrations/supabase/server"
@@ -92,6 +93,15 @@ type ApprovedSignupRequestRow = {
   teacher_phone: string | null
 }
 
+type SignupRequestStatusChangeRow = {
+  id: string
+  status: string
+  contact_phone: string | null
+  teacher_phone: string | null
+  academy_phone: string | null
+  organization_phone: string | null
+}
+
 const requireAdmin = async () => {
   await requireSession("/auth/sign-in?returnTo=/admin/academy-approvals")
   const profile = await getMyProfile()
@@ -108,6 +118,78 @@ const requireAdmin = async () => {
 }
 
 const BUSINESS_REGISTRATION_SIGNED_URL_TTL_SECONDS = 60 * 5
+
+const ACADEMY_SIGNUP_APPROVED_SMS_MESSAGE = [
+  "[첫수업] 학원 계정 신청이 승인되었습니다.",
+  "이제 첫수업에 로그인하여 학원 정보와 체험수업을 등록하실 수 있습니다.",
+  "감사합니다."
+].join("\n")
+
+const ACADEMY_SIGNUP_REJECTED_SMS_MESSAGE = [
+  "[첫수업] 학원 계정 신청 검토 결과 승인이 보류되었습니다.",
+  "신청 정보 확인 또는 수정이 필요한 경우 첫수업으로 문의해 주세요.",
+  "감사합니다."
+].join("\n")
+
+const getSignupRequestStatusChangeRow = async (
+  requestId: string
+): Promise<SignupRequestStatusChangeRow> => {
+  const serviceRoleClient = getSupabaseServiceRoleClient()
+  const { data, error } = await serviceRoleClient
+    .from("teacher_signup_requests")
+    .select("id, status, contact_phone, teacher_phone, academy_phone, organization_phone")
+    .eq("id", requestId)
+    .maybeSingle()
+
+  if (error || !data) {
+    throw new Error("failed_to_fetch_teacher_signup_request_for_sms")
+  }
+
+  return data as SignupRequestStatusChangeRow
+}
+
+const resolveSignupRequestRecipientPhone = (request: SignupRequestStatusChangeRow) =>
+  request.contact_phone?.trim() ||
+  request.teacher_phone?.trim() ||
+  request.academy_phone?.trim() ||
+  request.organization_phone?.trim() ||
+  null
+
+const sendSignupStatusSmsSafely = async ({
+  requestId,
+  nextStatus,
+  phone
+}: {
+  requestId: string
+  nextStatus: "approved" | "rejected"
+  phone: string | null
+}) => {
+  const messagePreview =
+    nextStatus === "approved" ? ACADEMY_SIGNUP_APPROVED_SMS_MESSAGE : ACADEMY_SIGNUP_REJECTED_SMS_MESSAGE
+  const sendResult = await sendSms({
+    recipientType: "admin",
+    phone,
+    messagePreview
+  })
+
+  if (sendResult.status === "sent" || sendResult.status === "dry_run") {
+    console.info("[academy signup status sms]", {
+      requestId,
+      nextStatus,
+      sendStatus: sendResult.status,
+      recipientPhoneMasked: sendResult.recipientPhoneMasked
+    })
+    return
+  }
+
+  console.error("[academy signup status sms failed]", {
+    requestId,
+    nextStatus,
+    sendStatus: sendResult.status,
+    errorMessage: sendResult.errorMessage,
+    recipientPhoneMasked: sendResult.recipientPhoneMasked
+  })
+}
 
 const getSignupRequests = async (): Promise<SignupRequestView[]> => {
   const serviceRoleClient = getSupabaseServiceRoleClient()
@@ -378,11 +460,29 @@ export default async function AdminAcademyApprovalsPage({
     const requestId = String(formData.get("requestId") ?? "")
     if (!requestId) return
 
+    let requestBeforeTransition: SignupRequestStatusChangeRow
+    try {
+      requestBeforeTransition = await getSignupRequestStatusChangeRow(requestId)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "failed_to_fetch_teacher_signup_request_for_sms"
+      redirect(`/admin/academy-approvals?error=${encodeURIComponent(message)}`)
+    }
+
+    if (requestBeforeTransition.status !== "pending") {
+      redirect("/admin/academy-approvals?error=이미 처리된 신청입니다.")
+    }
+
     const supabase = await getSupabaseServerClient()
     const { error } = await supabase.rpc("approve_teacher_signup_request", { request_id: requestId })
     if (error) {
       redirect(`/admin/academy-approvals?error=${encodeURIComponent(error.message)}`)
     }
+
+    await sendSignupStatusSmsSafely({
+      requestId,
+      nextStatus: "approved",
+      phone: resolveSignupRequestRecipientPhone(requestBeforeTransition)
+    })
 
     try {
       await syncApprovedOrganizationFields(requestId)
@@ -406,11 +506,29 @@ export default async function AdminAcademyApprovalsPage({
       redirect("/admin/academy-approvals?error=거절 사유는 5자 이상 300자 이하로 입력해 주세요.")
     }
 
+    let requestBeforeTransition: SignupRequestStatusChangeRow
+    try {
+      requestBeforeTransition = await getSignupRequestStatusChangeRow(requestId)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "failed_to_fetch_teacher_signup_request_for_sms"
+      redirect(`/admin/academy-approvals?error=${encodeURIComponent(message)}`)
+    }
+
+    if (requestBeforeTransition.status !== "pending") {
+      redirect("/admin/academy-approvals?error=이미 처리된 신청입니다.")
+    }
+
     const supabase = await getSupabaseServerClient()
     const { error } = await supabase.rpc("reject_teacher_signup_request", { request_id: requestId })
     if (error) {
       redirect(`/admin/academy-approvals?error=${encodeURIComponent(error.message)}`)
     }
+
+    await sendSignupStatusSmsSafely({
+      requestId,
+      nextStatus: "rejected",
+      phone: resolveSignupRequestRecipientPhone(requestBeforeTransition)
+    })
 
     try {
       await syncRejectedRequestReason(requestId, trimmedReason)
