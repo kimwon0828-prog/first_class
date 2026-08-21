@@ -442,9 +442,30 @@ export default async function AdminAcademyApprovalsPage({
     error?: string
   }>
 }) {
+  const getActionErrorMessage = (errorCode: string | undefined) => {
+    switch (errorCode) {
+      case "invalid_rejection_reason":
+        return "거절 사유는 5자 이상 300자 이하로 입력해 주세요."
+      case "fetch_request_for_status_failed":
+        return "신청 정보를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요."
+      case "request_already_processed":
+        return "이미 처리된 신청입니다."
+      case "approve_request_failed":
+        return "승인 처리에 실패했습니다. 잠시 후 다시 시도해 주세요."
+      case "reject_request_failed":
+        return "거절 처리에 실패했습니다. 잠시 후 다시 시도해 주세요."
+      case "sync_approved_request_failed":
+        return "승인 후속 처리에 실패했습니다. 잠시 후 다시 시도해 주세요."
+      case "sync_rejected_request_failed":
+        return "거절 후속 처리에 실패했습니다. 잠시 후 다시 시도해 주세요."
+      default:
+        return errorCode ?? null
+    }
+  }
+
   await requireAdmin()
   const resolvedSearchParams = searchParams ? await searchParams : undefined
-  const actionError = resolvedSearchParams?.error
+  const actionError = getActionErrorMessage(resolvedSearchParams?.error)
   let requests: SignupRequestView[] = []
   let listError: string | null = null
 
@@ -464,18 +485,19 @@ export default async function AdminAcademyApprovalsPage({
     try {
       requestBeforeTransition = await getSignupRequestStatusChangeRow(requestId)
     } catch (error) {
-      const message = error instanceof Error ? error.message : "failed_to_fetch_teacher_signup_request_for_sms"
-      redirect(`/admin/academy-approvals?error=${encodeURIComponent(message)}`)
+      void error
+      redirect("/admin/academy-approvals?error=fetch_request_for_status_failed")
     }
 
     if (requestBeforeTransition.status !== "pending") {
-      redirect("/admin/academy-approvals?error=이미 처리된 신청입니다.")
+      redirect("/admin/academy-approvals?error=request_already_processed")
     }
 
     const supabase = await getSupabaseServerClient()
     const { error } = await supabase.rpc("approve_teacher_signup_request", { request_id: requestId })
     if (error) {
-      redirect(`/admin/academy-approvals?error=${encodeURIComponent(error.message)}`)
+      void error
+      redirect("/admin/academy-approvals?error=approve_request_failed")
     }
 
     await sendSignupStatusSmsSafely({
@@ -489,8 +511,8 @@ export default async function AdminAcademyApprovalsPage({
       await confirmApprovedSignupUserEmail(requestId)
       await syncRequestReviewMetadata(requestId, admin.id)
     } catch (syncError) {
-      const message = syncError instanceof Error ? syncError.message : "failed_to_sync_approved_teacher_signup_request"
-      redirect(`/admin/academy-approvals?error=${encodeURIComponent(message)}`)
+      void syncError
+      redirect("/admin/academy-approvals?error=sync_approved_request_failed")
     }
 
     revalidatePath("/admin/academy-approvals")
@@ -503,25 +525,26 @@ export default async function AdminAcademyApprovalsPage({
 
     const trimmedReason = reason.trim()
     if (trimmedReason.length < 5 || trimmedReason.length > 300) {
-      redirect("/admin/academy-approvals?error=거절 사유는 5자 이상 300자 이하로 입력해 주세요.")
+      redirect("/admin/academy-approvals?error=invalid_rejection_reason")
     }
 
     let requestBeforeTransition: SignupRequestStatusChangeRow
     try {
       requestBeforeTransition = await getSignupRequestStatusChangeRow(requestId)
     } catch (error) {
-      const message = error instanceof Error ? error.message : "failed_to_fetch_teacher_signup_request_for_sms"
-      redirect(`/admin/academy-approvals?error=${encodeURIComponent(message)}`)
+      void error
+      redirect("/admin/academy-approvals?error=fetch_request_for_status_failed")
     }
 
     if (requestBeforeTransition.status !== "pending") {
-      redirect("/admin/academy-approvals?error=이미 처리된 신청입니다.")
+      redirect("/admin/academy-approvals?error=request_already_processed")
     }
 
     const supabase = await getSupabaseServerClient()
     const { error } = await supabase.rpc("reject_teacher_signup_request", { request_id: requestId })
     if (error) {
-      redirect(`/admin/academy-approvals?error=${encodeURIComponent(error.message)}`)
+      void error
+      redirect("/admin/academy-approvals?error=reject_request_failed")
     }
 
     await sendSignupStatusSmsSafely({
@@ -534,8 +557,8 @@ export default async function AdminAcademyApprovalsPage({
       await syncRejectedRequestReason(requestId, trimmedReason)
       await syncRequestReviewMetadata(requestId, admin.id)
     } catch (syncError) {
-      const message = syncError instanceof Error ? syncError.message : "failed_to_sync_rejected_teacher_signup_request"
-      redirect(`/admin/academy-approvals?error=${encodeURIComponent(message)}`)
+      void syncError
+      redirect("/admin/academy-approvals?error=sync_rejected_request_failed")
     }
 
     revalidatePath("/admin/academy-approvals")
