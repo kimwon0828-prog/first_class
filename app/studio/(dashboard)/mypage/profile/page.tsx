@@ -19,11 +19,13 @@ export default async function StudioMypageProfileRoute() {
   let publicProfile: StudioAcademyPublicProfile | null = null
   let publicProfileError: string | null = null
   let canEditPublicProfile = false
+  let publicPageSlug: string | null = null
 
-  const [organizationResult, publicProfileResult, profileRoleResult] = await Promise.allSettled([
+  const [organizationResult, publicProfileResult, profileRoleResult, publicPageLinkResult] = await Promise.allSettled([
     getStudioSettingsOrganization(access),
     getStudioAcademyPublicProfile(access.organizationId),
-    supabase.from("profiles").select("role").eq("id", access.id).maybeSingle()
+    supabase.from("profiles").select("role").eq("id", access.id).maybeSingle(),
+    supabase.from("academy_public_profiles").select("slug").eq("organization_id", access.organizationId).maybeSingle()
   ])
 
   if (organizationResult.status === "fulfilled") {
@@ -43,6 +45,11 @@ export default async function StudioMypageProfileRoute() {
     canEditPublicProfile = !error && data?.role === "academy"
   }
 
+  if (publicPageLinkResult.status === "fulfilled") {
+    const { data, error } = publicPageLinkResult.value
+    publicPageSlug = !error && typeof data?.slug === "string" && data.slug.trim().length > 0 ? data.slug.trim() : null
+  }
+
   return (
     <StudioMypageProfilePage
       organizationId={access.organizationId}
@@ -52,6 +59,7 @@ export default async function StudioMypageProfileRoute() {
       organization={organization}
       organizationError={organizationError}
       publicProfile={publicProfile}
+      initialSlug={publicPageSlug}
       publicProfileError={publicProfileError}
       canEditPublicProfile={canEditPublicProfile}
     />

@@ -50,6 +50,7 @@ type PublicProfileField = {
 }
 
 type PublicProfileFormValues = {
+  slug: string
   shortDescription: string
   description: string
   operatingHours: string
@@ -115,11 +116,13 @@ const initialActionState: SaveAcademyPublicProfileActionState = {
   completedAt: null
 }
 
+const SITE_ORIGIN = "https://firstsuup.com"
 const PROFILE_ASSET_BUCKET = "academy-profile-assets"
 const ASSET_FILENAME_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.(jpg|jpeg|png|webp)$/
 const LOGO_FILE_SIZE_LIMIT = 5 * 1024 * 1024
 const COVER_FILE_SIZE_LIMIT = 10 * 1024 * 1024
+const SLUG_ALLOWED_CHARACTER_PATTERN = /[^a-z0-9-]/g
 
 const imageMimeTypeToExtension: Record<string, "jpg" | "png" | "webp"> = {
   "image/jpeg": "jpg",
@@ -143,7 +146,19 @@ const isManagedAssetPath = (path: string, organizationId: string, folder: "logo"
 
 const toInputValue = (value: string | null | undefined) => value ?? ""
 
-const createInitialFormValues = (publicProfile: StudioAcademyPublicProfile | null): PublicProfileFormValues => ({
+const sanitizeSlugInput = (value: string) => value.trim().toLowerCase().replace(SLUG_ALLOWED_CHARACTER_PATTERN, "")
+
+const buildAcademyPublicPageHandle = (slug: string | null | undefined, organizationId: string) =>
+  toNullableText(slug) ?? organizationId
+
+const buildAcademyPublicPageUrl = (slug: string | null | undefined, organizationId: string) =>
+  `${SITE_ORIGIN}/academy/${buildAcademyPublicPageHandle(slug, organizationId)}`
+
+const createInitialFormValues = (
+  publicProfile: StudioAcademyPublicProfile | null,
+  initialSlug: string | null
+): PublicProfileFormValues => ({
+  slug: toInputValue(initialSlug),
   shortDescription: toInputValue(publicProfile?.shortDescription),
   description: toInputValue(publicProfile?.description),
   operatingHours: toInputValue(publicProfile?.operatingHours),
@@ -159,6 +174,7 @@ type StudioMypageProfilePageProps = {
   organization: StudioSettingsOrganization | null
   organizationError: string | null
   publicProfile: StudioAcademyPublicProfile | null
+  initialSlug: string | null
   publicProfileError: string | null
   canEditPublicProfile: boolean
 }
@@ -171,6 +187,7 @@ export function StudioMypageProfilePage({
   organization,
   organizationError,
   publicProfile,
+  initialSlug,
   publicProfileError,
   canEditPublicProfile
 }: StudioMypageProfilePageProps) {
@@ -182,7 +199,10 @@ export function StudioMypageProfilePage({
   const refreshHandledRef = useRef<string | null>(null)
   const logoFileInputRef = useRef<HTMLInputElement | null>(null)
   const coverFileInputRef = useRef<HTMLInputElement | null>(null)
-  const initialFormValues = useMemo(() => createInitialFormValues(publicProfile), [publicProfile])
+  const initialFormValues = useMemo(
+    () => createInitialFormValues(publicProfile, initialSlug),
+    [initialSlug, publicProfile]
+  )
   const initialFormValuesKey = useMemo(() => JSON.stringify(initialFormValues), [initialFormValues])
   const formValuesKeyRef = useRef<string | null>(null)
   const [formValues, setFormValues] = useState<PublicProfileFormValues>(initialFormValues)
@@ -207,6 +227,7 @@ export function StudioMypageProfilePage({
   const [isLogoImageBroken, setIsLogoImageBroken] = useState(false)
   const [isCoverImageBroken, setIsCoverImageBroken] = useState(false)
   const [coverPreviewUrl, setCoverPreviewUrl] = useState<string | null>(null)
+  const [copyButtonLabel, setCopyButtonLabel] = useState("링크 복사")
 
   useEffect(() => {
     if (formValuesKeyRef.current === initialFormValuesKey) {
@@ -235,6 +256,10 @@ export function StudioMypageProfilePage({
   }, [currentCoverImagePath, coverPreviewUrl])
 
   useEffect(() => {
+    setCopyButtonLabel("링크 복사")
+  }, [organizationId, formValues.slug])
+
+  useEffect(() => {
     return () => {
       if (coverPreviewUrl) {
         URL.revokeObjectURL(coverPreviewUrl)
@@ -258,6 +283,10 @@ export function StudioMypageProfilePage({
   const permissionMessage = canEditPublicProfile ? null : "학원 대표 계정만 프로필을 수정할 수 있습니다."
   const logoButtonLabel = isLogoUploading ? "업로드 중..." : currentLogoImagePath ? "로고 변경" : "로고 등록"
   const coverButtonLabel = isCoverUploading ? "업로드 중..." : currentCoverImagePath ? "대표 이미지 변경" : "대표 이미지 등록"
+  const publicPageUrl = useMemo(
+    () => buildAcademyPublicPageUrl(formValues.slug, organizationId),
+    [formValues.slug, organizationId]
+  )
   const logoInitial = academyName.trim().charAt(0) || "학"
   const logoPublicUrl = useMemo(() => {
     if (!currentLogoImagePath) {
@@ -334,6 +363,36 @@ export function StudioMypageProfilePage({
     }
 
     coverFileInputRef.current?.click()
+  }
+
+  const handleCopyPublicLink = async () => {
+    const targetUrl = publicPageUrl
+
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(targetUrl)
+      } else {
+        const textarea = document.createElement("textarea")
+        textarea.value = targetUrl
+        textarea.setAttribute("readonly", "true")
+        textarea.style.position = "absolute"
+        textarea.style.left = "-9999px"
+        document.body.appendChild(textarea)
+        textarea.select()
+        document.execCommand("copy")
+        document.body.removeChild(textarea)
+      }
+
+      setCopyButtonLabel("복사되었습니다")
+      window.setTimeout(() => {
+        setCopyButtonLabel("링크 복사")
+      }, 2000)
+    } catch {
+      setCopyButtonLabel("복사 실패")
+      window.setTimeout(() => {
+        setCopyButtonLabel("링크 복사")
+      }, 2000)
+    }
   }
 
   const handleLogoFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -568,6 +627,23 @@ export function StudioMypageProfilePage({
           <h1 className={styles.title}>프로필 수정</h1>
         </header>
 
+        <section className={styles.sectionCard} aria-label="공개 페이지 링크">
+          <div className={styles.sectionHeader}>
+            <div className={styles.sectionHeaderStack}>
+              <h2 className={styles.sectionTitle}>공개 페이지 링크</h2>
+              <p className={styles.sectionDescription}>학부모에게 전달할 학원 공개 페이지 주소입니다.</p>
+            </div>
+            <button type="button" className={styles.secondaryButton} onClick={handleCopyPublicLink}>
+              {copyButtonLabel}
+            </button>
+          </div>
+          <div className={styles.linkCard}>
+            <p className={styles.linkLabel}>현재 주소</p>
+            <p className={styles.linkValue}>{publicPageUrl}</p>
+            <p className={styles.linkHint}>slug를 비워두면 UUID 주소가 유지됩니다.</p>
+          </div>
+        </section>
+
         <section className={styles.sectionCard} aria-label="기본 정보">
           <div className={styles.sectionHeader}>
             <div>
@@ -739,6 +815,37 @@ export function StudioMypageProfilePage({
 
           <form action={formAction} className={styles.profileForm}>
             <div className={styles.formGrid}>
+              <label className={`${styles.field} ${styles.fullWidthField}`}>
+                <span className={styles.fieldHeader}>
+                  <span className={styles.fieldLabel}>페이지 주소</span>
+                  <span className={styles.fieldCount}>{formValues.slug.length}/50</span>
+                </span>
+                <div className={styles.slugInputShell}>
+                  <span className={styles.slugPrefix}>firstsuup.com/academy/</span>
+                  <input
+                    name="slug"
+                    type="text"
+                    inputMode="url"
+                    autoCapitalize="off"
+                    autoCorrect="off"
+                    spellCheck={false}
+                    className={styles.slugInput}
+                    placeholder="my-academy"
+                    maxLength={50}
+                    value={formValues.slug}
+                    readOnly={readOnlyFields}
+                    disabled={disableFormByQueryError}
+                    onChange={(event) =>
+                      setFormValues((current) => ({
+                        ...current,
+                        slug: sanitizeSlugInput(event.target.value)
+                      }))
+                    }
+                  />
+                </div>
+                <span className={styles.fieldHint}>소문자 영문, 숫자, 하이픈만 허용하며 2~50자까지 저장됩니다.</span>
+              </label>
+
               {publicProfileFields.map((field) => {
                 const value = formValues[field.key]
 

@@ -39,9 +39,11 @@
 .backLink:focus-visible,
 .secondaryLink:focus-visible,
 .secondaryButton:focus-visible,
+.copyButton:focus-visible,
 .primaryButton:focus-visible,
 .disabledButton:focus-visible,
 .input:focus,
+.slugInput:focus,
 .textarea:focus {
   outline: none;
   box-shadow: 0 0 0 3px rgba(42, 173, 56, 0.14);
@@ -182,6 +184,39 @@
   line-height: 20px;
   color: #4d5a4d;
   font-weight: 800;
+}
+
+.linkCard {
+  border: 1px solid #e5ebe5;
+  border-radius: 16px;
+  background: #f8faf8;
+  padding: 16px;
+  display: grid;
+  gap: 8px;
+}
+
+.linkLabel {
+  margin: 0;
+  font-size: 12px;
+  line-height: 16px;
+  color: #6b716b;
+  font-weight: 800;
+}
+
+.linkValue {
+  margin: 0;
+  font-size: 14px;
+  line-height: 22px;
+  color: #111111;
+  font-weight: 800;
+  word-break: break-all;
+}
+
+.linkHint {
+  margin: 0;
+  font-size: 12px;
+  line-height: 18px;
+  color: #6b716b;
 }
 
 .imageGrid {
@@ -369,6 +404,56 @@
   font-weight: 700;
 }
 
+.slugInputShell {
+  width: 100%;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  border: 1px solid #d8ddd8;
+  border-radius: 12px;
+  background: #f8f9f8;
+  overflow: hidden;
+}
+
+.slugPrefix {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 14px;
+  min-height: 44px;
+  background: #eef2ee;
+  color: #4f564f;
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.slugInput {
+  width: 100%;
+  min-height: 44px;
+  border: 0;
+  background: transparent;
+  color: #111111;
+  font-size: 14px;
+  line-height: 20px;
+  padding: 0 14px;
+}
+
+.slugInput::placeholder {
+  color: #6b716b;
+  opacity: 1;
+}
+
+.slugInput:disabled {
+  opacity: 1;
+  -webkit-text-fill-color: #111111;
+  color: #111111;
+  cursor: not-allowed;
+}
+
+.slugInput[readonly] {
+  cursor: default;
+}
+
 .input,
 .textarea {
   width: 100%;
@@ -502,6 +587,15 @@
 
   .imageActionColumn {
     justify-items: stretch;
+  }
+
+  .slugInputShell {
+    grid-template-columns: 1fr;
+  }
+
+  .slugPrefix {
+    min-height: 40px;
+    border-bottom: 1px solid #d8ddd8;
   }
 
   .fieldHeader {

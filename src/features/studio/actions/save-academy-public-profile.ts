@@ -17,6 +17,8 @@ const defaultState: SaveAcademyPublicProfileActionState = {
   completedAt: null
 }
 
+const SLUG_PATTERN = /^[a-z0-9-]{2,50}$/
+
 const toNullableText = (value: FormDataEntryValue | null, maxLength: number) => {
   const normalized = String(value ?? "").trim()
 
@@ -31,9 +33,29 @@ const toNullableText = (value: FormDataEntryValue | null, maxLength: number) => 
   return { ok: true as const, value: normalized }
 }
 
+const toNullableSlug = (value: FormDataEntryValue | null) => {
+  const normalized = String(value ?? "")
+    .trim()
+    .toLowerCase()
+
+  if (!normalized) {
+    return { ok: true as const, value: null }
+  }
+
+  if (!SLUG_PATTERN.test(normalized)) {
+    return { ok: false as const }
+  }
+
+  return { ok: true as const, value: normalized }
+}
+
 const mapSaveErrorMessage = (code: string | null) => {
   if (code === "42501") {
     return "학원 대표 계정만 프로필을 저장할 수 있습니다."
+  }
+
+  if (code === "23505") {
+    return "이미 사용 중인 주소입니다."
   }
 
   if (code === "23514" || code === "23503") {
@@ -94,6 +116,15 @@ export async function saveAcademyPublicProfileAction(
     }
   }
 
+  const slug = toNullableSlug(formData.get("slug"))
+  if (!slug.ok) {
+    return {
+      status: "error",
+      message: "페이지 주소는 소문자 영문, 숫자, 하이픈만 사용해 2~50자로 입력해 주세요.",
+      completedAt: null
+    }
+  }
+
   const access = await requireTeacherStudioAccess()
   const supabase = await getSupabaseServerClient()
 
@@ -121,6 +152,7 @@ export async function saveAcademyPublicProfileAction(
 
   const payload = {
     organization_id: access.organizationId,
+    slug: slug.value,
     short_description: shortDescription.value,
     description: description.value,
     operating_hours: operatingHours.value,
@@ -144,6 +176,10 @@ export async function saveAcademyPublicProfileAction(
   }
 
   revalidatePath("/studio/mypage/profile")
+  revalidatePath(`/academy/${access.organizationId}`)
+  if (slug.value) {
+    revalidatePath(`/academy/${slug.value}`)
+  }
 
   return {
     status: "success",
