@@ -3,14 +3,18 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import type { ReactNode } from "react"
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 
+import { getSupabaseBrowserClient } from "@/integrations/supabase/client"
 import { StudioHomeLogo } from "@/features/studio/ui/studio-home-logo"
 import styles from "./studio-shell.module.css"
+
+const PROFILE_ASSET_BUCKET = "academy-profile-assets"
 
 type StudioShellProps = {
   children: ReactNode
   organizationName?: string | null
+  logoImagePath?: string | null
   consultationLeadCount?: number
 }
 
@@ -31,13 +35,16 @@ const isActivePath = (pathname: string, href: string) => {
 export const StudioShell = ({
   children,
   organizationName,
+  logoImagePath,
   consultationLeadCount = 0
 }: StudioShellProps) => {
   const pathname = usePathname() ?? ""
   const accountLabel = organizationName?.trim() || "학원"
+  const accountInitial = accountLabel.slice(0, 1)
   const mypageHref = "/studio/mypage"
   const isMypageActive = isActivePath(pathname, mypageHref)
   const [pendingHref, setPendingHref] = useState<string | null>(null)
+  const [isLogoImageBroken, setIsLogoImageBroken] = useState(false)
   const navItems: NavItem[] = [
     { href: "/studio", label: "대시보드" },
     { href: "/studio/applications", label: "신청 관리" },
@@ -54,6 +61,22 @@ export const StudioShell = ({
   useEffect(() => {
     setPendingHref(null)
   }, [pathname])
+
+  useEffect(() => {
+    setIsLogoImageBroken(false)
+  }, [logoImagePath])
+
+  const logoImageUrl = useMemo(() => {
+    if (!logoImagePath) {
+      return null
+    }
+
+    const {
+      data: { publicUrl }
+    } = getSupabaseBrowserClient().storage.from(PROFILE_ASSET_BUCKET).getPublicUrl(logoImagePath)
+
+    return publicUrl || null
+  }, [logoImagePath])
 
   return (
     <div className={styles.shell}>
@@ -107,8 +130,22 @@ export const StudioShell = ({
                 }
               }}
             >
-              <span className={styles.accountAvatar} aria-label="학원 프로필 이미지 자리" role="img">
-                {accountLabel.slice(0, 1)}
+              <span className={styles.accountAvatar}>
+                {logoImageUrl && !isLogoImageBroken ? (
+                  <>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={logoImageUrl}
+                      alt={`${accountLabel} 로고`}
+                      className={styles.accountAvatarImage}
+                      onError={() => setIsLogoImageBroken(true)}
+                    />
+                  </>
+                ) : (
+                  <span aria-label="학원 프로필 이미지 자리" role="img">
+                    {accountInitial}
+                  </span>
+                )}
               </span>
               <span className={styles.accountName}>{accountLabel}</span>
               <span className={styles.accountChevron} aria-hidden="true">
