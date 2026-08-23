@@ -25,7 +25,7 @@ export default function PartnerInquiryForm() {
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
 
-    if (isSubmitting) {
+    if (isSubmitting || !form.privacyAgreed) {
       return
     }
 
@@ -134,7 +134,13 @@ export default function PartnerInquiryForm() {
         </span>
       </label>
 
-      <button type="submit" className={`${styles.btn} ${styles.btnBlk}`} disabled={isSubmitting}>
+      <button
+        type="submit"
+        className={`${styles.btn} ${styles.btnBlk} ${
+          form.privacyAgreed ? styles.partnerInquirySubmitEnabled : ""
+        }`}
+        disabled={isSubmitting || !form.privacyAgreed}
+      >
         {isSubmitting ? "문의 접수 중..." : "문의하기"}
       </button>
 

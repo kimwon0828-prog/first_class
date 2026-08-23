@@ -1533,14 +1533,20 @@ section[id="faq"] > .wrap > .kick {
 .formcard .btnBlk {
   background: #b8beb9;
   border: 0;
+  color: var(--ink-2);
 }
 
-.formcard:has(#partner-consent:checked) .btnBlk:not(:disabled) {
+.formcard .partnerInquirySubmitEnabled:not(:disabled) {
   background: var(--g);
+  color: #fff;
+}
+
+.formcard .partnerInquirySubmitEnabled:not(:disabled):hover {
+  background: var(--g-dk);
 }
 
 .formcard .btnBlk:disabled {
-  cursor: wait;
+  cursor: not-allowed;
 }
 
 .partnerInquiryForm {

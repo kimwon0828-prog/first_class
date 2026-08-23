@@ -216,7 +216,7 @@ export default function PartnerLanding() {
             </p>
             <div className={styles.h1Btns}>
               <a href="#apply" className={`${styles.btn} ${styles.btnG}`}>
-                파일럿 도입 상담
+                무료 도입 상담
               </a>
             </div>
             <div className={styles.heroMeta}>
@@ -654,7 +654,7 @@ export default function PartnerLanding() {
           <div className={styles.ftBot}>
             첫수업 · 대표 김원식 · 사업자등록번호 775-07-03279
             <br />
-            경기도 고양시 일산동구 부광로 20-38, 5층 500-17호 (장항동, 골레오빌)
+            경기도 고양시 일산동구 무궁화로 20-38, 5층 500-17호 (장항동, 골레오빌)
             <br />
             <br />© 2026 첫수업. All Rights Reserved.
           </div>
