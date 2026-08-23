@@ -378,8 +378,8 @@ export default function PartnerLanding() {
                 상담 맥락은 그대로 남습니다
               </h3>
               <p>
-                체험 반응, 레벨테스트 결과, 상담 내용, 희망 요일·시간을 학생별로 누적합니다. 미등록
-                학생도 다시 연락할 수 있는 기록으로 남습니다.
+                체험 반응, 레벨테스트 결과, 상담 내용, 희망 요일·시간을 학생별로 누적합니다. 이전
+                상담 흐름을 한눈에 확인하고 그대로 이어갈 수 있습니다.
               </p>
             </div>
 
@@ -390,13 +390,14 @@ export default function PartnerLanding() {
                   <i className={styles.dot} />
                   <i className={styles.dot} />
                 </div>
-                <div className={styles.shotPh}>
-                  <span>
-                    <strong>실제 제품 캡처 영역 ①</strong>
-                    <br />
-                    학생 상담 상세 / 레벨테스트 / 희망 일정 / 등록 상태
-                    <small>현재 서비스 실제 화면 캡처로 교체 예정</small>
-                  </span>
+                <div className={styles.shotMedia}>
+                  <Image
+                    src="/images/partner/consultation-management.png"
+                    alt="첫수업 파트너 센터 상담 기록 추가 화면"
+                    fill
+                    sizes="(max-width: 560px) calc(100vw - 72px), (max-width: 960px) calc(100vw - 124px), 560px"
+                    className={styles.shotImage}
+                  />
                 </div>
               </div>
             </div>
@@ -436,7 +437,7 @@ export default function PartnerLanding() {
               </div>
             </div>
           </div>
-          <div>
+          <div className={styles.featureCopy}>
             <p className={styles.fLbl}>운영 관리</p>
             <h3>
               오늘 처리해야 할 일이
@@ -446,6 +447,74 @@ export default function PartnerLanding() {
             <p>
               새 신청부터 등록 확인이 필요한 학생까지, 지금 확인해야 할 일을 한 화면에서
               보여드립니다.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section className={`${styles.sec} ${styles.featureFollowSection}`}>
+        <div className={`${styles.wrap} ${styles.fmid} ${styles.featureForward}`}>
+          <div className={styles.featureCopy}>
+            <p className={styles.fLbl}>미등록 학생 관리</p>
+            <h3>
+              등록하지 않았다고 끝나는
+              <br />
+              학생은 아닙니다
+            </h3>
+            <p>
+              등록하지 않은 이유와 다음 연락 시점을 남겨두고, 방학·학기 초나 새 반이 생겼을 때
+              다시 연락할 학생을 바로 찾을 수 있습니다.
+            </p>
+          </div>
+          <div className={styles.shotpanel}>
+            <div className={styles.shot}>
+              <div className={styles.shotBar}>
+                <i className={styles.dot} />
+                <i className={styles.dot} />
+                <i className={styles.dot} />
+              </div>
+              <div className={styles.shotPh}>
+                <span>
+                  <strong>실제 제품 캡처 영역 ③</strong>
+                  <br />
+                  미등록 학생 관리 화면
+                  <small>추후 실제 서비스 화면으로 교체 예정</small>
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className={`${styles.sec} ${styles.featureFollowSection}`}>
+        <div className={`${styles.wrap} ${styles.fmid}`}>
+          <div className={styles.shotpanel}>
+            <div className={styles.shot}>
+              <div className={styles.shotBar}>
+                <i className={styles.dot} />
+                <i className={styles.dot} />
+                <i className={styles.dot} />
+              </div>
+              <div className={styles.shotPh}>
+                <span>
+                  <strong>실제 제품 캡처 영역 ④</strong>
+                  <br />
+                  예약 안내 · 리마인드 화면
+                  <small>추후 실제 서비스 화면으로 교체 예정</small>
+                </span>
+              </div>
+            </div>
+          </div>
+          <div className={styles.featureCopy}>
+            <p className={styles.fLbl}>자동 안내 · 리마인드</p>
+            <h3>
+              예약 안내를 매번 직접
+              <br />
+              보내지 않아도 됩니다
+            </h3>
+            <p>
+              신청 접수부터 예약 안내와 리마인드까지 운영 흐름에 맞춰 발송해, 반복 연락을 줄이고
+              체험 일정 누락을 예방합니다.
             </p>
           </div>
         </div>

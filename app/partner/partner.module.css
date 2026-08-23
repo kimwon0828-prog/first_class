@@ -986,6 +986,20 @@ section[id="faq"] > .wrap > .kick {
   color: var(--faint);
 }
 
+.shotMedia {
+  position: relative;
+  aspect-ratio: 16 / 10;
+  overflow: hidden;
+  background: #f6f8f5;
+}
+
+.shotImage {
+  object-fit: cover;
+  object-position: center;
+  transform: scale(1.35);
+  transform-origin: center;
+}
+
 .fhero {
   display: grid;
   grid-template-columns: 0.88fr 1.12fr;
@@ -1067,6 +1081,10 @@ section[id="faq"] > .wrap > .kick {
   grid-template-columns: 1.12fr 0.88fr;
   gap: 56px;
   align-items: center;
+}
+
+.featureForward {
+  grid-template-columns: 0.88fr 1.12fr;
 }
 
 .fmid h3 {
@@ -1709,8 +1727,12 @@ section[id="faq"] > .wrap > .kick {
     gap: 44px;
   }
 
+  .fmid .featureCopy {
+    order: 1;
+  }
+
   .fmid .shotpanel {
-    order: -1;
+    order: 2;
   }
 
   .heroTitle {
@@ -1830,6 +1852,10 @@ section[id="faq"] > .wrap > .kick {
   .shotpanel,
   .panel {
     padding: 20px;
+  }
+
+  .shotImage {
+    transform: scale(1.55);
   }
 
   .cta {
