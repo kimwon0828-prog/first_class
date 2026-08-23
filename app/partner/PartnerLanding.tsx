@@ -385,14 +385,9 @@ export default function PartnerLanding() {
 
             <div className={styles.shotpanel}>
               <div className={styles.shot}>
-                <div className={styles.shotBar}>
-                  <i className={styles.dot} />
-                  <i className={styles.dot} />
-                  <i className={styles.dot} />
-                </div>
                 <div className={styles.shotMedia}>
                   <Image
-                    src="/images/partner/consultation-management.png"
+                    src="/images/partner/feature-consultation-mockup.png"
                     alt="첫수업 파트너 센터 상담 기록 추가 화면"
                     fill
                     sizes="(max-width: 560px) calc(100vw - 72px), (max-width: 960px) calc(100vw - 124px), 560px"
@@ -422,18 +417,14 @@ export default function PartnerLanding() {
         <div className={`${styles.wrap} ${styles.fmid}`}>
           <div className={styles.shotpanel}>
             <div className={styles.shot}>
-              <div className={styles.shotBar}>
-                <i className={styles.dot} />
-                <i className={styles.dot} />
-                <i className={styles.dot} />
-              </div>
-              <div className={styles.shotPh}>
-                <span>
-                  <strong>실제 제품 캡처 영역 ②</strong>
-                  <br />
-                  예약 일정 / 신청 상태 / 알림 관리 화면
-                  <small>현재 서비스 실제 화면 캡처로 교체 예정</small>
-                </span>
+              <div className={styles.shotMedia}>
+                <Image
+                  src="/images/partner/feature-dashboard-mockup.png"
+                  alt="첫수업 파트너 센터 운영 대시보드 화면"
+                  fill
+                  sizes="(max-width: 560px) calc(100vw - 72px), (max-width: 960px) calc(100vw - 124px), 560px"
+                  className={styles.shotImage}
+                />
               </div>
             </div>
           </div>
@@ -468,18 +459,14 @@ export default function PartnerLanding() {
           </div>
           <div className={styles.shotpanel}>
             <div className={styles.shot}>
-              <div className={styles.shotBar}>
-                <i className={styles.dot} />
-                <i className={styles.dot} />
-                <i className={styles.dot} />
-              </div>
-              <div className={styles.shotPh}>
-                <span>
-                  <strong>실제 제품 캡처 영역 ③</strong>
-                  <br />
-                  미등록 학생 관리 화면
-                  <small>추후 실제 서비스 화면으로 교체 예정</small>
-                </span>
+              <div className={styles.shotMedia}>
+                <Image
+                  src="/images/partner/feature-followup-mockup.png"
+                  alt="첫수업 파트너 센터 미등록 학생 후속관리 화면"
+                  fill
+                  sizes="(max-width: 560px) calc(100vw - 72px), (max-width: 960px) calc(100vw - 124px), 560px"
+                  className={styles.shotImage}
+                />
               </div>
             </div>
           </div>
@@ -490,18 +477,14 @@ export default function PartnerLanding() {
         <div className={`${styles.wrap} ${styles.fmid}`}>
           <div className={styles.shotpanel}>
             <div className={styles.shot}>
-              <div className={styles.shotBar}>
-                <i className={styles.dot} />
-                <i className={styles.dot} />
-                <i className={styles.dot} />
-              </div>
-              <div className={styles.shotPh}>
-                <span>
-                  <strong>실제 제품 캡처 영역 ④</strong>
-                  <br />
-                  예약 안내 · 리마인드 화면
-                  <small>추후 실제 서비스 화면으로 교체 예정</small>
-                </span>
+              <div className={styles.shotMedia}>
+                <Image
+                  src="/images/partner/feature-reminder-mockup.png"
+                  alt="첫수업 신규 신청 SMS 문자 메시지"
+                  fill
+                  sizes="(max-width: 560px) calc(100vw - 72px), (max-width: 960px) calc(100vw - 124px), 560px"
+                  className={styles.shotImage}
+                />
               </div>
             </div>
           </div>
