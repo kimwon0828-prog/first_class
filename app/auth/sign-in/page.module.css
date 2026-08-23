@@ -1,50 +1,60 @@
 .page {
-  margin: 0 auto;
   width: 100%;
-  max-width: 430px;
   min-height: 100dvh;
-  box-sizing: border-box;
+  background: var(--bg);
   overflow-x: hidden;
-  padding: calc(14px + env(safe-area-inset-top)) 22px
-    calc(24px + env(safe-area-inset-bottom));
-  background: #ffffff;
 }
 
 .page * {
   box-sizing: border-box;
 }
 
+.shell {
+  margin: 0 auto;
+  width: 100%;
+  max-width: var(--col);
+  min-height: 100dvh;
+  background: var(--surface);
+  padding: calc(14px + env(safe-area-inset-top)) var(--gutter) calc(24px + env(safe-area-inset-bottom));
+  display: flex;
+  flex-direction: column;
+}
+
 .topBar {
-  height: 40px;
+  min-height: 40px;
   display: flex;
   align-items: center;
+  flex: 0 0 auto;
 }
 
 .backButton {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 36px;
-  height: 36px;
+  width: 40px;
+  height: 40px;
   border-radius: 999px;
-  color: #9a9a9a;
+  color: #111111;
   text-decoration: none;
   background: transparent;
 }
 
 .hero {
-  min-height: calc(100dvh - 110px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+  flex: 1;
   display: flex;
   flex-direction: column;
-  justify-content: flex-start;
-  gap: 0;
+  justify-content: space-between;
+  min-height: 0;
+  gap: 32px;
 }
 
-.brand {
+.visualBlock {
   display: flex;
   flex-direction: column;
   align-items: center;
-  margin-top: 78px;
+  justify-content: center;
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 .logo {
@@ -53,8 +63,13 @@
   height: 30px;
 }
 
+.brand {
+  display: flex;
+  justify-content: center;
+}
+
 .copyGroup {
-  margin-top: 78px;
+  margin-top: 36px;
   text-align: center;
 }
 
@@ -62,19 +77,21 @@
   margin: 0;
   color: #111111;
   font-size: 24px;
-  line-height: 1.45;
+  line-height: 1.4;
   letter-spacing: -0.03em;
   font-weight: 700;
-}
-
-.actions {
-  margin-top: 132px;
   display: grid;
-  gap: 12px;
+  gap: 6px;
 }
 
-.kakaoButton,
-.emailButton {
+.ctaBlock {
+  flex: 0 0 auto;
+  display: grid;
+  gap: 14px;
+  padding-top: 12px;
+}
+
+.kakaoButton {
   display: inline-flex;
   width: 100%;
   min-height: 52px;
@@ -102,54 +119,69 @@
   opacity: 0.75;
 }
 
-.emailButton {
-  border: 0;
-  background: #2aad38;
-  color: #ffffff;
+.legalNotice {
+  margin: 0;
+  text-align: center;
+  color: #8d8d8d;
+  font-size: 12px;
+  line-height: 1.55;
+  word-break: keep-all;
 }
 
-.loginPrompt {
-  margin: 18px 0 0;
-  text-align: center;
+.legalLink {
   color: #636363;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.divider {
+  margin-top: 14px;
+  width: 100%;
+  height: 1px;
+  background: #ebebeb;
+}
+
+.studioNotice {
+  margin: 0;
+  text-align: center;
   font-size: 13px;
   line-height: 20px;
+  color: #7d7d7d;
 }
 
-.loginLink,
-.teacherLink {
-  color: #2aad38;
-  font-weight: 600;
+.studioLink {
+  color: #111111;
+  font-weight: 700;
   text-decoration: none;
 }
 
-.teacherNotice {
-  margin: 18px 0 0;
-  text-align: center;
-  font-size: 13px;
-  line-height: 20px;
-  color: #8b8b8b;
-}
-
 @media (max-width: 420px) {
-  .page {
-    padding-left: 20px;
-    padding-right: 20px;
-  }
-
-  .brand {
-    margin-top: 72px;
-  }
-
   .copyGroup {
-    margin-top: 72px;
+    margin-top: 32px;
   }
 
   .title {
     font-size: 23px;
   }
+}
 
-  .actions {
-    margin-top: 126px;
+@media (min-width: 520px) {
+  .shell {
+    border-left: 1px solid var(--border);
+    border-right: 1px solid var(--border);
+  }
+}
+
+@media (min-width: 768px) {
+  .shell {
+    padding-bottom: 36px;
+  }
+
+  .hero {
+    gap: 40px;
+  }
+
+  .copyGroup {
+    margin-top: 40px;
   }
 }
