@@ -3,6 +3,11 @@
 import Link from "next/link"
 import { useEffect, useMemo, useState } from "react"
 
+import {
+  clearTrialApplicationDraft,
+  getTrialApplicationDraft,
+  saveTrialApplicationDraft
+} from "@/features/applications/lib/trial-application-draft"
 import { isChildEligibleForClass } from "@/shared/constants/grade-options"
 import { CHILD_GRADES, getChildGradeLabel } from "@/shared/constants/education-taxonomy"
 import type { AvailableScheduleSlot } from "@/shared/lib/db/adapter"
@@ -304,6 +309,26 @@ export function ClassDetailApplicationSheet({
     }
   }, [currentMonthKey, monthKeys, selectedSlotDateKey])
 
+  useEffect(() => {
+    const draft = getTrialApplicationDraft(classId)
+    if (!draft || !hasSession || !isParentUser) {
+      return
+    }
+
+    const restoredSlot = availableSlots.find(
+      (slot) => slot.optionId === draft.selectedScheduleOptionId && isSelectableSlot(slot)
+    )
+    if (!restoredSlot) {
+      clearTrialApplicationDraft()
+      return
+    }
+
+    setSelectedOptionId(draft.selectedScheduleOptionId)
+    setIsOpen(true)
+    setStep(2)
+    setIsCalendarView(false)
+  }, [availableSlots, classId, hasSession, isParentUser, setSelectedOptionId])
+
   const openSheet = () => {
     setIsOpen(true)
     setStep(1)
@@ -331,6 +356,13 @@ export function ClassDetailApplicationSheet({
     if (!slotMatchesDate) {
       setSelectedOptionId("")
     }
+  }
+
+  const handleSignIn = () => {
+    saveTrialApplicationDraft({
+      classId,
+      selectedScheduleOptionId: selectedOptionId
+    })
   }
 
   const currentMonthIndex = currentMonthKey ? monthKeys.indexOf(currentMonthKey) : -1
@@ -553,68 +585,67 @@ export function ClassDetailApplicationSheet({
 
                 {step === 2 ? (
                   <section className={styles.sectionStack}>
-                    <div className={styles.headingBlock}>
-                      <p className={styles.stepEyebrow}>참여할 자녀 선택</p>
-                      <h3 className={styles.stepTitle}>수업에 참여할 자녀 정보를 확인해주세요.</h3>
-                    </div>
-
                     {!hasSession ? (
-                      <div className={styles.loginCard}>
-                        <p className={styles.loginTitle}>로그인 후 자녀 정보를 선택할 수 있어요.</p>
-                        <p className={styles.loginText}>
-                          STEP 1에서 고른 일정은 유지되고, 로그인 후 다시 상세페이지에서 이어서 신청할 수 있어요.
-                        </p>
-                        <Link href={signInHref} className={styles.loginButton}>
-                          로그인하기
-                        </Link>
-                      </div>
-                    ) : !isParentUser ? (
-                      <div className={styles.loginCard}>
-                        <p className={styles.loginTitle}>학부모 계정으로 신청할 수 있어요.</p>
-                        <p className={styles.loginText}>학부모 계정으로 로그인한 뒤 자녀 정보를 선택해주세요.</p>
+                      <div className={styles.headingBlock}>
+                        <h3 className={styles.stepTitle}>로그인 후 신청을 이어갈 수 있어요.</h3>
+                        <p className={styles.loginText}>선택한 일정은 그대로 유지돼요.</p>
                       </div>
                     ) : (
                       <>
-                        <div className={styles.summaryCard}>
-                          <div className={styles.summaryRow}>
-                            <span className={styles.summaryLabel}>보호자명</span>
-                            <span className={styles.summaryValue}>{parentName}</span>
-                          </div>
-                          <div className={styles.summaryRow}>
-                            <span className={styles.summaryLabel}>연락처</span>
-                            <span className={styles.summaryValue}>{parentPhone ?? "등록된 연락처가 없습니다."}</span>
-                          </div>
+                        <div className={styles.headingBlock}>
+                          <p className={styles.stepEyebrow}>참여할 자녀 선택</p>
+                          <h3 className={styles.stepTitle}>수업에 참여할 자녀 정보를 확인해주세요.</h3>
                         </div>
 
-                        {childProfilesError ? <p className={styles.errorText}>{childProfilesError}</p> : null}
-
-                        {childProfiles.length > 0 ? (
-                          <div className={styles.childCardList}>
-                            {childProfiles.map((child) => {
-                              const disabled = !isChildEligibleForClass(child.grade, classTargetAge)
-
-                              return (
-                                <button
-                                  key={child.id}
-                                  type="button"
-                                  className={`${styles.childCard} ${
-                                    selectedChildId === child.id ? styles.childCardSelected : ""
-                                  }`}
-                                  onClick={() => setSelectedChildId(child.id)}
-                                  aria-pressed={selectedChildId === child.id}
-                                  disabled={disabled}
-                                >
-                                  <strong className={styles.childName}>{child.name}</strong>
-                                  <span className={styles.childMeta}>{getChildGradeLabel(child.grade) ?? child.grade}</span>
-                                </button>
-                              )
-                            })}
+                        {!isParentUser ? (
+                          <div className={styles.loginCard}>
+                            <p className={styles.loginTitle}>학부모 계정으로 신청할 수 있어요.</p>
+                            <p className={styles.loginText}>학부모 계정으로 로그인한 뒤 자녀 정보를 선택해주세요.</p>
                           </div>
                         ) : null}
 
-                        <button type="button" className={styles.inlineAddButton} onClick={() => setSelectedChildId("")}>
-                          + 새로운 자녀 정보 입력
-                        </button>
+                        {isParentUser ? (
+                          <>
+                            <div className={styles.summaryCard}>
+                              <div className={styles.summaryRow}>
+                                <span className={styles.summaryLabel}>보호자명</span>
+                                <span className={styles.summaryValue}>{parentName}</span>
+                              </div>
+                              <div className={styles.summaryRow}>
+                                <span className={styles.summaryLabel}>연락처</span>
+                                <span className={styles.summaryValue}>{parentPhone ?? "등록된 연락처가 없습니다."}</span>
+                              </div>
+                            </div>
+
+                            {childProfilesError ? <p className={styles.errorText}>{childProfilesError}</p> : null}
+
+                            {childProfiles.length > 0 ? (
+                              <div className={styles.childCardList}>
+                                {childProfiles.map((child) => {
+                                  const disabled = !isChildEligibleForClass(child.grade, classTargetAge)
+
+                                  return (
+                                    <button
+                                      key={child.id}
+                                      type="button"
+                                      className={`${styles.childCard} ${
+                                        selectedChildId === child.id ? styles.childCardSelected : ""
+                                      }`}
+                                      onClick={() => setSelectedChildId(child.id)}
+                                      aria-pressed={selectedChildId === child.id}
+                                      disabled={disabled}
+                                    >
+                                      <strong className={styles.childName}>{child.name}</strong>
+                                      <span className={styles.childMeta}>{getChildGradeLabel(child.grade) ?? child.grade}</span>
+                                    </button>
+                                  )
+                                })}
+                              </div>
+                            ) : null}
+
+                            <button type="button" className={styles.inlineAddButton} onClick={() => setSelectedChildId("")}>
+                              + 새로운 자녀 정보 입력
+                            </button>
 
                         <div className={styles.fieldStack}>
                           <label className={styles.field}>
@@ -659,7 +690,7 @@ export function ClassDetailApplicationSheet({
                           </label>
                         </div>
 
-                        <div className={styles.additionalSection}>
+                            <div className={styles.additionalSection}>
                           <p className={styles.additionalTitle}>추가 신청정보</p>
                           <div className={styles.fieldStack}>
                             <label className={styles.field}>
@@ -773,7 +804,9 @@ export function ClassDetailApplicationSheet({
                               />
                             </label>
                           </div>
-                        </div>
+                            </div>
+                          </>
+                        ) : null}
                       </>
                     )}
                   </section>
@@ -864,8 +897,26 @@ export function ClassDetailApplicationSheet({
                       이전
                     </button>
                     {!hasSession ? (
-                      <Link href={signInHref} className={styles.primaryLinkButton}>
-                        로그인하기
+                      <Link
+                        href={signInHref}
+                        className={`${styles.primaryLinkButton} ${styles.kakaoLinkButton}`}
+                        onClick={handleSignIn}
+                      >
+                        <svg
+                          width="18"
+                          height="18"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          xmlns="http://www.w3.org/2000/svg"
+                          aria-hidden="true"
+                          className={styles.kakaoButtonIcon}
+                        >
+                          <path
+                            d="M12 4.5c-4.556 0-8.25 2.893-8.25 6.462 0 2.28 1.507 4.282 3.78 5.432l-.757 3.106a.75.75 0 001.125.81l3.629-2.339c.155.011.312.017.473.017 4.556 0 8.25-2.893 8.25-6.461C20.25 7.393 16.556 4.5 12 4.5z"
+                            fill="currentColor"
+                          />
+                        </svg>
+                        카카오로 로그인하기
                       </Link>
                     ) : !isParentUser ? (
                       <button type="button" className={styles.primaryButton} disabled>

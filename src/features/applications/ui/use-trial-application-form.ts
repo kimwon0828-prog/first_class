@@ -7,6 +7,7 @@ import {
   createTrialApplicationAction,
   type CreateTrialApplicationActionState
 } from "@/features/applications/actions/create-trial-application"
+import { clearTrialApplicationDraft } from "@/features/applications/lib/trial-application-draft"
 import {
   formatStoredTargetGrades,
   isChildEligibleForClass,
@@ -177,7 +178,12 @@ export const useTrialApplicationForm = (
   }, [selectedChild])
 
   useEffect(() => {
-    if (state.status === "success" && state.redirectTo) {
+    if (state.status !== "success") {
+      return
+    }
+
+    clearTrialApplicationDraft()
+    if (state.redirectTo) {
       router.replace(state.redirectTo)
     }
   }, [router, state.redirectTo, state.status])

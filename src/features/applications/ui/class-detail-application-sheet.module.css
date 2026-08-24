@@ -339,8 +339,7 @@
 .completeButton,
 .primaryButton,
 .primaryLinkButton,
-.secondaryButton,
-.loginButton {
+.secondaryButton {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -355,8 +354,7 @@
 
 .completeButton,
 .primaryButton,
-.primaryLinkButton,
-.loginButton {
+.primaryLinkButton {
   border: 0;
   background: var(--brand-700);
   color: #ffffff;
@@ -372,6 +370,25 @@
 .secondaryButton:disabled,
 .monthNavButton:disabled {
   opacity: 0.45;
+}
+
+.kakaoLinkButton {
+  gap: 8px;
+  background: #fee500;
+  color: #191919;
+  font-weight: 600;
+}
+
+.kakaoLinkButton:hover {
+  background: #f5dc00;
+}
+
+.kakaoLinkButton:active {
+  background: #ebd300;
+}
+
+.kakaoButtonIcon {
+  flex: 0 0 auto;
 }
 
 .footerActions {
