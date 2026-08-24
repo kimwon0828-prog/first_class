@@ -1,229 +1,117 @@
 .page {
   min-height: 100dvh;
-  background: #fafafa;
   padding: 32px 24px 56px;
+  background: #fafafa;
+  color: #111111;
 }
 
 .header {
+  width: 100%;
   max-width: 1200px;
   margin: 0 auto 24px;
-}
-
-.headerTop {
   display: flex;
-  align-items: flex-start;
+  align-items: flex-end;
   justify-content: space-between;
-  gap: 24px;
+  gap: 18px;
   flex-wrap: wrap;
 }
 
-.brandKicker {
-  margin: 0 0 10px;
-  font-size: 13px;
-  line-height: 18px;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  color: #2aad38;
+.headerCopy {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  flex-wrap: wrap;
 }
 
 .title {
   margin: 0;
+  color: #111111;
   font-size: 30px;
   line-height: 36px;
   font-weight: 800;
-  letter-spacing: -0.04em;
-  color: #111111;
+  letter-spacing: -0.03em;
 }
 
 .subtitle {
-  margin: 12px 0 0;
+  margin: 0;
+  color: #666666;
   font-size: 14px;
   line-height: 22px;
-  color: #666666;
 }
 
-.headerActions {
+.headerFilters {
+  margin-left: auto;
   display: flex;
-  gap: 10px;
+  align-items: flex-end;
+  justify-content: flex-end;
+  gap: 8px;
   flex-wrap: wrap;
-  align-items: center;
 }
 
-.filtersSection {
+.teacherFilterWrap {
+  width: 180px;
+}
+
+.workspace,
+.errorCard {
+  width: 100%;
   max-width: 1200px;
-  margin: 0 auto 24px;
-}
-
-.secondaryButton {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  height: 44px;
-  padding: 0 14px;
-  border-radius: 12px;
-  border: 1px solid #d9d9d9;
-  background: #ffffff;
-  color: #111111;
-  font-size: 14px;
-  font-weight: 700;
-  text-decoration: none;
-}
-
-.secondaryButton:hover {
-  border-color: #bdbdbd;
+  margin: 0 auto;
 }
 
 .errorCard {
-  max-width: 1200px;
-  margin: 0 auto 16px;
+  padding: 16px 18px;
   border: 1px solid #fecaca;
   border-radius: 18px;
-  background: #fff;
-  padding: 16px 18px;
+  background: #ffffff;
 }
 
 .errorText {
   margin: 0;
-  font-size: 14px;
-  line-height: 20px;
-  color: #dc2626;
+  color: #b42318;
+  font-size: 13px;
+  line-height: 1.5;
   font-weight: 600;
 }
 
-.emptyCard {
-  max-width: 1200px;
-  margin: 0 auto;
-  border: 1px dashed #d9d9d9;
-  border-radius: 18px;
-  background: #ffffff;
-  padding: 26px 24px;
-}
-
-.emptyTitle {
-  margin: 0 0 10px;
-  font-size: 18px;
-  line-height: 24px;
-  font-weight: 800;
-  color: #111111;
-}
-
-.emptyDescription {
-  margin: 0;
-  font-size: 14px;
-  line-height: 22px;
-  color: #666666;
-}
-
-.metrics {
-  max-width: 1200px;
-  margin: 0 auto 24px;
-}
-
-.metricsGrid {
-  display: grid;
-  gap: 14px;
-  grid-template-columns: repeat(1, minmax(0, 1fr));
-}
-
-.metricCard {
-  border: 1px solid #eeeeee;
-  background: #ffffff;
-  border-radius: 18px;
-  padding: 18px 18px 16px;
-  box-shadow: 0 1px 0 rgba(17, 17, 17, 0.02);
-  min-width: 0;
-}
-
-.metricTop {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-}
-
-.metricLabel {
-  font-size: 13px;
-  line-height: 18px;
-  font-weight: 700;
-  color: #8a8a8a;
-}
-
-.metricDot {
-  width: 8px;
-  height: 8px;
-  border-radius: 999px;
-  background: #2aad38;
-}
-
-.metricValue {
-  margin-top: 10px;
-  font-size: 30px;
-  line-height: 34px;
-  font-weight: 800;
-  letter-spacing: -0.03em;
-  color: #111111;
-}
-
-.metricDescription {
-  margin: 8px 0 0;
-  font-size: 13px;
-  line-height: 18px;
-  color: #8a8a8a;
-  word-break: keep-all;
-}
-
-.listSection {
-  max-width: 1200px;
-  margin: 0 auto;
-  display: grid;
-  gap: 12px;
-}
-
-.listHeader {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 16px;
-  flex-wrap: wrap;
-}
-
-.sectionTitle {
-  margin: 0;
-  font-size: 20px;
-  line-height: 26px;
-  font-weight: 800;
-  color: #111111;
-}
-
-.sectionDescription {
-  margin: 8px 0 0;
-  font-size: 14px;
-  line-height: 22px;
-  color: #8a8a8a;
-}
-
-.countText {
-  margin: 0;
-  font-size: 13px;
-  line-height: 18px;
-  color: #666666;
-  font-weight: 700;
-}
-
-@media (min-width: 720px) {
-  .metricsGrid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
-@media (min-width: 1080px) {
-  .metricsGrid {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-  }
-}
-
-@media (max-width: 720px) {
+@media (max-width: 860px) {
   .page {
     padding: 28px 20px 48px;
+  }
+
+  .header {
+    align-items: stretch;
+  }
+
+  .headerCopy {
+    display: grid;
+    gap: 4px;
+  }
+
+  .headerFilters {
+    width: 100%;
+    margin-left: 0;
+    justify-content: stretch;
+  }
+
+  .headerFilters > *,
+  .teacherFilterWrap {
+    flex: 1 1 180px;
+    width: auto;
+  }
+}
+
+@media (max-width: 520px) {
+  .page {
+    padding: 20px 14px 40px;
+  }
+
+  .headerFilters {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .teacherFilterWrap {
+    width: 100%;
   }
 }

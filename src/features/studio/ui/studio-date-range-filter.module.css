@@ -7,6 +7,39 @@
   background: #ffffff;
 }
 
+.filterCardCompact {
+  min-width: 142px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.filterCardCompact .controlGrid {
+  display: grid;
+  grid-template-columns: minmax(142px, 180px);
+  gap: 8px;
+}
+
+.filterCardCompact .select,
+.filterCardCompact .dateInput {
+  min-height: 40px;
+  padding: 0 12px;
+  border-color: #d6dbd6;
+  border-radius: 9px;
+  color: #111827;
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.filterCardCompact .customGrid {
+  min-width: 360px;
+  padding: 10px;
+  border: 1px solid #eeeeee;
+  border-radius: 18px;
+  background: #ffffff;
+}
+
 .filterTop {
   display: flex;
   justify-content: space-between;
@@ -136,5 +169,17 @@
 
   .dateGrid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 720px) {
+  .filterCardCompact,
+  .filterCardCompact .controlGrid {
+    width: 100%;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .filterCardCompact .customGrid {
+    min-width: 0;
   }
 }

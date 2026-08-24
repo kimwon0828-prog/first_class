@@ -1,21 +1,41 @@
 "use client"
 
-import Link from "next/link"
-import { useSearchParams } from "next/navigation"
-import { useMemo, useState } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
+import { useMemo, useState, type KeyboardEvent } from "react"
 
 import {
   STUDIO_APPLICATION_FILTERS,
   getStudioApplicationFilterCount,
+  isCanceledApplication,
   isNoShowApplication,
   matchesStudioApplicationFilter,
   type StudioApplicationFilterKey
 } from "@/features/studio/lib/application-filters"
+import { getSubjectLabel } from "@/shared/constants/education-taxonomy"
 import type { StudioApplicationSummary } from "@/shared/lib/db/adapter"
+import { SEOUL_TIME_ZONE } from "@/shared/lib/seoul-datetime"
 
 import styles from "./studio-application-table.module.css"
 
-const formatDateTime = (value: string | null) => {
+const PIPELINE_STAGES: Array<{
+  key: StudioApplicationFilterKey
+  label: string
+  emphasis?: boolean
+}> = [
+  { key: "new", label: "신규 신청" },
+  { key: "reviewing", label: "상담/확인 중" },
+  { key: "confirmed", label: "일정 확정" },
+  { key: "completed", label: "체험 완료" },
+  { key: "enrolled", label: "등록 완료", emphasis: true }
+]
+
+const DROP_FILTERS: Array<{ key: StudioApplicationFilterKey; label: string }> = [
+  { key: "canceled", label: "취소" },
+  { key: "no_show", label: "노쇼" },
+  { key: "not_enrolled", label: "미등록" }
+]
+
+const formatScheduleAt = (value: string | null) => {
   if (!value) {
     return null
   }
@@ -26,52 +46,54 @@ const formatDateTime = (value: string | null) => {
   }
 
   return new Intl.DateTimeFormat("ko-KR", {
-    dateStyle: "short",
-    timeStyle: "short"
+    month: "numeric",
+    day: "numeric",
+    weekday: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+    timeZone: SEOUL_TIME_ZONE
+  }).format(date)
+}
+
+const formatApplicationDate = (value: string) => {
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) {
+    return null
+  }
+
+  return new Intl.DateTimeFormat("ko-KR", {
+    month: "numeric",
+    day: "numeric",
+    timeZone: SEOUL_TIME_ZONE
   }).format(date)
 }
 
 const resolveScheduleDisplay = (application: StudioApplicationSummary) => {
-  const confirmedAt = formatDateTime(application.confirmedSlotAt)
-  const requestedAt = formatDateTime(application.requestedSlotAt)
-  const selectedLabel = application.selectedScheduleLabel?.trim()
-    ? application.selectedScheduleLabel.trim()
-    : null
+  const confirmedAt = formatScheduleAt(application.confirmedSlotAt)
+  const requestedAt = formatScheduleAt(application.requestedSlotAt)
+  const selectedLabel = application.selectedScheduleLabel?.trim() || null
 
   if (confirmedAt) {
-    return {
-      label: "확정 일정",
-      primary: confirmedAt,
-      secondary:
-        selectedLabel && selectedLabel !== confirmedAt ? `신청 선택: ${selectedLabel}` : null
-    }
+    return { label: "확정", primary: confirmedAt }
   }
 
   if (requestedAt) {
-    return {
-      label: "희망 일정",
-      primary: requestedAt,
-      secondary:
-        selectedLabel && selectedLabel !== requestedAt ? `선택 시간: ${selectedLabel}` : null
-    }
+    return { label: "희망", primary: requestedAt }
   }
 
-  if (selectedLabel) {
-    return {
-      label: "희망 일정",
-      primary: selectedLabel,
-      secondary: null
-    }
-  }
-
-  return {
-    label: "일정",
-    primary: "일정 협의 필요",
-    secondary: null
-  }
+  return { label: "희망", primary: selectedLabel ?? "일정 협의 필요" }
 }
 
 const getStatusBadge = (application: StudioApplicationSummary) => {
+  if (isNoShowApplication(application)) {
+    return { label: "노쇼", tone: "dangerSoft" as const }
+  }
+
+  if (application.status === "canceled") {
+    return { label: "취소", tone: "dangerSoft" as const }
+  }
+
   if (application.status === "new") {
     return { label: "신규 신청", tone: "successSoft" as const }
   }
@@ -84,18 +106,10 @@ const getStatusBadge = (application: StudioApplicationSummary) => {
     return { label: "일정 확정", tone: "infoSoft" as const }
   }
 
-  if (application.status === "completed") {
-    return { label: "체험 완료", tone: "neutralSoft" as const }
-  }
-
-  if (isNoShowApplication(application)) {
-    return { label: "노쇼", tone: "dangerSoft" as const }
-  }
-
-  return { label: "취소", tone: "dangerSoft" as const }
+  return { label: "체험 완료", tone: "neutralSoft" as const }
 }
 
-const getSecondaryBadge = (application: StudioApplicationSummary) => {
+const getRegistrationBadge = (application: StudioApplicationSummary) => {
   if (application.registrationStatus === "enrolled") {
     return { label: "등록 완료", tone: "successSolid" as const }
   }
@@ -105,38 +119,42 @@ const getSecondaryBadge = (application: StudioApplicationSummary) => {
   }
 
   if (application.registrationStatus === "not_enrolled") {
-    return { label: "미등록", tone: "neutralSoft" as const }
+    return { label: "미등록", tone: "dangerSoft" as const }
   }
 
-  if (application.status === "completed" && application.registrationStatus === "undecided") {
-    return { label: "등록 미정", tone: "neutralSoft" as const }
+  if (application.status === "completed") {
+    return { label: "등록 결과 입력", tone: "neutralSoft" as const }
   }
 
   return null
 }
+
+const isTodoApplication = (application: StudioApplicationSummary) =>
+  application.status === "new" ||
+  application.status === "reviewing" ||
+  (application.status === "confirmed" && !application.assignedTeacherId) ||
+  (application.status === "completed" && application.registrationStatus === "undecided")
+
+const isGoneApplication = (application: StudioApplicationSummary) =>
+  isCanceledApplication(application) ||
+  isNoShowApplication(application) ||
+  application.registrationStatus === "not_enrolled"
 
 const Badge = ({
   label,
   tone
 }: {
   label: string
-  tone:
-    | "successSoft"
-    | "warningSoft"
-    | "infoSoft"
-    | "neutralSoft"
-    | "dangerSoft"
-    | "darkSolid"
-    | "successSolid"
-}) => {
-  return <span className={`${styles.badge} ${styles[`badge_${tone}`]}`}>{label}</span>
-}
+  tone: "successSoft" | "warningSoft" | "infoSoft" | "neutralSoft" | "dangerSoft" | "successSolid"
+}) => <span className={`${styles.badge} ${styles[`badge_${tone}`]}`}>{label}</span>
 
 type StudioApplicationTableProps = {
   items: StudioApplicationSummary[]
+  periodLabel: string
 }
 
-export const StudioApplicationTable = ({ items }: StudioApplicationTableProps) => {
+export const StudioApplicationTable = ({ items, periodLabel }: StudioApplicationTableProps) => {
+  const router = useRouter()
   const searchParams = useSearchParams()
   const initialStatusFilter = useMemo<StudioApplicationFilterKey>(() => {
     const candidate = searchParams?.get("status")
@@ -148,20 +166,25 @@ export const StudioApplicationTable = ({ items }: StudioApplicationTableProps) =
   const [statusFilter, setStatusFilter] = useState<StudioApplicationFilterKey>(initialStatusFilter)
   const [pendingApplicationId, setPendingApplicationId] = useState<string | null>(null)
 
-  const filterCounts = useMemo(() => {
-    return Object.fromEntries(
-      STUDIO_APPLICATION_FILTERS.map((filter) => [
-        filter.key,
-        getStudioApplicationFilterCount(items, filter.key)
-      ])
-    ) as Record<StudioApplicationFilterKey, number>
-  }, [items])
+  const filterCounts = useMemo(
+    () =>
+      Object.fromEntries(
+        STUDIO_APPLICATION_FILTERS.map((filter) => [
+          filter.key,
+          getStudioApplicationFilterCount(items, filter.key)
+        ])
+      ) as Record<StudioApplicationFilterKey, number>,
+    [items]
+  )
 
   const filteredItems = useMemo(() => {
-    const normalizedQuery = query.trim().toLowerCase()
-    const queryTokens = normalizedQuery ? normalizedQuery.split(/\s+/).filter(Boolean) : []
+    const queryTokens = query.trim().toLowerCase().split(/\s+/).filter(Boolean)
 
-    const matchesQuery = (item: StudioApplicationSummary) => {
+    return items.filter((item) => {
+      if (!matchesStudioApplicationFilter(item, statusFilter)) {
+        return false
+      }
+
       if (queryTokens.length === 0) {
         return true
       }
@@ -172,133 +195,213 @@ export const StudioApplicationTable = ({ items }: StudioApplicationTableProps) =
         item.parentName ?? "",
         item.parentPhone ?? "",
         item.classTitle ?? "",
-        item.goalType ?? "",
+        getSubjectLabel(item.classSubject) ?? "",
         item.classRegion ?? "",
-        item.classSubject ?? "",
         item.assignedTeacherName ?? ""
       ]
         .join(" ")
         .toLowerCase()
 
       return queryTokens.every((token) => haystack.includes(token))
-    }
-
-    const matchesFilter = (item: StudioApplicationSummary) => {
-      return matchesStudioApplicationFilter(item, statusFilter)
-    }
-
-    return items.filter((item) => matchesFilter(item) && matchesQuery(item))
+    })
   }, [items, query, statusFilter])
+
+  const newUnassignedCount = items.filter(
+    (item) => item.status === "new" && !item.assignedTeacherId
+  ).length
+  const completedPendingCount = items.filter(
+    (item) => item.status === "completed" && item.registrationStatus === "undecided"
+  ).length
+  const enrolledCount = filterCounts.enrolled
+  const reachedTrialCount = filterCounts.completed
+  const dropOffCount = filterCounts.canceled + filterCounts.no_show + filterCounts.not_enrolled
+  const conversionRate = items.length > 0 ? (enrolledCount / items.length) * 100 : 0
+
+  const getStageDescription = (key: StudioApplicationFilterKey) => {
+    if (key === "new") {
+      return newUnassignedCount > 0 ? `${newUnassignedCount}건 선생님 배정 필요` : "확인이 필요한 신청"
+    }
+    if (key === "reviewing") {
+      return "상담 및 일정 조율 중"
+    }
+    if (key === "confirmed") {
+      return "체험 일정 확정 완료"
+    }
+    if (key === "completed") {
+      return completedPendingCount > 0 ? `${completedPendingCount}건 등록 결과 입력 대기` : "체험 진행 완료"
+    }
+    return "선택 기간 등록 전환"
+  }
+
+  const toggleFilter = (key: StudioApplicationFilterKey) => {
+    setStatusFilter((current) => (current === key ? "all" : key))
+  }
+
+  const openApplication = (applicationId: string) => {
+    if (pendingApplicationId) {
+      return
+    }
+    setPendingApplicationId(applicationId)
+    router.push(`/studio/applications/${applicationId}`)
+  }
+
+  const handleRowKeyDown = (event: KeyboardEvent, applicationId: string) => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault()
+      openApplication(applicationId)
+    }
+  }
 
   return (
     <div className={styles.wrap}>
-      <section className={styles.toolbar} aria-label="검색 및 필터">
-        <div className={styles.searchWrap}>
+      <section className={styles.pipeline} aria-label="전환 파이프라인">
+        <div className={styles.pipelineTop}>
+          <div className={styles.pipelineStages}>
+            {PIPELINE_STAGES.map((stage, index) => (
+              <div key={stage.key} className={styles.stageGroup}>
+                <button
+                  type="button"
+                  className={`${styles.stage} ${stage.emphasis ? styles.stageWin : ""} ${
+                    statusFilter === stage.key ? styles.stageActive : ""
+                  }`}
+                  aria-pressed={statusFilter === stage.key}
+                  onClick={() => toggleFilter(stage.key)}
+                >
+                  <span className={styles.stageLabel}>{stage.label}</span>
+                  <strong className={styles.stageValue}>{filterCounts[stage.key]}</strong>
+                  <span className={styles.stageDescription}>{getStageDescription(stage.key)}</span>
+                </button>
+                {index < PIPELINE_STAGES.length - 1 ? (
+                  <span className={styles.stageArrow} aria-hidden="true">›</span>
+                ) : null}
+              </div>
+            ))}
+          </div>
+
+          <div className={styles.dropGroup} aria-label="이탈 상태">
+            {DROP_FILTERS.map((filter) => (
+              <button
+                key={filter.key}
+                type="button"
+                className={`${styles.drop} ${statusFilter === filter.key ? styles.dropActive : ""}`}
+                aria-pressed={statusFilter === filter.key}
+                onClick={() => toggleFilter(filter.key)}
+              >
+                <span>{filter.label}</span>
+                <strong>{filterCounts[filter.key]}</strong>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <footer className={styles.pipelineFooter}>
+          <span className={styles.rate}>
+            등록 전환율 <strong>{conversionRate.toFixed(1)}%</strong>
+          </span>
+          <span className={styles.rateBar} aria-hidden="true">
+            <i style={{ width: `${Math.min(100, conversionRate)}%` }} />
+          </span>
+          <span>{items.length}건 중 {enrolledCount}건 등록</span>
+          <span className={styles.footerSeparator}>·</span>
+          <span>체험까지 도달 <strong>{reachedTrialCount}건</strong> · 이탈 <strong>{dropOffCount}건</strong></span>
+          <button type="button" className={styles.resetButton} onClick={() => setStatusFilter("all")}>
+            전체 보기
+          </button>
+        </footer>
+      </section>
+
+      <section className={styles.list} aria-label="신청 목록">
+        <header className={styles.listHeader}>
+          <div className={styles.listHeading}>
+            <strong>신청 목록</strong>
+            <span>{filteredItems.length}건 · {periodLabel} · 신청일 최신순</span>
+          </div>
           <input
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="학생명 / 보호자 / 수업명 / 담당 선생님 / 연락처 검색"
             className={styles.search}
+            placeholder="학생 · 보호자 · 연락처 검색"
             aria-label="신청 검색"
           />
-        </div>
-        <div className={styles.pills} role="tablist" aria-label="상태 필터">
-          {STUDIO_APPLICATION_FILTERS.map((filter) => (
-            <button
-              key={filter.key}
-              type="button"
-              role="tab"
-              aria-selected={statusFilter === filter.key}
-              onClick={() => setStatusFilter(filter.key)}
-              className={`${styles.pill} ${statusFilter === filter.key ? styles.pillActive : ""}`}
-            >
-              <span>{filter.label}</span>
-              <span className={styles.pillCount}>{filterCounts[filter.key]}</span>
-            </button>
-          ))}
-        </div>
-        <p className={styles.filteredCount}>표시 {filteredItems.length}건</p>
-      </section>
+        </header>
 
-      {filteredItems.length === 0 ? (
-        <section className={styles.emptyState} aria-label="필터 결과 없음">
-          <h3 className={styles.emptyTitle}>조건에 맞는 신청이 없어요.</h3>
-          <p className={styles.emptyDescription}>검색어나 상태 필터를 바꿔서 다시 확인해 주세요.</p>
-        </section>
-      ) : null}
+        {filteredItems.length === 0 ? (
+          <div className={styles.emptyState}>
+            <strong>조건에 맞는 신청이 없어요.</strong>
+            <span>검색어나 파이프라인 필터를 바꿔 다시 확인해 주세요.</span>
+          </div>
+        ) : null}
 
-      {filteredItems.length > 0 ? (
-        <div className={styles.desktopTable}>
-          <div className={styles.tableCard}>
+        {filteredItems.length > 0 ? (
+          <div className={styles.desktopTable}>
             <div className={styles.tableWrap}>
               <table className={styles.table}>
                 <thead>
                   <tr>
-                    <th className={styles.th}>상태</th>
-                    <th className={styles.th}>학생 / 신청일</th>
-                    <th className={styles.th}>수업</th>
-                    <th className={styles.th}>일정</th>
-                    <th className={styles.th}>담당 선생님</th>
-                    <th className={styles.th}>보호자</th>
-                    <th className={styles.th}>연락처</th>
-                    <th className={styles.thRight}>관리</th>
+                    <th>상태</th>
+                    <th>학생</th>
+                    <th>수업</th>
+                    <th>체험 일정</th>
+                    <th>담당</th>
+                    <th>보호자</th>
+                    <th>신청일</th>
+                    <th aria-label="상세 이동" />
                   </tr>
                 </thead>
                 <tbody>
                   {filteredItems.map((item) => {
-                    const primaryBadge = getStatusBadge(item)
-                    const secondaryBadge = getSecondaryBadge(item)
+                    const statusBadge = getStatusBadge(item)
+                    const registrationBadge = getRegistrationBadge(item)
                     const schedule = resolveScheduleDisplay(item)
+                    const todo = isTodoApplication(item)
+                    const gone = isGoneApplication(item)
+                    const pending = pendingApplicationId === item.id
+
                     return (
-                      <tr key={item.id} className={styles.tr}>
-                        <td className={styles.td}>
-                          <div className={styles.badgeRow}>
-                            <Badge label={primaryBadge.label} tone={primaryBadge.tone} />
-                            {secondaryBadge ? (
-                              <Badge label={secondaryBadge.label} tone={secondaryBadge.tone} />
-                            ) : null}
+                      <tr
+                        key={item.id}
+                        className={`${styles.row} ${todo ? styles.todoRow : ""} ${gone ? styles.goneRow : ""} ${
+                          pending ? styles.pendingRow : ""
+                        }`}
+                        role="link"
+                        tabIndex={0}
+                        aria-label={`${item.childName} 신청 상세 보기`}
+                        onClick={() => openApplication(item.id)}
+                        onKeyDown={(event) => handleRowKeyDown(event, item.id)}
+                      >
+                        <td>
+                          <div className={styles.badgeStack}>
+                            <Badge label={statusBadge.label} tone={statusBadge.tone} />
+                            {registrationBadge ? <Badge label={registrationBadge.label} tone={registrationBadge.tone} /> : null}
                           </div>
                         </td>
-                        <td className={styles.td}>
-                          <div className={styles.primaryCell}>
-                            <strong className={styles.primaryText}>{item.childName}</strong>
-                            <span className={styles.subText}>· {item.childGrade}</span>
-                          </div>
-                          <div className={styles.subLine}>
-                            신청일 {formatDateTime(item.createdAt) ?? "확인 필요"}
-                          </div>
+                        <td>
+                          <strong className={styles.studentName}>{item.childName}</strong>
+                          <span className={styles.grade}>{item.childGrade}</span>
                         </td>
-                        <td className={styles.td}>
-                          <div className={styles.primaryText}>{item.classTitle ?? "-"}</div>
-                          <div className={styles.subLine}>
-                            {[item.classSubject, item.classRegion].filter(Boolean).join(" · ") || "-"}
-                          </div>
+                        <td>
+                          <strong className={styles.className}>{item.classTitle ?? "수업 정보 없음"}</strong>
+                          <span className={styles.subText}>
+                            {[getSubjectLabel(item.classSubject), item.classRegion].filter(Boolean).join(" · ") || "-"}
+                          </span>
                         </td>
-                        <td className={styles.td}>
-                          <div className={styles.metaKicker}>{schedule.label}</div>
-                          <div className={styles.primaryText}>{schedule.primary}</div>
-                          {schedule.secondary ? (
-                            <div className={styles.subLine}>{schedule.secondary}</div>
-                          ) : null}
+                        <td>
+                          {!item.confirmedSlotAt ? <span className={styles.scheduleTag}>{schedule.label}</span> : null}
+                          <strong className={`${styles.scheduleTime} ${!item.confirmedSlotAt ? styles.scheduleWanted : ""}`}>
+                            {schedule.primary}
+                          </strong>
                         </td>
-                        <td className={styles.td}>
-                          <div className={styles.primaryText}>{item.assignedTeacherName ?? "미배정"}</div>
-                          <div className={styles.subLine}>
-                            {item.assignedTeacherName ? "담당 선생님 배정 완료" : "담당 선생님 배정 필요"}
-                          </div>
+                        <td>
+                          <span className={!item.assignedTeacherName ? styles.unassigned : undefined}>
+                            {item.assignedTeacherName ?? "미배정"}
+                          </span>
                         </td>
-                        <td className={styles.td}>{item.parentName ?? "-"}</td>
-                        <td className={styles.td}>{item.parentPhone ?? "-"}</td>
-                        <td className={styles.tdRight}>
-                          <Link
-                            href={`/studio/applications/${item.id}`}
-                            className={styles.manageButton}
-                            aria-busy={pendingApplicationId === item.id}
-                            onClick={() => setPendingApplicationId(item.id)}
-                          >
-                            {pendingApplicationId === item.id ? "이동 중..." : "관리"}
-                          </Link>
+                        <td>
+                          <span>{item.parentName ?? "-"}</span>
+                          <span className={styles.subText}>{item.parentPhone ?? "연락처 미기록"}</span>
                         </td>
+                        <td className={styles.numeric}>{formatApplicationDate(item.createdAt) ?? "-"}</td>
+                        <td className={styles.chevron} aria-hidden="true">›</td>
                       </tr>
                     )
                   })}
@@ -306,80 +409,53 @@ export const StudioApplicationTable = ({ items }: StudioApplicationTableProps) =
               </table>
             </div>
           </div>
-        </div>
-      ) : null}
+        ) : null}
 
-      {filteredItems.length > 0 ? (
-        <div className={styles.mobileCards}>
-          <div className={styles.cardList}>
+        {filteredItems.length > 0 ? (
+          <div className={styles.mobileCards}>
             {filteredItems.map((item) => {
-              const primaryBadge = getStatusBadge(item)
-              const secondaryBadge = getSecondaryBadge(item)
+              const statusBadge = getStatusBadge(item)
+              const registrationBadge = getRegistrationBadge(item)
               const schedule = resolveScheduleDisplay(item)
+              const todo = isTodoApplication(item)
+
               return (
-                <article key={item.id} className={styles.applicationCard}>
-                  <div className={styles.cardTop}>
-                    <div className={styles.cardTitleRow}>
-                      <strong className={styles.cardTitle}>
-                        {item.childName} <span className={styles.cardTitleSub}>· {item.childGrade}</span>
-                      </strong>
-                      <div className={styles.badgeRow}>
-                        <Badge label={primaryBadge.label} tone={primaryBadge.tone} />
-                        {secondaryBadge ? <Badge label={secondaryBadge.label} tone={secondaryBadge.tone} /> : null}
-                      </div>
+                <article
+                  key={item.id}
+                  className={`${styles.mobileCard} ${todo ? styles.mobileCardTodo : ""}`}
+                  role="link"
+                  tabIndex={0}
+                  onClick={() => openApplication(item.id)}
+                  onKeyDown={(event) => handleRowKeyDown(event, item.id)}
+                >
+                  <div className={styles.mobileCardTop}>
+                    <div>
+                      <strong className={styles.studentName}>{item.childName}</strong>
+                      <span className={styles.grade}>{item.childGrade}</span>
                     </div>
-                    <p className={styles.cardClassTitle}>{item.classTitle ?? "-"}</p>
+                    <div className={styles.badgeStack}>
+                      <Badge label={statusBadge.label} tone={statusBadge.tone} />
+                      {registrationBadge ? <Badge label={registrationBadge.label} tone={registrationBadge.tone} /> : null}
+                    </div>
                   </div>
-
-                  <dl className={styles.metaGrid}>
-                    <div className={styles.metaRow}>
-                      <dt className={styles.metaLabel}>{schedule.label}</dt>
-                      <dd className={styles.metaValue}>
-                        {schedule.primary}
-                        {schedule.secondary ? (
-                          <span className={styles.subLine}>{schedule.secondary}</span>
-                        ) : null}
-                      </dd>
-                    </div>
-                    <div className={styles.metaRow}>
-                      <dt className={styles.metaLabel}>지역</dt>
-                      <dd className={styles.metaValue}>{item.classRegion ?? "-"}</dd>
-                    </div>
-                    <div className={styles.metaRow}>
-                      <dt className={styles.metaLabel}>보호자</dt>
-                      <dd className={styles.metaValue}>{item.parentName ?? "-"}</dd>
-                    </div>
-                    <div className={styles.metaRow}>
-                      <dt className={styles.metaLabel}>담당 선생님</dt>
-                      <dd className={styles.metaValue}>{item.assignedTeacherName ?? "미배정"}</dd>
-                    </div>
-                    <div className={styles.metaRow}>
-                      <dt className={styles.metaLabel}>신청일</dt>
-                      <dd className={styles.metaValue}>{formatDateTime(item.createdAt) ?? "-"}</dd>
-                    </div>
-                    <div className={styles.metaRow}>
-                      <dt className={styles.metaLabel}>연락처</dt>
-                      <dd className={styles.metaValue}>{item.parentPhone ?? "-"}</dd>
-                    </div>
-                  </dl>
-
-                  <div className={styles.cardFooter}>
-                    <div className={styles.footerHint}>{formatDateTime(item.createdAt) ?? "-"} 접수</div>
-                    <Link
-                      href={`/studio/applications/${item.id}`}
-                      className={styles.primaryButton}
-                      aria-busy={pendingApplicationId === item.id}
-                      onClick={() => setPendingApplicationId(item.id)}
-                    >
-                      {pendingApplicationId === item.id ? "이동 중..." : "신청 관리하기"}
-                    </Link>
+                  <strong className={styles.className}>{item.classTitle ?? "수업 정보 없음"}</strong>
+                  <div className={styles.mobileMeta}>
+                    <span>{schedule.label} 일정</span>
+                    <strong>{schedule.primary}</strong>
+                    <span>담당</span>
+                    <strong className={!item.assignedTeacherName ? styles.unassigned : undefined}>
+                      {item.assignedTeacherName ?? "미배정"}
+                    </strong>
+                    <span>보호자</span>
+                    <strong>{item.parentName ?? "-"} · {item.parentPhone ?? "연락처 미기록"}</strong>
                   </div>
+                  <span className={styles.mobileChevron} aria-hidden="true">상세 보기 ›</span>
                 </article>
               )
             })}
           </div>
-        </div>
-      ) : null}
+        ) : null}
+      </section>
     </div>
   )
 }

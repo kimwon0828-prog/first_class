@@ -17,6 +17,7 @@ type StudioDateRangeFilterProps = {
   basePath: string
   title?: string
   description?: string
+  compact?: boolean
 }
 
 const getDefaultCustomDates = () => {
@@ -32,7 +33,8 @@ export const StudioDateRangeFilter = ({
   selectedRange,
   basePath,
   title = "기간 필터",
-  description = "신청일 기준으로 데이터를 확인합니다."
+  description = "신청일 기준으로 데이터를 확인합니다.",
+  compact = false
 }: StudioDateRangeFilterProps) => {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -87,8 +89,12 @@ export const StudioDateRangeFilter = ({
   const canApplyCustomRange = Boolean(startDate && endDate && startDate <= endDate)
 
   return (
-    <section className={styles.filterCard} aria-label="기간 필터" aria-busy={isPending}>
-      <div className={styles.filterTop}>
+    <section
+      className={`${styles.filterCard} ${compact ? styles.filterCardCompact : ""}`}
+      aria-label="기간 필터"
+      aria-busy={isPending}
+    >
+      {!compact ? <div className={styles.filterTop}>
         <div className={styles.filterHeading}>
           <h2 className={styles.filterTitle}>{title}</h2>
           <p className={styles.filterDescription}>{description}</p>
@@ -98,7 +104,7 @@ export const StudioDateRangeFilter = ({
             불러오는 중...
           </span>
         ) : null}
-      </div>
+      </div> : null}
 
       <div className={styles.controlGrid}>
         <label className={styles.selectWrap}>
@@ -167,9 +173,9 @@ export const StudioDateRangeFilter = ({
               종료일은 해당 날짜의 마지막 시간까지 포함해 조회합니다.
             </p>
           </div>
-        ) : (
+        ) : !compact ? (
           <p className={styles.helperText}>현재 선택: {selectedRange.label}</p>
-        )}
+        ) : null}
       </div>
     </section>
   )
