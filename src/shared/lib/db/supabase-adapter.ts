@@ -5,6 +5,12 @@ import { getSupabaseServerClient } from "@/integrations/supabase/server"
 import { getPublicEnv } from "@/shared/config/env"
 import type { AcademyArea } from "@/shared/config/academy-areas"
 import { getConsultationPipelineGroup } from "@/shared/lib/consultation-pipeline"
+import {
+  buildSeoulOccurrenceRange,
+  formatSeoulDateKey,
+  formatSeoulOccurrenceLabel,
+  getSeoulDateTimeParts
+} from "@/shared/lib/seoul-datetime"
 import { normalizeTeacherPublicVisibility } from "@/shared/lib/teacher-public-visibility"
 import { getSubjectLabel, normalizeSubjectCategory } from "@/shared/constants/education-taxonomy"
 import type {
@@ -902,16 +908,6 @@ const ACTIVE_APPLICATION_STATUSES: TrialApplicationSummary["status"][] = [
   "confirmed"
 ]
 
-const WEEKDAY_LABELS = [
-  "일요일",
-  "월요일",
-  "화요일",
-  "수요일",
-  "목요일",
-  "금요일",
-  "토요일"
-] as const
-
 const WEEKLY_OCCURRENCE_COUNT = 4
 const TRIAL_BOOKING_CUTOFF_MS = 24 * 60 * 60 * 1000
 
@@ -920,40 +916,11 @@ const formatTimeText = (value: string) => {
   return trimmed.length >= 5 ? trimmed.slice(0, 5) : trimmed
 }
 
-const formatConcreteOccurrenceLabel = (startAt: string, endAt: string) => {
-  const startDate = new Date(startAt)
-  const endDate = new Date(endAt)
+const formatConcreteOccurrenceLabel = (startAt: string, endAt: string) =>
+  formatSeoulOccurrenceLabel(startAt, endAt) ?? startAt
 
-  if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) {
-    return startAt
-  }
-
-  const dateText = `${startDate.getFullYear()}.${String(startDate.getMonth() + 1).padStart(2, "0")}.${String(
-    startDate.getDate()
-  ).padStart(2, "0")}`
-  const weekdayText = WEEKDAY_LABELS[startDate.getDay()]
-  const timeText = `${String(startDate.getHours()).padStart(2, "0")}:${String(
-    startDate.getMinutes()
-  ).padStart(2, "0")}~${String(endDate.getHours()).padStart(2, "0")}:${String(
-    endDate.getMinutes()
-  ).padStart(2, "0")}`
-
-  return `${dateText} ${weekdayText} ${timeText}`
-}
-
-const buildOccurrenceRange = (dateText: string, startTime: string, endTime: string) => {
-  const startDate = new Date(`${dateText}T${startTime}`)
-  const endDate = new Date(`${dateText}T${endTime}`)
-
-  if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime()) || endDate <= startDate) {
-    return null
-  }
-
-  return {
-    startAt: startDate.toISOString(),
-    endAt: endDate.toISOString()
-  }
-}
+const buildOccurrenceRange = (dateText: string, startTime: string, endTime: string) =>
+  buildSeoulOccurrenceRange(dateText, startTime, endTime)
 
 const pad2 = (value: number) => String(value).padStart(2, "0")
 
@@ -1228,12 +1195,12 @@ const generateUpcomingClassScheduleOccurrences = (
   row: ClassScheduleRow,
   now: Date = new Date()
 ): Array<{ startAt: string; endAt: string; label: string }> => {
-  const baseDate = new Date(now)
-  baseDate.setHours(0, 0, 0, 0)
-  const rangeStart = `${baseDate.getFullYear()}-${pad2(baseDate.getMonth() + 1)}-${pad2(baseDate.getDate())}`
-  const rangeEndDate = new Date(baseDate)
-  rangeEndDate.setDate(rangeEndDate.getDate() + 55)
-  const rangeEnd = `${rangeEndDate.getFullYear()}-${pad2(rangeEndDate.getMonth() + 1)}-${pad2(rangeEndDate.getDate())}`
+  const rangeStart = formatSeoulDateKey(now)
+  const rangeEnd = rangeStart ? addDaysToDateString(rangeStart, 55) : null
+
+  if (!rangeStart || !rangeEnd) {
+    return []
+  }
 
   return generateClassScheduleOccurrencesWithinRange(row, rangeStart, rangeEnd)
     .filter((occurrence) => new Date(occurrence.startAt) > now)
@@ -1289,12 +1256,12 @@ const buildRequestedOccurrenceEndAt = (
     return null
   }
 
-  // `requested_slot_at` is stored as UTC while class_schedules keep local KST clock time.
-  const kstStartDate = new Date(startDate.getTime() + 9 * 60 * 60 * 1000)
+  const seoulStart = getSeoulDateTimeParts(startDate)
 
   if (
-    kstStartDate.getUTCHours() !== startHour ||
-    kstStartDate.getUTCMinutes() !== startMinute
+    !seoulStart ||
+    seoulStart.hour !== startHour ||
+    seoulStart.minute !== startMinute
   ) {
     return null
   }

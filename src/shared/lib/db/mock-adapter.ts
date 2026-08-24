@@ -53,6 +53,12 @@ import type {
 } from "@/shared/lib/db/adapter"
 import { getConsultationPipelineGroup } from "@/shared/lib/consultation-pipeline"
 import {
+  buildSeoulOccurrenceRange,
+  formatSeoulDateKey,
+  formatSeoulOccurrenceLabel,
+  getSeoulDateTimeParts
+} from "@/shared/lib/seoul-datetime"
+import {
   DEFAULT_TEACHER_PUBLIC_VISIBILITY,
   normalizeTeacherPublicVisibility
 } from "@/shared/lib/teacher-public-visibility"
@@ -454,16 +460,6 @@ const toAvailableScheduleSlot = (
   }
 }
 
-const WEEKDAY_LABELS = [
-  "일요일",
-  "월요일",
-  "화요일",
-  "수요일",
-  "목요일",
-  "금요일",
-  "토요일"
-] as const
-
 const WEEKLY_OCCURRENCE_COUNT = 4
 
 const formatTimeText = (value: string) => {
@@ -471,37 +467,11 @@ const formatTimeText = (value: string) => {
   return trimmed.length >= 5 ? trimmed.slice(0, 5) : trimmed
 }
 
-const formatConcreteOccurrenceLabel = (startAt: string, endAt: string) => {
-  const startDate = new Date(startAt)
-  const endDate = new Date(endAt)
+const formatConcreteOccurrenceLabel = (startAt: string, endAt: string) =>
+  formatSeoulOccurrenceLabel(startAt, endAt) ?? startAt
 
-  if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) {
-    return startAt
-  }
-
-  return `${startDate.getFullYear()}.${String(startDate.getMonth() + 1).padStart(2, "0")}.${String(
-    startDate.getDate()
-  ).padStart(2, "0")} ${WEEKDAY_LABELS[startDate.getDay()]} ${String(startDate.getHours()).padStart(
-    2,
-    "0"
-  )}:${String(startDate.getMinutes()).padStart(2, "0")}~${String(endDate.getHours()).padStart(2, "0")}:${String(
-    endDate.getMinutes()
-  ).padStart(2, "0")}`
-}
-
-const buildOccurrenceRange = (dateText: string, startTime: string, endTime: string) => {
-  const startDate = new Date(`${dateText}T${startTime}`)
-  const endDate = new Date(`${dateText}T${endTime}`)
-
-  if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime()) || endDate <= startDate) {
-    return null
-  }
-
-  return {
-    startAt: startDate.toISOString(),
-    endAt: endDate.toISOString()
-  }
-}
+const buildOccurrenceRange = (dateText: string, startTime: string, endTime: string) =>
+  buildSeoulOccurrenceRange(dateText, startTime, endTime)
 
 const generateUpcomingClassScheduleOccurrences = (
   schedule: StudioClassScheduleItem,
@@ -528,19 +498,22 @@ const generateUpcomingClassScheduleOccurrences = (
   }
 
   const occurrences: Array<{ startAt: string; endAt: string; label: string }> = []
-  const baseDate = new Date(now)
-  baseDate.setHours(0, 0, 0, 0)
+  const baseDateText = formatSeoulDateKey(now)
+  if (!baseDateText) {
+    return []
+  }
+  const baseDate = new Date(`${baseDateText}T00:00:00Z`)
 
   for (let dayOffset = 0; dayOffset < 56 && occurrences.length < WEEKLY_OCCURRENCE_COUNT; dayOffset += 1) {
     const candidate = new Date(baseDate)
-    candidate.setDate(baseDate.getDate() + dayOffset)
+    candidate.setUTCDate(baseDate.getUTCDate() + dayOffset)
 
-    if (candidate.getDay() !== schedule.dayOfWeek) {
+    if (candidate.getUTCDay() !== schedule.dayOfWeek) {
       continue
     }
 
-    const dateText = `${candidate.getFullYear()}-${String(candidate.getMonth() + 1).padStart(2, "0")}-${String(
-      candidate.getDate()
+    const dateText = `${candidate.getUTCFullYear()}-${String(candidate.getUTCMonth() + 1).padStart(2, "0")}-${String(
+      candidate.getUTCDate()
     ).padStart(2, "0")}`
     const occurrence = buildOccurrenceRange(dateText, startTime, endTime)
 
@@ -634,9 +607,9 @@ const buildRequestedOccurrenceEndAt = (
     return null
   }
 
-  const kstStartDate = new Date(startDate.getTime() + 9 * 60 * 60 * 1000)
+  const seoulStart = getSeoulDateTimeParts(startDate)
 
-  if (kstStartDate.getUTCHours() !== startHour || kstStartDate.getUTCMinutes() !== startMinute) {
+  if (!seoulStart || seoulStart.hour !== startHour || seoulStart.minute !== startMinute) {
     return null
   }
 

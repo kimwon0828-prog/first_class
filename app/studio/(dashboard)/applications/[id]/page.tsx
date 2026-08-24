@@ -16,6 +16,7 @@ import type {
   ApplicationStatus,
   StudioApplicationSummary
 } from "@/shared/lib/db/adapter"
+import { getSeoulDateTimeParts, SEOUL_TIME_ZONE } from "@/shared/lib/seoul-datetime"
 
 import styles from "./page.module.css"
 
@@ -33,7 +34,8 @@ const formatDateTime = (value: string) => {
 
   return new Intl.DateTimeFormat("ko-KR", {
     dateStyle: "medium",
-    timeStyle: "short"
+    timeStyle: "short",
+    timeZone: SEOUL_TIME_ZONE
   }).format(date)
 }
 
@@ -42,12 +44,12 @@ const formatMonthDay = (value: string | null | undefined) => {
     return null
   }
 
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) {
+  const parts = getSeoulDateTimeParts(value)
+  if (!parts) {
     return null
   }
 
-  return `${date.getMonth() + 1}월 ${date.getDate()}일`
+  return `${parts.month}월 ${parts.day}일`
 }
 
 const formatDateWithWeekdayTime = (value: string | null | undefined, options?: { hour12?: boolean }) => {
@@ -60,14 +62,23 @@ const formatDateWithWeekdayTime = (value: string | null | undefined, options?: {
     return null
   }
 
-  const weekday = new Intl.DateTimeFormat("ko-KR", { weekday: "short" }).format(date)
+  const dateParts = getSeoulDateTimeParts(date)
+  if (!dateParts) {
+    return null
+  }
+
+  const weekday = new Intl.DateTimeFormat("ko-KR", {
+    weekday: "short",
+    timeZone: SEOUL_TIME_ZONE
+  }).format(date)
   const time = new Intl.DateTimeFormat("ko-KR", {
     hour: "numeric",
     minute: "2-digit",
-    hour12: options?.hour12 ?? false
+    hour12: options?.hour12 ?? false,
+    timeZone: SEOUL_TIME_ZONE
   }).format(date)
 
-  return `${date.getMonth() + 1}월 ${date.getDate()}일 (${weekday}) ${time}`
+  return `${dateParts.month}월 ${dateParts.day}일 (${weekday}) ${time}`
 }
 
 const resolveScheduleSummary = (
@@ -196,7 +207,8 @@ const formatLogTime = (value: string | null | undefined) => {
     month: "numeric",
     day: "numeric",
     hour: "numeric",
-    minute: "2-digit"
+    minute: "2-digit",
+    timeZone: SEOUL_TIME_ZONE
   }).format(date)
 }
 
