@@ -74,11 +74,11 @@ export const sendAlimtalk = async (
     })
   }
 
-  const template = renderAlimtalkTemplate(context)
-  if (!template) {
+  const renderedTemplate = renderAlimtalkTemplate(context)
+  if (!renderedTemplate.template) {
     return buildSkippedResult({
       status: "skipped",
-      errorMessage: "alimtalk_template_missing",
+      errorMessage: renderedTemplate.errorMessage,
       recipientPhoneMasked
     })
   }
@@ -103,12 +103,17 @@ export const sendAlimtalk = async (
   try {
     return await sendNcloudAlimtalk({
       config: ncloudConfig,
+      eventType: context.eventType,
       to: normalizedPhone,
-      templateCode: template.templateCode,
-      content: template.content,
+      templateCode: renderedTemplate.template.templateCode,
+      content: renderedTemplate.template.content,
       recipientPhoneMasked: recipientPhoneMasked ?? normalizedPhone
     })
   } catch {
+    console.warn("[ncloud alimtalk request failed]", {
+      eventType: context.eventType
+    })
+
     return {
       status: "failed",
       provider: "ncloud",

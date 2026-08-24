@@ -146,6 +146,7 @@ type EmbeddedClassRow = {
   region?: string
   is_active?: boolean
   organization_id?: string | null
+  organizations?: Pick<OrganizationLocationRow, "name"> | Array<Pick<OrganizationLocationRow, "name">> | null
   teacher_display_name?: string | null
 }
 
@@ -609,6 +610,14 @@ const getEmbeddedClass = (row: TrialApplicationRow): EmbeddedClassRow | null => 
   }
 
   return row.classes
+}
+
+const getEmbeddedClassOrganization = (row: EmbeddedClassRow | null) => {
+  if (!row?.organizations) {
+    return null
+  }
+
+  return Array.isArray(row.organizations) ? (row.organizations[0] ?? null) : row.organizations
 }
 
 const mapApplication = (row: TrialApplicationRow): TrialApplicationSummary => {
@@ -4164,7 +4173,7 @@ export const supabaseDataAdapter: DataAdapter = {
     const { data, error } = await supabase
       .from("trial_applications")
       .select(
-        "id, class_id, parent_id, child_name, child_grade, parent_name, parent_phone, child_school, child_notes, subject_experience_yn, subject_experience_duration, current_level, preferred_regular_schedule, goal_type, goal_note, class_schedule_id, requested_slot_at, requested_schedule_block_id, selected_schedule_label, confirmed_slot_at, confirmed_schedule_block_id, assigned_teacher_id, contacted_at, scheduled_at, completed_at, enrolled_at, canceled_at, no_show_at, consultation_note, trial_feedback, final_level, final_schedule, registration_status, registered_course, unregistered_reason, unregistered_reason_note, lost_at, follow_up_note, next_contact_at, last_activity_at, memo, status, created_at, updated_at, classes!inner(title, subject, region, organization_id, program_type, assignment_mode)"
+        "id, class_id, parent_id, child_name, child_grade, parent_name, parent_phone, child_school, child_notes, subject_experience_yn, subject_experience_duration, current_level, preferred_regular_schedule, goal_type, goal_note, class_schedule_id, requested_slot_at, requested_schedule_block_id, selected_schedule_label, confirmed_slot_at, confirmed_schedule_block_id, assigned_teacher_id, contacted_at, scheduled_at, completed_at, enrolled_at, canceled_at, no_show_at, consultation_note, trial_feedback, final_level, final_schedule, registration_status, registered_course, unregistered_reason, unregistered_reason_note, lost_at, follow_up_note, next_contact_at, last_activity_at, memo, status, created_at, updated_at, classes!inner(title, subject, region, organization_id, program_type, assignment_mode, organizations(name))"
       )
       .eq("id", applicationId)
       .eq("classes.organization_id", organizationId)
@@ -4222,8 +4231,12 @@ export const supabaseDataAdapter: DataAdapter = {
       throw new Error("failed_to_fetch_consultation_logs")
     }
 
+    const embeddedOrganization = getEmbeddedClassOrganization(
+      getEmbeddedClass(data as TrialApplicationRow)
+    )
     const detail: StudioApplicationDetail = {
       ...mapStudioApplication(data as TrialApplicationRow, teacherNameById),
+      academyName: embeddedOrganization?.name.trim() || null,
       confirmedScheduleBlockId: (data as TrialApplicationRow).confirmed_schedule_block_id ?? null,
       childSchool: (data as TrialApplicationRow).child_school ?? null,
       childNotes: (data as TrialApplicationRow).child_notes ?? null,

@@ -2,7 +2,7 @@ import "server-only"
 
 import { createHmac } from "node:crypto"
 
-import type { AlimtalkSendResult } from "@/features/notifications/alimtalk/types"
+import type { AlimtalkSendResult, ParentAlimtalkEventType } from "@/features/notifications/alimtalk/types"
 
 export type NcloudAlimtalkConfig = {
   accessKey: string
@@ -13,6 +13,7 @@ export type NcloudAlimtalkConfig = {
 
 type SendNcloudAlimtalkInput = {
   config: NcloudAlimtalkConfig
+  eventType: ParentAlimtalkEventType
   to: string
   templateCode: string
   content: string
@@ -24,6 +25,11 @@ type NcloudAlimtalkResponse = {
   requestTime?: string
   statusCode?: string
   statusName?: string
+  messages?: Array<{
+    messageId?: string
+    requestStatusCode?: string
+    requestStatusName?: string
+  }>
 }
 
 const NCLOUD_SENS_BASE_URL = "https://sens.apigw.ntruss.com"
@@ -69,6 +75,7 @@ const resolveErrorMessage = (status: number, body: unknown) => {
 
 export const sendNcloudAlimtalk = async ({
   config,
+  eventType,
   to,
   templateCode,
   content,
@@ -111,7 +118,18 @@ export const sendNcloudAlimtalk = async ({
     responseBody = null
   }
 
+  const data = (responseBody ?? {}) as NcloudAlimtalkResponse
+  const message = data.messages?.[0] ?? null
+
   if (!response.ok) {
+    console.warn("[ncloud alimtalk rejected]", {
+      eventType,
+      httpStatus: response.status,
+      statusCode: data.statusCode ?? null,
+      statusName: data.statusName ?? null,
+      requestStatusCode: message?.requestStatusCode ?? null
+    })
+
     return {
       status: "failed",
       provider: "ncloud",
@@ -122,22 +140,43 @@ export const sendNcloudAlimtalk = async ({
     }
   }
 
-  const data = (responseBody ?? {}) as NcloudAlimtalkResponse
-  if (data.statusCode !== "202" || data.statusName !== "success") {
+  const isRequestAccepted =
+    data.statusCode === "202" && (data.statusName === "processing" || data.statusName === "success")
+  const isMessageAccepted = message?.requestStatusCode === "A000"
+
+  if (!isRequestAccepted || !isMessageAccepted) {
+    console.warn("[ncloud alimtalk rejected]", {
+      eventType,
+      httpStatus: response.status,
+      statusCode: data.statusCode ?? null,
+      statusName: data.statusName ?? null,
+      requestStatusCode: message?.requestStatusCode ?? null
+    })
+
     return {
       status: "failed",
       provider: "ncloud",
-      providerMessageId: data.requestId ?? null,
-      errorMessage: "ncloud_alimtalk_unexpected_response",
+      providerMessageId: message?.messageId ?? null,
+      errorMessage: message?.requestStatusCode
+        ? `ncloud_alimtalk_request_${message.requestStatusCode}`
+        : "ncloud_alimtalk_unexpected_response",
       recipientPhoneMasked,
       sentAt: null
     }
   }
 
+  console.info("[ncloud alimtalk accepted]", {
+    eventType,
+    requestId: data.requestId ?? null,
+    messageId: message.messageId ?? null,
+    requestStatusCode: message.requestStatusCode,
+    requestStatusName: message.requestStatusName ?? null
+  })
+
   return {
     status: "sent",
     provider: "ncloud",
-    providerMessageId: data.requestId ?? null,
+    providerMessageId: message.messageId ?? null,
     errorMessage: null,
     recipientPhoneMasked,
     sentAt: data.requestTime ?? new Date().toISOString()
