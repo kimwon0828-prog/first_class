@@ -1,7 +1,11 @@
 "use client"
 
-import { isValidGrade } from "@/shared/constants/grade-options"
-import { CHILD_GRADES, getChildGradeLabel } from "@/shared/constants/education-taxonomy"
+import {
+  LEARNER_GRADE_GROUPS,
+  getChildGradeLabel,
+  getLearnerGradesByGroup,
+  normalizeLearnerGrade
+} from "@/shared/constants/education-taxonomy"
 import type { ChildProfile } from "@/shared/lib/db/adapter"
 
 import type { ChildProfileActionState } from "@/features/children/actions/create-child-profile"
@@ -24,7 +28,8 @@ export const ChildProfileForm = ({
   initialValue,
   onCancelEdit
 }: ChildProfileFormProps) => {
-  const legacyGradeValue = initialValue?.grade?.trim() && !isValidGrade(initialValue.grade) ? initialValue.grade.trim() : null
+  const normalizedInitialGrade = normalizeLearnerGrade(initialValue?.grade)
+  const legacyGradeValue = initialValue?.grade?.trim() && !normalizedInitialGrade ? initialValue.grade.trim() : null
 
   return (
     <form action={formAction} className={styles.form}>
@@ -49,17 +54,21 @@ export const ChildProfileForm = ({
         <select
           name="grade"
           required
-          defaultValue={legacyGradeValue ? "" : (initialValue?.grade ?? "")}
+          defaultValue={normalizedInitialGrade ?? ""}
           disabled={isPending}
           className={styles.input}
         >
           <option value="" disabled>
             학년을 선택해주세요
           </option>
-          {CHILD_GRADES.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
+          {LEARNER_GRADE_GROUPS.map((group) => (
+            <optgroup key={group.value} label={group.label}>
+              {getLearnerGradesByGroup(group.value).map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </optgroup>
           ))}
         </select>
         {legacyGradeValue ? (

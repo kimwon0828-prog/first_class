@@ -9,7 +9,9 @@ import {
   parseStoredTargetGrades
 } from "@/shared/constants/grade-options"
 import {
-  CHILD_GRADES,
+  LEARNER_GRADES,
+  LEARNER_GRADE_GROUPS,
+  getLearnerGradesByGroup,
   getSubjectLabel
 } from "@/shared/constants/education-taxonomy"
 import {
@@ -89,16 +91,16 @@ const editFormTabs: Array<{
   { id: "visibility", label: "공개 · 신청 설정" }
 ]
 
-const CHILD_GRADE_ORDER: string[] = CHILD_GRADES.map((item) => item.value)
+const LEARNER_GRADE_ORDER: string[] = LEARNER_GRADES.map((item) => item.value)
 
 const getOrderedTargetGrades = (values: readonly string[]) => {
   const selectedSet = new Set(values)
-  return CHILD_GRADE_ORDER.filter((value) => selectedSet.has(value))
+  return LEARNER_GRADE_ORDER.filter((value) => selectedSet.has(value))
 }
 
 const getTargetGradeRange = (start: string, end: string) => {
-  const startIndex = CHILD_GRADE_ORDER.indexOf(start)
-  const endIndex = CHILD_GRADE_ORDER.indexOf(end)
+  const startIndex = LEARNER_GRADE_ORDER.indexOf(start)
+  const endIndex = LEARNER_GRADE_ORDER.indexOf(end)
 
   if (startIndex < 0 || endIndex < 0) {
     return start ? [start] : []
@@ -106,7 +108,7 @@ const getTargetGradeRange = (start: string, end: string) => {
 
   const rangeStart = Math.min(startIndex, endIndex)
   const rangeEnd = Math.max(startIndex, endIndex)
-  return CHILD_GRADE_ORDER.slice(rangeStart, rangeEnd + 1)
+  return LEARNER_GRADE_ORDER.slice(rangeStart, rangeEnd + 1)
 }
 
 const programTypeOptions: Array<{
@@ -842,22 +844,29 @@ export const StudioClassForm = ({
 
                       <label className={styles.field}>
                         <span className={styles.fieldLabel}>대상 학년</span>
-                        <div className={styles.chipGroup}>
-                          {CHILD_GRADES.map((option) => {
-                            const isSelected = selectedTargetGrades.includes(option.value)
+                        <div className={styles.gradeGroupList}>
+                          {LEARNER_GRADE_GROUPS.map((group) => (
+                            <div key={group.value} className={styles.gradeGroup}>
+                              <span className={styles.gradeGroupLabel}>{group.label}</span>
+                              <div className={styles.chipGroup}>
+                                {getLearnerGradesByGroup(group.value).map((option) => {
+                                  const isSelected = selectedTargetGrades.includes(option.value)
 
-                            return (
-                              <button
-                                key={option.value}
-                                type="button"
-                                onClick={() => toggleTargetGrade(option.value)}
-                                disabled={isPending}
-                                className={`${styles.chipButton} ${isSelected ? styles.chipButtonSelected : ""}`}
-                              >
-                                {option.label}
-                              </button>
-                            )
-                          })}
+                                  return (
+                                    <button
+                                      key={option.value}
+                                      type="button"
+                                      onClick={() => toggleTargetGrade(option.value)}
+                                      disabled={isPending}
+                                      className={`${styles.chipButton} ${isSelected ? styles.chipButtonSelected : ""}`}
+                                    >
+                                      {option.label}
+                                    </button>
+                                  )
+                                })}
+                              </div>
+                            </div>
+                          ))}
                         </div>
                         <span className={styles.fieldHint}>
                           시작 학년과 마지막 학년을 선택하면 사이 학년이 자동으로 선택됩니다.

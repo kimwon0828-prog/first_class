@@ -34,19 +34,54 @@ export const GRADE_BANDS = [
 export type GradeBandValue = (typeof GRADE_BANDS)[number]["value"]
 export type AnyGradeBandValue = GradeBandValue | HiddenGradeBandValue
 
-export const CHILD_GRADES = [
-  { value: "elem_1", label: "초1" },
-  { value: "elem_2", label: "초2" },
-  { value: "elem_3", label: "초3" },
-  { value: "elem_4", label: "초4" },
-  { value: "elem_5", label: "초5" },
-  { value: "elem_6", label: "초6" },
-  { value: "middle_1", label: "중1" },
-  { value: "middle_2", label: "중2" },
-  { value: "middle_3", label: "중3" }
-] as const
+export type LearnerGradeGroup = "preschool" | "elementary" | "middle" | "high"
 
-export type ChildGradeValue = (typeof CHILD_GRADES)[number]["value"]
+export const LEARNER_GRADE_GROUPS = [
+  { value: "preschool", label: "미취학" },
+  { value: "elementary", label: "초등" },
+  { value: "middle", label: "중등" },
+  { value: "high", label: "고등" }
+] as const satisfies ReadonlyArray<{
+  value: LearnerGradeGroup
+  label: string
+}>
+
+export const LEARNER_GRADES = [
+  { value: "preschool_4", label: "4세", group: "preschool" },
+  { value: "preschool_5", label: "5세", group: "preschool" },
+  { value: "preschool_6", label: "6세", group: "preschool" },
+  { value: "preschool_7", label: "7세", group: "preschool" },
+  { value: "elem_1", label: "초1", group: "elementary" },
+  { value: "elem_2", label: "초2", group: "elementary" },
+  { value: "elem_3", label: "초3", group: "elementary" },
+  { value: "elem_4", label: "초4", group: "elementary" },
+  { value: "elem_5", label: "초5", group: "elementary" },
+  { value: "elem_6", label: "초6", group: "elementary" },
+  { value: "middle_1", label: "중1", group: "middle" },
+  { value: "middle_2", label: "중2", group: "middle" },
+  { value: "middle_3", label: "중3", group: "middle" },
+  { value: "high_1", label: "고1", group: "high" },
+  { value: "high_2", label: "고2", group: "high" },
+  { value: "high_3", label: "고3", group: "high" }
+] as const satisfies ReadonlyArray<{
+  value: string
+  label: string
+  group: LearnerGradeGroup
+}>
+
+type LearnerGradeItem = (typeof LEARNER_GRADES)[number]
+type ChildGradeItem = Extract<LearnerGradeItem, { group: "elementary" | "middle" }>
+
+export type LearnerGradeValue = LearnerGradeItem["value"]
+export type ChildGradeValue = ChildGradeItem["value"]
+
+export const getLearnerGradesByGroup = (group: LearnerGradeGroup) =>
+  LEARNER_GRADES.filter((item) => item.group === group)
+
+// Retained for legacy callers that intentionally use the elementary-to-middle subset.
+export const CHILD_GRADES = LEARNER_GRADES.filter(
+  (item): item is ChildGradeItem => item.group === "elementary" || item.group === "middle"
+)
 
 export const CHILD_GRADE_TO_BAND = {
   elem_1: "elem_1_2",
@@ -68,9 +103,11 @@ const gradeBandByValue = new Map<GradeBandValue, (typeof GRADE_BANDS)[number]>(
   GRADE_BANDS.map((item) => [item.value, item])
 )
 
-const childGradeByValue = new Map<ChildGradeValue, (typeof CHILD_GRADES)[number]>(
-  CHILD_GRADES.map((item) => [item.value, item])
+const learnerGradeByValue = new Map<LearnerGradeValue, LearnerGradeItem>(
+  LEARNER_GRADES.map((item) => [item.value, item])
 )
+
+const childGradeValueSet = new Set<ChildGradeValue>(CHILD_GRADES.map((item) => item.value))
 
 const SUBJECT_KEY_TO_VALUE: Record<string, SubjectCategoryValue> = {
   thinkingmath: "thinking_math",
@@ -132,7 +169,16 @@ const GRADE_BAND_KEY_TO_VALUE: Record<string, AnyGradeBandValue> = {
   고등학생: "high"
 }
 
-const CHILD_GRADE_KEY_TO_VALUE: Record<string, ChildGradeValue> = {
+const LEARNER_GRADE_KEY_TO_VALUE: Record<string, LearnerGradeValue> = {
+  preschool4: "preschool_4",
+  "4세": "preschool_4",
+  preschool5: "preschool_5",
+  "5세": "preschool_5",
+  preschool6: "preschool_6",
+  "6세": "preschool_6",
+  preschool7: "preschool_7",
+  "7세": "preschool_7",
+  예비초: "preschool_7",
   elem1: "elem_1",
   초1: "elem_1",
   초등1: "elem_1",
@@ -168,7 +214,19 @@ const CHILD_GRADE_KEY_TO_VALUE: Record<string, ChildGradeValue> = {
   middle3: "middle_3",
   중3: "middle_3",
   중등3: "middle_3",
-  중3학년: "middle_3"
+  중3학년: "middle_3",
+  high1: "high_1",
+  고1: "high_1",
+  고등1: "high_1",
+  고1학년: "high_1",
+  high2: "high_2",
+  고2: "high_2",
+  고등2: "high_2",
+  고2학년: "high_2",
+  high3: "high_3",
+  고3: "high_3",
+  고등3: "high_3",
+  고3학년: "high_3"
 }
 
 export const normalizeSubjectCategory = (value: string | null | undefined): SubjectCategoryValue | null => {
@@ -189,13 +247,20 @@ export const normalizeGradeBand = (value: string | null | undefined): AnyGradeBa
   return GRADE_BAND_KEY_TO_VALUE[toKey(normalized)] ?? null
 }
 
-export const normalizeChildGrade = (value: string | null | undefined): ChildGradeValue | null => {
+export const normalizeLearnerGrade = (value: string | null | undefined): LearnerGradeValue | null => {
   const normalized = normalizeText(value)
   if (!normalized) {
     return null
   }
 
-  return CHILD_GRADE_KEY_TO_VALUE[toKey(normalized)] ?? null
+  return LEARNER_GRADE_KEY_TO_VALUE[toKey(normalized)] ?? null
+}
+
+export const normalizeChildGrade = (value: string | null | undefined): ChildGradeValue | null => {
+  const learnerGrade = normalizeLearnerGrade(value)
+  return learnerGrade && childGradeValueSet.has(learnerGrade as ChildGradeValue)
+    ? (learnerGrade as ChildGradeValue)
+    : null
 }
 
 export const getSubjectLabel = (value: string | null | undefined) => {
@@ -229,18 +294,43 @@ export const getGradeBandLabel = (value: string | null | undefined) => {
   return normalized
 }
 
-export const getChildGradeLabel = (value: string | null | undefined) => {
+export const getLearnerGradeLabel = (value: string | null | undefined) => {
   const normalized = normalizeText(value)
   if (!normalized) {
     return null
   }
 
-  const childGrade = normalizeChildGrade(normalized)
-  if (childGrade) {
-    return childGradeByValue.get(childGrade)?.label ?? normalized
+  const learnerGrade = normalizeLearnerGrade(normalized)
+  if (learnerGrade) {
+    return learnerGradeByValue.get(learnerGrade)?.label ?? normalized
   }
 
   return normalized
+}
+
+export const getChildGradeLabel = getLearnerGradeLabel
+
+export const getLearnerGradeGroup = (
+  value: string | null | undefined
+): LearnerGradeGroup | null => {
+  const learnerGrade = normalizeLearnerGrade(value)
+  return learnerGrade ? learnerGradeByValue.get(learnerGrade)?.group ?? null : null
+}
+
+export const getGradeBandFromLearnerGrade = (
+  value: string | null | undefined
+): AnyGradeBandValue | null => {
+  const learnerGrade = normalizeLearnerGrade(value)
+  if (!learnerGrade) {
+    return null
+  }
+
+  const group = learnerGradeByValue.get(learnerGrade)?.group
+  if (group === "preschool" || group === "high") {
+    return group
+  }
+
+  return CHILD_GRADE_TO_BAND[learnerGrade as ChildGradeValue] ?? null
 }
 
 export const getGradeBandFromChildGrade = (value: string | null | undefined): GradeBandValue | null => {

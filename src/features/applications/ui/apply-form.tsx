@@ -3,7 +3,11 @@
 import Link from "next/link"
 
 import { isChildEligibleForClass } from "@/shared/constants/grade-options"
-import { CHILD_GRADES, getChildGradeLabel } from "@/shared/constants/education-taxonomy"
+import {
+  LEARNER_GRADE_GROUPS,
+  getChildGradeLabel,
+  getLearnerGradesByGroup
+} from "@/shared/constants/education-taxonomy"
 import {
   resolveSlotDisplay,
   useTrialApplicationForm,
@@ -12,8 +16,6 @@ import {
 import styles from "./apply-form.module.css"
 
 type ApplyFormProps = TrialApplicationFormProps
-
-const gradeOptions = CHILD_GRADES
 
 export const ApplyForm = ({
   classId,
@@ -172,10 +174,14 @@ export const ApplyForm = ({
                   {getChildGradeLabel(legacyChildGradeValue) ?? legacyChildGradeValue} (기존 값)
                 </option>
               ) : null}
-              {gradeOptions.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
+              {LEARNER_GRADE_GROUPS.map((group) => (
+                <optgroup key={group.value} label={group.label}>
+                  {getLearnerGradesByGroup(group.value).map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </optgroup>
               ))}
             </select>
             <p className={styles.help}>대상 학년: {classTargetGradeLabel}</p>

@@ -389,6 +389,23 @@
   gap: 8px;
 }
 
+.gradeGroupList {
+  display: grid;
+  gap: 12px;
+}
+
+.gradeGroup {
+  display: grid;
+  gap: 6px;
+}
+
+.gradeGroupLabel {
+  color: #6b7280;
+  font-size: 12px;
+  line-height: 18px;
+  font-weight: 700;
+}
+
 .chipButton {
   border: 1px solid #e5e7eb;
   border-radius: 999px;

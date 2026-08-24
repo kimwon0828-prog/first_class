@@ -1,100 +1,34 @@
 import {
   CHILD_GRADES,
   GRADE_BANDS,
+  LEARNER_GRADES,
   getChildGradeLabel,
-  getGradeBandFromChildGrade,
+  getGradeBandFromLearnerGrade,
   getGradeBandLabel,
   normalizeChildGrade,
   normalizeGradeBand,
+  normalizeLearnerGrade,
   type AnyGradeBandValue,
-  type ChildGradeValue
+  type ChildGradeValue,
+  type LearnerGradeValue
 } from "@/shared/constants/education-taxonomy"
 
 export const GRADE_OPTIONS = CHILD_GRADES.map((item) => item.value) as readonly ChildGradeValue[]
+export const LEARNER_GRADE_OPTIONS = LEARNER_GRADES.map((item) => item.value) as readonly LearnerGradeValue[]
 
 export type GradeOption = ChildGradeValue
-
-const GRADE_OPTION_SET = new Set<string>(GRADE_OPTIONS)
+export type LearnerGradeOption = LearnerGradeValue
 
 export const GRADE_ORDER = new Map<string, number>(
   GRADE_OPTIONS.map((value, index) => [value, index])
+)
+export const LEARNER_GRADE_ORDER = new Map<string, number>(
+  LEARNER_GRADE_OPTIONS.map((value, index) => [value, index])
 )
 
 const GRADE_BAND_ORDER = new Map<string, number>(GRADE_BANDS.map((value, index) => [value.value, index]))
 
 const normalizeText = (value: string | null | undefined) => (value ?? "").trim()
-
-type InternalGradeValue =
-  | "preschool"
-  | ChildGradeValue
-  | "high_1"
-  | "high_2"
-  | "high_3"
-
-const INTERNAL_GRADE_AXIS = [
-  "preschool",
-  ...GRADE_OPTIONS,
-  "high_1",
-  "high_2",
-  "high_3"
-] as const satisfies readonly InternalGradeValue[]
-
-const INTERNAL_GRADE_ORDER = new Map<string, number>(
-  INTERNAL_GRADE_AXIS.map((value, index) => [value, index])
-)
-
-const INTERNAL_GRADE_KEY_MAP: Record<string, InternalGradeValue> = {
-  preschool: "preschool",
-  유아: "preschool",
-  "7세": "preschool",
-  예비초: "preschool",
-  elem1: "elem_1",
-  초1: "elem_1",
-  초등1: "elem_1",
-  elem2: "elem_2",
-  초2: "elem_2",
-  초등2: "elem_2",
-  elem3: "elem_3",
-  초3: "elem_3",
-  초등3: "elem_3",
-  elem4: "elem_4",
-  초4: "elem_4",
-  초등4: "elem_4",
-  elem5: "elem_5",
-  초5: "elem_5",
-  초등5: "elem_5",
-  elem6: "elem_6",
-  초6: "elem_6",
-  초등6: "elem_6",
-  middle1: "middle_1",
-  중1: "middle_1",
-  middle2: "middle_2",
-  중2: "middle_2",
-  middle3: "middle_3",
-  중3: "middle_3",
-  high1: "high_1",
-  고1: "high_1",
-  high2: "high_2",
-  고2: "high_2",
-  high3: "high_3",
-  고3: "high_3"
-}
-
-const toKey = (value: string | null | undefined) =>
-  normalizeText(value)
-    .toLowerCase()
-    .replace(/\s+/g, "")
-    .replace(/[·•ㆍ&/(),._-]/g, "")
-    .replace(/학년$/g, "")
-
-const normalizeInternalGrade = (value: string | null | undefined): InternalGradeValue | null => {
-  const normalized = normalizeText(value)
-  if (!normalized) {
-    return null
-  }
-
-  return INTERNAL_GRADE_KEY_MAP[toKey(normalized)] ?? null
-}
 
 export const normalizeGrade = (value: string | null | undefined): GradeOption | null => {
   return normalizeChildGrade(value)
@@ -118,101 +52,113 @@ export const getUniqueSortedGrades = (values: readonly string[]) => {
   return sortGrades(uniqueValues)
 }
 
-const expandInternalGradeRange = (start: InternalGradeValue, end: InternalGradeValue) => {
-  const startIndex = INTERNAL_GRADE_ORDER.get(start)
-  const endIndex = INTERNAL_GRADE_ORDER.get(end)
-
-  if (startIndex == null || endIndex == null || endIndex < startIndex) {
-    return [] as InternalGradeValue[]
-  }
-
-  return INTERNAL_GRADE_AXIS.slice(startIndex, endIndex + 1)
+export const sortLearnerGrades = (values: readonly LearnerGradeOption[]) => {
+  return [...values].sort((left, right) => {
+    return (LEARNER_GRADE_ORDER.get(left) ?? Number.MAX_SAFE_INTEGER) -
+      (LEARNER_GRADE_ORDER.get(right) ?? Number.MAX_SAFE_INTEGER)
+  })
 }
 
-const toVisibleChildGrades = (values: readonly InternalGradeValue[]) =>
-  values.filter((value): value is GradeOption => GRADE_OPTION_SET.has(value))
+const getUniqueSortedLearnerGrades = (values: readonly string[]) => {
+  const uniqueValues = Array.from(
+    new Set(
+      values
+        .map((value) => normalizeLearnerGrade(value))
+        .filter((value): value is LearnerGradeOption => value !== null)
+    )
+  )
 
-const parseRangeToken = (value: string) => {
-  const normalizedBand = normalizeGradeBand(value)
-  if (normalizedBand && normalizedBand !== "preschool" && normalizedBand !== "high") {
-    return GRADE_OPTIONS.filter((grade) => getGradeBandFromChildGrade(grade) === normalizedBand)
+  return sortLearnerGrades(uniqueValues)
+}
+
+export const expandLearnerGradeRange = (start: LearnerGradeOption, end: LearnerGradeOption) => {
+  const startIndex = LEARNER_GRADE_ORDER.get(start)
+  const endIndex = LEARNER_GRADE_ORDER.get(end)
+
+  if (startIndex == null || endIndex == null || endIndex < startIndex) {
+    return [] as LearnerGradeOption[]
   }
 
-  const [startRaw, endRaw] = value.split("~").map((item) => item.trim())
-  const start = normalizeInternalGrade(startRaw)
-  const end = normalizeInternalGrade(endRaw)
+  return LEARNER_GRADE_OPTIONS.slice(startIndex, endIndex + 1)
+}
+
+const parseTargetGradeToken = (value: string): LearnerGradeOption[] | null => {
+  const normalizedBand = normalizeGradeBand(value)
+  if (normalizedBand) {
+    return LEARNER_GRADE_OPTIONS.filter(
+      (grade) => getGradeBandFromLearnerGrade(grade) === normalizedBand
+    )
+  }
+
+  if (!value.includes("~")) {
+    const grade = normalizeLearnerGrade(value)
+    return grade ? [grade] : null
+  }
+
+  const rangeParts = value.split("~").map((item) => item.trim())
+  if (rangeParts.length !== 2) {
+    return null
+  }
+
+  const start = normalizeLearnerGrade(rangeParts[0])
+  const end = normalizeLearnerGrade(rangeParts[1])
 
   if (!start || !end) {
-    return [] as GradeOption[]
+    return null
   }
 
-  return toVisibleChildGrades(expandInternalGradeRange(start, end))
+  const grades = expandLearnerGradeRange(start, end)
+  return grades.length > 0 ? grades : null
+}
+
+export type TargetGradeParseResult =
+  | { status: "empty"; grades: [] }
+  | { status: "invalid"; grades: [] }
+  | { status: "valid"; grades: LearnerGradeOption[] }
+
+export const parseTargetGrades = (value: string | null | undefined): TargetGradeParseResult => {
+  const normalized = normalizeText(value)
+
+  if (!normalized) {
+    return { status: "empty", grades: [] }
+  }
+
+  const tokens = normalized
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean)
+
+  if (tokens.length === 0) {
+    return { status: "empty", grades: [] }
+  }
+
+  const expanded: LearnerGradeOption[] = []
+  for (const token of tokens) {
+    const grades = parseTargetGradeToken(token)
+    if (!grades || grades.length === 0) {
+      return { status: "invalid", grades: [] }
+    }
+    expanded.push(...grades)
+  }
+
+  const grades = getUniqueSortedLearnerGrades(expanded)
+  return grades.length > 0
+    ? { status: "valid", grades }
+    : { status: "invalid", grades: [] }
 }
 
 export const parseStoredTargetGrades = (value: string | null | undefined) => {
-  const normalized = normalizeText(value)
-
-  if (!normalized) {
-    return [] as GradeOption[]
-  }
-
-  const tokens = normalized
-    .split(",")
-    .map((item) => item.trim())
-    .filter(Boolean)
-
-  if (tokens.length === 0) {
-    return [] as GradeOption[]
-  }
-
-  const expanded = tokens.flatMap((token) => {
-    const normalizedBand = normalizeGradeBand(token)
-    if (normalizedBand && normalizedBand !== "preschool" && normalizedBand !== "high") {
-      return GRADE_OPTIONS.filter((grade) => getGradeBandFromChildGrade(grade) === normalizedBand)
-    }
-
-    if (token.includes("~")) {
-      return parseRangeToken(token)
-    }
-
-    const grade = normalizeGrade(token)
-    return grade ? [grade] : []
-  })
-
-  return getUniqueSortedGrades(expanded)
+  const result = parseTargetGrades(value)
+  return result.status === "valid" ? result.grades : []
 }
 
 export const parseStoredTargetGradeBands = (value: string | null | undefined): AnyGradeBandValue[] => {
-  const normalized = normalizeText(value)
-  if (!normalized) {
+  const parsed = parseTargetGrades(value)
+  if (parsed.status !== "valid") {
     return []
   }
 
-  const tokens = normalized
-    .split(",")
-    .map((item) => item.trim())
-    .filter(Boolean)
-
-  if (tokens.length === 0) {
-    return []
-  }
-
-  const resolvedBands = tokens.flatMap((token) => {
-    const directBand = normalizeGradeBand(token)
-    if (directBand) {
-      return [directBand]
-    }
-
-    const childGrade = normalizeGrade(token)
-    if (childGrade) {
-      const band = getGradeBandFromChildGrade(childGrade)
-      return band ? [band] : []
-    }
-
-    return token.includes("~")
-      ? Array.from(new Set(parseRangeToken(token).map((grade) => getGradeBandFromChildGrade(grade)).filter(Boolean)))
-      : []
-  })
+  const resolvedBands = parsed.grades.map((grade) => getGradeBandFromLearnerGrade(grade))
 
   const deduped = Array.from(
     new Set(resolvedBands.filter((value): value is AnyGradeBandValue => value !== null))
@@ -238,17 +184,30 @@ export const serializeTargetGrades = (values: readonly string[]) => {
   return parseStoredTargetGrades(values.join(",")).join(",")
 }
 
+const formatLearnerGradeSelection = (grades: readonly LearnerGradeOption[]) => {
+  const labels = grades
+    .map((grade) => getChildGradeLabel(grade))
+    .filter((label): label is string => Boolean(label))
+
+  if (labels.length <= 1) {
+    return labels[0] ?? ""
+  }
+
+  const firstIndex = LEARNER_GRADE_ORDER.get(grades[0])
+  const isContiguous = firstIndex != null && grades.every(
+    (grade, index) => LEARNER_GRADE_ORDER.get(grade) === firstIndex + index
+  )
+
+  return isContiguous ? `${labels[0]}~${labels[labels.length - 1]}` : labels.join(" · ")
+}
+
 export const formatGradeList = (values: readonly string[]) => {
   const parsedGrades = parseStoredTargetGrades(values.join(","))
   if (parsedGrades.length === 0) {
     return ""
   }
 
-  const gradeLabels = parsedGrades
-    .map((grade) => getChildGradeLabel(grade))
-    .filter((value): value is string => Boolean(value))
-
-  return Array.from(new Set(gradeLabels)).join(" · ")
+  return formatLearnerGradeSelection(parsedGrades)
 }
 
 export const formatStoredTargetGrades = (value: string | null | undefined) => {
@@ -259,10 +218,7 @@ export const formatStoredTargetGrades = (value: string | null | undefined) => {
 
   const parsedGrades = parseStoredTargetGrades(normalized)
   if (parsedGrades.length > 0) {
-    const labels = parsedGrades
-      .map((grade) => getChildGradeLabel(grade))
-      .filter((label): label is string => Boolean(label))
-    return Array.from(new Set(labels)).join(" · ")
+    return formatLearnerGradeSelection(parsedGrades)
   }
 
   const bandLabels = parseStoredTargetGradeBands(normalized)
@@ -285,19 +241,19 @@ export const isChildEligibleForClass = (
   childGrade: string | null | undefined,
   allowedGrades: readonly string[] | string | null | undefined
 ) => {
-  const resolvedAllowedGrades =
+  const parsedAllowedGrades =
     typeof allowedGrades === "string" || allowedGrades == null
-      ? parseStoredTargetGrades(allowedGrades)
-      : parseStoredTargetGrades(allowedGrades.join(","))
+      ? parseTargetGrades(allowedGrades)
+      : parseTargetGrades(allowedGrades.join(","))
 
-  if (resolvedAllowedGrades.length === 0) {
-    return true
+  if (parsedAllowedGrades.status !== "valid") {
+    return false
   }
 
-  const normalizedChildGrade = normalizeGrade(childGrade)
+  const normalizedChildGrade = normalizeLearnerGrade(childGrade)
   if (!normalizedChildGrade) {
     return false
   }
 
-  return resolvedAllowedGrades.includes(normalizedChildGrade)
+  return parsedAllowedGrades.grades.includes(normalizedChildGrade)
 }

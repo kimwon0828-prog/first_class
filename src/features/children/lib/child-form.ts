@@ -1,4 +1,4 @@
-import { isValidGrade } from "@/shared/constants/grade-options"
+import { normalizeLearnerGrade } from "@/shared/constants/education-taxonomy"
 
 export const normalizeOptionalText = (value: FormDataEntryValue | null, maxLength: number) => {
   const text = String(value ?? "").trim()
@@ -27,7 +27,8 @@ export const validateChildProfileForm = (formData: FormData) => {
     return { ok: false as const, message: "학년을 선택해 주세요." }
   }
 
-  if (!isValidGrade(grade)) {
+  const normalizedGrade = normalizeLearnerGrade(grade)
+  if (!normalizedGrade) {
     return { ok: false as const, message: "학년을 다시 선택해 주세요." }
   }
 
@@ -35,7 +36,7 @@ export const validateChildProfileForm = (formData: FormData) => {
     ok: true as const,
     input: {
       name: name.slice(0, 30),
-      grade: grade.slice(0, 30),
+      grade: normalizedGrade,
       schoolName,
       notes,
       currentLevel,

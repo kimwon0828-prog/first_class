@@ -7,7 +7,12 @@ import { Fragment, useActionState, useEffect, useMemo, useRef, useState } from "
 import {
   formatStoredTargetGrades
 } from "@/shared/constants/grade-options"
-import { CHILD_GRADES, getSubjectLabel } from "@/shared/constants/education-taxonomy"
+import {
+  LEARNER_GRADES,
+  LEARNER_GRADE_GROUPS,
+  getLearnerGradesByGroup,
+  getSubjectLabel
+} from "@/shared/constants/education-taxonomy"
 import { getSupabaseBrowserClient } from "@/integrations/supabase/client"
 import {
   upsertStudioClassAction,
@@ -143,16 +148,16 @@ const createDraftStorageKey = (organizationId: string) => `studio-class-create-d
 
 const formatSubjectLabel = (subject: StudioClassSubjectOption | "") => getSubjectLabel(subject) ?? "과목 선택"
 
-const CHILD_GRADE_ORDER: string[] = CHILD_GRADES.map((item) => item.value)
+const LEARNER_GRADE_ORDER: string[] = LEARNER_GRADES.map((item) => item.value)
 
 const getOrderedTargetGrades = (values: readonly string[]) => {
   const selectedSet = new Set(values)
-  return CHILD_GRADE_ORDER.filter((value) => selectedSet.has(value))
+  return LEARNER_GRADE_ORDER.filter((value) => selectedSet.has(value))
 }
 
 const getTargetGradeRange = (start: string, end: string) => {
-  const startIndex = CHILD_GRADE_ORDER.indexOf(start)
-  const endIndex = CHILD_GRADE_ORDER.indexOf(end)
+  const startIndex = LEARNER_GRADE_ORDER.indexOf(start)
+  const endIndex = LEARNER_GRADE_ORDER.indexOf(end)
 
   if (startIndex < 0 || endIndex < 0) {
     return start ? [start] : []
@@ -160,7 +165,7 @@ const getTargetGradeRange = (start: string, end: string) => {
 
   const rangeStart = Math.min(startIndex, endIndex)
   const rangeEnd = Math.max(startIndex, endIndex)
-  return CHILD_GRADE_ORDER.slice(rangeStart, rangeEnd + 1)
+  return LEARNER_GRADE_ORDER.slice(rangeStart, rangeEnd + 1)
 }
 
 const getTabForStep = (step: WizardStepId): CreateFormTabId => {
@@ -792,16 +797,23 @@ export const StudioClassCreateWizard = ({
 
                         <div className={styles.fieldBlock}>
                           <label className={styles.fieldLabel}>대상 학년 *</label>
-                          <div className={styles.chipRow}>
-                            {CHILD_GRADES.map((grade) => (
-                              <button
-                                key={grade.value}
-                                type="button"
-                                className={`${styles.choiceChip} ${values.targetGrades.includes(grade.value) ? styles.choiceChipSelected : ""}`}
-                                onClick={() => toggleGrade(grade.value)}
-                              >
-                                {grade.label}
-                              </button>
+                          <div className={styles.gradeGroupList}>
+                            {LEARNER_GRADE_GROUPS.map((group) => (
+                              <div key={group.value} className={styles.gradeGroup}>
+                                <span className={styles.gradeGroupLabel}>{group.label}</span>
+                                <div className={styles.chipRow}>
+                                  {getLearnerGradesByGroup(group.value).map((grade) => (
+                                    <button
+                                      key={grade.value}
+                                      type="button"
+                                      className={`${styles.choiceChip} ${values.targetGrades.includes(grade.value) ? styles.choiceChipSelected : ""}`}
+                                      onClick={() => toggleGrade(grade.value)}
+                                    >
+                                      {grade.label}
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
                             ))}
                           </div>
                           <p className={styles.helperText}>

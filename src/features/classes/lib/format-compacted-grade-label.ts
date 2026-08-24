@@ -1,6 +1,6 @@
-import { CHILD_GRADES, getChildGradeLabel } from "@/shared/constants/education-taxonomy"
+import { LEARNER_GRADES, getChildGradeLabel } from "@/shared/constants/education-taxonomy"
 
-const GRADE_LABEL_ORDER = new Map<string, number>(CHILD_GRADES.map((item, index) => [item.label, index]))
+const GRADE_LABEL_ORDER = new Map<string, number>(LEARNER_GRADES.map((item, index) => [item.label, index]))
 
 const normalizeText = (value: string | null | undefined) => (value ?? "").trim()
 

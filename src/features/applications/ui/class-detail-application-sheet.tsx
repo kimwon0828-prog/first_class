@@ -9,7 +9,11 @@ import {
   saveTrialApplicationDraft
 } from "@/features/applications/lib/trial-application-draft"
 import { isChildEligibleForClass } from "@/shared/constants/grade-options"
-import { CHILD_GRADES, getChildGradeLabel } from "@/shared/constants/education-taxonomy"
+import {
+  LEARNER_GRADE_GROUPS,
+  getChildGradeLabel,
+  getLearnerGradesByGroup
+} from "@/shared/constants/education-taxonomy"
 import type { AvailableScheduleSlot } from "@/shared/lib/db/adapter"
 import { useTrialApplicationForm, type TrialApplicationFormProps } from "./use-trial-application-form"
 import styles from "./class-detail-application-sheet.module.css"
@@ -675,10 +679,14 @@ export function ClassDetailApplicationSheet({
                                   {getChildGradeLabel(legacyChildGradeValue) ?? legacyChildGradeValue} (기존 값)
                                 </option>
                               ) : null}
-                              {CHILD_GRADES.map((option) => (
-                                <option key={option.value} value={option.value}>
-                                  {option.label}
-                                </option>
+                              {LEARNER_GRADE_GROUPS.map((group) => (
+                                <optgroup key={group.value} label={group.label}>
+                                  {getLearnerGradesByGroup(group.value).map((option) => (
+                                    <option key={option.value} value={option.value}>
+                                      {option.label}
+                                    </option>
+                                  ))}
+                                </optgroup>
                               ))}
                             </select>
                             <span className={styles.fieldHelp}>대상 학년: {classTargetGradeLabel}</span>

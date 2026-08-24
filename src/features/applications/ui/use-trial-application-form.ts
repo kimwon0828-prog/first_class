@@ -10,9 +10,9 @@ import {
 import { clearTrialApplicationDraft } from "@/features/applications/lib/trial-application-draft"
 import {
   formatStoredTargetGrades,
-  isChildEligibleForClass,
-  isValidGrade
+  isChildEligibleForClass
 } from "@/shared/constants/grade-options"
+import { normalizeLearnerGrade } from "@/shared/constants/education-taxonomy"
 import type { AvailableScheduleSlot, ChildProfile } from "@/shared/lib/db/adapter"
 
 export type TrialApplicationFormProps = {
@@ -136,7 +136,8 @@ export const useTrialApplicationForm = (
 
     return isChildEligibleForClass(childGrade, classTargetAge)
   }, [childGrade, classTargetAge])
-  const legacyChildGradeValue = childGrade.trim() && !isValidGrade(childGrade) ? childGrade.trim() : null
+  const normalizedChildGrade = normalizeLearnerGrade(childGrade)
+  const legacyChildGradeValue = childGrade.trim() && !normalizedChildGrade ? childGrade.trim() : null
   const hasSelectableSlots = useMemo(
     () => availableSlots.some((slot) => !slot.isClosed),
     [availableSlots]
@@ -170,7 +171,7 @@ export const useTrialApplicationForm = (
     }
 
     setChildName(selectedChild.name)
-    setChildGrade(selectedChild.grade)
+    setChildGrade(normalizeLearnerGrade(selectedChild.grade) ?? selectedChild.grade)
     setChildSchool(selectedChild.schoolName ?? "")
     setChildNotes(selectedChild.notes ?? "")
     setCurrentLevel(selectedChild.currentLevel ?? "")
