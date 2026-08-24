@@ -9,8 +9,7 @@ import {
   SUBJECT_CATEGORIES,
   type SubjectCategoryValue
 } from "@/shared/constants/education-taxonomy"
-import { getMyProfile } from "@/features/auth/lib/profile-sync"
-import { getSession } from "@/features/auth/lib/session"
+import { resolveCurrentAuth } from "@/features/auth/lib/current-auth"
 import { getPublicClassCardScheduleSummaries } from "@/features/classes/queries/get-public-class-card-schedule-summaries"
 import type { ClassSummary } from "@/shared/lib/db/adapter"
 import { ClassesRegionInlineSelect, ClassesSearchPill } from "@/features/classes/ui/classes-region-select"
@@ -260,14 +259,8 @@ export default async function ClassesPage({ searchParams }: ClassesPageProps) {
     query: selectedQuery
   })
   const filteredClasses = classes
-  const session = await getSession()
-  const profile = session ? await getMyProfile() : null
-  const isParentUser = profile?.role === "parent"
-  const isStudioUser =
-    profile?.dbRole === "teacher" ||
-    profile?.dbRole === "academy" ||
-    profile?.dbRole === "operator" ||
-    profile?.dbRole === "admin"
+  const auth = await resolveCurrentAuth("/classes")
+  const { authenticated, isParentUser, isStudioUser } = auth
   const classesHref = buildClassesHref({
     region: selectedRegion,
     subject: selectedSubject,
@@ -280,14 +273,14 @@ export default async function ClassesPage({ searchParams }: ClassesPageProps) {
   })
   const myPageHref = "/my"
   const myApplicationsHref = "/my/applications"
-  const myPageEntryHref = session
+  const myPageEntryHref = authenticated
     ? isParentUser
       ? myPageHref
       : isStudioUser
         ? "/studio"
         : myPageHref
     : "/auth/sign-in"
-  const myApplicationsEntryHref = session
+  const myApplicationsEntryHref = authenticated
     ? isParentUser
       ? myApplicationsHref
       : isStudioUser
@@ -302,7 +295,7 @@ export default async function ClassesPage({ searchParams }: ClassesPageProps) {
     selectedRegion ? `/classes/${classId}?region=${encodeURIComponent(selectedRegion)}` : `/classes/${classId}`
   const applyHrefForClass = (classId: string) => {
     const returnTo = `/classes/${classId}/apply`
-    return session
+    return authenticated
       ? returnTo
       : `/auth/sign-in?${new URLSearchParams({ returnTo }).toString()}`
   }
@@ -359,7 +352,7 @@ export default async function ClassesPage({ searchParams }: ClassesPageProps) {
             inputClassName={styles.searchInput}
           />
 
-          {session ? (
+          {authenticated ? (
             isParentUser ? (
               <Link href={myPageEntryHref} className={styles.userButton} aria-label="마이페이지">
                 <svg

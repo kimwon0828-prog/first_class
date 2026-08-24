@@ -16,6 +16,29 @@ export type AuthProfile = {
   organizationId: string | null
 }
 
+export type AuthUserIdentity = {
+  id: string
+  email?: string
+}
+
+export type AuthProfileLookupResult =
+  | {
+      status: "ok"
+      profile: AuthProfile
+    }
+  | {
+      status: "missing"
+    }
+  | {
+      status: "unsupported_role"
+      profileRole: string | null
+    }
+  | {
+      status: "error"
+      errorCode: string | null
+      errorMessage: string
+    }
+
 export const normalizeProfileRole = (
   role: unknown
 ): { role: ProfileRole; dbRole: DbProfileRole } | null => {
@@ -75,6 +98,7 @@ type ProfileQueryResult =
   | {
       kind: "error"
       errorCode: string | null
+      errorMessage: string
     }
 
 const shouldDebugAuth = process.env.NODE_ENV !== "production" && process.env.NEXT_PUBLIC_DEBUG_AUTH === "1"
@@ -112,9 +136,52 @@ const queryOwnProfile = async (userId: string): Promise<ProfileQueryResult> => {
 
   return {
     kind: "error",
-    errorCode: secondAttempt.error.code ?? firstAttempt.error.code ?? null
+    errorCode: secondAttempt.error.code ?? firstAttempt.error.code ?? null,
+    errorMessage: secondAttempt.error.message || firstAttempt.error.message
   }
 }
+
+const getProfileForUserCached = cache(
+  async (userId: string, email: string | undefined): Promise<AuthProfileLookupResult> => {
+    const profileQuery = await queryOwnProfile(userId)
+    if (profileQuery.kind === "missing") {
+      return { status: "missing" }
+    }
+
+    if (profileQuery.kind === "error") {
+      return {
+        status: "error",
+        errorCode: profileQuery.errorCode,
+        errorMessage: profileQuery.errorMessage
+      }
+    }
+
+    const { data } = profileQuery
+    const normalizedRole = normalizeProfileRole(data.role)
+    if (!normalizedRole) {
+      return {
+        status: "unsupported_role",
+        profileRole: data.role == null ? null : String(data.role)
+      }
+    }
+
+    return {
+      status: "ok",
+      profile: {
+        id: data.id,
+        role: normalizedRole.role,
+        dbRole: normalizedRole.dbRole,
+        name: typeof data.name === "string" && data.name.trim().length > 0 ? data.name.trim() : getFallbackName(email),
+        phone: data.phone ?? null,
+        parentBirthDate: null,
+        organizationId: data.organization_id
+      }
+    }
+  }
+)
+
+export const getProfileForUser = async (user: AuthUserIdentity): Promise<AuthProfileLookupResult> =>
+  getProfileForUserCached(user.id, user.email)
 
 const getMyProfileCached = cache(async (): Promise<AuthProfile | null> => {
   const supabase = await getSupabaseServerClient()
@@ -126,26 +193,8 @@ const getMyProfileCached = cache(async (): Promise<AuthProfile | null> => {
     return null
   }
 
-  const profileQuery = await queryOwnProfile(user.id)
-  if (profileQuery.kind !== "success") {
-    return null
-  }
-
-  const { data } = profileQuery
-  const normalizedRole = normalizeProfileRole(data.role)
-  if (!normalizedRole) {
-    return null
-  }
-
-  return {
-    id: data.id,
-    role: normalizedRole.role,
-    dbRole: normalizedRole.dbRole,
-    name: typeof data.name === "string" && data.name.trim().length > 0 ? data.name.trim() : getFallbackName(user.email),
-    phone: data.phone ?? null,
-    parentBirthDate: null,
-    organizationId: data.organization_id
-  }
+  const profileResult = await getProfileForUser(user)
+  return profileResult.status === "ok" ? profileResult.profile : null
 })
 
 export const getMyProfile = async (): Promise<AuthProfile | null> => getMyProfileCached()
