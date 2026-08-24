@@ -448,9 +448,9 @@ export default function PartnerLanding() {
           <div className={styles.featureCopy}>
             <p className={styles.fLbl}>미등록 학생 관리</p>
             <h3>
-              등록하지 않았다고 끝나는
+              등록하지 않은 학생도
               <br />
-              학생은 아닙니다
+              다음 기회로 이어집니다
             </h3>
             <p>
               등록하지 않은 이유와 다음 연락 시점을 남겨두고, 방학·학기 초나 새 반이 생겼을 때
