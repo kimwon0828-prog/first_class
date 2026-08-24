@@ -12,6 +12,7 @@ import { getStudioApplicationAssigneeOptions } from "@/features/studio/queries/g
 import { getStudioApplicationDetail } from "@/features/studio/queries/get-studio-application-detail"
 import { ApplicationAssigneeForm } from "@/features/studio/ui/application-assignee-form"
 import { ApplicationTrialResultWorkflow } from "@/features/studio/ui/application-trial-result-workflow"
+import { getSubjectLabel } from "@/shared/constants/education-taxonomy"
 import type {
   ApplicationStatus,
   StudioApplicationSummary
@@ -26,17 +27,74 @@ type StudioApplicationDetailPageProps = {
   }>
 }
 
+const normalizeKoreanDayPeriod = (value: string) =>
+  value.replace(/\bAM\b/gi, "오전").replace(/\bPM\b/gi, "오후")
+
 const formatDateTime = (value: string) => {
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) {
     return null
   }
 
-  return new Intl.DateTimeFormat("ko-KR", {
-    dateStyle: "medium",
-    timeStyle: "short",
+  return normalizeKoreanDayPeriod(new Intl.DateTimeFormat("ko-KR", {
+    year: "numeric",
+    month: "numeric",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
     timeZone: SEOUL_TIME_ZONE
-  }).format(date)
+  }).format(date))
+}
+
+const getSelectedScheduleDurationMinutes = (selectedLabel: string | null) => {
+  const match = selectedLabel?.match(/(\d{1,2}):(\d{2})\s*[~～]\s*(\d{1,2}):(\d{2})/)
+  if (!match) {
+    return null
+  }
+
+  const [, startHourText, startMinuteText, endHourText, endMinuteText] = match
+  const startHour = Number(startHourText)
+  const startMinute = Number(startMinuteText)
+  const endHour = Number(endHourText)
+  const endMinute = Number(endMinuteText)
+
+  if (
+    startHour > 23 ||
+    endHour > 23 ||
+    startMinute > 59 ||
+    endMinute > 59
+  ) {
+    return null
+  }
+
+  const startTotal = startHour * 60 + startMinute
+  const endTotal = endHour * 60 + endMinute
+  if (startTotal === endTotal) {
+    return null
+  }
+
+  return endTotal > startTotal ? endTotal - startTotal : 24 * 60 - startTotal + endTotal
+}
+
+const formatScheduleRange = (scheduleStartAt: string, selectedLabel: string | null) => {
+  const startText = formatDateTime(scheduleStartAt)
+  const durationMinutes = getSelectedScheduleDurationMinutes(selectedLabel)
+  const startDate = new Date(scheduleStartAt)
+
+  if (!startText || !durationMinutes || Number.isNaN(startDate.getTime())) {
+    return startText
+  }
+
+  const endDate = new Date(startDate.getTime() + durationMinutes * 60 * 1000)
+  const endText = normalizeKoreanDayPeriod(new Intl.DateTimeFormat("ko-KR", {
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+    timeZone: SEOUL_TIME_ZONE
+  }).format(endDate))
+
+  return `${startText} ~ ${endText}`
 }
 
 const formatMonthDay = (value: string | null | undefined) => {
@@ -71,12 +129,12 @@ const formatDateWithWeekdayTime = (value: string | null | undefined, options?: {
     weekday: "short",
     timeZone: SEOUL_TIME_ZONE
   }).format(date)
-  const time = new Intl.DateTimeFormat("ko-KR", {
+  const time = normalizeKoreanDayPeriod(new Intl.DateTimeFormat("ko-KR", {
     hour: "numeric",
     minute: "2-digit",
     hour12: options?.hour12 ?? false,
     timeZone: SEOUL_TIME_ZONE
-  }).format(date)
+  }).format(date))
 
   return `${dateParts.month}월 ${dateParts.day}일 (${weekday}) ${time}`
 }
@@ -90,23 +148,17 @@ const resolveScheduleSummary = (
   const requestedAt = requestedSlotAt ? formatDateTime(requestedSlotAt) : null
   const normalizedSelectedLabel = selectedLabel?.trim() ? selectedLabel.trim() : null
 
-  if (confirmedAt) {
+  if (confirmedSlotAt && confirmedAt) {
     return {
-      primary: confirmedAt,
-      secondary:
-        normalizedSelectedLabel && normalizedSelectedLabel !== confirmedAt
-          ? `선택 시간: ${normalizedSelectedLabel}`
-          : null
+      primary: formatScheduleRange(confirmedSlotAt, normalizedSelectedLabel) ?? confirmedAt,
+      secondary: null
     }
   }
 
   if (requestedAt) {
     return {
-      primary: requestedAt,
-      secondary:
-        normalizedSelectedLabel && normalizedSelectedLabel !== requestedAt
-          ? `선택 시간: ${normalizedSelectedLabel}`
-          : null
+      primary: formatScheduleRange(requestedSlotAt, normalizedSelectedLabel) ?? requestedAt,
+      secondary: null
     }
   }
 
@@ -269,7 +321,7 @@ export default async function StudioApplicationDetailPage({ params }: StudioAppl
         const currentLevel = normalizeText(data.currentLevel)
         const childNotes = normalizeText(data.childNotes)
         const parentMemo = normalizeText(data.memo)
-        const classSubject = normalizeText(data.classSubject)
+        const classSubject = getSubjectLabel(normalizeText(data.classSubject))
         const classRegion = normalizeText(data.classRegion)
         const normalizedPreferredRegularSchedule = normalizeText(data.preferredRegularSchedule)
         const normalizedGoalNote = normalizeText(data.goalNote)
@@ -281,7 +333,7 @@ export default async function StudioApplicationDetailPage({ params }: StudioAppl
               ? "레벨테스트"
               : "수업 정보 미연결")
         const completedMetaParts = [
-          detailViewSubjectAndProgramLabel(normalizeText(data.classSubject), programTypeLabel),
+          detailViewSubjectAndProgramLabel(classSubject, programTypeLabel),
           parentName,
           completedStatusText
         ].filter((value): value is string => Boolean(value))
@@ -550,10 +602,7 @@ export default async function StudioApplicationDetailPage({ params }: StudioAppl
                     </div>
                     <div className={styles.completedInfoRow}>
                       <dt className={styles.summaryLabel}>{data.confirmedSlotAt ? "확정 일정" : "희망 일정"}</dt>
-                      <dd className={styles.summaryValue}>
-                        {formatDateWithWeekdayTime(data.confirmedSlotAt ?? data.requestedSlotAt) ??
-                          detailView.scheduleSummary.primary}
-                      </dd>
+                      <dd className={styles.summaryValue}>{detailView.scheduleSummary.primary}</dd>
                     </div>
                     <div className={styles.completedInfoRow}>
                       <dt className={styles.summaryLabel}>신청일</dt>

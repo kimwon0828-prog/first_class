@@ -18,7 +18,7 @@ export const SUBJECT_CATEGORIES = [
   { value: "coding_robot_science", label: "코딩·로봇·과학" },
   { value: "reading_writing", label: "독서논술" },
   { value: "english", label: "영어" },
-  { value: "arts", label: "예술" },
+  { value: "arts", label: "예체능" },
   { value: "sports_dance", label: "체육·무용" }
 ] as const
 
@@ -92,6 +92,7 @@ const SUBJECT_KEY_TO_VALUE: Record<string, SubjectCategoryValue> = {
   영어: "english",
   english: "english",
   예술: "arts",
+  예체능: "arts",
   arts: "arts",
   artmusic: "arts",
   미술음악: "arts",
