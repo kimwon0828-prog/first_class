@@ -3,15 +3,15 @@ import Image from "next/image"
 import Link from "next/link"
 import { redirect } from "next/navigation"
 
-import {
-  normalizeSubjectCategory,
-  SUBJECT_CATEGORIES,
-  type SubjectCategoryValue
-} from "@/shared/constants/education-taxonomy"
+import { normalizeSubjectCategory } from "@/shared/constants/education-taxonomy"
 import { resolveCurrentAuth } from "@/features/auth/lib/current-auth"
 import { getPublicClassCardScheduleSummaries } from "@/features/classes/queries/get-public-class-card-schedule-summaries"
+import { getSelectableSubjectCatalog } from "@/features/subjects/queries/get-subject-master"
 import type { ClassSummary } from "@/shared/lib/db/adapter"
-import { formatClassSubjectDisplayLabel } from "@/shared/lib/subject-master"
+import {
+  formatClassSubjectDisplayLabel,
+  type SubjectCatalogCategory
+} from "@/shared/lib/subject-master"
 import { ClassesRegionInlineSelect, ClassesSearchPill } from "@/features/classes/ui/classes-region-select"
 import { ClassCard } from "@/features/classes/ui/class-card"
 import { ParentFooter } from "@/features/classes/ui/parent-footer"
@@ -30,6 +30,7 @@ type ClassesPageProps = {
   searchParams?: Promise<{
     region?: string
     q?: string
+    subjectCategory?: string
     subject?: string
   }>
 }
@@ -42,109 +43,10 @@ const formatPrice = (price: number) => {
   return `${price.toLocaleString("ko-KR")}원`
 }
 
-type HomeSubjectCategory = {
-  label: string
-  value: SubjectCategoryValue
-}
-
 type AvailableClassCard = {
   classItem: ClassSummary
   academyName: string
   scheduleSummary: string
-}
-
-const homeSubjectCategories: readonly HomeSubjectCategory[] = SUBJECT_CATEGORIES.map((item) => ({
-  label: item.label,
-  value: item.value
-}))
-
-const SubjectOutlineIcon = ({ subject }: { subject: SubjectCategoryValue }) => {
-  switch (subject) {
-    case "thinking_math":
-      return (
-        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-          <path
-            d="M4 6.5A2.5 2.5 0 0 1 6.5 4h11A2.5 2.5 0 0 1 20 6.5v11a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4 17.5v-11ZM8 8h8M8 12h2m4 0h2M8 16h2m4 0h2"
-            stroke="currentColor"
-            strokeWidth="1.8"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        </svg>
-      )
-    case "coding_robot_science":
-      return (
-        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-          <path
-            d="M9 8 5 12l4 4M15 8l4 4-4 4M10.5 19h3M9 5h6M8 5h.01M16 5h.01"
-            stroke="currentColor"
-            strokeWidth="1.8"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        </svg>
-      )
-    case "reading_writing":
-      return (
-        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-          <path
-            d="M4 6.5A2.5 2.5 0 0 1 6.5 4H11v16H6.5A2.5 2.5 0 0 0 4 22V6.5ZM20 6.5A2.5 2.5 0 0 0 17.5 4H13v16h4.5A2.5 2.5 0 0 1 20 22V6.5Z"
-            stroke="currentColor"
-            strokeWidth="1.8"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        </svg>
-      )
-    case "english":
-      return (
-        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-          <path
-            d="M7 18H5.8A1.8 1.8 0 0 1 4 16.2V7.8A1.8 1.8 0 0 1 5.8 6h12.4A1.8 1.8 0 0 1 20 7.8v8.4A1.8 1.8 0 0 1 18.2 18H11l-4 3v-3Z"
-            stroke="currentColor"
-            strokeWidth="1.8"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-          <path
-            d="M9 10h6M9 14h4"
-            stroke="currentColor"
-            strokeWidth="1.8"
-            strokeLinecap="round"
-          />
-        </svg>
-      )
-    case "arts":
-      return (
-        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-          <path
-            d="M18.5 5.5c-1.2-1.2-3.4-1-4.8.4L6 13.6V18h4.4l7.7-7.7c1.4-1.4 1.6-3.6.4-4.8Z"
-            stroke="currentColor"
-            strokeWidth="1.8"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-          <path
-            d="M12.5 7.5 16.5 11.5"
-            stroke="currentColor"
-            strokeWidth="1.8"
-            strokeLinecap="round"
-          />
-        </svg>
-      )
-    case "sports_dance":
-      return (
-        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-          <path
-            d="M14 5.5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0ZM12 8l2.5 2 2.5.5M12 8l-2 3.5L7 13M10.5 11.5l2 2.5-1 5M14.5 10l-1 4 3 4M9 14l-3 4"
-            stroke="currentColor"
-            strokeWidth="1.8"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        </svg>
-      )
-  }
 }
 
 const normalizeText = (value: string | null | undefined) => (value ?? "").trim().toLowerCase()
@@ -152,13 +54,25 @@ const normalizeText = (value: string | null | undefined) => (value ?? "").trim()
 const getClassSubjectLabel = (item: ClassSummary) =>
   formatClassSubjectDisplayLabel(item) || "과목 정보 준비 중"
 
-const resolveSubjectCategory = (value: string) => {
-  const normalized = normalizeSubjectCategory(value)
-  if (!normalized) {
-    return null
+const LEGACY_MASTER_FILTERS: Record<
+  string,
+  { categoryCode: string; subjectCode?: string }
+> = {
+  thinking_math: { categoryCode: "math", subjectCode: "thinking_math" },
+  english: { categoryCode: "english" },
+  sports_dance: { categoryCode: "sports_dance" }
+}
+
+const decodeQueryValue = (value: string | null | undefined) => {
+  if (!value) {
+    return ""
   }
 
-  return homeSubjectCategories.find((item) => item.value === normalized) ?? null
+  try {
+    return decodeURIComponent(value)
+  } catch {
+    return value
+  }
 }
 
 const matchesKeyword = (item: ClassSummary, keywords: readonly string[]) => {
@@ -195,18 +109,19 @@ const escapeQueryValue = (value: string) =>
 
 const buildClassesHref = (params: {
   region?: string | null
+  subjectCategory?: string | null
   subject?: string | null
   q?: string | null
 }) => {
   const parts: string[] = []
   if (params.region) parts.push(`region=${escapeQueryValue(params.region)}`)
+  if (params.subjectCategory) {
+    parts.push(`subjectCategory=${escapeQueryValue(params.subjectCategory)}`)
+  }
   if (params.subject) parts.push(`subject=${escapeQueryValue(params.subject)}`)
   if (params.q) parts.push(`q=${escapeQueryValue(params.q)}`)
   return parts.length ? `/classes?${parts.join("&")}` : "/classes"
 }
-
-const buildAcademiesHref = (subjectValue: SubjectCategoryValue) =>
-  `/academies?subject=${escapeQueryValue(subjectValue)}`
 
 const formatCardRegionLabel = (region: ClassSummary["region"]) => {
   if (region === "은행사거리학원가") {
@@ -218,60 +133,75 @@ const formatCardRegionLabel = (region: ClassSummary["region"]) => {
 
 export default async function ClassesPage({ searchParams }: ClassesPageProps) {
   const resolvedSearchParams = searchParams ? await searchParams : undefined
-  const rawRegionParam =
-    typeof resolvedSearchParams?.region === "string" ? resolvedSearchParams.region : null
-  const decodedRegion = (() => {
-    if (!rawRegionParam) return null
-    try {
-      return decodeURIComponent(rawRegionParam)
-    } catch {
-      return rawRegionParam
-    }
-  })()
+  const decodedRegion = decodeQueryValue(resolvedSearchParams?.region) || null
   const selectedRegion = decodedRegion && isAcademyArea(decodedRegion) ? decodedRegion : null
   const selectedQuery =
     typeof resolvedSearchParams?.q === "string" && resolvedSearchParams.q.trim().length > 0
       ? resolvedSearchParams.q.trim()
       : undefined
-  const rawSubjectParam =
-    typeof resolvedSearchParams?.subject === "string" ? resolvedSearchParams.subject : ""
-  const decodedSubject = (() => {
-    if (!rawSubjectParam) return ""
-    try {
-      return decodeURIComponent(rawSubjectParam)
-    } catch {
-      return rawSubjectParam
-    }
-  })()
-  const resolvedSubjectCategory = resolveSubjectCategory(decodedSubject)
+  const decodedSubjectCategory = decodeQueryValue(resolvedSearchParams?.subjectCategory)
+  const decodedSubject = decodeQueryValue(resolvedSearchParams?.subject)
+  const subjectCatalog: SubjectCatalogCategory[] = await getSelectableSubjectCatalog()
 
-  if (decodedRegion && !selectedRegion) {
+  let selectedSubjectCategory =
+    subjectCatalog.find((category) => category.code === decodedSubjectCategory) ?? null
+  let selectedSubject =
+    selectedSubjectCategory?.subjects.find((subject) => subject.code === decodedSubject) ?? null
+  let shouldCanonicalizeSubjectQuery = false
+
+  if (!decodedSubjectCategory && decodedSubject) {
+    const legacySubject = normalizeSubjectCategory(decodedSubject)
+    const legacyMasterFilter = legacySubject
+      ? LEGACY_MASTER_FILTERS[legacySubject] ?? null
+      : null
+    selectedSubjectCategory = legacyMasterFilter
+      ? subjectCatalog.find((category) => category.code === legacyMasterFilter.categoryCode) ?? null
+      : null
+    selectedSubject =
+      selectedSubjectCategory && legacyMasterFilter?.subjectCode
+        ? selectedSubjectCategory.subjects.find(
+            (subject) => subject.code === legacyMasterFilter.subjectCode
+          ) ?? null
+        : null
+    shouldCanonicalizeSubjectQuery = true
+  } else if (decodedSubjectCategory && !selectedSubjectCategory) {
+    selectedSubject = null
+    shouldCanonicalizeSubjectQuery = true
+  } else if (decodedSubject && !selectedSubject) {
+    shouldCanonicalizeSubjectQuery = true
+  }
+
+  if ((decodedRegion && !selectedRegion) || shouldCanonicalizeSubjectQuery) {
     redirect(
       buildClassesHref({
-        region: null,
-        subject: decodedSubject || null,
+        region: selectedRegion,
+        subjectCategory: selectedSubjectCategory?.code ?? null,
+        subject: selectedSubject?.code ?? null,
         q: selectedQuery ?? null
       })
     )
   }
 
-  const selectedSubject = resolvedSubjectCategory?.value ?? null
-
-  const { data: classes, error } = await getPublicClasses(selectedRegion, {
-    subject: selectedSubject ?? undefined,
-    query: selectedQuery
-  })
+  const [{ data: classes, error }, auth] = await Promise.all([
+    getPublicClasses(selectedRegion, {
+      subjectCategoryId: selectedSubjectCategory?.id,
+      subjectId: selectedSubject?.id,
+      query: selectedQuery
+    }),
+    resolveCurrentAuth("/classes")
+  ])
   const filteredClasses = classes
-  const auth = await resolveCurrentAuth("/classes")
   const { authenticated, isParentUser, isStudioUser } = auth
   const classesHref = buildClassesHref({
     region: selectedRegion,
-    subject: selectedSubject,
+    subjectCategory: selectedSubjectCategory?.code ?? null,
+    subject: selectedSubject?.code ?? null,
     q: selectedQuery ?? null
   })
   const classesHomeHref = buildClassesHref({
     region: selectedRegion,
-    subject: selectedSubject,
+    subjectCategory: selectedSubjectCategory?.code ?? null,
+    subject: selectedSubject?.code ?? null,
     q: selectedQuery ?? null
   })
   const myPageHref = "/my"
@@ -290,7 +220,7 @@ export default async function ClassesPage({ searchParams }: ClassesPageProps) {
         ? "/studio"
         : myApplicationsHref
     : `/auth/sign-in?${new URLSearchParams({ returnTo: myApplicationsHref }).toString()}`
-  const isFilteredView = Boolean(selectedQuery || selectedSubject)
+  const isFilteredView = Boolean(selectedQuery || selectedSubjectCategory)
   const visibleClasses = filteredClasses
   const selectedStageClasses = visibleClasses.slice(0, 8)
   const recommendedAdvancedClasses = buildCurationList(visibleClasses, isAdvancedCurationClass, 6)
@@ -443,34 +373,74 @@ export default async function ClassesPage({ searchParams }: ClassesPageProps) {
                 <h2 className={styles.sectionHeadingTitle}>과목별 찾기</h2>
               </div>
             </div>
-            <div className={styles.subjectList} aria-label="과목 빠른 탐색">
-              {homeSubjectCategories.map((item) => (
-                <Link key={item.value} href={buildAcademiesHref(item.value)} className={styles.subjectListItem}>
-                  <span className={styles.subjectListLeading}>
-                    <span className={styles.subjectListIcon} aria-hidden="true">
-                      <SubjectOutlineIcon subject={item.value} />
-                    </span>
-                    <span className={styles.subjectListLabel}>{item.label}</span>
-                  </span>
-                  <svg
-                    width="12"
-                    height="12"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    xmlns="http://www.w3.org/2000/svg"
-                    aria-hidden="true"
-                    className={styles.subjectListChevron}
-                  >
-                    <path
-                      d="M9 18l6-6-6-6"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  </svg>
+            <div className={styles.subjectFilters}>
+              <nav className={styles.subjectChipRail} aria-label="과목 대분류">
+                <Link
+                  href={buildClassesHref({
+                    region: selectedRegion,
+                    subjectCategory: null,
+                    subject: null,
+                    q: selectedQuery ?? null
+                  })}
+                  className={`${styles.subjectChip} ${!selectedSubjectCategory ? styles.subjectChipActive : ""}`}
+                  aria-current={!selectedSubjectCategory ? "page" : undefined}
+                >
+                  전체
                 </Link>
-              ))}
+                {subjectCatalog.map((category) => {
+                  const isActive = selectedSubjectCategory?.id === category.id
+                  return (
+                    <Link
+                      key={category.id}
+                      href={buildClassesHref({
+                        region: selectedRegion,
+                        subjectCategory: category.code,
+                        subject: null,
+                        q: selectedQuery ?? null
+                      })}
+                      className={`${styles.subjectChip} ${isActive ? styles.subjectChipActive : ""}`}
+                      aria-current={isActive ? "page" : undefined}
+                    >
+                      {category.name}
+                    </Link>
+                  )
+                })}
+              </nav>
+
+              {selectedSubjectCategory ? (
+                <nav className={styles.subjectDetailChipRail} aria-label={`${selectedSubjectCategory.name} 세부 과목`}>
+                  <Link
+                    href={buildClassesHref({
+                      region: selectedRegion,
+                      subjectCategory: selectedSubjectCategory.code,
+                      subject: null,
+                      q: selectedQuery ?? null
+                    })}
+                    className={`${styles.subjectDetailChip} ${!selectedSubject ? styles.subjectDetailChipActive : ""}`}
+                    aria-current={!selectedSubject ? "page" : undefined}
+                  >
+                    전체
+                  </Link>
+                  {selectedSubjectCategory.subjects.map((subject) => {
+                    const isActive = selectedSubject?.id === subject.id
+                    return (
+                      <Link
+                        key={subject.id}
+                        href={buildClassesHref({
+                          region: selectedRegion,
+                          subjectCategory: selectedSubjectCategory.code,
+                          subject: subject.code,
+                          q: selectedQuery ?? null
+                        })}
+                        className={`${styles.subjectDetailChip} ${isActive ? styles.subjectDetailChipActive : ""}`}
+                        aria-current={isActive ? "page" : undefined}
+                      >
+                        {subject.name}
+                      </Link>
+                    )
+                  })}
+                </nav>
+              ) : null}
             </div>
           </section>
 
@@ -507,15 +477,16 @@ export default async function ClassesPage({ searchParams }: ClassesPageProps) {
             <section className={styles.sectionBlock}>
               <div className={styles.sectionHeader}>
                 <h2 className={styles.sectionTitle}>
-                  {selectedSubject && selectedQuery
-                    ? `${resolvedSubjectCategory?.label ?? selectedSubject} · "${selectedQuery}" 결과`
-                    : selectedSubject
-                      ? `${resolvedSubjectCategory?.label ?? selectedSubject} 수업`
+                  {selectedSubjectCategory && selectedQuery
+                    ? `${selectedSubjectCategory.name}${selectedSubject ? ` · ${selectedSubject.name}` : ""} · "${selectedQuery}" 결과`
+                    : selectedSubjectCategory
+                      ? `${selectedSubjectCategory.name}${selectedSubject ? ` · ${selectedSubject.name}` : ""} 수업`
                       : `"${selectedQuery}" 검색 결과`}
                 </h2>
                 <Link
                   href={buildClassesHref({
                     region: selectedRegion,
+                    subjectCategory: null,
                     subject: null,
                     q: null
                   })}

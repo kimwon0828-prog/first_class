@@ -783,6 +783,8 @@ export const mockDataAdapter: DataAdapter = {
           adapter: "mock",
           region: options?.region ?? null,
           subject: subject || null,
+          subjectCategoryId: options?.subjectCategoryId ?? null,
+          subjectId: options?.subjectId ?? null,
           query: searchTerm || null
         })}`
       )
@@ -803,6 +805,17 @@ export const mockDataAdapter: DataAdapter = {
         return false
       }
 
+      if (
+        options?.subjectCategoryId &&
+        item.subjectCategoryId !== options.subjectCategoryId
+      ) {
+        return false
+      }
+
+      if (options?.subjectId && item.subjectId !== options.subjectId) {
+        return false
+      }
+
       if (subject && normalizeSubjectCategory(item.subject) !== normalizeSubjectCategory(subject)) {
         return false
       }
@@ -817,6 +830,8 @@ export const mockDataAdapter: DataAdapter = {
           item.description,
           item.subject,
           formatClassSubjectDisplayLabel(item),
+          item.subjectCategoryName,
+          item.subjectName,
           publicTeacherName
         ].map(normalizeText)
 

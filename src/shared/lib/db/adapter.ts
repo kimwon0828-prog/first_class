@@ -806,6 +806,8 @@ export type ListClassesOptions = {
   region?: AcademyArea
   query?: string
   subject?: string
+  subjectCategoryId?: string
+  subjectId?: string
 }
 
 export interface DataAdapter {

@@ -70,6 +70,8 @@ type SafeTeacherRow = {
 type ListPublicClassesOptions = {
   region?: AcademyArea
   subject?: string
+  subjectCategoryId?: string
+  subjectId?: string
   query?: string
 }
 
@@ -173,6 +175,14 @@ const buildPublicClassesQuery = (
 
   if (options?.region) {
     query = query.eq("region", options.region)
+  }
+
+  if (options?.subjectCategoryId) {
+    query = query.eq("subject_category_id", options.subjectCategoryId)
+  }
+
+  if (options?.subjectId) {
+    query = query.eq("subject_id", options.subjectId)
   }
 
   return query
@@ -352,6 +362,8 @@ export const listPublicClassesWithSafeProjection = async (
           row.description,
           row.subject,
           subjectLabel,
+          summary.subjectCategoryName,
+          summary.subjectName,
           summary.teacherDisplayName,
           organization?.name ?? null
         ]

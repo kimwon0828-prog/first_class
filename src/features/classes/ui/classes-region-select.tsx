@@ -224,10 +224,19 @@ const escapeQueryValue = (value: string) =>
 
 const buildHref = (
   pathname: string,
-  params: { region?: string | null; subject?: string | null; q?: string | null; stage?: string | null }
+  params: {
+    region?: string | null
+    subjectCategory?: string | null
+    subject?: string | null
+    q?: string | null
+    stage?: string | null
+  }
 ) => {
   const parts: string[] = []
   if (params.region) parts.push(`region=${escapeQueryValue(params.region)}`)
+  if (params.subjectCategory) {
+    parts.push(`subjectCategory=${escapeQueryValue(params.subjectCategory)}`)
+  }
   if (params.subject) parts.push(`subject=${escapeQueryValue(params.subject)}`)
   if (params.q) parts.push(`q=${escapeQueryValue(params.q)}`)
   if (params.stage) parts.push(`stage=${escapeQueryValue(params.stage)}`)
@@ -256,10 +265,13 @@ export function ClassesSearchInput({
   const applyQuery = (nextValue: string) => {
     const normalized = nextValue.trim()
     const region = searchParams.get("region")
+    const subjectCategory = searchParams.get("subjectCategory")
     const subject = searchParams.get("subject")
     const stage = searchParams.get("stage")
     startTransition(() => {
-      router.replace(buildHref(pathname, { region, subject, q: normalized || null, stage }))
+      router.replace(
+        buildHref(pathname, { region, subjectCategory, subject, q: normalized || null, stage })
+      )
     })
   }
 
@@ -319,11 +331,12 @@ export function ClassesRegionSelect({
   const [isPending, startTransition] = useTransition()
 
   const handleChange = (nextRegion: AcademyAreaFilter) => {
+    const subjectCategory = searchParams.get("subjectCategory")
     const subject = searchParams.get("subject")
     const q = searchParams.get("q")
     const stage = searchParams.get("stage")
     startTransition(() => {
-      router.push(buildHref(pathname, { region: nextRegion, subject, q, stage }))
+      router.push(buildHref(pathname, { region: nextRegion, subjectCategory, subject, q, stage }))
     })
   }
 
@@ -384,10 +397,13 @@ export function ClassesSearchPill({
   const applyQuery = (nextValue: string) => {
     const normalized = nextValue.trim()
     const region = searchParams.get("region")
+    const subjectCategory = searchParams.get("subjectCategory")
     const subject = searchParams.get("subject")
     const stage = searchParams.get("stage")
     startTransition(() => {
-      router.replace(buildHref(pathname, { region, subject, q: normalized || null, stage }))
+      router.replace(
+        buildHref(pathname, { region, subjectCategory, subject, q: normalized || null, stage })
+      )
     })
   }
 
@@ -457,11 +473,12 @@ export function ClassesRegionInlineSelect({
   const chevronClassName = [chevronWrapClassName, isOpen ? openChevronClassName : null].filter(Boolean).join(" ")
 
   const handleChange = (nextRegion: AcademyAreaFilter) => {
+    const subjectCategory = searchParams.get("subjectCategory")
     const subject = searchParams.get("subject")
     const q = searchParams.get("q")
     const stage = searchParams.get("stage")
     startTransition(() => {
-      router.push(buildHref(pathname, { region: nextRegion, subject, q, stage }))
+      router.push(buildHref(pathname, { region: nextRegion, subjectCategory, subject, q, stage }))
     })
   }
 
@@ -587,7 +604,13 @@ export function ClassesSubjectGrid({
     const currentSubject = searchParams.get("subject")
     startTransition(() => {
       router.push(
-        buildHref(pathname, { region, q, subject: currentSubject === value ? null : value, stage })
+        buildHref(pathname, {
+          region,
+          subjectCategory: null,
+          q,
+          subject: currentSubject === value ? null : value,
+          stage
+        })
       )
     })
   }

@@ -320,81 +320,71 @@
   color: var(--text-2);
 }
 
-.subjectList {
+.subjectFilters {
   display: grid;
-  margin: 0 var(--gutter);
-  border-top: 0.5px solid #eaeaea;
-}
-
-.subjectListItem {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 14px 2px;
-  border-bottom: 0.5px solid #eaeaea;
-  text-decoration: none;
-  color: inherit;
-}
-
-.subjectList > .subjectListItem:nth-child(1) {
-  font-weight: 600;
-}
-
-.subjectList > .subjectListItem:nth-child(2) {
-  font-weight: 600;
-}
-
-.subjectList > .subjectListItem:nth-child(3) {
-  font-weight: 600;
-}
-
-.subjectList > .subjectListItem:nth-child(4) {
-  font-weight: 600;
-}
-
-.subjectList > .subjectListItem:nth-child(5) {
-  font-weight: 600;
-}
-
-.subjectList > .subjectListItem:nth-child(6) {
-  font-weight: 600;
-}
-
-.subjectListLeading {
-  display: inline-flex;
-  align-items: center;
   gap: 10px;
   min-width: 0;
 }
 
-.subjectListIcon {
+.subjectChipRail,
+.subjectDetailChipRail {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 0 var(--gutter) 4px;
+  scroll-padding-inline: var(--gutter);
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.subjectChipRail::-webkit-scrollbar,
+.subjectDetailChipRail::-webkit-scrollbar {
+  display: none;
+}
+
+.subjectChip,
+.subjectDetailChip {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 20px;
-  height: 20px;
   flex: 0 0 auto;
-  color: #737373;
+  min-height: 38px;
+  padding: 0 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-full);
+  background: var(--surface);
+  color: var(--text-2);
+  font-size: 14px;
+  line-height: 1;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+  -webkit-tap-highlight-color: transparent;
 }
 
-.subjectListIcon svg {
-  width: 20px;
-  height: 20px;
+.subjectChipActive {
+  border-color: var(--brand-500);
+  background: var(--brand-50);
+  color: var(--brand-700);
 }
 
-.subjectListLabel {
-  min-width: 0;
-  font-size: 15px;
-  line-height: 1.4;
-  color: #171717;
+.subjectDetailChipRail {
+  padding-top: 2px;
 }
 
-.subjectListChevron {
-  width: 12px;
-  height: 12px;
-  flex: 0 0 auto;
-  color: #a3a3a3;
+.subjectDetailChip {
+  min-height: 34px;
+  padding: 0 12px;
+  background: var(--surface-sub);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.subjectDetailChipActive {
+  border-color: var(--brand-500);
+  background: var(--brand-50);
+  color: var(--brand-700);
+  font-weight: 700;
 }
 
 .grid,
@@ -625,7 +615,8 @@
 }
 
 @media (hover: hover) {
-  .subjectItem:hover {
+  .subjectChip:hover,
+  .subjectDetailChip:hover {
     border-color: var(--brand-500);
     background: var(--brand-50);
   }

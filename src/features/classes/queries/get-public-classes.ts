@@ -27,7 +27,12 @@ const getSupabaseHost = () => {
 
 export const getPublicClasses = async (
   region: AcademyArea | null,
-  options?: { subject?: string; query?: string }
+  options?: {
+    subject?: string
+    subjectCategoryId?: string
+    subjectId?: string
+    query?: string
+  }
 ): Promise<QueryResult<ClassSummary[]>> => {
   try {
     if (shouldDebugDb()) {
@@ -37,6 +42,8 @@ export const getPublicClasses = async (
           dataAdapter: publicClassDataSource,
           region,
           subject: options?.subject ?? null,
+          subjectCategoryId: options?.subjectCategoryId ?? null,
+          subjectId: options?.subjectId ?? null,
           query: options?.query?.trim() ? options.query.trim() : null
         })}`
       )
@@ -47,21 +54,29 @@ export const getPublicClasses = async (
         ? publicClassDataSource === "supabase"
           ? await listPublicClassesWithSafeProjection({
               subject: options?.subject,
+              subjectCategoryId: options?.subjectCategoryId,
+              subjectId: options?.subjectId,
               query: options?.query
             })
           : await (await import("@/shared/lib/db")).dataAdapter.listClasses({
               subject: options?.subject,
+              subjectCategoryId: options?.subjectCategoryId,
+              subjectId: options?.subjectId,
               query: options?.query
             })
         : publicClassDataSource === "supabase"
           ? await listPublicClassesWithSafeProjection({
               region,
               subject: options?.subject,
+              subjectCategoryId: options?.subjectCategoryId,
+              subjectId: options?.subjectId,
               query: options?.query
             })
           : await (await import("@/shared/lib/db")).dataAdapter.listClasses({
               region,
               subject: options?.subject,
+              subjectCategoryId: options?.subjectCategoryId,
+              subjectId: options?.subjectId,
               query: options?.query
             })
     if (shouldDebugDb()) {

@@ -28,9 +28,18 @@ const escapeQueryValue = (value: string) =>
     .replace(/\?/g, "%3F")
     .replace(/ /g, "%20")
 
-const buildHref = (pathname: string, params: { region?: string | null; subject?: string | null; q?: string | null; stage?: string | null }) => {
+const buildHref = (pathname: string, params: {
+  region?: string | null
+  subjectCategory?: string | null
+  subject?: string | null
+  q?: string | null
+  stage?: string | null
+}) => {
   const parts: string[] = []
   if (params.region) parts.push(`region=${escapeQueryValue(params.region)}`)
+  if (params.subjectCategory) {
+    parts.push(`subjectCategory=${escapeQueryValue(params.subjectCategory)}`)
+  }
   if (params.subject) parts.push(`subject=${escapeQueryValue(params.subject)}`)
   if (params.q) parts.push(`q=${escapeQueryValue(params.q)}`)
   if (params.stage) parts.push(`stage=${escapeQueryValue(params.stage)}`)
@@ -114,11 +123,12 @@ export function ClassesStageSelect({
 
   const handleChange = (nextStage: GradeOption | null) => {
     const region = searchParams.get("region")
+    const subjectCategory = searchParams.get("subjectCategory")
     const subject = searchParams.get("subject")
     const q = searchParams.get("q")
 
     startTransition(() => {
-      router.push(buildHref(pathname, { region, subject, q, stage: nextStage }))
+      router.push(buildHref(pathname, { region, subjectCategory, subject, q, stage: nextStage }))
     })
   }
 

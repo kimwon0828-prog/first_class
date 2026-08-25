@@ -2479,6 +2479,8 @@ export const supabaseDataAdapter: DataAdapter = {
           supabaseHost: new URL(supabaseUrl).host,
           region: options?.region ?? null,
           subject: subject || null,
+          subjectCategoryId: options?.subjectCategoryId ?? null,
+          subjectId: options?.subjectId ?? null,
           query: searchTerm || null
         })}`
       )
@@ -2493,6 +2495,14 @@ export const supabaseDataAdapter: DataAdapter = {
 
     if (options?.region) {
       query = query.eq("region", options.region)
+    }
+
+    if (options?.subjectCategoryId) {
+      query = query.eq("subject_category_id", options.subjectCategoryId)
+    }
+
+    if (options?.subjectId) {
+      query = query.eq("subject_id", options.subjectId)
     }
 
     const { data, error } = await query
@@ -2590,6 +2600,8 @@ export const supabaseDataAdapter: DataAdapter = {
             row.description,
             row.subject,
             subjectLabel,
+            mappedClass.subjectCategoryName,
+            mappedClass.subjectName,
             row.teacher_display_name ?? null,
             teacherName,
             organizationName
