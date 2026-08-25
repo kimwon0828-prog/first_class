@@ -306,6 +306,13 @@ export function StudioSettingsPage({
                   initialPostalCode={organization.postalCode}
                   initialAddressLine1={organization.addressLine1 ?? organization.address}
                   initialAddressLine2={organization.addressLine2 ?? organization.addressDetail}
+                  initialRegion={{
+                    sido: organization.sido,
+                    sigungu: organization.sigungu,
+                    bname: organization.bname,
+                    sigunguCode: organization.sigunguCode,
+                    bcode: organization.bcode
+                  }}
                   disabled={isPending}
                   classNames={{
                     field: styles.field,

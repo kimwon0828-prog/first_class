@@ -4,6 +4,14 @@ export type OrganizationAddressInput = {
   addressLine2?: string | null
 }
 
+export type OrganizationRegionInput = {
+  sido?: string | null
+  sigungu?: string | null
+  bname?: string | null
+  sigunguCode?: string | null
+  bcode?: string | null
+}
+
 export type OrganizationAddressReadInput = {
   addressLine1?: string | null
   addressLine2?: string | null
@@ -32,6 +40,25 @@ export const buildOrganizationAddressWritePayload = (input: OrganizationAddressI
     address_detail: addressLine2
   }
 }
+
+// 행정지역 metadata 는 항상 5개가 함께 기록된다. 부분 갱신을 만들지 않는다.
+export const buildOrganizationRegionWritePayload = (input: OrganizationRegionInput) => ({
+  sido: toNullableText(input.sido),
+  sigungu: toNullableText(input.sigungu),
+  bname: toNullableText(input.bname),
+  sigungu_code: toNullableText(input.sigunguCode),
+  bcode: toNullableText(input.bcode)
+})
+
+export const buildSignupRequestRegionWritePayload = buildOrganizationRegionWritePayload
+
+export const buildAcademyUpdateRequestRegionWritePayload = (input: OrganizationRegionInput) => ({
+  requested_sido: toNullableText(input.sido),
+  requested_sigungu: toNullableText(input.sigungu),
+  requested_bname: toNullableText(input.bname),
+  requested_sigungu_code: toNullableText(input.sigunguCode),
+  requested_bcode: toNullableText(input.bcode)
+})
 
 export const resolveOrganizationAddressLines = (input: OrganizationAddressReadInput) => {
   const canonicalLine1 = toNullableText(input.addressLine1)

@@ -6,6 +6,7 @@ import { redirect } from "next/navigation"
 import { requireAdmin } from "@/features/admin/lib/require-admin"
 import {
   buildOrganizationAddressWritePayload,
+  buildOrganizationRegionWritePayload,
   buildStaleCoordinateInvalidationPayload,
   hasPrimaryOrganizationAddressChanged
 } from "@/features/organizations/lib/organization-address-contract"
@@ -24,6 +25,11 @@ type AcademyUpdateSnapshot = {
   addressLine2: string | null
   address: string | null
   addressDetail: string | null
+  sido: string | null
+  sigungu: string | null
+  bname: string | null
+  sigunguCode: string | null
+  bcode: string | null
   organizationPhone: string | null
   teacherPhone: string | null
 }
@@ -69,6 +75,11 @@ const parseSnapshot = (value: unknown): AcademyUpdateSnapshot => {
     addressLine2: toNullableText(record.addressLine2),
     address: toNullableText(record.address),
     addressDetail: toNullableText(record.addressDetail),
+    sido: toNullableText(record.sido),
+    sigungu: toNullableText(record.sigungu),
+    bname: toNullableText(record.bname),
+    sigunguCode: toNullableText(record.sigunguCode),
+    bcode: toNullableText(record.bcode),
     organizationPhone: toNullableText(record.organizationPhone),
     teacherPhone: toNullableText(record.teacherPhone)
   }
@@ -88,6 +99,9 @@ const buildOrganizationPayload = (
     addressLine1: snapshot.addressLine1 ?? snapshot.address,
     addressLine2: snapshot.addressLine2 ?? snapshot.addressDetail
   })
+  // 주소 · 행정지역 · 좌표가 항상 같은 payload 로 움직인다.
+  // rollback 에서도 current snapshot 의 지역이 그대로 복원된다.
+  const regionPayload = buildOrganizationRegionWritePayload(snapshot)
 
   return {
     name: snapshot.academyName,
@@ -97,6 +111,7 @@ const buildOrganizationPayload = (
     academy_phone: snapshot.academyPhone,
     contact_phone: snapshot.contactPhone,
     ...addressPayload,
+    ...regionPayload,
     ...(options.coordinatePayload ?? options.restoreCoordinates ?? {})
   }
 }

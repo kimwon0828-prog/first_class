@@ -20,6 +20,11 @@ export type StudioSettingsOrganization = {
   addressLine2: string | null
   address: string | null
   addressDetail: string | null
+  sido: string | null
+  sigungu: string | null
+  bname: string | null
+  sigunguCode: string | null
+  bcode: string | null
   organizationPhone: string | null
 }
 
@@ -42,6 +47,11 @@ type OrganizationRow = {
   address_line2: string | null
   address: string | null
   address_detail: string | null
+  sido: string | null
+  sigungu: string | null
+  bname: string | null
+  sigungu_code: string | null
+  bcode: string | null
 }
 
 export const getStudioSettingsOrganization = async (
@@ -76,7 +86,12 @@ export const getStudioSettingsOrganization = async (
         "address_line1",
         "address_line2",
         "address",
-        "address_detail"
+        "address_detail",
+        "sido",
+        "sigungu",
+        "bname",
+        "sigungu_code",
+        "bcode"
       ].join(", ")
     )
     .eq("id", access.organizationId)
@@ -106,6 +121,12 @@ export const getStudioSettingsOrganization = async (
     addressLine2: organization.address_line2,
     address: organization.address,
     addressDetail: organization.address_detail,
+    // metadata 가 NULL 이어도 주소 UI 는 그대로 동작한다. address_line1 에서 추측하지 않는다.
+    sido: organization.sido,
+    sigungu: organization.sigungu,
+    bname: organization.bname,
+    sigunguCode: organization.sigungu_code,
+    bcode: organization.bcode,
     organizationPhone: organization.academy_phone
   }
 }

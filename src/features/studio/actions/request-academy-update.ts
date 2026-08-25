@@ -3,7 +3,12 @@
 import { revalidatePath } from "next/cache"
 import type { SupabaseClient } from "@supabase/supabase-js"
 
-import { buildOrganizationAddressWritePayload } from "@/features/organizations/lib/organization-address-contract"
+import {
+  buildAcademyUpdateRequestRegionWritePayload,
+  buildOrganizationAddressWritePayload,
+  hasPrimaryOrganizationAddressChanged,
+  type OrganizationRegionInput
+} from "@/features/organizations/lib/organization-address-contract"
 import { requireTeacherStudioAccess } from "@/features/studio/lib/require-teacher-studio-access"
 import { getSupabaseServiceRoleClient } from "@/integrations/supabase/service-role"
 
@@ -43,6 +48,11 @@ type OrganizationRow = {
   address_line2: string | null
   address: string | null
   address_detail: string | null
+  sido: string | null
+  sigungu: string | null
+  bname: string | null
+  sigungu_code: string | null
+  bcode: string | null
 }
 
 type ProfileRoleRow = {
@@ -67,6 +77,11 @@ type AcademyUpdateSnapshot = {
   addressLine2: string | null
   address: string | null
   addressDetail: string | null
+  sido: string | null
+  sigungu: string | null
+  bname: string | null
+  sigunguCode: string | null
+  bcode: string | null
   organizationPhone: string | null
   teacherPhone: string | null
 }
@@ -101,6 +116,7 @@ const buildSnapshot = (input: {
   postalCode: string | null
   addressLine1: string | null
   addressLine2: string | null
+  region: OrganizationRegionInput
 }) => {
   const addressPayload = buildOrganizationAddressWritePayload(input)
 
@@ -118,6 +134,11 @@ const buildSnapshot = (input: {
     addressLine2: addressPayload.address_line2,
     address: addressPayload.address,
     addressDetail: addressPayload.address_detail,
+    sido: toNullableText(input.region.sido ?? ""),
+    sigungu: toNullableText(input.region.sigungu ?? ""),
+    bname: toNullableText(input.region.bname ?? ""),
+    sigunguCode: toNullableText(input.region.sigunguCode ?? ""),
+    bcode: toNullableText(input.region.bcode ?? ""),
     organizationPhone: input.academyPhone,
     teacherPhone: input.contactPhone
   } satisfies AcademyUpdateSnapshot
@@ -135,6 +156,13 @@ const validateForm = (formData: FormData) => {
   const postalCode = String(formData.get("postalCode") ?? "").trim()
   const addressLine1 = String(formData.get("addressLine1") ?? "").trim()
   const addressLine2 = String(formData.get("addressLine2") ?? "").trim()
+  const region: OrganizationRegionInput = {
+    sido: String(formData.get("sido") ?? ""),
+    sigungu: String(formData.get("sigungu") ?? ""),
+    bname: String(formData.get("bname") ?? ""),
+    sigunguCode: String(formData.get("sigunguCode") ?? ""),
+    bcode: String(formData.get("bcode") ?? "")
+  }
   const businessRegistrationFile = formData.get("businessRegistrationFile")
 
   if (academyName.length < 2 || academyName.length > 50) {
@@ -203,6 +231,7 @@ const validateForm = (formData: FormData) => {
     postalCode: toNullableText(postalCode),
     addressLine1,
     addressLine2: toNullableText(addressLine2),
+    region,
     businessRegistrationFile: selectedFile
   }
 }
@@ -272,7 +301,12 @@ export async function requestAcademyUpdateAction(
         "address_line1",
         "address_line2",
         "address",
-        "address_detail"
+        "address_detail",
+        "sido",
+        "sigungu",
+        "bname",
+        "sigungu_code",
+        "bcode"
       ].join(", ")
     )
     .eq("id", access.organizationId)
@@ -283,6 +317,23 @@ export async function requestAcademyUpdateAction(
   }
 
   const organization = organizationData as unknown as OrganizationRow
+  const organizationRegion: OrganizationRegionInput = {
+    sido: organization.sido,
+    sigungu: organization.sigungu,
+    bname: organization.bname,
+    sigunguCode: organization.sigungu_code,
+    bcode: organization.bcode
+  }
+  // 주소가 그대로면 기존 행정지역을 유지하고, 주소가 바뀌면 새 Kakao metadata 로 통째로 교체한다.
+  // 새 주소에서 일부 값이 비면 그 값은 NULL 이 되어야 하며, 이전 주소의 지역이 남으면 안 된다.
+  const primaryAddressChanged = hasPrimaryOrganizationAddressChanged(
+    organization.address_line1 ?? organization.address,
+    validated.addressLine1
+  )
+  const resolvedRegion: OrganizationRegionInput = primaryAddressChanged
+    ? validated.region
+    : organizationRegion
+
   const currentSnapshot = buildSnapshot({
     academyName: organization.name,
     academyArea: organization.academy_area,
@@ -294,7 +345,8 @@ export async function requestAcademyUpdateAction(
     contactPhone: organization.contact_phone,
     postalCode: organization.postal_code,
     addressLine1: organization.address_line1 ?? organization.address,
-    addressLine2: organization.address_line2 ?? organization.address_detail
+    addressLine2: organization.address_line2 ?? organization.address_detail,
+    region: organizationRegion
   })
 
   const requestedSnapshot = buildSnapshot({
@@ -308,7 +360,8 @@ export async function requestAcademyUpdateAction(
     contactPhone: validated.contactPhone,
     postalCode: validated.postalCode,
     addressLine1: validated.addressLine1,
-    addressLine2: validated.addressLine2
+    addressLine2: validated.addressLine2,
+    region: resolvedRegion
   })
 
   if (!validated.businessRegistrationFile && !hasSnapshotChanged(currentSnapshot, requestedSnapshot)) {
@@ -328,6 +381,7 @@ export async function requestAcademyUpdateAction(
     requested_postal_code: validated.postalCode,
     requested_address_line1: validated.addressLine1,
     requested_address_line2: validated.addressLine2,
+    ...buildAcademyUpdateRequestRegionWritePayload(resolvedRegion),
     current_snapshot: currentSnapshot,
     requested_snapshot: requestedSnapshot
   }

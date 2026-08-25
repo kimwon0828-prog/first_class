@@ -3,7 +3,10 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
 
 import { getSupabaseServiceRoleClient } from "@/integrations/supabase/service-role"
-import { buildOrganizationAddressWritePayload } from "@/features/organizations/lib/organization-address-contract"
+import {
+  buildOrganizationAddressWritePayload,
+  buildSignupRequestRegionWritePayload
+} from "@/features/organizations/lib/organization-address-contract"
 import { isAcademyAreaEnabled } from "@/shared/config/academy-areas"
 import { getSupabaseServerClient } from "@/integrations/supabase/server"
 
@@ -164,6 +167,16 @@ const validateSignUpForm = (formData: FormData) => {
     addressLine2
   })
 
+  // Kakao 가 지역에 따라 일부 필드를 빈 문자열로 주므로 NULL 로 저장하고,
+  // metadata 누락만으로 가입을 실패시키지 않는다.
+  const regionPayload = buildSignupRequestRegionWritePayload({
+    sido: String(formData.get("sido") ?? ""),
+    sigungu: String(formData.get("sigungu") ?? ""),
+    bname: String(formData.get("bname") ?? ""),
+    sigunguCode: String(formData.get("sigunguCode") ?? ""),
+    bcode: String(formData.get("bcode") ?? "")
+  })
+
   if (!(businessRegistrationFile instanceof File) || businessRegistrationFile.size <= 0) {
     logValidationFailure("businessRegistrationFile", "missing_file")
     return { ok: false as const, message: "사업자등록증 파일을 첨부해 주세요." }
@@ -214,6 +227,7 @@ const validateSignUpForm = (formData: FormData) => {
     addressLine2: addressPayload.address_line2,
     address: addressPayload.address,
     addressDetail: addressPayload.address_detail,
+    regionPayload,
     businessRegistrationFile,
     email,
     password
@@ -322,7 +336,8 @@ export async function studioSignUpAction(
         contact_phone: validated.contactPhone,
         postal_code: validated.postalCode,
         address_line1: validated.addressLine1,
-        address_line2: validated.addressLine2
+        address_line2: validated.addressLine2,
+        ...validated.regionPayload
       }
     }
   })
@@ -421,6 +436,7 @@ export async function studioSignUpAction(
         address_line2: validated.addressLine2,
         address: validated.address,
         address_detail: validated.addressDetail,
+        ...validated.regionPayload,
         teacher_phone: validated.contactPhone,
         organization_phone: validated.academyPhone
       })

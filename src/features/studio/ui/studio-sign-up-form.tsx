@@ -13,6 +13,7 @@ import {
   studioResubmitSignUpAction,
   type StudioResubmitSignUpActionState
 } from "@/features/studio/actions/studio-resubmit-sign-up"
+import type { KakaoAdministrativeRegionInput } from "@/features/maps/lib/kakao-postcode"
 import { StudioAddressFields } from "@/features/studio/ui/studio-address-fields"
 import styles from "@/features/studio/ui/studio-sign-up-form.module.css"
 
@@ -45,6 +46,7 @@ type StudioSignUpFormProps = {
     postalCode?: string | null
     addressLine1?: string | null
     addressLine2?: string | null
+    region?: KakaoAdministrativeRegionInput | null
     businessRegistrationFilePath?: string | null
   }
 }
@@ -463,6 +465,7 @@ export const StudioSignUpForm = ({
           initialPostalCode={initialValues?.postalCode}
           initialAddressLine1={initialValues?.addressLine1}
           initialAddressLine2={initialValues?.addressLine2}
+          initialRegion={initialValues?.region}
           disabled={formLocked}
           classNames={{
             field: styles.field,

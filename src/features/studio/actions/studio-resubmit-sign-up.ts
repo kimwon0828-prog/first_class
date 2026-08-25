@@ -4,7 +4,10 @@ import { redirect } from "next/navigation"
 
 import { getSupabaseServiceRoleClient } from "@/integrations/supabase/service-role"
 import { getSupabaseServerClient } from "@/integrations/supabase/server"
-import { buildOrganizationAddressWritePayload } from "@/features/organizations/lib/organization-address-contract"
+import {
+  buildOrganizationAddressWritePayload,
+  buildSignupRequestRegionWritePayload
+} from "@/features/organizations/lib/organization-address-contract"
 import { isAcademyAreaEnabled } from "@/shared/config/academy-areas"
 
 export type StudioResubmitSignUpActionState = {
@@ -109,6 +112,15 @@ const validateResubmitForm = (formData: FormData) => {
     addressLine2
   })
 
+  // signup 과 동일한 write contract 를 사용한다.
+  const regionPayload = buildSignupRequestRegionWritePayload({
+    sido: String(formData.get("sido") ?? ""),
+    sigungu: String(formData.get("sigungu") ?? ""),
+    bname: String(formData.get("bname") ?? ""),
+    sigunguCode: String(formData.get("sigunguCode") ?? ""),
+    bcode: String(formData.get("bcode") ?? "")
+  })
+
   if (businessRegistrationFile instanceof File && businessRegistrationFile.size > 0) {
     if (businessRegistrationFile.size > MAX_BUSINESS_REGISTRATION_FILE_SIZE) {
       return { ok: false as const, message: "사업자등록증 파일은 5MB 이하만 업로드할 수 있습니다." }
@@ -136,6 +148,7 @@ const validateResubmitForm = (formData: FormData) => {
     addressLine2: addressPayload.address_line2,
     address: addressPayload.address,
     addressDetail: addressPayload.address_detail,
+    regionPayload,
     keepExistingBusinessRegistrationFile,
     businessRegistrationFile:
       businessRegistrationFile instanceof File && businessRegistrationFile.size > 0
@@ -231,6 +244,7 @@ export async function studioResubmitSignUpAction(
       address_line2: validated.addressLine2,
       address: validated.address,
       address_detail: validated.addressDetail,
+      ...validated.regionPayload,
       updated_at: new Date().toISOString()
     })
     .eq("id", rejectedRequest.id)

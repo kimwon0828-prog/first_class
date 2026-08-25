@@ -21,6 +21,11 @@ type SignupRequestRow = {
   postal_code: string | null
   address_line1: string | null
   address_line2: string | null
+  sido: string | null
+  sigungu: string | null
+  bname: string | null
+  sigungu_code: string | null
+  bcode: string | null
   rejection_reason: string | null
 }
 
@@ -54,6 +59,11 @@ export default async function StudioPendingPage() {
         "postal_code",
         "address_line1",
         "address_line2",
+        "sido",
+        "sigungu",
+        "bname",
+        "sigungu_code",
+        "bcode",
         "rejection_reason"
       ].join(", ")
     )
@@ -136,6 +146,13 @@ export default async function StudioPendingPage() {
                   postalCode: request.postal_code,
                   addressLine1: request.address_line1,
                   addressLine2: request.address_line2,
+                  region: {
+                    sido: request.sido,
+                    sigungu: request.sigungu,
+                    bname: request.bname,
+                    sigunguCode: request.sigungu_code,
+                    bcode: request.bcode
+                  },
                   businessRegistrationFilePath: request.business_registration_file_path
                 }}
               />

@@ -90,6 +90,11 @@ type ApprovedSignupRequestRow = {
   address_line2: string | null
   address: string | null
   address_detail: string | null
+  sido: string | null
+  sigungu: string | null
+  bname: string | null
+  sigungu_code: string | null
+  bcode: string | null
   organization_phone: string | null
   teacher_phone: string | null
 }
@@ -355,6 +360,11 @@ const syncApprovedOrganizationFields = async (requestId: string) => {
         "address_line2",
         "address",
         "address_detail",
+        "sido",
+        "sigungu",
+        "bname",
+        "sigungu_code",
+        "bcode",
         "organization_phone",
         "teacher_phone"
       ].join(", ")
@@ -388,7 +398,13 @@ const syncApprovedOrganizationFields = async (requestId: string) => {
       address_line1: approvedRequest.address_line1,
       address_line2: approvedRequest.address_line2,
       address: approvedRequest.address,
-      address_detail: approvedRequest.address_detail
+      address_detail: approvedRequest.address_detail,
+      // 주소와 행정지역은 같은 update 로만 반영한다.
+      sido: approvedRequest.sido,
+      sigungu: approvedRequest.sigungu,
+      bname: approvedRequest.bname,
+      sigungu_code: approvedRequest.sigungu_code,
+      bcode: approvedRequest.bcode
     })
     .eq("id", approvedRequest.approved_organization_id)
 
