@@ -11,6 +11,8 @@ import { getPublicClassDetail } from "@/features/classes/queries/get-public-clas
 import { getMyChildren } from "@/features/children/queries/get-my-children"
 import { BookmarkButton } from "@/features/favorites/ui/bookmark-button"
 import { NaverMapByAddress } from "@/features/maps/ui/naver-map-by-address"
+import { resolveStoredMapCoordinates } from "@/features/maps/lib/stored-map-coordinates"
+import { resolveOrganizationAddressLines } from "@/features/organizations/lib/organization-address-contract"
 import { normalizeAcademyArea } from "@/shared/config/academy-areas"
 import { formatClassSubjectDisplayLabel } from "@/shared/lib/subject-master"
 import styles from "./page.module.css"
@@ -81,13 +83,23 @@ export default async function ClassDetailPage({ params, searchParams }: ClassDet
     isParentUser ? getMyChildren() : Promise.resolve({ data: [], error: null })
   ])
   const organization = classItem?.organization ?? null
-  const fullAddress = `${organization?.address ?? ""} ${organization?.addressDetail ?? ""}`.trim()
-  const hasLocation = Boolean(organization?.address?.trim())
-  const searchQuery = fullAddress || organization?.address?.trim() || ""
-  const naverMapUrl = `https://map.naver.com/p/search/${encodeURIComponent(searchQuery)}`
   const organizationLabel = organization
     ? [organization.name, organization.branchName].filter(Boolean).join(" ")
     : ""
+  const addressLines = resolveOrganizationAddressLines({
+    addressLine1: organization?.addressLine1,
+    addressLine2: organization?.addressLine2,
+    address: organization?.address,
+    addressDetail: organization?.addressDetail
+  })
+  const fullAddress = [addressLines.line1, addressLines.line2].filter(Boolean).join(" ")
+  const storedCoordinates = resolveStoredMapCoordinates(
+    organization?.latitude,
+    organization?.longitude
+  )
+  const hasLocation = Boolean(addressLines.line1 || storedCoordinates)
+  const searchQuery = fullAddress || organizationLabel
+  const naverMapUrl = `https://map.naver.com/p/search/${encodeURIComponent(searchQuery)}`
   const teacherProfile = classItem?.teacherProfile ?? null
   const teacherName =
     teacherProfile?.teacherName?.trim() ||
@@ -369,11 +381,14 @@ export default async function ClassDetailPage({ params, searchParams }: ClassDet
                   <div className={styles.locationStack}>
                     <div className={styles.locationTextBlock}>
                       <p className={styles.locationName}>{organizationLabel || "학원 위치"}</p>
-                      <p className={styles.bodyText}>{fullAddress}</p>
+                      <p className={styles.bodyText}>{fullAddress || "주소 정보 준비 중"}</p>
                     </div>
                     <div className={styles.mapFrame}>
                       <NaverMapByAddress
-                        address={fullAddress}
+                        address={addressLines.line1 ?? ""}
+                        addressDetail={addressLines.line2}
+                        latitude={organization?.latitude}
+                        longitude={organization?.longitude}
                         markerLabel={organizationLabel || classItem.title}
                         height={260}
                       />

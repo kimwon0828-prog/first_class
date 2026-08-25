@@ -18,6 +18,7 @@ type NaverGeocodeResponse = {
 }
 
 const NAVER_GEOCODE_ENDPOINT = "https://maps.apigw.ntruss.com/map-geocode/v2/geocode"
+const NAVER_GEOCODE_TIMEOUT_MS = 5000
 
 const normalizeAddress = (value: string) => value.replace(/\s+/g, " ").trim()
 
@@ -65,6 +66,7 @@ export const geocodeAddressOnServer = async (
         "X-NCP-APIGW-API-KEY-ID": keyId,
         "X-NCP-APIGW-API-KEY": keySecret
       },
+      signal: AbortSignal.timeout(NAVER_GEOCODE_TIMEOUT_MS),
       cache: "no-store"
     })
 

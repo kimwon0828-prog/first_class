@@ -2,11 +2,14 @@
 
 import { useEffect, useRef, useState } from "react"
 
+import { resolveStoredMapCoordinates } from "@/features/maps/lib/stored-map-coordinates"
 import { getPublicEnv } from "@/shared/config/env"
 
 type NaverMapByAddressProps = {
   address: string
   addressDetail?: string | null
+  latitude?: number | null
+  longitude?: number | null
   markerLabel?: string | null
   height?: number | string
 }
@@ -78,10 +81,18 @@ const getExistingNaverMapScript = () => {
   ) ?? null
 }
 
-const isNaverGeocodeReady = () =>
+const isNaverMapsReady = () =>
   Boolean(
     window.naver?.maps &&
-      window.naver.maps.Service &&
+      typeof window.naver.maps.Map === "function" &&
+      typeof window.naver.maps.Marker === "function" &&
+      typeof window.naver.maps.LatLng === "function"
+  )
+
+const isNaverGeocodeReady = () =>
+  Boolean(
+    isNaverMapsReady() &&
+      window.naver?.maps?.Service &&
       typeof window.naver.maps.Service.geocode === "function"
   )
 
@@ -131,13 +142,16 @@ const logMapError = (
 
 const waitForNaverSdkReady = async (
   script: HTMLScriptElement,
+  requireGeocoder: boolean,
   timeoutMs = SDK_READY_TIMEOUT_MS
 ) => {
   if (typeof window === "undefined") {
     throw new Error("window_unavailable")
   }
 
-  if (isNaverGeocodeReady()) {
+  const isReady = () => (requireGeocoder ? isNaverGeocodeReady() : isNaverMapsReady())
+
+  if (isReady()) {
     return
   }
 
@@ -145,7 +159,7 @@ const waitForNaverSdkReady = async (
     const start = Date.now()
 
     const check = () => {
-      if (isNaverGeocodeReady()) {
+      if (isReady()) {
         resolve()
         return
       }
@@ -167,12 +181,12 @@ const waitForNaverSdkReady = async (
   })
 }
 
-const ensureNaverMapScript = async (clientId: string) => {
+const ensureNaverMapScript = async (clientId: string, requireGeocoder: boolean) => {
   if (typeof window === "undefined") {
     throw new Error("window_unavailable")
   }
 
-  if (isNaverGeocodeReady()) {
+  if (requireGeocoder ? isNaverGeocodeReady() : isNaverMapsReady()) {
     return
   }
 
@@ -192,7 +206,7 @@ const ensureNaverMapScript = async (clientId: string) => {
     document.head.appendChild(script)
   }
 
-  await waitForNaverSdkReady(script)
+  await waitForNaverSdkReady(script, requireGeocoder)
 }
 
 const buildGeocodeQueries = (originalAddress: string) => {
@@ -258,6 +272,8 @@ const geocodeAddressWithRetry = async (originalAddress: string) => {
 export const NaverMapByAddress = ({
   address,
   addressDetail,
+  latitude,
+  longitude,
   markerLabel,
   height = 260
 }: NaverMapByAddressProps) => {
@@ -273,8 +289,9 @@ export const NaverMapByAddress = ({
 
     const boot = async () => {
       const container = containerRef.current
+      const storedCoordinates = resolveStoredMapCoordinates(latitude, longitude)
 
-      if (!geocodeAddress) {
+      if (!storedCoordinates && !geocodeAddress) {
         logMapError("missing_geocode_address", {
           originalAddress: geocodeAddress,
           geocodeQuery: null,
@@ -318,10 +335,10 @@ export const NaverMapByAddress = ({
 
       try {
         setStatus("loading")
-        await ensureNaverMapScript(naverMapClientId)
+        await ensureNaverMapScript(naverMapClientId, !storedCoordinates)
 
         const mapApi = window.naver?.maps
-        if (!mapApi || !window.naver?.maps?.Service) {
+        if (!mapApi) {
           logMapError("naver_map_unavailable", {
             originalAddress: geocodeAddress,
             geocodeQuery: null,
@@ -330,27 +347,40 @@ export const NaverMapByAddress = ({
           throw new Error("naver_map_unavailable")
         }
 
-        const { address: geocodedAddress, geocodeQuery, geocodeStatus } =
-          await geocodeAddressWithRetry(geocodeAddress)
+        let mapCoordinates = storedCoordinates
 
-        const lat = Number(geocodedAddress.y)
-        const lng = Number(geocodedAddress.x)
+        if (!storedCoordinates) {
+          const { address: geocodedAddress, geocodeQuery, geocodeStatus } =
+            await geocodeAddressWithRetry(geocodeAddress)
 
-        if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
-          logMapError("invalid_geocode_result", {
-            originalAddress: geocodeAddress,
-            geocodeQuery,
-            geocodeStatus,
-            extra: { lat, lng }
-          })
-          throw new Error("invalid_geocode_result")
+          const lat = Number(geocodedAddress.y)
+          const lng = Number(geocodedAddress.x)
+
+          if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+            logMapError("invalid_geocode_result", {
+              originalAddress: geocodeAddress,
+              geocodeQuery,
+              geocodeStatus,
+              extra: { lat, lng }
+            })
+            throw new Error("invalid_geocode_result")
+          }
+
+          mapCoordinates = { latitude: lat, longitude: lng }
+        }
+
+        if (!mapCoordinates) {
+          throw new Error("missing_map_coordinates")
         }
 
         if (cancelled || !containerRef.current) {
           return
         }
 
-        const position = new mapApi.LatLng(lat, lng)
+        const position = new mapApi.LatLng(
+          mapCoordinates.latitude,
+          mapCoordinates.longitude
+        )
         const map = new mapApi.Map(containerRef.current, {
           center: position,
           zoom: 16,
@@ -405,7 +435,7 @@ export const NaverMapByAddress = ({
     return () => {
       cancelled = true
     }
-  }, [displayAddress, geocodeAddress, markerLabel, naverMapClientId])
+  }, [displayAddress, geocodeAddress, latitude, longitude, markerLabel, naverMapClientId])
 
   if (status === "error") {
     return (

@@ -4,6 +4,13 @@ export type OrganizationAddressInput = {
   addressLine2?: string | null
 }
 
+export type OrganizationAddressReadInput = {
+  addressLine1?: string | null
+  addressLine2?: string | null
+  address?: string | null
+  addressDetail?: string | null
+}
+
 const toNullableText = (value: string | null | undefined) => {
   const normalized = value?.trim() ?? ""
   return normalized || null
@@ -23,6 +30,24 @@ export const buildOrganizationAddressWritePayload = (input: OrganizationAddressI
     address_line2: addressLine2,
     address: addressLine1,
     address_detail: addressLine2
+  }
+}
+
+export const resolveOrganizationAddressLines = (input: OrganizationAddressReadInput) => {
+  const canonicalLine1 = toNullableText(input.addressLine1)
+
+  if (canonicalLine1) {
+    return {
+      line1: canonicalLine1,
+      line2: toNullableText(input.addressLine2),
+      source: "canonical" as const
+    }
+  }
+
+  return {
+    line1: toNullableText(input.address),
+    line2: toNullableText(input.addressDetail),
+    source: "legacy" as const
   }
 }
 

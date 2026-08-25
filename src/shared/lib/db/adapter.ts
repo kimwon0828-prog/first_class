@@ -132,6 +132,10 @@ export type OrganizationLocationInfo = {
   branchName: string | null
   address: string | null
   addressDetail: string | null
+  addressLine1?: string | null
+  addressLine2?: string | null
+  latitude?: number | null
+  longitude?: number | null
 }
 
 export type ClassDetail = ClassSummary & {

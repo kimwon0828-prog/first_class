@@ -5,6 +5,7 @@ import { AcademyApprovalsClient } from "./academy-approvals-client"
 
 import { getMyProfile } from "@/features/auth/lib/profile-sync"
 import { sendSms } from "@/features/notifications/sms/sender"
+import { syncOrganizationCoordinatesSafely } from "@/features/organizations/lib/organization-coordinate-sync"
 import { requireSession } from "@/features/auth/lib/session"
 import { getSupabaseServiceRoleClient } from "@/integrations/supabase/service-role"
 import { getSupabaseServerClient } from "@/integrations/supabase/server"
@@ -408,6 +409,8 @@ const syncApprovedOrganizationFields = async (requestId: string) => {
       throw new Error(`failed_to_update_teacher_phone_from_signup_request:${teacherUpdateError.message}`)
     }
   }
+
+  return approvedRequest.approved_organization_id
 }
 
 const confirmApprovedSignupUserEmail = async (requestId: string) => {
@@ -507,7 +510,8 @@ export default async function AdminAcademyApprovalsPage({
     })
 
     try {
-      await syncApprovedOrganizationFields(requestId)
+      const organizationId = await syncApprovedOrganizationFields(requestId)
+      await syncOrganizationCoordinatesSafely(organizationId, "signup_approval")
       await confirmApprovedSignupUserEmail(requestId)
       await syncRequestReviewMetadata(requestId, admin.id)
     } catch (syncError) {

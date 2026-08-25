@@ -9,6 +9,7 @@ import {
   buildStaleCoordinateInvalidationPayload,
   hasPrimaryOrganizationAddressChanged
 } from "@/features/organizations/lib/organization-address-contract"
+import { syncOrganizationCoordinatesSafely } from "@/features/organizations/lib/organization-coordinate-sync"
 import { getSupabaseServiceRoleClient } from "@/integrations/supabase/service-role"
 
 type AcademyUpdateSnapshot = {
@@ -191,6 +192,13 @@ export async function approveAcademyUpdateRequestAction(formData: FormData) {
       .eq("id", requestRow.organization_id)
 
     redirectWithError("요청 상태를 approved로 저장하지 못했습니다.")
+  }
+
+  if (primaryAddressChanged) {
+    await syncOrganizationCoordinatesSafely(
+      requestRow.organization_id,
+      "address_update_approval"
+    )
   }
 
   revalidatePath("/admin/academy-update-requests")

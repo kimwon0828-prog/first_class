@@ -2,6 +2,7 @@ import "server-only"
 
 import { getSupabaseServiceRoleClient } from "@/integrations/supabase/service-role"
 
+import { resolveOrganizationAddressLines } from "./organization-address-contract"
 import { geocodeAddressOnServer } from "./naver-geocoding"
 
 type OrganizationCoordinateRow = {
@@ -39,8 +40,6 @@ const ORGANIZATION_COORDINATE_SELECT = [
   "longitude"
 ].join(", ")
 
-const normalizeText = (value: string | null | undefined) => (value ?? "").replace(/\s+/g, " ").trim()
-
 export const buildOrganizationAddressForGeocoding = (organization: {
   address_line1?: string | null
   address_line2?: string | null
@@ -48,20 +47,14 @@ export const buildOrganizationAddressForGeocoding = (organization: {
   address_detail?: string | null
   academy_area?: string | null
 }) => {
-  const primaryLine1 = normalizeText(organization.address_line1)
-  const primaryLine2 = normalizeText(organization.address_line2)
-  if (primaryLine1) {
-    return [primaryLine1, primaryLine2].filter(Boolean).join(" ").trim()
-  }
+  const address = resolveOrganizationAddressLines({
+    addressLine1: organization.address_line1,
+    addressLine2: organization.address_line2,
+    address: organization.address,
+    addressDetail: organization.address_detail
+  })
 
-  const legacyAddress = normalizeText(organization.address)
-  const legacyDetail = normalizeText(organization.address_detail)
-  if (legacyAddress) {
-    return [legacyAddress, legacyDetail].filter(Boolean).join(" ").trim()
-  }
-
-  const academyArea = normalizeText(organization.academy_area)
-  return academyArea || null
+  return address.line1
 }
 
 const buildOrganizationName = (organization: Pick<OrganizationCoordinateRow, "name" | "branch_name">) =>
@@ -126,6 +119,21 @@ export const syncOrganizationCoordinatesById = async (
   }
 
   return mapSyncResult(organization, "updated", coordinates)
+}
+
+export const syncOrganizationCoordinatesSafely = async (
+  organizationId: string,
+  trigger: "signup_approval" | "address_update_approval"
+) => {
+  try {
+    return await syncOrganizationCoordinatesById(organizationId)
+  } catch {
+    console.error("[organization coordinate sync failed]", {
+      organizationId,
+      trigger
+    })
+    return null
+  }
 }
 
 export const syncMissingOrganizationCoordinates = async (limit = 20) => {

@@ -52,6 +52,10 @@ type SafeOrganizationRow = {
   branch_name: string | null
   address: string | null
   address_detail: string | null
+  address_line1?: string | null
+  address_line2?: string | null
+  latitude?: number | null
+  longitude?: number | null
 }
 
 type SafeTeacherRow = {
@@ -189,7 +193,8 @@ const buildPublicClassesQuery = (
 }
 
 const toOrganizationLocation = (
-  row: SafeOrganizationRow | undefined
+  row: SafeOrganizationRow | undefined,
+  includeMapLocation = false
 ): OrganizationLocationInfo | null => {
   if (!row) {
     return null
@@ -199,7 +204,15 @@ const toOrganizationLocation = (
     name: row.name,
     branchName: row.branch_name ?? null,
     address: row.address ?? null,
-    addressDetail: row.address_detail ?? null
+    addressDetail: row.address_detail ?? null,
+    ...(includeMapLocation
+      ? {
+          addressLine1: row.address_line1 ?? null,
+          addressLine2: row.address_line2 ?? null,
+          latitude: row.latitude ?? null,
+          longitude: row.longitude ?? null
+        }
+      : {})
   }
 }
 
@@ -243,7 +256,7 @@ const toTeacherProfileMap = async (teacherIds: string[]) => {
   )
 }
 
-const toOrganizationMap = async (organizationIds: string[]) => {
+const toOrganizationMap = async (organizationIds: string[], includeMapLocation = false) => {
   const uniqueOrganizationIds = Array.from(new Set(organizationIds.filter(Boolean)))
   if (uniqueOrganizationIds.length === 0) {
     return new Map<string, SafeOrganizationRow>()
@@ -252,7 +265,11 @@ const toOrganizationMap = async (organizationIds: string[]) => {
   const serviceRoleClient = getSupabaseServiceRoleClient()
   const { data, error } = await serviceRoleClient
     .from("organizations")
-    .select("id, name, branch_name, address, address_detail")
+    .select(
+      includeMapLocation
+        ? "id, name, branch_name, address, address_detail, address_line1, address_line2, latitude, longitude"
+        : "id, name, branch_name, address, address_detail"
+    )
     .in("id", uniqueOrganizationIds)
 
   if (error) {
@@ -260,7 +277,7 @@ const toOrganizationMap = async (organizationIds: string[]) => {
   }
 
   return new Map<string, SafeOrganizationRow>(
-    ((data ?? []) as SafeOrganizationRow[]).map((row) => [row.id, row])
+    (((data ?? []) as unknown) as SafeOrganizationRow[]).map((row) => [row.id, row])
   )
 }
 
@@ -409,7 +426,7 @@ export const getPublicClassDetailWithSafeProjection = async (
   const [classRow] = await attachSubjectMaster([data as unknown as PublicClassRow])
   const [teacherProfileById, organizationById] = await Promise.all([
     toTeacherProfileMap(classRow.teacher_id ? [classRow.teacher_id] : []),
-    toOrganizationMap(classRow.organization_id ? [classRow.organization_id] : [])
+    toOrganizationMap(classRow.organization_id ? [classRow.organization_id] : [], true)
   ])
 
   const summary = mapPublicClassSummary(classRow, teacherProfileById)
@@ -417,7 +434,7 @@ export const getPublicClassDetailWithSafeProjection = async (
     ? teacherProfileById.get(classRow.teacher_id) ?? null
     : null
   const organization = classRow.organization_id
-    ? toOrganizationLocation(organizationById.get(classRow.organization_id))
+    ? toOrganizationLocation(organizationById.get(classRow.organization_id), true)
     : null
 
   return {
