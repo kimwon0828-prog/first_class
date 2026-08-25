@@ -77,6 +77,9 @@ type ListPublicClassesOptions = {
   subjectCategoryId?: string
   subjectId?: string
   query?: string
+  // 위치 기반 탐색: 반경 안의 organization 만 조회하고 거리를 붙인다.
+  organizationIds?: readonly string[]
+  distanceByOrganizationId?: ReadonlyMap<string, number>
 }
 
 const PUBLIC_CLASS_SELECT_FIELDS = [
@@ -187,6 +190,10 @@ const buildPublicClassesQuery = (
 
   if (options?.subjectId) {
     query = query.eq("subject_id", options.subjectId)
+  }
+
+  if (options?.organizationIds) {
+    query = query.in("organization_id", [...options.organizationIds])
   }
 
   return query
@@ -366,9 +373,13 @@ export const listPublicClassesWithSafeProjection = async (
     })
     .map((row) => {
       const organization = row.organization_id ? organizationById.get(row.organization_id) : undefined
-      const summary = {
+      const distanceKm = row.organization_id
+        ? options?.distanceByOrganizationId?.get(row.organization_id)
+        : undefined
+      const summary: ClassSummary = {
         ...mapPublicClassSummary(row, teacherProfileById),
-        organization: toOrganizationLocation(organization)
+        organization: toOrganizationLocation(organization),
+        ...(distanceKm === undefined ? {} : { distanceKm })
       }
       const subjectLabel = formatClassSubjectDisplayLabel(summary)
 

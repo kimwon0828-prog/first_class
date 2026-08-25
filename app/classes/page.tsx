@@ -12,7 +12,22 @@ import {
   formatClassSubjectDisplayLabel,
   type SubjectCatalogCategory
 } from "@/shared/lib/subject-master"
-import { ClassesRegionInlineSelect, ClassesSearchPill } from "@/features/classes/ui/classes-region-select"
+import { ClassesSearchPill } from "@/features/classes/ui/classes-region-select"
+import { ClassesLocationFilter } from "@/features/location/ui/classes-location-filter"
+import {
+  canonicalizeRegionSelection,
+  formatRegionSelectionLabel,
+  isSameRegionSelection
+} from "@/features/location/lib/region-selection"
+import { getClassesRegionCatalog } from "@/features/location/queries/get-classes-region-catalog"
+import { findOrganizationIdsByAdministrativeRegion } from "@/features/location/queries/find-organizations-by-region"
+import { readParentSearchLocation } from "@/features/location/lib/search-location-cookie"
+import {
+  formatDistanceLabel,
+  nextWiderSearchRadiusKm,
+  normalizeSearchRadiusKm
+} from "@/features/location/lib/search-location"
+import { findNearbyOrganizations } from "@/features/location/queries/find-nearby-organizations"
 import { ClassCard } from "@/features/classes/ui/class-card"
 import { ParentFooter } from "@/features/classes/ui/parent-footer"
 import { getPublicClasses } from "@/features/classes/queries/get-public-classes"
@@ -32,6 +47,10 @@ type ClassesPageProps = {
     q?: string
     subjectCategory?: string
     subject?: string
+    radius?: string
+    sido?: string
+    sigungu?: string
+    bname?: string
   }>
 }
 
@@ -112,6 +131,10 @@ const buildClassesHref = (params: {
   subjectCategory?: string | null
   subject?: string | null
   q?: string | null
+  radius?: string | null
+  sido?: string | null
+  sigungu?: string | null
+  bname?: string | null
 }) => {
   const parts: string[] = []
   if (params.region) parts.push(`region=${escapeQueryValue(params.region)}`)
@@ -120,6 +143,10 @@ const buildClassesHref = (params: {
   }
   if (params.subject) parts.push(`subject=${escapeQueryValue(params.subject)}`)
   if (params.q) parts.push(`q=${escapeQueryValue(params.q)}`)
+  if (params.radius) parts.push(`radius=${escapeQueryValue(params.radius)}`)
+  if (params.sido) parts.push(`sido=${escapeQueryValue(params.sido)}`)
+  if (params.sigungu) parts.push(`sigungu=${escapeQueryValue(params.sigungu)}`)
+  if (params.bname) parts.push(`bname=${escapeQueryValue(params.bname)}`)
   return parts.length ? `/classes?${parts.join("&")}` : "/classes"
 }
 
@@ -171,38 +198,135 @@ export default async function ClassesPage({ searchParams }: ClassesPageProps) {
     shouldCanonicalizeSubjectQuery = true
   }
 
-  if ((decodedRegion && !selectedRegion) || shouldCanonicalizeSubjectQuery) {
+  const [searchLocation, regionCatalog] = await Promise.all([
+    readParentSearchLocation(),
+    getClassesRegionCatalog()
+  ])
+  const radiusKm = normalizeSearchRadiusKm(resolvedSearchParams?.radius)
+  const rawRegionSelection = {
+    sido: decodeQueryValue(resolvedSearchParams?.sido),
+    sigungu: decodeQueryValue(resolvedSearchParams?.sigungu),
+    bname: decodeQueryValue(resolvedSearchParams?.bname)
+  }
+  // URL 값은 신뢰하지 않는다. catalog 로 계층을 재검증하고 검증되지 않는 하위 단계는 잘라낸다.
+  const regionSelection = canonicalizeRegionSelection(regionCatalog, rawRegionSelection)
+  // 명시적인 행정지역 선택이 있으면 남아 있는 location cookie 보다 우선한다.
+  const locationMode: "all" | "nearby" | "region" = regionSelection
+    ? "region"
+    : searchLocation
+      ? "nearby"
+      : "all"
+  const isNearbyMode = locationMode === "nearby"
+  const isRegionMode = locationMode === "region"
+  // 세 모드는 상호 배타이므로 legacy academy-area filter 는 "전체" 에서만 적용된다.
+  const effectiveRegion = locationMode === "all" ? selectedRegion : null
+  const radiusQueryValue = isNearbyMode ? String(radiusKm) : null
+  const regionQueryValues = {
+    sido: regionSelection?.sido ?? null,
+    sigungu: regionSelection?.sigungu ?? null,
+    bname: regionSelection?.bname ?? null
+  }
+  const shouldDropLegacyRegionQuery = Boolean(decodedRegion && locationMode !== "all")
+  const shouldCanonicalizeRegionQuery = !isSameRegionSelection(regionSelection, rawRegionSelection)
+
+  if (
+    (decodedRegion && !selectedRegion) ||
+    shouldCanonicalizeSubjectQuery ||
+    shouldDropLegacyRegionQuery ||
+    shouldCanonicalizeRegionQuery
+  ) {
     redirect(
       buildClassesHref({
-        region: selectedRegion,
+        region: effectiveRegion,
         subjectCategory: selectedSubjectCategory?.code ?? null,
         subject: selectedSubject?.code ?? null,
-        q: selectedQuery ?? null
+        q: selectedQuery ?? null,
+        radius: radiusQueryValue,
+        ...regionQueryValues
       })
     )
   }
 
-  const [{ data: classes, error }, auth] = await Promise.all([
-    getPublicClasses(selectedRegion, {
-      subjectCategoryId: selectedSubjectCategory?.id,
-      subjectId: selectedSubject?.id,
-      query: selectedQuery
-    }),
+  let distanceByOrganizationId: Map<string, number> | null = null
+  let regionOrganizationIds: string[] | null = null
+  let locationLookupFailed = false
+  if (isNearbyMode && searchLocation) {
+    try {
+      const nearbyOrganizations = await findNearbyOrganizations({
+        latitude: searchLocation.lat,
+        longitude: searchLocation.lng,
+        radiusKm
+      })
+      distanceByOrganizationId = new Map(
+        nearbyOrganizations.map((item) => [item.organizationId, item.distanceKm])
+      )
+    } catch {
+      locationLookupFailed = true
+    }
+  } else if (isRegionMode && regionSelection) {
+    try {
+      regionOrganizationIds = await findOrganizationIdsByAdministrativeRegion(regionSelection)
+    } catch {
+      locationLookupFailed = true
+    }
+  }
+
+  const shouldSkipClassFetch =
+    distanceByOrganizationId?.size === 0 || regionOrganizationIds?.length === 0
+
+  const organizationIdFilter = distanceByOrganizationId
+    ? [...distanceByOrganizationId.keys()]
+    : regionOrganizationIds
+
+  const [{ data: classes, error: classesError }, auth] = await Promise.all([
+    shouldSkipClassFetch || locationLookupFailed
+      ? Promise.resolve({ data: [] as ClassSummary[], error: null })
+      : getPublicClasses(effectiveRegion, {
+          subjectCategoryId: selectedSubjectCategory?.id,
+          subjectId: selectedSubject?.id,
+          query: selectedQuery,
+          ...(organizationIdFilter ? { organizationIds: organizationIdFilter } : {}),
+          // 지역 검색은 거리 검색이 아니므로 distanceKm 을 붙이지 않는다.
+          ...(distanceByOrganizationId ? { distanceByOrganizationId } : {})
+        }),
     resolveCurrentAuth("/classes")
   ])
-  const filteredClasses = classes
+
+  const error =
+    classesError ??
+    (locationLookupFailed
+      ? isRegionMode
+        ? "지역 정보를 불러오지 못했어요. 잠시 후 다시 시도해 주세요."
+        : "주변 학원을 불러오지 못했어요. 잠시 후 다시 시도해 주세요."
+      : null)
+
+  const filteredClasses =
+    isNearbyMode && distanceByOrganizationId
+      ? classes
+          .filter(
+            (item): item is ClassSummary & { distanceKm: number } =>
+              typeof item.distanceKm === "number"
+          )
+          .sort(
+            (left, right) => left.distanceKm - right.distanceKm || left.id.localeCompare(right.id)
+          )
+      : classes
   const { authenticated, isParentUser, isStudioUser } = auth
   const classesHref = buildClassesHref({
-    region: selectedRegion,
+    region: effectiveRegion,
     subjectCategory: selectedSubjectCategory?.code ?? null,
     subject: selectedSubject?.code ?? null,
-    q: selectedQuery ?? null
+    q: selectedQuery ?? null,
+    radius: radiusQueryValue,
+    ...regionQueryValues
   })
   const classesHomeHref = buildClassesHref({
-    region: selectedRegion,
+    region: effectiveRegion,
     subjectCategory: selectedSubjectCategory?.code ?? null,
     subject: selectedSubject?.code ?? null,
-    q: selectedQuery ?? null
+    q: selectedQuery ?? null,
+    radius: radiusQueryValue,
+    ...regionQueryValues
   })
   const myPageHref = "/my"
   const myApplicationsHref = "/my/applications"
@@ -220,12 +344,42 @@ export default async function ClassesPage({ searchParams }: ClassesPageProps) {
         ? "/studio"
         : myApplicationsHref
     : `/auth/sign-in?${new URLSearchParams({ returnTo: myApplicationsHref }).toString()}`
-  const isFilteredView = Boolean(selectedQuery || selectedSubjectCategory)
+  const isFilteredView = Boolean(selectedQuery || selectedSubjectCategory || locationMode !== "all")
   const visibleClasses = filteredClasses
   const selectedStageClasses = visibleClasses.slice(0, 8)
   const recommendedAdvancedClasses = buildCurationList(visibleClasses, isAdvancedCurationClass, 6)
   const detailHrefForClass = (classId: string) =>
-    selectedRegion ? `/classes/${classId}?region=${encodeURIComponent(selectedRegion)}` : `/classes/${classId}`
+    effectiveRegion ? `/classes/${classId}?region=${encodeURIComponent(effectiveRegion)}` : `/classes/${classId}`
+  const distanceLabelForClass = (item: ClassSummary) =>
+    isNearbyMode && typeof item.distanceKm === "number" ? formatDistanceLabel(item.distanceKm) : null
+  const regionSelectionLabel = regionSelection ? formatRegionSelectionLabel(regionSelection) : null
+  const locationFilterLabel = isRegionMode
+    ? regionSelectionLabel ?? "지역"
+    : isNearbyMode
+      ? `현재 위치 · ${radiusKm}km`
+      : "전체"
+  const legacyRegionClearHref = buildClassesHref({
+    region: null,
+    subjectCategory: selectedSubjectCategory?.code ?? null,
+    subject: selectedSubject?.code ?? null,
+    q: selectedQuery ?? null
+  })
+  const clearRegionHref = buildClassesHref({
+    region: null,
+    subjectCategory: selectedSubjectCategory?.code ?? null,
+    subject: selectedSubject?.code ?? null,
+    q: selectedQuery ?? null
+  })
+  const widerRadiusKm = nextWiderSearchRadiusKm(radiusKm)
+  const widerRadiusHref = widerRadiusKm && isNearbyMode
+    ? buildClassesHref({
+        region: null,
+        subjectCategory: selectedSubjectCategory?.code ?? null,
+        subject: selectedSubject?.code ?? null,
+        q: selectedQuery ?? null,
+        radius: String(widerRadiusKm)
+      })
+    : null
   const applyHrefForClass = (classId: string) => {
     const returnTo = `/classes/${classId}/apply`
     return authenticated
@@ -329,17 +483,38 @@ export default async function ClassesPage({ searchParams }: ClassesPageProps) {
         </header>
 
         <div className={styles.content}>
-          <section className={styles.filterSection} aria-label="학원가 선택">
+          <section className={styles.filterSection} aria-label="위치 설정">
             <div className={styles.filterPanel}>
-              <ClassesRegionInlineSelect
-                selectedRegion={selectedRegion}
+              <ClassesLocationFilter
+                mode={locationMode}
+                label={locationFilterLabel}
+                regionCatalog={regionCatalog}
+                regionSelection={regionSelection}
+                radiusKm={radiusKm}
                 className={styles.filterInlineItem}
-                rowClassName={styles.filterInlineTrigger}
-                nameClassName={styles.filterInlineLabel}
+                triggerClassName={styles.filterInlineTrigger}
+                labelClassName={styles.filterInlineLabel}
                 iconClassName={styles.filterInlineIcon}
                 chevronWrapClassName={styles.filterInlineChevron}
                 openChevronClassName={styles.filterInlineChevronOpen}
+                radiusRailClassName={styles.radiusRail}
+                radiusChipClassName={styles.radiusChip}
+                radiusChipActiveClassName={styles.radiusChipActive}
               />
+              {effectiveRegion ? (
+                <div className={styles.legacyRegionRow}>
+                  <span className={styles.legacyRegionChip}>
+                    {effectiveRegion}
+                    <Link
+                      href={legacyRegionClearHref}
+                      className={styles.legacyRegionClear}
+                      aria-label={`${effectiveRegion} 필터 해제`}
+                    >
+                      ×
+                    </Link>
+                  </span>
+                </div>
+              ) : null}
             </div>
           </section>
 
@@ -377,10 +552,12 @@ export default async function ClassesPage({ searchParams }: ClassesPageProps) {
               <nav className={styles.subjectChipRail} aria-label="과목 대분류">
                 <Link
                   href={buildClassesHref({
-                    region: selectedRegion,
+                    region: effectiveRegion,
                     subjectCategory: null,
                     subject: null,
-                    q: selectedQuery ?? null
+                    q: selectedQuery ?? null,
+                    radius: radiusQueryValue,
+                    ...regionQueryValues
                   })}
                   className={`${styles.subjectChip} ${!selectedSubjectCategory ? styles.subjectChipActive : ""}`}
                   aria-current={!selectedSubjectCategory ? "page" : undefined}
@@ -393,10 +570,12 @@ export default async function ClassesPage({ searchParams }: ClassesPageProps) {
                     <Link
                       key={category.id}
                       href={buildClassesHref({
-                        region: selectedRegion,
+                        region: effectiveRegion,
                         subjectCategory: category.code,
                         subject: null,
-                        q: selectedQuery ?? null
+                        q: selectedQuery ?? null,
+                        radius: radiusQueryValue,
+                        ...regionQueryValues
                       })}
                       className={`${styles.subjectChip} ${isActive ? styles.subjectChipActive : ""}`}
                       aria-current={isActive ? "page" : undefined}
@@ -411,10 +590,12 @@ export default async function ClassesPage({ searchParams }: ClassesPageProps) {
                 <nav className={styles.subjectDetailChipRail} aria-label={`${selectedSubjectCategory.name} 세부 과목`}>
                   <Link
                     href={buildClassesHref({
-                      region: selectedRegion,
+                      region: effectiveRegion,
                       subjectCategory: selectedSubjectCategory.code,
                       subject: null,
-                      q: selectedQuery ?? null
+                      q: selectedQuery ?? null,
+                      radius: radiusQueryValue,
+                      ...regionQueryValues
                     })}
                     className={`${styles.subjectDetailChip} ${!selectedSubject ? styles.subjectDetailChipActive : ""}`}
                     aria-current={!selectedSubject ? "page" : undefined}
@@ -427,10 +608,12 @@ export default async function ClassesPage({ searchParams }: ClassesPageProps) {
                       <Link
                         key={subject.id}
                         href={buildClassesHref({
-                          region: selectedRegion,
+                          region: effectiveRegion,
                           subjectCategory: selectedSubjectCategory.code,
                           subject: subject.code,
-                          q: selectedQuery ?? null
+                          q: selectedQuery ?? null,
+                          radius: radiusQueryValue,
+                          ...regionQueryValues
                         })}
                         className={`${styles.subjectDetailChip} ${isActive ? styles.subjectDetailChipActive : ""}`}
                         aria-current={isActive ? "page" : undefined}
@@ -464,8 +647,29 @@ export default async function ClassesPage({ searchParams }: ClassesPageProps) {
           {shouldShowPageEmptyState ? (
             <section className={styles.pageEmptyState}>
               <div className={styles.pageEmptyInner}>
-                <p className={styles.pageEmptyTitle}>선택하신 조건에 맞는 수업이 아직 없어요</p>
-                <p className={styles.pageEmptyDesc}>다른 학년이나 지역으로 찾아보세요</p>
+                <p className={styles.pageEmptyTitle}>
+                  {isNearbyMode
+                    ? `선택한 위치 ${radiusKm}km 이내에 예약 가능한 수업이 없어요`
+                    : isRegionMode
+                      ? "선택한 지역에 예약 가능한 수업이 없어요"
+                      : "선택하신 조건에 맞는 수업이 아직 없어요"}
+                </p>
+                <p className={styles.pageEmptyDesc}>
+                  {isNearbyMode
+                    ? "검색 반경을 넓히거나 다른 조건으로 찾아보세요"
+                    : isRegionMode
+                      ? "다른 지역이나 조건으로 찾아보세요"
+                      : "다른 학년이나 조건으로 찾아보세요"}
+                </p>
+                {isNearbyMode && widerRadiusKm && widerRadiusHref ? (
+                  <Link href={widerRadiusHref} className={styles.resetButton}>
+                    {`${widerRadiusKm}km로 넓히기`}
+                  </Link>
+                ) : isRegionMode ? (
+                  <Link href={clearRegionHref} className={styles.resetButton}>
+                    전체 수업 보기
+                  </Link>
+                ) : null}
                 <Link href="/classes" className={styles.resetButton}>
                   조건 초기화
                 </Link>
@@ -481,35 +685,43 @@ export default async function ClassesPage({ searchParams }: ClassesPageProps) {
                     ? `${selectedSubjectCategory.name}${selectedSubject ? ` · ${selectedSubject.name}` : ""} · "${selectedQuery}" 결과`
                     : selectedSubjectCategory
                       ? `${selectedSubjectCategory.name}${selectedSubject ? ` · ${selectedSubject.name}` : ""} 수업`
-                      : `"${selectedQuery}" 검색 결과`}
+                      : selectedQuery
+                        ? `"${selectedQuery}" 검색 결과`
+                        : isRegionMode
+                          ? `${regionSelectionLabel} 수업`
+                          : `${radiusKm}km 이내 수업`}
                 </h2>
-                <Link
-                  href={buildClassesHref({
-                    region: selectedRegion,
-                    subjectCategory: null,
-                    subject: null,
-                    q: null
-                  })}
-                  className={styles.sectionLink}
-                >
-                  필터 해제
-                  <svg
-                    width="16"
-                    height="16"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    xmlns="http://www.w3.org/2000/svg"
-                    aria-hidden="true"
+{selectedSubjectCategory || selectedQuery ? (
+                  <Link
+                    href={buildClassesHref({
+                      region: effectiveRegion,
+                      subjectCategory: null,
+                      subject: null,
+                      q: null,
+                      radius: radiusQueryValue,
+                      ...regionQueryValues
+                    })}
+                    className={styles.sectionLink}
                   >
-                    <path
-                      d="M9 18l6-6-6-6"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  </svg>
-                </Link>
+                    필터 해제
+                    <svg
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      xmlns="http://www.w3.org/2000/svg"
+                      aria-hidden="true"
+                    >
+                      <path
+                        d="M9 18l6-6-6-6"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                  </Link>
+                ) : null}
               </div>
               <ul className={styles.resultGrid}>
                 {visibleClasses.map((item) => {
@@ -529,6 +741,7 @@ export default async function ClassesPage({ searchParams }: ClassesPageProps) {
                         secondaryLabel={`${formatCardRegionLabel(item.region)} · ${getClassSubjectLabel(item)}`}
                         priceLabel={formatPrice(item.trialPrice)}
                         isFree={item.trialPrice <= 0}
+                        distanceLabel={distanceLabelForClass(item)}
                         classId={item.id}
                       />
                     </li>
@@ -583,6 +796,7 @@ export default async function ClassesPage({ searchParams }: ClassesPageProps) {
                           isFree={classItem.trialPrice <= 0}
                           statusBadge={{ label: "예약 가능", tone: "open" }}
                           scheduleLabel={scheduleSummary}
+                          distanceLabel={distanceLabelForClass(classItem)}
                           classId={classItem.id}
                         />
                       </li>
@@ -638,6 +852,7 @@ export default async function ClassesPage({ searchParams }: ClassesPageProps) {
                             priceLabel={formatPrice(item.trialPrice)}
                             isFree={item.trialPrice <= 0}
                             statusBadge={{ label: "추천", tone: "muted" }}
+                            distanceLabel={distanceLabelForClass(item)}
                             classId={item.id}
                           />
                         </li>

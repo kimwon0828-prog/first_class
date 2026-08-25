@@ -32,6 +32,8 @@ export const getPublicClasses = async (
     subjectCategoryId?: string
     subjectId?: string
     query?: string
+    organizationIds?: readonly string[]
+    distanceByOrganizationId?: ReadonlyMap<string, number>
   }
 ): Promise<QueryResult<ClassSummary[]>> => {
   try {
@@ -56,7 +58,9 @@ export const getPublicClasses = async (
               subject: options?.subject,
               subjectCategoryId: options?.subjectCategoryId,
               subjectId: options?.subjectId,
-              query: options?.query
+              query: options?.query,
+              organizationIds: options?.organizationIds,
+              distanceByOrganizationId: options?.distanceByOrganizationId
             })
           : await (await import("@/shared/lib/db")).dataAdapter.listClasses({
               subject: options?.subject,
@@ -70,7 +74,9 @@ export const getPublicClasses = async (
               subject: options?.subject,
               subjectCategoryId: options?.subjectCategoryId,
               subjectId: options?.subjectId,
-              query: options?.query
+              query: options?.query,
+              organizationIds: options?.organizationIds,
+              distanceByOrganizationId: options?.distanceByOrganizationId
             })
           : await (await import("@/shared/lib/db")).dataAdapter.listClasses({
               region,

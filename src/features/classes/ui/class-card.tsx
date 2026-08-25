@@ -16,6 +16,7 @@ export type ClassCardProps = {
   isFree: boolean
   statusBadge?: { label: string; tone: "open" | "muted" } | null
   scheduleLabel?: string | null
+  distanceLabel?: string | null
   classId: string
 }
 
@@ -28,6 +29,7 @@ export function ClassCard({
   secondaryLabel,
   priceLabel,
   isFree,
+  distanceLabel,
   classId
 }: ClassCardProps) {
   return (
@@ -63,6 +65,7 @@ export function ClassCard({
         <h3 className={styles.title}>{title}</h3>
         {secondaryLabel ? <p className={styles.meta}>{secondaryLabel}</p> : null}
         {academyName ? <p className={styles.academy}>{academyName}</p> : null}
+        {distanceLabel ? <p className={styles.distance}>{distanceLabel}</p> : null}
       </div>
     </Link>
   )

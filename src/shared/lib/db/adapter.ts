@@ -108,6 +108,7 @@ export type ClassSummary = ClassSubjectReadModel & {
   isActive: boolean
   organization?: OrganizationLocationInfo | null
   schedules?: StudioClassScheduleItem[]
+  distanceKm?: number
 }
 
 export type StudioClassListItem = ClassSubjectReadModel & {
