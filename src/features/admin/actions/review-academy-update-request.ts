@@ -4,6 +4,11 @@ import { revalidatePath } from "next/cache"
 import { redirect } from "next/navigation"
 
 import { requireAdmin } from "@/features/admin/lib/require-admin"
+import {
+  buildOrganizationAddressWritePayload,
+  buildStaleCoordinateInvalidationPayload,
+  hasPrimaryOrganizationAddressChanged
+} from "@/features/organizations/lib/organization-address-contract"
 import { getSupabaseServiceRoleClient } from "@/integrations/supabase/service-role"
 
 type AcademyUpdateSnapshot = {
@@ -28,6 +33,12 @@ type AcademyUpdateRequestRow = {
   status: "pending" | "approved" | "rejected"
   current_snapshot: unknown
   requested_snapshot: unknown
+}
+
+type OrganizationCoordinatesRow = {
+  latitude: number | null
+  longitude: number | null
+  map_updated_at: string | null
 }
 
 const RETURN_TO = "/admin/academy-update-requests"
@@ -62,19 +73,32 @@ const parseSnapshot = (value: unknown): AcademyUpdateSnapshot => {
   }
 }
 
-const buildOrganizationPayload = (snapshot: AcademyUpdateSnapshot) => ({
-  name: snapshot.academyName,
-  representative_name: snapshot.representativeName,
-  business_registration_number: snapshot.businessRegistrationNumber,
-  business_registration_file_path: snapshot.businessRegistrationFilePath,
-  academy_phone: snapshot.academyPhone,
-  contact_phone: snapshot.contactPhone,
-  postal_code: snapshot.postalCode,
-  address_line1: snapshot.addressLine1,
-  address_line2: snapshot.addressLine2,
-  address: snapshot.addressLine1 ?? snapshot.address,
-  address_detail: snapshot.addressLine2 ?? snapshot.addressDetail
-})
+type BuildOrganizationPayloadOptions = {
+  coordinatePayload?: Partial<OrganizationCoordinatesRow>
+  restoreCoordinates?: OrganizationCoordinatesRow | null
+}
+
+const buildOrganizationPayload = (
+  snapshot: AcademyUpdateSnapshot,
+  options: BuildOrganizationPayloadOptions = {}
+) => {
+  const addressPayload = buildOrganizationAddressWritePayload({
+    postalCode: snapshot.postalCode,
+    addressLine1: snapshot.addressLine1 ?? snapshot.address,
+    addressLine2: snapshot.addressLine2 ?? snapshot.addressDetail
+  })
+
+  return {
+    name: snapshot.academyName,
+    representative_name: snapshot.representativeName,
+    business_registration_number: snapshot.businessRegistrationNumber,
+    business_registration_file_path: snapshot.businessRegistrationFilePath,
+    academy_phone: snapshot.academyPhone,
+    contact_phone: snapshot.contactPhone,
+    ...addressPayload,
+    ...(options.coordinatePayload ?? options.restoreCoordinates ?? {})
+  }
+}
 
 const redirectWithError = (message: string): never => {
   redirect(`${RETURN_TO}?error=${encodeURIComponent(message)}`)
@@ -107,10 +131,37 @@ export async function approveAcademyUpdateRequestAction(formData: FormData) {
 
   const currentSnapshot = parseSnapshot(requestRow.current_snapshot)
   const requestedSnapshot = parseSnapshot(requestRow.requested_snapshot)
+  const primaryAddressChanged = hasPrimaryOrganizationAddressChanged(
+    currentSnapshot.addressLine1 ?? currentSnapshot.address,
+    requestedSnapshot.addressLine1 ?? requestedSnapshot.address
+  )
+  const staleCoordinatePayload = buildStaleCoordinateInvalidationPayload(
+    currentSnapshot.addressLine1 ?? currentSnapshot.address,
+    requestedSnapshot.addressLine1 ?? requestedSnapshot.address
+  )
+  let previousCoordinates: OrganizationCoordinatesRow | null = null
+
+  if (primaryAddressChanged) {
+    const { data: coordinateData, error: coordinateError } = await serviceRoleClient
+      .from("organizations")
+      .select("latitude, longitude, map_updated_at")
+      .eq("id", requestRow.organization_id)
+      .maybeSingle()
+
+    if (coordinateError || !coordinateData) {
+      redirectWithError("기존 위치 좌표를 확인하지 못했습니다.")
+    }
+
+    previousCoordinates = coordinateData as OrganizationCoordinatesRow
+  }
 
   const { error: organizationError } = await serviceRoleClient
     .from("organizations")
-    .update(buildOrganizationPayload(requestedSnapshot))
+    .update(
+      buildOrganizationPayload(requestedSnapshot, {
+        coordinatePayload: staleCoordinatePayload
+      })
+    )
     .eq("id", requestRow.organization_id)
 
   if (organizationError) {
@@ -132,7 +183,11 @@ export async function approveAcademyUpdateRequestAction(formData: FormData) {
   if (requestUpdateError) {
     await serviceRoleClient
       .from("organizations")
-      .update(buildOrganizationPayload(currentSnapshot))
+      .update(
+        buildOrganizationPayload(currentSnapshot, {
+          restoreCoordinates: previousCoordinates
+        })
+      )
       .eq("id", requestRow.organization_id)
 
     redirectWithError("요청 상태를 approved로 저장하지 못했습니다.")

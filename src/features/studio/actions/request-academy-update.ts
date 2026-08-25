@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache"
 import type { SupabaseClient } from "@supabase/supabase-js"
 
+import { buildOrganizationAddressWritePayload } from "@/features/organizations/lib/organization-address-contract"
 import { requireTeacherStudioAccess } from "@/features/studio/lib/require-teacher-studio-access"
 import { getSupabaseServiceRoleClient } from "@/integrations/supabase/service-role"
 
@@ -100,23 +101,27 @@ const buildSnapshot = (input: {
   postalCode: string | null
   addressLine1: string | null
   addressLine2: string | null
-}) => ({
-  academyName: input.academyName,
-  academyArea: input.academyArea,
-  branchName: input.branchName,
-  representativeName: input.representativeName,
-  businessRegistrationNumber: input.businessRegistrationNumber,
-  businessRegistrationFilePath: input.businessRegistrationFilePath,
-  academyPhone: input.academyPhone,
-  contactPhone: input.contactPhone,
-  postalCode: input.postalCode,
-  addressLine1: input.addressLine1,
-  addressLine2: input.addressLine2,
-  address: input.addressLine1,
-  addressDetail: input.addressLine2,
-  organizationPhone: input.academyPhone,
-  teacherPhone: input.contactPhone
-}) satisfies AcademyUpdateSnapshot
+}) => {
+  const addressPayload = buildOrganizationAddressWritePayload(input)
+
+  return {
+    academyName: input.academyName,
+    academyArea: input.academyArea,
+    branchName: input.branchName,
+    representativeName: input.representativeName,
+    businessRegistrationNumber: input.businessRegistrationNumber,
+    businessRegistrationFilePath: input.businessRegistrationFilePath,
+    academyPhone: input.academyPhone,
+    contactPhone: input.contactPhone,
+    postalCode: addressPayload.postal_code,
+    addressLine1: addressPayload.address_line1,
+    addressLine2: addressPayload.address_line2,
+    address: addressPayload.address,
+    addressDetail: addressPayload.address_detail,
+    organizationPhone: input.academyPhone,
+    teacherPhone: input.contactPhone
+  } satisfies AcademyUpdateSnapshot
+}
 
 const hasSnapshotChanged = (current: AcademyUpdateSnapshot, next: AcademyUpdateSnapshot) =>
   JSON.stringify(current) !== JSON.stringify(next)

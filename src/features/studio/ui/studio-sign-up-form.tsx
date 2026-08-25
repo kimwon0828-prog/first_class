@@ -13,6 +13,7 @@ import {
   studioResubmitSignUpAction,
   type StudioResubmitSignUpActionState
 } from "@/features/studio/actions/studio-resubmit-sign-up"
+import { StudioAddressFields } from "@/features/studio/ui/studio-address-fields"
 import styles from "@/features/studio/ui/studio-sign-up-form.module.css"
 
 type SharedActionState = StudioSignUpActionState | StudioResubmitSignUpActionState
@@ -22,8 +23,6 @@ const initialState: SharedActionState = {
   message: ""
 }
 
-const KAKAO_POSTCODE_SCRIPT_SRC =
-  "https://t1.kakaocdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"
 const MAX_BUSINESS_REGISTRATION_FILE_SIZE = 5 * 1024 * 1024
 const BUSINESS_REGISTRATION_ACCEPT = "application/pdf,image/jpeg,image/png,image/webp"
 const ALLOWED_BUSINESS_REGISTRATION_MIME_TYPES = new Set([
@@ -32,31 +31,6 @@ const ALLOWED_BUSINESS_REGISTRATION_MIME_TYPES = new Set([
   "image/png",
   "image/webp"
 ])
-
-type KakaoPostcodeResult = {
-  zonecode?: string
-  roadAddress?: string
-  jibunAddress?: string
-  userSelectedType?: "R" | "J"
-}
-
-type KakaoPostcodeInstance = {
-  open: () => void
-}
-
-type KakaoPostcodeConstructor = new (options: {
-  oncomplete: (data: KakaoPostcodeResult) => void
-}) => KakaoPostcodeInstance
-
-declare global {
-  interface Window {
-    kakao?: {
-      Postcode?: KakaoPostcodeConstructor
-    }
-  }
-}
-
-let kakaoPostcodeScriptPromise: Promise<KakaoPostcodeConstructor> | null = null
 
 type StudioSignUpFormProps = {
   mode?: "signup" | "resubmit"
@@ -137,64 +111,12 @@ const FieldLabel = ({
   )
 }
 
-const loadKakaoPostcode = () => {
-  if (typeof window === "undefined") {
-    return Promise.reject(new Error("browser_only"))
-  }
-
-  if (window.kakao?.Postcode) {
-    return Promise.resolve(window.kakao.Postcode)
-  }
-
-  if (kakaoPostcodeScriptPromise) {
-    return kakaoPostcodeScriptPromise
-  }
-
-  kakaoPostcodeScriptPromise = new Promise<KakaoPostcodeConstructor>((resolve, reject) => {
-    const existingScript = document.querySelector<HTMLScriptElement>(`script[src="${KAKAO_POSTCODE_SCRIPT_SRC}"]`)
-
-    const handleLoad = () => {
-      const postcode = window.kakao?.Postcode
-      if (postcode) {
-        resolve(postcode)
-        return
-      }
-
-      kakaoPostcodeScriptPromise = null
-      reject(new Error("postcode_constructor_missing"))
-    }
-
-    const handleError = () => {
-      kakaoPostcodeScriptPromise = null
-      reject(new Error("postcode_script_load_failed"))
-    }
-
-    if (existingScript) {
-      existingScript.addEventListener("load", handleLoad, { once: true })
-      existingScript.addEventListener("error", handleError, { once: true })
-      return
-    }
-
-    const script = document.createElement("script")
-    script.src = KAKAO_POSTCODE_SCRIPT_SRC
-    script.async = true
-    script.addEventListener("load", handleLoad, { once: true })
-    script.addEventListener("error", handleError, { once: true })
-    document.body.appendChild(script)
-  })
-
-  return kakaoPostcodeScriptPromise
-}
-
 export const StudioSignUpForm = ({
   mode = "signup",
   initialValues
 }: StudioSignUpFormProps) => {
   const action = mode === "resubmit" ? studioResubmitSignUpAction : studioSignUpAction
   const [state, formAction, isPending] = useActionState(action, initialState)
-  const [postalCode, setPostalCode] = useState("")
-  const [addressLine1, setAddressLine1] = useState("")
-  const [addressLine2, setAddressLine2] = useState("")
   const [businessRegistrationNumber, setBusinessRegistrationNumber] = useState("")
   const [businessRegistrationNumberTouched, setBusinessRegistrationNumberTouched] = useState(false)
   const [password, setPassword] = useState("")
@@ -212,9 +134,6 @@ export const StudioSignUpForm = ({
     Boolean(initialValues?.businessRegistrationFilePath)
   )
   const [hasAttemptedSubmit, setHasAttemptedSubmit] = useState(false)
-  const [postcodeError, setPostcodeError] = useState<string | null>(null)
-  const [isSearchingAddress, setIsSearchingAddress] = useState(false)
-  const detailAddressRef = useRef<HTMLInputElement | null>(null)
   const businessRegistrationFileRef = useRef<HTMLInputElement | null>(null)
   const allAgreementRef = useRef<HTMLInputElement | null>(null)
   const formContentRef = useRef<HTMLDivElement | null>(null)
@@ -249,15 +168,9 @@ export const StudioSignUpForm = ({
       return
     }
 
-    setPostalCode(initialValues?.postalCode?.trim() ?? "")
-    setAddressLine1(initialValues?.addressLine1?.trim() ?? "")
-    setAddressLine2(initialValues?.addressLine2?.trim() ?? "")
     setBusinessRegistrationNumber(initialValues?.businessRegistrationNumber?.trim() ?? "")
   }, [
-    initialValues?.addressLine1,
-    initialValues?.addressLine2,
     initialValues?.businessRegistrationNumber,
-    initialValues?.postalCode,
     isResubmitMode
   ])
 
@@ -421,38 +334,6 @@ export const StudioSignUpForm = ({
     }
   }
 
-  const handleAddressSearch = async () => {
-    setPostcodeError(null)
-    setIsSearchingAddress(true)
-
-    try {
-      const Postcode = await loadKakaoPostcode()
-
-      new Postcode({
-        oncomplete: (data) => {
-          const selectedAddress =
-            data.userSelectedType === "R"
-              ? data.roadAddress?.trim() || data.jibunAddress?.trim() || ""
-              : data.jibunAddress?.trim() || data.roadAddress?.trim() || ""
-
-          setPostalCode(data.zonecode?.trim() || "")
-          setAddressLine1(selectedAddress)
-          setAddressLine2("")
-
-          window.setTimeout(() => {
-            detailAddressRef.current?.focus()
-          }, 0)
-        }
-      }).open()
-
-      setIsSearchingAddress(false)
-    } catch (error) {
-      console.error("[studio sign-up postcode load failed]", error)
-      setPostcodeError("주소 검색을 불러오지 못했어요. 잠시 후 다시 시도해 주세요.")
-      setIsSearchingAddress(false)
-    }
-  }
-
   return (
     <form action={formAction} className={styles.form} onSubmit={handleSubmit}>
       <div ref={formContentRef} className={styles.formContent}>
@@ -578,63 +459,23 @@ export const StudioSignUpForm = ({
           </p>
         </label>
 
-        <label className={styles.field}>
-          <FieldLabel text="우편번호" optional />
-          <input
-            name="postalCode"
-            type="text"
-            maxLength={20}
-            disabled={formLocked}
-            readOnly
-            className={styles.input}
-            placeholder="예: 12345"
-            value={postalCode}
-          />
-        </label>
-
-        <div className={styles.field}>
-          <FieldLabel text="기본 주소" required />
-          <div className={styles.addressSearchRow}>
-            <input
-              name="addressLine1"
-              type="text"
-              required
-              maxLength={120}
-              disabled={formLocked}
-              readOnly
-              className={styles.input}
-              placeholder="주소 검색으로 주소를 선택해 주세요"
-              value={addressLine1}
-            />
-            <button
-              type="button"
-              disabled={formLocked || isSearchingAddress}
-              className={styles.addressSearchButton}
-              onClick={() => {
-                void handleAddressSearch()
-              }}
-            >
-              {isSearchingAddress ? "검색 준비 중..." : "주소 검색"}
-            </button>
-          </div>
-          <p className={styles.fieldHint}>학부모에게 노출되는 위치 정보입니다. 정확한 주소를 입력해주세요.</p>
-          {postcodeError ? <p className={styles.errorMessage}>{postcodeError}</p> : null}
-        </div>
-
-        <label className={styles.field}>
-          <FieldLabel text="상세 주소" optional />
-          <input
-            name="addressLine2"
-            type="text"
-            maxLength={120}
-            disabled={formLocked}
-            className={styles.input}
-            placeholder="예) 5층 500-7호"
-            value={addressLine2}
-            onChange={(event) => setAddressLine2(event.target.value)}
-            ref={detailAddressRef}
-          />
-        </label>
+        <StudioAddressFields
+          initialPostalCode={initialValues?.postalCode}
+          initialAddressLine1={initialValues?.addressLine1}
+          initialAddressLine2={initialValues?.addressLine2}
+          disabled={formLocked}
+          classNames={{
+            field: styles.field,
+            label: styles.label,
+            requiredMark: styles.requiredMark,
+            optionalText: styles.optionalText,
+            input: styles.input,
+            addressSearchRow: styles.addressSearchRow,
+            addressSearchButton: styles.addressSearchButton,
+            hint: styles.fieldHint,
+            error: styles.errorMessage
+          }}
+        />
 
         <div className={styles.field}>
           <FieldLabel text="사업자등록증" required error={Boolean(fileError)} />

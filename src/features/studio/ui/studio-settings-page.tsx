@@ -8,6 +8,7 @@ import {
 } from "@/features/studio/actions/request-academy-update"
 import type { PendingAcademyUpdateRequest } from "@/features/studio/queries/get-pending-academy-update-request"
 import type { StudioSettingsOrganization } from "@/features/studio/queries/get-studio-settings-organization"
+import { StudioAddressFields } from "@/features/studio/ui/studio-address-fields"
 import styles from "./studio-settings-page.module.css"
 
 type StudioSettingsPageProps = {
@@ -301,42 +302,24 @@ export function StudioSettingsPage({
                   />
                 </label>
 
-                <label className={styles.field}>
-                  <span className={styles.label}>우편번호</span>
-                  <input
-                    name="postalCode"
-                    type="text"
-                    defaultValue={organization.postalCode ?? ""}
-                    maxLength={20}
-                    disabled={isPending}
-                    className={styles.input}
-                  />
-                </label>
-
-                <label className={`${styles.field} ${styles.fullWidthField}`}>
-                  <span className={styles.label}>기본 주소</span>
-                  <input
-                    name="addressLine1"
-                    type="text"
-                    defaultValue={organization.addressLine1 ?? organization.address ?? ""}
-                    maxLength={120}
-                    required
-                    disabled={isPending}
-                    className={styles.input}
-                  />
-                </label>
-
-                <label className={`${styles.field} ${styles.fullWidthField}`}>
-                  <span className={styles.label}>상세 주소</span>
-                  <input
-                    name="addressLine2"
-                    type="text"
-                    defaultValue={organization.addressLine2 ?? organization.addressDetail ?? ""}
-                    maxLength={120}
-                    disabled={isPending}
-                    className={styles.input}
-                  />
-                </label>
+                <StudioAddressFields
+                  initialPostalCode={organization.postalCode}
+                  initialAddressLine1={organization.addressLine1 ?? organization.address}
+                  initialAddressLine2={organization.addressLine2 ?? organization.addressDetail}
+                  disabled={isPending}
+                  classNames={{
+                    field: styles.field,
+                    fullWidthField: styles.fullWidthField,
+                    label: styles.label,
+                    requiredMark: styles.requiredMark,
+                    optionalText: styles.optionalText,
+                    input: styles.input,
+                    addressSearchRow: styles.addressSearchRow,
+                    addressSearchButton: styles.addressSearchButton,
+                    hint: styles.fieldHint,
+                    error: styles.addressError
+                  }}
+                />
 
                 <label className={`${styles.field} ${styles.fullWidthField}`}>
                   <span className={styles.label}>사업자등록증 재업로드</span>

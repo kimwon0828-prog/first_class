@@ -4,6 +4,7 @@ import { redirect } from "next/navigation"
 
 import { getSupabaseServiceRoleClient } from "@/integrations/supabase/service-role"
 import { getSupabaseServerClient } from "@/integrations/supabase/server"
+import { buildOrganizationAddressWritePayload } from "@/features/organizations/lib/organization-address-contract"
 import { isAcademyAreaEnabled } from "@/shared/config/academy-areas"
 
 export type StudioResubmitSignUpActionState = {
@@ -102,7 +103,11 @@ const validateResubmitForm = (formData: FormData) => {
     return { ok: false as const, message: "상세 주소는 120자 이하로 입력해 주세요." }
   }
 
-  const address = [addressLine1, addressLine2].filter(Boolean).join(" ").trim()
+  const addressPayload = buildOrganizationAddressWritePayload({
+    postalCode,
+    addressLine1,
+    addressLine2
+  })
 
   if (businessRegistrationFile instanceof File && businessRegistrationFile.size > 0) {
     if (businessRegistrationFile.size > MAX_BUSINESS_REGISTRATION_FILE_SIZE) {
@@ -126,11 +131,11 @@ const validateResubmitForm = (formData: FormData) => {
     businessRegistrationNumber,
     academyPhone,
     contactPhone,
-    postalCode: postalCode || null,
-    addressLine1,
-    addressLine2: addressLine2 || null,
-    address,
-    addressDetail: addressLine2 || null,
+    postalCode: addressPayload.postal_code,
+    addressLine1: addressPayload.address_line1 ?? addressLine1,
+    addressLine2: addressPayload.address_line2,
+    address: addressPayload.address,
+    addressDetail: addressPayload.address_detail,
     keepExistingBusinessRegistrationFile,
     businessRegistrationFile:
       businessRegistrationFile instanceof File && businessRegistrationFile.size > 0
