@@ -4,7 +4,6 @@ import Link from "next/link"
 import { redirect } from "next/navigation"
 
 import {
-  getSubjectLabel,
   normalizeSubjectCategory,
   SUBJECT_CATEGORIES,
   type SubjectCategoryValue
@@ -12,6 +11,7 @@ import {
 import { resolveCurrentAuth } from "@/features/auth/lib/current-auth"
 import { getPublicClassCardScheduleSummaries } from "@/features/classes/queries/get-public-class-card-schedule-summaries"
 import type { ClassSummary } from "@/shared/lib/db/adapter"
+import { formatClassSubjectDisplayLabel } from "@/shared/lib/subject-master"
 import { ClassesRegionInlineSelect, ClassesSearchPill } from "@/features/classes/ui/classes-region-select"
 import { ClassCard } from "@/features/classes/ui/class-card"
 import { ParentFooter } from "@/features/classes/ui/parent-footer"
@@ -149,6 +149,9 @@ const SubjectOutlineIcon = ({ subject }: { subject: SubjectCategoryValue }) => {
 
 const normalizeText = (value: string | null | undefined) => (value ?? "").trim().toLowerCase()
 
+const getClassSubjectLabel = (item: ClassSummary) =>
+  formatClassSubjectDisplayLabel(item) || "과목 정보 준비 중"
+
 const resolveSubjectCategory = (value: string) => {
   const normalized = normalizeSubjectCategory(value)
   if (!normalized) {
@@ -160,7 +163,7 @@ const resolveSubjectCategory = (value: string) => {
 
 const matchesKeyword = (item: ClassSummary, keywords: readonly string[]) => {
   const haystack = normalizeText(
-    [item.title, item.subject, getSubjectLabel(item.subject), item.description, item.targetAge, item.classFormat]
+    [item.title, item.subject, getClassSubjectLabel(item), item.description, item.targetAge, item.classFormat]
       .filter(Boolean)
       .join(" ")
   )
@@ -551,8 +554,8 @@ export default async function ClassesPage({ searchParams }: ClassesPageProps) {
                         thumbnailAlt={`${item.title} 대표 이미지`}
                         title={item.title}
                         academyName={academyName}
-                        subjectLabel={getSubjectLabel(item.subject)}
-                        secondaryLabel={`${formatCardRegionLabel(item.region)} · ${getSubjectLabel(item.subject) ?? "과목 정보 준비 중"}`}
+                        subjectLabel={getClassSubjectLabel(item)}
+                        secondaryLabel={`${formatCardRegionLabel(item.region)} · ${getClassSubjectLabel(item)}`}
                         priceLabel={formatPrice(item.trialPrice)}
                         isFree={item.trialPrice <= 0}
                         classId={item.id}
@@ -603,8 +606,8 @@ export default async function ClassesPage({ searchParams }: ClassesPageProps) {
                           thumbnailAlt={`${classItem.title} 대표 이미지`}
                           title={classItem.title}
                           academyName={academyName}
-                          subjectLabel={getSubjectLabel(classItem.subject)}
-                          secondaryLabel={`${formatCardRegionLabel(classItem.region)} · ${getSubjectLabel(classItem.subject) ?? "과목 정보 준비 중"}`}
+                          subjectLabel={getClassSubjectLabel(classItem)}
+                          secondaryLabel={`${formatCardRegionLabel(classItem.region)} · ${getClassSubjectLabel(classItem)}`}
                           priceLabel={formatPrice(classItem.trialPrice)}
                           isFree={classItem.trialPrice <= 0}
                           statusBadge={{ label: "예약 가능", tone: "open" }}
@@ -659,8 +662,8 @@ export default async function ClassesPage({ searchParams }: ClassesPageProps) {
                             thumbnailAlt={`${item.title} 대표 이미지`}
                             title={item.title}
                             academyName={academyName}
-                            subjectLabel={getSubjectLabel(item.subject)}
-                            secondaryLabel={`${formatCardRegionLabel(item.region)} · ${getSubjectLabel(item.subject) ?? "과목 정보 준비 중"}`}
+                            subjectLabel={getClassSubjectLabel(item)}
+                            secondaryLabel={`${formatCardRegionLabel(item.region)} · ${getClassSubjectLabel(item)}`}
                             priceLabel={formatPrice(item.trialPrice)}
                             isFree={item.trialPrice <= 0}
                             statusBadge={{ label: "추천", tone: "muted" }}
@@ -696,7 +699,7 @@ export default async function ClassesPage({ searchParams }: ClassesPageProps) {
                             ? [item.organization.name, item.organization.branchName].filter(Boolean).join(" ").trim()
                             : null
                         }
-                        subjectLabel={getSubjectLabel(item.subject)}
+                        subjectLabel={getClassSubjectLabel(item)}
                         gradeLabel={formatStoredTargetGrades(item.targetAge)}
                         priceLabel={formatPrice(item.trialPrice)}
                         isFree={item.trialPrice <= 0}

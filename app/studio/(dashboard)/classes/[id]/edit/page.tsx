@@ -1,7 +1,10 @@
 import { notFound } from "next/navigation"
 
 import { requireTeacherStudioAccess } from "@/features/studio/lib/require-teacher-studio-access"
-import { getStudioClassFormOptions } from "@/features/studio/queries/get-studio-class-form-options"
+import {
+  getStudioClassFormOptions,
+  getStudioSubjectCatalog
+} from "@/features/studio/queries/get-studio-class-form-options"
 import { getStudioClasses } from "@/features/studio/queries/get-studio-classes"
 import { getStudioScheduleCalendar } from "@/features/studio/queries/get-studio-schedule-calendar"
 import { StudioClassForm } from "@/features/studio/ui/studio-class-form"
@@ -23,10 +26,15 @@ export default async function StudioClassEditPage({ params, searchParams }: Stud
     resolvedSearchParams?.month && /^\d{4}-\d{2}$/.test(resolvedSearchParams.month)
       ? resolvedSearchParams.month
       : `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, "0")}`
-  const [{ data: classes, error: classesError }, { data: teacherOptions, error: teacherOptionsError }] =
+  const [
+    { data: classes, error: classesError },
+    { data: teacherOptions, error: teacherOptionsError },
+    { data: subjectCatalog, error: subjectCatalogError }
+  ] =
     await Promise.all([
       getStudioClasses(teacher.organizationId),
-      getStudioClassFormOptions(teacher.organizationId)
+      getStudioClassFormOptions(teacher.organizationId),
+      getStudioSubjectCatalog()
     ])
 
   if (classesError) {
@@ -52,6 +60,8 @@ export default async function StudioClassEditPage({ params, searchParams }: Stud
       currentTeacherId={teacher.teacherId}
       teacherOptions={teacherOptions}
       teacherOptionsError={teacherOptionsError}
+      subjectCatalog={subjectCatalog}
+      subjectCatalogError={subjectCatalogError}
       initialItem={targetClass}
       scheduleCalendarMonth={month}
       scheduleCalendarDays={scheduleCalendar.days}

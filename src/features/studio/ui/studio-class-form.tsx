@@ -25,11 +25,8 @@ import {
   type UpsertStudioClassActionState
 } from "@/features/studio/actions/upsert-studio-class"
 import { getStudioClassFieldExamples } from "@/features/studio/lib/studio-class-field-examples"
-import {
-  normalizeStudioClassSubjectOption,
-  studioClassSubjectOptions
-} from "@/features/studio/lib/studio-class-options"
 import { StudioClassScheduleEditor } from "@/features/studio/ui/studio-class-schedule-editor"
+import { StudioSubjectSelector } from "@/features/studio/ui/studio-subject-selector"
 import { getSupabaseBrowserClient } from "@/integrations/supabase/client"
 import type {
   ClassAssignmentMode,
@@ -40,6 +37,11 @@ import type {
   StudioClassScheduleType,
   StudioTeacherOption
 } from "@/shared/lib/db/adapter"
+import {
+  findSubjectCatalogCategory,
+  findSubjectCatalogSelection,
+  type SubjectCatalogCategory
+} from "@/shared/lib/subject-master"
 import styles from "./studio-class-form.module.css"
 
 type StudioClassFormProps = {
@@ -47,6 +49,8 @@ type StudioClassFormProps = {
   currentTeacherId: string
   teacherOptions: StudioTeacherOption[]
   teacherOptionsError: string | null
+  subjectCatalog: SubjectCatalogCategory[]
+  subjectCatalogError: string | null
   initialItem?: ClassSummary | null
   onCreated?: () => void
   onUpdated?: () => void
@@ -167,6 +171,8 @@ export const StudioClassForm = ({
   currentTeacherId,
   teacherOptions,
   teacherOptionsError,
+  subjectCatalog,
+  subjectCatalogError,
   initialItem,
   onCreated,
   onUpdated,
@@ -186,6 +192,14 @@ export const StudioClassForm = ({
     () => (Array.isArray(teacherOptions) ? teacherOptions : []),
     [teacherOptions]
   )
+  const safeSubjectCatalog = useMemo(
+    () => (Array.isArray(subjectCatalog) ? subjectCatalog : []),
+    [subjectCatalog]
+  )
+  const initialSubjectSelection = useMemo(
+    () => findSubjectCatalogSelection(safeSubjectCatalog, initialItem?.subjectId),
+    [initialItem?.subjectId, safeSubjectCatalog]
+  )
   const [activeTab, setActiveTab] = useState<EditFormTabId>("info")
   const [isDirty, setIsDirty] = useState(false)
   const [headerTitle, setHeaderTitle] = useState(initialItem?.title ?? "")
@@ -196,8 +210,11 @@ export const StudioClassForm = ({
   const [selectedAssignmentMode, setSelectedAssignmentMode] = useState<ClassAssignmentMode>(
     initialItem?.assignmentMode ?? "post_assign"
   )
-  const [selectedSubject, setSelectedSubject] = useState(
-    normalizeStudioClassSubjectOption(initialItem?.subject) ?? ""
+  const [selectedSubjectCategoryId, setSelectedSubjectCategoryId] = useState(
+    initialItem?.subjectCategoryId ?? initialSubjectSelection?.category.id ?? ""
+  )
+  const [selectedSubjectId, setSelectedSubjectId] = useState(
+    initialItem?.subjectId ?? ""
   )
   const [description, setDescription] = useState(initialItem?.description ?? "")
   const [recommendedFor, setRecommendedFor] = useState(initialItem?.recommendedFor ?? "")
@@ -224,7 +241,7 @@ export const StudioClassForm = ({
   const action = useMemo(() => upsertStudioClassAction, [])
   const [state, formAction, isPending] = useActionState(action, initialState)
   const legacySubjectValue =
-    initialItem?.subject?.trim() && !normalizeStudioClassSubjectOption(initialItem.subject)
+    !initialItem?.subjectCategoryId && !initialItem?.subjectId && initialItem?.subject?.trim()
       ? initialItem.subject.trim()
       : null
   const initialTargetGrades = useMemo(
@@ -291,7 +308,18 @@ export const StudioClassForm = ({
     initialItem?.teacherId && fallbackTeacherOption && !teacherOptionIds.has(initialItem.teacherId)
   )
   const isPreassignedMode = selectedAssignmentMode === "preassigned"
-  const fieldExamples = useMemo(() => getStudioClassFieldExamples(selectedSubject), [selectedSubject])
+  const selectedSubjectSelection = useMemo(
+    () => findSubjectCatalogSelection(safeSubjectCatalog, selectedSubjectId),
+    [safeSubjectCatalog, selectedSubjectId]
+  )
+  const selectedSubjectCategory = useMemo(
+    () => findSubjectCatalogCategory(safeSubjectCatalog, selectedSubjectCategoryId),
+    [safeSubjectCatalog, selectedSubjectCategoryId]
+  )
+  const fieldExamples = useMemo(
+    () => getStudioClassFieldExamples(selectedSubjectSelection?.subject.code),
+    [selectedSubjectSelection?.subject.code]
+  )
   const mode = selectedClassId ? "update" : "create"
   const previousOkRef = useRef(false)
   const initializedSnapshotKeyRef = useRef<string | null>(null)
@@ -301,7 +329,9 @@ export const StudioClassForm = ({
       programType: initialItem?.programType ?? "trial_class",
       trialPrice: String(initialItem?.trialPrice ?? 0),
       assignmentMode: initialItem?.assignmentMode ?? "post_assign",
-      subject: normalizeStudioClassSubjectOption(initialItem?.subject) ?? "",
+      subjectCategoryId:
+        initialItem?.subjectCategoryId ?? initialSubjectSelection?.category.id ?? "",
+      subjectId: initialItem?.subjectId ?? "",
       description: initialItem?.description ?? "",
       targetGrades: parseStoredTargetGrades(initialItem?.targetAge),
       region: normalizeAcademyArea(initialItem?.region),
@@ -328,9 +358,11 @@ export const StudioClassForm = ({
       initialItem?.recommendedFor,
       initialItem?.region,
       initialItem?.schedules,
-      initialItem?.subject,
+      initialItem?.subjectId,
+      initialItem?.subjectCategoryId,
       initialItem?.targetAge,
-      initialItem?.teacherId
+      initialItem?.teacherId,
+      initialSubjectSelection?.category.id
     ]
   )
   const protectedScheduleCount = useMemo(
@@ -415,7 +447,8 @@ export const StudioClassForm = ({
     setSelectedProgramType(initialFormSnapshot.programType)
     setTrialPrice(initialFormSnapshot.trialPrice)
     setSelectedAssignmentMode(initialFormSnapshot.assignmentMode)
-    setSelectedSubject(initialFormSnapshot.subject)
+    setSelectedSubjectCategoryId(initialFormSnapshot.subjectCategoryId)
+    setSelectedSubjectId(initialFormSnapshot.subjectId)
     setDescription(initialFormSnapshot.description)
     setSelectedTargetGrades(initialFormSnapshot.targetGrades)
     setSelectedRegion(initialFormSnapshot.region)
@@ -508,7 +541,8 @@ export const StudioClassForm = ({
     refreshDirtyState,
     selectedProgramType,
     trialPrice,
-    selectedSubject,
+    selectedSubjectCategoryId,
+    selectedSubjectId,
     selectedTargetGrades,
     selectedAssignmentMode,
     selectedTeacherId,
@@ -759,7 +793,8 @@ export const StudioClassForm = ({
         {mode === "update" ? <input type="hidden" name="classId" value={selectedClassId} /> : null}
         <input type="hidden" name="programType" value={selectedProgramType} />
         <input type="hidden" name="classFormat" value={resolvedClassFormat} />
-        <input type="hidden" name="subject" value={selectedSubject} />
+        <input type="hidden" name="subjectCategoryId" value={selectedSubjectCategoryId} />
+        <input type="hidden" name="subjectId" value={selectedSubjectId} />
         <input type="hidden" name="coverImageUrl" value={coverImageUrl ?? ""} />
         {selectedTargetGrades.map((grade) => (
           <input key={grade} type="hidden" name="targetGrades" value={grade} />
@@ -812,35 +847,23 @@ export const StudioClassForm = ({
                         />
                       </label>
 
-                      <label className={styles.field}>
-                        <span className={styles.fieldLabel}>과목</span>
-                        <div className={styles.chipGroup}>
-                          {studioClassSubjectOptions.map((option) => {
-                            const isSelected = selectedSubject === option
-
-                            return (
-                              <button
-                                key={option}
-                                type="button"
-                                onClick={() => setSelectedSubject(option)}
-                                disabled={isPending}
-                                className={`${styles.chipButton} ${isSelected ? styles.chipButtonSelected : ""}`}
-                              >
-                                {getSubjectLabel(option)}
-                              </button>
-                            )
-                          })}
-                        </div>
-                        <span className={styles.fieldHint}>
-                          {selectedSubject ? `선택한 과목: ${getSubjectLabel(selectedSubject)}` : "과목 칩에서 1개를 선택해 주세요."}
-                        </span>
-                        {legacySubjectValue ? (
-                          <span className={styles.fieldHint}>
-                            기존 저장값은 `{getSubjectLabel(legacySubjectValue) ?? legacySubjectValue}` 입니다. 수정 저장 시에는 과목을
-                            다시 선택해 주세요.
-                          </span>
-                        ) : null}
-                      </label>
+                      <div className={styles.field}>
+                        <span className={styles.fieldLabel}>과목 *</span>
+                        <StudioSubjectSelector
+                          catalog={safeSubjectCatalog}
+                          categoryId={selectedSubjectCategoryId}
+                          subjectId={selectedSubjectId}
+                          onCategoryChange={setSelectedSubjectCategoryId}
+                          onSubjectChange={setSelectedSubjectId}
+                          disabled={isPending}
+                          catalogError={subjectCatalogError}
+                          legacySubjectLabel={
+                            legacySubjectValue && !selectedSubjectCategoryId
+                              ? getSubjectLabel(legacySubjectValue) ?? legacySubjectValue
+                              : null
+                          }
+                        />
+                      </div>
 
                       <label className={styles.field}>
                         <span className={styles.fieldLabel}>대상 학년</span>
@@ -1068,7 +1091,11 @@ export const StudioClassForm = ({
                       </div>
 
                       <div className={styles.previewMetaRow}>
-                        {selectedSubject ? <span className={styles.previewPill}>{getSubjectLabel(selectedSubject)}</span> : null}
+                        {selectedSubjectCategory ? (
+                          <span className={styles.previewPill}>
+                            {selectedSubjectSelection?.subject.name ?? selectedSubjectCategory.name}
+                          </span>
+                        ) : null}
                         {previewTargetGradeLabel ? <span className={styles.previewPill}>{previewTargetGradeLabel}</span> : null}
                       </div>
 

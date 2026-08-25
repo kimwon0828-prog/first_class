@@ -10,8 +10,7 @@ import {
 import {
   LEARNER_GRADES,
   LEARNER_GRADE_GROUPS,
-  getLearnerGradesByGroup,
-  getSubjectLabel
+  getLearnerGradesByGroup
 } from "@/shared/constants/education-taxonomy"
 import { getSupabaseBrowserClient } from "@/integrations/supabase/client"
 import {
@@ -22,9 +21,7 @@ import { getStudioClassFieldExamples } from "@/features/studio/lib/studio-class-
 import { studioClassIntroTemplates } from "@/features/studio/lib/studio-class-intro-templates"
 import {
   normalizeStudioClassSubjectOption,
-  studioClassProgramTypeOptions,
-  studioClassSubjectOptions,
-  type StudioClassSubjectOption
+  studioClassProgramTypeOptions
 } from "@/features/studio/lib/studio-class-options"
 import {
   buildCreateClassScheduleDraftSlots,
@@ -32,11 +29,17 @@ import {
   StudioClassCreateScheduleStep,
   type CreateClassScheduleDraft
 } from "@/features/studio/ui/studio-class-create-schedule-step"
+import { StudioSubjectSelector } from "@/features/studio/ui/studio-subject-selector"
 import type {
   ClassAssignmentMode,
   ClassProgramType,
   StudioTeacherOption
 } from "@/shared/lib/db/adapter"
+import {
+  findSubjectCatalogCategory,
+  findSubjectCatalogSelection,
+  type SubjectCatalogCategory
+} from "@/shared/lib/subject-master"
 import styles from "./studio-class-create-wizard.module.css"
 
 type StudioClassCreateWizardProps = {
@@ -45,6 +48,8 @@ type StudioClassCreateWizardProps = {
   currentTeacherId: string
   teacherOptions: StudioTeacherOption[]
   teacherOptionsError: string | null
+  subjectCatalog: SubjectCatalogCategory[]
+  subjectCatalogError: string | null
   createSuccessHref: string
 }
 
@@ -57,7 +62,8 @@ type CreateFormTabId = "info" | "schedule" | "visibility"
 type DraftValues = {
   programType: ClassProgramType
   title: string
-  subject: StudioClassSubjectOption | ""
+  subjectCategoryId: string
+  subjectId: string
   targetGrades: string[]
   classFormat: string
   trialPrice: string
@@ -73,7 +79,7 @@ type DraftValues = {
 }
 
 type StoredDraft = {
-  version: 1 | 2
+  version: 1 | 2 | 3 | 4
   step: WizardStepId
   values: DraftValues
   updatedAt: string
@@ -129,7 +135,8 @@ const resolveClassFormatSelection = (value: string) => {
 const createDefaultDraftValues = (): DraftValues => ({
   programType: "trial_class",
   title: "",
-  subject: "",
+  subjectCategoryId: "",
+  subjectId: "",
   targetGrades: [],
   classFormat: "",
   trialPrice: "",
@@ -145,8 +152,6 @@ const createDefaultDraftValues = (): DraftValues => ({
 })
 
 const createDraftStorageKey = (organizationId: string) => `studio-class-create-draft:${organizationId}`
-
-const formatSubjectLabel = (subject: StudioClassSubjectOption | "") => getSubjectLabel(subject) ?? "과목 선택"
 
 const LEARNER_GRADE_ORDER: string[] = LEARNER_GRADES.map((item) => item.value)
 
@@ -213,7 +218,15 @@ const parseStoredDraft = (raw: string | null): StoredDraft | null => {
 
   try {
     const parsed = JSON.parse(raw) as StoredDraft
-    if (!(parsed?.version === 1 || parsed?.version === 2) || !parsed.values) {
+    if (
+      !(
+        parsed?.version === 1 ||
+        parsed?.version === 2 ||
+        parsed?.version === 3 ||
+        parsed?.version === 4
+      ) ||
+      !parsed.values
+    ) {
       return null
     }
     return parsed
@@ -304,10 +317,16 @@ export const StudioClassCreateWizard = ({
   currentTeacherId,
   teacherOptions,
   teacherOptionsError,
+  subjectCatalog,
+  subjectCatalogError,
   createSuccessHref
 }: StudioClassCreateWizardProps) => {
   const router = useRouter()
   const safeTeacherOptions = useMemo(() => (Array.isArray(teacherOptions) ? teacherOptions : []), [teacherOptions])
+  const safeSubjectCatalog = useMemo(
+    () => (Array.isArray(subjectCatalog) ? subjectCatalog : []),
+    [subjectCatalog]
+  )
   const [currentStep, setCurrentStep] = useState<WizardStepId>(1)
   const [values, setValues] = useState<DraftValues>(createDefaultDraftValues)
   const [fieldErrors, setFieldErrors] = useState<ValidationErrors>({})
@@ -325,21 +344,47 @@ export const StudioClassCreateWizard = ({
     () => buildCreateClassScheduleDraftSlots(values.scheduleDraft),
     [values.scheduleDraft]
   )
-  const fieldExamples = useMemo(() => getStudioClassFieldExamples(values.subject), [values.subject])
+  const selectedSubjectSelection = useMemo(
+    () => findSubjectCatalogSelection(safeSubjectCatalog, values.subjectId),
+    [safeSubjectCatalog, values.subjectId]
+  )
+  const selectedSubjectCategory = useMemo(
+    () => findSubjectCatalogCategory(safeSubjectCatalog, values.subjectCategoryId),
+    [safeSubjectCatalog, values.subjectCategoryId]
+  )
+  const fieldExamples = useMemo(
+    () => getStudioClassFieldExamples(selectedSubjectSelection?.subject.code),
+    [selectedSubjectSelection?.subject.code]
+  )
   const canPublish = generatedScheduleSlots.length > 0
 
   useEffect(() => {
     const parsed = parseStoredDraft(typeof window !== "undefined" ? window.localStorage.getItem(draftStorageKey) : null)
     if (parsed) {
-      const normalizedSubject = normalizeStudioClassSubjectOption(parsed.values.subject) ?? ""
-      const normalizedClassFormat = String(parsed.values.classFormat ?? "")
+      const restoredValues = { ...parsed.values } as DraftValues & { subject?: unknown }
+      delete restoredValues.subject
+      const restoredSubjectSelection =
+        parsed.version >= 3
+          ? findSubjectCatalogSelection(safeSubjectCatalog, restoredValues.subjectId)
+          : null
+      const restoredCategory =
+        parsed.version === 4
+          ? findSubjectCatalogCategory(safeSubjectCatalog, restoredValues.subjectCategoryId)
+          : restoredSubjectSelection?.category ?? null
+      const restoredSubject =
+        restoredSubjectSelection &&
+        restoredSubjectSelection.category.id === restoredCategory?.id
+          ? restoredSubjectSelection.subject
+          : null
+      const normalizedClassFormat = String(restoredValues.classFormat ?? "")
       const nextClassFormatSelection = resolveClassFormatSelection(normalizedClassFormat)
       setValues({
         ...createDefaultDraftValues(),
-        ...parsed.values,
-        subject: normalizedSubject,
+        ...restoredValues,
+        subjectCategoryId: restoredCategory?.id ?? "",
+        subjectId: restoredSubject?.id ?? "",
         classFormat: normalizedClassFormat,
-        scheduleDraft: normalizeLoadedScheduleDraft(parsed.values.scheduleDraft)
+        scheduleDraft: normalizeLoadedScheduleDraft(restoredValues.scheduleDraft)
       })
       setClassFormatSelection(nextClassFormatSelection)
       setCustomClassFormat(
@@ -351,7 +396,7 @@ export const StudioClassCreateWizard = ({
       setCustomClassFormat("")
     }
     draftHydratedRef.current = true
-  }, [draftStorageKey])
+  }, [draftStorageKey, safeSubjectCatalog])
 
   useEffect(() => {
     if (values.assignmentMode !== "preassigned") {
@@ -383,7 +428,7 @@ export const StudioClassCreateWizard = ({
     const timeout = window.setTimeout(() => {
       try {
         const payload: StoredDraft = {
-          version: 2,
+          version: 4,
           step: normalizeCurrentStep(currentStep),
           values,
           updatedAt: new Date().toISOString()
@@ -437,6 +482,16 @@ export const StudioClassCreateWizard = ({
     })
   }
 
+  const updateSubjectCategoryId = (categoryId: string) => {
+    updateValue("subjectCategoryId", categoryId)
+    setFieldErrors((current) => ({ ...current, subject: undefined }))
+  }
+
+  const updateSubjectId = (subjectId: string) => {
+    updateValue("subjectId", subjectId)
+    setFieldErrors((current) => ({ ...current, subject: undefined }))
+  }
+
   const toggleGrade = (grade: string) => {
     const orderedTargetGrades = getOrderedTargetGrades(values.targetGrades)
     const hasCompletedRange = orderedTargetGrades.length > 1
@@ -480,7 +535,7 @@ export const StudioClassCreateWizard = ({
       if (values.title.trim().length < 2) {
         nextErrors.title = "프로그램명은 2자 이상 입력해 주세요."
       }
-      if (!values.subject) {
+      if (!values.subjectCategoryId) {
         nextErrors.subject = "과목을 선택해 주세요."
       }
       if (values.targetGrades.length === 0) {
@@ -621,13 +676,21 @@ export const StudioClassCreateWizard = ({
   }
 
   const applyIntroTemplate = () => {
-    if (!values.subject) {
+    if (!selectedSubjectSelection) {
       setFieldErrors((current) => ({ ...current, subject: "예시 문구를 넣으려면 먼저 과목을 선택해 주세요." }))
       setCurrentStep(1)
       return
     }
 
-    updateValue("description", studioClassIntroTemplates[values.subject])
+    const legacyTemplateSubject = normalizeStudioClassSubjectOption(
+      selectedSubjectSelection.subject.code
+    )
+    updateValue(
+      "description",
+      legacyTemplateSubject
+        ? studioClassIntroTemplates[legacyTemplateSubject]
+        : fieldExamples.description
+    )
     setFieldErrors((current) => ({ ...current, description: undefined }))
   }
 
@@ -705,7 +768,8 @@ export const StudioClassCreateWizard = ({
         <input type="hidden" name="mode" value="create" />
         <input type="hidden" name="programType" value={values.programType} />
         <input type="hidden" name="title" value={values.title} />
-        <input type="hidden" name="subject" value={values.subject} />
+        <input type="hidden" name="subjectCategoryId" value={values.subjectCategoryId} />
+        <input type="hidden" name="subjectId" value={values.subjectId} />
         <input type="hidden" name="region" value={organizationAcademyArea ?? ""} />
         <input type="hidden" name="description" value={values.description} />
         <input type="hidden" name="classFormat" value={values.classFormat} />
@@ -780,19 +844,16 @@ export const StudioClassCreateWizard = ({
 
                         <div className={styles.fieldBlock}>
                           <label className={styles.fieldLabel}>과목 *</label>
-                          <div className={styles.chipRow}>
-                            {studioClassSubjectOptions.map((option) => (
-                              <button
-                                key={option}
-                                type="button"
-                                className={`${styles.choiceChip} ${values.subject === option ? styles.choiceChipSelected : ""}`}
-                                onClick={() => updateValue("subject", option)}
-                              >
-                                {formatSubjectLabel(option)}
-                              </button>
-                            ))}
-                          </div>
-                          {renderFieldError(fieldErrors.subject)}
+                          <StudioSubjectSelector
+                            catalog={safeSubjectCatalog}
+                            categoryId={values.subjectCategoryId}
+                            subjectId={values.subjectId}
+                            onCategoryChange={updateSubjectCategoryId}
+                            onSubjectChange={updateSubjectId}
+                            disabled={isPending}
+                            error={fieldErrors.subject}
+                            catalogError={subjectCatalogError}
+                          />
                         </div>
 
                         <div className={styles.fieldBlock}>
@@ -1001,7 +1062,11 @@ export const StudioClassCreateWizard = ({
                         </div>
 
                         <div className={styles.infoPreviewMetaRow}>
-                          {values.subject ? <span className={styles.infoPreviewPill}>{formatSubjectLabel(values.subject)}</span> : null}
+                          {selectedSubjectCategory ? (
+                            <span className={styles.infoPreviewPill}>
+                              {selectedSubjectSelection?.subject.name ?? selectedSubjectCategory.name}
+                            </span>
+                          ) : null}
                           {values.targetGrades.length > 0 ? (
                             <span className={styles.infoPreviewPill}>
                               {formatStoredTargetGrades(values.targetGrades.join(","))}

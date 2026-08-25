@@ -12,6 +12,7 @@ import { getMyChildren } from "@/features/children/queries/get-my-children"
 import { BookmarkButton } from "@/features/favorites/ui/bookmark-button"
 import { NaverMapByAddress } from "@/features/maps/ui/naver-map-by-address"
 import { normalizeAcademyArea } from "@/shared/config/academy-areas"
+import { formatClassSubjectDisplayLabel } from "@/shared/lib/subject-master"
 import styles from "./page.module.css"
 
 type ClassDetailPageProps = {
@@ -107,6 +108,9 @@ export default async function ClassDetailPage({ params, searchParams }: ClassDet
       ? `${organizationLabel} / 담당 선생님은 신청 후 학원에서 배정됩니다.`
       : "담당 선생님은 신청 후 학원에서 배정됩니다."
   const targetGradeLabel = formatStoredTargetGrades(classItem?.targetAge)
+  const classSubjectLabel = classItem
+    ? formatClassSubjectDisplayLabel(classItem) || "과목 정보 준비 중"
+    : null
   const recommendedItems = splitMultilineItems(classItem?.recommendedFor)
   const experienceItems = splitMultilineItems(classItem?.experiencePoints)
   const hasTeacherProfileContent = Boolean(
@@ -246,7 +250,7 @@ export default async function ClassDetailPage({ params, searchParams }: ClassDet
                     {formatProgramType(classItem.programType)}
                   </span>
                   <span className={`${styles.badge} ${styles.badgeMuted}`}>
-                    {getSubjectLabel(classItem.subject)}
+                    {classSubjectLabel}
                   </span>
                   <span className={`${styles.badge} ${styles.badgeMuted}`}>{classItem.region}</span>
                 </div>
@@ -272,7 +276,7 @@ export default async function ClassDetailPage({ params, searchParams }: ClassDet
                   </div>
                   <div className={styles.infoRow}>
                     <span className={styles.infoLabel}>과목</span>
-                    <span className={styles.infoValue}>{getSubjectLabel(classItem.subject)}</span>
+                    <span className={styles.infoValue}>{classSubjectLabel}</span>
                   </div>
                   <div className={styles.infoRow}>
                     <span className={styles.infoLabel}>대상 학년</span>

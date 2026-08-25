@@ -52,6 +52,7 @@ import type {
   UpdateStudioClassScheduleInput
 } from "@/shared/lib/db/adapter"
 import { getConsultationPipelineGroup } from "@/shared/lib/consultation-pipeline"
+import { resolveLegacySubjectChange } from "@/shared/lib/class-subject-write"
 import {
   buildSeoulOccurrenceRange,
   formatSeoulDateKey,
@@ -62,7 +63,14 @@ import {
   DEFAULT_TEACHER_PUBLIC_VISIBILITY,
   normalizeTeacherPublicVisibility
 } from "@/shared/lib/teacher-public-visibility"
-import { getSubjectLabel, normalizeSubjectCategory } from "@/shared/constants/education-taxonomy"
+import { normalizeSubjectCategory } from "@/shared/constants/education-taxonomy"
+import {
+  buildClassSubjectReadModel,
+  formatClassSubjectDisplayLabel,
+  type ClassSubjectReadModel,
+  type Subject,
+  type SubjectCategory
+} from "@/shared/lib/subject-master"
 
 type MockScheduleBlock = StudioScheduleBlockSummary & {
   classId: string | null
@@ -74,6 +82,69 @@ type MockApplicationRecord = StudioApplicationDetail & {
 
 const mockOrganizationId = "org-1"
 const mockTeacherProfileId = "teacher-profile-1"
+const mockMasterCategories: SubjectCategory[] = [
+  {
+    id: "00000000-0000-4000-8000-000000000001",
+    code: "math",
+    name: "수학",
+    sortOrder: 2
+  },
+  {
+    id: "00000000-0000-4000-8000-000000000002",
+    code: "english",
+    name: "영어",
+    sortOrder: 3
+  },
+  {
+    id: "00000000-0000-4000-8000-000000000003",
+    code: "music",
+    name: "음악",
+    sortOrder: 8
+  }
+]
+const mockMasterSubjects: Subject[] = [
+  {
+    id: "00000000-0000-4000-8000-000000000101",
+    code: "thinking_math",
+    name: "사고력수학",
+    categoryId: "00000000-0000-4000-8000-000000000001",
+    categoryCode: "math",
+    categoryName: "수학",
+    sortOrder: 2
+  },
+  {
+    id: "00000000-0000-4000-8000-000000000102",
+    code: "english",
+    name: "영어",
+    categoryId: "00000000-0000-4000-8000-000000000002",
+    categoryCode: "english",
+    categoryName: "영어",
+    sortOrder: 1
+  },
+  {
+    id: "00000000-0000-4000-8000-000000000103",
+    code: "piano",
+    name: "피아노",
+    categoryId: "00000000-0000-4000-8000-000000000003",
+    categoryCode: "music",
+    categoryName: "음악",
+    sortOrder: 1
+  },
+  {
+    id: "00000000-0000-4000-8000-000000000104",
+    code: "violin",
+    name: "바이올린",
+    categoryId: "00000000-0000-4000-8000-000000000003",
+    categoryCode: "music",
+    categoryName: "음악",
+    sortOrder: 2
+  }
+]
+const mockMasterCategoryById = new Map(
+  mockMasterCategories.map((category) => [category.id, category])
+)
+const mockMasterSubjectById = new Map(mockMasterSubjects.map((subject) => [subject.id, subject]))
+const mockMasterSubjectByCode = new Map(mockMasterSubjects.map((subject) => [subject.code, subject]))
 const mockOrganizationLocation: OrganizationLocationInfo = {
   name: "첫수업 강남학원",
   branchName: "강남점",
@@ -179,6 +250,12 @@ const defaultClasses: ClassSummary[] = [
     programType: "trial_class",
     assignmentMode: "preassigned",
     title: "초등 저학년 창의 미술 체험",
+    subjectCategoryId: null,
+    subjectId: null,
+    subjectCode: null,
+    subjectName: null,
+    subjectCategoryCode: null,
+    subjectCategoryName: null,
     subject: "미술",
     region: "후곡학원가",
     targetAge: "7세~초2",
@@ -200,6 +277,12 @@ const defaultClasses: ClassSummary[] = [
     programType: "trial_class",
     assignmentMode: "preassigned",
     title: "기초 과학 실험 체험",
+    subjectCategoryId: null,
+    subjectId: null,
+    subjectCode: null,
+    subjectName: null,
+    subjectCategoryCode: null,
+    subjectCategoryName: null,
     subject: "과학",
     region: "백마학원가",
     targetAge: "초3~초5",
@@ -221,6 +304,12 @@ const defaultClasses: ClassSummary[] = [
     programType: "trial_class",
     assignmentMode: "preassigned",
     title: "초등 사고력 수학 게임 수업",
+    subjectCategoryId: null,
+    subjectId: null,
+    subjectCode: null,
+    subjectName: null,
+    subjectCategoryCode: null,
+    subjectCategoryName: null,
     subject: "수학",
     region: "은행사거리학원가",
     targetAge: "초2~초4",
@@ -242,6 +331,12 @@ const defaultClasses: ClassSummary[] = [
     programType: "trial_class",
     assignmentMode: "preassigned",
     title: "스토리텔링 영어 말하기 체험",
+    subjectCategoryId: null,
+    subjectId: null,
+    subjectCode: null,
+    subjectName: null,
+    subjectCategoryCode: null,
+    subjectCategoryName: null,
     subject: "영어",
     region: "후곡학원가",
     targetAge: "7세~초2",
@@ -338,6 +433,12 @@ const toStudioClassListItem = (item: ClassSummary): StudioClassListItem => ({
   programType: item.programType,
   assignmentMode: item.assignmentMode,
   title: item.title,
+  subjectCategoryId: item.subjectCategoryId,
+  subjectId: item.subjectId,
+  subjectCode: item.subjectCode,
+  subjectName: item.subjectName,
+  subjectCategoryCode: item.subjectCategoryCode,
+  subjectCategoryName: item.subjectCategoryName,
   subject: item.subject,
   region: item.region,
   targetAge: item.targetAge,
@@ -715,7 +816,7 @@ export const mockDataAdapter: DataAdapter = {
           item.title,
           item.description,
           item.subject,
-          getSubjectLabel(item.subject),
+          formatClassSubjectDisplayLabel(item),
           publicTeacherName
         ].map(normalizeText)
 
@@ -963,12 +1064,81 @@ export const mockDataAdapter: DataAdapter = {
       throw new Error("invalid_class_id_for_update")
     }
 
+    const existingIndex = input.classId ? classes.findIndex((item) => item.id === input.classId) : -1
+    if (input.mode === "update" && existingIndex < 0) {
+      throw new Error("studio_class_not_found_or_forbidden")
+    }
+    const existingClass = existingIndex >= 0 ? classes[existingIndex] : null
+    const explicitMasterCategory = input.subjectCategoryId
+      ? mockMasterCategoryById.get(input.subjectCategoryId) ?? null
+      : null
+    const explicitMasterSubject = input.subjectId
+      ? mockMasterSubjectById.get(input.subjectId) ?? null
+      : null
+    if (input.subjectCategoryId && !explicitMasterCategory) {
+      throw new Error("invalid_or_inactive_subject_category_id")
+    }
+    if (input.subjectId && !explicitMasterSubject) {
+      throw new Error("invalid_or_inactive_subject_id")
+    }
+    if (explicitMasterSubject && !explicitMasterCategory) {
+      throw new Error("subject_category_required")
+    }
+    if (
+      explicitMasterSubject &&
+      explicitMasterSubject.categoryId !== explicitMasterCategory?.id
+    ) {
+      throw new Error("subject_category_mismatch")
+    }
+
+    let nextSubject =
+      explicitMasterSubject?.code ?? explicitMasterCategory?.code ?? input.subject
+    let nextSubjectReadModel: ClassSubjectReadModel = buildClassSubjectReadModel({
+      subjectCategoryId: explicitMasterCategory?.id,
+      masterCategory: explicitMasterCategory,
+      subjectId: explicitMasterSubject?.id,
+      masterSubject: explicitMasterSubject
+    })
+
+    if (!explicitMasterCategory && existingClass) {
+      const legacySubjectChange = resolveLegacySubjectChange({
+        existingSubject: existingClass.subject,
+        nextSubject: input.subject
+      })
+
+      if (legacySubjectChange.action === "preserve") {
+        nextSubjectReadModel = {
+          subjectCategoryId: existingClass.subjectCategoryId,
+          subjectId: existingClass.subjectId,
+          subjectCode: existingClass.subjectCode,
+          subjectName: existingClass.subjectName,
+          subjectCategoryCode: existingClass.subjectCategoryCode,
+          subjectCategoryName: existingClass.subjectCategoryName
+        }
+      } else if (legacySubjectChange.action === "map") {
+        const mappedSubject = mockMasterSubjectByCode.get(legacySubjectChange.subjectCode)
+        if (!mappedSubject) {
+          throw new Error("legacy_subject_master_mapping_not_found")
+        }
+        const mappedCategory = mockMasterCategoryById.get(mappedSubject.categoryId) ?? null
+        nextSubjectReadModel = buildClassSubjectReadModel({
+          subjectCategoryId: mappedCategory?.id,
+          masterCategory: mappedCategory,
+          subjectId: mappedSubject.id,
+          masterSubject: mappedSubject
+        })
+      } else if (legacySubjectChange.action === "clear") {
+        nextSubject = input.subject
+      }
+    }
+
     const nextValue: ClassSummary = {
       id: input.classId ?? `class-${classes.length + 1}`,
       programType: input.programType,
       assignmentMode: input.assignmentMode,
       title: input.title,
-      subject: input.subject,
+      ...nextSubjectReadModel,
+      subject: nextSubject,
       region: input.region,
       targetAge: input.targetAge,
       description: input.description,
@@ -987,11 +1157,6 @@ export const mockDataAdapter: DataAdapter = {
         classId: input.classId ?? `class-${classes.length + 1}`,
         scheduleSlots: input.scheduleSlots as unknown[]
       })
-    }
-
-    const existingIndex = input.classId ? classes.findIndex((item) => item.id === input.classId) : -1
-    if (input.mode === "update" && existingIndex < 0) {
-      throw new Error("studio_class_not_found_or_forbidden")
     }
 
     if (input.mode === "update") {

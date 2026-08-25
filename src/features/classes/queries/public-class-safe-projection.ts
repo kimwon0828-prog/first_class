@@ -1,5 +1,9 @@
 import "server-only"
 
+import {
+  loadSubjectCategoriesByIdsWithClient,
+  loadSubjectMasterByIdsWithClient
+} from "@/features/subjects/queries/get-subject-master"
 import { getSupabaseServiceRoleClient } from "@/integrations/supabase/service-role"
 import type {
   ClassDetail,
@@ -8,7 +12,13 @@ import type {
   TeacherPublicProfile
 } from "@/shared/lib/db/adapter"
 import type { AcademyArea } from "@/shared/config/academy-areas"
-import { getSubjectLabel, normalizeSubjectCategory } from "@/shared/constants/education-taxonomy"
+import { normalizeSubjectCategory } from "@/shared/constants/education-taxonomy"
+import {
+  buildClassSubjectReadModel,
+  formatClassSubjectDisplayLabel,
+  type Subject,
+  type SubjectCategory
+} from "@/shared/lib/subject-master"
 
 type PublicClassRow = {
   id: string
@@ -16,6 +26,8 @@ type PublicClassRow = {
   program_type: ClassSummary["programType"]
   assignment_mode: ClassSummary["assignmentMode"] | null
   title: string
+  subject_category_id?: string | null
+  subject_id?: string | null
   subject: string
   region: AcademyArea
   target_age: string
@@ -30,6 +42,8 @@ type PublicClassRow = {
   experience_points?: string | null
   curriculum?: string | null
   teacher_intro?: string | null
+  subject_master?: Subject | null
+  subject_category_master?: SubjectCategory | null
 }
 
 type SafeOrganizationRow = {
@@ -65,6 +79,8 @@ const PUBLIC_CLASS_SELECT_FIELDS = [
   "program_type",
   "assignment_mode",
   "title",
+  "subject_category_id",
+  "subject_id",
   "subject",
   "region",
   "target_age",
@@ -113,6 +129,36 @@ const isMissingColumnError = (error: { code?: string; message?: string } | null)
 }
 
 const normalizeText = (value: string | null | undefined) => (value ?? "").trim().toLowerCase()
+
+const attachSubjectMaster = async (rows: PublicClassRow[]): Promise<PublicClassRow[]> => {
+  const categoryIds = rows
+    .map((row) => row.subject_category_id)
+    .filter((categoryId): categoryId is string => Boolean(categoryId))
+  const subjectIds = rows
+    .map((row) => row.subject_id)
+    .filter((subjectId): subjectId is string => Boolean(subjectId))
+
+  if (categoryIds.length === 0 && subjectIds.length === 0) {
+    return rows
+  }
+
+  try {
+    const serviceRoleClient = getSupabaseServiceRoleClient()
+    const [categoryById, subjectById] = await Promise.all([
+      loadSubjectCategoriesByIdsWithClient(serviceRoleClient, categoryIds),
+      loadSubjectMasterByIdsWithClient(serviceRoleClient, subjectIds)
+    ])
+    return rows.map((row) => ({
+      ...row,
+      subject_category_master: row.subject_category_id
+        ? categoryById.get(row.subject_category_id) ?? null
+        : null,
+      subject_master: row.subject_id ? subjectById.get(row.subject_id) ?? null : null
+    }))
+  } catch {
+    return rows
+  }
+}
 
 const buildPublicClassesQuery = (
   selectFields: string,
@@ -230,6 +276,12 @@ const mapPublicClassSummary = (
           ? "preassigned"
           : "post_assign",
     title: row.title,
+    ...buildClassSubjectReadModel({
+      subjectCategoryId: row.subject_category_id,
+      masterCategory: row.subject_category_master,
+      subjectId: row.subject_id,
+      masterSubject: row.subject_master
+    }),
     subject: row.subject,
     region: row.region,
     targetAge: row.target_age,
@@ -259,7 +311,7 @@ export const listPublicClassesWithSafeProjection = async (
     throw new Error("failed_to_fetch_public_classes")
   }
 
-  const classRows = ((data ?? []) as unknown) as PublicClassRow[]
+  const classRows = await attachSubjectMaster(((data ?? []) as unknown) as PublicClassRow[])
   const [teacherProfileById, organizationById] = await Promise.all([
     toTeacherProfileMap(
       classRows
@@ -287,11 +339,11 @@ export const listPublicClassesWithSafeProjection = async (
     })
     .map((row) => {
       const organization = row.organization_id ? organizationById.get(row.organization_id) : undefined
-      const subjectLabel = getSubjectLabel(row.subject)
       const summary = {
         ...mapPublicClassSummary(row, teacherProfileById),
         organization: toOrganizationLocation(organization)
       }
+      const subjectLabel = formatClassSubjectDisplayLabel(summary)
 
       return {
         summary,
@@ -342,7 +394,7 @@ export const getPublicClassDetailWithSafeProjection = async (
     return null
   }
 
-  const classRow = data as unknown as PublicClassRow
+  const [classRow] = await attachSubjectMaster([data as unknown as PublicClassRow])
   const [teacherProfileById, organizationById] = await Promise.all([
     toTeacherProfileMap(classRow.teacher_id ? [classRow.teacher_id] : []),
     toOrganizationMap(classRow.organization_id ? [classRow.organization_id] : [])

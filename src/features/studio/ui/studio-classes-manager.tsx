@@ -5,9 +5,9 @@ import { useEffect, useMemo, useState } from "react"
 import { useSearchParams } from "next/navigation"
 
 import { formatStoredTargetGrades } from "@/shared/constants/grade-options"
-import { getSubjectLabel } from "@/shared/constants/education-taxonomy"
 import { submitToggleStudioClassActiveAction } from "@/features/studio/actions/toggle-studio-class-active"
 import type { StudioClassListItem } from "@/shared/lib/db/adapter"
+import { formatClassSubjectDisplayLabel } from "@/shared/lib/subject-master"
 import styles from "@/features/studio/ui/studio-classes-manager.module.css"
 
 type StudioClassesManagerProps = {
@@ -298,7 +298,7 @@ export const StudioClassesManager = ({ items }: StudioClassesManagerProps) => {
                           <p className={styles.classTitle}>{item.title}</p>
 
                           <p className={styles.subtitle}>
-                            {formatStoredTargetGrades(item.targetAge)} · {getSubjectLabel(item.subject)} · {item.region}
+                            {formatStoredTargetGrades(item.targetAge)} · {formatClassSubjectDisplayLabel(item)} · {item.region}
                           </p>
 
                           <dl className={styles.metaGrid}>
@@ -322,7 +322,9 @@ export const StudioClassesManager = ({ items }: StudioClassesManagerProps) => {
                             </div>
                             <div className={styles.metaItem}>
                               <dt className={styles.metaLabel}>과목</dt>
-                              <dd className={styles.metaValue}>{getSubjectLabel(item.subject)}</dd>
+                              <dd className={styles.metaValue}>
+                                {formatClassSubjectDisplayLabel(item) || "과목 정보 준비 중"}
+                              </dd>
                             </div>
                             <div className={styles.metaItem}>
                               <dt className={styles.metaLabel}>체험비</dt>

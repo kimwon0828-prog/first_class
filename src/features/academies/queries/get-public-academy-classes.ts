@@ -1,15 +1,28 @@
 import "server-only"
 
+import {
+  loadSubjectCategoriesByIdsWithClient,
+  loadSubjectMasterByIdsWithClient
+} from "@/features/subjects/queries/get-subject-master"
 import { getSupabaseServiceRoleClient } from "@/integrations/supabase/service-role"
 import { formatStoredTargetGrades } from "@/shared/constants/grade-options"
-import { getSubjectLabel } from "@/shared/constants/education-taxonomy"
+import {
+  buildClassSubjectReadModel,
+  formatClassSubjectDisplayLabel,
+  type Subject,
+  type SubjectCategory
+} from "@/shared/lib/subject-master"
 
 type PublicAcademyClassRow = {
   id: string
   title: string
+  subject_category_id: string | null
+  subject_id: string | null
   subject: string
   target_age: string
   program_type: "trial_class" | "level_test"
+  subject_category_master?: SubjectCategory | null
+  subject_master?: Subject | null
 }
 
 type ClassScheduleRow = {
@@ -162,7 +175,7 @@ export const getPublicAcademyClasses = async (organizationId: string): Promise<P
   const serviceRoleClient = getSupabaseServiceRoleClient()
   const { data: classesData, error: classesError } = await serviceRoleClient
     .from("classes")
-    .select("id, title, subject, target_age, program_type")
+    .select("id, title, subject_category_id, subject_id, subject, target_age, program_type")
     .eq("organization_id", organizationId)
     .eq("is_active", true)
     .order("created_at", { ascending: false })
@@ -171,7 +184,28 @@ export const getPublicAcademyClasses = async (organizationId: string): Promise<P
     throw new Error("failed_to_fetch_public_academy_classes")
   }
 
-  const classRows = ((classesData ?? []) as PublicAcademyClassRow[]) ?? []
+  const rawClassRows = ((classesData ?? []) as PublicAcademyClassRow[]) ?? []
+  const [categoryById, subjectById] = await Promise.all([
+    loadSubjectCategoriesByIdsWithClient(
+      serviceRoleClient,
+      rawClassRows
+        .map((row) => row.subject_category_id)
+        .filter((categoryId): categoryId is string => Boolean(categoryId))
+    ),
+    loadSubjectMasterByIdsWithClient(
+      serviceRoleClient,
+      rawClassRows
+        .map((row) => row.subject_id)
+        .filter((subjectId): subjectId is string => Boolean(subjectId))
+    )
+  ])
+  const classRows = rawClassRows.map((row) => ({
+    ...row,
+    subject_category_master: row.subject_category_id
+      ? categoryById.get(row.subject_category_id) ?? null
+      : null,
+    subject_master: row.subject_id ? subjectById.get(row.subject_id) ?? null : null
+  }))
   if (classRows.length === 0) {
     return []
   }
@@ -202,7 +236,15 @@ export const getPublicAcademyClasses = async (organizationId: string): Promise<P
       return {
         id: row.id,
         title: row.title,
-        subjectLabel: getSubjectLabel(row.subject) ?? row.subject,
+        subjectLabel: formatClassSubjectDisplayLabel({
+          subject: row.subject,
+          ...buildClassSubjectReadModel({
+            subjectCategoryId: row.subject_category_id,
+            masterCategory: row.subject_category_master,
+            subjectId: row.subject_id,
+            masterSubject: row.subject_master
+          })
+        }),
         targetAgeLabel: formatStoredTargetGrades(row.target_age),
         programTypeLabel: resolveProgramTypeLabel(row.program_type),
         periodLabel: summary.periodLabel,

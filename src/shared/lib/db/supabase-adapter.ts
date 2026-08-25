@@ -2,9 +2,20 @@ import type { SupabaseClient } from "@supabase/supabase-js"
 
 import { getSupabaseServiceRoleClient } from "@/integrations/supabase/service-role"
 import { getSupabaseServerClient } from "@/integrations/supabase/server"
+import {
+  getActiveSubjectCategoryForWriteWithClient,
+  getActiveSubjectForWriteByCodeWithClient,
+  getActiveSubjectForWriteWithClient,
+  loadSubjectCategoriesByIdsWithClient,
+  loadSubjectMasterByIdsWithClient
+} from "@/features/subjects/queries/get-subject-master"
 import { getPublicEnv } from "@/shared/config/env"
 import type { AcademyArea } from "@/shared/config/academy-areas"
 import { getConsultationPipelineGroup } from "@/shared/lib/consultation-pipeline"
+import {
+  buildClassSubjectWritePayload,
+  resolveLegacySubjectChange
+} from "@/shared/lib/class-subject-write"
 import {
   buildSeoulOccurrenceRange,
   formatSeoulDateKey,
@@ -12,7 +23,13 @@ import {
   getSeoulDateTimeParts
 } from "@/shared/lib/seoul-datetime"
 import { normalizeTeacherPublicVisibility } from "@/shared/lib/teacher-public-visibility"
-import { getSubjectLabel, normalizeSubjectCategory } from "@/shared/constants/education-taxonomy"
+import {
+  buildClassSubjectReadModel,
+  formatClassSubjectDisplayLabel,
+  type Subject,
+  type SubjectCategory
+} from "@/shared/lib/subject-master"
+import { normalizeSubjectCategory } from "@/shared/constants/education-taxonomy"
 import type {
   ActivateStudioTeacherInput,
   ApplicationLogEntry,
@@ -78,6 +95,8 @@ type ClassRow = {
   program_type: ClassProgramType
   assignment_mode?: ClassAssignmentMode | null
   title: string
+  subject_category_id?: string | null
+  subject_id?: string | null
   subject: string
   region: AcademyArea
   target_age: string
@@ -94,6 +113,8 @@ type ClassRow = {
   is_active: boolean
   organizations?: OrganizationLocationRow[] | OrganizationLocationRow | null
   class_schedules?: ClassScheduleRow[] | null
+  subject_master?: Subject | null
+  subject_category_master?: SubjectCategory | null
 }
 
 type StudioClassListRow = {
@@ -101,6 +122,8 @@ type StudioClassListRow = {
   program_type: ClassProgramType
   assignment_mode?: ClassAssignmentMode | null
   title: string
+  subject_category_id?: string | null
+  subject_id?: string | null
   subject: string
   region: AcademyArea
   target_age: string
@@ -109,6 +132,8 @@ type StudioClassListRow = {
   teacher_display_name?: string | null
   cover_image_url?: string | null
   is_active: boolean
+  subject_master?: Subject | null
+  subject_category_master?: SubjectCategory | null
 }
 
 type TeacherPublicProfileRow = {
@@ -380,6 +405,12 @@ const mapClass = (
     programType: row.program_type,
     assignmentMode: resolveClassAssignmentMode(row),
     title: row.title,
+    ...buildClassSubjectReadModel({
+      subjectCategoryId: row.subject_category_id,
+      masterCategory: row.subject_category_master,
+      subjectId: row.subject_id,
+      masterSubject: row.subject_master
+    }),
     subject: row.subject,
     region: row.region,
     targetAge: row.target_age,
@@ -411,6 +442,12 @@ const mapStudioClassListItem = (
     programType: row.program_type,
     assignmentMode: resolveClassAssignmentMode(row),
     title: row.title,
+    ...buildClassSubjectReadModel({
+      subjectCategoryId: row.subject_category_id,
+      masterCategory: row.subject_category_master,
+      subjectId: row.subject_id,
+      masterSubject: row.subject_master
+    }),
     subject: row.subject,
     region: row.region,
     targetAge: row.target_age,
@@ -447,6 +484,39 @@ const hideHiddenSchedulesForPublicClass = <T extends ClassSummary | ClassDetail>
   ...classItem,
   schedules: filterPublicVisibleClassSchedules(classItem.schedules)
 })
+
+const attachSubjectMasterToRows = async <T extends ClassRow | StudioClassListRow>(
+  supabase: SupabaseClient,
+  rows: T[]
+): Promise<T[]> => {
+  const categoryIds = rows
+    .map((row) => row.subject_category_id)
+    .filter((categoryId): categoryId is string => Boolean(categoryId))
+  const subjectIds = rows
+    .map((row) => row.subject_id)
+    .filter((subjectId): subjectId is string => Boolean(subjectId))
+
+  if (categoryIds.length === 0 && subjectIds.length === 0) {
+    return rows
+  }
+
+  try {
+    const [categoryById, subjectById] = await Promise.all([
+      loadSubjectCategoriesByIdsWithClient(supabase, categoryIds),
+      loadSubjectMasterByIdsWithClient(supabase, subjectIds)
+    ])
+    return rows.map((row) => ({
+      ...row,
+      subject_category_master: row.subject_category_id
+        ? categoryById.get(row.subject_category_id) ?? null
+        : null,
+      subject_master: row.subject_id ? subjectById.get(row.subject_id) ?? null : null
+    }))
+  } catch {
+    // Preserve legacy class reads if the optional master projection is temporarily unavailable.
+    return rows
+  }
+}
 
 const CLASS_SCHEDULE_SELECT_FIELDS =
   "id, class_id, schedule_type, booking_status, day_of_week, specific_date, series_id, start_time, end_time, capacity, display_label, sort_order, created_at"
@@ -2128,12 +2198,14 @@ const summarizeStudioClassScheduleSlots = (slots: StudioClassInput["scheduleSlot
 const LEGACY_CLASS_BASE_SELECT_FIELDS =
   "id, organization_id, program_type, title, subject, region, target_age, description, trial_price, teacher_id, teacher_display_name, cover_image_url, is_active"
 
-const CLASS_BASE_SELECT_FIELDS = `${LEGACY_CLASS_BASE_SELECT_FIELDS}, assignment_mode`
+const CLASS_BASE_SELECT_FIELDS =
+  `${LEGACY_CLASS_BASE_SELECT_FIELDS}, assignment_mode, subject_category_id, subject_id`
 
 const LEGACY_STUDIO_CLASS_LIST_SELECT_FIELDS =
   "id, program_type, title, subject, region, target_age, trial_price, teacher_id, teacher_display_name, cover_image_url, is_active"
 
-const STUDIO_CLASS_LIST_SELECT_FIELDS = `${LEGACY_STUDIO_CLASS_LIST_SELECT_FIELDS}, assignment_mode`
+const STUDIO_CLASS_LIST_SELECT_FIELDS =
+  `${LEGACY_STUDIO_CLASS_LIST_SELECT_FIELDS}, assignment_mode, subject_category_id, subject_id`
 
 const ORGANIZATION_LOCATION_SELECT_FIELDS = "organizations(name, branch_name, address, address_detail)"
 const ORGANIZATION_BASE_SELECT_FIELDS = "organizations(name, branch_name)"
@@ -2436,7 +2508,7 @@ export const supabaseDataAdapter: DataAdapter = {
       throw new Error("failed_to_fetch_classes")
     }
 
-    const classRows = (data ?? []) as ClassRow[]
+    const classRows = await attachSubjectMasterToRows(supabase, (data ?? []) as ClassRow[])
     if (debugEnabled) {
       console.info(
         `[listClasses] ${JSON.stringify({ classesRows: classRows.length })}`
@@ -2506,10 +2578,13 @@ export const supabaseDataAdapter: DataAdapter = {
         const organizationName = row.organization_id
           ? (organizationNameById.get(row.organization_id) ?? null)
           : null
-        const subjectLabel = getSubjectLabel(row.subject)
+        const mappedClass = mapClass(row, teacherName, {
+          allowClassTeacherFallback: false
+        })
+        const subjectLabel = formatClassSubjectDisplayLabel(mappedClass)
 
         return {
-          mapped: mapClass(row, teacherName, { allowClassTeacherFallback: false }),
+          mapped: mappedClass,
           haystacks: [
             row.title,
             row.description,
@@ -2560,7 +2635,7 @@ export const supabaseDataAdapter: DataAdapter = {
         return null
       }
 
-      const classRow = retry.data as ClassRow
+      const [classRow] = await attachSubjectMasterToRows(supabase, [retry.data as ClassRow])
       let teacherProfile: TeacherPublicProfile | null = null
       if (classRow.teacher_id) {
         try {
@@ -2590,7 +2665,7 @@ export const supabaseDataAdapter: DataAdapter = {
       return null
     }
 
-    const classRow = data as ClassRow
+    const [classRow] = await attachSubjectMasterToRows(supabase, [data as ClassRow])
     let teacherProfile: TeacherPublicProfile | null = null
     if (classRow.teacher_id) {
       try {
@@ -2647,7 +2722,10 @@ export const supabaseDataAdapter: DataAdapter = {
       throw new Error("failed_to_fetch_studio_class_list_items")
     }
 
-    const classRows = (data ?? []) as StudioClassListRow[]
+    const classRows = await attachSubjectMasterToRows(
+      supabase,
+      (data ?? []) as StudioClassListRow[]
+    )
     const [scheduleCountByClassId, teacherNameMap] = await Promise.all([
       getScheduleCountByClassId(
         supabase,
@@ -2747,7 +2825,7 @@ export const supabaseDataAdapter: DataAdapter = {
         throw new Error("failed_to_fetch_studio_classes")
       }
 
-      const classRows = (retry.data ?? []) as ClassRow[]
+      const classRows = await attachSubjectMasterToRows(supabase, (retry.data ?? []) as ClassRow[])
       const classRowsWithSchedules = await attachClassSchedulesToRows(supabase, classRows)
       if (debugEnabled) {
         console.info("[listStudioClasses] classes fetched (fallback)", { rows: classRows.length })
@@ -2789,7 +2867,8 @@ export const supabaseDataAdapter: DataAdapter = {
       throw new Error("failed_to_fetch_studio_classes")
     }
 
-    const classRows = await attachClassSchedulesToRows(supabase, (data ?? []) as ClassRow[])
+    const classRowsWithSubjects = await attachSubjectMasterToRows(supabase, (data ?? []) as ClassRow[])
+    const classRows = await attachClassSchedulesToRows(supabase, classRowsWithSubjects)
     if (debugEnabled) {
       console.info("[listStudioClasses] classes fetched", { rows: classRows.length })
     }
@@ -3073,6 +3152,10 @@ export const supabaseDataAdapter: DataAdapter = {
   },
   async upsertStudioClass(input) {
     const normalizedClassId = normalizeStudioClassId(input.classId)
+    if (input.mode === "update" && !normalizedClassId) {
+      throw new Error("invalid_class_id_for_update")
+    }
+
     if (input.teacherId) {
       await assertTeacherBelongsToOrganization(input.teacherId, input.organizationId)
     }
@@ -3082,13 +3165,87 @@ export const supabaseDataAdapter: DataAdapter = {
       : null
 
     const supabase = await getSupabaseServerClient()
+    const [masterCategory, masterSubject] = await Promise.all([
+      input.subjectCategoryId
+        ? getActiveSubjectCategoryForWriteWithClient(supabase, input.subjectCategoryId)
+        : null,
+      input.subjectId
+        ? getActiveSubjectForWriteWithClient(supabase, input.subjectId)
+        : null
+    ])
+    if (input.subjectCategoryId && !masterCategory) {
+      throw new Error("invalid_or_inactive_subject_category_id")
+    }
+    if (input.subjectId && !masterSubject) {
+      throw new Error("invalid_or_inactive_subject_id")
+    }
+    if (masterSubject && !masterCategory) {
+      throw new Error("subject_category_required")
+    }
+    if (masterSubject && masterSubject.categoryId !== masterCategory?.id) {
+      throw new Error("subject_category_mismatch")
+    }
+
+    let legacySubjectCategoryId: string | null | undefined
+    let legacySubjectId: string | null | undefined
+    if (input.mode === "update" && !input.subjectCategoryId) {
+      const { data: existingSubjectData, error: existingSubjectError } = await supabase
+        .from("classes")
+        .select("subject, subject_category_id, subject_id")
+        .eq("id", normalizedClassId)
+        .eq("organization_id", input.organizationId)
+        .maybeSingle()
+
+      if (existingSubjectError) {
+        throw new Error(
+          formatSupabaseError("failed_to_fetch_existing_class_subject", existingSubjectError, {
+            classId: normalizedClassId,
+            organizationId: input.organizationId
+          })
+        )
+      }
+
+      if (!existingSubjectData) {
+        throw new Error("studio_class_not_found_or_forbidden")
+      }
+
+      const legacySubjectChange = resolveLegacySubjectChange({
+        existingSubject: String(existingSubjectData.subject ?? ""),
+        nextSubject: input.subject
+      })
+
+      if (legacySubjectChange.action === "map") {
+        const mappedSubject = await getActiveSubjectForWriteByCodeWithClient(
+          supabase,
+          legacySubjectChange.subjectCode
+        )
+        if (!mappedSubject) {
+          throw new Error("legacy_subject_master_mapping_not_found")
+        }
+        legacySubjectCategoryId = mappedSubject.categoryId
+        legacySubjectId = mappedSubject.id
+      } else if (legacySubjectChange.action === "clear") {
+        legacySubjectCategoryId = null
+        legacySubjectId = null
+      }
+    }
+
+    const subjectWritePayload = buildClassSubjectWritePayload({
+      legacySubject: input.subject,
+      masterCategory,
+      masterSubject,
+      legacySubjectCategoryId,
+      legacySubjectId
+    })
+    const persistedSubject = subjectWritePayload.subject
+
     const schedulePayloadForLog = summarizeStudioClassScheduleSlots(input.scheduleSlots)
     const basePayload = {
       organization_id: input.organizationId,
       program_type: input.programType,
       assignment_mode: input.assignmentMode,
       title: input.title,
-      subject: input.subject,
+      ...subjectWritePayload,
       target_age: input.targetAge,
       region: input.region,
       description: input.description,
@@ -3106,10 +3263,6 @@ export const supabaseDataAdapter: DataAdapter = {
       experience_points: input.experiencePoints,
       curriculum: input.curriculum,
       teacher_intro: input.teacherIntro
-    }
-
-    if (input.mode === "update" && !normalizedClassId) {
-      throw new Error("invalid_class_id_for_update")
     }
 
     const buildQuery = (payload: typeof basePayload | typeof detailPayload) =>
@@ -3137,7 +3290,7 @@ export const supabaseDataAdapter: DataAdapter = {
           organizationId: input.organizationId,
           teacherId: input.teacherId,
           title: input.title,
-          subject: input.subject,
+          subject: persistedSubject,
           targetAge: input.targetAge,
           region: input.region,
           trialPrice: input.trialPrice
@@ -3155,7 +3308,7 @@ export const supabaseDataAdapter: DataAdapter = {
           .select(CLASS_BASE_SELECT_FIELDS)
           .eq("organization_id", input.organizationId)
           .eq("title", input.title)
-          .eq("subject", input.subject)
+          .eq("subject", persistedSubject)
           .eq("target_age", input.targetAge)
           .eq("region", input.region)
           .eq("trial_price", input.trialPrice)
@@ -3176,7 +3329,7 @@ export const supabaseDataAdapter: DataAdapter = {
               organizationId: input.organizationId,
               teacherId: input.teacherId,
               title: input.title,
-              subject: input.subject,
+              subject: persistedSubject,
               targetAge: input.targetAge,
               region: input.region,
               trialPrice: input.trialPrice
@@ -3193,7 +3346,7 @@ export const supabaseDataAdapter: DataAdapter = {
               organizationId: input.organizationId,
               teacherId: input.teacherId,
               title: input.title,
-              subject: input.subject,
+              subject: persistedSubject,
               targetAge: input.targetAge,
               region: input.region,
               trialPrice: input.trialPrice
@@ -3407,8 +3560,9 @@ export const supabaseDataAdapter: DataAdapter = {
 
     const savedTeacherIds = savedClassRow.teacher_id ? [savedClassRow.teacher_id] : []
     const teacherNameMap = await getTeacherProfilesMap(savedTeacherIds)
+    const [savedClassWithSubject] = await attachSubjectMasterToRows(supabase, [savedClassRow])
     const classWithSchedules = {
-      ...savedClassRow,
+      ...savedClassWithSubject,
       class_schedules: (refreshedScheduleData ?? []) as ClassScheduleRow[]
     }
 

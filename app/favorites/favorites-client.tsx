@@ -5,10 +5,10 @@ import Link from "next/link"
 import { useEffect, useMemo, useState } from "react"
 
 import { formatStoredTargetGrades } from "@/shared/constants/grade-options"
-import { getSubjectLabel } from "@/shared/constants/education-taxonomy"
 import { BookmarkButton } from "@/features/favorites/ui/bookmark-button"
 import { getFavoriteClassIds } from "@/features/favorites/lib/storage"
 import type { ClassSummary } from "@/shared/lib/db/adapter"
+import { formatClassSubjectDisplayLabel } from "@/shared/lib/subject-master"
 
 import styles from "../classes/page.module.css"
 
@@ -117,7 +117,7 @@ export function FavoritesClient(props: {
                       <p className={styles.cardPrice}>{formatPrice(item.trialPrice)}</p>
                       <div className={styles.cardMeta}>
                         <span className={styles.star}>★</span>
-                        <span>{getSubjectLabel(item.subject)}</span>
+                        <span>{formatClassSubjectDisplayLabel(item) || "과목 정보 준비 중"}</span>
                         <span>·</span>
                         <span>{formatStoredTargetGrades(item.targetAge)}</span>
                       </div>

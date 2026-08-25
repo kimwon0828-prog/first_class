@@ -6,8 +6,7 @@ import { isAcademyArea, isAcademyAreaEnabled } from "@/shared/config/academy-are
 import { serializeTargetGrades } from "@/shared/constants/grade-options"
 import {
   normalizeStudioClassSubjectOption,
-  studioClassProgramTypeOptions,
-  studioClassSubjectOptions
+  studioClassProgramTypeOptions
 } from "@/features/studio/lib/studio-class-options"
 import { requireTeacherStudioAccess } from "@/features/studio/lib/require-teacher-studio-access"
 import { dataAdapter } from "@/shared/lib/db"
@@ -61,7 +60,6 @@ const parsePositiveInt = (value: string) => {
   return Number(value)
 }
 
-const studioClassSubjectSet = new Set<string>(studioClassSubjectOptions)
 const studioClassProgramTypeSet = new Set<string>(
   studioClassProgramTypeOptions.map((option) => option.value)
 )
@@ -338,6 +336,10 @@ export async function upsertStudioClassAction(
       : null
     const assignmentMode = normalizeAssignmentMode(formData.get("assignmentMode"))
     const title = String(formData.get("title") ?? "").trim()
+    const subjectCategoryIdRaw = String(formData.get("subjectCategoryId") ?? "").trim()
+    const subjectCategoryId = subjectCategoryIdRaw || null
+    const subjectIdRaw = String(formData.get("subjectId") ?? "").trim()
+    const subjectId = subjectIdRaw || null
     const subject = normalizeStudioClassSubjectOption(String(formData.get("subject") ?? ""))
     const targetGrades = formData.getAll("targetGrades").map((value) => String(value ?? "").trim())
     const regionRaw = String(formData.get("region") ?? "").trim()
@@ -381,12 +383,12 @@ export async function upsertStudioClassAction(
       return safeError("프로그램명은 2자 이상 입력해 주세요.")
     }
 
-    if (!subject) {
+    if (!subjectCategoryId) {
       return safeError("과목을 선택해 주세요.")
     }
 
-    if (!subject || !studioClassSubjectSet.has(subject)) {
-      return safeError("과목 칩에서 과목을 다시 선택해 주세요.")
+    if (!isValidUuid(subjectCategoryId) || (subjectId && !isValidUuid(subjectId))) {
+      return safeError("과목 정보를 다시 선택해 주세요.")
     }
 
     if (!targetAge) {
@@ -506,6 +508,8 @@ export async function upsertStudioClassAction(
       isActive,
       programType,
       title,
+      subjectCategoryId,
+      subjectId,
       subject,
       targetAge,
       region: regionRaw,
@@ -522,7 +526,9 @@ export async function upsertStudioClassAction(
       programType,
       assignmentMode,
       title,
-      subject,
+      subjectCategoryId,
+      subjectId: subjectId ?? undefined,
+      subject: subject ?? "",
       targetAge,
       region: regionRaw,
       description,
@@ -554,6 +560,13 @@ export async function upsertStudioClassAction(
         hint: summary.hint,
         payload: payloadLog
       })
+      if (
+        message.includes("invalid_or_inactive_subject_category_id") ||
+        message.includes("invalid_or_inactive_subject_id") ||
+        message.includes("subject_category_mismatch")
+      ) {
+        return safeError("현재 선택할 수 없는 과목입니다. 과목을 다시 선택해 주세요.")
+      }
       return safeError("수업을 저장하지 못했어요. 잠시 후 다시 시도해주세요.", message)
     }
 
@@ -594,6 +607,14 @@ export async function upsertStudioClassAction(
     if (message.includes("studio_class_not_found_or_forbidden")) {
       console.error("[upsertStudioClass failed]", { message })
       return safeError("프로그램 정보를 찾을 수 없거나 수정 권한이 없습니다.", message)
+    }
+
+    if (
+      message.includes("invalid_or_inactive_subject_id") ||
+      message.includes("legacy_subject_master_mapping_not_found")
+    ) {
+      console.error("[upsertStudioClass failed]", { message })
+      return safeError("현재 선택할 수 없는 과목입니다. 과목을 다시 선택해 주세요.", message)
     }
 
     console.error("[upsertStudioClass failed]", { message })

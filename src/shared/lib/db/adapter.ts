@@ -1,5 +1,6 @@
 import type { AcademyArea } from "@/shared/config/academy-areas"
 import type { TeacherPublicVisibility } from "@/shared/lib/teacher-public-visibility"
+import type { ClassSubjectReadModel } from "@/shared/lib/subject-master"
 
 export type UserRole = "parent" | "teacher"
 
@@ -85,7 +86,7 @@ export type StudioClassScheduleItem = {
   isReferencedByApplications?: boolean
 }
 
-export type ClassSummary = {
+export type ClassSummary = ClassSubjectReadModel & {
   id: string
   programType: ClassProgramType
   assignmentMode: ClassAssignmentMode
@@ -109,7 +110,7 @@ export type ClassSummary = {
   schedules?: StudioClassScheduleItem[]
 }
 
-export type StudioClassListItem = {
+export type StudioClassListItem = ClassSubjectReadModel & {
   id: string
   programType: ClassProgramType
   assignmentMode: ClassAssignmentMode
@@ -386,6 +387,8 @@ export type StudioClassInput = {
   programType: ClassProgramType
   assignmentMode: ClassAssignmentMode
   title: string
+  subjectCategoryId: string | null
+  subjectId?: string | null
   subject: string
   targetAge: string
   region: AcademyArea
