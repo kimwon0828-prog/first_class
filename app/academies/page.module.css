@@ -453,3 +453,17 @@
   display: flex;
   align-items: center;
 }
+
+/* 학년 필터: 과목/위치 필터와 같은 chip 규격을 쓴다. */
+.gradeFilter {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+}
+
+/* 정렬 필터: 다른 필터와 같은 chip 규격을 쓴다. */
+.sortFilter {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+}

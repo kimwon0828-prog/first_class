@@ -9,6 +9,10 @@ import { resolveSubjectQuerySelection } from "@/features/subjects/lib/subject-qu
 import { formatClassSubjectDisplayLabel, type SubjectCatalogCategory } from "@/shared/lib/subject-master"
 import { AcademiesExplorer } from "@/features/academies/ui/academies-explorer"
 import {
+  ACADEMY_DISTANCE_SORT_LABEL,
+  resolveAcademySort
+} from "@/features/academies/lib/academy-sort"
+import {
   canonicalizeRegionSelection,
   formatRegionSelectionLabel,
   isSameRegionSelection
@@ -18,7 +22,10 @@ import { normalizeSearchRadiusKm } from "@/features/location/lib/search-location
 import { getAcademiesRegionCatalog } from "@/features/location/queries/get-academies-region-catalog"
 import { findOrganizationIdsByAdministrativeRegion } from "@/features/location/queries/find-organizations-by-region"
 import { findNearbyOrganizations } from "@/features/location/queries/find-nearby-organizations"
-import { formatStoredTargetGrades } from "@/shared/constants/grade-options"
+import {
+  formatStoredTargetGrades,
+  parseStoredTargetGrades
+} from "@/shared/constants/grade-options"
 
 import styles from "./page.module.css"
 import { POC_DISCOVERY_HREF } from "@/shared/config/discovery"
@@ -81,14 +88,16 @@ export default async function AcademiesPage({ searchParams }: AcademiesPageProps
   // legacy academy-area query 는 더 이상 필터가 아니다. 발견되면 canonical URL 에서 제거만 한다.
   const hasLegacyRegionQuery =
     typeof resolvedSearchParams?.region === "string" && resolvedSearchParams.region.trim().length > 0
-  const selectedGrade =
+  const rawGrade =
     typeof resolvedSearchParams?.grade === "string" && resolvedSearchParams.grade.trim().length > 0
       ? resolvedSearchParams.grade.trim()
       : null
-  const selectedSort =
-    typeof resolvedSearchParams?.sort === "string" && resolvedSearchParams.sort.trim().length > 0
-      ? resolvedSearchParams.sort.trim()
-      : "추천순"
+  // 해석되지 않는 grade 는 필터로 쓰이지 않으므로 canonical URL 에서도 제거한다.
+  // 해석은 되지만 밴드가 아닌 값(예: 초5)은 의미가 바뀌므로 그대로 둔다.
+  const selectedGrade = rawGrade && parseStoredTargetGrades(rawGrade).length > 0 ? rawGrade : null
+  const shouldDropInvalidGradeQuery = Boolean(rawGrade) && !selectedGrade
+  const { sort: selectedSort, shouldCanonicalize: shouldCanonicalizeSortQuery } =
+    resolveAcademySort(resolvedSearchParams?.sort)
 
   // 과목 필터의 canonical source 는 Subject Master 다. /classes 와 같은 resolver 를 공유한다.
   const subjectCatalog: SubjectCatalogCategory[] = await getSelectableSubjectCatalog()
@@ -129,13 +138,19 @@ export default async function AcademiesPage({ searchParams }: AcademiesPageProps
   }
   const shouldCanonicalizeRegionQuery = !isSameRegionSelection(regionSelection, rawRegionSelection)
 
-  if (hasLegacyRegionQuery || shouldCanonicalizeSubjectQuery || shouldCanonicalizeRegionQuery) {
+  if (
+    hasLegacyRegionQuery ||
+    shouldCanonicalizeSortQuery ||
+    shouldDropInvalidGradeQuery ||
+    shouldCanonicalizeSubjectQuery ||
+    shouldCanonicalizeRegionQuery
+  ) {
     redirect(
       buildAcademiesHref({
         subjectCategory: selectedSubjectCategory?.code ?? null,
         subject: selectedSubject?.code ?? null,
         grade: selectedGrade,
-        sort: resolvedSearchParams?.sort ?? null,
+        sort: selectedSort === "recommended" ? null : selectedSort,
         radius: radiusQueryValue,
         ...regionQueryValues
       })
@@ -177,7 +192,7 @@ export default async function AcademiesPage({ searchParams }: AcademiesPageProps
           subjectCategoryId: selectedSubjectCategory?.id ?? null,
           subjectId: selectedSubject?.id ?? null,
           grade: selectedGrade,
-          sort: selectedSort,
+          sort: selectedSort === "name" ? "name" : null,
           ...(organizationIdFilter ? { organizationIds: organizationIdFilter } : {}),
           ...(distanceByOrganizationId ? { distanceByOrganizationId } : {})
         }),
@@ -272,8 +287,10 @@ export default async function AcademiesPage({ searchParams }: AcademiesPageProps
           selectedSubjectCategory={selectedSubjectCategory}
           selectedSubject={selectedSubject}
           selectedSubjectLabel={selectedSubjectLabel}
-          selectedGradeLabel={selectedGrade ? formatStoredTargetGrades(selectedGrade) : null}
-          selectedSortLabel={selectedSort}
+          selectedGrade={selectedGrade}
+          selectedGradeLabel={selectedGrade ? formatStoredTargetGrades(selectedGrade) : "전체 학년"}
+          selectedSort={selectedSort}
+          sortDisabledReasonLabel={isNearbyMode ? ACADEMY_DISTANCE_SORT_LABEL : null}
         />
       </div>
 

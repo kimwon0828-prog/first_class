@@ -8,6 +8,9 @@ import { formatDistanceLabel, type SearchRadiusKm } from "@/features/location/li
 import type { RegionCatalog, RegionSelection } from "@/features/location/lib/region-selection"
 import { LocationFilter, type LocationMode } from "@/features/location/ui/location-filter"
 import { SubjectFilter } from "@/features/subjects/ui/subject-filter"
+import { GradeFilter } from "@/features/grades/ui/grade-filter"
+import { AcademySortFilter } from "./academy-sort-filter"
+import type { AcademySort } from "../lib/academy-sort"
 import type { Subject, SubjectCatalogCategory } from "@/shared/lib/subject-master"
 import type { AcademyListItem } from "../queries/get-academies-for-list"
 import styles from "../../../../app/academies/page.module.css"
@@ -23,8 +26,10 @@ type AcademiesExplorerProps = {
   selectedSubjectCategory: SubjectCatalogCategory | null
   selectedSubject: Subject | null
   selectedSubjectLabel: string
-  selectedGradeLabel: string | null
-  selectedSortLabel: string
+  selectedGrade: string | null
+  selectedGradeLabel: string
+  selectedSort: AcademySort
+  sortDisabledReasonLabel: string | null
 }
 
 // 카드 eyebrow: 내 주변이면 거리, 그 외에는 행정지역.
@@ -51,12 +56,25 @@ export function AcademiesExplorer({
   selectedSubjectCategory,
   selectedSubject,
   selectedSubjectLabel,
+  selectedGrade,
   selectedGradeLabel,
-  selectedSortLabel
+  selectedSort,
+  sortDisabledReasonLabel
 }: AcademiesExplorerProps) {
   return (
     <section className={styles.listSection} aria-label="학원 리스트">
       <div className={styles.filterRow}>
+        <SubjectFilter
+          catalog={subjectCatalog}
+          selectedCategory={selectedSubjectCategory}
+          selectedSubject={selectedSubject}
+          label={selectedSubjectLabel}
+          className={styles.subjectFilter}
+          triggerClassName={styles.filterChipButton}
+          labelClassName={styles.filterChipLabel}
+          chevronWrapClassName={styles.filterChipChevron}
+          openChevronClassName={styles.filterChipChevronOpen}
+        />
         <LocationFilter
           mode={locationMode}
           label={locationLabel}
@@ -73,19 +91,24 @@ export function AcademiesExplorer({
           radiusChipClassName={styles.radiusChip}
           radiusChipActiveClassName={styles.radiusChipActive}
         />
-        <SubjectFilter
-          catalog={subjectCatalog}
-          selectedCategory={selectedSubjectCategory}
-          selectedSubject={selectedSubject}
-          label={selectedSubjectLabel}
-          className={styles.subjectFilter}
+        <GradeFilter
+          selectedGrade={selectedGrade}
+          label={selectedGradeLabel}
+          className={styles.gradeFilter}
           triggerClassName={styles.filterChipButton}
           labelClassName={styles.filterChipLabel}
           chevronWrapClassName={styles.filterChipChevron}
           openChevronClassName={styles.filterChipChevronOpen}
         />
-        <span className={styles.filterChip}>학년 · {selectedGradeLabel ?? "전체 학년"}</span>
-        <span className={styles.filterChip}>정렬 · {selectedSortLabel}</span>
+        <AcademySortFilter
+          selectedSort={selectedSort}
+          disabledReasonLabel={sortDisabledReasonLabel}
+          className={styles.sortFilter}
+          triggerClassName={styles.filterChipButton}
+          labelClassName={styles.filterChipLabel}
+          chevronWrapClassName={styles.filterChipChevron}
+          openChevronClassName={styles.filterChipChevronOpen}
+        />
       </div>
 
       {academies.length === 0 ? (
