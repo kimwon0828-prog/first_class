@@ -92,7 +92,6 @@ export type ClassSummary = ClassSubjectReadModel & {
   assignmentMode: ClassAssignmentMode
   title: string
   subject: string
-  region: AcademyArea
   targetAge: string
   classFormat: string | null
   description: string
@@ -117,7 +116,6 @@ export type StudioClassListItem = ClassSubjectReadModel & {
   assignmentMode: ClassAssignmentMode
   title: string
   subject: string
-  region: AcademyArea
   targetAge: string
   trialPrice: number
   teacherId: string | null
@@ -400,7 +398,6 @@ export type StudioClassInput = {
   subjectId?: string | null
   subject: string
   targetAge: string
-  region: AcademyArea
   description: string
   classFormat: string | null
   recommendedFor: string | null
@@ -812,7 +809,6 @@ export type CreateTeacherSignupRequestInput = {
 }
 
 export type ListClassesOptions = {
-  region?: AcademyArea
   query?: string
   subject?: string
   subjectCategoryId?: string

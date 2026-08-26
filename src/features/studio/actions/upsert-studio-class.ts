@@ -2,7 +2,6 @@
 
 import { revalidatePath } from "next/cache"
 
-import { isAcademyArea, isAcademyAreaEnabled } from "@/shared/config/academy-areas"
 import { serializeTargetGrades } from "@/shared/constants/grade-options"
 import {
   normalizeStudioClassSubjectOption,
@@ -342,7 +341,6 @@ export async function upsertStudioClassAction(
     const subjectId = subjectIdRaw || null
     const subject = normalizeStudioClassSubjectOption(String(formData.get("subject") ?? ""))
     const targetGrades = formData.getAll("targetGrades").map((value) => String(value ?? "").trim())
-    const regionRaw = String(formData.get("region") ?? "").trim()
     const description = String(formData.get("description") ?? "").trim()
     const classFormatRaw = String(formData.get("classFormat") ?? "").trim()
     const recommendedForRaw = String(formData.get("recommendedFor") ?? "").trim()
@@ -395,10 +393,6 @@ export async function upsertStudioClassAction(
       return safeError("대상 학년을 선택해 주세요.")
     }
 
-    if (!isAcademyArea(regionRaw)) {
-      return safeError("학원가를 다시 선택해 주세요.")
-    }
-
     if (description.length < 10) {
       return safeError("프로그램 소개는 10자 이상 입력해 주세요.")
     }
@@ -438,10 +432,6 @@ export async function upsertStudioClassAction(
 
     if (mode === "update" && classId && !existingClass) {
       return { ok: false, message: "프로그램 정보를 찾을 수 없거나 수정 권한이 없습니다." }
-    }
-
-    if (mode === "update" && !isAcademyAreaEnabled(regionRaw) && regionRaw !== existingClass?.region) {
-      return safeError("현재는 은행사거리 학원가만 새로 선택할 수 있습니다.")
     }
 
     const teacherIntro = teacherIntroRaw == null ? existingClass?.teacherIntro ?? null : teacherIntroRaw || null
@@ -512,7 +502,6 @@ export async function upsertStudioClassAction(
       subjectId,
       subject,
       targetAge,
-      region: regionRaw,
       trialPrice,
       scheduleSlots: sanitizeScheduleSlotsForLog(scheduleSlots)
     }
@@ -530,7 +519,6 @@ export async function upsertStudioClassAction(
       subjectId: subjectId ?? undefined,
       subject: subject ?? "",
       targetAge,
-      region: regionRaw,
       description,
       classFormat,
       recommendedFor,

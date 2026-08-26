@@ -15,12 +15,6 @@ import {
   getSubjectLabel
 } from "@/shared/constants/education-taxonomy"
 import {
-  academyAreaConfigs,
-  getAcademyAreaConfig,
-  normalizeAcademyArea,
-  type AcademyArea
-} from "@/shared/config/academy-areas"
-import {
   upsertStudioClassAction,
   type UpsertStudioClassActionState
 } from "@/features/studio/actions/upsert-studio-class"
@@ -250,7 +244,6 @@ export const StudioClassForm = ({
   )
   const legacyTargetAgeValue =
     initialItem?.targetAge?.trim() && initialTargetGrades.length === 0 ? initialItem.targetAge.trim() : null
-  const [selectedRegion, setSelectedRegion] = useState<AcademyArea>(normalizeAcademyArea(initialItem?.region))
   const teacherOptionIds = useMemo(
     () => new Set(safeTeacherOptions.map((option) => option.teacherId)),
     [safeTeacherOptions]
@@ -279,15 +272,6 @@ export const StudioClassForm = ({
   const mergedTeacherOptionIds = useMemo(
     () => new Set(mergedTeacherOptions.map((option) => option.teacherId)),
     [mergedTeacherOptions]
-  )
-  const selectedRegionConfig = useMemo(() => getAcademyAreaConfig(selectedRegion), [selectedRegion])
-  const regionOptions = useMemo(
-    () =>
-      academyAreaConfigs.map((option) => ({
-        ...option,
-        isDisabled: !option.enabled && option.value !== selectedRegion
-      })),
-    [selectedRegion]
   )
   const resolveTeacherLabel = (option: StudioTeacherOption | (StudioTeacherOption & Record<string, unknown>)) => {
     const candidate = option as unknown as {
@@ -334,7 +318,6 @@ export const StudioClassForm = ({
       subjectId: initialItem?.subjectId ?? "",
       description: initialItem?.description ?? "",
       targetGrades: parseStoredTargetGrades(initialItem?.targetAge),
-      region: normalizeAcademyArea(initialItem?.region),
       recommendedFor: initialItem?.recommendedFor ?? "",
       experiencePoints: initialItem?.experiencePoints ?? "",
       curriculum: initialItem?.curriculum ?? "",
@@ -356,7 +339,6 @@ export const StudioClassForm = ({
       initialItem?.programType,
       initialItem?.trialPrice,
       initialItem?.recommendedFor,
-      initialItem?.region,
       initialItem?.schedules,
       initialItem?.subjectId,
       initialItem?.subjectCategoryId,
@@ -451,7 +433,6 @@ export const StudioClassForm = ({
     setSelectedSubjectId(initialFormSnapshot.subjectId)
     setDescription(initialFormSnapshot.description)
     setSelectedTargetGrades(initialFormSnapshot.targetGrades)
-    setSelectedRegion(initialFormSnapshot.region)
     setRecommendedFor(initialFormSnapshot.recommendedFor)
     setExperiencePoints(initialFormSnapshot.experiencePoints)
     setCurriculum(initialFormSnapshot.curriculum)
@@ -903,28 +884,6 @@ export const StudioClassForm = ({
                           <span className={styles.fieldHint}>
                             기존 저장값은 `{formatStoredTargetGrades(legacyTargetAgeValue)}` 입니다. 수정 저장 시에는 학년을
                             다시 선택해 주세요.
-                          </span>
-                        ) : null}
-                      </label>
-
-                      <label className={styles.field}>
-                        <span className={styles.fieldLabel}>지역</span>
-                        <select
-                          name="region"
-                          value={selectedRegion}
-                          onChange={(event) => setSelectedRegion(event.target.value as AcademyArea)}
-                          disabled={isPending}
-                          className={styles.select}
-                        >
-                          {regionOptions.map((option) => (
-                            <option key={option.value} value={option.value} disabled={option.isDisabled}>
-                              {option.statusLabel ? `${option.value} · ${option.statusLabel}` : option.value}
-                            </option>
-                          ))}
-                        </select>
-                        {!selectedRegionConfig?.enabled ? (
-                          <span className={styles.fieldHint}>
-                            기존 학원가 값은 유지할 수 있지만, 다른 지역으로 변경한 뒤에는 다시 선택할 수 없습니다.
                           </span>
                         ) : null}
                       </label>

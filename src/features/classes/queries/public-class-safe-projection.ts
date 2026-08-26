@@ -11,7 +11,6 @@ import type {
   OrganizationLocationInfo,
   TeacherPublicProfile
 } from "@/shared/lib/db/adapter"
-import type { AcademyArea } from "@/shared/config/academy-areas"
 import { normalizeSubjectCategory } from "@/shared/constants/education-taxonomy"
 import {
   buildClassSubjectReadModel,
@@ -29,7 +28,6 @@ type PublicClassRow = {
   subject_category_id?: string | null
   subject_id?: string | null
   subject: string
-  region: AcademyArea
   target_age: string
   description: string
   trial_price: number
@@ -93,7 +91,6 @@ const PUBLIC_CLASS_SELECT_FIELDS = [
   "subject_category_id",
   "subject_id",
   "subject",
-  "region",
   "target_age",
   "description",
   "trial_price",
@@ -114,7 +111,6 @@ const LEGACY_PUBLIC_CLASS_SELECT_FIELDS = [
   "program_type",
   "title",
   "subject",
-  "region",
   "target_age",
   "description",
   "trial_price",
@@ -318,7 +314,6 @@ const mapPublicClassSummary = (
       masterSubject: row.subject_master
     }),
     subject: row.subject,
-    region: row.region,
     targetAge: row.target_age,
     classFormat: row.class_format ?? null,
     description: row.description,

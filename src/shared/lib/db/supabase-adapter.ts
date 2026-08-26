@@ -30,6 +30,7 @@ import {
   type SubjectCategory
 } from "@/shared/lib/subject-master"
 import { normalizeSubjectCategory } from "@/shared/constants/education-taxonomy"
+import { formatAdministrativeRegionLabel } from "@/features/location/lib/region-selection"
 import type {
   ActivateStudioTeacherInput,
   ApplicationLogEntry,
@@ -98,7 +99,6 @@ type ClassRow = {
   subject_category_id?: string | null
   subject_id?: string | null
   subject: string
-  region: AcademyArea
   target_age: string
   class_format?: string | null
   description: string
@@ -125,7 +125,6 @@ type StudioClassListRow = {
   subject_category_id?: string | null
   subject_id?: string | null
   subject: string
-  region: AcademyArea
   target_age: string
   trial_price: number
   teacher_id: string | null
@@ -172,15 +171,19 @@ type OrganizationLocationRow = {
   bname?: string | null
 }
 
+type EmbeddedClassOrganizationRow = Pick<
+  OrganizationLocationRow,
+  "name" | "sido" | "sigungu" | "bname"
+>
+
 type EmbeddedClassRow = {
   program_type?: ClassProgramType
   assignment_mode?: ClassAssignmentMode | null
   title: string
   subject?: string
-  region?: string
   is_active?: boolean
   organization_id?: string | null
-  organizations?: Pick<OrganizationLocationRow, "name"> | Array<Pick<OrganizationLocationRow, "name">> | null
+  organizations?: EmbeddedClassOrganizationRow | EmbeddedClassOrganizationRow[] | null
   teacher_display_name?: string | null
 }
 
@@ -415,7 +418,6 @@ const mapClass = (
       masterSubject: row.subject_master
     }),
     subject: row.subject,
-    region: row.region,
     targetAge: row.target_age,
     classFormat: row.class_format ?? null,
     description: row.description,
@@ -452,7 +454,6 @@ const mapStudioClassListItem = (
       masterSubject: row.subject_master
     }),
     subject: row.subject,
-    region: row.region,
     targetAge: row.target_age,
     trialPrice: row.trial_price,
     teacherId: row.teacher_id,
@@ -755,7 +756,8 @@ const mapStudioApplication = (
   return {
     ...mapApplication(row),
     classSubject: embeddedClass?.subject ?? null,
-    classRegion: embeddedClass?.region ?? null,
+    // 지역 표시는 organization 행정지역 metadata 로만 만든다. legacy classes.region 은 쓰지 않는다.
+    classRegion: formatAdministrativeRegionLabel(getEmbeddedClassOrganization(embeddedClass) ?? {}),
     classAssignmentMode: resolveClassAssignmentMode(embeddedClass ?? {}),
     assignedTeacherId: row.assigned_teacher_id ?? null,
     assignedTeacherName: row.assigned_teacher_id
@@ -2202,13 +2204,13 @@ const summarizeStudioClassScheduleSlots = (slots: StudioClassInput["scheduleSlot
   }))
 
 const LEGACY_CLASS_BASE_SELECT_FIELDS =
-  "id, organization_id, program_type, title, subject, region, target_age, description, trial_price, teacher_id, teacher_display_name, cover_image_url, is_active"
+  "id, organization_id, program_type, title, subject, target_age, description, trial_price, teacher_id, teacher_display_name, cover_image_url, is_active"
 
 const CLASS_BASE_SELECT_FIELDS =
   `${LEGACY_CLASS_BASE_SELECT_FIELDS}, assignment_mode, subject_category_id, subject_id`
 
 const LEGACY_STUDIO_CLASS_LIST_SELECT_FIELDS =
-  "id, program_type, title, subject, region, target_age, trial_price, teacher_id, teacher_display_name, cover_image_url, is_active"
+  "id, program_type, title, subject, target_age, trial_price, teacher_id, teacher_display_name, cover_image_url, is_active"
 
 const STUDIO_CLASS_LIST_SELECT_FIELDS =
   `${LEGACY_STUDIO_CLASS_LIST_SELECT_FIELDS}, assignment_mode, subject_category_id, subject_id`
@@ -2484,7 +2486,6 @@ export const supabaseDataAdapter: DataAdapter = {
         `[listClasses] ${JSON.stringify({
           called: true,
           supabaseHost: new URL(supabaseUrl).host,
-          region: options?.region ?? null,
           subject: subject || null,
           subjectCategoryId: options?.subjectCategoryId ?? null,
           subjectId: options?.subjectId ?? null,
@@ -2499,10 +2500,6 @@ export const supabaseDataAdapter: DataAdapter = {
       .select(CLASS_BASE_SELECT_FIELDS)
       .eq("is_active", true)
       .order("created_at", { ascending: false })
-
-    if (options?.region) {
-      query = query.eq("region", options.region)
-    }
 
     if (options?.subjectCategoryId) {
       query = query.eq("subject_category_id", options.subjectCategoryId)
@@ -3266,7 +3263,6 @@ export const supabaseDataAdapter: DataAdapter = {
       title: input.title,
       ...subjectWritePayload,
       target_age: input.targetAge,
-      region: input.region,
       description: input.description,
       trial_price: input.trialPrice,
       teacher_id: input.teacherId,
@@ -3311,7 +3307,6 @@ export const supabaseDataAdapter: DataAdapter = {
           title: input.title,
           subject: persistedSubject,
           targetAge: input.targetAge,
-          region: input.region,
           trialPrice: input.trialPrice
           }
         )
@@ -3329,7 +3324,6 @@ export const supabaseDataAdapter: DataAdapter = {
           .eq("title", input.title)
           .eq("subject", persistedSubject)
           .eq("target_age", input.targetAge)
-          .eq("region", input.region)
           .eq("trial_price", input.trialPrice)
           .order("created_at", { ascending: false })
           .limit(1)
@@ -3350,7 +3344,6 @@ export const supabaseDataAdapter: DataAdapter = {
               title: input.title,
               subject: persistedSubject,
               targetAge: input.targetAge,
-              region: input.region,
               trialPrice: input.trialPrice
             })
           )
@@ -3367,7 +3360,6 @@ export const supabaseDataAdapter: DataAdapter = {
               title: input.title,
               subject: persistedSubject,
               targetAge: input.targetAge,
-              region: input.region,
               trialPrice: input.trialPrice
             })}`
           )
@@ -4016,7 +4008,7 @@ export const supabaseDataAdapter: DataAdapter = {
     let query = supabase
       .from("trial_applications")
       .select(
-        "id, class_id, parent_id, child_name, child_grade, parent_name, parent_phone, class_schedule_id, requested_schedule_block_id, selected_schedule_label, requested_slot_at, confirmed_slot_at, assigned_teacher_id, contacted_at, scheduled_at, completed_at, enrolled_at, canceled_at, no_show_at, goal_type, registration_status, status, created_at, updated_at, classes!inner(title, subject, region, organization_id, program_type)"
+        "id, class_id, parent_id, child_name, child_grade, parent_name, parent_phone, class_schedule_id, requested_schedule_block_id, selected_schedule_label, requested_slot_at, confirmed_slot_at, assigned_teacher_id, contacted_at, scheduled_at, completed_at, enrolled_at, canceled_at, no_show_at, goal_type, registration_status, status, created_at, updated_at, classes!inner(title, subject, organization_id, program_type, organizations(sido, sigungu, bname))"
       )
       .eq("classes.organization_id", organizationId)
 
@@ -4313,7 +4305,7 @@ export const supabaseDataAdapter: DataAdapter = {
     const { data, error } = await supabase
       .from("trial_applications")
       .select(
-        "id, class_id, parent_id, child_name, child_grade, parent_name, parent_phone, child_school, child_notes, subject_experience_yn, subject_experience_duration, current_level, preferred_regular_schedule, goal_type, goal_note, class_schedule_id, requested_slot_at, requested_schedule_block_id, selected_schedule_label, confirmed_slot_at, confirmed_schedule_block_id, assigned_teacher_id, contacted_at, scheduled_at, completed_at, enrolled_at, canceled_at, no_show_at, consultation_note, trial_feedback, final_level, final_schedule, registration_status, registered_course, unregistered_reason, unregistered_reason_note, lost_at, follow_up_note, next_contact_at, last_activity_at, memo, status, created_at, updated_at, classes!inner(title, subject, region, organization_id, program_type, assignment_mode, organizations(name))"
+        "id, class_id, parent_id, child_name, child_grade, parent_name, parent_phone, child_school, child_notes, subject_experience_yn, subject_experience_duration, current_level, preferred_regular_schedule, goal_type, goal_note, class_schedule_id, requested_slot_at, requested_schedule_block_id, selected_schedule_label, confirmed_slot_at, confirmed_schedule_block_id, assigned_teacher_id, contacted_at, scheduled_at, completed_at, enrolled_at, canceled_at, no_show_at, consultation_note, trial_feedback, final_level, final_schedule, registration_status, registered_course, unregistered_reason, unregistered_reason_note, lost_at, follow_up_note, next_contact_at, last_activity_at, memo, status, created_at, updated_at, classes!inner(title, subject, organization_id, program_type, assignment_mode, organizations(name, sido, sigungu, bname))"
       )
       .eq("id", applicationId)
       .eq("classes.organization_id", organizationId)

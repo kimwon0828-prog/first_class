@@ -74,7 +74,6 @@ export const StudioClassesManager = ({ items }: StudioClassesManagerProps) => {
         item.teacherName,
         PROGRAM_TYPE_LABELS[item.programType],
         item.subject,
-        item.region,
         item.targetAge
       ]
         .filter((value): value is string => typeof value === "string" && value.length > 0)
@@ -298,7 +297,7 @@ export const StudioClassesManager = ({ items }: StudioClassesManagerProps) => {
                           <p className={styles.classTitle}>{item.title}</p>
 
                           <p className={styles.subtitle}>
-                            {formatStoredTargetGrades(item.targetAge)} · {formatClassSubjectDisplayLabel(item)} · {item.region}
+                            {formatStoredTargetGrades(item.targetAge)} · {formatClassSubjectDisplayLabel(item)}
                           </p>
 
                           <dl className={styles.metaGrid}>
@@ -315,10 +314,6 @@ export const StudioClassesManager = ({ items }: StudioClassesManagerProps) => {
                             <div className={styles.metaItem}>
                               <dt className={styles.metaLabel}>유형</dt>
                               <dd className={styles.metaValue}>{PROGRAM_TYPE_LABELS[item.programType]}</dd>
-                            </div>
-                            <div className={styles.metaItem}>
-                              <dt className={styles.metaLabel}>지역</dt>
-                              <dd className={styles.metaValue}>{item.region}</dd>
                             </div>
                             <div className={styles.metaItem}>
                               <dt className={styles.metaLabel}>과목</dt>

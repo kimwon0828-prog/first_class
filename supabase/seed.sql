@@ -45,7 +45,6 @@ insert into classes (
   title,
   subject,
   target_age,
-  region,
   description,
   trial_price,
   is_active
@@ -58,7 +57,6 @@ values
     '초등 저학년 창의 미술 체험',
     '미술',
     '7-9',
-    '후곡학원가',
     '기초 드로잉과 색채 표현을 체험합니다.',
     0,
     true
@@ -70,7 +68,6 @@ values
     '기초 과학 실험 체험',
     '과학',
     '9-11',
-    '백마학원가',
     '안전한 키트로 실험 기반 체험을 제공합니다.',
     10000,
     true

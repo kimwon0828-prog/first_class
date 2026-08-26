@@ -64,6 +64,7 @@ import {
   normalizeTeacherPublicVisibility
 } from "@/shared/lib/teacher-public-visibility"
 import { normalizeSubjectCategory } from "@/shared/constants/education-taxonomy"
+import { formatAdministrativeRegionLabel } from "@/features/location/lib/region-selection"
 import {
   buildClassSubjectReadModel,
   formatClassSubjectDisplayLabel,
@@ -260,7 +261,6 @@ const defaultClasses: ClassSummary[] = [
     subjectCategoryCode: null,
     subjectCategoryName: null,
     subject: "미술",
-    region: "후곡학원가",
     targetAge: "7세~초2",
     classFormat: null,
     description: "기초 드로잉과 색채 표현을 중심으로 즐겁게 배우는 체험 수업입니다.",
@@ -287,7 +287,6 @@ const defaultClasses: ClassSummary[] = [
     subjectCategoryCode: null,
     subjectCategoryName: null,
     subject: "과학",
-    region: "백마학원가",
     targetAge: "초3~초5",
     classFormat: null,
     description: "안전한 실험 키트로 관찰과 기록 습관을 키우는 체험 수업입니다.",
@@ -314,7 +313,6 @@ const defaultClasses: ClassSummary[] = [
     subjectCategoryCode: null,
     subjectCategoryName: null,
     subject: "수학",
-    region: "은행사거리학원가",
     targetAge: "초2~초4",
     classFormat: null,
     description: "보드게임과 퍼즐을 통해 수학적 사고력을 키우는 체험 수업입니다.",
@@ -341,7 +339,6 @@ const defaultClasses: ClassSummary[] = [
     subjectCategoryCode: null,
     subjectCategoryName: null,
     subject: "영어",
-    region: "후곡학원가",
     targetAge: "7세~초2",
     classFormat: null,
     description: "짧은 이야기 만들기와 역할놀이로 말하기 자신감을 키워요.",
@@ -443,7 +440,6 @@ const toStudioClassListItem = (item: ClassSummary): StudioClassListItem => ({
   subjectCategoryCode: item.subjectCategoryCode,
   subjectCategoryName: item.subjectCategoryName,
   subject: item.subject,
-  region: item.region,
   targetAge: item.targetAge,
   trialPrice: item.trialPrice,
   teacherId: item.teacherId,
@@ -784,7 +780,6 @@ export const mockDataAdapter: DataAdapter = {
         `[listClasses] ${JSON.stringify({
           called: true,
           adapter: "mock",
-          region: options?.region ?? null,
           subject: subject || null,
           subjectCategoryId: options?.subjectCategoryId ?? null,
           subjectId: options?.subjectId ?? null,
@@ -801,10 +796,6 @@ export const mockDataAdapter: DataAdapter = {
     const mapped = classes
       .filter((item) => {
       if (!item.isActive) {
-        return false
-      }
-
-      if (options?.region && item.region !== options.region) {
         return false
       }
 
@@ -1157,7 +1148,6 @@ export const mockDataAdapter: DataAdapter = {
       title: input.title,
       ...nextSubjectReadModel,
       subject: nextSubject,
-      region: input.region,
       targetAge: input.targetAge,
       description: input.description,
       classFormat: input.classFormat,
@@ -1726,7 +1716,7 @@ export const mockDataAdapter: DataAdapter = {
         const mapped: StudioApplicationSummary = {
           ...item,
           classSubject: classItem?.subject ?? null,
-          classRegion: classItem?.region ?? null,
+          classRegion: formatAdministrativeRegionLabel(mockOrganizationLocation),
           assignedTeacherId: item.assignedTeacherId ?? null,
           assignedTeacherName: getTeacherDisplayNameById(item.assignedTeacherId),
           registrationStatus:
@@ -1926,7 +1916,10 @@ export const mockDataAdapter: DataAdapter = {
     const detail: StudioApplicationDetail = {
       ...application,
       classSubject: "classSubject" in application ? application.classSubject : classItem?.subject ?? null,
-      classRegion: "classRegion" in application ? application.classRegion : classItem?.region ?? null,
+      classRegion:
+        "classRegion" in application
+          ? application.classRegion
+          : formatAdministrativeRegionLabel(mockOrganizationLocation),
       assignedTeacherId: "assignedTeacherId" in application ? application.assignedTeacherId : null,
       assignedTeacherName:
         application.assignedTeacherName ?? getTeacherDisplayNameById(application.assignedTeacherId),
@@ -2358,7 +2351,7 @@ export const mockDataAdapter: DataAdapter = {
       ...created,
       childId: input.childId ?? null,
       classSubject: classItem?.subject ?? null,
-      classRegion: classItem?.region ?? null,
+      classRegion: formatAdministrativeRegionLabel(mockOrganizationLocation),
       classAssignmentMode: classItem.assignmentMode,
       assignedTeacherId: classItem.assignmentMode === "preassigned" ? classItem.teacherId : null,
       assignedTeacherName:

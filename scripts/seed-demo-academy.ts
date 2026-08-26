@@ -1838,7 +1838,6 @@ const insertClasses = async (
         title: classPlan.title,
         subject: classPlan.subject,
         target_age: classPlan.targetAge,
-        region: DEMO_ACADEMY_AREA,
         description: classPlan.description,
         class_format: classPlan.classFormat,
         recommended_for: classPlan.recommendedFor,

@@ -1,5 +1,4 @@
 import { requireTeacherStudioAccess } from "@/features/studio/lib/require-teacher-studio-access"
-import { getStudioSettingsOrganization } from "@/features/studio/queries/get-studio-settings-organization"
 import {
   getStudioClassFormOptions,
   getStudioSubjectCatalog
@@ -10,19 +9,16 @@ export default async function StudioClassNewPage() {
   const teacher = await requireTeacherStudioAccess()
   const [
     { data: teacherOptions, error: teacherOptionsError },
-    { data: subjectCatalog, error: subjectCatalogError },
-    organization
+    { data: subjectCatalog, error: subjectCatalogError }
   ] = await Promise.all([
     getStudioClassFormOptions(teacher.organizationId),
-    getStudioSubjectCatalog(),
-    getStudioSettingsOrganization(teacher)
+    getStudioSubjectCatalog()
   ])
 
   return (
     <>
       <StudioClassCreateWizard
         organizationId={teacher.organizationId}
-        organizationAcademyArea={organization.academyArea}
         currentTeacherId={teacher.teacherId}
         teacherOptions={teacherOptions}
         teacherOptionsError={teacherOptionsError}

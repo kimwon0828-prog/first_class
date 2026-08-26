@@ -44,7 +44,6 @@ import styles from "./studio-class-create-wizard.module.css"
 
 type StudioClassCreateWizardProps = {
   organizationId: string
-  organizationAcademyArea: string | null
   currentTeacherId: string
   teacherOptions: StudioTeacherOption[]
   teacherOptionsError: string | null
@@ -86,7 +85,6 @@ type StoredDraft = {
 }
 
 type ValidationErrors = Partial<Record<
-  | "organizationRegion"
   | "programType"
   | "title"
   | "subject"
@@ -313,7 +311,6 @@ const renderFieldError = (message: string | undefined) =>
 
 export const StudioClassCreateWizard = ({
   organizationId,
-  organizationAcademyArea,
   currentTeacherId,
   teacherOptions,
   teacherOptionsError,
@@ -524,10 +521,6 @@ export const StudioClassCreateWizard = ({
   const validateStep = (step: WizardStepId): ValidationErrors => {
     const nextErrors: ValidationErrors = {}
 
-    if (!organizationAcademyArea) {
-      nextErrors.organizationRegion = "학원 프로필의 학원가 정보가 없어 저장할 수 없습니다. 학원 설정을 먼저 확인해 주세요."
-    }
-
     if (step >= 1) {
       if (!values.programType) {
         nextErrors.programType = "프로그램 유형을 선택해 주세요."
@@ -576,7 +569,6 @@ export const StudioClassCreateWizard = ({
 
   const resolveStepForErrors = (errors: ValidationErrors): WizardStepId => {
     if (
-      errors.organizationRegion ||
       errors.title ||
       errors.subject ||
       errors.targetGrades ||
@@ -770,7 +762,6 @@ export const StudioClassCreateWizard = ({
         <input type="hidden" name="title" value={values.title} />
         <input type="hidden" name="subjectCategoryId" value={values.subjectCategoryId} />
         <input type="hidden" name="subjectId" value={values.subjectId} />
-        <input type="hidden" name="region" value={organizationAcademyArea ?? ""} />
         <input type="hidden" name="description" value={values.description} />
         <input type="hidden" name="classFormat" value={values.classFormat} />
         <input type="hidden" name="recommendedFor" value={values.recommendedFor} />
@@ -818,8 +809,6 @@ export const StudioClassCreateWizard = ({
                     학부모가 가장 먼저 보는 기본 정보와 소개 문구, 대표 이미지를 한 번에 정리해 주세요.
                   </p>
                 </div>
-
-                {renderFieldError(fieldErrors.organizationRegion)}
 
                 <div className={styles.infoGrid}>
                   <div className={styles.infoMainColumn}>
@@ -881,16 +870,6 @@ export const StudioClassCreateWizard = ({
                             시작 학년과 마지막 학년을 선택하면 사이 학년이 자동으로 선택됩니다.
                           </p>
                           {renderFieldError(fieldErrors.targetGrades)}
-                        </div>
-
-                        <div className={styles.fieldBlock}>
-                          <label className={styles.fieldLabel} htmlFor="class-region">
-                            지역
-                          </label>
-                          <div id="class-region" className={styles.readonlyField}>
-                            {organizationAcademyArea ?? "학원 설정에서 학원가 정보를 먼저 확인해 주세요."}
-                          </div>
-                          <p className={styles.helperText}>학원 프로필의 학원가 정보가 자동으로 저장됩니다.</p>
                         </div>
 
                         <div className={styles.fieldBlock}>
