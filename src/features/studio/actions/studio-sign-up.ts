@@ -7,7 +7,6 @@ import {
   buildOrganizationAddressWritePayload,
   buildSignupRequestRegionWritePayload
 } from "@/features/organizations/lib/organization-address-contract"
-import { isAcademyAreaEnabled } from "@/shared/config/academy-areas"
 import { getSupabaseServerClient } from "@/integrations/supabase/server"
 
 export type StudioSignUpActionState = {
@@ -72,7 +71,6 @@ type ExistingTeacherSignupRequestRow = {
 
 const validateSignUpForm = (formData: FormData) => {
   const organizationName = String(formData.get("organizationName") ?? "").trim()
-  const academyArea = String(formData.get("academyArea") ?? "").trim()
   const branchName = String(formData.get("branchName") ?? "").trim()
   const representativeName = String(formData.get("representativeName") ?? "").trim()
   const businessRegistrationNumber = String(formData.get("businessRegistrationNumber") ?? "").trim()
@@ -90,13 +88,6 @@ const validateSignUpForm = (formData: FormData) => {
       length: organizationName.length
     })
     return { ok: false as const, message: "학원명은 2자 이상 50자 이하로 입력해 주세요." }
-  }
-
-  if (!isAcademyAreaEnabled(academyArea)) {
-    logValidationFailure("academyArea", "academy_area_not_enabled", {
-      academyArea
-    })
-    return { ok: false as const, message: "학원가를 선택해 주세요." }
   }
 
   if (branchName.length > 30) {
@@ -216,7 +207,6 @@ const validateSignUpForm = (formData: FormData) => {
   return {
     ok: true as const,
     organizationName,
-    academyArea,
     branchName: branchName || null,
     representativeName,
     businessRegistrationNumber,
@@ -324,7 +314,6 @@ export async function studioSignUpAction(
         teacher_name: fallbackTeacherName,
         teacher_phone: validated.contactPhone,
         organization_name: validated.organizationName,
-        academy_area: validated.academyArea,
         branch_name: validated.branchName,
         address: validated.address,
         address_detail: validated.addressDetail,

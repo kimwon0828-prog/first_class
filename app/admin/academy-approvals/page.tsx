@@ -15,7 +15,6 @@ type SignupRequestRow = {
   user_id: string
   signup_email: string | null
   organization_name: string
-  academy_area: string
   branch_name: string | null
   address: string | null
   address_detail: string | null
@@ -32,6 +31,9 @@ type SignupRequestRow = {
   postal_code: string | null
   address_line1: string | null
   address_line2: string | null
+  sido: string | null
+  sigungu: string | null
+  bname: string | null
   admin_note: string | null
   rejection_reason: string | null
   reviewed_by: string | null
@@ -44,7 +46,6 @@ type SignupRequestView = {
   requestId: string
   signupEmail: string | null
   organizationName: string
-  academyArea: string
   branchName: string | null
   address: string | null
   addressDetail: string | null
@@ -61,6 +62,9 @@ type SignupRequestView = {
   postalCode: string | null
   addressLine1: string | null
   addressLine2: string | null
+  sido: string | null
+  sigungu: string | null
+  bname: string | null
   adminNote: string | null
   rejectionReason: string | null
   reviewedBy: string | null
@@ -207,7 +211,6 @@ const getSignupRequests = async (): Promise<SignupRequestView[]> => {
         "user_id",
         "signup_email",
         "organization_name",
-        "academy_area",
         "branch_name",
         "address",
         "address_detail",
@@ -224,6 +227,9 @@ const getSignupRequests = async (): Promise<SignupRequestView[]> => {
         "postal_code",
         "address_line1",
         "address_line2",
+        "sido",
+        "sigungu",
+        "bname",
         "admin_note",
         "rejection_reason",
         "reviewed_by",
@@ -262,7 +268,6 @@ const getSignupRequests = async (): Promise<SignupRequestView[]> => {
         requestId: row.id,
         signupEmail: row.signup_email,
         organizationName: row.organization_name,
-        academyArea: row.academy_area,
         branchName: row.branch_name,
         address: row.address,
         addressDetail: row.address_detail,
@@ -279,6 +284,9 @@ const getSignupRequests = async (): Promise<SignupRequestView[]> => {
         postalCode: row.postal_code,
         addressLine1: row.address_line1,
         addressLine2: row.address_line2,
+        sido: row.sido,
+        sigungu: row.sigungu,
+        bname: row.bname,
         adminNote: row.admin_note,
         rejectionReason: row.rejection_reason,
         reviewedBy: row.reviewed_by,

@@ -7,12 +7,12 @@ import { useFormStatus } from "react-dom"
 import { AdminApprovalNav } from "../_components/admin-approval-nav"
 import { ApprovalSubmitButton } from "./approval-submit-button"
 import styles from "./academy-approvals.module.css"
+import { formatAdministrativeRegionLabel } from "@/features/location/lib/region-selection"
 
 type SignupRequestView = {
   requestId: string
   signupEmail: string | null
   organizationName: string
-  academyArea: string
   branchName: string | null
   address: string | null
   addressDetail: string | null
@@ -29,6 +29,9 @@ type SignupRequestView = {
   postalCode: string | null
   addressLine1: string | null
   addressLine2: string | null
+  sido: string | null
+  sigungu: string | null
+  bname: string | null
   adminNote: string | null
   rejectionReason: string | null
   reviewedBy: string | null
@@ -108,6 +111,14 @@ const getMetricAccentClass = (key: string) => {
   return styles.metricAccentInfo
 }
 
+// 위치 표시는 행정지역 metadata 를 우선하고, 없으면 신청자가 입력한 주소를 쓴다.
+// legacy 학원가 값으로 fallback 하지 않는다.
+const resolveLocationLabel = (row: SignupRequestView) =>
+  formatAdministrativeRegionLabel({ sido: row.sido, sigungu: row.sigungu, bname: row.bname }) ??
+  toText(row.addressLine1) ??
+  toText(row.address) ??
+  "지역 정보 없음"
+
 const getSearchableText = (row: SignupRequestView) =>
   [
     row.organizationName,
@@ -115,7 +126,9 @@ const getSearchableText = (row: SignupRequestView) =>
     row.teacherName,
     row.representativeName,
     row.signupEmail,
-    row.academyArea,
+    row.sido,
+    row.sigungu,
+    row.bname,
     row.contactPhone,
     row.teacherPhone,
     row.academyPhone,
@@ -481,7 +494,7 @@ export function AcademyApprovalsClient({
                           )}
                         </td>
                         <td className={styles.td}>
-                          <p className={styles.primaryText}>{row.academyArea}</p>
+                          <p className={styles.primaryText}>{resolveLocationLabel(row)}</p>
                           {toText(row.branchName) ? <p className={styles.secondaryText}>{row.branchName}</p> : null}
                         </td>
                         <td className={styles.td}>
@@ -523,7 +536,7 @@ export function AcademyApprovalsClient({
                     <div className={styles.mobileTop}>
                       <div>
                         <p className={styles.primaryText}>{row.organizationName}</p>
-                        <p className={styles.secondaryText}>{row.academyArea}</p>
+                        <p className={styles.secondaryText}>{resolveLocationLabel(row)}</p>
                       </div>
                       <span className={`${styles.statusBadge} ${statusMeta.className}`}>{statusMeta.label}</span>
                     </div>

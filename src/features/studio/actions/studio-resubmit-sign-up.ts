@@ -8,7 +8,6 @@ import {
   buildOrganizationAddressWritePayload,
   buildSignupRequestRegionWritePayload
 } from "@/features/organizations/lib/organization-address-contract"
-import { isAcademyAreaEnabled } from "@/shared/config/academy-areas"
 
 export type StudioResubmitSignUpActionState = {
   status: "idle" | "error" | "success"
@@ -47,7 +46,6 @@ const isAllowedBusinessRegistrationMime = (
 
 const validateResubmitForm = (formData: FormData) => {
   const organizationName = String(formData.get("organizationName") ?? "").trim()
-  const academyArea = String(formData.get("academyArea") ?? "").trim()
   const branchName = String(formData.get("branchName") ?? "").trim()
   const representativeName = String(formData.get("representativeName") ?? "").trim()
   const businessRegistrationNumber = String(formData.get("businessRegistrationNumber") ?? "").trim()
@@ -62,10 +60,6 @@ const validateResubmitForm = (formData: FormData) => {
 
   if (organizationName.length < 2 || organizationName.length > 50) {
     return { ok: false as const, message: "학원명은 2자 이상 50자 이하로 입력해 주세요." }
-  }
-
-  if (!isAcademyAreaEnabled(academyArea)) {
-    return { ok: false as const, message: "학원가를 선택해 주세요." }
   }
 
   if (branchName.length > 30) {
@@ -137,7 +131,6 @@ const validateResubmitForm = (formData: FormData) => {
   return {
     ok: true as const,
     organizationName,
-    academyArea,
     branchName: branchName || null,
     representativeName,
     businessRegistrationNumber,
@@ -230,7 +223,6 @@ export async function studioResubmitSignUpAction(
     .update({
       status: "pending",
       organization_name: validated.organizationName,
-      academy_area: validated.academyArea,
       branch_name: validated.branchName,
       representative_name: validated.representativeName,
       business_registration_number: validated.businessRegistrationNumber,

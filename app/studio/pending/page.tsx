@@ -6,12 +6,12 @@ import { getSession } from "@/features/auth/lib/session"
 import { StudioHomeLogo } from "@/features/studio/ui/studio-home-logo"
 import { StudioSignUpForm } from "@/features/studio/ui/studio-sign-up-form"
 import { getSupabaseServerClient } from "@/integrations/supabase/server"
+import { formatAdministrativeRegionLabel } from "@/features/location/lib/region-selection"
 
 type SignupRequestRow = {
   id: string
   status: string
   organization_name: string
-  academy_area: string
   branch_name: string | null
   representative_name: string | null
   business_registration_number: string | null
@@ -49,7 +49,6 @@ export default async function StudioPendingPage() {
         "id",
         "status",
         "organization_name",
-        "academy_area",
         "branch_name",
         "representative_name",
         "business_registration_number",
@@ -78,6 +77,20 @@ export default async function StudioPendingPage() {
   }
 
   const request = (signupRequest as SignupRequestRow | null) ?? null
+  // 신청자가 입력한 주소를 우선 보여주고, 행정지역 metadata 가 있으면 함께 노출한다.
+  // legacy 학원가 값으로 fallback 하지 않는다.
+  const requestAddressLabel = request
+    ? [request.postal_code ? `(${request.postal_code})` : null, request.address_line1, request.address_line2]
+        .filter((value): value is string => Boolean(value && value.trim()))
+        .join(" ") || null
+    : null
+  const requestRegionLabel = request
+    ? formatAdministrativeRegionLabel({
+        sido: request.sido,
+        sigungu: request.sigungu,
+        bname: request.bname
+      })
+    : null
   const isRejected = request?.status === "rejected"
   const rejectionReason = request?.rejection_reason?.trim() || "운영팀에 문의해 주세요."
 
@@ -137,7 +150,6 @@ export default async function StudioPendingPage() {
                 mode="resubmit"
                 initialValues={{
                   organizationName: request.organization_name,
-                  academyArea: request.academy_area,
                   branchName: request.branch_name,
                   representativeName: request.representative_name,
                   businessRegistrationNumber: request.business_registration_number,
@@ -173,9 +185,14 @@ export default async function StudioPendingPage() {
               <h2 style={{ fontSize: 16, margin: "0 0 12px" }}>신청 정보</h2>
               <ul style={{ listStyle: "none", padding: 0, margin: 0, fontSize: 14, color: "#374151" }}>
                 <li style={{ marginBottom: 8 }}><strong>학원 이름:</strong> {request.organization_name}</li>
-                <li style={{ marginBottom: 8 }}><strong>학원가:</strong> {request.academy_area}</li>
                 {request.branch_name ? (
                   <li style={{ marginBottom: 8 }}><strong>지점명:</strong> {request.branch_name}</li>
+                ) : null}
+                <li style={{ marginBottom: 8 }}>
+                  <strong>주소:</strong> {requestAddressLabel ?? "주소 정보 없음"}
+                </li>
+                {requestRegionLabel ? (
+                  <li style={{ marginBottom: 8 }}><strong>지역:</strong> {requestRegionLabel}</li>
                 ) : null}
                 <li><strong>신청 상태:</strong> 승인 대기</li>
               </ul>

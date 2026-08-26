@@ -4,7 +4,6 @@ import Image from "next/image"
 import Link from "next/link"
 import { useActionState, useEffect, useRef, useState, type FormEvent } from "react"
 
-import { academyAreaConfigs, getDefaultAcademyArea } from "@/shared/config/academy-areas"
 import {
   studioSignUpAction,
   type StudioSignUpActionState
@@ -37,7 +36,6 @@ type StudioSignUpFormProps = {
   mode?: "signup" | "resubmit"
   initialValues?: {
     organizationName?: string | null
-    academyArea?: string | null
     branchName?: string | null
     representativeName?: string | null
     businessRegistrationNumber?: string | null
@@ -352,26 +350,6 @@ export const StudioSignUpForm = ({
             placeholder="예: 첫수업 강남학원"
             defaultValue={initialValues?.organizationName ?? ""}
           />
-        </label>
-
-        <label className={styles.field}>
-          <FieldLabel text="학원가" required />
-          <select
-            name="academyArea"
-            required
-            disabled={formLocked}
-            className={styles.input}
-            defaultValue={initialValues?.academyArea ?? getDefaultAcademyArea()}
-          >
-            <option value="" disabled>
-              학원가를 선택해 주세요
-            </option>
-            {academyAreaConfigs.map((option) => (
-              <option key={option.value} value={option.value} disabled={!option.enabled}>
-                {option.statusLabel ? `${option.value} · ${option.statusLabel}` : option.value}
-              </option>
-            ))}
-          </select>
         </label>
 
         <label className={styles.field}>
