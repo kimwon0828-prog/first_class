@@ -30,13 +30,16 @@ export const matchesAcademiesSubjectFilter = (
   classSubject: string | null | undefined,
   filter: AcademiesSubjectFilter | null | undefined
 ) => {
+  // 과목 필터가 없으면 subject 정규화 결과와 무관하게 통과시킨다.
+  // 정규화 실패는 "이 수업이 어떤 카테고리인지 모른다" 일 뿐이고,
+  // legacy/한글 subject 값을 가진 active class 를 목록에서 빼는 사유가 아니다.
+  if (!filter) {
+    return true
+  }
+
   const normalizedSubject = normalizeSubjectCategory(classSubject)
   if (!normalizedSubject) {
     return false
-  }
-
-  if (!filter) {
-    return true
   }
 
   return normalizedSubject === filter.queryValue

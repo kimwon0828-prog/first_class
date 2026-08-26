@@ -5,9 +5,11 @@ import { getSupabaseServiceRoleClient } from "@/integrations/supabase/service-ro
 import type { RegionCatalog } from "../lib/region-selection"
 import { buildRegionCatalogFromOrganizationIds } from "./build-region-catalog"
 
-// "선택지로 보이는데 수업이 0개" 를 막기 위해 active class 를 가진 organization 만 catalog 에 넣는다.
-// academy_area / classes.region 은 사용하지 않는다.
-export const getClassesRegionCatalog = async (): Promise<RegionCatalog> => {
+// /academies 의 공개 조건은 "active class 를 1개 이상 가진 organization" 이다.
+// getAcademiesForList 가 학원 목록을 active class 에서 파생시키므로, catalog 도 같은 조건을 쓴다.
+// classes catalog 와 조건이 우연히 같더라도, 두 surface 의 노출 규칙은 각자 소유한다.
+// academy_area 는 사용하지 않고 organizations.sido/sigungu/bname 만 사용한다.
+export const getAcademiesRegionCatalog = async (): Promise<RegionCatalog> => {
   const serviceRoleClient = getSupabaseServiceRoleClient()
 
   const { data: classRows, error: classError } = await serviceRoleClient
@@ -16,7 +18,7 @@ export const getClassesRegionCatalog = async (): Promise<RegionCatalog> => {
     .eq("is_active", true)
 
   if (classError) {
-    throw new Error("failed_to_fetch_active_class_organizations")
+    throw new Error("failed_to_fetch_public_academy_organizations")
   }
 
   const organizationIds = ((classRows ?? []) as Array<{ organization_id: string | null }>)

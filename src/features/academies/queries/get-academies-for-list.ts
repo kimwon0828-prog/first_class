@@ -29,6 +29,9 @@ type SafeOrganizationRow = {
   academy_area: AcademyArea | null
   address: string | null
   address_detail: string | null
+  sido: string | null
+  sigungu: string | null
+  bname: string | null
 }
 
 export type AcademyClassPreview = {
@@ -48,17 +51,26 @@ export type AcademyListItem = {
   academyArea: AcademyArea | null
   address: string | null
   addressDetail: string | null
+  sido: string | null
+  sigungu: string | null
+  bname: string | null
   locationSummary: string
   subjectTags: string[]
   targetAgeSummary: string
   representativeClasses: AcademyClassPreview[]
+  distanceKm?: number
 }
 
 type GetAcademiesForListOptions = {
   subject?: string | null
+  // legacy academy-area filter. 2C-3 에서 제거 예정.
   region?: AcademyArea | null
   grade?: string | null
   sort?: string | null
+  // 위치 탐색은 query 가 아니라 page orchestration 이 해석한다.
+  // 여기로는 이미 결정된 organization 집합과 거리만 넘어온다.
+  organizationIds?: readonly string[]
+  distanceByOrganizationId?: ReadonlyMap<string, number>
 }
 
 const PUBLIC_CLASS_SELECT_FIELDS = [
@@ -73,9 +85,19 @@ const PUBLIC_CLASS_SELECT_FIELDS = [
   "cover_image_url"
 ].join(", ")
 
-const ORGANIZATION_SELECT_FIELDS = ["id", "name", "branch_name", "academy_area", "address", "address_detail"].join(
-  ", "
-)
+const ORGANIZATION_SELECT_FIELDS = [
+  "id",
+  "name",
+  "branch_name",
+  // legacy. 2C-3 에서 제거 예정이며 그때까지 표시 경로가 계속 사용한다.
+  "academy_area",
+  "address",
+  "address_detail",
+  // 2C-2 의 행정지역 label 용. 이 단계에서는 전달만 하고 표시하지 않는다.
+  "sido",
+  "sigungu",
+  "bname"
+].join(", ")
 
 const summarizeLocation = (organization: SafeOrganizationRow) => {
   if (organization.academy_area) {
@@ -145,6 +167,14 @@ export const getAcademiesForList = async (
   const subjectFilter = resolveAcademiesSubjectFilter(options?.subject)
   const normalizedGrades = parseStoredTargetGrades(options?.grade)
 
+  // 위치 필터가 후보를 0개로 좁혔으면 조회 자체를 하지 않는다.
+  if (options?.organizationIds && options.organizationIds.length === 0) {
+    return {
+      academies: [],
+      selectedSubjectLabel: subjectFilter?.label ?? null
+    }
+  }
+
   let classQuery = serviceRoleClient
     .from("classes")
     .select(PUBLIC_CLASS_SELECT_FIELDS)
@@ -153,6 +183,11 @@ export const getAcademiesForList = async (
 
   if (options?.region) {
     classQuery = classQuery.eq("region", options.region)
+  }
+
+  // organization 후보가 정해져 있으면 classes 조회 단계로 밀어 스캔량을 줄인다.
+  if (options?.organizationIds) {
+    classQuery = classQuery.in("organization_id", [...options.organizationIds])
   }
 
   const { data, error } = await classQuery
@@ -218,20 +253,37 @@ export const getAcademiesForList = async (
       ).slice(0, 4)
       const displayName = [organization.name, organization.branch_name].filter(Boolean).join(" ").trim()
 
+      const distanceKm = options?.distanceByOrganizationId?.get(organizationId)
+
       return {
         id: organizationId,
         displayName: displayName || organization.name,
         academyArea: organization.academy_area ?? null,
         address: organization.address ?? null,
         addressDetail: organization.address_detail ?? null,
+        sido: organization.sido ?? null,
+        sigungu: organization.sigungu ?? null,
+        bname: organization.bname ?? null,
         locationSummary: summarizeLocation(organization),
         subjectTags,
         targetAgeSummary: buildTargetAgeSummary(organizationClasses),
-        representativeClasses
+        representativeClasses,
+        ...(distanceKm === undefined ? {} : { distanceKm })
       } satisfies AcademyListItem
     })
     .filter((item): item is AcademyListItem => Boolean(item))
     .sort((left, right) => {
+      // 거리 정보가 넘어온 경우(= 내 주변)에는 거리순이 다른 정렬보다 우선한다.
+      if (options?.distanceByOrganizationId) {
+        const leftDistance = left.distanceKm ?? Number.POSITIVE_INFINITY
+        const rightDistance = right.distanceKm ?? Number.POSITIVE_INFINITY
+        if (leftDistance !== rightDistance) {
+          return leftDistance - rightDistance
+        }
+
+        return left.displayName.localeCompare(right.displayName, "ko")
+      }
+
       if ((options?.sort ?? "").trim() === "name") {
         return left.displayName.localeCompare(right.displayName, "ko")
       }
