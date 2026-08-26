@@ -92,27 +92,23 @@
   display: flex;
   gap: 10px;
   overflow-x: auto;
-  padding: 0 24px 12px;
+  /* 위쪽 5px 은 chip 히트 영역이 overflow 로 잘리지 않게 확보한 여백이다. */
+  padding: 5px 24px 12px;
   scrollbar-width: none;
   -webkit-overflow-scrolling: touch;
+  /* 마지막 chip 이 화면 밖에 있을 때만 오른쪽 그림자가 보이도록 한다.
+     cover(local) 가 스크롤과 함께 움직이며 shadow(scroll) 를 덮으므로
+     끝까지 스크롤하면 그림자가 스스로 사라진다. JS 없이 동작한다. */
+  background:
+    linear-gradient(to right, #fafafa, rgba(250, 250, 250, 0)) left center / 24px 100% no-repeat local,
+    linear-gradient(to left, #fafafa, rgba(250, 250, 250, 0)) right center / 24px 100% no-repeat local,
+    radial-gradient(farthest-side at 0 50%, rgba(17, 17, 17, 0.16), rgba(17, 17, 17, 0)) left center / 18px 100% no-repeat scroll,
+    radial-gradient(farthest-side at 100% 50%, rgba(17, 17, 17, 0.16), rgba(17, 17, 17, 0)) right center / 18px 100% no-repeat scroll;
+  scroll-padding-inline: 24px;
 }
 
 .filterRow::-webkit-scrollbar {
   display: none;
-}
-
-.filterChip {
-  flex: 0 0 auto;
-  display: inline-flex;
-  align-items: center;
-  height: 36px;
-  padding: 0 14px;
-  border-radius: 999px;
-  background: #f7f7f7;
-  color: #4a4a4a;
-  font-size: 13px;
-  font-weight: 600;
-  letter-spacing: -0.02em;
 }
 
 .academyList {
@@ -371,6 +367,7 @@
 }
 
 .filterChipButton {
+  position: relative;
   flex: 0 0 auto;
   display: inline-flex;
   align-items: center;
@@ -384,6 +381,14 @@
   font-size: 13px;
   font-weight: 600;
   line-height: 1;
+}
+
+/* 시각 높이는 36px 로 두고 터치 가능한 영역만 46px 로 넓힌다.
+   세로로만 확장하므로 좌우 인접 chip 과 겹치지 않는다. */
+.filterChipButton::after {
+  content: "";
+  position: absolute;
+  inset: -5px 0;
 }
 
 .filterChipIcon {
