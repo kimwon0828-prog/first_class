@@ -3,10 +3,10 @@ import Image from "next/image"
 import Link from "next/link"
 import { redirect } from "next/navigation"
 
-import { normalizeSubjectCategory } from "@/shared/constants/education-taxonomy"
 import { resolveCurrentAuth } from "@/features/auth/lib/current-auth"
 import { getPublicClassCardScheduleSummaries } from "@/features/classes/queries/get-public-class-card-schedule-summaries"
 import { getSelectableSubjectCatalog } from "@/features/subjects/queries/get-subject-master"
+import { resolveSubjectQuerySelection } from "@/features/subjects/lib/subject-query"
 import type { ClassSummary } from "@/shared/lib/db/adapter"
 import {
   formatClassSubjectDisplayLabel,
@@ -72,15 +72,6 @@ const normalizeText = (value: string | null | undefined) => (value ?? "").trim()
 
 const getClassSubjectLabel = (item: ClassSummary) =>
   formatClassSubjectDisplayLabel(item) || "과목 정보 준비 중"
-
-const LEGACY_MASTER_FILTERS: Record<
-  string,
-  { categoryCode: string; subjectCode?: string }
-> = {
-  thinking_math: { categoryCode: "math", subjectCode: "thinking_math" },
-  english: { categoryCode: "english" },
-  sports_dance: { categoryCode: "sports_dance" }
-}
 
 const decodeQueryValue = (value: string | null | undefined) => {
   if (!value) {
@@ -171,33 +162,14 @@ export default async function ClassesPage({ searchParams }: ClassesPageProps) {
   const decodedSubject = decodeQueryValue(resolvedSearchParams?.subject)
   const subjectCatalog: SubjectCatalogCategory[] = await getSelectableSubjectCatalog()
 
-  let selectedSubjectCategory =
-    subjectCatalog.find((category) => category.code === decodedSubjectCategory) ?? null
-  let selectedSubject =
-    selectedSubjectCategory?.subjects.find((subject) => subject.code === decodedSubject) ?? null
-  let shouldCanonicalizeSubjectQuery = false
-
-  if (!decodedSubjectCategory && decodedSubject) {
-    const legacySubject = normalizeSubjectCategory(decodedSubject)
-    const legacyMasterFilter = legacySubject
-      ? LEGACY_MASTER_FILTERS[legacySubject] ?? null
-      : null
-    selectedSubjectCategory = legacyMasterFilter
-      ? subjectCatalog.find((category) => category.code === legacyMasterFilter.categoryCode) ?? null
-      : null
-    selectedSubject =
-      selectedSubjectCategory && legacyMasterFilter?.subjectCode
-        ? selectedSubjectCategory.subjects.find(
-            (subject) => subject.code === legacyMasterFilter.subjectCode
-          ) ?? null
-        : null
-    shouldCanonicalizeSubjectQuery = true
-  } else if (decodedSubjectCategory && !selectedSubjectCategory) {
-    selectedSubject = null
-    shouldCanonicalizeSubjectQuery = true
-  } else if (decodedSubject && !selectedSubject) {
-    shouldCanonicalizeSubjectQuery = true
-  }
+  const {
+    category: selectedSubjectCategory,
+    subject: selectedSubject,
+    shouldCanonicalize: shouldCanonicalizeSubjectQuery
+  } = resolveSubjectQuerySelection(subjectCatalog, {
+    subjectCategory: decodedSubjectCategory,
+    subject: decodedSubject
+  })
 
   const [searchLocation, regionCatalog] = await Promise.all([
     readParentSearchLocation(),

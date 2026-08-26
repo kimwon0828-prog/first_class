@@ -446,3 +446,10 @@
   background: #2aad38;
   color: #ffffff;
 }
+
+/* 과목 필터: 위치 필터와 같은 chip 규격을 쓴다. */
+.subjectFilter {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+}

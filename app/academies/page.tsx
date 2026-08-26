@@ -4,6 +4,9 @@ import { redirect } from "next/navigation"
 import { getMyProfile } from "@/features/auth/lib/profile-sync"
 import { getSession } from "@/features/auth/lib/session"
 import { getAcademiesForList } from "@/features/academies/queries/get-academies-for-list"
+import { getSelectableSubjectCatalog } from "@/features/subjects/queries/get-subject-master"
+import { resolveSubjectQuerySelection } from "@/features/subjects/lib/subject-query"
+import { formatClassSubjectDisplayLabel, type SubjectCatalogCategory } from "@/shared/lib/subject-master"
 import { AcademiesExplorer } from "@/features/academies/ui/academies-explorer"
 import {
   canonicalizeRegionSelection,
@@ -22,6 +25,7 @@ import { POC_DISCOVERY_HREF } from "@/shared/config/discovery"
 
 type AcademiesPageProps = {
   searchParams?: Promise<{
+    subjectCategory?: string
     subject?: string
     // legacy academy-area query. 필터로 쓰지 않고 canonical URL 에서 제거만 한다.
     region?: string
@@ -49,6 +53,7 @@ const decodeQueryValue = (value: string | null | undefined) => {
 // /academies 는 streaming fallback(loading.tsx) 이 없어 redirect() 가 실제 307 을 보낸다.
 // Location 헤더는 non-ASCII 를 담지 못하므로 query 값을 전부 percent-encode 한다.
 const buildAcademiesHref = (params: {
+  subjectCategory?: string | null
   subject?: string | null
   grade?: string | null
   sort?: string | null
@@ -58,6 +63,9 @@ const buildAcademiesHref = (params: {
   bname?: string | null
 }) => {
   const parts: string[] = []
+  if (params.subjectCategory) {
+    parts.push(`subjectCategory=${encodeURIComponent(params.subjectCategory)}`)
+  }
   if (params.subject) parts.push(`subject=${encodeURIComponent(params.subject)}`)
   if (params.grade) parts.push(`grade=${encodeURIComponent(params.grade)}`)
   if (params.sort) parts.push(`sort=${encodeURIComponent(params.sort)}`)
@@ -70,10 +78,6 @@ const buildAcademiesHref = (params: {
 
 export default async function AcademiesPage({ searchParams }: AcademiesPageProps) {
   const resolvedSearchParams = searchParams ? await searchParams : undefined
-  const subject =
-    typeof resolvedSearchParams?.subject === "string" && resolvedSearchParams.subject.trim().length > 0
-      ? resolvedSearchParams.subject.trim()
-      : null
   // legacy academy-area query 는 더 이상 필터가 아니다. 발견되면 canonical URL 에서 제거만 한다.
   const hasLegacyRegionQuery =
     typeof resolvedSearchParams?.region === "string" && resolvedSearchParams.region.trim().length > 0
@@ -85,6 +89,17 @@ export default async function AcademiesPage({ searchParams }: AcademiesPageProps
     typeof resolvedSearchParams?.sort === "string" && resolvedSearchParams.sort.trim().length > 0
       ? resolvedSearchParams.sort.trim()
       : "추천순"
+
+  // 과목 필터의 canonical source 는 Subject Master 다. /classes 와 같은 resolver 를 공유한다.
+  const subjectCatalog: SubjectCatalogCategory[] = await getSelectableSubjectCatalog()
+  const {
+    category: selectedSubjectCategory,
+    subject: selectedSubject,
+    shouldCanonicalize: shouldCanonicalizeSubjectQuery
+  } = resolveSubjectQuerySelection(subjectCatalog, {
+    subjectCategory: decodeQueryValue(resolvedSearchParams?.subjectCategory),
+    subject: decodeQueryValue(resolvedSearchParams?.subject)
+  })
 
   const [searchLocation, regionCatalog] = await Promise.all([
     readParentSearchLocation(),
@@ -114,10 +129,11 @@ export default async function AcademiesPage({ searchParams }: AcademiesPageProps
   }
   const shouldCanonicalizeRegionQuery = !isSameRegionSelection(regionSelection, rawRegionSelection)
 
-  if (hasLegacyRegionQuery || shouldCanonicalizeRegionQuery) {
+  if (hasLegacyRegionQuery || shouldCanonicalizeSubjectQuery || shouldCanonicalizeRegionQuery) {
     redirect(
       buildAcademiesHref({
-        subject,
+        subjectCategory: selectedSubjectCategory?.code ?? null,
+        subject: selectedSubject?.code ?? null,
         grade: selectedGrade,
         sort: resolvedSearchParams?.sort ?? null,
         radius: radiusQueryValue,
@@ -154,11 +170,12 @@ export default async function AcademiesPage({ searchParams }: AcademiesPageProps
     ? [...distanceByOrganizationId.keys()]
     : regionOrganizationIds
 
-  const [{ academies, selectedSubjectLabel }, session] = await Promise.all([
+  const [academies, session] = await Promise.all([
     locationLookupFailed
-      ? Promise.resolve({ academies: [], selectedSubjectLabel: null })
+      ? Promise.resolve([])
       : getAcademiesForList({
-          subject,
+          subjectCategoryId: selectedSubjectCategory?.id ?? null,
+          subjectId: selectedSubject?.id ?? null,
           grade: selectedGrade,
           sort: selectedSort,
           ...(organizationIdFilter ? { organizationIds: organizationIdFilter } : {}),
@@ -166,6 +183,18 @@ export default async function AcademiesPage({ searchParams }: AcademiesPageProps
         }),
     getSession()
   ])
+  // chip label 도 Subject Master 기준으로 만든다. "과목 · " 접두는 SubjectFilter 가 붙인다.
+  const selectedSubjectLabel = selectedSubjectCategory
+    ? formatClassSubjectDisplayLabel({
+        subject: null,
+        subjectCategoryId: selectedSubjectCategory.id,
+        subjectId: selectedSubject?.id ?? null,
+        subjectCategoryCode: selectedSubjectCategory.code,
+        subjectCategoryName: selectedSubjectCategory.name,
+        subjectCode: selectedSubject?.code ?? null,
+        subjectName: selectedSubject?.name ?? null
+      }) || "전체 과목"
+    : "전체 과목"
   const locationFilterLabel = isRegionMode
     ? regionSelection
       ? formatRegionSelectionLabel(regionSelection)
@@ -239,6 +268,9 @@ export default async function AcademiesPage({ searchParams }: AcademiesPageProps
           radiusKm={radiusKm}
           regionCatalog={regionCatalog}
           regionSelection={regionSelection}
+          subjectCatalog={subjectCatalog}
+          selectedSubjectCategory={selectedSubjectCategory}
+          selectedSubject={selectedSubject}
           selectedSubjectLabel={selectedSubjectLabel}
           selectedGradeLabel={selectedGrade ? formatStoredTargetGrades(selectedGrade) : null}
           selectedSortLabel={selectedSort}

@@ -7,6 +7,8 @@ import { formatAdministrativeRegionLabel } from "@/features/location/lib/region-
 import { formatDistanceLabel, type SearchRadiusKm } from "@/features/location/lib/search-location"
 import type { RegionCatalog, RegionSelection } from "@/features/location/lib/region-selection"
 import { LocationFilter, type LocationMode } from "@/features/location/ui/location-filter"
+import { SubjectFilter } from "@/features/subjects/ui/subject-filter"
+import type { Subject, SubjectCatalogCategory } from "@/shared/lib/subject-master"
 import type { AcademyListItem } from "../queries/get-academies-for-list"
 import styles from "../../../../app/academies/page.module.css"
 
@@ -17,7 +19,10 @@ type AcademiesExplorerProps = {
   radiusKm: SearchRadiusKm
   regionCatalog: RegionCatalog
   regionSelection: RegionSelection | null
-  selectedSubjectLabel: string | null
+  subjectCatalog: SubjectCatalogCategory[]
+  selectedSubjectCategory: SubjectCatalogCategory | null
+  selectedSubject: Subject | null
+  selectedSubjectLabel: string
   selectedGradeLabel: string | null
   selectedSortLabel: string
 }
@@ -42,6 +47,9 @@ export function AcademiesExplorer({
   radiusKm,
   regionCatalog,
   regionSelection,
+  subjectCatalog,
+  selectedSubjectCategory,
+  selectedSubject,
   selectedSubjectLabel,
   selectedGradeLabel,
   selectedSortLabel
@@ -65,7 +73,17 @@ export function AcademiesExplorer({
           radiusChipClassName={styles.radiusChip}
           radiusChipActiveClassName={styles.radiusChipActive}
         />
-        <span className={styles.filterChip}>과목 · {selectedSubjectLabel ?? "전체 과목"}</span>
+        <SubjectFilter
+          catalog={subjectCatalog}
+          selectedCategory={selectedSubjectCategory}
+          selectedSubject={selectedSubject}
+          label={selectedSubjectLabel}
+          className={styles.subjectFilter}
+          triggerClassName={styles.filterChipButton}
+          labelClassName={styles.filterChipLabel}
+          chevronWrapClassName={styles.filterChipChevron}
+          openChevronClassName={styles.filterChipChevronOpen}
+        />
         <span className={styles.filterChip}>학년 · {selectedGradeLabel ?? "전체 학년"}</span>
         <span className={styles.filterChip}>정렬 · {selectedSortLabel}</span>
       </div>
