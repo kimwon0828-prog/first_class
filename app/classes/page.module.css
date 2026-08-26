@@ -655,38 +655,3 @@
   background: var(--brand-700, #2aad38);
   color: #ffffff;
 }
-
-.legacyRegionRow {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-top: 10px;
-}
-
-.legacyRegionChip {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  height: 30px;
-  padding: 0 8px 0 12px;
-  border-radius: 999px;
-  border: 1px solid var(--border);
-  background: var(--surface-sub, #f5f6f8);
-  font-size: 13px;
-  font-weight: 600;
-  line-height: 1;
-  color: var(--text-2);
-}
-
-.legacyRegionClear {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 18px;
-  height: 18px;
-  border-radius: 999px;
-  font-size: 14px;
-  line-height: 1;
-  color: var(--text-3);
-  text-decoration: none;
-}

@@ -5,6 +5,7 @@ import { formatStoredTargetGrades } from "@/shared/constants/grade-options"
 import { getSubjectLabel } from "@/shared/constants/education-taxonomy"
 import { getMyProfile } from "@/features/auth/lib/profile-sync"
 import { getSession } from "@/features/auth/lib/session"
+import { formatAdministrativeRegionLabel } from "@/features/location/lib/region-selection"
 import { getPublicClassAvailableSlots } from "@/features/applications/queries/get-public-class-available-slots"
 import { ClassDetailApplicationSheet } from "@/features/applications/ui/class-detail-application-sheet"
 import { getPublicClassDetail } from "@/features/classes/queries/get-public-class-detail"
@@ -13,7 +14,6 @@ import { BookmarkButton } from "@/features/favorites/ui/bookmark-button"
 import { NaverMapByAddress } from "@/features/maps/ui/naver-map-by-address"
 import { resolveStoredMapCoordinates } from "@/features/maps/lib/stored-map-coordinates"
 import { resolveOrganizationAddressLines } from "@/features/organizations/lib/organization-address-contract"
-import { normalizeAcademyArea } from "@/shared/config/academy-areas"
 import { formatClassSubjectDisplayLabel } from "@/shared/lib/subject-master"
 import styles from "./page.module.css"
 
@@ -22,7 +22,9 @@ type ClassDetailPageProps = {
     id: string
   }>
   searchParams?: Promise<{
-    region?: string
+    sido?: string
+    sigungu?: string
+    bname?: string
   }>
 }
 
@@ -49,18 +51,15 @@ const getTeacherSummaryLine = (subjects: string | null | undefined, targetStuden
 export default async function ClassDetailPage({ params, searchParams }: ClassDetailPageProps) {
   const resolvedParams = await params
   const resolvedSearchParams = searchParams ? await searchParams : undefined
-  const rawRegionParam =
-    typeof resolvedSearchParams?.region === "string" ? resolvedSearchParams.region : null
-  const decodedRegion = (() => {
-    if (!rawRegionParam) return null
-    try {
-      return decodeURIComponent(rawRegionParam)
-    } catch {
-      return rawRegionParam
+  // legacy academy-area query 는 받지 않는다. 실제 행정지역 값이 명시적으로 있을 때만 canonical query 를 만든다.
+  const regionQuery = new URLSearchParams()
+  for (const key of ["sido", "sigungu", "bname"] as const) {
+    const value = resolvedSearchParams?.[key]
+    if (typeof value === "string" && value.trim().length > 0) {
+      regionQuery.set(key, value.trim())
     }
-  })()
-  const selectedRegion = normalizeAcademyArea(decodedRegion)
-  const classesHref = `/classes?region=${encodeURIComponent(selectedRegion)}`
+  }
+  const classesHref = regionQuery.size ? `/classes?${regionQuery.toString()}` : "/classes"
   const { data: classItem, error } = await getPublicClassDetail(resolvedParams.id)
   const session = await getSession()
   const profile = session ? await getMyProfile() : null
@@ -68,14 +67,8 @@ export default async function ClassDetailPage({ params, searchParams }: ClassDet
   const isStudioUser =
     profile?.dbRole === "teacher" || profile?.dbRole === "academy" || profile?.dbRole === "admin"
   const favoritesEnabled = !session || profile?.role === "parent"
-  const detailSearchParams = new URLSearchParams()
-
-  if (rawRegionParam) {
-    detailSearchParams.set("region", rawRegionParam)
-  }
-
-  const detailHref = detailSearchParams.size
-    ? `/classes/${resolvedParams.id}?${detailSearchParams.toString()}`
+  const detailHref = regionQuery.size
+    ? `/classes/${resolvedParams.id}?${regionQuery.toString()}`
     : `/classes/${resolvedParams.id}`
   const signInHref = `/auth/sign-in?${new URLSearchParams({ returnTo: detailHref }).toString()}`
   const [{ data: slots, error: slotsError }, { data: children, error: childrenError }] = await Promise.all([
@@ -120,6 +113,10 @@ export default async function ClassDetailPage({ params, searchParams }: ClassDet
       ? `${organizationLabel} / 담당 선생님은 신청 후 학원에서 배정됩니다.`
       : "담당 선생님은 신청 후 학원에서 배정됩니다."
   const targetGradeLabel = formatStoredTargetGrades(classItem?.targetAge)
+  // 지역 표시는 organization 행정지역 metadata 로만 만든다. legacy classes.region 은 쓰지 않는다.
+  const administrativeRegionLabel = organization
+    ? formatAdministrativeRegionLabel(organization)
+    : null
   const classSubjectLabel = classItem
     ? formatClassSubjectDisplayLabel(classItem) || "과목 정보 준비 중"
     : null
@@ -264,7 +261,11 @@ export default async function ClassDetailPage({ params, searchParams }: ClassDet
                   <span className={`${styles.badge} ${styles.badgeMuted}`}>
                     {classSubjectLabel}
                   </span>
-                  <span className={`${styles.badge} ${styles.badgeMuted}`}>{classItem.region}</span>
+                  {administrativeRegionLabel ? (
+                    <span className={`${styles.badge} ${styles.badgeMuted}`}>
+                      {administrativeRegionLabel}
+                    </span>
+                  ) : null}
                 </div>
 
                 <h1 className={styles.title}>{classItem.title}</h1>
@@ -284,7 +285,9 @@ export default async function ClassDetailPage({ params, searchParams }: ClassDet
                   </div>
                   <div className={styles.infoRow}>
                     <span className={styles.infoLabel}>지역</span>
-                    <span className={styles.infoValue}>{classItem.region}</span>
+                    <span className={styles.infoValue}>
+                      {administrativeRegionLabel ?? "지역 정보 준비 중"}
+                    </span>
                   </div>
                   <div className={styles.infoRow}>
                     <span className={styles.infoLabel}>과목</span>

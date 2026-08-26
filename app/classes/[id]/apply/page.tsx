@@ -9,6 +9,7 @@ import { getPublicClassDetail } from "@/features/classes/queries/get-public-clas
 import { getMyChildren } from "@/features/children/queries/get-my-children"
 import { ApplyForm } from "@/features/applications/ui/apply-form"
 import styles from "./page.module.css"
+import { POC_DISCOVERY_HREF } from "@/shared/config/discovery"
 
 type ApplyPageProps = {
   params: Promise<{
@@ -140,7 +141,7 @@ export default async function ClassApplyPage({ params }: ApplyPageProps) {
           {error ? (
             <section className={`${styles.card} ${styles.dangerCard}`}>
               <p className={styles.dangerText}>{error}</p>
-              <Link href="/classes" className={styles.link}>
+              <Link href={POC_DISCOVERY_HREF} className={styles.link}>
                 수업 목록으로 이동
               </Link>
             </section>

@@ -1,6 +1,5 @@
 import "server-only"
 
-import type { AcademyArea } from "@/shared/config/academy-areas"
 import type { ClassSummary } from "@/shared/lib/db/adapter"
 import type { QueryResult } from "@/shared/queries"
 import { listPublicClassesWithSafeProjection } from "@/features/classes/queries/public-class-safe-projection"
@@ -26,7 +25,6 @@ const getSupabaseHost = () => {
 }
 
 export const getPublicClasses = async (
-  region: AcademyArea | null,
   options?: {
     subject?: string
     subjectCategoryId?: string
@@ -42,7 +40,6 @@ export const getPublicClasses = async (
         `[classes-debug] ${JSON.stringify({
           supabaseHost: getSupabaseHost(),
           dataAdapter: publicClassDataSource,
-          region,
           subject: options?.subject ?? null,
           subjectCategoryId: options?.subjectCategoryId ?? null,
           subjectId: options?.subjectId ?? null,
@@ -52,48 +49,30 @@ export const getPublicClasses = async (
     }
 
     const data =
-      region === null
-        ? publicClassDataSource === "supabase"
-          ? await listPublicClassesWithSafeProjection({
-              subject: options?.subject,
-              subjectCategoryId: options?.subjectCategoryId,
-              subjectId: options?.subjectId,
-              query: options?.query,
-              organizationIds: options?.organizationIds,
-              distanceByOrganizationId: options?.distanceByOrganizationId
-            })
-          : await (await import("@/shared/lib/db")).dataAdapter.listClasses({
-              subject: options?.subject,
-              subjectCategoryId: options?.subjectCategoryId,
-              subjectId: options?.subjectId,
-              query: options?.query
-            })
-        : publicClassDataSource === "supabase"
-          ? await listPublicClassesWithSafeProjection({
-              region,
-              subject: options?.subject,
-              subjectCategoryId: options?.subjectCategoryId,
-              subjectId: options?.subjectId,
-              query: options?.query,
-              organizationIds: options?.organizationIds,
-              distanceByOrganizationId: options?.distanceByOrganizationId
-            })
-          : await (await import("@/shared/lib/db")).dataAdapter.listClasses({
-              region,
-              subject: options?.subject,
-              subjectCategoryId: options?.subjectCategoryId,
-              subjectId: options?.subjectId,
-              query: options?.query
-            })
+      publicClassDataSource === "supabase"
+        ? await listPublicClassesWithSafeProjection({
+            subject: options?.subject,
+            subjectCategoryId: options?.subjectCategoryId,
+            subjectId: options?.subjectId,
+            query: options?.query,
+            organizationIds: options?.organizationIds,
+            distanceByOrganizationId: options?.distanceByOrganizationId
+          })
+        : await (await import("@/shared/lib/db")).dataAdapter.listClasses({
+            subject: options?.subject,
+            subjectCategoryId: options?.subjectCategoryId,
+            subjectId: options?.subjectId,
+            query: options?.query
+          })
     if (shouldDebugDb()) {
       console.info(
-        `[getPublicClasses] ${JSON.stringify({ region, returned: data.length })}`
+        `[getPublicClasses] ${JSON.stringify({ returned: data.length })}`
       )
     }
     return { data, error: null }
   } catch {
     if (shouldDebugDb()) {
-      console.error(`[getPublicClasses] ${JSON.stringify({ region, ok: false })}`)
+      console.error(`[getPublicClasses] ${JSON.stringify({ ok: false })}`)
     }
     return {
       data: [],
@@ -112,7 +91,6 @@ export const getAllPublicClasses = async (options?: {
         `[classes-debug] ${JSON.stringify({
           supabaseHost: getSupabaseHost(),
           dataAdapter: publicClassDataSource,
-          region: null,
           subject: options?.subject ?? null,
           query: options?.query?.trim() ? options.query.trim() : null
         })}`

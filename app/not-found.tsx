@@ -1,4 +1,5 @@
 import Link from "next/link"
+import { POC_DISCOVERY_HREF } from "@/shared/config/discovery"
 
 export default function NotFound() {
   return (
@@ -19,7 +20,7 @@ export default function NotFound() {
         주소가 변경되었거나 존재하지 않는 경로입니다.
       </p>
       <Link
-        href="/classes"
+        href={POC_DISCOVERY_HREF}
         style={{
           display: "inline-flex",
           alignItems: "center",

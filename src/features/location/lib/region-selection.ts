@@ -86,3 +86,22 @@ export const formatRegionSelectionLabel = (selection: RegionSelection) => {
 
   return selection.sido
 }
+
+// 공개 UI(카드/상세)의 지역 표시. organization 의 행정지역 metadata 만 사용한다.
+// legacy academy_area / classes.region 으로 fallback 하거나 추측하지 않는다.
+// 값이 하나도 없으면 null 을 돌려주고, 호출부가 표시 자체를 생략한다.
+export const formatAdministrativeRegionLabel = (input: RegionSelectionInput) => {
+  const sido = toNullableText(input.sido)
+  const sigungu = toNullableText(input.sigungu)
+  const bname = toNullableText(input.bname)
+
+  if (bname) {
+    return sigungu ? `${sigungu} · ${bname}` : sido ? `${sido} · ${bname}` : bname
+  }
+
+  if (sigungu) {
+    return sido ? `${sido} · ${sigungu}` : sigungu
+  }
+
+  return sido
+}

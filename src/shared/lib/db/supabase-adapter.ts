@@ -167,6 +167,9 @@ type OrganizationLocationRow = {
   branch_name?: string | null
   address?: string | null
   address_detail?: string | null
+  sido?: string | null
+  sigungu?: string | null
+  bname?: string | null
 }
 
 type EmbeddedClassRow = {
@@ -651,7 +654,10 @@ const mapOrganizationLocation = (row: OrganizationLocationRow | null): Organizat
     name: row.name,
     branchName: row.branch_name ?? null,
     address: row.address ?? null,
-    addressDetail: row.address_detail ?? null
+    addressDetail: row.address_detail ?? null,
+    sido: row.sido ?? null,
+    sigungu: row.sigungu ?? null,
+    bname: row.bname ?? null
   }
 }
 
@@ -664,7 +670,7 @@ const getOrganizationLocationMap = async (organizationIds: string[]) => {
   const serviceRoleClient = getSupabaseServiceRoleClient()
   const { data, error } = await serviceRoleClient
     .from("organizations")
-    .select("id, name, branch_name, address, address_detail")
+    .select("id, name, branch_name, address, address_detail, sido, sigungu, bname")
     .in("id", uniqueOrganizationIds)
 
   if (error) {
@@ -2207,7 +2213,8 @@ const LEGACY_STUDIO_CLASS_LIST_SELECT_FIELDS =
 const STUDIO_CLASS_LIST_SELECT_FIELDS =
   `${LEGACY_STUDIO_CLASS_LIST_SELECT_FIELDS}, assignment_mode, subject_category_id, subject_id`
 
-const ORGANIZATION_LOCATION_SELECT_FIELDS = "organizations(name, branch_name, address, address_detail)"
+const ORGANIZATION_LOCATION_SELECT_FIELDS =
+  "organizations(name, branch_name, address, address_detail, sido, sigungu, bname)"
 const ORGANIZATION_BASE_SELECT_FIELDS = "organizations(name, branch_name)"
 
 const CLASS_DETAIL_SELECT_FIELDS =

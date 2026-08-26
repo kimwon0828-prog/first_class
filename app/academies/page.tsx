@@ -8,6 +8,7 @@ import { isAcademyArea } from "@/shared/config/academy-areas"
 import { formatStoredTargetGrades } from "@/shared/constants/grade-options"
 
 import styles from "./page.module.css"
+import { POC_DISCOVERY_HREF } from "@/shared/config/discovery"
 
 type AcademiesPageProps = {
   searchParams?: Promise<{
@@ -128,7 +129,7 @@ export default async function AcademiesPage({ searchParams }: AcademiesPageProps
       </div>
 
       <nav className={styles.bottomNav} aria-label="하단 탭">
-        <Link href="/classes" className={styles.navItem}>
+        <Link href={POC_DISCOVERY_HREF} className={styles.navItem}>
           <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
             <path
               d="M3 10.5L12 3l9 7.5V21a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1V10.5Z"

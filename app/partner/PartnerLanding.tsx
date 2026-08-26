@@ -5,6 +5,7 @@ import PartnerCopyButton from "./PartnerCopyButton"
 import PartnerInquiryForm from "./PartnerInquiryForm"
 import PartnerLossCalculator from "./PartnerLossCalculator"
 import styles from "./partner.module.css"
+import { POC_DISCOVERY_HREF } from "@/shared/config/discovery"
 
 const TALLY_URL = "https://tally.so/r/b5XeNL"
 const PARTNER_LINK = "firstsuup.com/c/은행사거리-○○학원"
@@ -191,7 +192,7 @@ export default function PartnerLanding() {
           </nav>
 
           <div className={styles.hdCta}>
-            <Link href="/classes" className={`${styles.btn} ${styles.btnO} ${styles.btnSm}`}>
+            <Link href={POC_DISCOVERY_HREF} className={`${styles.btn} ${styles.btnO} ${styles.btnSm}`}>
               학부모 플랫폼
             </Link>
             <Link href="/studio/sign-in" className={`${styles.btn} ${styles.btnG} ${styles.btnSm}`}>

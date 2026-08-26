@@ -149,7 +149,10 @@ const mockOrganizationLocation: OrganizationLocationInfo = {
   name: "첫수업 강남학원",
   branchName: "강남점",
   address: "경기도 고양시 일산서구 중앙로 1234",
-  addressDetail: "5층 501호"
+  addressDetail: "5층 501호",
+  sido: "경기",
+  sigungu: "고양시 일산서구",
+  bname: null
 }
 
 const teacherProfiles: TeacherPublicProfile[] = [

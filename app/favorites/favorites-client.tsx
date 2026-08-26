@@ -11,6 +11,7 @@ import type { ClassSummary } from "@/shared/lib/db/adapter"
 import { formatClassSubjectDisplayLabel } from "@/shared/lib/subject-master"
 
 import styles from "../classes/page.module.css"
+import { POC_DISCOVERY_HREF } from "@/shared/config/discovery"
 
 export function FavoritesClient(props: {
   allClasses: ClassSummary[]
@@ -69,7 +70,7 @@ export function FavoritesClient(props: {
             <p className={styles.stateDesc}>
               마음에 드는 수업을 저장해두고 나중에 다시 확인해보세요.
             </p>
-            <Link href="/classes" className={styles.retryLink}>
+            <Link href={POC_DISCOVERY_HREF} className={styles.retryLink}>
               수업 둘러보기
             </Link>
           </section>
@@ -131,7 +132,7 @@ export function FavoritesClient(props: {
       </div>
 
       <nav className={styles.bottomNav} aria-label="하단 탭">
-        <Link href="/classes" className={styles.navItem}>
+        <Link href={POC_DISCOVERY_HREF} className={styles.navItem}>
           <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
             <path
               d="M3 10.5L12 3l9 7.5V21a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1V10.5Z"

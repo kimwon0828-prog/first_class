@@ -133,6 +133,10 @@ export type OrganizationLocationInfo = {
   branchName: string | null
   address: string | null
   addressDetail: string | null
+  // 공개 UI 의 지역 표시는 legacy academy_area 가 아니라 이 행정지역 metadata 로만 만든다.
+  sido: string | null
+  sigungu: string | null
+  bname: string | null
   addressLine1?: string | null
   addressLine2?: string | null
   latitude?: number | null

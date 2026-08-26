@@ -52,6 +52,9 @@ type SafeOrganizationRow = {
   branch_name: string | null
   address: string | null
   address_detail: string | null
+  sido: string | null
+  sigungu: string | null
+  bname: string | null
   address_line1?: string | null
   address_line2?: string | null
   latitude?: number | null
@@ -72,7 +75,6 @@ type SafeTeacherRow = {
 }
 
 type ListPublicClassesOptions = {
-  region?: AcademyArea
   subject?: string
   subjectCategoryId?: string
   subjectId?: string
@@ -180,10 +182,6 @@ const buildPublicClassesQuery = (
     .eq("is_active", true)
     .order("created_at", { ascending: false })
 
-  if (options?.region) {
-    query = query.eq("region", options.region)
-  }
-
   if (options?.subjectCategoryId) {
     query = query.eq("subject_category_id", options.subjectCategoryId)
   }
@@ -212,6 +210,9 @@ const toOrganizationLocation = (
     branchName: row.branch_name ?? null,
     address: row.address ?? null,
     addressDetail: row.address_detail ?? null,
+    sido: row.sido ?? null,
+    sigungu: row.sigungu ?? null,
+    bname: row.bname ?? null,
     ...(includeMapLocation
       ? {
           addressLine1: row.address_line1 ?? null,
@@ -274,8 +275,8 @@ const toOrganizationMap = async (organizationIds: string[], includeMapLocation =
     .from("organizations")
     .select(
       includeMapLocation
-        ? "id, name, branch_name, address, address_detail, address_line1, address_line2, latitude, longitude"
-        : "id, name, branch_name, address, address_detail"
+        ? "id, name, branch_name, address, address_detail, sido, sigungu, bname, address_line1, address_line2, latitude, longitude"
+        : "id, name, branch_name, address, address_detail, sido, sigungu, bname"
     )
     .in("id", uniqueOrganizationIds)
 
