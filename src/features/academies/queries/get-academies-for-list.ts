@@ -1,7 +1,6 @@
 import "server-only"
 
 import { getSupabaseServiceRoleClient } from "@/integrations/supabase/service-role"
-import type { AcademyArea } from "@/shared/config/academy-areas"
 import { formatStoredTargetGrades, parseStoredTargetGrades } from "@/shared/constants/grade-options"
 
 import {
@@ -15,7 +14,6 @@ type PublicClassRow = {
   organization_id: string | null
   title: string
   subject: string
-  region: AcademyArea
   target_age: string
   description: string
   trial_price: number
@@ -26,7 +24,6 @@ type SafeOrganizationRow = {
   id: string
   name: string
   branch_name: string | null
-  academy_area: AcademyArea | null
   address: string | null
   address_detail: string | null
   sido: string | null
@@ -48,13 +45,11 @@ export type AcademyClassPreview = {
 export type AcademyListItem = {
   id: string
   displayName: string
-  academyArea: AcademyArea | null
   address: string | null
   addressDetail: string | null
   sido: string | null
   sigungu: string | null
   bname: string | null
-  locationSummary: string
   subjectTags: string[]
   targetAgeSummary: string
   representativeClasses: AcademyClassPreview[]
@@ -63,8 +58,6 @@ export type AcademyListItem = {
 
 type GetAcademiesForListOptions = {
   subject?: string | null
-  // legacy academy-area filter. 2C-3 에서 제거 예정.
-  region?: AcademyArea | null
   grade?: string | null
   sort?: string | null
   // 위치 탐색은 query 가 아니라 page orchestration 이 해석한다.
@@ -78,7 +71,6 @@ const PUBLIC_CLASS_SELECT_FIELDS = [
   "organization_id",
   "title",
   "subject",
-  "region",
   "target_age",
   "description",
   "trial_price",
@@ -89,35 +81,13 @@ const ORGANIZATION_SELECT_FIELDS = [
   "id",
   "name",
   "branch_name",
-  // legacy. 2C-3 에서 제거 예정이며 그때까지 표시 경로가 계속 사용한다.
-  "academy_area",
   "address",
   "address_detail",
-  // 2C-2 의 행정지역 label 용. 이 단계에서는 전달만 하고 표시하지 않는다.
+  // 공개 UI 의 지역 표시는 이 행정지역 metadata 로만 만든다.
   "sido",
   "sigungu",
   "bname"
 ].join(", ")
-
-const summarizeLocation = (organization: SafeOrganizationRow) => {
-  if (organization.academy_area) {
-    return organization.academy_area === "은행사거리학원가"
-      ? "중계 은행사거리 학원가"
-      : organization.academy_area
-  }
-
-  const baseAddress = organization.address?.trim()
-  if (!baseAddress) {
-    return "주소 정보 준비 중"
-  }
-
-  const segments = baseAddress.split(/\s+/).filter(Boolean)
-  if (segments.length >= 3) {
-    return segments.slice(1, 3).join(" ")
-  }
-
-  return baseAddress
-}
 
 const buildClassPreview = (row: PublicClassRow): AcademyClassPreview => ({
   id: row.id,
@@ -180,10 +150,6 @@ export const getAcademiesForList = async (
     .select(PUBLIC_CLASS_SELECT_FIELDS)
     .eq("is_active", true)
     .order("created_at", { ascending: false })
-
-  if (options?.region) {
-    classQuery = classQuery.eq("region", options.region)
-  }
 
   // organization 후보가 정해져 있으면 classes 조회 단계로 밀어 스캔량을 줄인다.
   if (options?.organizationIds) {
@@ -258,13 +224,11 @@ export const getAcademiesForList = async (
       return {
         id: organizationId,
         displayName: displayName || organization.name,
-        academyArea: organization.academy_area ?? null,
         address: organization.address ?? null,
         addressDetail: organization.address_detail ?? null,
         sido: organization.sido ?? null,
         sigungu: organization.sigungu ?? null,
         bname: organization.bname ?? null,
-        locationSummary: summarizeLocation(organization),
         subjectTags,
         targetAgeSummary: buildTargetAgeSummary(organizationClasses),
         representativeClasses,

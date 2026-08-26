@@ -13,7 +13,7 @@ import {
   type SubjectCatalogCategory
 } from "@/shared/lib/subject-master"
 import { ClassesSearchPill } from "@/features/classes/ui/classes-region-select"
-import { ClassesLocationFilter } from "@/features/location/ui/classes-location-filter"
+import { LocationFilter } from "@/features/location/ui/location-filter"
 import {
   canonicalizeRegionSelection,
   formatAdministrativeRegionLabel,
@@ -474,7 +474,7 @@ export default async function ClassesPage({ searchParams }: ClassesPageProps) {
         <div className={styles.content}>
           <section className={styles.filterSection} aria-label="위치 설정">
             <div className={styles.filterPanel}>
-              <ClassesLocationFilter
+              <LocationFilter
                 mode={locationMode}
                 label={locationFilterLabel}
                 regionCatalog={regionCatalog}

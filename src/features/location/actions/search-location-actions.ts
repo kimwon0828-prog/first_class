@@ -17,6 +17,7 @@ const CURRENT_LOCATION_LABEL = "현재 위치"
 
 const revalidateLocationSurfaces = () => {
   revalidatePath("/classes")
+  revalidatePath("/academies")
 }
 
 export async function setCurrentSearchLocationAction(input: {

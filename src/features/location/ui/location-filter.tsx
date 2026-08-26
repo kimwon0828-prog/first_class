@@ -17,10 +17,10 @@ import {
   setCurrentSearchLocationAction
 } from "../actions/search-location-actions"
 
-export type ClassesLocationMode = "all" | "nearby" | "region"
+export type LocationMode = "all" | "nearby" | "region"
 
-type ClassesLocationFilterProps = {
-  mode: ClassesLocationMode
+type LocationFilterProps = {
+  mode: LocationMode
   label: string
   radiusKm: SearchRadiusKm
   regionCatalog: RegionCatalog
@@ -125,7 +125,7 @@ const readCurrentPosition = () =>
     )
   })
 
-export function ClassesLocationFilter({
+export function LocationFilter({
   mode,
   label,
   radiusKm,
@@ -140,7 +140,7 @@ export function ClassesLocationFilter({
   radiusRailClassName,
   radiusChipClassName,
   radiusChipActiveClassName
-}: ClassesLocationFilterProps) {
+}: LocationFilterProps) {
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
@@ -303,7 +303,7 @@ export function ClassesLocationFilter({
         aria-expanded={isOpen}
         disabled={busy}
         onClick={() => setIsOpen(true)}
-        style={{ border: 0, background: "transparent", padding: 0, cursor: busy ? "default" : "pointer" }}
+        style={{ cursor: busy ? "default" : "pointer" }}
       >
         <span className={iconClassName} aria-hidden="true">
           <MapPinIcon />

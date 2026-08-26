@@ -1,10 +1,20 @@
 import Link from "next/link"
+import { redirect } from "next/navigation"
 
 import { getMyProfile } from "@/features/auth/lib/profile-sync"
 import { getSession } from "@/features/auth/lib/session"
 import { getAcademiesForList } from "@/features/academies/queries/get-academies-for-list"
 import { AcademiesExplorer } from "@/features/academies/ui/academies-explorer"
-import { isAcademyArea } from "@/shared/config/academy-areas"
+import {
+  canonicalizeRegionSelection,
+  formatRegionSelectionLabel,
+  isSameRegionSelection
+} from "@/features/location/lib/region-selection"
+import { readParentSearchLocation } from "@/features/location/lib/search-location-cookie"
+import { normalizeSearchRadiusKm } from "@/features/location/lib/search-location"
+import { getAcademiesRegionCatalog } from "@/features/location/queries/get-academies-region-catalog"
+import { findOrganizationIdsByAdministrativeRegion } from "@/features/location/queries/find-organizations-by-region"
+import { findNearbyOrganizations } from "@/features/location/queries/find-nearby-organizations"
 import { formatStoredTargetGrades } from "@/shared/constants/grade-options"
 
 import styles from "./page.module.css"
@@ -13,22 +23,49 @@ import { POC_DISCOVERY_HREF } from "@/shared/config/discovery"
 type AcademiesPageProps = {
   searchParams?: Promise<{
     subject?: string
+    // legacy academy-area query. 필터로 쓰지 않고 canonical URL 에서 제거만 한다.
     region?: string
     grade?: string
     sort?: string
+    radius?: string
+    sido?: string
+    sigungu?: string
+    bname?: string
   }>
 }
 
-const formatAcademyAreaLabel = (value: string | null) => {
+const decodeQueryValue = (value: string | null | undefined) => {
   if (!value) {
-    return "전체 지역"
+    return ""
   }
 
-  if (value === "은행사거리학원가") {
-    return "중계 은행사거리 학원가"
+  try {
+    return decodeURIComponent(value)
+  } catch {
+    return value
   }
+}
 
-  return value
+// /academies 는 streaming fallback(loading.tsx) 이 없어 redirect() 가 실제 307 을 보낸다.
+// Location 헤더는 non-ASCII 를 담지 못하므로 query 값을 전부 percent-encode 한다.
+const buildAcademiesHref = (params: {
+  subject?: string | null
+  grade?: string | null
+  sort?: string | null
+  radius?: string | null
+  sido?: string | null
+  sigungu?: string | null
+  bname?: string | null
+}) => {
+  const parts: string[] = []
+  if (params.subject) parts.push(`subject=${encodeURIComponent(params.subject)}`)
+  if (params.grade) parts.push(`grade=${encodeURIComponent(params.grade)}`)
+  if (params.sort) parts.push(`sort=${encodeURIComponent(params.sort)}`)
+  if (params.radius) parts.push(`radius=${encodeURIComponent(params.radius)}`)
+  if (params.sido) parts.push(`sido=${encodeURIComponent(params.sido)}`)
+  if (params.sigungu) parts.push(`sigungu=${encodeURIComponent(params.sigungu)}`)
+  if (params.bname) parts.push(`bname=${encodeURIComponent(params.bname)}`)
+  return parts.length ? `/academies?${parts.join("&")}` : "/academies"
 }
 
 export default async function AcademiesPage({ searchParams }: AcademiesPageProps) {
@@ -37,11 +74,9 @@ export default async function AcademiesPage({ searchParams }: AcademiesPageProps
     typeof resolvedSearchParams?.subject === "string" && resolvedSearchParams.subject.trim().length > 0
       ? resolvedSearchParams.subject.trim()
       : null
-  const rawRegion =
+  // legacy academy-area query 는 더 이상 필터가 아니다. 발견되면 canonical URL 에서 제거만 한다.
+  const hasLegacyRegionQuery =
     typeof resolvedSearchParams?.region === "string" && resolvedSearchParams.region.trim().length > 0
-      ? resolvedSearchParams.region.trim()
-      : null
-  const selectedRegion = rawRegion && isAcademyArea(rawRegion) ? rawRegion : null
   const selectedGrade =
     typeof resolvedSearchParams?.grade === "string" && resolvedSearchParams.grade.trim().length > 0
       ? resolvedSearchParams.grade.trim()
@@ -51,15 +86,93 @@ export default async function AcademiesPage({ searchParams }: AcademiesPageProps
       ? resolvedSearchParams.sort.trim()
       : "추천순"
 
+  const [searchLocation, regionCatalog] = await Promise.all([
+    readParentSearchLocation(),
+    getAcademiesRegionCatalog()
+  ])
+  const radiusKm = normalizeSearchRadiusKm(resolvedSearchParams?.radius)
+  const rawRegionSelection = {
+    sido: decodeQueryValue(resolvedSearchParams?.sido),
+    sigungu: decodeQueryValue(resolvedSearchParams?.sigungu),
+    bname: decodeQueryValue(resolvedSearchParams?.bname)
+  }
+  // URL 값은 신뢰하지 않는다. catalog 로 계층을 재검증하고 검증되지 않는 하위 단계는 잘라낸다.
+  const regionSelection = canonicalizeRegionSelection(regionCatalog, rawRegionSelection)
+  // 명시적인 행정지역 선택이 있으면 남아 있는 location cookie 보다 우선한다.
+  const locationMode: "all" | "nearby" | "region" = regionSelection
+    ? "region"
+    : searchLocation
+      ? "nearby"
+      : "all"
+  const isNearbyMode = locationMode === "nearby"
+  const isRegionMode = locationMode === "region"
+  const radiusQueryValue = isNearbyMode ? String(radiusKm) : null
+  const regionQueryValues = {
+    sido: regionSelection?.sido ?? null,
+    sigungu: regionSelection?.sigungu ?? null,
+    bname: regionSelection?.bname ?? null
+  }
+  const shouldCanonicalizeRegionQuery = !isSameRegionSelection(regionSelection, rawRegionSelection)
+
+  if (hasLegacyRegionQuery || shouldCanonicalizeRegionQuery) {
+    redirect(
+      buildAcademiesHref({
+        subject,
+        grade: selectedGrade,
+        sort: resolvedSearchParams?.sort ?? null,
+        radius: radiusQueryValue,
+        ...regionQueryValues
+      })
+    )
+  }
+
+  let distanceByOrganizationId: Map<string, number> | null = null
+  let regionOrganizationIds: string[] | null = null
+  let locationLookupFailed = false
+  if (isNearbyMode && searchLocation) {
+    try {
+      const nearbyOrganizations = await findNearbyOrganizations({
+        latitude: searchLocation.lat,
+        longitude: searchLocation.lng,
+        radiusKm
+      })
+      distanceByOrganizationId = new Map(
+        nearbyOrganizations.map((item) => [item.organizationId, item.distanceKm])
+      )
+    } catch {
+      locationLookupFailed = true
+    }
+  } else if (isRegionMode && regionSelection) {
+    try {
+      regionOrganizationIds = await findOrganizationIdsByAdministrativeRegion(regionSelection)
+    } catch {
+      locationLookupFailed = true
+    }
+  }
+
+  const organizationIdFilter = distanceByOrganizationId
+    ? [...distanceByOrganizationId.keys()]
+    : regionOrganizationIds
+
   const [{ academies, selectedSubjectLabel }, session] = await Promise.all([
-    getAcademiesForList({
-      subject,
-      region: selectedRegion,
-      grade: selectedGrade,
-      sort: selectedSort
-    }),
+    locationLookupFailed
+      ? Promise.resolve({ academies: [], selectedSubjectLabel: null })
+      : getAcademiesForList({
+          subject,
+          grade: selectedGrade,
+          sort: selectedSort,
+          ...(organizationIdFilter ? { organizationIds: organizationIdFilter } : {}),
+          ...(distanceByOrganizationId ? { distanceByOrganizationId } : {})
+        }),
     getSession()
   ])
+  const locationFilterLabel = isRegionMode
+    ? regionSelection
+      ? formatRegionSelectionLabel(regionSelection)
+      : "지역"
+    : isNearbyMode
+      ? `현재 위치 · ${radiusKm}km`
+      : "전체"
   const profile = session ? await getMyProfile() : null
   const isParentUser = profile?.role === "parent"
   const isStudioUser =
@@ -121,7 +234,11 @@ export default async function AcademiesPage({ searchParams }: AcademiesPageProps
 
         <AcademiesExplorer
           academies={academies}
-          selectedRegionLabel={formatAcademyAreaLabel(selectedRegion)}
+          locationMode={locationMode}
+          locationLabel={locationFilterLabel}
+          radiusKm={radiusKm}
+          regionCatalog={regionCatalog}
+          regionSelection={regionSelection}
           selectedSubjectLabel={selectedSubjectLabel}
           selectedGradeLabel={selectedGrade ? formatStoredTargetGrades(selectedGrade) : null}
           selectedSortLabel={selectedSort}

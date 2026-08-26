@@ -360,3 +360,89 @@
 .navItemActive {
   color: #111111;
 }
+
+/* 위치 필터: 기존 chip row 안에서 첫 chip 자리를 그대로 사용한다. */
+.locationFilter {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.filterChipButton {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 36px;
+  padding: 0 14px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  background: #f7f7f7;
+  color: #4a4a4a;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.filterChipIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 15px;
+  height: 15px;
+  flex: 0 0 auto;
+  color: #737373;
+}
+
+.filterChipLabel {
+  font-size: 13px;
+  font-weight: 600;
+  color: #4a4a4a;
+}
+
+.filterChipChevron {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
+  color: #a3a3a3;
+  transition: transform 0.2s ease;
+}
+
+.filterChipChevron svg {
+  width: 14px;
+  height: 14px;
+}
+
+.filterChipChevronOpen {
+  transform: rotate(180deg);
+}
+
+.radiusRail {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.radiusChip {
+  height: 30px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid #e8e8e8;
+  background: #ffffff;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1;
+  color: #4a4a4a;
+}
+
+.radiusChipActive {
+  border-color: #2aad38;
+  background: #2aad38;
+  color: #ffffff;
+}

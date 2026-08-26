@@ -3,20 +3,45 @@
 import Link from "next/link"
 
 import { formatStoredTargetGrades } from "@/shared/constants/grade-options"
+import { formatAdministrativeRegionLabel } from "@/features/location/lib/region-selection"
+import { formatDistanceLabel, type SearchRadiusKm } from "@/features/location/lib/search-location"
+import type { RegionCatalog, RegionSelection } from "@/features/location/lib/region-selection"
+import { LocationFilter, type LocationMode } from "@/features/location/ui/location-filter"
 import type { AcademyListItem } from "../queries/get-academies-for-list"
 import styles from "../../../../app/academies/page.module.css"
 
 type AcademiesExplorerProps = {
   academies: AcademyListItem[]
-  selectedRegionLabel: string
+  locationMode: LocationMode
+  locationLabel: string
+  radiusKm: SearchRadiusKm
+  regionCatalog: RegionCatalog
+  regionSelection: RegionSelection | null
   selectedSubjectLabel: string | null
   selectedGradeLabel: string | null
   selectedSortLabel: string
 }
 
+// 카드 eyebrow: 내 주변이면 거리, 그 외에는 행정지역.
+// academy_area / 주소 heuristic 으로 fallback 하지 않으며, 둘 다 없으면 표시 자체를 생략한다.
+const buildAcademyLocationLabel = (academy: AcademyListItem) => {
+  if (typeof academy.distanceKm === "number") {
+    const distanceLabel = formatDistanceLabel(academy.distanceKm)
+    if (distanceLabel) {
+      return distanceLabel
+    }
+  }
+
+  return formatAdministrativeRegionLabel(academy)
+}
+
 export function AcademiesExplorer({
   academies,
-  selectedRegionLabel,
+  locationMode,
+  locationLabel,
+  radiusKm,
+  regionCatalog,
+  regionSelection,
   selectedSubjectLabel,
   selectedGradeLabel,
   selectedSortLabel
@@ -24,7 +49,22 @@ export function AcademiesExplorer({
   return (
     <section className={styles.listSection} aria-label="학원 리스트">
       <div className={styles.filterRow}>
-        <span className={styles.filterChip}>지역 · {selectedRegionLabel}</span>
+        <LocationFilter
+          mode={locationMode}
+          label={locationLabel}
+          radiusKm={radiusKm}
+          regionCatalog={regionCatalog}
+          regionSelection={regionSelection}
+          className={styles.locationFilter}
+          triggerClassName={styles.filterChipButton}
+          labelClassName={styles.filterChipLabel}
+          iconClassName={styles.filterChipIcon}
+          chevronWrapClassName={styles.filterChipChevron}
+          openChevronClassName={styles.filterChipChevronOpen}
+          radiusRailClassName={styles.radiusRail}
+          radiusChipClassName={styles.radiusChip}
+          radiusChipActiveClassName={styles.radiusChipActive}
+        />
         <span className={styles.filterChip}>과목 · {selectedSubjectLabel ?? "전체 과목"}</span>
         <span className={styles.filterChip}>학년 · {selectedGradeLabel ?? "전체 학년"}</span>
         <span className={styles.filterChip}>정렬 · {selectedSortLabel}</span>
@@ -45,7 +85,12 @@ export function AcademiesExplorer({
                 <article className={styles.academyCard}>
                   <div className={styles.academyCardHeader}>
                     <div>
-                      <p className={styles.academyLocation}>{academy.locationSummary}</p>
+                      {(() => {
+                        const locationLabelText = buildAcademyLocationLabel(academy)
+                        return locationLabelText ? (
+                          <p className={styles.academyLocation}>{locationLabelText}</p>
+                        ) : null
+                      })()}
                       <h2 className={styles.academyName}>{academy.displayName}</h2>
                     </div>
                     <span className={styles.academyBookmarkPlaceholder} aria-hidden="true">
