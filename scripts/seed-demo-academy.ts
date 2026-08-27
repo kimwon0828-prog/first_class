@@ -2,7 +2,6 @@ import { randomUUID } from "node:crypto"
 
 import { createClient, type SupabaseClient, type User } from "@supabase/supabase-js"
 
-import { academyAreaOptions, type AcademyArea } from "../src/shared/config/academy-areas"
 import { GRADE_BANDS, SUBJECT_CATEGORIES, type GradeBandValue } from "../src/shared/constants/education-taxonomy"
 import { DEFAULT_TEACHER_PUBLIC_VISIBILITY, toTeacherPublicVisibilityJson } from "../src/shared/lib/teacher-public-visibility"
 
@@ -290,13 +289,6 @@ const DEMO_PARENTS: DemoParentPlan[] = [
   }
 ]
 const DEMO_ORGANIZATION_NAME = "첫수업 데모학원"
-const DEMO_ACADEMY_AREA = academyAreaOptions.find(
-  (option): option is AcademyArea => option === "은행사거리학원가"
-)
-
-if (!DEMO_ACADEMY_AREA) {
-  throw new Error("academyAreaOptions에서 '은행사거리학원가'를 찾지 못했습니다.")
-}
 const DEMO_BRANCH_NAME = "본원"
 const DEMO_ORGANIZATION_PHONE = "02-555-1100"
 const DEMO_ORGANIZATION_ADDRESS = "경기도 고양시 일산동구 정발산로 24"
@@ -1666,7 +1658,6 @@ const buildAcademySignupMetadata = () => ({
   organization_name: DEMO_ORGANIZATION_NAME,
   branch_name: DEMO_BRANCH_NAME,
   organization_phone: DEMO_ORGANIZATION_PHONE,
-  academy_area: DEMO_ACADEMY_AREA,
   request_note: "첫수업 영업 데모용 seed script",
   address: DEMO_ORGANIZATION_ADDRESS,
   address_detail: DEMO_ORGANIZATION_ADDRESS_DETAIL
@@ -1697,7 +1688,6 @@ const ensureTeacherSignupRequest = async (supabase: SupabaseClient, academyUserI
       teacher_phone: DEMO_TEACHERS[0].phone,
       organization_name: DEMO_ORGANIZATION_NAME,
       branch_name: DEMO_BRANCH_NAME,
-      academy_area: DEMO_ACADEMY_AREA,
       address: DEMO_ORGANIZATION_ADDRESS,
       address_detail: DEMO_ORGANIZATION_ADDRESS_DETAIL,
       organization_phone: DEMO_ORGANIZATION_PHONE,
@@ -1719,7 +1709,6 @@ const insertOrganization = async (supabase: SupabaseClient) => {
     .insert({
       name: DEMO_ORGANIZATION_NAME,
       branch_name: DEMO_BRANCH_NAME,
-      academy_area: DEMO_ACADEMY_AREA,
       address: DEMO_ORGANIZATION_ADDRESS,
       address_detail: DEMO_ORGANIZATION_ADDRESS_DETAIL,
       updated_at: new Date().toISOString()
@@ -2283,7 +2272,6 @@ const printPlanSummary = (schedulePlans: DemoSchedulePlan[]) => {
   console.log(`Classes: ${DEMO_CLASSES.length}`)
   console.log(`Schedules: ${schedulePlans.length}`)
   console.log(`Applications: ${DEMO_APPLICATIONS.length}`)
-  console.log(`Academy Area: ${DEMO_ACADEMY_AREA}`)
   console.log(`Class Titles: ${DEMO_CLASSES.map((item) => item.title).join(" | ")}`)
 }
 
