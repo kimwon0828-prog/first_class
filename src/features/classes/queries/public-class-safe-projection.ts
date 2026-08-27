@@ -1,8 +1,7 @@
 import "server-only"
 
 import {
-  loadSubjectCategoriesByIdsWithClient,
-  loadSubjectMasterByIdsWithClient
+  loadSubjectMasterMapsByIdsWithClient
 } from "@/features/subjects/queries/get-subject-master"
 import { getSupabaseServiceRoleClient } from "@/integrations/supabase/service-role"
 import type {
@@ -151,10 +150,11 @@ const attachSubjectMaster = async (rows: PublicClassRow[]): Promise<PublicClassR
 
   try {
     const serviceRoleClient = getSupabaseServiceRoleClient()
-    const [categoryById, subjectById] = await Promise.all([
-      loadSubjectCategoriesByIdsWithClient(serviceRoleClient, categoryIds),
-      loadSubjectMasterByIdsWithClient(serviceRoleClient, subjectIds)
-    ])
+    const { categoryById, subjectById } = await loadSubjectMasterMapsByIdsWithClient(
+      serviceRoleClient,
+      categoryIds,
+      subjectIds
+    )
     return rows.map((row) => ({
       ...row,
       subject_category_master: row.subject_category_id

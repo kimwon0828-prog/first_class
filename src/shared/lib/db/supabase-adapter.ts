@@ -6,8 +6,7 @@ import {
   getActiveSubjectCategoryForWriteWithClient,
   getActiveSubjectForWriteByCodeWithClient,
   getActiveSubjectForWriteWithClient,
-  loadSubjectCategoriesByIdsWithClient,
-  loadSubjectMasterByIdsWithClient
+  loadSubjectMasterMapsByIdsWithClient
 } from "@/features/subjects/queries/get-subject-master"
 import { getPublicEnv } from "@/shared/config/env"
 import { getConsultationPipelineGroup } from "@/shared/lib/consultation-pipeline"
@@ -503,10 +502,11 @@ const attachSubjectMasterToRows = async <T extends ClassRow | StudioClassListRow
   }
 
   try {
-    const [categoryById, subjectById] = await Promise.all([
-      loadSubjectCategoriesByIdsWithClient(supabase, categoryIds),
-      loadSubjectMasterByIdsWithClient(supabase, subjectIds)
-    ])
+    const { categoryById, subjectById } = await loadSubjectMasterMapsByIdsWithClient(
+      supabase,
+      categoryIds,
+      subjectIds
+    )
     return rows.map((row) => ({
       ...row,
       subject_category_master: row.subject_category_id

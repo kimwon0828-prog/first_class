@@ -3,10 +3,7 @@ import "server-only"
 import { getSupabaseServiceRoleClient } from "@/integrations/supabase/service-role"
 import { formatStoredTargetGrades, parseStoredTargetGrades } from "@/shared/constants/grade-options"
 
-import {
-  loadSubjectCategoriesByIdsWithClient,
-  loadSubjectMasterByIdsWithClient
-} from "@/features/subjects/queries/get-subject-master"
+import { loadSubjectMasterMapsByIdsWithClient } from "@/features/subjects/queries/get-subject-master"
 import {
   buildClassSubjectReadModel,
   formatClassSubjectDisplayLabel,
@@ -229,18 +226,11 @@ export const getAcademiesForList = async (
     (((organizationData ?? []) as unknown) as SafeOrganizationRow[]).map((item) => [item.id, item])
   )
 
-  const [categoryById, subjectById] = await Promise.all([
-    loadSubjectCategoriesByIdsWithClient(
-      serviceRoleClient,
-      classRows
-        .map((row) => row.subject_category_id)
-        .filter((id): id is string => Boolean(id))
-    ),
-    loadSubjectMasterByIdsWithClient(
-      serviceRoleClient,
-      classRows.map((row) => row.subject_id).filter((id): id is string => Boolean(id))
-    )
-  ])
+  const { categoryById, subjectById } = await loadSubjectMasterMapsByIdsWithClient(
+    serviceRoleClient,
+    classRows.map((row) => row.subject_category_id).filter((id): id is string => Boolean(id)),
+    classRows.map((row) => row.subject_id).filter((id): id is string => Boolean(id))
+  )
 
   const groupedByOrganization = new Map<string, PublicClassRow[]>()
   for (const row of classRows) {

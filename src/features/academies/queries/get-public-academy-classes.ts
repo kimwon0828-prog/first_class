@@ -1,8 +1,7 @@
 import "server-only"
 
 import {
-  loadSubjectCategoriesByIdsWithClient,
-  loadSubjectMasterByIdsWithClient
+  loadSubjectMasterMapsByIdsWithClient
 } from "@/features/subjects/queries/get-subject-master"
 import { getSupabaseServiceRoleClient } from "@/integrations/supabase/service-role"
 import { formatStoredTargetGrades } from "@/shared/constants/grade-options"
@@ -185,20 +184,15 @@ export const getPublicAcademyClasses = async (organizationId: string): Promise<P
   }
 
   const rawClassRows = ((classesData ?? []) as PublicAcademyClassRow[]) ?? []
-  const [categoryById, subjectById] = await Promise.all([
-    loadSubjectCategoriesByIdsWithClient(
-      serviceRoleClient,
-      rawClassRows
-        .map((row) => row.subject_category_id)
-        .filter((categoryId): categoryId is string => Boolean(categoryId))
-    ),
-    loadSubjectMasterByIdsWithClient(
-      serviceRoleClient,
-      rawClassRows
-        .map((row) => row.subject_id)
-        .filter((subjectId): subjectId is string => Boolean(subjectId))
-    )
-  ])
+  const { categoryById, subjectById } = await loadSubjectMasterMapsByIdsWithClient(
+    serviceRoleClient,
+    rawClassRows
+      .map((row) => row.subject_category_id)
+      .filter((categoryId): categoryId is string => Boolean(categoryId)),
+    rawClassRows
+      .map((row) => row.subject_id)
+      .filter((subjectId): subjectId is string => Boolean(subjectId))
+  )
   const classRows = rawClassRows.map((row) => ({
     ...row,
     subject_category_master: row.subject_category_id

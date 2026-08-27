@@ -42,35 +42,36 @@ const mapSubject = (
   sortOrder: row.sort_order
 })
 
-export const loadSubjectCategoriesByIdsWithClient = async (
+// category 행을 id 로 읽는 단일 지점. is_active 로 거르지 않는다.
+// (class 가 비활성 category 를 가리켜도 label 은 그대로 해석되어야 한다.)
+const loadSubjectCategoryRowsByIdsWithClient = async (
   supabase: SupabaseClient,
   categoryIds: string[]
-): Promise<Map<string, SubjectCategory>> => {
-  if (categoryIds.length === 0) {
-    return new Map<string, SubjectCategory>()
+): Promise<Map<string, SubjectCategoryRow>> => {
+  const uniqueCategoryIds = Array.from(new Set(categoryIds.filter(Boolean)))
+  if (uniqueCategoryIds.length === 0) {
+    return new Map<string, SubjectCategoryRow>()
   }
 
   const { data, error } = await supabase
     .from("subject_categories")
     .select("id, code, name, sort_order, is_active")
-    .in("id", Array.from(new Set(categoryIds)))
+    .in("id", uniqueCategoryIds)
 
   if (error) {
     throw new Error("failed_to_fetch_subject_categories")
   }
 
-  return new Map(
-    ((data ?? []) as SubjectCategoryRow[]).map((row) => [row.id, mapCategory(row)])
-  )
+  return new Map(((data ?? []) as SubjectCategoryRow[]).map((row) => [row.id, row]))
 }
 
-export const loadSubjectMasterByIdsWithClient = async (
+const loadSubjectRowsByIdsWithClient = async (
   supabase: SupabaseClient,
   subjectIds: string[]
-): Promise<Map<string, Subject>> => {
+): Promise<SubjectRow[]> => {
   const uniqueSubjectIds = Array.from(new Set(subjectIds.filter(Boolean)))
   if (uniqueSubjectIds.length === 0) {
-    return new Map()
+    return []
   }
 
   const { data, error } = await supabase
@@ -82,31 +83,75 @@ export const loadSubjectMasterByIdsWithClient = async (
     throw new Error("failed_to_fetch_subjects")
   }
 
-  const subjectRows = (data ?? []) as SubjectRow[]
-  const categoryById = await loadSubjectCategoriesByIdsWithClient(
+  return (data ?? []) as SubjectRow[]
+}
+
+const buildSubjectMap = (
+  subjectRows: SubjectRow[],
+  categoryRowById: ReadonlyMap<string, SubjectCategoryRow>
+): Map<string, Subject> =>
+  new Map(
+    subjectRows.flatMap((row) => {
+      const category = categoryRowById.get(row.category_id)
+      return category ? [[row.id, mapSubject(row, category)] as const] : []
+    })
+  )
+
+export const loadSubjectCategoriesByIdsWithClient = async (
+  supabase: SupabaseClient,
+  categoryIds: string[]
+): Promise<Map<string, SubjectCategory>> => {
+  const categoryRowById = await loadSubjectCategoryRowsByIdsWithClient(supabase, categoryIds)
+  return new Map(
+    Array.from(categoryRowById.values()).map((row) => [row.id, mapCategory(row)])
+  )
+}
+
+// category/subject 를 함께 필요로 하는 호출자용 통합 loader.
+// subjects 를 먼저 읽고 category 는 (직접 요청분 ∪ subject 의 category) 를 한 번에 읽어서,
+// 같은 요청에서 subject_categories 를 두 번 조회하던 왕복을 없앤다.
+// 반환되는 categoryById 는 기존과 동일하게 categoryIds 로 요청한 항목만 담는다.
+export const loadSubjectMasterMapsByIdsWithClient = async (
+  supabase: SupabaseClient,
+  categoryIds: string[],
+  subjectIds: string[]
+): Promise<{
+  categoryById: Map<string, SubjectCategory>
+  subjectById: Map<string, Subject>
+}> => {
+  const subjectRows = await loadSubjectRowsByIdsWithClient(supabase, subjectIds)
+  const categoryRowById = await loadSubjectCategoryRowsByIdsWithClient(supabase, [
+    ...categoryIds,
+    ...subjectRows.map((row) => row.category_id)
+  ])
+
+  const requestedCategoryIds = new Set(categoryIds.filter(Boolean))
+
+  return {
+    categoryById: new Map(
+      Array.from(categoryRowById.values())
+        .filter((row) => requestedCategoryIds.has(row.id))
+        .map((row) => [row.id, mapCategory(row)])
+    ),
+    subjectById: buildSubjectMap(subjectRows, categoryRowById)
+  }
+}
+
+export const loadSubjectMasterByIdsWithClient = async (
+  supabase: SupabaseClient,
+  subjectIds: string[]
+): Promise<Map<string, Subject>> => {
+  const subjectRows = await loadSubjectRowsByIdsWithClient(supabase, subjectIds)
+  if (subjectRows.length === 0) {
+    return new Map()
+  }
+
+  const categoryRowById = await loadSubjectCategoryRowsByIdsWithClient(
     supabase,
     subjectRows.map((row) => row.category_id)
   )
 
-  return new Map(
-    subjectRows.flatMap((row) => {
-      const category = categoryById.get(row.category_id)
-      return category
-        ? [[
-            row.id,
-            {
-              id: row.id,
-              code: row.code,
-              name: row.name,
-              categoryId: row.category_id,
-              categoryCode: category.code,
-              categoryName: category.name,
-              sortOrder: row.sort_order
-            }
-          ] as const]
-        : []
-    })
-  )
+  return buildSubjectMap(subjectRows, categoryRowById)
 }
 
 export const getSelectableSubjectCatalog = async (): Promise<SubjectCatalogCategory[]> => {
