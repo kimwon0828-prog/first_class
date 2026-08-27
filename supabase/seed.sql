@@ -1,43 +1,147 @@
+-- 로컬 dev fixture 전용 seed. `supabase db reset` 이 수동 개입 없이 끝까지 통과해야 한다.
+-- Remote/production 에는 적용하지 않는다.
+--
+-- 로그인 fixture 계정 (로컬 전용):
+--   parent@example.com  / password123
+--   teacher@example.com / password123
+
+-- 1. auth fixture
+-- profiles.id 는 auth.users(id) 를 참조하므로 seed 가 auth user 를 직접 만들어야 한다.
+-- raw_user_meta_data 를 비워 두면 create_teacher_signup_request_from_auth_user 트리거가
+-- signup_intent 검사에서 바로 return 하므로 teacher_signup_requests 가 생기지 않는다.
+insert into auth.users (
+  instance_id,
+  id,
+  aud,
+  role,
+  email,
+  encrypted_password,
+  email_confirmed_at,
+  created_at,
+  updated_at,
+  raw_app_meta_data,
+  raw_user_meta_data,
+  confirmation_token,
+  recovery_token,
+  email_change_token_new,
+  email_change
+)
+values
+  (
+    '00000000-0000-0000-0000-000000000000',
+    'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa1',
+    'authenticated',
+    'authenticated',
+    'parent@example.com',
+    extensions.crypt('password123', extensions.gen_salt('bf')),
+    now(),
+    now(),
+    now(),
+    '{"provider": "email", "providers": ["email"]}'::jsonb,
+    '{}'::jsonb,
+    '',
+    '',
+    '',
+    ''
+  ),
+  (
+    '00000000-0000-0000-0000-000000000000',
+    'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa2',
+    'authenticated',
+    'authenticated',
+    'teacher@example.com',
+    extensions.crypt('password123', extensions.gen_salt('bf')),
+    now(),
+    now(),
+    now(),
+    '{"provider": "email", "providers": ["email"]}'::jsonb,
+    '{}'::jsonb,
+    '',
+    '',
+    '',
+    ''
+  )
+on conflict (id) do nothing;
+
+-- 이메일/비밀번호 로그인은 auth.identities 행이 있어야 성립한다.
+insert into auth.identities (
+  provider_id,
+  user_id,
+  identity_data,
+  provider,
+  created_at,
+  updated_at
+)
+values
+  (
+    'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa1',
+    'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa1',
+    '{"sub": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa1", "email": "parent@example.com", "email_verified": true, "phone_verified": false}'::jsonb,
+    'email',
+    now(),
+    now()
+  ),
+  (
+    'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa2',
+    'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa2',
+    '{"sub": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa2", "email": "teacher@example.com", "email_verified": true, "phone_verified": false}'::jsonb,
+    'email',
+    now(),
+    now()
+  )
+on conflict (provider, provider_id) do nothing;
+
+-- 2. organization
 insert into organizations (id, name, branch_name)
 values
   ('11111111-1111-1111-1111-111111111111', '첫수업 학원', '강남점')
 on conflict (id) do nothing;
 
+-- 3. profiles
+-- auth fixture 가 고정 UUID 라서 email 로 되짚지 않고 그대로 참조한다.
+-- profiles_role_org_check: parent 는 organization_id 가 null, teacher 는 not null 이어야 한다.
 insert into profiles (id, role, name, phone, organization_id)
-select
-  au.id,
-  'parent',
-  '테스트 학부모',
-  '010-0000-0001',
-  null
-from auth.users au
-where au.email = 'parent@example.com'
+values
+  (
+    'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa1',
+    'parent',
+    '테스트 학부모',
+    '010-0000-0001',
+    null
+  ),
+  (
+    'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa2',
+    'teacher',
+    '테스트 선생님',
+    '010-0000-0003',
+    '11111111-1111-1111-1111-111111111111'
+  )
 on conflict (id) do nothing;
 
-insert into profiles (id, role, name, phone, organization_id)
-select
-  au.id,
-  'teacher',
-  '테스트 선생님',
-  '010-0000-0003',
-  '11111111-1111-1111-1111-111111111111'
-from auth.users au
-where au.email = 'teacher@example.com'
+-- 4. teacher
+-- display_name 은 NOT NULL 이고 default 가 없다. profiles.name 과 같은 값을 쓴다.
+insert into teachers (
+  id,
+  profile_id,
+  organization_id,
+  display_name,
+  intro,
+  specialty,
+  career_years
+)
+values
+  (
+    '22222222-2222-2222-2222-222222222221',
+    'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa2',
+    '11111111-1111-1111-1111-111111111111',
+    '테스트 선생님',
+    '아이들 눈높이에 맞춘 체험 수업을 진행합니다.',
+    '초등 창의수업',
+    5
+  )
 on conflict (id) do nothing;
 
-insert into teachers (id, profile_id, organization_id, intro, specialty, career_years)
-select
-  '22222222-2222-2222-2222-222222222221',
-  p.id,
-  '11111111-1111-1111-1111-111111111111',
-  '아이들 눈높이에 맞춘 체험 수업을 진행합니다.',
-  '초등 창의수업',
-  5
-from profiles p
-where p.role = 'teacher'
-  and p.name = '테스트 선생님'
-on conflict (id) do nothing;
-
+-- 5. classes
 insert into classes (
   id,
   organization_id,
@@ -74,6 +178,7 @@ values
   )
 on conflict (id) do nothing;
 
+-- 6. application
 insert into trial_applications (
   id,
   parent_id,
@@ -86,20 +191,19 @@ insert into trial_applications (
   memo,
   status
 )
-select
-  '44444444-4444-4444-4444-444444444441',
-  p.id,
-  '33333333-3333-3333-3333-333333333331',
-  '22222222-2222-2222-2222-222222222221',
-  '김민준',
-  '초2',
-  now() + interval '2 day',
-  null,
-  '오전 시간 선호',
-  'new'
-from profiles p
-where p.role = 'parent'
-  and p.name = '테스트 학부모'
+values
+  (
+    '44444444-4444-4444-4444-444444444441',
+    'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa1',
+    '33333333-3333-3333-3333-333333333331',
+    '22222222-2222-2222-2222-222222222221',
+    '김민준',
+    '초2',
+    now() + interval '2 day',
+    null,
+    '오전 시간 선호',
+    'new'
+  )
 on conflict (id) do nothing;
 
 insert into schedule_blocks (
@@ -137,14 +241,13 @@ insert into application_logs (
   actor_id,
   note
 )
-select
-  '66666666-6666-6666-6666-666666666661',
-  '44444444-4444-4444-4444-444444444441',
-  null,
-  'new',
-  p.id,
-  '초기 신청 생성'
-from profiles p
-where p.role = 'parent'
-  and p.name = '테스트 학부모'
+values
+  (
+    '66666666-6666-6666-6666-666666666661',
+    '44444444-4444-4444-4444-444444444441',
+    null,
+    'new',
+    'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa1',
+    '초기 신청 생성'
+  )
 on conflict (id) do nothing;
