@@ -9,7 +9,6 @@ type OrganizationCoordinateRow = {
   id: string
   name: string
   branch_name: string | null
-  academy_area: string | null
   address_line1: string | null
   address_line2: string | null
   address: string | null
@@ -31,7 +30,6 @@ const ORGANIZATION_COORDINATE_SELECT = [
   "id",
   "name",
   "branch_name",
-  "academy_area",
   "address_line1",
   "address_line2",
   "address",
@@ -45,7 +43,6 @@ export const buildOrganizationAddressForGeocoding = (organization: {
   address_line2?: string | null
   address?: string | null
   address_detail?: string | null
-  academy_area?: string | null
 }) => {
   const address = resolveOrganizationAddressLines({
     addressLine1: organization.address_line1,

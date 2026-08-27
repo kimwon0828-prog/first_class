@@ -8,7 +8,6 @@ export type StudioSettingsOrganization = {
   id: string
   actorRole: string | null
   name: string
-  academyArea: string | null
   branchName: string | null
   representativeName: string | null
   businessRegistrationNumber: string | null
@@ -35,7 +34,6 @@ type ProfileRoleRow = {
 type OrganizationRow = {
   id: string
   name: string
-  academy_area: string | null
   branch_name: string | null
   representative_name: string | null
   business_registration_number: string | null
@@ -75,7 +73,6 @@ export const getStudioSettingsOrganization = async (
       [
         "id",
         "name",
-        "academy_area",
         "branch_name",
         "representative_name",
         "business_registration_number",
@@ -109,7 +106,6 @@ export const getStudioSettingsOrganization = async (
     id: organization.id,
     actorRole: normalizedRole?.dbRole ?? null,
     name: organization.name,
-    academyArea: organization.academy_area,
     branchName: organization.branch_name,
     representativeName: organization.representative_name,
     businessRegistrationNumber: organization.business_registration_number,

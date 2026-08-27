@@ -36,7 +36,6 @@ const postalCodePattern = /^[0-9A-Za-z-\s]+$/
 type OrganizationRow = {
   id: string
   name: string
-  academy_area: string | null
   branch_name: string | null
   representative_name: string | null
   business_registration_number: string | null
@@ -65,7 +64,6 @@ type InsertedAcademyUpdateRequestRow = {
 
 type AcademyUpdateSnapshot = {
   academyName: string | null
-  academyArea: string | null
   branchName: string | null
   representativeName: string | null
   businessRegistrationNumber: string | null
@@ -106,7 +104,6 @@ const validatePhone = (value: string, label: string) => {
 
 const buildSnapshot = (input: {
   academyName: string | null
-  academyArea: string | null
   branchName: string | null
   representativeName: string | null
   businessRegistrationNumber: string | null
@@ -122,7 +119,6 @@ const buildSnapshot = (input: {
 
   return {
     academyName: input.academyName,
-    academyArea: input.academyArea,
     branchName: input.branchName,
     representativeName: input.representativeName,
     businessRegistrationNumber: input.businessRegistrationNumber,
@@ -290,7 +286,6 @@ export async function requestAcademyUpdateAction(
       [
         "id",
         "name",
-        "academy_area",
         "branch_name",
         "representative_name",
         "business_registration_number",
@@ -336,7 +331,6 @@ export async function requestAcademyUpdateAction(
 
   const currentSnapshot = buildSnapshot({
     academyName: organization.name,
-    academyArea: organization.academy_area,
     branchName: organization.branch_name,
     representativeName: organization.representative_name,
     businessRegistrationNumber: organization.business_registration_number,
@@ -351,7 +345,6 @@ export async function requestAcademyUpdateAction(
 
   const requestedSnapshot = buildSnapshot({
     academyName: validated.academyName,
-    academyArea: organization.academy_area,
     branchName: organization.branch_name,
     representativeName: validated.representativeName,
     businessRegistrationNumber: validated.businessRegistrationNumber,

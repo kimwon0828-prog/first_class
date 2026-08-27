@@ -6,6 +6,7 @@ import {
   requestAcademyUpdateAction,
   type RequestAcademyUpdateActionState
 } from "@/features/studio/actions/request-academy-update"
+import { formatAdministrativeRegionLabel } from "@/features/location/lib/region-selection"
 import type { PendingAcademyUpdateRequest } from "@/features/studio/queries/get-pending-academy-update-request"
 import type { StudioSettingsOrganization } from "@/features/studio/queries/get-studio-settings-organization"
 import { StudioAddressFields } from "@/features/studio/ui/studio-address-fields"
@@ -39,19 +40,25 @@ const toText = (value: string | null | undefined, fallback = "미입력") => {
   return trimmed && trimmed.length > 0 ? trimmed : fallback
 }
 
-const createFieldRows = (organization: StudioSettingsOrganization) => [
-  { label: "학원명", value: organization.name },
-  { label: "학원가", value: toText(organization.academyArea) },
-  { label: "지점명", value: toText(organization.branchName) },
-  { label: "대표자명", value: toText(organization.representativeName) },
-  { label: "사업자등록번호", value: toText(organization.businessRegistrationNumber) },
-  { label: "학원 대표 전화번호", value: toText(organization.academyPhone ?? organization.organizationPhone) },
-  { label: "담당자 전화번호", value: toText(organization.contactPhone) },
-  { label: "우편번호", value: toText(organization.postalCode) },
-  { label: "기본 주소", value: toText(organization.addressLine1 ?? organization.address) },
-  { label: "상세 주소", value: toText(organization.addressLine2 ?? organization.addressDetail) },
-  { label: "사업자등록증 경로", value: toText(organization.businessRegistrationFilePath, "등록된 파일 없음") }
-]
+// 지역은 organizations 의 행정지역 metadata 로만 만든다. legacy academy_area 로 fallback 하지 않으며,
+// metadata 가 없으면 아래 기본 주소 row 가 있으므로 지역 row 자체를 생략한다.
+const createFieldRows = (organization: StudioSettingsOrganization) => {
+  const regionLabel = formatAdministrativeRegionLabel(organization)
+
+  return [
+    { label: "학원명", value: organization.name },
+    ...(regionLabel ? [{ label: "지역", value: regionLabel }] : []),
+    { label: "지점명", value: toText(organization.branchName) },
+    { label: "대표자명", value: toText(organization.representativeName) },
+    { label: "사업자등록번호", value: toText(organization.businessRegistrationNumber) },
+    { label: "학원 대표 전화번호", value: toText(organization.academyPhone ?? organization.organizationPhone) },
+    { label: "담당자 전화번호", value: toText(organization.contactPhone) },
+    { label: "우편번호", value: toText(organization.postalCode) },
+    { label: "기본 주소", value: toText(organization.addressLine1 ?? organization.address) },
+    { label: "상세 주소", value: toText(organization.addressLine2 ?? organization.addressDetail) },
+    { label: "사업자등록증 경로", value: toText(organization.businessRegistrationFilePath, "등록된 파일 없음") }
+  ]
+}
 
 export function StudioSettingsPage({
   organization,

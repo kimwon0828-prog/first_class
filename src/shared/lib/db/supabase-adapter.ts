@@ -10,7 +10,6 @@ import {
   loadSubjectMasterByIdsWithClient
 } from "@/features/subjects/queries/get-subject-master"
 import { getPublicEnv } from "@/shared/config/env"
-import type { AcademyArea } from "@/shared/config/academy-areas"
 import { getConsultationPipelineGroup } from "@/shared/lib/consultation-pipeline"
 import {
   buildClassSubjectWritePayload,
@@ -325,7 +324,6 @@ type TeacherSignupRequestRow = {
   teacher_name: string
   teacher_phone: string | null
   organization_name: string
-  academy_area: AcademyArea
   branch_name: string | null
   address: string | null
   address_detail: string | null
@@ -947,7 +945,6 @@ const mapTeacherSignupRequest = (row: TeacherSignupRequestRow): TeacherSignupReq
   teacherName: row.teacher_name,
   teacherPhone: row.teacher_phone,
   organizationName: row.organization_name,
-  academyArea: row.academy_area,
   branchName: row.branch_name,
   address: row.address,
   addressDetail: row.address_detail,
@@ -5184,7 +5181,7 @@ export const supabaseDataAdapter: DataAdapter = {
     const supabase = await getSupabaseServerClient()
     const { data, error } = await supabase
       .from("teacher_signup_requests")
-      .select("id, user_id, status, teacher_name, teacher_phone, organization_name, academy_area, branch_name, address, address_detail, organization_phone, request_note, created_at")
+      .select("id, user_id, status, teacher_name, teacher_phone, organization_name, branch_name, address, address_detail, organization_phone, request_note, created_at")
       .eq("user_id", userId)
       .eq("status", "pending")
       .maybeSingle()
@@ -5224,14 +5221,13 @@ export const supabaseDataAdapter: DataAdapter = {
         teacher_name: input.teacherName,
         teacher_phone: input.teacherPhone,
         organization_name: input.organizationName,
-        academy_area: input.academyArea,
         branch_name: input.branchName,
         address: input.address,
         address_detail: input.addressDetail,
         organization_phone: input.organizationPhone,
         request_note: input.requestNote
       })
-      .select("id, user_id, status, teacher_name, teacher_phone, organization_name, academy_area, branch_name, address, address_detail, organization_phone, request_note, created_at")
+      .select("id, user_id, status, teacher_name, teacher_phone, organization_name, branch_name, address, address_detail, organization_phone, request_note, created_at")
       .single()
 
     if (error || !data) {

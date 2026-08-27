@@ -3,6 +3,7 @@
 import Link from "next/link"
 import { useMemo, useState, type FormEvent } from "react"
 
+import { formatAdministrativeRegionLabel } from "@/features/location/lib/region-selection"
 import type { AcademyUpdateRequestView } from "@/features/admin/queries/get-academy-update-requests"
 import { AdminApprovalNav } from "../_components/admin-approval-nav"
 import { ReviewSubmitButton } from "./review-submit-button"
@@ -32,6 +33,10 @@ const toText = (value: string | null | undefined, fallback?: string) => {
   return trimmed && trimmed.length > 0 ? trimmed : fallback ?? null
 }
 
+// 지역은 snapshot 의 행정지역 metadata 로만 만든다. legacy academy_area 로 fallback 하지 않는다.
+const regionLabel = (snapshot: AcademyUpdateRequestView["currentSnapshot"]) =>
+  formatAdministrativeRegionLabel(snapshot)
+
 const comparisonRows = (request: AcademyUpdateRequestView) => [
   {
     label: "학원명",
@@ -57,6 +62,11 @@ const comparisonRows = (request: AcademyUpdateRequestView) => [
     label: "담당자 전화번호",
     current: request.currentSnapshot.contactPhone ?? request.currentSnapshot.teacherPhone,
     requested: request.requestedSnapshot.contactPhone ?? request.requestedSnapshot.teacherPhone
+  },
+  {
+    label: "지역",
+    current: regionLabel(request.currentSnapshot),
+    requested: regionLabel(request.requestedSnapshot)
   },
   {
     label: "우편번호",
@@ -147,7 +157,7 @@ export function AcademyUpdateRequestsClient({
       return [
         request.currentSnapshot.academyName,
         request.currentSnapshot.branchName,
-        request.currentSnapshot.academyArea,
+        regionLabel(request.currentSnapshot),
         request.requesterName,
         request.requestedSnapshot.representativeName
       ]
@@ -203,7 +213,7 @@ export function AcademyUpdateRequestsClient({
               type="search"
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              placeholder="학원명, 학원가, 요청자 검색"
+              placeholder="학원명, 지역, 요청자 검색"
               className={styles.searchInput}
             />
             <span className={styles.toolbarMeta}>총 {filteredRequests.length}건</span>
@@ -225,9 +235,9 @@ export function AcademyUpdateRequestsClient({
                       {toText(request.currentSnapshot.academyName) ?? "학원명 없음"}
                     </p>
                     <p className={styles.requestSubtitle}>
-                      {[toText(request.currentSnapshot.academyArea), toText(request.currentSnapshot.branchName)]
+                      {[toText(regionLabel(request.currentSnapshot)), toText(request.currentSnapshot.branchName)]
                         .filter(Boolean)
-                        .join(" · ") || "학원가/지점 정보 없음"}
+                        .join(" · ") || "지역/지점 정보 없음"}
                     </p>
                   </div>
                   <div className={styles.requestMeta}>

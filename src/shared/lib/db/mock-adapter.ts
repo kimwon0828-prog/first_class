@@ -2425,7 +2425,6 @@ export const mockDataAdapter: DataAdapter = {
       teacherName: input.teacherName,
       teacherPhone: input.teacherPhone,
       organizationName: input.organizationName,
-      academyArea: input.academyArea,
       branchName: input.branchName,
       address: input.address,
       addressDetail: input.addressDetail,

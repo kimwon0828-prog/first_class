@@ -4,7 +4,6 @@ import { getSupabaseServiceRoleClient } from "@/integrations/supabase/service-ro
 
 export type AcademyUpdateSnapshot = {
   academyName: string | null
-  academyArea: string | null
   branchName: string | null
   representativeName: string | null
   businessRegistrationNumber: string | null
@@ -79,7 +78,6 @@ const parseSnapshot = (value: unknown): AcademyUpdateSnapshot => {
 
   return {
     academyName: toNullableText(record.academyName),
-    academyArea: toNullableText(record.academyArea),
     branchName: toNullableText(record.branchName),
     representativeName: toNullableText(record.representativeName),
     businessRegistrationNumber: toNullableText(record.businessRegistrationNumber),

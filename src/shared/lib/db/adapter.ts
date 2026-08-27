@@ -1,4 +1,3 @@
-import type { AcademyArea } from "@/shared/config/academy-areas"
 import type { TeacherPublicVisibility } from "@/shared/lib/teacher-public-visibility"
 import type { ClassSubjectReadModel } from "@/shared/lib/subject-master"
 
@@ -786,7 +785,6 @@ export type TeacherSignupRequest = {
   teacherName: string
   teacherPhone: string | null
   organizationName: string
-  academyArea: AcademyArea
   branchName: string | null
   address: string | null
   addressDetail: string | null
@@ -800,7 +798,6 @@ export type CreateTeacherSignupRequestInput = {
   teacherName: string
   teacherPhone: string | null
   organizationName: string
-  academyArea: AcademyArea
   branchName: string | null
   address: string
   addressDetail: string | null

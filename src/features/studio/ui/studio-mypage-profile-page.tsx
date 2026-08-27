@@ -16,6 +16,7 @@ import {
   saveAcademyPublicProfileAction,
   type SaveAcademyPublicProfileActionState
 } from "@/features/studio/actions/save-academy-public-profile"
+import { formatAdministrativeRegionLabel } from "@/features/location/lib/region-selection"
 import type { StudioAcademyPublicProfile } from "@/features/studio/queries/get-studio-academy-public-profile"
 import type { StudioSettingsOrganization } from "@/features/studio/queries/get-studio-settings-organization"
 import { getSupabaseBrowserClient } from "@/integrations/supabase/client"
@@ -673,10 +674,12 @@ export function StudioMypageProfilePage({
                 <p className={styles.infoLabel}>지점명</p>
                 <p className={styles.infoValue}>{toText(organization.branchName)}</p>
               </article>
-              <article className={styles.infoItem}>
-                <p className={styles.infoLabel}>학원가</p>
-                <p className={styles.infoValue}>{toText(organization.academyArea)}</p>
-              </article>
+              {formatAdministrativeRegionLabel(organization) ? (
+                <article className={styles.infoItem}>
+                  <p className={styles.infoLabel}>지역</p>
+                  <p className={styles.infoValue}>{formatAdministrativeRegionLabel(organization)}</p>
+                </article>
+              ) : null}
               <article className={styles.infoItem}>
                 <p className={styles.infoLabel}>대표 전화번호</p>
                 <p className={styles.infoValue}>{formatPhone(organization)}</p>

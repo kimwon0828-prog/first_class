@@ -6,7 +6,6 @@ const BUSINESS_REGISTRATION_SIGNED_URL_TTL_SECONDS = 60 * 5
 
 export type AcademyUpdateRequestSnapshot = {
   academyName: string | null
-  academyArea: string | null
   branchName: string | null
   representativeName: string | null
   businessRegistrationNumber: string | null
@@ -18,6 +17,9 @@ export type AcademyUpdateRequestSnapshot = {
   addressLine2: string | null
   address: string | null
   addressDetail: string | null
+  sido: string | null
+  sigungu: string | null
+  bname: string | null
   organizationPhone: string | null
   teacherPhone: string | null
 }
@@ -69,7 +71,6 @@ const parseSnapshot = (value: unknown): AcademyUpdateRequestSnapshot => {
 
   return {
     academyName: toNullableText(record.academyName),
-    academyArea: toNullableText(record.academyArea),
     branchName: toNullableText(record.branchName),
     representativeName: toNullableText(record.representativeName),
     businessRegistrationNumber: toNullableText(record.businessRegistrationNumber),
@@ -81,6 +82,9 @@ const parseSnapshot = (value: unknown): AcademyUpdateRequestSnapshot => {
     addressLine2: toNullableText(record.addressLine2),
     address: toNullableText(record.address),
     addressDetail: toNullableText(record.addressDetail),
+    sido: toNullableText(record.sido),
+    sigungu: toNullableText(record.sigungu),
+    bname: toNullableText(record.bname),
     organizationPhone: toNullableText(record.organizationPhone),
     teacherPhone: toNullableText(record.teacherPhone)
   }
