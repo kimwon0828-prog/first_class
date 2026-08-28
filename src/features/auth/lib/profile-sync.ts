@@ -185,15 +185,21 @@ export const getProfileForUser = async (user: AuthUserIdentity): Promise<AuthPro
 
 const getMyProfileCached = cache(async (): Promise<AuthProfile | null> => {
   const supabase = await getSupabaseServerClient()
-  const {
-    data: { user }
-  } = await supabase.auth.getUser()
+  // 검증된 identity(sub/email) 만 얻는 용도. asymmetric JWT 를 JWKS 로 로컬 검증하므로
+  // Auth 서버 왕복이 없고, 만료가 임박하면 getUser() 와 동일하게 refresh 를 먼저 수행한다.
+  // role 판정은 아래 getProfileForUser 가 읽는 profiles 그대로이며 claims 의 metadata 는 쓰지 않는다.
+  const { data: claimsData } = await supabase.auth.getClaims()
+  const claims = claimsData?.claims
+  const userId = typeof claims?.sub === "string" ? claims.sub : null
 
-  if (!user) {
+  if (!userId) {
     return null
   }
 
-  const profileResult = await getProfileForUser(user)
+  const profileResult = await getProfileForUser({
+    id: userId,
+    email: typeof claims?.email === "string" ? claims.email : undefined
+  })
   return profileResult.status === "ok" ? profileResult.profile : null
 })
 
