@@ -111,30 +111,31 @@ const requireTeacherStudioAccessCached = cache(async (): Promise<TeacherStudioAc
     "unknown"
   const hasNextRouterPrefetchHeader = Boolean(requestHeaders.get("next-router-prefetch"))
   const hasPurposePrefetchHeader = requestHeaders.get("purpose") === "prefetch"
-  const {
-    data: { user },
-    error: userError
-  } = await supabase.auth.getUser()
-  const userIdPrefix = user?.id.slice(0, 8) ?? null
+  // 인증된 user id 확인 전용. asymmetric JWT 를 JWKS 로 로컬 검증하므로 Auth 서버 왕복이 없다.
+  // 권한(role/organization)의 canonical source 는 아래의 profiles/teachers 그대로다.
+  // claims 의 role/user_metadata 는 authorization 근거로 쓰지 않는다.
+  const { data: claimsData, error: claimsError } = await supabase.auth.getClaims()
+  const userId = typeof claimsData?.claims?.sub === "string" ? claimsData.claims.sub : null
+  const userIdPrefix = userId?.slice(0, 8) ?? null
   debugStudioAuth({
     pathname: requestPath,
-    hasUser: Boolean(user),
+    hasUser: Boolean(userId),
     userIdPrefix,
     profileLookup: null,
-    errorCode: userError?.code ?? null,
+    errorCode: claimsError?.code ?? null,
     rawRole: null,
     dbRole: null,
     hasOrganizationId: null,
     hasNextRouterPrefetchHeader,
     hasPurposePrefetchHeader,
-    redirectReason: user ? null : "missing_user"
+    redirectReason: userId ? null : "missing_user"
   })
 
-  if (!user) {
+  if (!userId) {
     redirect("/studio/sign-in")
   }
 
-  const profileLookup = await readStudioProfile(user.id)
+  const profileLookup = await readStudioProfile(userId)
   if (profileLookup.kind === "error") {
     debugStudioAuth({
       pathname: requestPath,
@@ -153,7 +154,7 @@ const requireTeacherStudioAccessCached = cache(async (): Promise<TeacherStudioAc
   }
 
   if (profileLookup.kind === "missing") {
-    const pendingRequest = await getPendingOrRejectedTeacherSignupRequest(user.id)
+    const pendingRequest = await getPendingOrRejectedTeacherSignupRequest(userId)
     if (pendingRequest) {
       debugStudioAuth({
         pathname: requestPath,
@@ -265,7 +266,7 @@ const requireTeacherStudioAccessCached = cache(async (): Promise<TeacherStudioAc
       ? await supabase
           .from("teachers")
           .select("id")
-          .eq("profile_id", user.id)
+          .eq("profile_id", userId)
           .maybeSingle()
       : await supabase
           .from("teachers")
@@ -317,7 +318,7 @@ const requireTeacherStudioAccessCached = cache(async (): Promise<TeacherStudioAc
         redirectReason: null
       })
       return {
-        id: user.id,
+        id: userId,
         teacherId: fallbackTeacherRow.id,
         name: data.name,
         organizationId
@@ -354,7 +355,7 @@ const requireTeacherStudioAccessCached = cache(async (): Promise<TeacherStudioAc
     redirectReason: null
   })
   return {
-    id: user.id,
+    id: userId,
     teacherId: teacherRow.id,
     name: data.name,
     organizationId
