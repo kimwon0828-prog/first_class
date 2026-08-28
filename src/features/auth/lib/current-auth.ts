@@ -58,14 +58,15 @@ const isStudioProfile = (profile: AuthProfile) =>
 const resolveCurrentAuthCached = cache(async (context: string): Promise<CurrentAuthState> => {
   const supabase = await getSupabaseServerClient()
   const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
-  const {
-    data: { user: authUser },
-    error: userError
-  } = await supabase.auth.getUser()
+  // 검증된 identity 만 얻는 용도. asymmetric JWT 를 JWKS 로 로컬 검증하므로 Auth 서버 왕복이 없고,
+  // 만료가 임박하면 getUser() 와 동일하게 refresh 를 먼저 수행한다.
+  // 권한 판정의 canonical source 는 아래 getProfileForUser 가 읽는 profiles 그대로다.
+  const { data: claimsData, error: userError } = await supabase.auth.getClaims()
+  const claims = claimsData?.claims
+  const subject = typeof claims?.sub === "string" ? claims.sub : null
+  const claimEmail = typeof claims?.email === "string" ? claims.email : undefined
 
-  let user: AuthUserIdentity | null = authUser
-    ? { id: authUser.id, email: authUser.email ?? undefined }
-    : null
+  let user: AuthUserIdentity | null = subject ? { id: subject, email: claimEmail } : null
   let fallback: Awaited<ReturnType<typeof getUserFromSupabaseAuthCookieFallback>> | null = null
 
   // A raw request cookie can still verify the user when the SSR client cannot read its session consistently.
