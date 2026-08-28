@@ -23,27 +23,37 @@ export default async function StudioApplicationsPage({ searchParams }: StudioApp
     startDate: resolvedSearchParams?.startDate,
     endDate: resolvedSearchParams?.endDate
   })
-  const { data: filterOptions, error: filterError } = await getStudioDashboardTeacherOptions(
-    teacher.organizationId
-  )
-  const availableTeacherIdSet = new Set(filterOptions.map((option) => option.teacherId))
-  const validatedTeacherId =
-    teacherIdParam &&
-    teacherIdParam !== "all" &&
-    uuidPattern.test(teacherIdParam) &&
-    availableTeacherIdSet.has(teacherIdParam)
+  // 형식만 먼저 거르고, 소속 검증은 filterOptions 가 도착한 뒤에 한다.
+  const candidateTeacherId =
+    teacherIdParam && teacherIdParam !== "all" && uuidPattern.test(teacherIdParam)
       ? teacherIdParam
       : null
+  const [{ data: filterOptions, error: filterError }, candidateApplicationsResult] =
+    await Promise.all([
+      getStudioDashboardTeacherOptions(teacher.organizationId),
+      getStudioApplications(teacher.organizationId, {
+        teacherId: candidateTeacherId,
+        createdAtFrom: selectedDateRange.createdAtFrom,
+        createdAtTo: selectedDateRange.createdAtTo
+      })
+    ])
+  const availableTeacherIdSet = new Set(filterOptions.map((option) => option.teacherId))
+  const validatedTeacherId =
+    candidateTeacherId && availableTeacherIdSet.has(candidateTeacherId) ? candidateTeacherId : null
   const selectedTeacherId = validatedTeacherId ?? "all"
   const selectedTeacherName =
     selectedTeacherId !== "all"
       ? (filterOptions.find((option) => option.teacherId === selectedTeacherId)?.teacherName ?? null)
       : null
-  const { data, error } = await getStudioApplications(teacher.organizationId, {
-    teacherId: validatedTeacherId,
-    createdAtFrom: selectedDateRange.createdAtFrom,
-    createdAtTo: selectedDateRange.createdAtTo
-  })
+  // candidate 가 이 organization 의 teacher 가 아니면 기존과 동일하게 전체 결과여야 한다.
+  const { data, error } =
+    candidateTeacherId && !validatedTeacherId
+      ? await getStudioApplications(teacher.organizationId, {
+          teacherId: null,
+          createdAtFrom: selectedDateRange.createdAtFrom,
+          createdAtTo: selectedDateRange.createdAtTo
+        })
+      : candidateApplicationsResult
 
   return (
     <div className={styles.page}>

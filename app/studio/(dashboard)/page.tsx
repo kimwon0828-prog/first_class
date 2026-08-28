@@ -27,18 +27,28 @@ export default async function StudioIndexPage({ searchParams }: StudioIndexPageP
     startDate: resolvedSearchParams?.startDate,
     endDate: resolvedSearchParams?.endDate
   })
-  const [{ data: filterOptions, error: filterError }, organizationName] = await Promise.all([
+  // 형식만 먼저 거르고, 소속 검증은 filterOptions 가 도착한 뒤에 한다.
+  // 이렇게 해야 applications 조회를 teacher options 와 같은 wave 에서 시작할 수 있다.
+  const candidateTeacherId =
+    teacherIdParam && teacherIdParam !== "all" && uuidPattern.test(teacherIdParam)
+      ? teacherIdParam
+      : null
+  const [
+    { data: filterOptions, error: filterError },
+    organizationName,
+    candidateApplicationsResult
+  ] = await Promise.all([
     getStudioDashboardTeacherOptions(teacher.organizationId),
-    getStudioOrganizationName(teacher.organizationId)
+    getStudioOrganizationName(teacher.organizationId),
+    getStudioApplications(teacher.organizationId, {
+      teacherId: candidateTeacherId,
+      createdAtFrom: selectedDateRange.createdAtFrom,
+      createdAtTo: selectedDateRange.createdAtTo
+    })
   ])
   const availableTeacherIdSet = new Set(filterOptions.map((option) => option.teacherId))
   const validatedTeacherId =
-    teacherIdParam &&
-    teacherIdParam !== "all" &&
-    uuidPattern.test(teacherIdParam) &&
-    availableTeacherIdSet.has(teacherIdParam)
-      ? teacherIdParam
-      : null
+    candidateTeacherId && availableTeacherIdSet.has(candidateTeacherId) ? candidateTeacherId : null
   const selectedTeacherId = validatedTeacherId ?? "all"
   const selectedTeacherName =
     selectedTeacherId !== "all"
@@ -49,11 +59,16 @@ export default async function StudioIndexPage({ searchParams }: StudioIndexPageP
   const greetingTitle = selectedTeacherName
     ? `안녕하세요, ${selectedTeacherName} 선생님`
     : `안녕하세요, ${safeOrganizationName} 관리자님`
-  const { data: applications, error } = await getStudioApplications(teacher.organizationId, {
-    teacherId: validatedTeacherId,
-    createdAtFrom: selectedDateRange.createdAtFrom,
-    createdAtTo: selectedDateRange.createdAtTo
-  })
+  // candidate 가 이 organization 의 teacher 가 아니면 기존과 동일하게 "전체" 결과여야 한다.
+  // 이 비정상 경로에서만 한 번 더 조회한다.
+  const { data: applications, error } =
+    candidateTeacherId && !validatedTeacherId
+      ? await getStudioApplications(teacher.organizationId, {
+          teacherId: null,
+          createdAtFrom: selectedDateRange.createdAtFrom,
+          createdAtTo: selectedDateRange.createdAtTo
+        })
+      : candidateApplicationsResult
   const summary = buildStudioDashboardSummary(applications)
   const actionableCount = summary.actionableCount
   const applicationsParams = new URLSearchParams()

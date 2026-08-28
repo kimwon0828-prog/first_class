@@ -1392,8 +1392,11 @@ const getStudioTeacherDisplayNameMap = async (teacherIds: string[]) => {
   }
 
   const teacherRows = (data ?? []) as TeacherDisplayRow[]
+  // display_name 이 이미 있으면 profile.name fallback 을 쓰지 않는다.
+  // fallback 이 실제로 필요한 teacher 가 없으면 profiles 조회 자체가 발생하지 않는다.
   const profileNameById = await getProfileNameMap(
     teacherRows
+      .filter((row) => !row.display_name?.trim())
       .map((row) => row.profile_id)
       .filter((profileId): profileId is string => Boolean(profileId))
   )
@@ -4159,11 +4162,6 @@ export const supabaseDataAdapter: DataAdapter = {
 
     const rows = (data ?? []) as TrialApplicationRow[]
     const applicationIds = rows.map((row) => row.id)
-    const teacherNameById = await getStudioTeacherDisplayNameMap(
-      rows
-        .map((row) => row.assigned_teacher_id)
-        .filter((teacherId): teacherId is string => Boolean(teacherId))
-    )
 
     const consultationCountByApplicationId = new Map<string, number>()
     const hasAnyConsultationHistoryByApplicationId = new Map<string, boolean>()
@@ -4171,18 +4169,37 @@ export const supabaseDataAdapter: DataAdapter = {
     const latestConsultationByApplicationId = new Map<string, ConsultationLogRow>()
     const trialResultApplicationIds = new Set<string>()
 
-    if (applicationIds.length > 0) {
-      const [{ data: consultationLogData, error: consultationLogError }, { data: trialResultData, error: trialResultError }] =
-        await Promise.all([
-          supabase
+    // teacher 이름과 consultation_logs/trial_results 는 rows 만 있으면 서로 독립이다.
+    // 같은 wave 에서 시작해 직렬 await 를 줄인다. 결과 해석 순서는 그대로 둔다.
+    const [teacherNameById, consultationLogResult, trialResultResult] = await Promise.all([
+      getStudioTeacherDisplayNameMap(
+        rows
+          .map((row) => row.assigned_teacher_id)
+          .filter((teacherId): teacherId is string => Boolean(teacherId))
+      ),
+      applicationIds.length > 0
+        ? supabase
             .from("consultation_logs")
             .select(
               "id, application_id, occurred_at, activity_type, channel, sentiment, registration_status_snapshot, next_action, next_contact_at, note, created_by, created_at, updated_at"
             )
             .in("application_id", applicationIds)
-            .order("occurred_at", { ascending: false }),
-          supabase.from("trial_results").select("application_id").in("application_id", applicationIds)
-        ])
+            .order("occurred_at", { ascending: false })
+        : null,
+      applicationIds.length > 0
+        ? supabase.from("trial_results").select("application_id").in("application_id", applicationIds)
+        : null
+    ])
+
+    if (applicationIds.length > 0) {
+      const { data: consultationLogData, error: consultationLogError } = consultationLogResult ?? {
+        data: null,
+        error: null
+      }
+      const { data: trialResultData, error: trialResultError } = trialResultResult ?? {
+        data: null,
+        error: null
+      }
 
       if (consultationLogError) {
         throw new Error("failed_to_fetch_studio_consultation_pipeline_logs")

@@ -44,6 +44,13 @@ export const StudioShell = ({
   const mypageHref = "/studio/mypage"
   const isMypageActive = isActivePath(pathname, mypageHref)
   const [pendingHref, setPendingHref] = useState<string | null>(null)
+  // 사이드바 링크는 항상 viewport 안에 있어서 자동 prefetch 를 켜면 Studio dynamic route 6~7 개가
+  // 첫 렌더 직후 한꺼번에 요청된다. hover/focus 로 의도를 보인 href 만 prefetch 를 허용한다.
+  const [intentHrefs, setIntentHrefs] = useState<ReadonlySet<string>>(() => new Set<string>())
+  const markPrefetchIntent = (href: string) =>
+    setIntentHrefs((current) => (current.has(href) ? current : new Set(current).add(href)))
+  // prefetch={null} 이 Next 의 기본(자동) prefetch 다. false 는 완전히 끈다.
+  const prefetchFor = (href: string) => (intentHrefs.has(href) ? null : false)
   const [isLogoImageBroken, setIsLogoImageBroken] = useState(false)
   const navItems: NavItem[] = [
     { href: "/studio", label: "대시보드" },
@@ -93,12 +100,15 @@ export const StudioShell = ({
               <Link
                 key={item.href}
                 href={item.href}
-                prefetch={false}
+                prefetch={prefetchFor(item.href)}
                 className={`${styles.navItem} ${active ? styles.navItemActive : ""} ${
                   pendingHref === item.href ? styles.navItemPending : ""
                 }`}
                 aria-current={active ? "page" : undefined}
                 aria-busy={pendingHref === item.href}
+                onMouseEnter={() => markPrefetchIntent(item.href)}
+                onFocus={() => markPrefetchIntent(item.href)}
+                onTouchStart={() => markPrefetchIntent(item.href)}
                 onClick={() => {
                   if (!active) {
                     setPendingHref(item.href)
@@ -118,12 +128,15 @@ export const StudioShell = ({
           <div className={styles.accountCard}>
             <Link
               href={mypageHref}
-              prefetch={false}
+              prefetch={prefetchFor(mypageHref)}
               className={`${styles.accountProfileLink} ${
                 isMypageActive ? styles.accountProfileLinkActive : ""
               } ${pendingHref === mypageHref ? styles.accountProfileLinkPending : ""}`}
               aria-current={isMypageActive ? "page" : undefined}
               aria-busy={pendingHref === mypageHref}
+              onMouseEnter={() => markPrefetchIntent(mypageHref)}
+              onFocus={() => markPrefetchIntent(mypageHref)}
+              onTouchStart={() => markPrefetchIntent(mypageHref)}
               onClick={() => {
                 if (!isMypageActive) {
                   setPendingHref(mypageHref)
