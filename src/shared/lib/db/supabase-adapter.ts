@@ -20,10 +20,13 @@ import {
   formatSeoulOccurrenceLabel,
   getSeoulDateTimeParts
 } from "@/shared/lib/seoul-datetime"
-import { normalizeTeacherPublicVisibility } from "@/shared/lib/teacher-public-visibility"
+import { normalizeTeacherPublicVisibility,
+  hasVisibleTeacherPublicProfile
+} from "@/shared/lib/teacher-public-visibility"
 import {
   buildClassSubjectReadModel,
   formatClassSubjectDisplayLabel,
+  resolveClassSubjectDisplay,
   type Subject,
   type SubjectCategory
 } from "@/shared/lib/subject-master"
@@ -2212,6 +2215,15 @@ const CLASS_BASE_SELECT_FIELDS =
 const LEGACY_STUDIO_CLASS_LIST_SELECT_FIELDS =
   "id, program_type, title, subject, target_age, trial_price, teacher_id, teacher_display_name, cover_image_url, is_active"
 
+type StudioTeacherAssignmentRow = {
+  id: string
+  title: string
+  teacher_id: string | null
+  subject: string | null
+  subject_category_id: string | null
+  subject_id: string | null
+}
+
 const STUDIO_CLASS_LIST_SELECT_FIELDS =
   `${LEGACY_STUDIO_CLASS_LIST_SELECT_FIELDS}, assignment_mode, subject_category_id, subject_id`
 
@@ -2257,9 +2269,10 @@ const getTeacherProfilesMap = async (teacherIds: string[]) => {
     throw new Error("failed_to_fetch_teacher_profiles")
   }
 
-  const mapped = (data ?? []).map((row) =>
-    mapTeacherProfile(row as TeacherPublicProfileRow)
-  )
+  const mapped = (data ?? [])
+    .map((row) => mapTeacherProfile(row as TeacherPublicProfileRow))
+    // 공개 항목이 전부 비어 있으면 공개 프로필이 없는 것으로 본다.
+    .filter(hasVisibleTeacherPublicProfile)
 
   return new Map<string, TeacherPublicProfile>(
     mapped.map((profile) => [profile.teacherId, profile])
@@ -2985,6 +2998,69 @@ export const supabaseDataAdapter: DataAdapter = {
   },
   async getStudioTeacherSeatSummary(organizationId) {
     return getStudioTeacherSeatSummaryByOrganization(organizationId)
+  },
+  // 선생님 수만큼 조회하지 않는다. organization 단위로 배정된 수업을 한 번 읽고 메모리에서 묶는다.
+  // 명부의 "담당 수업" 은 현재 운영 중인 수업을 뜻하므로 비활성 수업은 제외한다.
+  async listStudioTeacherAssignments(organizationId) {
+    const supabase = await getSupabaseServerClient()
+    const { data, error } = await supabase
+      .from("classes")
+      .select("id, title, teacher_id, subject, subject_category_id, subject_id")
+      .eq("organization_id", organizationId)
+      .eq("is_active", true)
+      .not("teacher_id", "is", null)
+      .order("created_at", { ascending: false })
+
+    if (error) {
+      throw new Error("failed_to_fetch_studio_teacher_assignments")
+    }
+
+    const rows = (data ?? []) as StudioTeacherAssignmentRow[]
+    if (rows.length === 0) {
+      return []
+    }
+
+    const { categoryById, subjectById } = await loadSubjectMasterMapsByIdsWithClient(
+      supabase,
+      rows.map((row) => row.subject_category_id).filter((id): id is string => Boolean(id)),
+      rows.map((row) => row.subject_id).filter((id): id is string => Boolean(id))
+    )
+
+    const byTeacherId = new Map<string, { titles: string[]; subjects: string[] }>()
+    for (const row of rows) {
+      if (!row.teacher_id) {
+        continue
+      }
+
+      const bucket = byTeacherId.get(row.teacher_id) ?? { titles: [], subjects: [] }
+      bucket.titles.push(row.title)
+
+      // 명부 목록은 좁으므로 과목명만 쓰고, 과목이 없으면 카테고리명으로 떨어진다.
+      // resolve 되지 않으면 억지 fallback 을 넣지 않는다.
+      const display = resolveClassSubjectDisplay({
+        ...buildClassSubjectReadModel({
+          subjectCategoryId: row.subject_category_id,
+          masterCategory: row.subject_category_id ? categoryById.get(row.subject_category_id) ?? null : null,
+          subjectId: row.subject_id,
+          masterSubject: row.subject_id ? subjectById.get(row.subject_id) ?? null : null
+        }),
+        subject: row.subject
+      })
+      const label = (display.subjectLabel ?? display.categoryLabel ?? "").trim()
+
+      if (label && !bucket.subjects.includes(label)) {
+        bucket.subjects.push(label)
+      }
+
+      byTeacherId.set(row.teacher_id, bucket)
+    }
+
+    return Array.from(byTeacherId.entries()).map(([teacherId, bucket]) => ({
+      teacherId,
+      classCount: bucket.titles.length,
+      classTitles: bucket.titles,
+      subjectLabels: bucket.subjects
+    }))
   },
   async createStudioTeacher(input) {
     // 선생님 등록은 학원 내부 명부 등록이라 teacher_seat_limit 으로 막지 않는다.

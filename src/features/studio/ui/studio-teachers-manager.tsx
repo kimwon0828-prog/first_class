@@ -9,7 +9,7 @@ import {
   upsertStudioTeacherAction,
   type UpsertStudioTeacherActionState
 } from "@/features/studio/actions/upsert-studio-teacher"
-import type { StudioTeacherSeatSummary, StudioTeacherSummary } from "@/shared/lib/db/adapter"
+import type { StudioTeacherAssignmentSummary, StudioTeacherSummary } from "@/shared/lib/db/adapter"
 import {
   DEFAULT_TEACHER_PUBLIC_VISIBILITY,
   TEACHER_PUBLIC_VISIBILITY_KEYS,
@@ -28,7 +28,7 @@ import styles from "./studio-teachers-manager.module.css"
 
 type StudioTeachersManagerProps = {
   items: StudioTeacherSummary[]
-  seatSummary: StudioTeacherSeatSummary
+  assignmentsByTeacherId: Record<string, StudioTeacherAssignmentSummary>
 }
 
 type PanelState = {
@@ -98,11 +98,6 @@ const buildPublicVisibility = (isPublic: boolean): TeacherPublicVisibility => {
 const isTeacherPublic = (visibility: TeacherPublicVisibility) =>
   TEACHER_PUBLIC_VISIBILITY_KEYS.some((key) => visibility[key])
 
-const getTeacherSummary = (item: StudioTeacherSummary) =>
-  [formatTeacherSubjectValue(item.subjects), formatTeacherTargetValue(item.targetStudents), toText(item.specialties)]
-    .filter(Boolean)
-    .join(" · ")
-
 const getTeacherPreviewSummary = (subjects: string, targetStudents: string, specialties: string) =>
   [formatTeacherSubjectValue(subjects), formatTeacherTargetValue(targetStudents), toText(specialties)]
     .filter(Boolean)
@@ -122,19 +117,10 @@ const getTargetOptions = (values: string[]) => {
   return [...extras, ...TARGET_OPTIONS]
 }
 
-const renderProfileValue = (
-  value: string | null,
-  onWriteClick: () => void
-) =>
-  value ? (
-    <span>{value}</span>
-  ) : (
-    <button type="button" className={styles.inlineWriteButton} onClick={onWriteClick}>
-      미작성 · 작성하기
-    </button>
-  )
-
-export const StudioTeachersManager = ({ items }: StudioTeachersManagerProps) => {
+export const StudioTeachersManager = ({
+  items,
+  assignmentsByTeacherId
+}: StudioTeachersManagerProps) => {
   const [panelState, setPanelState] = useState<PanelState>({ isOpen: false, teacherId: null })
   const [actionFeedback, setActionFeedback] = useState<string | null>(null)
   const [query, setQuery] = useState("")
@@ -167,21 +153,20 @@ export const StudioTeachersManager = ({ items }: StudioTeachersManagerProps) => 
         return true
       }
 
+      // 검색 대상은 목록에 실제로 보이는 정보와 같아야 한다.
+      // legacy teachers.subjects / target_students 는 담당 정보의 source 가 아니므로 쓰지 않는다.
+      const assignment = assignmentsByTeacherId[item.id]
+
       return [
         item.displayName,
-        item.subjects,
-        item.targetStudents,
-        formatTeacherSubjectValue(item.subjects),
-        formatTeacherTargetValue(item.targetStudents),
-        item.specialties,
-        item.shortIntro,
-        item.teachingStyle,
-        item.intro
+        item.phone,
+        ...(assignment?.classTitles ?? []),
+        ...(assignment?.subjectLabels ?? [])
       ]
         .filter((value): value is string => typeof value === "string" && value.length > 0)
         .some((value) => value.toLowerCase().includes(needle))
     })
-  }, [items, query, shouldShowSearch, statusFilter])
+  }, [assignmentsByTeacherId, items, query, shouldShowSearch, statusFilter])
 
   const openCreatePanel = () => {
     setPanelState({ isOpen: true, teacherId: null })
@@ -316,11 +301,11 @@ export const StudioTeachersManager = ({ items }: StudioTeachersManagerProps) => 
                 onEdit={() => openEditPanel(item.id)}
                 onTogglePublic={() => handlePublicToggle(item)}
                 onToggleStatus={() => handleStatusAction(item)}
-                onWriteClick={() => openEditPanel(item.id)}
                 internalOpen={openInternalTeacherId === item.id}
                 onToggleInternal={() =>
                   setOpenInternalTeacherId((current) => (current === item.id ? null : item.id))
                 }
+                assignment={assignmentsByTeacherId[item.id] ?? null}
                 statusPending={isStatusActionPending}
                 visibilityPending={isVisibilityActionPending}
               />
@@ -358,9 +343,9 @@ const TeacherCard = ({
   onEdit,
   onTogglePublic,
   onToggleStatus,
-  onWriteClick,
   internalOpen,
   onToggleInternal,
+  assignment,
   statusPending,
   visibilityPending
 }: {
@@ -368,15 +353,16 @@ const TeacherCard = ({
   onEdit: () => void
   onTogglePublic: () => void
   onToggleStatus: () => void
-  onWriteClick: () => void
   internalOpen: boolean
   onToggleInternal: () => void
+  assignment: StudioTeacherAssignmentSummary | null
   statusPending: boolean
   visibilityPending: boolean
 }) => {
   const isPublic = isTeacherPublic(item.publicVisibility)
-  const summary = getTeacherSummary(item)
-  const displaySummary = summary || "학부모 공개 정보 없음"
+  // 담당 정보는 legacy teachers.subjects/target_students 가 아니라 실제 수업 배정에서 온다.
+  const classCount = assignment?.classCount ?? 0
+  const subjectLine = (assignment?.subjectLabels ?? []).join(" · ")
   const visibilityDescription = !item.isActive
     ? "현재 비활성 상태라 학부모 페이지에는 보이지 않아요."
     : isPublic
@@ -397,7 +383,10 @@ const TeacherCard = ({
                 {isPublic && item.isActive ? "공개 중" : "비공개"}
               </span>
             </div>
-            <p className={styles.teacherSummary}>{displaySummary}</p>
+            <p className={styles.teacherSummary}>
+              {classCount > 0 ? `담당 수업 ${classCount}개` : "담당 수업 없음"}
+            </p>
+            {subjectLine ? <p className={styles.teacherSubjectLine}>{subjectLine}</p> : null}
           </div>
         </div>
 
@@ -432,39 +421,6 @@ const TeacherCard = ({
           ariaLabel="학부모 공개 여부"
         />
       </section>
-
-      <dl className={styles.profileGrid}>
-        <div className={styles.profileRow}>
-          <dt className={styles.profileLabel}>담당</dt>
-          <dd className={styles.profileValue}>
-            {renderProfileValue(
-              [formatTeacherSubjectValue(item.subjects), formatTeacherTargetValue(item.targetStudents)]
-                .filter(Boolean)
-                .join(" · ") || null,
-              onWriteClick
-            )}
-          </dd>
-        </div>
-        <div className={styles.profileRow}>
-          <dt className={styles.profileLabel}>전문 영역</dt>
-          <dd className={styles.profileValue}>{renderProfileValue(toText(item.specialties), onWriteClick)}</dd>
-        </div>
-        <div className={styles.profileRow}>
-          <dt className={styles.profileLabel}>수업 스타일</dt>
-          <dd className={styles.profileValue}>{renderProfileValue(toText(item.teachingStyle), onWriteClick)}</dd>
-        </div>
-      </dl>
-
-      <div className={styles.quoteBlock}>
-        <span className={styles.quoteLabel}>한 줄 소개</span>
-        {item.shortIntro ? (
-          <p className={styles.quoteText}>{item.shortIntro}</p>
-        ) : (
-          <button type="button" className={styles.inlineWriteButton} onClick={onWriteClick}>
-            미작성 · 작성하기
-          </button>
-        )}
-      </div>
 
       <div className={styles.internalWrap}>
         <button type="button" onClick={onToggleInternal} className={styles.internalToggle}>

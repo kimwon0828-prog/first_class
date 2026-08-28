@@ -59,3 +59,27 @@ export const normalizeTeacherPublicVisibility = (value: unknown): TeacherPublicV
 
 export const toTeacherPublicVisibilityJson = (visibility: TeacherPublicVisibility) =>
   JSON.stringify(visibility)
+
+// teacher_public_profiles view 는 공개 OFF 항목을 NULL 로 마스킹할 뿐 row 자체는 계속 반환한다.
+// 따라서 "row 가 있다 = 공개" 가 아니다. 공개 가능한 항목이 전부 비어 있으면 공개 프로필이 없는 것으로 본다.
+// specialty / career_years 는 view 가 마스킹하지 않고 학부모 화면에서도 쓰지 않으므로 판단에서 제외한다.
+type TeacherPublicProfileFields = {
+  teacherName: string | null
+  intro: string | null
+  subjects: string | null
+  targetStudents: string | null
+  specialties: string | null
+  shortIntro: string | null
+  teachingStyle: string | null
+}
+
+export const hasVisibleTeacherPublicProfile = (profile: TeacherPublicProfileFields) =>
+  [
+    profile.teacherName,
+    profile.intro,
+    profile.subjects,
+    profile.targetStudents,
+    profile.specialties,
+    profile.shortIntro,
+    profile.teachingStyle
+  ].some((value) => Boolean(value?.trim()))

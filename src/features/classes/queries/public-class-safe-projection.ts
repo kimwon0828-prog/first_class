@@ -1,5 +1,7 @@
 import "server-only"
 
+import { hasVisibleTeacherPublicProfile } from "@/shared/lib/teacher-public-visibility"
+
 import {
   loadSubjectMasterMapsByIdsWithClient
 } from "@/features/subjects/queries/get-subject-master"
@@ -248,23 +250,22 @@ const toTeacherProfileMap = async (teacherIds: string[]) => {
 
   const teacherRows = (teacherData ?? []) as SafeTeacherRow[]
   return new Map<string, TeacherPublicProfile>(
-    teacherRows.map((row) => {
-      return [
-        row.teacher_id,
-        {
-          teacherId: row.teacher_id,
-          teacherName: row.teacher_name?.trim() || null,
-          intro: row.intro ?? null,
-          specialty: row.specialty ?? null,
-          careerYears: row.career_years ?? 0,
-          subjects: row.subjects ?? null,
-          targetStudents: row.target_students ?? null,
-          specialties: row.specialties ?? null,
-          shortIntro: row.short_intro ?? null,
-          teachingStyle: row.teaching_style ?? null
-        }
-      ]
-    })
+    teacherRows
+      .map((row): TeacherPublicProfile => ({
+        teacherId: row.teacher_id,
+        teacherName: row.teacher_name?.trim() || null,
+        intro: row.intro ?? null,
+        specialty: row.specialty ?? null,
+        careerYears: row.career_years ?? 0,
+        subjects: row.subjects ?? null,
+        targetStudents: row.target_students ?? null,
+        specialties: row.specialties ?? null,
+        shortIntro: row.short_intro ?? null,
+        teachingStyle: row.teaching_style ?? null
+      }))
+      // 공개 항목이 전부 비어 있으면 공개 프로필이 없는 것으로 보고 map 에 넣지 않는다.
+      .filter(hasVisibleTeacherPublicProfile)
+      .map((profile) => [profile.teacherId, profile])
   )
 }
 

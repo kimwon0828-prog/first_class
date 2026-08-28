@@ -15,7 +15,7 @@ export default async function StudioTeachersPage() {
             <p className={styles.errorText}>{error}</p>
           </section>
         ) : (
-          <StudioTeachersManager items={data.teachers} seatSummary={data.seatSummary} />
+          <StudioTeachersManager items={data.teachers} assignmentsByTeacherId={data.assignmentsByTeacherId} />
         )}
       </div>
     </div>

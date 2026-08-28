@@ -261,6 +261,12 @@
   color: #4a4a4a;
 }
 
+.teacherSubjectLine {
+  margin: 2px 0 0;
+  font-size: 13px;
+  color: #475569;
+}
+
 .statusChip,
 .attentionChip,
 .previewBadge {

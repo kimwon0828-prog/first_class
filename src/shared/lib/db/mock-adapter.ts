@@ -33,6 +33,7 @@ import type {
   StudioUnregisteredListOptions,
   StudioScheduleBlockSummary,
   StudioDashboardTeacherFilterOption,
+  StudioTeacherAssignmentSummary,
   StudioTeacherSeatSummary,
   StudioTeacherSummary,
   StudioTeacherOption,
@@ -68,6 +69,7 @@ import { formatAdministrativeRegionLabel } from "@/features/location/lib/region-
 import {
   buildClassSubjectReadModel,
   formatClassSubjectDisplayLabel,
+  resolveClassSubjectDisplay,
   type ClassSubjectReadModel,
   type Subject,
   type SubjectCategory
@@ -936,6 +938,34 @@ export const mockDataAdapter: DataAdapter = {
     }
 
     return getTeacherSeatSummary()
+  },
+  async listStudioTeacherAssignments(organizationId): Promise<StudioTeacherAssignmentSummary[]> {
+    if (organizationId !== mockOrganizationId) {
+      return []
+    }
+
+    const byTeacherId = new Map<string, { titles: string[]; subjects: string[] }>()
+    for (const item of classes) {
+      if (!item.teacherId || !item.isActive) {
+        continue
+      }
+
+      const bucket = byTeacherId.get(item.teacherId) ?? { titles: [], subjects: [] }
+      bucket.titles.push(item.title)
+      const display = resolveClassSubjectDisplay(item)
+      const label = (display.subjectLabel ?? display.categoryLabel ?? "").trim()
+      if (label && !bucket.subjects.includes(label)) {
+        bucket.subjects.push(label)
+      }
+      byTeacherId.set(item.teacherId, bucket)
+    }
+
+    return Array.from(byTeacherId.entries()).map(([teacherId, bucket]) => ({
+      teacherId,
+      classCount: bucket.titles.length,
+      classTitles: bucket.titles,
+      subjectLabels: bucket.subjects
+    }))
   },
   async createStudioTeacher(input: CreateStudioTeacherInput) {
     if (input.organizationId !== mockOrganizationId) {
