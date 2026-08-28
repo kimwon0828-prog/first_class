@@ -1,8 +1,10 @@
 import "server-only"
 
+import { unstable_cache } from "next/cache"
 import type { SupabaseClient } from "@supabase/supabase-js"
 
 import { getSupabaseServerClient } from "@/integrations/supabase/server"
+import { getSupabaseServiceRoleClient } from "@/integrations/supabase/service-role"
 import type { Subject, SubjectCatalogCategory, SubjectCategory } from "@/shared/lib/subject-master"
 
 type SubjectCategoryRow = {
@@ -154,8 +156,11 @@ export const loadSubjectMasterByIdsWithClient = async (
   return buildSubjectMap(subjectRows, categoryRowById)
 }
 
-export const getSelectableSubjectCatalog = async (): Promise<SubjectCatalogCategory[]> => {
-  const supabase = await getSupabaseServerClient()
+// 공개 기준정보라 요청 cookie 와 무관하다. 캐시 안에서는 dynamic API 를 쓸 수 없으므로
+// cookie-aware client 대신 service role client 로 읽는다.
+// subject_categories/subjects 의 공개 read 정책이 이미 USING (true) 라 반환 행은 동일하다.
+const readSelectableSubjectCatalog = async (): Promise<SubjectCatalogCategory[]> => {
+  const supabase = getSupabaseServiceRoleClient()
   const [{ data: categoryData, error: categoryError }, { data: subjectData, error: subjectError }] =
     await Promise.all([
       supabase
@@ -186,6 +191,13 @@ export const getSelectableSubjectCatalog = async (): Promise<SubjectCatalogCateg
       .sort((left, right) => left.sortOrder - right.sortOrder)
   }))
 }
+
+// 공개 카탈로그 read 경로만 캐시한다. 쓰기/검증용 subject 함수는 캐시하지 않는다.
+export const getSelectableSubjectCatalog = unstable_cache(
+  readSelectableSubjectCatalog,
+  ["selectable-subject-catalog-v1"],
+  { revalidate: 300, tags: ["selectable-subject-catalog-v1"] }
+)
 
 export const getSubjectMasterById = async (subjectId: string): Promise<Subject | null> => {
   const supabase = await getSupabaseServerClient()

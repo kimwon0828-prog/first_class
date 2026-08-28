@@ -100,7 +100,12 @@ export default async function AcademiesPage({ searchParams }: AcademiesPageProps
     resolveAcademySort(resolvedSearchParams?.sort)
 
   // 과목 필터의 canonical source 는 Subject Master 다. /classes 와 같은 resolver 를 공유한다.
-  const subjectCatalog: SubjectCatalogCategory[] = await getSelectableSubjectCatalog()
+  // 이 셋은 서로 의존하지 않으므로 함께 시작한다. canonicalization/redirect 순서는 그대로다.
+  const [subjectCatalog, searchLocation, regionCatalog] = await Promise.all([
+    getSelectableSubjectCatalog() as Promise<SubjectCatalogCategory[]>,
+    readParentSearchLocation(),
+    getAcademiesRegionCatalog()
+  ])
   const {
     category: selectedSubjectCategory,
     subject: selectedSubject,
@@ -109,11 +114,6 @@ export default async function AcademiesPage({ searchParams }: AcademiesPageProps
     subjectCategory: decodeQueryValue(resolvedSearchParams?.subjectCategory),
     subject: decodeQueryValue(resolvedSearchParams?.subject)
   })
-
-  const [searchLocation, regionCatalog] = await Promise.all([
-    readParentSearchLocation(),
-    getAcademiesRegionCatalog()
-  ])
   const radiusKm = normalizeSearchRadiusKm(resolvedSearchParams?.radius)
   const rawRegionSelection = {
     sido: decodeQueryValue(resolvedSearchParams?.sido),

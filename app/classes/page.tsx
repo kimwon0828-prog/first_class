@@ -94,6 +94,11 @@ const matchesKeyword = (item: ClassSummary, keywords: readonly string[]) => {
   return keywords.some((keyword) => haystack.includes(normalizeText(keyword)))
 }
 
+// 기본(필터 없음) 화면이 실제로 소비하는 최대 개수.
+// selectedStageClasses = slice(0, 8), topAvailableClasses = slice(0, 10) 이므로 10 이면 충분하고,
+// 이 값을 줄이면 화면 결과가 달라진다. 필터가 걸린 화면에는 적용하지 않는다.
+const DISCOVERY_CLASS_FETCH_LIMIT = 10
+
 const isAdvancedCurationClass = (item: ClassSummary) =>
   matchesKeyword(item, ["영재", "사고력", "과학", "코딩", "로봇", "탐구", "심화", "실험", "초3", "초4", "초5", "초6"])
 
@@ -160,7 +165,13 @@ export default async function ClassesPage({ searchParams }: ClassesPageProps) {
       : undefined
   const decodedSubjectCategory = decodeQueryValue(resolvedSearchParams?.subjectCategory)
   const decodedSubject = decodeQueryValue(resolvedSearchParams?.subject)
-  const subjectCatalog: SubjectCatalogCategory[] = await getSelectableSubjectCatalog()
+  // 이 셋은 서로 의존하지 않으므로 함께 시작한다.
+  // 아래의 canonicalization/redirect 순서와 위치 조회 시점은 그대로 유지한다.
+  const [subjectCatalog, searchLocation, regionCatalog] = await Promise.all([
+    getSelectableSubjectCatalog() as Promise<SubjectCatalogCategory[]>,
+    readParentSearchLocation(),
+    getClassesRegionCatalog()
+  ])
 
   const {
     category: selectedSubjectCategory,
@@ -170,11 +181,6 @@ export default async function ClassesPage({ searchParams }: ClassesPageProps) {
     subjectCategory: decodedSubjectCategory,
     subject: decodedSubject
   })
-
-  const [searchLocation, regionCatalog] = await Promise.all([
-    readParentSearchLocation(),
-    getClassesRegionCatalog()
-  ])
   const radiusKm = normalizeSearchRadiusKm(resolvedSearchParams?.radius)
   const rawRegionSelection = {
     sido: decodeQueryValue(resolvedSearchParams?.sido),
@@ -242,6 +248,15 @@ export default async function ClassesPage({ searchParams }: ClassesPageProps) {
     ? [...distanceByOrganizationId.keys()]
     : regionOrganizationIds
 
+  // 필터가 하나도 없는 기본 discovery/home 화면은 앞의 DISCOVERY_CLASS_FETCH_LIMIT 개만 사용한다.
+  // 필터가 하나라도 걸리면(검색어/과목/지역/현재위치) 결과 개수를 임의로 제한하지 않는다.
+  const canLimitDiscoveryFetch =
+    !selectedQuery &&
+    !selectedSubjectCategory &&
+    !selectedSubject &&
+    locationMode === "all" &&
+    !organizationIdFilter
+
   const [{ data: classes, error: classesError }, auth] = await Promise.all([
     shouldSkipClassFetch || locationLookupFailed
       ? Promise.resolve({ data: [] as ClassSummary[], error: null })
@@ -251,7 +266,8 @@ export default async function ClassesPage({ searchParams }: ClassesPageProps) {
           query: selectedQuery,
           ...(organizationIdFilter ? { organizationIds: organizationIdFilter } : {}),
           // 지역 검색은 거리 검색이 아니므로 distanceKm 을 붙이지 않는다.
-          ...(distanceByOrganizationId ? { distanceByOrganizationId } : {})
+          ...(distanceByOrganizationId ? { distanceByOrganizationId } : {}),
+          ...(canLimitDiscoveryFetch ? { limit: DISCOVERY_CLASS_FETCH_LIMIT } : {})
         }),
     resolveCurrentAuth("/classes")
   ])

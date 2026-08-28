@@ -79,6 +79,9 @@ type ListPublicClassesOptions = {
   // 위치 기반 탐색: 반경 안의 organization 만 조회하고 거리를 붙인다.
   organizationIds?: readonly string[]
   distanceByOrganizationId?: ReadonlyMap<string, number>
+  // 화면이 앞의 N개만 쓰는 경우에만 넘긴다. 넘기지 않으면 기존처럼 전체를 조회한다.
+  // query/subject 후처리 필터가 걸리는 호출에는 사용하지 않는다(자르고 거르면 결과가 달라진다).
+  limit?: number
 }
 
 const PUBLIC_CLASS_SELECT_FIELDS = [
@@ -188,6 +191,11 @@ const buildPublicClassesQuery = (
 
   if (options?.organizationIds) {
     query = query.in("organization_id", [...options.organizationIds])
+  }
+
+  // limit 은 모든 필터와 order 가 적용된 뒤 마지막에 붙인다.
+  if (typeof options?.limit === "number" && Number.isInteger(options.limit) && options.limit > 0) {
+    query = query.limit(options.limit)
   }
 
   return query
