@@ -93,17 +93,9 @@ export async function upsertStudioTeacherAction(
       return { ok: false, message: "전화번호 형식이 올바르지 않습니다. 예: 010-1234-5678" }
     }
 
-    if (!subjects) {
-      return { ok: false, message: "담당 과목을 선택해 주세요." }
-    }
-
-    if (!targetStudents) {
-      return { ok: false, message: "담당 대상을 하나 이상 선택해 주세요." }
-    }
-
-    if (!shortIntro) {
-      return { ok: false, message: "한 줄 소개를 입력해 주세요." }
-    }
+    // 선생님 등록/수정은 학원 내부 명부 관리다. 공개 프로필 항목(담당 과목/대상/소개 등)은
+    // 학부모 공개를 켤 때 채우는 선택 정보이므로 필수 검증하지 않는다.
+    // 필수는 이름과, 입력된 경우의 전화번호 형식뿐이다.
 
     if (mode === "create") {
       await dataAdapter.createStudioTeacher({
@@ -147,13 +139,6 @@ export async function upsertStudioTeacherAction(
     }
   } catch (error) {
     const message = error instanceof Error ? error.message : "unknown_error"
-
-    if (message.includes("teacher_seat_limit_reached")) {
-      return {
-        ok: false,
-        message: "등록 가능한 active 선생님 수를 초과했습니다. 추가 선생님 등록은 추가 결제 상품으로 제공될 예정입니다."
-      }
-    }
 
     if (message.includes("teacher_not_found_or_forbidden")) {
       return { ok: false, message: "같은 학원에 등록된 선생님만 수정할 수 있습니다." }

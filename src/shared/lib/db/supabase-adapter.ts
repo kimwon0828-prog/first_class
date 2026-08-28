@@ -2987,11 +2987,8 @@ export const supabaseDataAdapter: DataAdapter = {
     return getStudioTeacherSeatSummaryByOrganization(organizationId)
   },
   async createStudioTeacher(input) {
-    const seatSummary = await getStudioTeacherSeatSummaryByOrganization(input.organizationId)
-    if (seatSummary.activeTeacherCount >= seatSummary.teacherSeatLimit) {
-      throw new Error("teacher_seat_limit_reached")
-    }
-
+    // 선생님 등록은 학원 내부 명부 등록이라 teacher_seat_limit 으로 막지 않는다.
+    // seat 조회(getStudioTeacherSeatSummary) 자체는 다른 화면을 위해 그대로 남겨 둔다.
     const supabase = await getSupabaseServerClient()
     const { data, error } = await supabase
       .from("teachers")

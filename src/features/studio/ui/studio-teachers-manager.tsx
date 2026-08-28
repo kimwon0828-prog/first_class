@@ -98,9 +98,6 @@ const buildPublicVisibility = (isPublic: boolean): TeacherPublicVisibility => {
 const isTeacherPublic = (visibility: TeacherPublicVisibility) =>
   TEACHER_PUBLIC_VISIBILITY_KEYS.some((key) => visibility[key])
 
-const isTeacherProfileIncomplete = (item: Pick<StudioTeacherSummary, "shortIntro">) =>
-  !toText(item.shortIntro)
-
 const getTeacherSummary = (item: StudioTeacherSummary) =>
   [formatTeacherSubjectValue(item.subjects), formatTeacherTargetValue(item.targetStudents), toText(item.specialties)]
     .filter(Boolean)
@@ -137,10 +134,7 @@ const renderProfileValue = (
     </button>
   )
 
-export const StudioTeachersManager = ({
-  items,
-  seatSummary
-}: StudioTeachersManagerProps) => {
+export const StudioTeachersManager = ({ items }: StudioTeachersManagerProps) => {
   const [panelState, setPanelState] = useState<PanelState>({ isOpen: false, teacherId: null })
   const [actionFeedback, setActionFeedback] = useState<string | null>(null)
   const [query, setQuery] = useState("")
@@ -151,10 +145,7 @@ export const StudioTeachersManager = ({
 
   const selectedTeacher = items.find((item) => item.id === panelState.teacherId) ?? null
   const publicCount = items.filter((item) => item.isActive && isTeacherPublic(item.publicVisibility)).length
-  const incompleteCount = items.filter(isTeacherProfileIncomplete).length
-  const canCreateTeacher = seatSummary.remainingTeacherSeats > 0
   const shouldShowSearch = items.length >= 3
-  const usageRatio = Math.min(1, seatSummary.activeTeacherCount / seatSummary.teacherSeatLimit)
 
   const filteredItems = useMemo(() => {
     if (!shouldShowSearch) {
@@ -234,16 +225,8 @@ export const StudioTeachersManager = ({
             학부모가 수업을 고를 때 선생님 소개를 보고 신뢰를 판단해요.
           </p>
         </div>
-        <span
-          className={styles.headerActionWrap}
-          title={!canCreateTeacher ? "최대 3명까지 등록할 수 있어요" : undefined}
-        >
-          <button
-            type="button"
-            onClick={openCreatePanel}
-            className={styles.primaryButton}
-            disabled={!canCreateTeacher}
-          >
+        <span className={styles.headerActionWrap}>
+          <button type="button" onClick={openCreatePanel} className={styles.primaryButton}>
             + 선생님 등록
           </button>
         </span>
@@ -269,26 +252,6 @@ export const StudioTeachersManager = ({
           <span className={styles.summaryDot} aria-hidden="true" />
           <span className={styles.summaryItem}>
             <strong>{publicCount}명</strong> 공개 중
-          </span>
-          <span className={styles.summaryDot} aria-hidden="true" />
-          <span
-            className={`${styles.summaryItem} ${
-              incompleteCount > 0 ? styles.summaryItemWarning : ""
-            }`}
-          >
-            <strong>{incompleteCount}명</strong> 프로필 미완성
-          </span>
-        </div>
-        <div className={styles.capacityWrap}>
-          <span className={styles.capacityLabel}>최대 {seatSummary.teacherSeatLimit}명</span>
-          <div className={styles.capacityTrack} aria-hidden="true">
-            <div
-              className={styles.capacityFill}
-              style={{ width: seatSummary.activeTeacherCount === 0 ? "0%" : `${usageRatio * 100}%` }}
-            />
-          </div>
-          <span className={styles.capacityCount}>
-            {seatSummary.activeTeacherCount}/{seatSummary.teacherSeatLimit}
           </span>
         </div>
       </section>
@@ -365,11 +328,9 @@ export const StudioTeachersManager = ({
           </div>
         )}
 
-        {items.length > 0 && canCreateTeacher ? (
+        {items.length > 0 ? (
           <section className={styles.emptySlotCard}>
-            <p className={styles.emptySlotTitle}>
-              선생님을 <strong>{seatSummary.remainingTeacherSeats}명</strong> 더 등록할 수 있어요
-            </p>
+            <p className={styles.emptySlotTitle}>선생님을 더 등록할 수 있어요</p>
             <p className={styles.emptySlotDescription}>
               여러 선생님이 등록되면 학부모가 수업별 담당을 보고 더 안심하고 선택할 수 있어요.
             </p>
@@ -384,7 +345,6 @@ export const StudioTeachersManager = ({
         <TeacherFormPanel
           key={selectedTeacher?.id ?? "create"}
           initialItem={selectedTeacher}
-          seatSummary={seatSummary}
           onClose={closePanel}
           onComplete={(message) => setActionFeedback(message)}
         />
@@ -415,9 +375,8 @@ const TeacherCard = ({
   visibilityPending: boolean
 }) => {
   const isPublic = isTeacherPublic(item.publicVisibility)
-  const isIncomplete = isTeacherProfileIncomplete(item)
   const summary = getTeacherSummary(item)
-  const displaySummary = summary || "담당 정보가 아직 비어 있어요."
+  const displaySummary = summary || "학부모 공개 정보 없음"
   const visibilityDescription = !item.isActive
     ? "현재 비활성 상태라 학부모 페이지에는 보이지 않아요."
     : isPublic
@@ -437,7 +396,6 @@ const TeacherCard = ({
               <span className={`${styles.statusChip} ${isPublic && item.isActive ? styles.statusActive : styles.statusInactive}`}>
                 {isPublic && item.isActive ? "공개 중" : "비공개"}
               </span>
-              {isIncomplete ? <span className={styles.attentionChip}>프로필 미완성</span> : null}
             </div>
             <p className={styles.teacherSummary}>{displaySummary}</p>
           </div>
@@ -537,12 +495,10 @@ const TeacherCard = ({
 
 const TeacherFormPanel = ({
   initialItem,
-  seatSummary,
   onClose,
   onComplete
 }: {
   initialItem: StudioTeacherSummary | null
-  seatSummary: StudioTeacherSeatSummary
   onClose: () => void
   onComplete: (message: string) => void
 }) => {
@@ -558,12 +514,12 @@ const TeacherFormPanel = ({
   const [phone, setPhone] = useState(initialItem?.phone ?? "")
   const [smsEnabled] = useState(initialItem?.smsEnabled ?? false)
   const [publicVisibility, setPublicVisibility] = useState<TeacherPublicVisibility>(
-    initialItem?.publicVisibility ?? DEFAULT_TEACHER_PUBLIC_VISIBILITY
+    // 신규 등록은 학부모 공개 OFF 로 시작한다. 기존 선생님 값은 그대로 불러온다.
+    initialItem?.publicVisibility ?? buildPublicVisibility(false)
   )
   const [isAdvancedOpen, setIsAdvancedOpen] = useState(false)
 
   const isCreateMode = !initialItem
-  const isCreateDisabled = isCreateMode && seatSummary.activeTeacherCount >= seatSummary.teacherSeatLimit
   const targetOptions = getTargetOptions(targetSelections)
   const subjectOptions = getSubjectOptions(subject)
   const isPublic = isTeacherPublic(publicVisibility)
@@ -628,6 +584,7 @@ const TeacherFormPanel = ({
           </header>
 
           <div className={styles.panelBody}>
+            {!isCreateMode ? (
             <section className={styles.formSection}>
               <div className={styles.publicFieldRow}>
                 <div>
@@ -644,6 +601,7 @@ const TeacherFormPanel = ({
                 />
               </div>
             </section>
+            ) : null}
 
             <section className={styles.formSection}>
               <div className={styles.formSectionHeader}>
@@ -665,6 +623,8 @@ const TeacherFormPanel = ({
                 />
               </label>
 
+              {!isCreateMode ? (
+              <>
               <div className={styles.field}>
                 <span className={styles.label}>담당 과목</span>
                 <div className={styles.chipGroup}>
@@ -710,8 +670,11 @@ const TeacherFormPanel = ({
                   placeholder="예: 글쓰기, 독해, 발표 수업"
                 />
               </label>
+              </>
+              ) : null}
             </section>
 
+            {!isCreateMode ? (
             <section className={styles.formSection}>
               <div className={styles.formSectionHeader}>
                 <h3 className={styles.formSectionTitle}>학부모에게 보여질 소개</h3>
@@ -723,7 +686,6 @@ const TeacherFormPanel = ({
                   name="shortIntro"
                   value={shortIntro}
                   onChange={(event) => setShortIntro(event.target.value)}
-                  required
                   disabled={isPending}
                   className={styles.input}
                   placeholder="예: 아이 눈높이에 맞춰 자신감을 키우는 수업을 진행해요."
@@ -763,6 +725,7 @@ const TeacherFormPanel = ({
                 isPublic={isPublic}
               />
             </section>
+            ) : null}
 
             <section className={styles.formSection}>
               <div className={styles.formSectionHeader}>
@@ -785,6 +748,7 @@ const TeacherFormPanel = ({
                 </span>
               </label>
 
+              {!isCreateMode ? (
               <div className={styles.lockNotice}>
                 <strong className={styles.lockTitle}>일정 알림 문자는 아직 준비 중이에요.</strong>
                 <p className={styles.lockDescription}>
@@ -792,8 +756,10 @@ const TeacherFormPanel = ({
                   {smsEnabled ? " 현재 저장된 선생님은 문자 수신 동의 상태예요." : ""}
                 </p>
               </div>
+              ) : null}
             </section>
 
+            {!isCreateMode ? (
             <section className={styles.formSection}>
               <button
                 type="button"
@@ -823,14 +789,12 @@ const TeacherFormPanel = ({
                 </div>
               ) : null}
             </section>
+            ) : null}
 
             {state.message ? (
               <p className={`${styles.formMessage} ${state.ok ? styles.formMessageSuccess : styles.formMessageError}`}>
                 {state.message}
               </p>
-            ) : null}
-            {isCreateDisabled ? (
-              <p className={styles.formHint}>최대 3명까지 등록할 수 있어요.</p>
             ) : null}
           </div>
 
@@ -838,7 +802,7 @@ const TeacherFormPanel = ({
             <button type="button" onClick={onClose} className={styles.secondaryButton} disabled={isPending}>
               취소
             </button>
-            <button type="submit" disabled={isPending || isCreateDisabled} className={styles.primaryButton}>
+            <button type="submit" disabled={isPending} className={styles.primaryButton}>
               {isPending ? "저장 중..." : isCreateMode ? "선생님 등록" : "변경사항 저장"}
             </button>
           </div>

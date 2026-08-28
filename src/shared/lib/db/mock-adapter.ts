@@ -942,11 +942,6 @@ export const mockDataAdapter: DataAdapter = {
       throw new Error("teacher_not_found_or_forbidden")
     }
 
-    const seatSummary = getTeacherSeatSummary()
-    if (seatSummary.activeTeacherCount >= seatSummary.teacherSeatLimit) {
-      throw new Error("teacher_seat_limit_reached")
-    }
-
     const created: StudioTeacherSummary = {
       id: `teacher-${teacherSummaries.length + 1}`,
       profileId: null,
