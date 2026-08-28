@@ -49,8 +49,9 @@ export const StudioShell = ({
   const [intentHrefs, setIntentHrefs] = useState<ReadonlySet<string>>(() => new Set<string>())
   const markPrefetchIntent = (href: string) =>
     setIntentHrefs((current) => (current.has(href) ? current : new Set(current).add(href)))
-  // prefetch={null} 이 Next 의 기본(자동) prefetch 다. false 는 완전히 끈다.
-  const prefetchFor = (href: string) => (intentHrefs.has(href) ? null : false)
+  // dynamic route 는 prefetch={true} 여야 loading boundary 너머의 payload 까지 prefetch 된다.
+  // (auto/null 은 loading.tsx 까지만 가져와서 click 시 destination RSC 를 다시 요청한다.)
+  const prefetchFor = (href: string) => (intentHrefs.has(href) ? true : false)
   const [isLogoImageBroken, setIsLogoImageBroken] = useState(false)
   const navItems: NavItem[] = [
     { href: "/studio", label: "대시보드" },
@@ -108,7 +109,6 @@ export const StudioShell = ({
                 aria-busy={pendingHref === item.href}
                 onMouseEnter={() => markPrefetchIntent(item.href)}
                 onFocus={() => markPrefetchIntent(item.href)}
-                onTouchStart={() => markPrefetchIntent(item.href)}
                 onClick={() => {
                   if (!active) {
                     setPendingHref(item.href)
@@ -136,7 +136,6 @@ export const StudioShell = ({
               aria-busy={pendingHref === mypageHref}
               onMouseEnter={() => markPrefetchIntent(mypageHref)}
               onFocus={() => markPrefetchIntent(mypageHref)}
-              onTouchStart={() => markPrefetchIntent(mypageHref)}
               onClick={() => {
                 if (!isMypageActive) {
                   setPendingHref(mypageHref)
