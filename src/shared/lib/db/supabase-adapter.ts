@@ -32,6 +32,7 @@ import { normalizeSubjectCategory } from "@/shared/constants/education-taxonomy"
 import { formatAdministrativeRegionLabel } from "@/features/location/lib/region-selection"
 import type {
   ActivateStudioTeacherInput,
+  StudioTeacherReferenceCounts,
   ApplicationLogEntry,
   ClassAssignmentMode,
   ApplicationRegistrationStatus,
@@ -3146,6 +3147,98 @@ export const supabaseDataAdapter: DataAdapter = {
           teacherId: input.teacherId
         })
       )
+    }
+  },
+  async deleteStudioTeacher(input) {
+    const supabase = await getSupabaseServerClient()
+
+    // 1) 같은 organization 소속인지부터 확인한다. 클라이언트가 보낸 teacherId 를 그대로 믿지 않는다.
+    const { data: targetTeacher, error: targetError } = await supabase
+      .from("teachers")
+      .select("id, profile_id, organization_id")
+      .eq("id", input.teacherId)
+      .eq("organization_id", input.organizationId)
+      .maybeSingle()
+
+    if (targetError) {
+      throw new Error(
+        formatSupabaseError("failed_to_fetch_studio_teacher_for_delete", targetError, {
+          organizationId: input.organizationId,
+          teacherId: input.teacherId
+        })
+      )
+    }
+
+    if (!targetTeacher) {
+      throw new Error("teacher_not_found_or_forbidden")
+    }
+
+    // 2) 로그인 계정과 연결된 legacy/system row 는 이 경로에서 지우지 않는다.
+    //    system teacher 정리는 별도 Phase 에서만 다룬다.
+    if (targetTeacher.profile_id) {
+      throw new Error("cannot_delete_linked_teacher")
+    }
+
+    // 3) 실사용 참조 4종을 삭제 직전에 다시 센다.
+    //    schedule_blocks 는 FK 가 ON DELETE CASCADE 라 참조가 남은 채 지우면 일정 행이 함께 사라진다.
+    const [classesResult, applicationsResult, scheduleBlocksResult, smsLogsResult] = await Promise.all([
+      supabase.from("classes").select("id", { count: "exact", head: true }).eq("teacher_id", input.teacherId),
+      supabase
+        .from("trial_applications")
+        .select("id", { count: "exact", head: true })
+        .eq("assigned_teacher_id", input.teacherId),
+      supabase
+        .from("schedule_blocks")
+        .select("id", { count: "exact", head: true })
+        .eq("teacher_id", input.teacherId),
+      supabase.from("sms_logs").select("id", { count: "exact", head: true }).eq("teacher_id", input.teacherId)
+    ])
+
+    for (const result of [classesResult, applicationsResult, scheduleBlocksResult, smsLogsResult]) {
+      if (result.error) {
+        throw new Error(
+          formatSupabaseError("failed_to_count_studio_teacher_references", result.error, {
+            organizationId: input.organizationId,
+            teacherId: input.teacherId
+          })
+        )
+      }
+    }
+
+    const references: StudioTeacherReferenceCounts = {
+      classes: classesResult.count ?? 0,
+      trialApplications: applicationsResult.count ?? 0,
+      scheduleBlocks: scheduleBlocksResult.count ?? 0,
+      smsLogs: smsLogsResult.count ?? 0
+    }
+
+    const totalReferences =
+      references.classes + references.trialApplications + references.scheduleBlocks + references.smsLogs
+
+    if (totalReferences > 0) {
+      throw new Error(`teacher_has_references:${JSON.stringify(references)}`)
+    }
+
+    // 4) 조건을 다시 WHERE 에 실어 보내 경합 시 조건이 깨진 row 를 지우지 않게 한다.
+    const { data: deletedRows, error: deleteError } = await supabase
+      .from("teachers")
+      .delete()
+      .eq("id", input.teacherId)
+      .eq("organization_id", input.organizationId)
+      .is("profile_id", null)
+      .select("id")
+
+    if (deleteError) {
+      throw new Error(
+        formatSupabaseError("failed_to_delete_studio_teacher", deleteError, {
+          organizationId: input.organizationId,
+          teacherId: input.teacherId
+        })
+      )
+    }
+
+    if ((deletedRows ?? []).length === 0) {
+      throw new Error("teacher_not_found_or_forbidden")
     }
   },
   async upsertStudioClass(input) {

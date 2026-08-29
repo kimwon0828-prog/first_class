@@ -940,6 +940,16 @@
   font-size: 13px;
 }
 
+.dangerButtonSmall {
+  border-color: #f0d4d4;
+  color: #c2402f;
+}
+
+.dangerButtonSmall:hover {
+  border-color: #e0b4b4;
+  background: #fdf6f5;
+}
+
 .secondaryButton:hover,
 .secondaryButtonSmall:hover,
 .panelCloseButton:hover {

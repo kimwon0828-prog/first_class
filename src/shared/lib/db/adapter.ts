@@ -395,6 +395,20 @@ export type ActivateStudioTeacherInput = {
   actorProfileId: string
 }
 
+export type DeleteStudioTeacherInput = {
+  teacherId: string
+  organizationId: string
+  actorProfileId: string
+}
+
+// 삭제를 막은 실사용 참조 건수. UI 에 숫자를 노출하지는 않고 로그/디버깅용으로만 쓴다.
+export type StudioTeacherReferenceCounts = {
+  classes: number
+  trialApplications: number
+  scheduleBlocks: number
+  smsLogs: number
+}
+
 export type StudioClassInput = {
   mode: "create" | "update"
   classId?: string
@@ -844,6 +858,7 @@ export interface DataAdapter {
   updateStudioTeacher(input: UpdateStudioTeacherInput): Promise<StudioTeacherSummary>
   deactivateStudioTeacher(input: DeactivateStudioTeacherInput): Promise<void>
   activateStudioTeacher(input: ActivateStudioTeacherInput): Promise<void>
+  deleteStudioTeacher(input: DeleteStudioTeacherInput): Promise<void>
   upsertStudioClass(input: StudioClassInput): Promise<ClassSummary>
   updateStudioClassActive(
     classId: string,

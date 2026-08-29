@@ -4,6 +4,7 @@ import { useActionState, useEffect, useMemo, useState, useTransition } from "rea
 
 import { activateStudioTeacherAction } from "@/features/studio/actions/activate-studio-teacher"
 import { deactivateStudioTeacherAction } from "@/features/studio/actions/deactivate-studio-teacher"
+import { deleteStudioTeacherAction } from "@/features/studio/actions/delete-studio-teacher"
 import {
   upsertStudioTeacherAction,
   type UpsertStudioTeacherActionState
@@ -39,6 +40,7 @@ export const StudioTeachersManager = ({
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive">("all")
   const [openInternalTeacherId, setOpenInternalTeacherId] = useState<string | null>(null)
   const [isStatusActionPending, startStatusActionTransition] = useTransition()
+  const [isDeleteActionPending, startDeleteActionTransition] = useTransition()
 
   const selectedTeacher = items.find((item) => item.id === panelState.teacherId) ?? null
   const shouldShowSearch = items.length >= 3
@@ -88,6 +90,27 @@ export const StudioTeachersManager = ({
 
   const closePanel = () => {
     setPanelState({ isOpen: false, teacherId: null })
+  }
+
+  const handleDeleteAction = (item: StudioTeacherSummary) => {
+    const confirmed = window.confirm(
+      [
+        `'${item.displayName}' 선생님을 삭제할까요?`,
+        "",
+        "한 번도 수업·신청·일정·문자 기록에 사용되지 않은 선생님만 삭제할 수 있습니다.",
+        "삭제한 선생님은 복구할 수 없습니다."
+      ].join("\n")
+    )
+
+    if (!confirmed) {
+      return
+    }
+
+    setActionFeedback(null)
+    startDeleteActionTransition(async () => {
+      const result = await deleteStudioTeacherAction(item.id)
+      setActionFeedback(result.message)
+    })
   }
 
   const handleStatusAction = (item: StudioTeacherSummary) => {
@@ -195,12 +218,14 @@ export const StudioTeachersManager = ({
                 item={item}
                 onEdit={() => openEditPanel(item.id)}
                 onToggleStatus={() => handleStatusAction(item)}
+                onDelete={() => handleDeleteAction(item)}
                 internalOpen={openInternalTeacherId === item.id}
                 onToggleInternal={() =>
                   setOpenInternalTeacherId((current) => (current === item.id ? null : item.id))
                 }
                 assignment={assignmentsByTeacherId[item.id] ?? null}
                 statusPending={isStatusActionPending}
+                deletePending={isDeleteActionPending}
               />
             ))}
           </div>
@@ -235,18 +260,22 @@ const TeacherCard = ({
   item,
   onEdit,
   onToggleStatus,
+  onDelete,
   internalOpen,
   onToggleInternal,
   assignment,
-  statusPending
+  statusPending,
+  deletePending
 }: {
   item: StudioTeacherSummary
   onEdit: () => void
   onToggleStatus: () => void
+  onDelete: () => void
   internalOpen: boolean
   onToggleInternal: () => void
   assignment: StudioTeacherAssignmentSummary | null
   statusPending: boolean
+  deletePending: boolean
 }) => {
   // 담당 정보는 legacy teachers.subjects/target_students 가 아니라 실제 수업 배정에서 온다.
   const classCount = assignment?.classCount ?? 0
@@ -284,6 +313,14 @@ const TeacherCard = ({
             className={styles.secondaryButtonSmall}
           >
             {item.isActive ? "비활성화" : "활성화"}
+          </button>
+          <button
+            type="button"
+            onClick={onDelete}
+            disabled={deletePending}
+            className={`${styles.secondaryButtonSmall} ${styles.dangerButtonSmall}`}
+          >
+            삭제
           </button>
         </div>
       </div>

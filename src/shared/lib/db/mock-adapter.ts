@@ -1,5 +1,6 @@
 import type {
   ActivateStudioTeacherInput,
+  DeleteStudioTeacherInput,
   ApplicationLogEntry,
   ApplicationRegistrationStatus,
   ApplicationUnregisteredReason,
@@ -1056,6 +1057,40 @@ export const mockDataAdapter: DataAdapter = {
     }
 
     target.isActive = false
+  },
+  async deleteStudioTeacher(input: DeleteStudioTeacherInput) {
+    if (input.organizationId !== mockOrganizationId) {
+      throw new Error("teacher_not_found_or_forbidden")
+    }
+
+    const index = teacherSummaries.findIndex(
+      (teacher) => teacher.id === input.teacherId && teacher.organizationId === input.organizationId
+    )
+
+    if (index === -1) {
+      throw new Error("teacher_not_found_or_forbidden")
+    }
+
+    const target = teacherSummaries[index]
+
+    if (target.profileId) {
+      throw new Error("cannot_delete_linked_teacher")
+    }
+
+    // mock 은 classes 참조만 추적할 수 있다. 실제 4종 참조 검사는 supabase adapter 가 담당한다.
+    const classCount = classes.filter((item) => item.teacherId === input.teacherId).length
+    if (classCount > 0) {
+      throw new Error(
+        `teacher_has_references:${JSON.stringify({
+          classes: classCount,
+          trialApplications: 0,
+          scheduleBlocks: 0,
+          smsLogs: 0
+        })}`
+      )
+    }
+
+    teacherSummaries.splice(index, 1)
   },
   async activateStudioTeacher(input: ActivateStudioTeacherInput) {
     if (input.organizationId !== mockOrganizationId) {
