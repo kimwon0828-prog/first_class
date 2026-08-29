@@ -594,6 +594,7 @@
 .panelBody {
   overflow-y: auto;
   display: grid;
+  align-content: start;
   gap: 14px;
   padding: 20px;
   background: #f6f7f6;
@@ -601,6 +602,7 @@
 
 .formSection {
   display: grid;
+  align-content: start;
   gap: 14px;
   padding: 16px;
   border: 1px solid #e7eae7;
@@ -638,6 +640,14 @@
   font-size: 12px;
   line-height: 18px;
   color: #8a8a8a;
+}
+
+.optionalText {
+  margin-left: 6px;
+  color: #8a8a8a;
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 700;
 }
 
 .publicFieldRow {

@@ -531,7 +531,7 @@ const TeacherFormPanel = ({
 
           <header className={styles.panelHeader}>
             <div>
-              <p className={styles.panelEyebrow}>선생님 프로필</p>
+              {!isCreateMode ? <p className={styles.panelEyebrow}>선생님 프로필</p> : null}
               <h2 className={styles.panelTitle}>{isCreateMode ? "선생님 등록" : "선생님 정보 수정"}</h2>
             </div>
             <button type="button" onClick={onClose} className={styles.panelCloseButton}>
@@ -689,7 +689,10 @@ const TeacherFormPanel = ({
               </div>
 
               <label className={styles.field}>
-                <span className={styles.label}>전화번호</span>
+                <span className={styles.label}>
+                  전화번호
+                  <span className={styles.optionalText}>(선택)</span>
+                </span>
                 <input
                   name="phone"
                   type="tel"
@@ -700,7 +703,7 @@ const TeacherFormPanel = ({
                   placeholder="예: 010-1234-5678"
                 />
                 <span className={styles.fieldHint}>
-                  학부모에게 공개되지 않아요. 내부 운영과 알림 발송에만 사용됩니다.
+                  전화번호는 학원 내부 운영용으로만 사용되며 학부모에게 공개되지 않아요.
                 </span>
               </label>
 
