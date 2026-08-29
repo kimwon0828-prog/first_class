@@ -99,7 +99,7 @@ on conflict (id) do nothing;
 
 -- 3. profiles
 -- auth fixture 가 고정 UUID 라서 email 로 되짚지 않고 그대로 참조한다.
--- profiles_role_org_check: parent 는 organization_id 가 null, teacher 는 not null 이어야 한다.
+-- profiles_role_org_check: parent 는 organization_id 가 null, academy 는 not null 이어야 한다.
 insert into profiles (id, role, name, phone, organization_id)
 values
   (
@@ -111,7 +111,7 @@ values
   ),
   (
     'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa2',
-    'teacher',
+    'academy',
     '테스트 선생님',
     '010-0000-0003',
     '11111111-1111-1111-1111-111111111111'
@@ -119,7 +119,9 @@ values
 on conflict (id) do nothing;
 
 -- 4. teacher
--- display_name 은 NOT NULL 이고 default 가 없다. profiles.name 과 같은 값을 쓴다.
+-- display_name 은 NOT NULL 이고 default 가 없다.
+-- profile_id 는 NULL 이다. 로그인 계정(profiles)과 강사 명부(teachers)는 별개 개념이고,
+-- 강사 셀프 로그인 기능이 없는 현재는 연결하지 않는 것이 정상 명부 형태다.
 insert into teachers (
   id,
   profile_id,
@@ -132,7 +134,7 @@ insert into teachers (
 values
   (
     '22222222-2222-2222-2222-222222222221',
-    'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa2',
+    null,
     '11111111-1111-1111-1111-111111111111',
     '테스트 선생님',
     '아이들 눈높이에 맞춘 체험 수업을 진행합니다.',
