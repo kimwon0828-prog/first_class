@@ -217,30 +217,9 @@ export async function studioSignInAction(
     }
   }
 
-  if (normalizedRole === "academy") {
-    const { data: teacherRow, error: teacherError } = await tokenClient
-      .from("teachers")
-      .select("id")
-      .eq("profile_id", data.user.id)
-      .maybeSingle()
-
-    if (teacherError) {
-      await supabase.auth.signOut()
-      return {
-        status: "error",
-        message: `teachers 매핑을 확인하지 못했습니다: ${formatSupabaseError(teacherError)}`
-      }
-    }
-
-    if (!teacherRow) {
-      await supabase.auth.signOut()
-      return {
-        status: "error",
-        message:
-          "teachers 매핑이 없습니다. 승인 처리 시 teachers.profile_id 연결이 생성되었는지 확인해 주세요."
-      }
-    }
-  }
-
+  // 로그인 판단은 여기까지다: 인증 성공 + profile 존재 + Studio 허용 role + organization.
+  // teachers 매핑 존재 여부는 검사하지 않는다. 강사 명부는 로그인 계정과 별개 개념이고,
+  // 신규 승인 학원은 명부가 비어 있는 상태로 시작한다.
+  // 이후 화면별 권한은 requireTeacherStudioAccess 가 같은 기준으로 다시 판단한다.
   redirect(returnTo)
 }
