@@ -20,9 +20,7 @@ import {
   formatSeoulOccurrenceLabel,
   getSeoulDateTimeParts
 } from "@/shared/lib/seoul-datetime"
-import { normalizeTeacherPublicVisibility,
-  hasVisibleTeacherPublicProfile
-} from "@/shared/lib/teacher-public-visibility"
+import { normalizeTeacherPublicVisibility } from "@/shared/lib/teacher-public-visibility"
 import {
   buildClassSubjectReadModel,
   formatClassSubjectDisplayLabel,
@@ -134,19 +132,6 @@ type StudioClassListRow = {
   is_active: boolean
   subject_master?: Subject | null
   subject_category_master?: SubjectCategory | null
-}
-
-type TeacherPublicProfileRow = {
-  teacher_id: string
-  teacher_name: string | null
-  intro: string | null
-  specialty: string | null
-  career_years: number
-  subjects: string | null
-  target_students: string | null
-  specialties: string | null
-  short_intro: string | null
-  teaching_style: string | null
 }
 
 type OrganizationRow = {
@@ -375,20 +360,6 @@ type ProfileNameRow = {
   name: string | null
 }
 
-const mapTeacherProfile = (
-  row: TeacherPublicProfileRow
-): TeacherPublicProfile => ({
-  teacherId: row.teacher_id,
-  teacherName: row.teacher_name,
-  intro: row.intro,
-  specialty: row.specialty,
-  careerYears: row.career_years,
-  subjects: row.subjects,
-  targetStudents: row.target_students,
-  specialties: row.specialties,
-  shortIntro: row.short_intro,
-  teachingStyle: row.teaching_style
-})
 
 const resolveClassAssignmentMode = (row: { assignment_mode?: string | null; teacher_id?: string | null }) => {
   if (row.assignment_mode === "post_assign" || row.assignment_mode === "preassigned") {
@@ -2252,33 +2223,6 @@ const CHILD_SELECT_FIELDS =
 
 const shouldDebugDb = () => process.env.NEXT_PUBLIC_DEBUG_DB === "1"
 
-const getTeacherProfilesMap = async (teacherIds: string[]) => {
-  if (teacherIds.length === 0) {
-    return new Map<string, TeacherPublicProfile>()
-  }
-
-  const supabase = await getSupabaseServerClient()
-  const { data, error } = await supabase
-    .from("teacher_public_profiles")
-    .select(
-      "teacher_id, teacher_name, intro, specialty, career_years, subjects, target_students, specialties, short_intro, teaching_style"
-    )
-    .in("teacher_id", teacherIds)
-
-  if (error) {
-    throw new Error("failed_to_fetch_teacher_profiles")
-  }
-
-  const mapped = (data ?? [])
-    .map((row) => mapTeacherProfile(row as TeacherPublicProfileRow))
-    // 공개 항목이 전부 비어 있으면 공개 프로필이 없는 것으로 본다.
-    .filter(hasVisibleTeacherPublicProfile)
-
-  return new Map<string, TeacherPublicProfile>(
-    mapped.map((profile) => [profile.teacherId, profile])
-  )
-}
-
 const getActorNameMap = async (actorIds: string[]) => {
   try {
     return await getProfileNameMap(actorIds)
@@ -2541,24 +2485,6 @@ export const supabaseDataAdapter: DataAdapter = {
         `[listClasses] ${JSON.stringify({ classesRows: classRows.length })}`
       )
     }
-    const teacherIds = classRows
-      .map((row) => row.teacher_id)
-      .filter((id): id is string => Boolean(id))
-    let teacherMap = new Map<string, TeacherPublicProfile>()
-    try {
-      teacherMap = await getTeacherProfilesMap(teacherIds)
-    } catch {
-      teacherMap = new Map<string, TeacherPublicProfile>()
-    }
-    if (debugEnabled) {
-      console.info(
-        `[listClasses] ${JSON.stringify({
-          teacherIds: teacherIds.length,
-          teacherProfiles: teacherMap.size
-        })}`
-      )
-    }
-
     const organizationIds = Array.from(
       new Set(
         classRows
@@ -2599,9 +2525,8 @@ export const supabaseDataAdapter: DataAdapter = {
         return normalizeSubjectCategory(row.subject) === normalizeSubjectCategory(subject)
       })
       .map((row) => {
-        const teacherName = row.teacher_id
-          ? (teacherMap.get(row.teacher_id)?.teacherName ?? null)
-          : null
+        // 선생님은 학원 내부 명부 개념이라 학부모 목록에 이름을 노출하지 않는다.
+        const teacherName = null
         const organizationName = row.organization_id
           ? (organizationNameById.get(row.organization_id) ?? null)
           : null
@@ -2619,8 +2544,6 @@ export const supabaseDataAdapter: DataAdapter = {
             subjectLabel,
             mappedClass.subjectCategoryName,
             mappedClass.subjectName,
-            row.teacher_display_name ?? null,
-            teacherName,
             organizationName
           ]
         }
@@ -2665,18 +2588,11 @@ export const supabaseDataAdapter: DataAdapter = {
       }
 
       const [classRow] = await attachSubjectMasterToRows(supabase, [retry.data as ClassRow])
-      let teacherProfile: TeacherPublicProfile | null = null
-      if (classRow.teacher_id) {
-        try {
-          const teacherMap = await getTeacherProfilesMap([classRow.teacher_id])
-          teacherProfile = teacherMap.get(classRow.teacher_id) ?? null
-        } catch {
-          teacherProfile = null
-        }
-      }
+      // 학부모 상세에는 선생님 정보를 노출하지 않는다.
+      const teacherProfile: TeacherPublicProfile | null = null
 
       const detail: ClassDetail = {
-        ...mapClass(classRow, teacherProfile?.teacherName ?? null, {
+        ...mapClass(classRow, null, {
           allowClassTeacherFallback: false
         }),
         teacherProfile,
@@ -2695,18 +2611,11 @@ export const supabaseDataAdapter: DataAdapter = {
     }
 
     const [classRow] = await attachSubjectMasterToRows(supabase, [data as ClassRow])
-    let teacherProfile: TeacherPublicProfile | null = null
-    if (classRow.teacher_id) {
-      try {
-        const teacherMap = await getTeacherProfilesMap([classRow.teacher_id])
-        teacherProfile = teacherMap.get(classRow.teacher_id) ?? null
-      } catch {
-        teacherProfile = null
-      }
-    }
+    // 학부모 상세에는 선생님 정보를 노출하지 않는다.
+    const teacherProfile: TeacherPublicProfile | null = null
 
     const detail: ClassDetail = {
-      ...mapClass(classRow, teacherProfile?.teacherName ?? null, {
+      ...mapClass(classRow, null, {
         allowClassTeacherFallback: false
       }),
       teacherProfile,
@@ -3643,7 +3552,8 @@ export const supabaseDataAdapter: DataAdapter = {
     }
 
     const savedTeacherIds = savedClassRow.teacher_id ? [savedClassRow.teacher_id] : []
-    const teacherNameMap = await getTeacherProfilesMap(savedTeacherIds)
+    // Studio 는 공개 view 가 아니라 내부 명부의 display_name 을 쓴다.
+    const teacherNameMap = await getStudioTeacherDisplayNameMap(savedTeacherIds)
     const [savedClassWithSubject] = await attachSubjectMasterToRows(supabase, [savedClassRow])
     const classWithSchedules = {
       ...savedClassWithSubject,
@@ -3652,7 +3562,7 @@ export const supabaseDataAdapter: DataAdapter = {
 
     return mapClass(
       classWithSchedules as ClassRow,
-      savedClassRow.teacher_id ? (teacherNameMap.get(savedClassRow.teacher_id)?.teacherName ?? null) : null
+      savedClassRow.teacher_id ? (teacherNameMap.get(savedClassRow.teacher_id) ?? null) : null
     )
   },
   async updateStudioClassActive(classId, organizationId, isActive) {

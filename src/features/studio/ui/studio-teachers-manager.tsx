@@ -4,26 +4,11 @@ import { useActionState, useEffect, useMemo, useState, useTransition } from "rea
 
 import { activateStudioTeacherAction } from "@/features/studio/actions/activate-studio-teacher"
 import { deactivateStudioTeacherAction } from "@/features/studio/actions/deactivate-studio-teacher"
-import { updateStudioTeacherPublicStateAction } from "@/features/studio/actions/update-studio-teacher-public-state"
 import {
   upsertStudioTeacherAction,
   type UpsertStudioTeacherActionState
 } from "@/features/studio/actions/upsert-studio-teacher"
 import type { StudioTeacherAssignmentSummary, StudioTeacherSummary } from "@/shared/lib/db/adapter"
-import {
-  DEFAULT_TEACHER_PUBLIC_VISIBILITY,
-  TEACHER_PUBLIC_VISIBILITY_KEYS,
-  type TeacherPublicVisibility,
-  type TeacherPublicVisibilityKey
-} from "@/shared/lib/teacher-public-visibility"
-import {
-  getSubjectLabel,
-  normalizeGradeBand,
-  normalizeSubjectCategory,
-  GRADE_BANDS,
-  SUBJECT_CATEGORIES
-} from "@/shared/constants/education-taxonomy"
-import { formatStoredTargetGrades } from "@/shared/constants/grade-options"
 import styles from "./studio-teachers-manager.module.css"
 
 type StudioTeachersManagerProps = {
@@ -41,82 +26,9 @@ const initialState: UpsertStudioTeacherActionState = {
   message: ""
 }
 
-const SUBJECT_OPTIONS = SUBJECT_CATEGORIES.map((item) => item.value) as readonly string[]
-const TARGET_OPTIONS = GRADE_BANDS.map((item) => item.value) as readonly string[]
-const ADVANCED_VISIBILITY_FIELDS: Array<{ key: TeacherPublicVisibilityKey; label: string }> = [
-  { key: "name", label: "이름" },
-  { key: "subjects", label: "담당 과목" },
-  { key: "targetStudents", label: "담당 대상" },
-  { key: "specialties", label: "전문 영역" },
-  { key: "shortIntro", label: "한 줄 소개" },
-  { key: "teachingStyle", label: "수업 스타일" },
-  { key: "intro", label: "상세 소개" }
-]
-
 const getInitials = (value: string) => value.trim().slice(0, 2) || "선생"
 const toText = (value: string | null) => value?.trim() || null
 const formatPhone = (value: string | null) => (toText(value) ? value : "미기록")
-const parseCommaSeparatedValues = (value: string | null) =>
-  (value ?? "")
-    .split(",")
-    .map((item) => item.trim())
-    .map((item) => normalizeGradeBand(item) ?? item)
-    .filter(Boolean)
-
-const formatTeacherSubjectValue = (value: string | null | undefined) => {
-  const normalized = toText(value ?? null)
-  if (!normalized) {
-    return null
-  }
-
-  return getSubjectLabel(normalized)
-}
-
-const formatTeacherTargetValue = (value: string | null | undefined) => {
-  const normalized = toText(value ?? null)
-  if (!normalized) {
-    return null
-  }
-
-  return formatStoredTargetGrades(normalized)
-}
-
-const buildPublicVisibility = (isPublic: boolean): TeacherPublicVisibility => {
-  if (isPublic) {
-    return { ...DEFAULT_TEACHER_PUBLIC_VISIBILITY }
-  }
-
-  return TEACHER_PUBLIC_VISIBILITY_KEYS.reduce(
-    (acc, key) => {
-      acc[key] = false
-      return acc
-    },
-    {} as TeacherPublicVisibility
-  )
-}
-
-const isTeacherPublic = (visibility: TeacherPublicVisibility) =>
-  TEACHER_PUBLIC_VISIBILITY_KEYS.some((key) => visibility[key])
-
-const getTeacherPreviewSummary = (subjects: string, targetStudents: string, specialties: string) =>
-  [formatTeacherSubjectValue(subjects), formatTeacherTargetValue(targetStudents), toText(specialties)]
-    .filter(Boolean)
-    .join(" · ")
-
-const getSubjectOptions = (currentValue: string) => {
-  const normalized = toText(currentValue)
-  if (!normalized || SUBJECT_OPTIONS.includes(normalized)) {
-    return SUBJECT_OPTIONS
-  }
-
-  return [normalized, ...SUBJECT_OPTIONS]
-}
-
-const getTargetOptions = (values: string[]) => {
-  const extras = values.filter((value) => !TARGET_OPTIONS.includes(value))
-  return [...extras, ...TARGET_OPTIONS]
-}
-
 export const StudioTeachersManager = ({
   items,
   assignmentsByTeacherId
@@ -127,10 +39,8 @@ export const StudioTeachersManager = ({
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive">("all")
   const [openInternalTeacherId, setOpenInternalTeacherId] = useState<string | null>(null)
   const [isStatusActionPending, startStatusActionTransition] = useTransition()
-  const [isVisibilityActionPending, startVisibilityActionTransition] = useTransition()
 
   const selectedTeacher = items.find((item) => item.id === panelState.teacherId) ?? null
-  const publicCount = items.filter((item) => item.isActive && isTeacherPublic(item.publicVisibility)).length
   const shouldShowSearch = items.length >= 3
 
   const filteredItems = useMemo(() => {
@@ -190,24 +100,13 @@ export const StudioTeachersManager = ({
     })
   }
 
-  const handlePublicToggle = (item: StudioTeacherSummary) => {
-    setActionFeedback(null)
-    startVisibilityActionTransition(async () => {
-      const result = await updateStudioTeacherPublicStateAction(
-        item.id,
-        !isTeacherPublic(item.publicVisibility)
-      )
-      setActionFeedback(result.message)
-    })
-  }
-
   return (
     <div className={styles.root}>
       <section className={styles.headerRow}>
         <div className={styles.headerCopy}>
           <h1 className={styles.pageTitle}>선생님 관리</h1>
           <p className={styles.pageDescription}>
-            학부모가 수업을 고를 때 선생님 소개를 보고 신뢰를 판단해요.
+            학원 내부 선생님 명부예요. 수업 배정과 알림 발송에 사용됩니다.
           </p>
         </div>
         <span className={styles.headerActionWrap}>
@@ -234,10 +133,6 @@ export const StudioTeachersManager = ({
           <span className={styles.summaryItem}>
             <strong>{items.length}명</strong> 등록
           </span>
-          <span className={styles.summaryDot} aria-hidden="true" />
-          <span className={styles.summaryItem}>
-            <strong>{publicCount}명</strong> 공개 중
-          </span>
         </div>
       </section>
 
@@ -247,7 +142,7 @@ export const StudioTeachersManager = ({
             <input
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              placeholder="선생님 이름이나 소개를 검색해 보세요"
+              placeholder="선생님 이름이나 담당 수업을 검색해 보세요"
               className={styles.search}
               aria-label="선생님 검색"
             />
@@ -299,7 +194,6 @@ export const StudioTeachersManager = ({
                 key={item.id}
                 item={item}
                 onEdit={() => openEditPanel(item.id)}
-                onTogglePublic={() => handlePublicToggle(item)}
                 onToggleStatus={() => handleStatusAction(item)}
                 internalOpen={openInternalTeacherId === item.id}
                 onToggleInternal={() =>
@@ -307,7 +201,6 @@ export const StudioTeachersManager = ({
                 }
                 assignment={assignmentsByTeacherId[item.id] ?? null}
                 statusPending={isStatusActionPending}
-                visibilityPending={isVisibilityActionPending}
               />
             ))}
           </div>
@@ -317,7 +210,7 @@ export const StudioTeachersManager = ({
           <section className={styles.emptySlotCard}>
             <p className={styles.emptySlotTitle}>선생님을 더 등록할 수 있어요</p>
             <p className={styles.emptySlotDescription}>
-              여러 선생님이 등록되면 학부모가 수업별 담당을 보고 더 안심하고 선택할 수 있어요.
+선생님을 등록해 두면 수업 배정과 알림 발송 대상을 지정할 수 있어요.
             </p>
             <button type="button" onClick={openCreatePanel} className={styles.secondaryButton}>
               + 선생님 등록
@@ -341,33 +234,23 @@ export const StudioTeachersManager = ({
 const TeacherCard = ({
   item,
   onEdit,
-  onTogglePublic,
   onToggleStatus,
   internalOpen,
   onToggleInternal,
   assignment,
-  statusPending,
-  visibilityPending
+  statusPending
 }: {
   item: StudioTeacherSummary
   onEdit: () => void
-  onTogglePublic: () => void
   onToggleStatus: () => void
   internalOpen: boolean
   onToggleInternal: () => void
   assignment: StudioTeacherAssignmentSummary | null
   statusPending: boolean
-  visibilityPending: boolean
 }) => {
-  const isPublic = isTeacherPublic(item.publicVisibility)
   // 담당 정보는 legacy teachers.subjects/target_students 가 아니라 실제 수업 배정에서 온다.
   const classCount = assignment?.classCount ?? 0
   const subjectLine = (assignment?.subjectLabels ?? []).join(" · ")
-  const visibilityDescription = !item.isActive
-    ? "현재 비활성 상태라 학부모 페이지에는 보이지 않아요."
-    : isPublic
-      ? "수업 상세 페이지에 이 선생님 소개가 표시돼요."
-      : "끄면 내부 배정에만 사용되고 소개가 노출되지 않아요."
 
   return (
     <article className={`${styles.teacherCard} ${!item.isActive ? styles.teacherCardInactive : ""}`}>
@@ -379,8 +262,8 @@ const TeacherCard = ({
           <div className={styles.teacherHeading}>
             <div className={styles.nameRow}>
               <strong className={styles.teacherName}>{item.displayName}</strong>
-              <span className={`${styles.statusChip} ${isPublic && item.isActive ? styles.statusActive : styles.statusInactive}`}>
-                {isPublic && item.isActive ? "공개 중" : "비공개"}
+              <span className={`${styles.statusChip} ${item.isActive ? styles.statusActive : styles.statusInactive}`}>
+                {item.isActive ? "활성" : "비활성"}
               </span>
             </div>
             <p className={styles.teacherSummary}>
@@ -405,23 +288,6 @@ const TeacherCard = ({
         </div>
       </div>
 
-      <section
-        className={`${styles.publicStateCard} ${isPublic ? styles.publicStateCardActive : styles.publicStateCardInactive}`}
-      >
-        <div className={styles.publicStateCopy}>
-          <strong className={styles.publicStateTitle}>
-            {isPublic ? "학부모에게 공개 중" : "학부모에게 비공개"}
-          </strong>
-          <p className={styles.publicStateDescription}>{visibilityDescription}</p>
-        </div>
-        <SimpleSwitch
-          checked={isPublic}
-          onToggle={onTogglePublic}
-          disabled={visibilityPending}
-          ariaLabel="학부모 공개 여부"
-        />
-      </section>
-
       <div className={styles.internalWrap}>
         <button type="button" onClick={onToggleInternal} className={styles.internalToggle}>
           {internalOpen ? "내부 운영 정보 닫기" : "내부 운영 정보 보기 (연락처 · 알림 설정)"}
@@ -440,7 +306,7 @@ const TeacherCard = ({
               </div>
             </dl>
             <p className={styles.internalHint}>
-              이 정보는 학부모에게 공개되지 않아요. 내부 운영과 알림 발송에만 사용됩니다.
+이 정보는 학원 내부 운영과 알림 발송에만 사용됩니다.
             </p>
           </div>
         ) : null}
@@ -461,26 +327,22 @@ const TeacherFormPanel = ({
   const action = useMemo(() => upsertStudioTeacherAction, [])
   const [state, formAction, isPending] = useActionState(action, initialState)
   const [displayName, setDisplayName] = useState(initialItem?.displayName ?? "")
-  const [subject, setSubject] = useState(normalizeSubjectCategory(initialItem?.subjects) ?? initialItem?.subjects ?? "")
-  const [targetSelections, setTargetSelections] = useState(parseCommaSeparatedValues(initialItem?.targetStudents ?? null))
-  const [specialties, setSpecialties] = useState(initialItem?.specialties ?? "")
-  const [shortIntro, setShortIntro] = useState(initialItem?.shortIntro ?? "")
-  const [teachingStyle, setTeachingStyle] = useState(initialItem?.teachingStyle ?? "")
-  const [intro, setIntro] = useState(initialItem?.intro ?? "")
   const [phone, setPhone] = useState(initialItem?.phone ?? "")
-  const [smsEnabled] = useState(initialItem?.smsEnabled ?? false)
-  const [publicVisibility, setPublicVisibility] = useState<TeacherPublicVisibility>(
-    // 신규 등록은 학부모 공개 OFF 로 시작한다. 기존 선생님 값은 그대로 불러온다.
-    initialItem?.publicVisibility ?? buildPublicVisibility(false)
-  )
-  const [isAdvancedOpen, setIsAdvancedOpen] = useState(false)
 
   const isCreateMode = !initialItem
-  const targetOptions = getTargetOptions(targetSelections)
-  const subjectOptions = getSubjectOptions(subject)
-  const isPublic = isTeacherPublic(publicVisibility)
-  const targetStudentsValue = targetSelections.join(", ")
-  const previewSummary = getTeacherPreviewSummary(subject, targetStudentsValue, specialties)
+
+  // 아래 값들은 더 이상 UI 에서 편집하지 않는다. 다만 update payload 가 폼 값으로 덮어쓰므로
+  // 기존 DB 값을 그대로 되돌려 보내 legacy 데이터가 지워지지 않게 한다.
+  const preservedSmsEnabled = initialItem?.smsEnabled ?? false
+  const preserved: Array<[string, string]> = [
+    ["intro", initialItem?.intro ?? ""],
+    ["subjects", initialItem?.subjects ?? ""],
+    ["targetStudents", initialItem?.targetStudents ?? ""],
+    ["specialties", initialItem?.specialties ?? ""],
+    ["shortIntro", initialItem?.shortIntro ?? ""],
+    ["teachingStyle", initialItem?.teachingStyle ?? ""]
+  ]
+  const preservedVisibility = initialItem?.publicVisibility ?? null
 
   useEffect(() => {
     if (!state.message) {
@@ -493,45 +355,35 @@ const TeacherFormPanel = ({
     }
   }, [onClose, onComplete, state.message, state.ok])
 
-  const toggleTarget = (value: string) => {
-    setTargetSelections((current) =>
-      current.includes(value) ? current.filter((item) => item !== value) : [...current, value]
-    )
-  }
-
-  const toggleAdvancedVisibility = (key: TeacherPublicVisibilityKey) => {
-    setPublicVisibility((current) => ({
-      ...current,
-      [key]: !current[key]
-    }))
-  }
-
-  const toggleMainPublic = () => {
-    setPublicVisibility(buildPublicVisibility(!isPublic))
-  }
-
   return (
     <div className={styles.panelRoot}>
       <button type="button" className={styles.panelOverlay} aria-label="패널 닫기" onClick={onClose} />
-      <aside className={styles.panel} role="dialog" aria-modal="true" aria-label={isCreateMode ? "선생님 등록" : "선생님 정보 수정"}>
+      <aside
+        className={styles.panel}
+        role="dialog"
+        aria-modal="true"
+        aria-label={isCreateMode ? "선생님 등록" : "선생님 정보 수정"}
+      >
         <form action={formAction} className={styles.panelForm}>
           <input type="hidden" name="mode" value={isCreateMode ? "create" : "update"} />
           {!isCreateMode ? <input type="hidden" name="teacherId" value={initialItem.id} /> : null}
-          <input type="hidden" name="subjects" value={subject} />
-          <input type="hidden" name="targetStudents" value={targetStudentsValue} />
-          <input type="hidden" name="smsEnabled" value={smsEnabled ? "on" : ""} />
-          {ADVANCED_VISIBILITY_FIELDS.map((field) => (
-            <input
-              key={`visibility-${field.key}`}
-              type="hidden"
-              name={`publicVisibility_${field.key}`}
-              value={String(publicVisibility[field.key])}
-            />
+          <input type="hidden" name="smsEnabled" value={preservedSmsEnabled ? "on" : ""} />
+          {preserved.map(([name, value]) => (
+            <input key={`preserved-${name}`} type="hidden" name={name} value={value} />
           ))}
+          {preservedVisibility
+            ? Object.entries(preservedVisibility).map(([key, value]) => (
+                <input
+                  key={`visibility-${key}`}
+                  type="hidden"
+                  name={`publicVisibility_${key}`}
+                  value={String(value)}
+                />
+              ))
+            : null}
 
           <header className={styles.panelHeader}>
             <div>
-              {!isCreateMode ? <p className={styles.panelEyebrow}>선생님 프로필</p> : null}
               <h2 className={styles.panelTitle}>{isCreateMode ? "선생님 등록" : "선생님 정보 수정"}</h2>
             </div>
             <button type="button" onClick={onClose} className={styles.panelCloseButton}>
@@ -540,25 +392,6 @@ const TeacherFormPanel = ({
           </header>
 
           <div className={styles.panelBody}>
-            {!isCreateMode ? (
-            <section className={styles.formSection}>
-              <div className={styles.publicFieldRow}>
-                <div>
-                  <strong className={styles.fieldTitle}>학부모에게 공개</strong>
-                  <p className={styles.fieldDescription}>
-                    끄면 내부 배정에만 사용되고 소개가 노출되지 않아요.
-                  </p>
-                </div>
-                <SimpleSwitch
-                  checked={isPublic}
-                  onToggle={toggleMainPublic}
-                  disabled={isPending}
-                  ariaLabel="학부모 공개"
-                />
-              </div>
-            </section>
-            ) : null}
-
             <section className={styles.formSection}>
               <div className={styles.formSectionHeader}>
                 <h3 className={styles.formSectionTitle}>기본 정보</h3>
@@ -578,110 +411,7 @@ const TeacherFormPanel = ({
                   placeholder="예: 김수업 선생님"
                 />
               </label>
-
-              {!isCreateMode ? (
-              <>
-              <div className={styles.field}>
-                <span className={styles.label}>담당 과목</span>
-                <div className={styles.chipGroup}>
-                  {subjectOptions.map((option) => (
-                    <button
-                      key={option}
-                      type="button"
-                      onClick={() => setSubject(option)}
-                      className={`${styles.choiceChip} ${subject === option ? styles.choiceChipActive : ""}`}
-                    >
-                      {formatTeacherSubjectValue(option)}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div className={styles.field}>
-                <span className={styles.label}>담당 대상</span>
-                <div className={styles.chipGroup}>
-                  {targetOptions.map((option) => (
-                    <button
-                      key={option}
-                      type="button"
-                      onClick={() => toggleTarget(option)}
-                      className={`${styles.choiceChip} ${
-                        targetSelections.includes(option) ? styles.choiceChipActive : ""
-                      }`}
-                    >
-                      {formatTeacherTargetValue(option)}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <label className={styles.field}>
-                <span className={styles.label}>전문 영역</span>
-                <input
-                  name="specialties"
-                  value={specialties}
-                  onChange={(event) => setSpecialties(event.target.value)}
-                  disabled={isPending}
-                  className={styles.input}
-                  placeholder="예: 글쓰기, 독해, 발표 수업"
-                />
-              </label>
-              </>
-              ) : null}
             </section>
-
-            {!isCreateMode ? (
-            <section className={styles.formSection}>
-              <div className={styles.formSectionHeader}>
-                <h3 className={styles.formSectionTitle}>학부모에게 보여질 소개</h3>
-              </div>
-
-              <label className={styles.field}>
-                <span className={styles.label}>한 줄 소개</span>
-                <input
-                  name="shortIntro"
-                  value={shortIntro}
-                  onChange={(event) => setShortIntro(event.target.value)}
-                  disabled={isPending}
-                  className={styles.input}
-                  placeholder="예: 아이 눈높이에 맞춰 자신감을 키우는 수업을 진행해요."
-                />
-              </label>
-
-              <label className={styles.field}>
-                <span className={styles.label}>수업 스타일</span>
-                <textarea
-                  name="teachingStyle"
-                  value={teachingStyle}
-                  onChange={(event) => setTeachingStyle(event.target.value)}
-                  disabled={isPending}
-                  className={styles.textarea}
-                  rows={4}
-                  placeholder="예: 개념 설명 후 예시를 함께 풀고 스스로 설명하게 도와요."
-                />
-              </label>
-
-              <label className={styles.field}>
-                <span className={styles.label}>상세 소개</span>
-                <textarea
-                  name="intro"
-                  value={intro}
-                  onChange={(event) => setIntro(event.target.value)}
-                  disabled={isPending}
-                  className={styles.textarea}
-                  rows={5}
-                  placeholder="예: 학생 성향을 먼저 파악하고, 수업 이후에도 스스로 정리할 수 있게 돕습니다."
-                />
-              </label>
-
-              <TeacherPreviewCard
-                displayName={displayName}
-                summary={previewSummary}
-                shortIntro={shortIntro}
-                isPublic={isPublic}
-              />
-            </section>
-            ) : null}
 
             <section className={styles.formSection}>
               <div className={styles.formSectionHeader}>
@@ -708,50 +438,22 @@ const TeacherFormPanel = ({
               </label>
 
               {!isCreateMode ? (
-              <div className={styles.lockNotice}>
-                <strong className={styles.lockTitle}>일정 알림 문자는 아직 준비 중이에요.</strong>
-                <p className={styles.lockDescription}>
-                  연동이 완료되면 이 화면에서 켤 수 있게 안내드릴게요.
-                  {smsEnabled ? " 현재 저장된 선생님은 문자 수신 동의 상태예요." : ""}
-                </p>
-              </div>
-              ) : null}
-            </section>
-
-            {!isCreateMode ? (
-            <section className={styles.formSection}>
-              <button
-                type="button"
-                className={styles.advancedToggle}
-                onClick={() => setIsAdvancedOpen((current) => !current)}
-              >
-                항목별 노출 설정 (고급)
-              </button>
-              <p className={styles.fieldDescription}>
-                보통은 건드릴 필요 없어요. 특정 항목만 숨기고 싶을 때 사용하세요.
-              </p>
-
-              {isAdvancedOpen ? (
-                <div className={styles.advancedList}>
-                  {ADVANCED_VISIBILITY_FIELDS.map((field) => (
-                    <div key={field.key} className={styles.advancedItem}>
-                      <span className={styles.advancedLabel}>{field.label}</span>
-                      <SimpleSwitch
-                        checked={publicVisibility[field.key]}
-                        onToggle={() => toggleAdvancedVisibility(field.key)}
-                        disabled={isPending}
-                        ariaLabel={`${field.label} 노출`}
-                        compact
-                      />
-                    </div>
-                  ))}
+                <div className={styles.lockNotice}>
+                  <strong className={styles.lockTitle}>일정 알림 문자는 아직 준비 중이에요.</strong>
+                  <p className={styles.lockDescription}>
+                    연동이 완료되면 이 화면에서 켤 수 있게 안내드릴게요.
+                    {preservedSmsEnabled ? " 현재 저장된 선생님은 문자 수신 동의 상태예요." : ""}
+                  </p>
                 </div>
               ) : null}
             </section>
-            ) : null}
 
             {state.message ? (
-              <p className={`${styles.formMessage} ${state.ok ? styles.formMessageSuccess : styles.formMessageError}`}>
+              <p
+                className={`${styles.formMessage} ${
+                  state.ok ? styles.formMessageSuccess : styles.formMessageError
+                }`}
+              >
                 {state.message}
               </p>
             ) : null}
@@ -761,8 +463,8 @@ const TeacherFormPanel = ({
             <button type="button" onClick={onClose} className={styles.secondaryButton} disabled={isPending}>
               취소
             </button>
-            <button type="submit" disabled={isPending} className={styles.primaryButton}>
-              {isPending ? "저장 중..." : isCreateMode ? "선생님 등록" : "변경사항 저장"}
+            <button type="submit" className={styles.primaryButton} disabled={isPending}>
+              {isPending ? "저장 중..." : isCreateMode ? "선생님 등록" : "변경 사항 저장"}
             </button>
           </div>
         </form>
@@ -770,61 +472,3 @@ const TeacherFormPanel = ({
     </div>
   )
 }
-
-const TeacherPreviewCard = ({
-  displayName,
-  summary,
-  shortIntro,
-  isPublic
-}: {
-  displayName: string
-  summary: string
-  shortIntro: string
-  isPublic: boolean
-}) => (
-  <section className={styles.previewCard}>
-    <div className={styles.previewTop}>
-      <div className={styles.previewAvatar} aria-hidden="true">
-        {getInitials(displayName || "선생")}
-      </div>
-      <div className={styles.previewHeading}>
-        <strong className={styles.previewName}>{displayName || "선생님 이름"}</strong>
-        <p className={styles.previewSummary}>{summary || "담당 요약이 여기에 표시돼요."}</p>
-      </div>
-      <span className={`${styles.previewBadge} ${isPublic ? styles.previewBadgeActive : styles.previewBadgeInactive}`}>
-        {isPublic ? "공개 중" : "비공개"}
-      </span>
-    </div>
-    <p className={styles.previewIntro}>{shortIntro.trim() || "한 줄 소개가 여기에 표시돼요."}</p>
-  </section>
-)
-
-const SimpleSwitch = ({
-  checked,
-  onToggle,
-  disabled,
-  ariaLabel,
-  compact = false
-}: {
-  checked: boolean
-  onToggle: () => void
-  disabled: boolean
-  ariaLabel: string
-  compact?: boolean
-}) => (
-  <button
-    type="button"
-    aria-pressed={checked}
-    aria-label={ariaLabel}
-    onClick={onToggle}
-    disabled={disabled}
-    className={`${styles.switchRoot} ${compact ? styles.switchRootCompact : ""} ${
-      checked ? styles.switchRootActive : ""
-    }`}
-  >
-    <span className={styles.switchTrack}>
-      <span className={styles.switchThumb} />
-    </span>
-    <span className={styles.switchLabel}>{checked ? "ON" : "OFF"}</span>
-  </button>
-)

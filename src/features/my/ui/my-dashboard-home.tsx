@@ -35,8 +35,8 @@ export const MyDashboardHome = ({
   nextUpcomingApplication
 }: MyDashboardHomeProps) => {
   const greetingName = profileName.trim() || "학부모"
-  const academyName =
-    nextUpcomingApplication?.academyName?.trim() || nextUpcomingApplication?.teacherDisplayName?.trim() || null
+  // 선생님 이름은 학부모 화면에 노출하지 않는다.
+  const academyName = nextUpcomingApplication?.academyName?.trim() || null
 
   return (
     <section className={styles.stack}>

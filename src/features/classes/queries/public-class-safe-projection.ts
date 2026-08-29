@@ -1,7 +1,5 @@
 import "server-only"
 
-import { hasVisibleTeacherPublicProfile } from "@/shared/lib/teacher-public-visibility"
-
 import {
   loadSubjectMasterMapsByIdsWithClient
 } from "@/features/subjects/queries/get-subject-master"
@@ -9,8 +7,7 @@ import { getSupabaseServiceRoleClient } from "@/integrations/supabase/service-ro
 import type {
   ClassDetail,
   ClassSummary,
-  OrganizationLocationInfo,
-  TeacherPublicProfile
+  OrganizationLocationInfo
 } from "@/shared/lib/db/adapter"
 import { normalizeSubjectCategory } from "@/shared/constants/education-taxonomy"
 import {
@@ -58,19 +55,6 @@ type SafeOrganizationRow = {
   address_line2?: string | null
   latitude?: number | null
   longitude?: number | null
-}
-
-type SafeTeacherRow = {
-  teacher_id: string
-  teacher_name: string | null
-  intro: string | null
-  specialty: string | null
-  career_years: number | null
-  subjects: string | null
-  target_students: string | null
-  specialties: string | null
-  short_intro: string | null
-  teaching_style: string | null
 }
 
 type ListPublicClassesOptions = {
@@ -230,45 +214,6 @@ const toOrganizationLocation = (
   }
 }
 
-const toTeacherProfileMap = async (teacherIds: string[]) => {
-  const uniqueTeacherIds = Array.from(new Set(teacherIds.filter(Boolean)))
-  if (uniqueTeacherIds.length === 0) {
-    return new Map<string, TeacherPublicProfile>()
-  }
-
-  const serviceRoleClient = getSupabaseServiceRoleClient()
-  const { data: teacherData, error: teacherError } = await serviceRoleClient
-    .from("teacher_public_profiles")
-    .select(
-      "teacher_id, teacher_name, intro, specialty, career_years, subjects, target_students, specialties, short_intro, teaching_style"
-    )
-    .in("teacher_id", uniqueTeacherIds)
-
-  if (teacherError) {
-    throw new Error("failed_to_fetch_public_teacher_projection")
-  }
-
-  const teacherRows = (teacherData ?? []) as SafeTeacherRow[]
-  return new Map<string, TeacherPublicProfile>(
-    teacherRows
-      .map((row): TeacherPublicProfile => ({
-        teacherId: row.teacher_id,
-        teacherName: row.teacher_name?.trim() || null,
-        intro: row.intro ?? null,
-        specialty: row.specialty ?? null,
-        careerYears: row.career_years ?? 0,
-        subjects: row.subjects ?? null,
-        targetStudents: row.target_students ?? null,
-        specialties: row.specialties ?? null,
-        shortIntro: row.short_intro ?? null,
-        teachingStyle: row.teaching_style ?? null
-      }))
-      // 공개 항목이 전부 비어 있으면 공개 프로필이 없는 것으로 보고 map 에 넣지 않는다.
-      .filter(hasVisibleTeacherPublicProfile)
-      .map((profile) => [profile.teacherId, profile])
-  )
-}
-
 const toOrganizationMap = async (organizationIds: string[], includeMapLocation = false) => {
   const uniqueOrganizationIds = Array.from(new Set(organizationIds.filter(Boolean)))
   if (uniqueOrganizationIds.length === 0) {
@@ -294,18 +239,9 @@ const toOrganizationMap = async (organizationIds: string[], includeMapLocation =
   )
 }
 
-const mapPublicClassSummary = (
-  row: PublicClassRow,
-  teacherProfileById: Map<string, TeacherPublicProfile>
-): ClassSummary => {
-  const teacherProfile = row.teacher_id ? teacherProfileById.get(row.teacher_id) ?? null : null
-  const resolvedTeacherName =
-    teacherProfile?.teacherName ??
-    (row.teacher_id ? null : row.teacher_display_name ?? null)
-  const resolvedTeacherIntro =
-    teacherProfile?.intro ??
-    (row.teacher_id ? null : row.teacher_intro ?? null)
-
+// 선생님은 학원 내부 명부 개념이라 학부모 공개 DTO 에 이름/소개를 담지 않는다.
+// teacherId 는 내부 배정 식별자라 유지한다.
+const mapPublicClassSummary = (row: PublicClassRow): ClassSummary => {
   return {
     id: row.id,
     programType: row.program_type,
@@ -329,11 +265,11 @@ const mapPublicClassSummary = (
     recommendedFor: row.recommended_for ?? null,
     experiencePoints: row.experience_points ?? null,
     curriculum: row.curriculum ?? null,
-    teacherIntro: resolvedTeacherIntro,
+    teacherIntro: null,
     trialPrice: row.trial_price,
     teacherId: row.teacher_id,
-    teacherDisplayName: resolvedTeacherName,
-    teacherName: resolvedTeacherName,
+    teacherDisplayName: null,
+    teacherName: null,
     coverImageUrl: row.cover_image_url ?? null,
     isActive: row.is_active
   }
@@ -351,18 +287,11 @@ export const listPublicClassesWithSafeProjection = async (
   }
 
   const classRows = await attachSubjectMaster(((data ?? []) as unknown) as PublicClassRow[])
-  const [teacherProfileById, organizationById] = await Promise.all([
-    toTeacherProfileMap(
-      classRows
-        .map((row) => row.teacher_id)
-        .filter((teacherId): teacherId is string => Boolean(teacherId))
-    ),
-    toOrganizationMap(
-      classRows
-        .map((row) => row.organization_id)
-        .filter((organizationId): organizationId is string => Boolean(organizationId))
-    )
-  ])
+  const organizationById = await toOrganizationMap(
+    classRows
+      .map((row) => row.organization_id)
+      .filter((organizationId): organizationId is string => Boolean(organizationId))
+  )
 
   const needle = normalizeText(options?.query)
   const normalizedSubject = normalizeSubjectCategory(options?.subject)
@@ -382,7 +311,7 @@ export const listPublicClassesWithSafeProjection = async (
         ? options?.distanceByOrganizationId?.get(row.organization_id)
         : undefined
       const summary: ClassSummary = {
-        ...mapPublicClassSummary(row, teacherProfileById),
+        ...mapPublicClassSummary(row),
         organization: toOrganizationLocation(organization),
         ...(distanceKm === undefined ? {} : { distanceKm })
       }
@@ -397,7 +326,6 @@ export const listPublicClassesWithSafeProjection = async (
           subjectLabel,
           summary.subjectCategoryName,
           summary.subjectName,
-          summary.teacherDisplayName,
           organization?.name ?? null
         ]
       }
@@ -440,15 +368,13 @@ export const getPublicClassDetailWithSafeProjection = async (
   }
 
   const [classRow] = await attachSubjectMaster([data as unknown as PublicClassRow])
-  const [teacherProfileById, organizationById] = await Promise.all([
-    toTeacherProfileMap(classRow.teacher_id ? [classRow.teacher_id] : []),
-    toOrganizationMap(classRow.organization_id ? [classRow.organization_id] : [], true)
-  ])
+  const organizationById = await toOrganizationMap(
+    classRow.organization_id ? [classRow.organization_id] : [],
+    true
+  )
 
-  const summary = mapPublicClassSummary(classRow, teacherProfileById)
-  const teacherProfile = classRow.teacher_id
-    ? teacherProfileById.get(classRow.teacher_id) ?? null
-    : null
+  const summary = mapPublicClassSummary(classRow)
+  const teacherProfile = null
   const organization = classRow.organization_id
     ? toOrganizationLocation(organizationById.get(classRow.organization_id), true)
     : null

@@ -2,7 +2,6 @@ import Link from "next/link"
 import Image from "next/image"
 
 import { formatStoredTargetGrades } from "@/shared/constants/grade-options"
-import { getSubjectLabel } from "@/shared/constants/education-taxonomy"
 import { getMyProfile } from "@/features/auth/lib/profile-sync"
 import { getSession } from "@/features/auth/lib/session"
 import { formatAdministrativeRegionLabel } from "@/features/location/lib/region-selection"
@@ -43,10 +42,6 @@ const formatPrice = (price: number) => {
 }
 
 const formatProgramType = (value: string) => (value === "level_test" ? "레벨테스트" : "체험수업")
-const getTeacherSummaryLine = (subjects: string | null | undefined, targetStudents: string | null | undefined) => {
-  const normalizedTargets = targetStudents?.trim() ? formatStoredTargetGrades(targetStudents) : null
-  return [getSubjectLabel(subjects), normalizedTargets].filter(Boolean).join(" · ") || null
-}
 
 export default async function ClassDetailPage({ params, searchParams }: ClassDetailPageProps) {
   const resolvedParams = await params
@@ -93,22 +88,11 @@ export default async function ClassDetailPage({ params, searchParams }: ClassDet
   const hasLocation = Boolean(addressLines.line1 || storedCoordinates)
   const searchQuery = fullAddress || organizationLabel
   const naverMapUrl = `https://map.naver.com/p/search/${encodeURIComponent(searchQuery)}`
-  const teacherProfile = classItem?.teacherProfile ?? null
-  const teacherName =
-    teacherProfile?.teacherName?.trim() ||
-    classItem?.teacherDisplayName?.trim() ||
-    classItem?.teacherName?.trim() ||
-    null
-  const teacherSummaryLine = getTeacherSummaryLine(teacherProfile?.subjects, teacherProfile?.targetStudents)
-  const teacherIntroText = classItem?.teacherIntro?.trim() || null
-  const teacherSpecialties = teacherProfile?.specialties?.trim() || null
-  const teacherTeachingStyle = teacherProfile?.teachingStyle?.trim() || null
-  const teacherShortIntro = teacherProfile?.shortIntro?.trim() || null
-  const academyTeacherLabel = [organizationLabel || null, teacherName || null].filter(Boolean).join(" / ")
+  // 선생님은 학원 내부 명부 개념이라 학부모 화면에 이름/소개를 노출하지 않는다.
   const isPreassignedTeacherVisible = classItem?.assignmentMode === "preassigned"
-  const teacherAssignmentLabel = isPreassignedTeacherVisible ? "학원/선생님" : "학원/담당 배정"
+  const teacherAssignmentLabel = "학원"
   const teacherAssignmentValue = isPreassignedTeacherVisible
-    ? academyTeacherLabel || "정보 준비 중"
+    ? organizationLabel || "정보 준비 중"
     : organizationLabel
       ? `${organizationLabel} / 담당 선생님은 신청 후 학원에서 배정됩니다.`
       : "담당 선생님은 신청 후 학원에서 배정됩니다."
@@ -122,17 +106,6 @@ export default async function ClassDetailPage({ params, searchParams }: ClassDet
     : null
   const recommendedItems = splitMultilineItems(classItem?.recommendedFor)
   const experienceItems = splitMultilineItems(classItem?.experiencePoints)
-  const hasTeacherProfileContent = Boolean(
-    teacherName ||
-      teacherSummaryLine ||
-      teacherSpecialties ||
-      teacherTeachingStyle ||
-      teacherShortIntro ||
-      teacherIntroText ||
-      teacherProfile?.intro?.trim()
-  )
-  const showTeacherProfileSection = isPreassignedTeacherVisible && hasTeacherProfileContent
-
   return (
     <main className={styles.page}>
       <div className={styles.shell}>
@@ -354,30 +327,6 @@ export default async function ClassDetailPage({ params, searchParams }: ClassDet
                 )}
               </section>
 
-              {showTeacherProfileSection ? (
-                <section className={styles.section}>
-                  <h2 className={styles.sectionTitle}>선생님 소개</h2>
-                  <div className={styles.teacherProfileStack}>
-                    {teacherName ? <p className={styles.teacherProfileName}>{teacherName}</p> : null}
-                    {teacherSummaryLine ? <p className={styles.teacherProfileSummary}>{teacherSummaryLine}</p> : null}
-                    {teacherSpecialties ? (
-                      <p className={styles.bodyText}>전문 영역: {teacherSpecialties}</p>
-                    ) : null}
-                    {teacherTeachingStyle ? (
-                      <p className={styles.bodyText}>수업 스타일: {teacherTeachingStyle}</p>
-                    ) : null}
-                    {teacherShortIntro ? (
-                      <p className={styles.bodyText}>한 줄 소개: {teacherShortIntro}</p>
-                    ) : null}
-                    {teacherIntroText ? (
-                      <p className={styles.bodyText}>{teacherIntroText}</p>
-                    ) : teacherProfile?.intro?.trim() ? (
-                      <p className={styles.bodyText}>{teacherProfile.intro}</p>
-                    ) : null}
-                  </div>
-                </section>
-              ) : null}
-
               {hasLocation ? (
                 <section className={styles.section}>
                   <h2 className={styles.sectionTitle}>위치</h2>
@@ -424,7 +373,6 @@ export default async function ClassDetailPage({ params, searchParams }: ClassDet
           parentName={profile?.name ?? ""}
           parentPhone={profile?.phone ?? null}
           academyName={organizationLabel || null}
-          teacherName={teacherName}
           trialPriceLabel={formatPrice(classItem.trialPrice)}
           hasSession={Boolean(session)}
           isParentUser={isParentUser}

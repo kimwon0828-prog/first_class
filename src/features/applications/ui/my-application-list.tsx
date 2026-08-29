@@ -25,15 +25,9 @@ const canShowCancelButton = (item: MyApplicationListItem) => {
   return item.status === "new" || item.status === "reviewing" || item.status === "confirmed"
 }
 
-const resolveAcademyLabel = (item: MyApplicationListItem) => {
-  const academyName = item.academyName?.trim() || null
-
-  if (academyName) {
-    return academyName
-  }
-
-  return item.teacherDisplayName?.trim() || "정보 준비 중"
-}
+// 선생님 이름은 학부모 화면에 노출하지 않는다. 학원명이 없으면 준비 중으로 둔다.
+const resolveAcademyLabel = (item: MyApplicationListItem) =>
+  item.academyName?.trim() || "정보 준비 중"
 
 const formatDateTime = (value: string) => {
   const date = new Date(value)

@@ -21,7 +21,6 @@ import styles from "./class-detail-application-sheet.module.css"
 type ClassDetailApplicationSheetProps = TrialApplicationFormProps & {
   classTitle: string
   academyName: string | null
-  teacherName: string | null
   trialPriceLabel: string
   hasSession: boolean
   isParentUser: boolean
@@ -142,16 +141,6 @@ const buildGroupedDateSlots = (availableSlots: AvailableScheduleSlot[]) => {
 const resolveInitialDateKey = (groupedDateSlots: GroupedDateSlots[]) =>
   groupedDateSlots.find((group) => group.hasSelectableSlot)?.dateKey ?? null
 
-const normalizeTeacherLabel = (teacherName: string | null) => {
-  const trimmed = teacherName?.trim() || ""
-
-  if (!trimmed) {
-    return "담당 선생님 정보 확인 후 안내"
-  }
-
-  return trimmed.endsWith("선생님") ? trimmed : `${trimmed} 선생님`
-}
-
 export function ClassDetailApplicationSheet({
   classId,
   classTitle,
@@ -163,7 +152,6 @@ export function ClassDetailApplicationSheet({
   parentName,
   parentPhone,
   academyName,
-  teacherName,
   trialPriceLabel,
   hasSession,
   isParentUser,
@@ -266,7 +254,6 @@ export function ClassDetailApplicationSheet({
     childGrade.trim().length > 0 &&
     isGradeEligible
   const canFinalSubmit = hasSession && isParentUser && canSubmit && requiredAgreementsChecked
-  const teacherLabel = normalizeTeacherLabel(teacherName)
 
   useEffect(() => {
     if (!isOpen) {
@@ -842,10 +829,6 @@ export function ClassDetailApplicationSheet({
                         <span className={styles.confirmValue}>
                           {childName || "학생 이름 미입력"} · {(getChildGradeLabel(childGrade) ?? childGrade) || "학년 미선택"}
                         </span>
-                      </div>
-                      <div className={styles.confirmRow}>
-                        <span className={styles.confirmLabel}>담당 선생님</span>
-                        <span className={styles.confirmValue}>{teacherLabel}</span>
                       </div>
                       <div className={styles.confirmRow}>
                         <span className={styles.confirmLabel}>체험수업 비용</span>

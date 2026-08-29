@@ -33,43 +33,18 @@ const resolveApplyPageTitle = (programType: string | null | undefined) => {
   return "체험수업 신청"
 }
 
-const normalizeTeacherName = (value: string | null | undefined) => {
-  const trimmed = value?.trim() || ""
-  if (!trimmed) {
-    return null
-  }
-
-  return trimmed.endsWith("선생님") ? trimmed.slice(0, -4).trim() : trimmed
-}
-
 const resolveApplyCardSubtitle = (
   academyName: string | null,
-  teacherName: string | null,
   assignmentMode: "post_assign" | "preassigned" | null | undefined
 ) => {
+  // 선생님은 학원 내부 명부라 학부모 화면에 이름을 노출하지 않는다.
   if (assignmentMode === "post_assign") {
-    if (academyName) {
-      return `${academyName} · 담당 선생님은 신청 후 배정됩니다.`
-    }
-
-    return "담당 선생님은 신청 후 배정됩니다."
-  }
-
-  const normalizedTeacherName = normalizeTeacherName(teacherName)
-
-  if (academyName && normalizedTeacherName) {
-    return `${academyName} · ${normalizedTeacherName} 선생님`
-  }
-
-  if (academyName) {
     return academyName
+      ? `${academyName} · 담당 선생님은 신청 후 배정됩니다.`
+      : "담당 선생님은 신청 후 배정됩니다."
   }
 
-  if (normalizedTeacherName) {
-    return `${normalizedTeacherName} 선생님`
-  }
-
-  return "정보 준비 중"
+  return academyName || "정보 준비 중"
 }
 
 export default async function ClassApplyPage({ params }: ApplyPageProps) {
@@ -91,8 +66,7 @@ export default async function ClassApplyPage({ params }: ApplyPageProps) {
       .filter((value): value is string => Boolean(value))
       .join(" ")
       .trim() || null
-  const teacherName = classItem?.teacherDisplayName?.trim() || classItem?.teacherName?.trim() || null
-  const cardSubtitle = resolveApplyCardSubtitle(academyName, teacherName, classItem?.assignmentMode)
+  const cardSubtitle = resolveApplyCardSubtitle(academyName, classItem?.assignmentMode)
 
   return (
     <main
