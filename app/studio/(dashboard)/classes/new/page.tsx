@@ -19,7 +19,6 @@ export default async function StudioClassNewPage() {
     <>
       <StudioClassCreateWizard
         organizationId={teacher.organizationId}
-        currentTeacherId={teacher.teacherId}
         teacherOptions={teacherOptions}
         teacherOptionsError={teacherOptionsError}
         subjectCatalog={subjectCatalog}

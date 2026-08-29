@@ -57,7 +57,6 @@ export default async function StudioClassEditPage({ params, searchParams }: Stud
   return (
     <StudioClassForm
       organizationId={teacher.organizationId}
-      currentTeacherId={teacher.teacherId}
       teacherOptions={teacherOptions}
       teacherOptionsError={teacherOptionsError}
       subjectCatalog={subjectCatalog}

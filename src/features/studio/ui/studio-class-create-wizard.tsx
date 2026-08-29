@@ -44,7 +44,6 @@ import styles from "./studio-class-create-wizard.module.css"
 
 type StudioClassCreateWizardProps = {
   organizationId: string
-  currentTeacherId: string
   teacherOptions: StudioTeacherOption[]
   teacherOptionsError: string | null
   subjectCatalog: SubjectCatalogCategory[]
@@ -311,7 +310,6 @@ const renderFieldError = (message: string | undefined) =>
 
 export const StudioClassCreateWizard = ({
   organizationId,
-  currentTeacherId,
   teacherOptions,
   teacherOptionsError,
   subjectCatalog,
@@ -407,15 +405,12 @@ export const StudioClassCreateWizard = ({
       return
     }
 
-    const fallbackTeacherId =
-      safeTeacherOptions.find((option) => option.teacherId === currentTeacherId)?.teacherId ??
-      safeTeacherOptions[0]?.teacherId ??
-      ""
+    const fallbackTeacherId = safeTeacherOptions[0]?.teacherId ?? ""
 
     if (fallbackTeacherId) {
       setValues((current) => ({ ...current, teacherId: fallbackTeacherId }))
     }
-  }, [currentTeacherId, safeTeacherOptions, values.assignmentMode, values.teacherId])
+  }, [safeTeacherOptions, values.assignmentMode, values.teacherId])
 
   useEffect(() => {
     if (!draftHydratedRef.current) {

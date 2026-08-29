@@ -43,7 +43,9 @@ export async function createStudioClassScheduleAction(
     await dataAdapter.createStudioClassSchedule({
       organizationId: teacher.organizationId,
       classId,
-      teacherId: teacher.teacherId,
+      // 담당 선생님은 로그인 actor 가 아니라 classes.teacher_id 가 canonical source 다.
+      // null 을 넘기면 adapter 가 해당 수업의 teacher_id 로 폴백한다.
+      teacherId: null,
       specificDate,
       startTime,
       endTime,

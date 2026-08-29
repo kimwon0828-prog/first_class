@@ -7,9 +7,11 @@ import { redirect } from "next/navigation"
 import { normalizeProfileRole } from "@/features/auth/lib/profile-sync"
 import { getSupabaseServerClient } from "@/integrations/supabase/server"
 
+// Studio 접근 context 는 로그인 운영 멤버(profile)와 organization 만으로 구성한다.
+// 수업 담당 선생님은 classes.teacher_id(teachers.id) 가 canonical source 이며,
+// 로그인 actor 와 개념이 다르므로 이 타입에 teacher 식별자를 두지 않는다.
 export type TeacherStudioAccess = {
   id: string
-  teacherId: string
   name: string
   organizationId: string
 }
@@ -261,86 +263,6 @@ const requireTeacherStudioAccessCached = cache(async (): Promise<TeacherStudioAc
     redirect("/studio/access?reason=missing_org")
   }
 
-  const { data: teacherRow, error: teacherError } =
-    normalized.dbRole === "teacher" || normalized.dbRole === "academy"
-      ? await supabase
-          .from("teachers")
-          .select("id")
-          .eq("profile_id", userId)
-          .maybeSingle()
-      : await supabase
-          .from("teachers")
-          .select("id")
-          .eq("organization_id", organizationId)
-          .eq("is_active", true)
-          .order("created_at", { ascending: true })
-          .limit(1)
-          .maybeSingle()
-
-  if (teacherError || !teacherRow) {
-    if (normalized.dbRole === "admin" || normalized.dbRole === "operator") {
-      const { data: fallbackTeacherRow, error: fallbackTeacherError } = await supabase
-        .from("teachers")
-        .select("id")
-        .eq("organization_id", organizationId)
-        .order("created_at", { ascending: true })
-        .limit(1)
-        .maybeSingle()
-
-      if (fallbackTeacherError || !fallbackTeacherRow) {
-        debugStudioAuth({
-          pathname: requestPath,
-          hasUser: true,
-          userIdPrefix,
-          profileLookup: "success",
-          errorCode: null,
-          rawRole: typeof data.role === "string" ? data.role : "non_string",
-          dbRole: normalized.dbRole,
-          hasOrganizationId: true,
-          hasNextRouterPrefetchHeader,
-          hasPurposePrefetchHeader,
-          redirectReason: "no_teachers"
-        })
-        redirect("/studio/access?reason=no_teachers")
-      }
-
-      debugStudioAuth({
-        pathname: requestPath,
-        hasUser: true,
-        userIdPrefix,
-        profileLookup: "success",
-        errorCode: null,
-        rawRole: typeof data.role === "string" ? data.role : "non_string",
-        dbRole: normalized.dbRole,
-        hasOrganizationId: true,
-        hasNextRouterPrefetchHeader,
-        hasPurposePrefetchHeader,
-        redirectReason: null
-      })
-      return {
-        id: userId,
-        teacherId: fallbackTeacherRow.id,
-        name: data.name,
-        organizationId
-      }
-    }
-
-    debugStudioAuth({
-      pathname: requestPath,
-      hasUser: true,
-      userIdPrefix,
-      profileLookup: "success",
-      errorCode: teacherError?.code ?? null,
-      rawRole: typeof data.role === "string" ? data.role : "non_string",
-      dbRole: normalized.dbRole,
-      hasOrganizationId: true,
-      hasNextRouterPrefetchHeader,
-      hasPurposePrefetchHeader,
-      redirectReason: "missing_teacher_mapping"
-    })
-    redirect("/studio/access?reason=missing_teacher_mapping")
-  }
-
   debugStudioAuth({
     pathname: requestPath,
     hasUser: true,
@@ -356,7 +278,6 @@ const requireTeacherStudioAccessCached = cache(async (): Promise<TeacherStudioAc
   })
   return {
     id: userId,
-    teacherId: teacherRow.id,
     name: data.name,
     organizationId
   }

@@ -40,7 +40,6 @@ import styles from "./studio-class-form.module.css"
 
 type StudioClassFormProps = {
   organizationId: string
-  currentTeacherId: string
   teacherOptions: StudioTeacherOption[]
   teacherOptionsError: string | null
   subjectCatalog: SubjectCatalogCategory[]
@@ -162,7 +161,6 @@ const createScheduleSlotDraftFromItem = (schedule: StudioClassScheduleItem): Sch
 
 export const StudioClassForm = ({
   organizationId,
-  currentTeacherId,
   teacherOptions,
   teacherOptionsError,
   subjectCatalog,
@@ -268,10 +266,6 @@ export const StudioClassForm = ({
   const mergedTeacherOptions = useMemo(
     () => (fallbackTeacherOption ? [fallbackTeacherOption, ...safeTeacherOptions] : safeTeacherOptions),
     [fallbackTeacherOption, safeTeacherOptions]
-  )
-  const mergedTeacherOptionIds = useMemo(
-    () => new Set(mergedTeacherOptions.map((option) => option.teacherId)),
-    [mergedTeacherOptions]
   )
   const resolveTeacherLabel = (option: StudioTeacherOption | (StudioTeacherOption & Record<string, unknown>)) => {
     const candidate = option as unknown as {
@@ -458,21 +452,10 @@ export const StudioClassForm = ({
       return
     }
 
-    if (mergedTeacherOptionIds.has(currentTeacherId)) {
-      setSelectedTeacherId(currentTeacherId)
-      return
-    }
-
     if (mergedTeacherOptions[0]?.teacherId) {
       setSelectedTeacherId(mergedTeacherOptions[0].teacherId)
     }
-  }, [
-    currentTeacherId,
-    mergedTeacherOptionIds,
-    mergedTeacherOptions,
-    selectedAssignmentMode,
-    selectedTeacherId
-  ])
+  }, [mergedTeacherOptions, selectedAssignmentMode, selectedTeacherId])
 
   useEffect(() => {
     const previousOk = previousOkRef.current

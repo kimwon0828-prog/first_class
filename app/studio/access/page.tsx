@@ -18,21 +18,6 @@ const getReasonCopy = (reason: string | null) => {
     }
   }
 
-  if (reason === "missing_teacher_mapping") {
-    return {
-      title: "선생님 매핑이 필요합니다",
-      description:
-        "계정은 로그인되어 있지만 teachers 매핑이 없어 Studio 기능을 사용할 수 없습니다. 관리자에게 연결을 요청해 주세요."
-    }
-  }
-
-  if (reason === "no_teachers") {
-    return {
-      title: "학원 선생님 데이터가 없습니다",
-      description: "organization에 연결된 teachers 데이터가 없어 Studio를 사용할 수 없습니다."
-    }
-  }
-
   if (reason === "invalid_role") {
     return {
       title: "권한 정보를 확인할 수 없습니다",
