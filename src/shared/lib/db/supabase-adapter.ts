@@ -20,7 +20,6 @@ import {
   formatSeoulOccurrenceLabel,
   getSeoulDateTimeParts
 } from "@/shared/lib/seoul-datetime"
-import { normalizeTeacherPublicVisibility } from "@/shared/lib/teacher-public-visibility"
 import {
   buildClassSubjectReadModel,
   formatClassSubjectDisplayLabel,
@@ -75,7 +74,6 @@ import type {
   StudioDashboardTeacherFilterOption,
   StudioTeacherSeatSummary,
   StudioTeacherSummary,
-  TeacherPublicProfile,
   TeacherSignupRequest,
   TeacherSignupRequestStatus,
   TrialApplicationInput,
@@ -327,15 +325,6 @@ type TeacherRow = {
   display_name: string
   phone: string | null
   sms_enabled: boolean
-  specialty: string | null
-  intro: string | null
-  career_years: number
-  subjects: string | null
-  target_students: string | null
-  specialties: string | null
-  short_intro: string | null
-  teaching_style: string | null
-  public_visibility?: unknown
   is_active: boolean
   created_at: string
 }
@@ -939,15 +928,6 @@ const mapStudioTeacher = (
     row.display_name?.trim() || (row.profile_id ? profileNameById.get(row.profile_id) : null) || "이름 미등록 선생님",
   phone: row.phone?.trim() ? row.phone.trim() : null,
   smsEnabled: Boolean(row.sms_enabled),
-  specialty: row.specialty,
-  intro: row.intro,
-  careerYears: row.career_years,
-  subjects: row.subjects?.trim() ? row.subjects.trim() : null,
-  targetStudents: row.target_students?.trim() ? row.target_students.trim() : null,
-  specialties: row.specialties?.trim() ? row.specialties.trim() : null,
-  shortIntro: row.short_intro?.trim() ? row.short_intro.trim() : null,
-  teachingStyle: row.teaching_style?.trim() ? row.teaching_style.trim() : null,
-  publicVisibility: normalizeTeacherPublicVisibility(row.public_visibility),
   isActive: row.is_active,
   createdAt: row.created_at
 })
@@ -1329,7 +1309,7 @@ const buildRequestedOccurrenceEndAt = (
 }
 
 const TEACHER_SELECT_FIELDS =
-  "id, profile_id, organization_id, display_name, phone, sms_enabled, specialty, intro, career_years, subjects, target_students, specialties, short_intro, teaching_style, public_visibility, is_active, created_at"
+  "id, profile_id, organization_id, display_name, phone, sms_enabled, is_active, created_at"
 
 const getProfileNameMap = async (profileIds: string[]) => {
   if (profileIds.length === 0) {
@@ -2248,7 +2228,6 @@ const getStudioTeacherSeatSummaryByOrganization = async (
         .select("id", { count: "exact", head: true })
         .eq("organization_id", organizationId)
         .eq("is_active", true)
-        .is("profile_id", null)
     ])
 
   if (organizationError || !organizationRow) {
@@ -2589,14 +2568,10 @@ export const supabaseDataAdapter: DataAdapter = {
       }
 
       const [classRow] = await attachSubjectMasterToRows(supabase, [retry.data as ClassRow])
-      // 학부모 상세에는 선생님 정보를 노출하지 않는다.
-      const teacherProfile: TeacherPublicProfile | null = null
-
       const detail: ClassDetail = {
         ...mapClass(classRow, null, {
           allowClassTeacherFallback: false
         }),
-        teacherProfile,
         organization: mapOrganizationLocation(getEmbeddedOrganization(classRow))
       }
 
@@ -2612,14 +2587,10 @@ export const supabaseDataAdapter: DataAdapter = {
     }
 
     const [classRow] = await attachSubjectMasterToRows(supabase, [data as ClassRow])
-    // 학부모 상세에는 선생님 정보를 노출하지 않는다.
-    const teacherProfile: TeacherPublicProfile | null = null
-
     const detail: ClassDetail = {
       ...mapClass(classRow, null, {
         allowClassTeacherFallback: false
       }),
-      teacherProfile,
       organization: mapOrganizationLocation(getEmbeddedOrganization(classRow))
     }
 
@@ -2843,7 +2814,6 @@ export const supabaseDataAdapter: DataAdapter = {
       .select(TEACHER_SELECT_FIELDS)
       .eq("organization_id", organizationId)
       .eq("is_active", true)
-      .is("profile_id", null)
       .order("created_at", { ascending: true })
 
     if (error) {
@@ -2870,7 +2840,6 @@ export const supabaseDataAdapter: DataAdapter = {
       .select("id, display_name")
       .eq("organization_id", organizationId)
       .eq("is_active", true)
-      .is("profile_id", null)
       .order("created_at", { ascending: true })
 
     if (error) {
@@ -2890,7 +2859,6 @@ export const supabaseDataAdapter: DataAdapter = {
       .from("teachers")
       .select(TEACHER_SELECT_FIELDS)
       .eq("organization_id", organizationId)
-      .is("profile_id", null)
       .order("created_at", { ascending: false })
 
     if (error) {
@@ -2983,17 +2951,7 @@ export const supabaseDataAdapter: DataAdapter = {
         organization_id: input.organizationId,
         display_name: input.displayName,
         phone: input.phone,
-        sms_enabled: input.smsEnabled,
-        specialty: null,
-        intro: input.intro,
-        career_years: 0,
-        subjects: input.subjects,
-        target_students: input.targetStudents,
-        specialties: input.specialties,
-        short_intro: input.shortIntro,
-        teaching_style: input.teachingStyle,
-        public_visibility: input.publicVisibility,
-        is_active: true
+        sms_enabled: input.smsEnabled
       })
       .select(TEACHER_SELECT_FIELDS)
       .maybeSingle()
@@ -3012,17 +2970,12 @@ export const supabaseDataAdapter: DataAdapter = {
     const supabase = await getSupabaseServerClient()
     const { data, error } = await supabase
       .from("teachers")
+      // legacy 공개 프로필 컬럼은 payload 에 넣지 않는다. 컬럼은 아직 DB 에 남아 있고
+      // 기존 값도 그대로 보존된다(부분 업데이트).
       .update({
         display_name: input.displayName,
         phone: input.phone,
         sms_enabled: input.smsEnabled,
-        intro: input.intro,
-        subjects: input.subjects,
-        target_students: input.targetStudents,
-        specialties: input.specialties,
-        short_intro: input.shortIntro,
-        teaching_style: input.teachingStyle,
-        public_visibility: input.publicVisibility,
         updated_at: new Date().toISOString()
       })
       .eq("id", input.teacherId)

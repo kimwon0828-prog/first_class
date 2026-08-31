@@ -126,20 +126,14 @@ insert into teachers (
   id,
   profile_id,
   organization_id,
-  display_name,
-  intro,
-  specialty,
-  career_years
+  display_name
 )
 values
   (
     '22222222-2222-2222-2222-222222222221',
     null,
     '11111111-1111-1111-1111-111111111111',
-    '테스트 선생님',
-    '아이들 눈높이에 맞춘 체험 수업을 진행합니다.',
-    '초등 창의수업',
-    5
+    '테스트 선생님'
   )
 on conflict (id) do nothing;
 

@@ -374,14 +374,12 @@ export const getPublicClassDetailWithSafeProjection = async (
   )
 
   const summary = mapPublicClassSummary(classRow)
-  const teacherProfile = null
   const organization = classRow.organization_id
     ? toOrganizationLocation(organizationById.get(classRow.organization_id), true)
     : null
 
   return {
     ...summary,
-    teacherProfile,
     organization
   }
 }

@@ -3,7 +3,6 @@ import { randomUUID } from "node:crypto"
 import { createClient, type SupabaseClient, type User } from "@supabase/supabase-js"
 
 import { GRADE_BANDS, SUBJECT_CATEGORIES, type GradeBandValue } from "../src/shared/constants/education-taxonomy"
-import { DEFAULT_TEACHER_PUBLIC_VISIBILITY, toTeacherPublicVisibilityJson } from "../src/shared/lib/teacher-public-visibility"
 
 type DemoRole = "academy" | "parent"
 type DemoSubject = (typeof SUBJECT_CATEGORIES)[number]["value"]
@@ -34,12 +33,6 @@ type DemoTeacherPlan = {
   key: DemoTeacherKey
   displayName: string
   phone: string
-  subjects: string
-  targetStudents: string
-  specialties: string
-  shortIntro: string
-  teachingStyle: string
-  intro: string
   linkedProfile: boolean
 }
 
@@ -354,39 +347,18 @@ const DEMO_TEACHERS: DemoTeacherPlan[] = [
     key: "kim-minji",
     displayName: "김민지",
     phone: "010-9000-1001",
-    subjects: "사고력수학",
-    targetStudents: "초1~4 학생",
-    specialties: "연산보다 사고과정 설명, 교구 기반 문제해결",
-    shortIntro: "질문으로 사고 과정을 끌어내는 사고력수학 전문 선생님",
-    teachingStyle: "학생이 풀이 과정을 직접 설명하도록 이끌고 작은 성취를 바로 피드백합니다.",
-    intro:
-      "초등 저학년과 중학년 학생이 수학을 어렵지 않게 시작하도록 돕는 사고력수학 전문 선생님입니다. 교구와 게임형 문제를 활용해 학생이 스스로 원리를 설명하도록 수업을 운영합니다.",
     linkedProfile: true
   },
   {
     key: "park-jihoon",
     displayName: "박지훈",
     phone: "010-9000-1002",
-    subjects: "코딩·로봇·과학",
-    targetStudents: "초3~6 학생",
-    specialties: "파이썬 입문, 센서/로봇 프로젝트, 메이킹 활동",
-    shortIntro: "프로젝트로 몰입도를 높이는 코딩·로봇 수업 담당 선생님",
-    teachingStyle: "완성 결과물을 빠르게 만들고, 이후 개념을 단계적으로 연결하는 실습 중심 수업을 진행합니다.",
-    intro:
-      "코딩이 처음인 학생도 결과물을 만들며 자신감을 얻을 수 있도록 지도합니다. 파이썬 기초부터 로봇 센서 제어, 간단한 과학 프로젝트까지 실습 중심으로 진행합니다.",
     linkedProfile: false
   },
   {
     key: "lee-seoyeon",
     displayName: "이서연",
     phone: "010-9000-1003",
-    subjects: "영어",
-    targetStudents: "초1~6 학생",
-    specialties: "레벨 진단, 파닉스-리딩 브릿지, 말하기 루틴 설계",
-    shortIntro: "현재 실력을 빠르게 진단하고 다음 학습 방향을 제안하는 영어 선생님",
-    teachingStyle: "학생의 반응을 세밀하게 관찰해 레벨을 진단하고, 다음 학습 루트를 구체적으로 안내합니다.",
-    intro:
-      "영어 레벨테스트와 초기 학습 상담을 주로 담당합니다. 학생의 읽기, 듣기, 말하기 반응을 함께 살피며 이후 추천 과정과 학습 계획을 제안합니다.",
     linkedProfile: false
   }
 ]
@@ -1762,15 +1734,6 @@ const insertTeacher = async (
       display_name: teacher.displayName,
       phone: teacher.phone,
       sms_enabled: false,
-      specialty: null,
-      intro: teacher.intro,
-      career_years: 0,
-      subjects: teacher.subjects,
-      target_students: teacher.targetStudents,
-      specialties: teacher.specialties,
-      short_intro: teacher.shortIntro,
-      teaching_style: teacher.teachingStyle,
-      public_visibility: toTeacherPublicVisibilityJson(DEFAULT_TEACHER_PUBLIC_VISIBILITY),
       is_active: true
     })
     .select("id")

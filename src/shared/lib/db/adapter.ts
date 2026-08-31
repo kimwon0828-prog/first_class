@@ -1,4 +1,3 @@
-import type { TeacherPublicVisibility } from "@/shared/lib/teacher-public-visibility"
 import type { ClassSubjectReadModel } from "@/shared/lib/subject-master"
 
 export type UserRole = "parent" | "teacher"
@@ -53,18 +52,6 @@ export type StudioConsultationLog = {
   updatedAt: string
 }
 
-export type TeacherPublicProfile = {
-  teacherId: string
-  teacherName: string | null
-  intro: string | null
-  specialty: string | null
-  careerYears: number
-  subjects: string | null
-  targetStudents: string | null
-  specialties: string | null
-  shortIntro: string | null
-  teachingStyle: string | null
-}
 
 export type StudioClassScheduleType = "weekly" | "one_time"
 export type StudioClassScheduleBookingStatus = "open" | "closed" | "hidden"
@@ -141,7 +128,6 @@ export type OrganizationLocationInfo = {
 }
 
 export type ClassDetail = ClassSummary & {
-  teacherProfile: TeacherPublicProfile | null
   organization: OrganizationLocationInfo | null
 }
 
@@ -318,6 +304,9 @@ export type StudioDashboardTeacherFilterOption = {
   teacherName: string
 }
 
+// teachers 는 학원 내부 명부다. 학부모 공개 기능이 폐기되어 소개/과목 같은 공개 프로필 필드는
+// 앱에서 다루지 않는다. 담당 과목은 teachers 컬럼이 아니라 실제 classes 배정에서 계산한다.
+// profileId 는 향후 "선생님에게 파트너센터 로그인 권한 부여" 를 위한 optional link 라 남긴다.
 export type StudioTeacherSummary = {
   id: string
   profileId: string | null
@@ -325,15 +314,6 @@ export type StudioTeacherSummary = {
   displayName: string
   phone: string | null
   smsEnabled: boolean
-  specialty: string | null
-  intro: string | null
-  careerYears: number
-  subjects: string | null
-  targetStudents: string | null
-  specialties: string | null
-  shortIntro: string | null
-  teachingStyle: string | null
-  publicVisibility: TeacherPublicVisibility
   isActive: boolean
   createdAt: string
 }
@@ -359,28 +339,16 @@ export type CreateStudioTeacherInput = {
   displayName: string
   phone: string | null
   smsEnabled: boolean
-  intro: string | null
-  subjects: string | null
-  targetStudents: string | null
-  specialties: string | null
-  shortIntro: string | null
-  teachingStyle: string | null
-  publicVisibility: TeacherPublicVisibility
 }
 
+// isActive 는 activate/deactivate action 이 따로 담당하므로 여기에 넣지 않는다.
+// profileId 도 일반 입력으로 받지 않는다(자동 연결 금지).
 export type UpdateStudioTeacherInput = {
   teacherId: string
   organizationId: string
   displayName: string
   phone: string | null
   smsEnabled: boolean
-  intro: string | null
-  subjects: string | null
-  targetStudents: string | null
-  specialties: string | null
-  shortIntro: string | null
-  teachingStyle: string | null
-  publicVisibility: TeacherPublicVisibility
 }
 
 export type DeactivateStudioTeacherInput = {

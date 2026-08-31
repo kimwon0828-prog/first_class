@@ -4,10 +4,6 @@ import { revalidatePath } from "next/cache"
 
 import { requireTeacherStudioAccess } from "@/features/studio/lib/require-teacher-studio-access"
 import { dataAdapter } from "@/shared/lib/db"
-import {
-  TEACHER_PUBLIC_VISIBILITY_KEYS,
-  normalizeTeacherPublicVisibility
-} from "@/shared/lib/teacher-public-visibility"
 
 export type UpsertStudioTeacherActionState = {
   ok: boolean
@@ -41,20 +37,6 @@ const normalizeOptionalPhone = (value: FormDataEntryValue | null) => {
   return raw
 }
 
-const normalizeOptionalText = (value: FormDataEntryValue | null) => {
-  const raw = String(value ?? "").trim()
-  return raw ? raw : null
-}
-
-const normalizePublicVisibilityFromFormData = (formData: FormData) => {
-  const candidate: Record<string, unknown> = {}
-
-  for (const key of TEACHER_PUBLIC_VISIBILITY_KEYS) {
-    candidate[key] = String(formData.get(`publicVisibility_${key}`) ?? "true") === "true"
-  }
-
-  return normalizeTeacherPublicVisibility(candidate)
-}
 
 export async function upsertStudioTeacherAction(
   previousState: UpsertStudioTeacherActionState = defaultState,
@@ -69,13 +51,6 @@ export async function upsertStudioTeacherAction(
     const displayName = String(formData.get("displayName") ?? "").trim()
     const phone = normalizeOptionalPhone(formData.get("phone"))
     const smsEnabled = formData.get("smsEnabled") === "on"
-    const intro = normalizeOptionalText(formData.get("intro"))
-    const subjects = normalizeOptionalText(formData.get("subjects"))
-    const targetStudents = normalizeOptionalText(formData.get("targetStudents"))
-    const specialties = normalizeOptionalText(formData.get("specialties"))
-    const shortIntro = normalizeOptionalText(formData.get("shortIntro"))
-    const teachingStyle = normalizeOptionalText(formData.get("teachingStyle"))
-    const publicVisibility = normalizePublicVisibilityFromFormData(formData)
 
     if (!mode) {
       return { ok: false, message: "요청 모드를 확인할 수 없습니다." }
@@ -93,8 +68,7 @@ export async function upsertStudioTeacherAction(
       return { ok: false, message: "전화번호 형식이 올바르지 않습니다. 예: 010-1234-5678" }
     }
 
-    // 선생님 등록/수정은 학원 내부 명부 관리다. 공개 프로필 항목(담당 과목/대상/소개 등)은
-    // 학부모 공개를 켤 때 채우는 선택 정보이므로 필수 검증하지 않는다.
+    // 선생님 등록/수정은 학원 내부 명부 관리다.
     // 필수는 이름과, 입력된 경우의 전화번호 형식뿐이다.
 
     if (mode === "create") {
@@ -102,14 +76,7 @@ export async function upsertStudioTeacherAction(
         organizationId: teacher.organizationId,
         displayName,
         phone,
-        smsEnabled,
-        intro,
-        subjects,
-        targetStudents,
-        specialties,
-        shortIntro,
-        teachingStyle,
-        publicVisibility
+        smsEnabled
       })
     } else {
       await dataAdapter.updateStudioTeacher({
@@ -117,14 +84,7 @@ export async function upsertStudioTeacherAction(
         organizationId: teacher.organizationId,
         displayName,
         phone,
-        smsEnabled,
-        intro,
-        subjects,
-        targetStudents,
-        specialties,
-        shortIntro,
-        teachingStyle,
-        publicVisibility
+        smsEnabled
       })
     }
 

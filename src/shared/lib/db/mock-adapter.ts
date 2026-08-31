@@ -38,7 +38,6 @@ import type {
   StudioTeacherSeatSummary,
   StudioTeacherSummary,
   StudioTeacherOption,
-  TeacherPublicProfile,
   TeacherSignupRequest,
   OrganizationLocationInfo,
   UpdateChildProfileInput,
@@ -61,10 +60,6 @@ import {
   formatSeoulOccurrenceLabel,
   getSeoulDateTimeParts
 } from "@/shared/lib/seoul-datetime"
-import {
-  DEFAULT_TEACHER_PUBLIC_VISIBILITY,
-  normalizeTeacherPublicVisibility
-} from "@/shared/lib/teacher-public-visibility"
 import { normalizeSubjectCategory } from "@/shared/constants/education-taxonomy"
 import { formatAdministrativeRegionLabel } from "@/features/location/lib/region-selection"
 import {
@@ -159,33 +154,6 @@ const mockOrganizationLocation: OrganizationLocationInfo = {
   bname: null
 }
 
-const teacherProfiles: TeacherPublicProfile[] = [
-  {
-    teacherId: "teacher-1",
-    teacherName: "김지은 선생님",
-    intro: "아이 눈높이에 맞춘 체험형 수업을 진행합니다.",
-    specialty: "초등 창의 미술",
-    careerYears: 6,
-    subjects: "미술",
-    targetStudents: "초등 저학년, 초등 고학년",
-    specialties: "드로잉, 색채 표현, 창의 미술",
-    shortIntro: "아이 눈높이에 맞춘 체험형 수업으로 표현 자신감을 키웁니다.",
-    teachingStyle: "작은 성공 경험을 쌓고 스스로 설명하게 돕는 참여형 수업"
-  },
-  {
-    teacherId: "teacher-2",
-    teacherName: "박서현 선생님",
-    intro: "실험과 토론 중심으로 과학 개념을 쉽게 전달합니다.",
-    specialty: "초등 과학 탐구",
-    careerYears: 8,
-    subjects: "과학",
-    targetStudents: "초등 고학년, 중등",
-    specialties: "탐구 실험, 개념 연결, 토론 수업",
-    shortIntro: "실험과 토론으로 과학 개념을 생활 속 경험과 연결합니다.",
-    teachingStyle: "관찰, 토론, 오답 피드백을 함께 진행하는 탐구형 수업"
-  }
-]
-
 const teacherSummaries: StudioTeacherSummary[] = [
   {
     id: "teacher-1",
@@ -194,15 +162,6 @@ const teacherSummaries: StudioTeacherSummary[] = [
     displayName: "김지은 선생님",
     phone: "010-1234-5678",
     smsEnabled: true,
-    specialty: "초등 창의 미술",
-    intro: "아이 눈높이에 맞춘 체험형 수업을 진행합니다.",
-    careerYears: 6,
-    subjects: "미술",
-    targetStudents: "초등 저학년, 초등 고학년",
-    specialties: "드로잉, 색채 표현, 창의 미술",
-    shortIntro: "아이 눈높이에 맞춘 체험형 수업으로 표현 자신감을 키웁니다.",
-    teachingStyle: "작은 성공 경험을 쌓고 스스로 설명하게 돕는 참여형 수업",
-    publicVisibility: { ...DEFAULT_TEACHER_PUBLIC_VISIBILITY },
     isActive: true,
     createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 30).toISOString()
   },
@@ -213,32 +172,11 @@ const teacherSummaries: StudioTeacherSummary[] = [
     displayName: "박서현 선생님",
     phone: null,
     smsEnabled: false,
-    specialty: "초등 과학 탐구",
-    intro: "실험과 토론 중심으로 과학 개념을 쉽게 전달합니다.",
-    careerYears: 8,
-    subjects: "과학",
-    targetStudents: "초등 고학년, 중등",
-    specialties: "탐구 실험, 개념 연결, 토론 수업",
-    shortIntro: "실험과 토론으로 과학 개념을 생활 속 경험과 연결합니다.",
-    teachingStyle: "관찰, 토론, 오답 피드백을 함께 진행하는 탐구형 수업",
-    publicVisibility: { ...DEFAULT_TEACHER_PUBLIC_VISIBILITY },
     isActive: true,
     createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 20).toISOString()
   }
 ]
 
-const toPublicTeacherProfile = (teacher: StudioTeacherSummary): TeacherPublicProfile => ({
-  teacherId: teacher.id,
-  teacherName: teacher.publicVisibility.name ? teacher.displayName : null,
-  intro: teacher.publicVisibility.intro ? teacher.intro : null,
-  specialty: teacher.specialty,
-  careerYears: teacher.careerYears,
-  subjects: teacher.publicVisibility.subjects ? teacher.subjects : null,
-  targetStudents: teacher.publicVisibility.targetStudents ? teacher.targetStudents : null,
-  specialties: teacher.publicVisibility.specialties ? teacher.specialties : null,
-  shortIntro: teacher.publicVisibility.shortIntro ? teacher.shortIntro : null,
-  teachingStyle: teacher.publicVisibility.teachingStyle ? teacher.teachingStyle : null
-})
 
 type GlobalMockStore = typeof globalThis & {
   __firstClassMockClasses__?: ClassSummary[]
@@ -521,7 +459,6 @@ function getFutureIso(hoursFromNow: number) {
 const getTeacherOptions = (): StudioTeacherOption[] =>
   teacherSummaries
     .filter((teacher) => teacher.isActive)
-    .filter((teacher) => teacher.profileId == null)
     .map((teacher) => ({
       teacherId: teacher.id,
       teacherName: teacher.displayName
@@ -529,7 +466,7 @@ const getTeacherOptions = (): StudioTeacherOption[] =>
 
 const getTeacherSeatSummary = (): StudioTeacherSeatSummary => {
   const teacherSeatLimit = 3
-  const activeTeacherCount = teacherSummaries.filter((teacher) => teacher.isActive && teacher.profileId == null).length
+  const activeTeacherCount = teacherSummaries.filter((teacher) => teacher.isActive).length
 
   return {
     organizationId: mockOrganizationId,
@@ -765,14 +702,6 @@ const getProfileDisplayNameById = (profileId: string | null | undefined) => {
   return teacher?.displayName ?? null
 }
 
-const getTeacherSummaryById = (teacherId: string | null | undefined) => {
-  if (!teacherId) {
-    return null
-  }
-
-  return teacherSummaries.find((item) => item.id === teacherId) ?? null
-}
-
 export const mockDataAdapter: DataAdapter = {
   async listClasses(options) {
     const debugEnabled = process.env.NEXT_PUBLIC_DEBUG_DB === "1"
@@ -818,18 +747,14 @@ export const mockDataAdapter: DataAdapter = {
       }
 
       if (shouldFilterByQuery) {
-        const teacherSummary = getTeacherSummaryById(item.teacherId)
-        const publicTeacherName = teacherSummary
-          ? toPublicTeacherProfile(teacherSummary).teacherName
-          : item.teacherDisplayName ?? item.teacherName ?? null
+        // 학부모 목록/상세에는 선생님 정보를 노출하지 않는다(supabase adapter 와 동일).
         const haystacks = [
           item.title,
           item.description,
           item.subject,
           formatClassSubjectDisplayLabel(item),
           item.subjectCategoryName,
-          item.subjectName,
-          publicTeacherName
+          item.subjectName
         ].map(normalizeText)
 
         if (!haystacks.some((value) => value.includes(needle))) {
@@ -840,15 +765,10 @@ export const mockDataAdapter: DataAdapter = {
         return true
       })
       .map((item) => {
-        const teacherSummary = getTeacherSummaryById(item.teacherId)
-        const publicTeacherName = teacherSummary
-          ? toPublicTeacherProfile(teacherSummary).teacherName
-          : item.teacherDisplayName ?? item.teacherName ?? null
-
         return {
           ...toPublicVisibleClassSummary(item),
-          teacherDisplayName: publicTeacherName,
-          teacherName: publicTeacherName
+          teacherDisplayName: null,
+          teacherName: null
         }
       })
 
@@ -868,16 +788,12 @@ export const mockDataAdapter: DataAdapter = {
       return null
     }
 
-    const teacherSummary = getTeacherSummaryById(found.teacherId)
-    const teacherProfile = teacherSummary ? toPublicTeacherProfile(teacherSummary) : null
-    const publicTeacherName =
-      teacherProfile?.teacherName ?? (found.teacherId ? null : found.teacherDisplayName ?? found.teacherName ?? null)
+    const publicTeacherName = null
 
     const detail: ClassDetail = {
       ...toPublicVisibleClassSummary(found),
       teacherDisplayName: publicTeacherName,
       teacherName: publicTeacherName,
-      teacherProfile,
       organization: mockOrganizationLocation
     }
 
@@ -911,7 +827,6 @@ export const mockDataAdapter: DataAdapter = {
 
     return teacherSummaries
       .filter((teacher) => teacher.isActive)
-      .filter((teacher) => teacher.profileId == null)
       .map(
         (teacher): StudioDashboardTeacherFilterOption => ({
           teacherId: teacher.id,
@@ -925,7 +840,6 @@ export const mockDataAdapter: DataAdapter = {
     }
 
     return teacherSummaries
-      .filter((teacher) => teacher.profileId == null)
       .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))
   },
   async getStudioTeacherSeatSummary(organizationId) {
@@ -980,21 +894,11 @@ export const mockDataAdapter: DataAdapter = {
       displayName: input.displayName,
       phone: input.phone,
       smsEnabled: input.smsEnabled,
-      specialty: null,
-      intro: input.intro,
-      careerYears: 0,
-      subjects: input.subjects,
-      targetStudents: input.targetStudents,
-      specialties: input.specialties,
-      shortIntro: input.shortIntro,
-      teachingStyle: input.teachingStyle,
-      publicVisibility: normalizeTeacherPublicVisibility(input.publicVisibility),
       isActive: true,
       createdAt: new Date().toISOString()
     }
 
     teacherSummaries.unshift(created)
-    teacherProfiles.push(toPublicTeacherProfile(created))
 
     return created
   },
@@ -1018,23 +922,11 @@ export const mockDataAdapter: DataAdapter = {
     target.displayName = input.displayName
     target.phone = input.phone
     target.smsEnabled = input.smsEnabled
-    target.intro = input.intro
-    target.subjects = input.subjects
-    target.targetStudents = input.targetStudents
-    target.specialties = input.specialties
-    target.shortIntro = input.shortIntro
-    target.teachingStyle = input.teachingStyle
-    target.publicVisibility = normalizeTeacherPublicVisibility(input.publicVisibility)
 
     const classItems = classes.filter((item) => item.teacherId === target.id)
     for (const classItem of classItems) {
       classItem.teacherDisplayName = input.displayName
       classItem.teacherName = input.displayName
-    }
-
-    const teacherProfile = teacherProfiles.find((profile) => profile.teacherId === target.id)
-    if (teacherProfile) {
-      Object.assign(teacherProfile, toPublicTeacherProfile(target))
     }
 
     return target

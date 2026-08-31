@@ -368,18 +368,9 @@ const TeacherFormPanel = ({
 
   const isCreateMode = !initialItem
 
-  // 아래 값들은 더 이상 UI 에서 편집하지 않는다. 다만 update payload 가 폼 값으로 덮어쓰므로
-  // 기존 DB 값을 그대로 되돌려 보내 legacy 데이터가 지워지지 않게 한다.
+  // 저장은 이름/전화번호/문자 수신 여부만 다룬다. legacy 공개 프로필 컬럼은 payload 에 넣지 않아
+  // DB 에 남아 있는 기존 값이 그대로 보존된다.
   const preservedSmsEnabled = initialItem?.smsEnabled ?? false
-  const preserved: Array<[string, string]> = [
-    ["intro", initialItem?.intro ?? ""],
-    ["subjects", initialItem?.subjects ?? ""],
-    ["targetStudents", initialItem?.targetStudents ?? ""],
-    ["specialties", initialItem?.specialties ?? ""],
-    ["shortIntro", initialItem?.shortIntro ?? ""],
-    ["teachingStyle", initialItem?.teachingStyle ?? ""]
-  ]
-  const preservedVisibility = initialItem?.publicVisibility ?? null
 
   useEffect(() => {
     if (!state.message) {
@@ -405,19 +396,6 @@ const TeacherFormPanel = ({
           <input type="hidden" name="mode" value={isCreateMode ? "create" : "update"} />
           {!isCreateMode ? <input type="hidden" name="teacherId" value={initialItem.id} /> : null}
           <input type="hidden" name="smsEnabled" value={preservedSmsEnabled ? "on" : ""} />
-          {preserved.map(([name, value]) => (
-            <input key={`preserved-${name}`} type="hidden" name={name} value={value} />
-          ))}
-          {preservedVisibility
-            ? Object.entries(preservedVisibility).map(([key, value]) => (
-                <input
-                  key={`visibility-${key}`}
-                  type="hidden"
-                  name={`publicVisibility_${key}`}
-                  value={String(value)}
-                />
-              ))
-            : null}
 
           <header className={styles.panelHeader}>
             <div>
