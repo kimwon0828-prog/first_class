@@ -22,18 +22,36 @@
 --   teacher_signup_requests.approved_teacher_id 도 이번에는 손대지 않는다(Phase 3D).
 --   legacy public 컬럼과 Phase 3B backup table 도 유지한다.
 
+-- replay 호환성
+--   data conversion 은 production legacy 2건 전용이라 fresh database 에서는 건너뛴다.
+--   반면 view DROP 은 fresh database 에서도 반드시 실행되어야 최종 schema 가 일치하므로
+--   조건 분기 밖에 둔다. production 에는 이미 applied 되어 재실행되지 않는다.
+
+-- 학부모 공개 경로를 먼저 없앤다. 의존 object 가 없으므로 CASCADE 를 쓰지 않는다.
+-- 이 문장만은 fresh database 에서도 항상 실행된다.
+drop view if exists public.teacher_public_profiles;
+
 do $$
 declare
   internal_id uuid := '5a19e778-ae84-47b2-8d29-653d4b3094e0';
   demo_id uuid := '7e652ae6-20af-475d-8dfc-12b53542e2ae';
   system_count integer;
   target_count integer;
+  backup_count integer;
+  updated_count integer;
+  remaining_system integer;
 begin
-  -- 1) system teacher 가 정확히 2건이고, 그 2건이 지정한 id 와 일치해야 한다.
   select count(*) into system_count
   from public.teachers
   where profile_id is not null;
 
+  -- fresh database: 전환할 legacy linked teacher 가 없다. view 는 위에서 이미 제거했다.
+  if system_count = 0 then
+    raise notice 'phase3c: no legacy linked teachers found; skipping data conversion';
+    return;
+  end if;
+
+  -- 1) system teacher 가 정확히 2건이고, 그 2건이 지정한 id 와 일치해야 한다.
   if system_count <> 2 then
     raise exception 'phase3c_system_count_failed: expected 2, got %', system_count;
   end if;
@@ -75,37 +93,26 @@ begin
   if to_regclass('public.legacy_used_system_teachers_backup_20260831') is not null then
     raise exception 'phase3c_backup_table_already_exists';
   end if;
-end
-$$;
 
--- 학부모 공개 경로를 먼저 없앤다. 의존 object 가 없으므로 CASCADE 를 쓰지 않는다.
-drop view public.teacher_public_profiles;
+  -- UPDATE 직전 snapshot. select * 이므로 18개 컬럼 전체가 보존되고
+  -- profile_id / is_active 원본이 남아 되돌릴 수 있다.
+  -- (조건부 실행이라 DDL 을 execute 로 감싼다. 모두 migration 내부 고정 문자열이다.)
+  execute $ddl$
+    create table public.legacy_used_system_teachers_backup_20260831 as
+    select *
+    from public.teachers
+    where id in (
+      '5a19e778-ae84-47b2-8d29-653d4b3094e0',
+      '7e652ae6-20af-475d-8dfc-12b53542e2ae'
+    )
+  $ddl$;
 
--- UPDATE 직전 snapshot. select * 이므로 18개 컬럼 전체가 보존되고
--- profile_id / is_active 원본이 남아 되돌릴 수 있다.
-create table public.legacy_used_system_teachers_backup_20260831 as
-select *
-from public.teachers
-where id in (
-  '5a19e778-ae84-47b2-8d29-653d4b3094e0',
-  '7e652ae6-20af-475d-8dfc-12b53542e2ae'
-);
+  -- 이름/전화번호가 담긴 복구 전용 테이블이다. public schema 의 default privileges 로
+  -- anon/authenticated 에 권한이 붙지 않게 회수하고 RLS 를 켜 정책 없이 둔다.
+  execute 'revoke all on table public.legacy_used_system_teachers_backup_20260831 from anon';
+  execute 'revoke all on table public.legacy_used_system_teachers_backup_20260831 from authenticated';
+  execute 'alter table public.legacy_used_system_teachers_backup_20260831 enable row level security';
 
--- 이름/전화번호가 담긴 복구 전용 테이블이다. public schema 의 default privileges 로
--- anon/authenticated 에 권한이 붙지 않게 회수하고 RLS 를 켜 정책 없이 둔다.
-revoke all on table public.legacy_used_system_teachers_backup_20260831 from anon;
-revoke all on table public.legacy_used_system_teachers_backup_20260831 from authenticated;
-alter table public.legacy_used_system_teachers_backup_20260831 enable row level security;
-
-do $$
-declare
-  internal_id uuid := '5a19e778-ae84-47b2-8d29-653d4b3094e0';
-  demo_id uuid := '7e652ae6-20af-475d-8dfc-12b53542e2ae';
-  backup_count integer;
-  updated_count integer;
-  remaining_system integer;
-  teachers_total integer;
-begin
   -- 5) backup 이 정확히 2건일 때만 전환한다.
   select count(*) into backup_count from public.legacy_used_system_teachers_backup_20260831;
   if backup_count <> 2 then
@@ -138,15 +145,10 @@ begin
     raise exception 'phase3c_demo_update_failed: %', updated_count;
   end if;
 
-  -- 8) 사후 검증.
+  -- 8) 사후 검증. teachers 총계 같은 시점 의존 snapshot 은 검사하지 않는다.
   select count(*) into remaining_system from public.teachers where profile_id is not null;
   if remaining_system <> 0 then
     raise exception 'phase3c_postcheck_system_remaining: %', remaining_system;
-  end if;
-
-  select count(*) into teachers_total from public.teachers;
-  if teachers_total <> 18 then
-    raise exception 'phase3c_postcheck_total_changed: expected 18, got %', teachers_total;
   end if;
 
   if not exists (select 1 from public.teachers where id = internal_id and profile_id is null and is_active = false) then

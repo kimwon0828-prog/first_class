@@ -29,6 +29,11 @@
 --   삭제 직전 legacy_system_teachers_backup_20260830 에 18개 컬럼 전체를 snapshot 한다.
 --   backup table 은 Phase 3C 완료 후 DROP 한다.
 
+-- replay 호환성
+--   이 migration 은 production legacy data cleanup 이다. 대상 5건이 없는 fresh database
+--   (supabase db reset 등)에서는 지울 것이 없으므로 전체를 no-op 으로 건너뛴다.
+--   backup table 도 그때는 만들지 않는다. production 에는 이미 applied 되어 재실행되지 않는다.
+
 do $$
 declare
   target_ids uuid[] := array[
@@ -45,12 +50,23 @@ declare
   target_count integer;
   system_count integer;
   bad_count integer;
+  backup_count integer;
+  deleted_count integer;
+  remaining_target integer;
+  remaining_protected integer;
+  remaining_system integer;
 begin
   -- 1) 대상 5건이 모두 존재하고 전부 profile_id 가 채워져 있어야 한다.
   select count(*) into target_count
   from public.teachers t
   where t.id = any(target_ids)
     and t.profile_id is not null;
+
+  -- fresh database: 정리할 legacy row 가 없으므로 아무 것도 하지 않는다.
+  if target_count = 0 then
+    raise notice 'phase3b: no legacy system teachers found; skipping cleanup';
+    return;
+  end if;
 
   if target_count <> 5 then
     raise exception 'phase3b_target_precondition_failed: expected 5 rows with profile_id, got %', target_count;
@@ -76,8 +92,7 @@ begin
     raise exception 'phase3b_protected_row_in_target_list';
   end if;
 
-  -- 4) 조사 시점과 동일한 구조인지 확인한다. 조사 직후 바로 적용하므로 안전하고,
-  --    누군가 그 사이에 system row 를 만들었다면 여기서 멈추는 편이 낫다.
+  -- 4) 조사 시점과 동일한 구조인지 확인한다.
   select count(*) into system_count
   from public.teachers
   where profile_id is not null;
@@ -85,37 +100,30 @@ begin
   if system_count <> 7 then
     raise exception 'phase3b_system_teacher_count_changed: expected 7, got %', system_count;
   end if;
-end
-$$;
 
--- 삭제 직전 snapshot. select * 이므로 18개 컬럼 전체가 보존되고,
--- 이후 컬럼이 추가/변경되어도 복원 시 누락이 생기지 않는다.
-create table public.legacy_system_teachers_backup_20260830 as
-select *
-from public.teachers
-where id in (
-  'c36f34d9-3412-4600-8182-6bcf53425d6f',
-  '7aebcdc8-9e29-44a4-a6ef-f7ab40f1b6d3',
-  '87f5f2b4-7283-4dbc-b592-b3f3768a1702',
-  '51e25220-873d-40f1-b951-cf063142f9ca',
-  '180bb1b2-bca2-4ef3-94e4-749679aeb729'
-);
+  -- 삭제 직전 snapshot. select * 이므로 18개 컬럼 전체가 보존되고,
+  -- 이후 컬럼이 추가/변경되어도 복원 시 누락이 생기지 않는다.
+  -- (조건부 실행이라 DDL 을 execute 로 감싼다. 모두 migration 내부 고정 문자열이다.)
+  execute $ddl$
+    create table public.legacy_system_teachers_backup_20260830 as
+    select *
+    from public.teachers
+    where id in (
+      'c36f34d9-3412-4600-8182-6bcf53425d6f',
+      '7aebcdc8-9e29-44a4-a6ef-f7ab40f1b6d3',
+      '87f5f2b4-7283-4dbc-b592-b3f3768a1702',
+      '51e25220-873d-40f1-b951-cf063142f9ca',
+      '180bb1b2-bca2-4ef3-94e4-749679aeb729'
+    )
+  $ddl$;
 
--- backup 은 이름/전화번호가 들어 있는 복구 전용 테이블이다.
--- public schema 의 default privileges 로 anon/authenticated 에 권한이 붙지 않게 회수하고,
--- RLS 를 켜 정책 없이 두어 service_role/postgres 외에는 접근할 수 없게 한다.
-revoke all on table public.legacy_system_teachers_backup_20260830 from anon;
-revoke all on table public.legacy_system_teachers_backup_20260830 from authenticated;
-alter table public.legacy_system_teachers_backup_20260830 enable row level security;
+  -- backup 은 이름/전화번호가 들어 있는 복구 전용 테이블이다.
+  -- public schema 의 default privileges 로 anon/authenticated 에 권한이 붙지 않게 회수하고,
+  -- RLS 를 켜 정책 없이 두어 service_role/postgres 외에는 접근할 수 없게 한다.
+  execute 'revoke all on table public.legacy_system_teachers_backup_20260830 from anon';
+  execute 'revoke all on table public.legacy_system_teachers_backup_20260830 from authenticated';
+  execute 'alter table public.legacy_system_teachers_backup_20260830 enable row level security';
 
-do $$
-declare
-  backup_count integer;
-  deleted_count integer;
-  remaining_target integer;
-  remaining_protected integer;
-  remaining_system integer;
-begin
   -- 5) backup 이 정확히 5건인지 확인한 뒤에만 삭제한다.
   select count(*) into backup_count from public.legacy_system_teachers_backup_20260830;
   if backup_count <> 5 then
@@ -140,23 +148,14 @@ begin
   -- 7) 사후 검증.
   select count(*) into remaining_target
   from public.teachers
-  where id in (
-    'c36f34d9-3412-4600-8182-6bcf53425d6f',
-    '7aebcdc8-9e29-44a4-a6ef-f7ab40f1b6d3',
-    '87f5f2b4-7283-4dbc-b592-b3f3768a1702',
-    '51e25220-873d-40f1-b951-cf063142f9ca',
-    '180bb1b2-bca2-4ef3-94e4-749679aeb729'
-  );
+  where id = any(target_ids);
   if remaining_target <> 0 then
     raise exception 'phase3b_postcheck_target_remaining: %', remaining_target;
   end if;
 
   select count(*) into remaining_protected
   from public.teachers
-  where id in (
-    '5a19e778-ae84-47b2-8d29-653d4b3094e0',
-    '7e652ae6-20af-475d-8dfc-12b53542e2ae'
-  );
+  where id = any(protected_ids);
   if remaining_protected <> 2 then
     raise exception 'phase3b_postcheck_protected_missing: expected 2, got %', remaining_protected;
   end if;
