@@ -370,7 +370,8 @@ const TeacherFormPanel = ({
 
   // 저장은 이름/전화번호/문자 수신 여부만 다룬다. legacy 공개 프로필 컬럼은 payload 에 넣지 않아
   // DB 에 남아 있는 기존 값이 그대로 보존된다.
-  const preservedSmsEnabled = initialItem?.smsEnabled ?? false
+  // sms_enabled 는 실제 발송 게이트라 여기서 직접 켜고 끈다. 신규 등록 기본값은 DB default 와 같은 OFF.
+  const [smsEnabled, setSmsEnabled] = useState(initialItem?.smsEnabled ?? false)
 
   useEffect(() => {
     if (!state.message) {
@@ -395,7 +396,8 @@ const TeacherFormPanel = ({
         <form action={formAction} className={styles.panelForm}>
           <input type="hidden" name="mode" value={isCreateMode ? "create" : "update"} />
           {!isCreateMode ? <input type="hidden" name="teacherId" value={initialItem.id} /> : null}
-          <input type="hidden" name="smsEnabled" value={preservedSmsEnabled ? "on" : ""} />
+          {/* 토글이 button 이라 값을 스스로 제출하지 못한다. boolean 을 안정적으로 넘기기 위한 hidden 이다. */}
+          <input type="hidden" name="smsEnabled" value={smsEnabled ? "on" : ""} />
 
           <header className={styles.panelHeader}>
             <div>
@@ -452,15 +454,19 @@ const TeacherFormPanel = ({
                 </span>
               </label>
 
-              {!isCreateMode ? (
-                <div className={styles.lockNotice}>
-                  <strong className={styles.lockTitle}>일정 알림 문자는 아직 준비 중이에요.</strong>
-                  <p className={styles.lockDescription}>
-                    연동이 완료되면 이 화면에서 켤 수 있게 안내드릴게요.
-                    {preservedSmsEnabled ? " 현재 저장된 선생님은 문자 수신 동의 상태예요." : ""}
+              <div className={styles.publicFieldRow}>
+                <div>
+                  <strong className={styles.fieldTitle}>문자 알림 수신</strong>
+                  <p className={styles.fieldDescription}>
+                    수업 일정 및 학원 운영 관련 알림 문자를 받을 수 있어요.
                   </p>
                 </div>
-              ) : null}
+                <SmsSwitch
+                  checked={smsEnabled}
+                  onToggle={() => setSmsEnabled((current) => !current)}
+                  disabled={isPending}
+                />
+              </div>
             </section>
 
             {state.message ? (
@@ -487,3 +493,27 @@ const TeacherFormPanel = ({
     </div>
   )
 }
+
+const SmsSwitch = ({
+  checked,
+  onToggle,
+  disabled
+}: {
+  checked: boolean
+  onToggle: () => void
+  disabled: boolean
+}) => (
+  <button
+    type="button"
+    aria-pressed={checked}
+    aria-label="문자 알림 수신"
+    onClick={onToggle}
+    disabled={disabled}
+    className={`${styles.switchRoot} ${checked ? styles.switchRootActive : ""}`}
+  >
+    <span className={styles.switchTrack}>
+      <span className={styles.switchThumb} />
+    </span>
+    <span className={styles.switchLabel}>{checked ? "ON" : "OFF"}</span>
+  </button>
+)
