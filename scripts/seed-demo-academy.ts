@@ -1747,16 +1747,17 @@ const upsertProfile = async (
   }
 }
 
+// 강사 명부(teachers)와 로그인 계정(profiles)은 별개 개념이라 데모에서도 연결하지 않는다.
+// profile_id 를 채우면 Studio 명부/담당 옵션에서 빠지는 legacy system row 가 다시 생긴다.
 const insertTeacher = async (
   supabase: SupabaseClient,
   organizationId: string,
-  teacher: DemoTeacherPlan,
-  profileId: string | null
+  teacher: DemoTeacherPlan
 ) => {
   const { data, error } = await supabase
     .from("teachers")
     .insert({
-      profile_id: profileId,
+      profile_id: null,
       organization_id: organizationId,
       display_name: teacher.displayName,
       phone: teacher.phone,
@@ -1782,18 +1783,18 @@ const insertTeacher = async (
   return data.id as string
 }
 
+// approve_teacher_signup_request RPC 와 동일하게 approved_teacher_id 는 비워 둔다.
 const markTeacherSignupApproved = async (
   supabase: SupabaseClient,
   requestId: string,
-  organizationId: string,
-  teacherId: string
+  organizationId: string
 ) => {
   const { error } = await supabase
     .from("teacher_signup_requests")
     .update({
       status: "approved",
       approved_organization_id: organizationId,
-      approved_teacher_id: teacherId,
+      approved_teacher_id: null,
       reviewed_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     })
@@ -2447,8 +2448,8 @@ const main = async () => {
     organizationId
   })
 
-  const academyTeacherId = await insertTeacher(supabase, organizationId, DEMO_TEACHERS[0], academyUser.id)
-  await markTeacherSignupApproved(supabase, request.id, organizationId, academyTeacherId)
+  const academyTeacherId = await insertTeacher(supabase, organizationId, DEMO_TEACHERS[0])
+  await markTeacherSignupApproved(supabase, request.id, organizationId)
 
   const teacherIds: Record<DemoTeacherKey, string> = {
     "kim-minji": academyTeacherId,
@@ -2457,7 +2458,7 @@ const main = async () => {
   }
 
   for (const teacher of DEMO_TEACHERS.filter((item) => !item.linkedProfile)) {
-    teacherIds[teacher.key] = await insertTeacher(supabase, organizationId, teacher, null)
+    teacherIds[teacher.key] = await insertTeacher(supabase, organizationId, teacher)
   }
 
   const parentUserIds: Record<DemoParentKey, string> = {
