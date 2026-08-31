@@ -52,21 +52,14 @@ type TeacherRecipient = {
   errorMessage: string | null
 }
 
-type TeacherProfileRow = {
-  id: string
-  role: string | null
-  name: string | null
-}
-
 const sanitizePreview = (message: string) => {
   const compact = message.replace(/\s+/g, " ").trim()
   return compact.length > 180 ? `${compact.slice(0, 177)}...` : compact
 }
 
-const resolveTeacherDisplayName = (
-  teacherDisplayName: string | null | undefined,
-  profileName: string | null | undefined
-) => teacherDisplayName?.trim() || profileName?.trim() || "선생님"
+// 표시 이름의 canonical source 는 teachers.display_name 이다(NOT NULL).
+const resolveTeacherDisplayName = (teacherDisplayName: string | null | undefined) =>
+  teacherDisplayName?.trim() || "선생님"
 
 const resolveFallbackErrorMessage = (error: unknown) => {
   const message = error instanceof Error ? error.message.trim() : ""
@@ -187,7 +180,7 @@ const resolveTeacherRecipient = async (
   const serviceRoleClient = getSupabaseServiceRoleClient()
   const { data, error } = await serviceRoleClient
     .from("teachers")
-    .select("id, organization_id, profile_id, display_name, phone, sms_enabled, is_active")
+    .select("id, organization_id, display_name, phone, sms_enabled, is_active")
     .eq("id", teacherId)
     .maybeSingle()
 
@@ -207,7 +200,7 @@ const resolveTeacherRecipient = async (
 
   if (data.organization_id !== organizationId) {
     return {
-      recipientName: resolveTeacherDisplayName(data.display_name, null),
+      recipientName: resolveTeacherDisplayName(data.display_name),
       recipientPhone: data.phone?.trim() || null,
       teacherId: data.id,
       smsEnabled: Boolean(data.sms_enabled),
@@ -215,35 +208,9 @@ const resolveTeacherRecipient = async (
     }
   }
 
-  let profileData: TeacherProfileRow | null = null
-
-  if (data.profile_id) {
-    const { data: fetchedProfileData, error: profileError } = await serviceRoleClient
-      .from("profiles")
-      .select("id, role, name")
-      .eq("id", data.profile_id)
-      .maybeSingle()
-
-    if (profileError) {
-      throw new Error("failed_to_fetch_teacher_sms_profile")
-    }
-
-    profileData = (fetchedProfileData as TeacherProfileRow | null) ?? null
-
-    if (!profileData || profileData.role !== "teacher") {
-      return {
-        recipientName: resolveTeacherDisplayName(data.display_name, profileData?.name),
-        recipientPhone: data.phone?.trim() || null,
-        teacherId: data.id,
-        smsEnabled: Boolean(data.sms_enabled),
-        errorMessage: "excluded_non_teacher_recipient"
-      }
-    }
-  }
-
   if (!data.is_active) {
     return {
-      recipientName: resolveTeacherDisplayName(data.display_name, profileData?.name),
+      recipientName: resolveTeacherDisplayName(data.display_name),
       recipientPhone: data.phone?.trim() || null,
       teacherId: data.id,
       smsEnabled: Boolean(data.sms_enabled),
@@ -252,7 +219,7 @@ const resolveTeacherRecipient = async (
   }
 
   return {
-    recipientName: resolveTeacherDisplayName(data.display_name, profileData?.name),
+    recipientName: resolveTeacherDisplayName(data.display_name),
     recipientPhone: data.phone?.trim() || null,
     teacherId: data.id,
     smsEnabled: Boolean(data.sms_enabled),
