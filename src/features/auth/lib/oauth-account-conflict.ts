@@ -14,7 +14,7 @@ type EmailConflictCheckResult =
       reason: ConflictReason
     }
 
-const STUDIO_PROFILE_ROLES = new Set(["teacher", "academy", "admin", "operator"])
+const STUDIO_PROFILE_ROLES = new Set(["academy", "admin", "operator"])
 
 const listUsersByEmail = async (email: string) => {
   const serviceRoleClient = getSupabaseServiceRoleClient()

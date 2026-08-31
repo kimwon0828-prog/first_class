@@ -309,7 +309,6 @@ export async function studioSignUpAction(
     options: {
       data: {
         signup_intent: "teacher_public",
-        role: "teacher",
         name: fallbackTeacherName,
         teacher_name: fallbackTeacherName,
         teacher_phone: validated.contactPhone,

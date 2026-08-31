@@ -201,7 +201,7 @@ export async function studioSignInAction(
   }
 
   const normalizedRole =
-    profile.role === "teacher" || profile.role === "academy"
+    profile.role === "academy"
       ? "academy"
       : profile.role === "operator" || profile.role === "admin"
         ? "admin"

@@ -50,7 +50,6 @@ export type CurrentAuthState = CurrentAuthBase &
   )
 
 const isStudioProfile = (profile: AuthProfile) =>
-  profile.dbRole === "teacher" ||
   profile.dbRole === "academy" ||
   profile.dbRole === "operator" ||
   profile.dbRole === "admin"

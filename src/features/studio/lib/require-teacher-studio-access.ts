@@ -16,7 +16,7 @@ export type TeacherStudioAccess = {
   organizationId: string
 }
 
-const STUDIO_ROLES = ["teacher", "academy", "admin"] as const
+const STUDIO_ROLES = ["academy", "admin"] as const
 const shouldDebugAuth = process.env.NODE_ENV !== "production" && process.env.NEXT_PUBLIC_DEBUG_AUTH === "1"
 
 type StudioProfileRow = {

@@ -153,10 +153,8 @@ export async function signInAction(
     redirect(returnTo ?? resolvePostAuthRedirect(normalizedRole.role))
   }
 
-  const metadataRole = data.user.user_metadata?.role
   const signupIntent = data.user.user_metadata?.signup_intent
   const isExplicitTeacherMetadata =
-    metadataRole === "teacher" ||
     signupIntent === "teacher_invite" ||
     signupIntent === "staff_invite" ||
     signupIntent === "teacher_public"
@@ -240,10 +238,8 @@ export async function ensureParentProfileAfterAuthAction(
       return { ok: false, role: null, message: userError?.message ?? "no_user" }
     }
 
-    const metadataRole = user.user_metadata?.role
     const signupIntent = user.user_metadata?.signup_intent
     const isExplicitTeacherMetadata =
-      metadataRole === "teacher" ||
       signupIntent === "teacher_invite" ||
       signupIntent === "staff_invite" ||
       signupIntent === "teacher_public"

@@ -59,8 +59,7 @@ export default async function ClassDetailPage({ params, searchParams }: ClassDet
   const session = await getSession()
   const profile = session ? await getMyProfile() : null
   const isParentUser = profile?.role === "parent"
-  const isStudioUser =
-    profile?.dbRole === "teacher" || profile?.dbRole === "academy" || profile?.dbRole === "admin"
+  const isStudioUser = profile?.dbRole === "academy" || profile?.dbRole === "admin"
   const favoritesEnabled = !session || profile?.role === "parent"
   const detailHref = regionQuery.size
     ? `/classes/${resolvedParams.id}?${regionQuery.toString()}`

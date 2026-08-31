@@ -219,8 +219,7 @@ export default async function AcademiesPage({ searchParams }: AcademiesPageProps
       : "전체"
   const profile = session ? await getMyProfile() : null
   const isParentUser = profile?.role === "parent"
-  const isStudioUser =
-    profile?.dbRole === "teacher" || profile?.dbRole === "academy" || profile?.dbRole === "admin"
+  const isStudioUser = profile?.dbRole === "academy" || profile?.dbRole === "admin"
   const myApplicationsHref = "/my/applications"
   const myApplicationsEntryHref = session
     ? isParentUser

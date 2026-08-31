@@ -2,7 +2,7 @@ import { cache } from "react"
 
 import { getSupabaseServerClient } from "@/integrations/supabase/server"
 
-export type DbProfileRole = "parent" | "teacher" | "operator" | "academy" | "admin"
+export type DbProfileRole = "parent" | "operator" | "academy" | "admin"
 
 export type ProfileRole = "parent" | "academy" | "admin"
 
@@ -46,7 +46,7 @@ export const normalizeProfileRole = (
     return { role: "parent", dbRole: "parent" }
   }
 
-  if (role === "teacher" || role === "academy") {
+  if (role === "academy") {
     return { role: "academy", dbRole: role }
   }
 
@@ -298,10 +298,10 @@ export const ensureParentProfile = async (
     return null
   }
 
-  const metadataRole = user.user_metadata?.role
+  // 학원(Studio) 계정 판별은 signup_intent 하나로만 한다. legacy metadata role="teacher" 는
+  // signup_intent 와 항상 함께 기록되던 중복 신호였고, writer 에서 제거되었다.
   const signupIntent = user.user_metadata?.signup_intent
   const isTeacherAccount =
-    metadataRole === "teacher" ||
     signupIntent === "teacher_invite" ||
     signupIntent === "staff_invite" ||
     signupIntent === "teacher_public"

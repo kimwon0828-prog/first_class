@@ -10,7 +10,7 @@ export default async function FavoritesPage() {
   const profile = session ? await getMyProfile() : null
   const role = profile?.dbRole
   const isParent = role === "parent"
-  const isStudioUser = role === "teacher" || role === "academy" || role === "admin"
+  const isStudioUser = role === "academy" || role === "admin"
   const favoritesEnabled = !session || profile?.role === "parent"
   const myApplicationsHref = "/my/applications"
   const myApplicationsEntryHref = session

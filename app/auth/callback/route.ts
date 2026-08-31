@@ -48,11 +48,9 @@ const normalizeName = (user: {
 }
 
 const isStudioMetadataAccount = (user: { user_metadata?: Record<string, unknown> }) => {
-  const metadataRole = user.user_metadata?.role
   const signupIntent = user.user_metadata?.signup_intent
 
   return (
-    metadataRole === "teacher" ||
     signupIntent === "teacher_invite" ||
     signupIntent === "staff_invite" ||
     signupIntent === "teacher_public"
