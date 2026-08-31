@@ -318,13 +318,6 @@ export type StudioTeacherSummary = {
   createdAt: string
 }
 
-export type StudioTeacherSeatSummary = {
-  organizationId: string
-  teacherSeatLimit: number
-  activeTeacherCount: number
-  remainingTeacherSeats: number
-}
-
 // 선생님별 담당 정보는 teachers.subjects/target_students 가 아니라 classes.teacher_id 에서 파생한다.
 // (legacy 컬럼은 공개 프로필 용도로만 남겨 둔다.)
 export type StudioTeacherAssignmentSummary = {
@@ -820,7 +813,6 @@ export interface DataAdapter {
     organizationId: string
   ): Promise<StudioDashboardTeacherFilterOption[]>
   listStudioTeachers(organizationId: string): Promise<StudioTeacherSummary[]>
-  getStudioTeacherSeatSummary(organizationId: string): Promise<StudioTeacherSeatSummary>
   listStudioTeacherAssignments(organizationId: string): Promise<StudioTeacherAssignmentSummary[]>
   createStudioTeacher(input: CreateStudioTeacherInput): Promise<StudioTeacherSummary>
   updateStudioTeacher(input: UpdateStudioTeacherInput): Promise<StudioTeacherSummary>

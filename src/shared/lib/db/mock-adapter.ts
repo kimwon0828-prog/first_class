@@ -35,7 +35,6 @@ import type {
   StudioScheduleBlockSummary,
   StudioDashboardTeacherFilterOption,
   StudioTeacherAssignmentSummary,
-  StudioTeacherSeatSummary,
   StudioTeacherSummary,
   StudioTeacherOption,
   TeacherSignupRequest,
@@ -80,7 +79,9 @@ type MockApplicationRecord = StudioApplicationDetail & {
 }
 
 const mockOrganizationId = "org-1"
-const mockTeacherProfileId = "teacher-profile-1"
+// 상태 변경 로그의 actor 이름 표시에만 쓰는 로그인 운영 멤버 profile fixture 다.
+// teachers 명부 row 와는 연결하지 않는다(production 도 profile_id 전부 NULL).
+const mockStudioActorProfileId = "studio-actor-profile-1"
 const mockMasterCategories: SubjectCategory[] = [
   {
     id: "00000000-0000-4000-8000-000000000001",
@@ -157,7 +158,7 @@ const mockOrganizationLocation: OrganizationLocationInfo = {
 const teacherSummaries: StudioTeacherSummary[] = [
   {
     id: "teacher-1",
-    profileId: mockTeacherProfileId,
+    profileId: null,
     organizationId: mockOrganizationId,
     displayName: "김지은 선생님",
     phone: "010-1234-5678",
@@ -463,18 +464,6 @@ const getTeacherOptions = (): StudioTeacherOption[] =>
       teacherId: teacher.id,
       teacherName: teacher.displayName
     }))
-
-const getTeacherSeatSummary = (): StudioTeacherSeatSummary => {
-  const teacherSeatLimit = 3
-  const activeTeacherCount = teacherSummaries.filter((teacher) => teacher.isActive).length
-
-  return {
-    organizationId: mockOrganizationId,
-    teacherSeatLimit,
-    activeTeacherCount,
-    remainingTeacherSeats: Math.max(0, teacherSeatLimit - activeTeacherCount)
-  }
-}
 
 const toAvailableScheduleSlot = (
   slot: MockScheduleBlock,
@@ -841,18 +830,6 @@ export const mockDataAdapter: DataAdapter = {
 
     return teacherSummaries
       .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))
-  },
-  async getStudioTeacherSeatSummary(organizationId) {
-    if (organizationId !== mockOrganizationId) {
-      return {
-        organizationId,
-        teacherSeatLimit: 3,
-        activeTeacherCount: 0,
-        remainingTeacherSeats: 3
-      }
-    }
-
-    return getTeacherSeatSummary()
   },
   async listStudioTeacherAssignments(organizationId): Promise<StudioTeacherAssignmentSummary[]> {
     if (organizationId !== mockOrganizationId) {
@@ -2050,7 +2027,7 @@ export const mockDataAdapter: DataAdapter = {
       fromStatus: input.currentStatus,
       toStatus: input.nextStatus,
       actorId: input.actorId,
-      actorName: input.actorId === mockTeacherProfileId ? "테스트 선생님" : null,
+      actorName: input.actorId === mockStudioActorProfileId ? "테스트 선생님" : null,
       note: input.note,
       createdAt: new Date().toISOString()
     })
@@ -2107,7 +2084,7 @@ export const mockDataAdapter: DataAdapter = {
       fromStatus: input.currentStatus,
       toStatus: input.currentStatus,
       actorId: input.actorId,
-      actorName: input.actorId === mockTeacherProfileId ? "테스트 선생님" : null,
+      actorName: input.actorId === mockStudioActorProfileId ? "테스트 선생님" : null,
       note: input.note,
       createdAt: new Date().toISOString()
     })

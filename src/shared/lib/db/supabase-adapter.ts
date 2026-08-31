@@ -72,7 +72,6 @@ import type {
   StudioScheduleBlockType,
   StudioClassScheduleType,
   StudioDashboardTeacherFilterOption,
-  StudioTeacherSeatSummary,
   StudioTeacherSummary,
   TeacherSignupRequest,
   TeacherSignupRequestStatus,
@@ -338,11 +337,6 @@ type TeacherDisplayRow = {
   id: string
   display_name: string | null
   profile_id: string | null
-}
-
-type OrganizationTeacherSeatRow = {
-  id: string
-  teacher_seat_limit: number | null
 }
 
 type ProfileNameRow = {
@@ -2212,43 +2206,6 @@ const getActorNameMap = async (actorIds: string[]) => {
   }
 }
 
-const getStudioTeacherSeatSummaryByOrganization = async (
-  organizationId: string
-): Promise<StudioTeacherSeatSummary> => {
-  const supabase = await getSupabaseServerClient()
-  const [{ data: organizationRow, error: organizationError }, { count: activeTeacherCount, error: countError }] =
-    await Promise.all([
-      supabase
-        .from("organizations")
-        .select("id, teacher_seat_limit")
-        .eq("id", organizationId)
-        .maybeSingle(),
-      supabase
-        .from("teachers")
-        .select("id", { count: "exact", head: true })
-        .eq("organization_id", organizationId)
-        .eq("is_active", true)
-    ])
-
-  if (organizationError || !organizationRow) {
-    throw new Error("failed_to_fetch_organization_teacher_seat_limit")
-  }
-
-  if (countError) {
-    throw new Error("failed_to_count_active_teachers")
-  }
-
-  const teacherSeatLimit = Math.max(1, (organizationRow as OrganizationTeacherSeatRow).teacher_seat_limit ?? 3)
-  const safeActiveTeacherCount = activeTeacherCount ?? 0
-
-  return {
-    organizationId,
-    teacherSeatLimit,
-    activeTeacherCount: safeActiveTeacherCount,
-    remainingTeacherSeats: Math.max(0, teacherSeatLimit - safeActiveTeacherCount)
-  }
-}
-
 export const listAvailableScheduleSlotsByClassIdWithClient = async ({
   classId,
   supabase
@@ -2874,9 +2831,6 @@ export const supabaseDataAdapter: DataAdapter = {
 
     return teacherRows.map((row) => mapStudioTeacher(row, profileNameById))
   },
-  async getStudioTeacherSeatSummary(organizationId) {
-    return getStudioTeacherSeatSummaryByOrganization(organizationId)
-  },
   // 선생님 수만큼 조회하지 않는다. organization 단위로 배정된 수업을 한 번 읽고 메모리에서 묶는다.
   // 명부의 "담당 수업" 은 현재 운영 중인 수업을 뜻하므로 비활성 수업은 제외한다.
   async listStudioTeacherAssignments(organizationId) {
@@ -2941,8 +2895,7 @@ export const supabaseDataAdapter: DataAdapter = {
     }))
   },
   async createStudioTeacher(input) {
-    // 선생님 등록은 학원 내부 명부 등록이라 teacher_seat_limit 으로 막지 않는다.
-    // seat 조회(getStudioTeacherSeatSummary) 자체는 다른 화면을 위해 그대로 남겨 둔다.
+    // 선생님 등록은 학원 내부 명부 등록이라 인원 상한으로 막지 않는다.
     const supabase = await getSupabaseServerClient()
     const { data, error } = await supabase
       .from("teachers")
