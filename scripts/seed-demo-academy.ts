@@ -218,7 +218,6 @@ type TeacherSignupRequestRow = {
   user_id: string
   status: "pending" | "approved" | "rejected"
   approved_organization_id?: string | null
-  approved_teacher_id?: string | null
 }
 
 type ClassScheduleInsertRow = {
@@ -1420,7 +1419,7 @@ const checkResumeApplicationsPreflight = async (supabase: SupabaseClient): Promi
 
   const { data: signupRequests, error: signupRequestError } = await supabase
     .from("teacher_signup_requests")
-    .select("id, user_id, status, approved_organization_id, approved_teacher_id")
+    .select("id, user_id, status, approved_organization_id")
     .eq("signup_email", DEMO_ACADEMY_EMAIL)
 
   if (signupRequestError) {
@@ -1746,7 +1745,6 @@ const insertTeacher = async (
   return data.id as string
 }
 
-// approve_teacher_signup_request RPC 와 동일하게 approved_teacher_id 는 비워 둔다.
 const markTeacherSignupApproved = async (
   supabase: SupabaseClient,
   requestId: string,
@@ -1757,7 +1755,6 @@ const markTeacherSignupApproved = async (
     .update({
       status: "approved",
       approved_organization_id: organizationId,
-      approved_teacher_id: null,
       reviewed_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     })

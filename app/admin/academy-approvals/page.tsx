@@ -39,7 +39,6 @@ type SignupRequestRow = {
   reviewed_by: string | null
   reviewed_at: string | null
   approved_organization_id: string | null
-  approved_teacher_id: string | null
 }
 
 type SignupRequestView = {
@@ -83,7 +82,6 @@ type ApprovedSignupRequestRow = {
   user_id: string
   status: string
   approved_organization_id: string | null
-  approved_teacher_id: string | null
   representative_name: string | null
   business_registration_number: string | null
   business_registration_file_path: string | null
@@ -234,8 +232,7 @@ const getSignupRequests = async (): Promise<SignupRequestView[]> => {
         "rejection_reason",
         "reviewed_by",
         "reviewed_at",
-        "approved_organization_id",
-        "approved_teacher_id"
+        "approved_organization_id"
       ].join(", ")
     )
     .order("created_at", { ascending: false })
@@ -357,7 +354,6 @@ const syncApprovedOrganizationFields = async (requestId: string) => {
         "user_id",
         "status",
         "approved_organization_id",
-        "approved_teacher_id",
         "representative_name",
         "business_registration_number",
         "business_registration_file_path",
@@ -418,20 +414,6 @@ const syncApprovedOrganizationFields = async (requestId: string) => {
 
   if (organizationUpdateError) {
     throw new Error(`failed_to_update_organization_with_signup_request:${organizationUpdateError.message}`)
-  }
-
-  if (approvedRequest.approved_teacher_id) {
-    const { error: teacherUpdateError } = await serviceRoleClient
-      .from("teachers")
-      .update({
-        phone: approvedRequest.teacher_phone ?? approvedRequest.contact_phone ?? null,
-        updated_at: new Date().toISOString()
-      })
-      .eq("id", approvedRequest.approved_teacher_id)
-
-    if (teacherUpdateError) {
-      throw new Error(`failed_to_update_teacher_phone_from_signup_request:${teacherUpdateError.message}`)
-    }
   }
 
   return approvedRequest.approved_organization_id
