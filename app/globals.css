@@ -12,6 +12,16 @@
   --surface-sub: #fafafa;
   --border: #e8e8e8;
   --border-strong: #d4d4d4;
+  --green-fg: #1b7a26;
+  --green-bg: #eaf7ec;
+  --amber-fg: #8a5a00;
+  --amber-bg: #fbf3e4;
+  --blue-fg: #245ea8;
+  --blue-bg: #eef4fc;
+  --gray-fg: #5c625c;
+  --gray-bg: #f1f2f1;
+  --red-fg: #b42318;
+  --red-bg: #fdecec;
   --r-sm: 8px;
   --r-md: 12px;
   --r-lg: 16px;
@@ -24,6 +34,10 @@
   --s6: 24px;
   --s8: 32px;
   --s10: 40px;
+  /* Studio(/studio) layout. STUDIO_DESIGN_SYSTEM.md 참고. */
+  --studio-max: 1200px;
+  --side-w: 260px;
+  /* 학부모/파트너 layout. Studio 와 별도 체계다. */
   --col: 480px;
   --gutter: 16px;
   --tabbar-h: 60px;
