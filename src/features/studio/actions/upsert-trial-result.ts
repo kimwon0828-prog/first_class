@@ -306,6 +306,7 @@ export async function upsertTrialResultAction(
     }
 
     revalidatePath("/studio")
+    revalidatePath("/studio/cases")
     revalidatePath("/studio/applications")
     revalidatePath(`/studio/applications/${applicationId}`)
 

@@ -402,8 +402,8 @@ export default async function StudioApplicationDetailPage({ params }: StudioAppl
     <div className={styles.page}>
       <header className={styles.header}>
         <div className={styles.headerTopRow}>
-          <Link href="/studio/applications" className={styles.backLink}>
-            신청/상담 관리로 돌아가기
+          <Link href="/studio/cases" className={styles.backLink}>
+            상담·등록으로 돌아가기
           </Link>
         </div>
 

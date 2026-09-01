@@ -15,16 +15,24 @@ type StudioShellProps = {
   children: ReactNode
   organizationName?: string | null
   logoImagePath?: string | null
-  consultationLeadCount?: number
 }
 
 type NavItem = {
   href: string
   label: string
-  badgeCount?: number
 }
 
-const isActivePath = (pathname: string, href: string) => {
+/**
+ * 메뉴에서 감췄지만 아직 살아 있는 legacy 경로를 어떤 메뉴로 접어 보여줄지 한 곳에서 관리한다.
+ * redirect 는 하지 않는다. 직접 URL 로 들어와도 사이드바가 현재 위치를 잃지 않게 하는 용도다.
+ *
+ * /studio/applications/[id] 는 Case 상세이므로 prefix 매칭으로 함께 잡힌다.
+ */
+const NAV_ALIAS_PATHS: Record<string, readonly string[]> = {
+  "/studio/cases": ["/studio/applications", "/studio/unregistered"]
+}
+
+const matchesPath = (pathname: string, href: string) => {
   if (href === "/studio") {
     return pathname === "/studio"
   }
@@ -32,12 +40,15 @@ const isActivePath = (pathname: string, href: string) => {
   return pathname === href || pathname.startsWith(`${href}/`)
 }
 
-export const StudioShell = ({
-  children,
-  organizationName,
-  logoImagePath,
-  consultationLeadCount = 0
-}: StudioShellProps) => {
+const isActivePath = (pathname: string, href: string) => {
+  if (matchesPath(pathname, href)) {
+    return true
+  }
+
+  return (NAV_ALIAS_PATHS[href] ?? []).some((alias) => matchesPath(pathname, alias))
+}
+
+export const StudioShell = ({ children, organizationName, logoImagePath }: StudioShellProps) => {
   const pathname = usePathname() ?? ""
   const accountLabel = organizationName?.trim() || "학원"
   const accountInitial = accountLabel.slice(0, 1)
@@ -53,14 +64,11 @@ export const StudioShell = ({
   // (auto/null 은 loading.tsx 까지만 가져와서 click 시 destination RSC 를 다시 요청한다.)
   const prefetchFor = (href: string) => (intentHrefs.has(href) ? true : false)
   const [isLogoImageBroken, setIsLogoImageBroken] = useState(false)
+  // 신청 관리(/studio/applications)와 상담 관리(/studio/unregistered)는 상담·등록으로 합쳤다.
+  // 두 route 는 롤백/기능 비교를 위해 살아 있고, 메뉴에서만 감춘다(NAV_ALIAS_PATHS 참고).
   const navItems: NavItem[] = [
     { href: "/studio", label: "대시보드" },
-    { href: "/studio/applications", label: "신청 관리" },
-    {
-      href: "/studio/unregistered",
-      label: "상담 관리",
-      badgeCount: consultationLeadCount > 0 ? consultationLeadCount : undefined
-    },
+    { href: "/studio/cases", label: "상담·등록" },
     { href: "/studio/classes", label: "수업 관리" },
     { href: "/studio/schedule", label: "일정 관리" },
     { href: "/studio/teachers", label: "선생님 관리" }
@@ -117,7 +125,6 @@ export const StudioShell = ({
               >
                 <span className={styles.navDot} aria-hidden="true" />
                 <span className={styles.navLabel}>{item.label}</span>
-                {item.badgeCount ? <span className={styles.navBadge}>{item.badgeCount}</span> : null}
                 {pendingHref === item.href ? <span className={styles.navPendingText}>이동 중...</span> : null}
               </Link>
             )

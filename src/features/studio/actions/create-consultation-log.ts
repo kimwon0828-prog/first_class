@@ -295,6 +295,7 @@ export async function createConsultationLogAction(
     })
 
     revalidatePath("/studio")
+    revalidatePath("/studio/cases")
     revalidatePath("/studio/applications")
     revalidatePath(`/studio/applications/${applicationId}`)
 

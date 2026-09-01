@@ -82,6 +82,7 @@ export async function updateApplicationAssigneeAction(
     }
 
     revalidatePath("/studio")
+    revalidatePath("/studio/cases")
     revalidatePath("/studio/applications")
     revalidatePath(`/studio/applications/${applicationId}`)
     revalidatePath("/studio/schedule")

@@ -176,6 +176,7 @@ export async function updateApplicationOutcomeAction(
     }
 
     revalidatePath("/studio")
+    revalidatePath("/studio/cases")
     revalidatePath("/studio/applications")
     revalidatePath(`/studio/applications/${applicationId}`)
 

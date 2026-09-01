@@ -139,6 +139,7 @@ export async function updateConsultationLogAction(
     }
 
     revalidatePath("/studio")
+    revalidatePath("/studio/cases")
     revalidatePath("/studio/applications")
     revalidatePath(`/studio/applications/${applicationId}`)
 
