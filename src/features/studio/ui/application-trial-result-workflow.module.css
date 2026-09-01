@@ -132,8 +132,12 @@
 
 .primaryButton {
   border: 0;
-  background: #2aad38;
+  background: var(--brand-700);
   color: #ffffff;
+}
+
+.primaryButton:hover {
+  background: var(--brand-900);
 }
 
 .secondaryButton {
@@ -592,8 +596,12 @@
 
 .mobileActionButtonPrimary {
   border: 0;
-  background: #2aad38;
+  background: var(--brand-700);
   color: #ffffff;
+}
+
+.mobileActionButtonPrimary:hover {
+  background: var(--brand-900);
 }
 
 .dialogOverlay {

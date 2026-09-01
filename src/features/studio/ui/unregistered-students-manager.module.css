@@ -145,12 +145,12 @@
 .submitButton,
 .emptyButton,
 .primaryButtonGreen {
-  background: #2aad38;
+  background: var(--brand-700);
   color: #ffffff;
 }
 
 .primaryButtonGreen:hover {
-  background: #1b7a26;
+  background: var(--brand-900);
 }
 
 .secondaryButton {

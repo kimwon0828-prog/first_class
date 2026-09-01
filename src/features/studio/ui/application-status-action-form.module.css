@@ -130,7 +130,7 @@
   height: 48px;
   border: 0;
   border-radius: 12px;
-  background: #2aad38;
+  background: var(--brand-700);
   color: #ffffff;
   font-size: 15px;
   font-weight: 900;
@@ -138,7 +138,7 @@
 }
 
 .primaryButton:hover {
-  background: #249b31;
+  background: var(--brand-900);
 }
 
 .secondaryButton {

@@ -911,15 +911,15 @@
 .primaryButton {
   height: 46px;
   padding: 0 16px;
-  border: 1px solid #2aad38;
-  background: #2aad38;
+  border: 1px solid var(--brand-700);
+  background: var(--brand-700);
   color: #ffffff;
   font-size: 14px;
 }
 
 .primaryButton:hover {
-  background: #249b31;
-  border-color: #249b31;
+  background: var(--brand-900);
+  border-color: var(--brand-900);
 }
 
 .secondaryButton {

@@ -72,8 +72,17 @@
 
 .buttonPrimary {
   border: 0;
-  background: #2aad38;
+  background: var(--brand-700);
   color: #ffffff;
+}
+
+.buttonPrimary:hover {
+  background: var(--brand-900);
+}
+
+.buttonPrimary:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
 }
 
 .buttonSecondary,

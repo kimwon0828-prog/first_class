@@ -525,12 +525,16 @@
   padding: 0 14px;
   border-radius: 12px;
   border: 1px solid #cfe8d2;
-  background: #2aad38;
+  background: var(--brand-700);
   color: #ffffff;
   font-size: 13px;
   font-weight: 900;
   cursor: pointer;
   opacity: 1;
+}
+
+.primaryButton:hover {
+  background: var(--brand-900);
 }
 
 .primaryButton:disabled {

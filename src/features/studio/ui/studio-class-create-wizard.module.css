@@ -88,11 +88,20 @@
   padding: 8px 20px;
   border: none;
   border-radius: 8px;
-  background: #2aad38;
+  background: var(--brand-700);
   color: #ffffff;
   font-size: 14px;
   line-height: 20px;
   font-weight: 700;
+}
+
+.saveButton:hover {
+  background: var(--brand-900);
+}
+
+.saveButton:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
 }
 
 .tabBar {

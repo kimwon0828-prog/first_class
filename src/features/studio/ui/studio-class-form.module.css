@@ -132,13 +132,17 @@
   min-height: 38px;
   padding: 0 20px;
   border-radius: 8px;
-  border: 1px solid #2aad38;
-  background: #2aad38;
+  border: 1px solid var(--brand-700);
+  background: var(--brand-700);
   color: #ffffff;
   font-size: 14px;
   line-height: 20px;
   font-weight: 800;
   cursor: pointer;
+}
+
+.saveButton:hover {
+  background: var(--brand-900);
 }
 
 .saveButton:disabled {
@@ -421,9 +425,9 @@
 }
 
 .chipButtonSelected {
-  border-color: #2aad38;
-  background: #2aad38;
-  color: #ffffff;
+  border-color: var(--brand-500);
+  background: var(--brand-50);
+  color: var(--brand-700);
 }
 
 .previewRail {

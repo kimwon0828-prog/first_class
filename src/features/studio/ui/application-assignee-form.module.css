@@ -128,7 +128,7 @@
   padding: 0 16px;
   border: 0;
   border-radius: 12px;
-  background: #2aad38;
+  background: var(--brand-700);
   color: #ffffff;
   font-size: 14px;
   line-height: 20px;
@@ -137,7 +137,7 @@
 }
 
 .primaryButton:hover {
-  background: #1e8c2b;
+  background: var(--brand-900);
 }
 
 .primaryButton:disabled {

@@ -96,9 +96,9 @@
 }
 
 .filterChipActive {
-  border-color: #111111;
-  background: #111111;
-  color: #ffffff;
+  border-color: var(--brand-500);
+  background: var(--brand-50);
+  color: var(--brand-700);
 }
 
 .searchForm {
@@ -139,13 +139,18 @@
 .searchButton {
   height: 36px;
   padding: 0 14px;
-  border: 1px solid #111111;
+  border: 1px solid var(--border);
   border-radius: 10px;
-  background: #111111;
-  color: #ffffff;
+  background: var(--surface);
+  color: var(--text-2);
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
+}
+
+.searchButton:hover {
+  border-color: var(--brand-700);
+  color: var(--brand-700);
 }
 
 .searchReset {

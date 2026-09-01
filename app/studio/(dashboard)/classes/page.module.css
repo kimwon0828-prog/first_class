@@ -61,8 +61,8 @@
   height: 48px;
   padding: 0 16px;
   border-radius: 12px;
-  background: #2aad38;
-  border: 1px solid #2aad38;
+  background: var(--brand-700);
+  border: 1px solid var(--brand-700);
   color: #ffffff;
   font-size: 15px;
   font-weight: 800;
@@ -71,8 +71,8 @@
 }
 
 .primaryButton:hover {
-  background: #249b31;
-  border-color: #249b31;
+  background: var(--brand-900);
+  border-color: var(--brand-900);
 }
 
 .alertDanger {

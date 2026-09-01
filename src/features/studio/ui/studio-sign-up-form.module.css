@@ -348,7 +348,7 @@
   height: 52px;
   border: 0;
   border-radius: 12px;
-  background: #2aad38;
+  background: var(--brand-700);
   color: #ffffff;
   font-size: 15px;
   font-weight: 900;
@@ -356,7 +356,7 @@
 }
 
 .submitButton:hover {
-  background: #249b31;
+  background: var(--brand-900);
 }
 
 .submitButton:disabled {
@@ -537,7 +537,7 @@
   width: 100%;
   min-height: 52px;
   border-radius: 12px;
-  background: #2aad38;
+  background: var(--brand-700);
   color: #ffffff;
   text-decoration: none;
   font-size: 15px;
@@ -546,6 +546,10 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
+}
+
+.modalActionButton:hover {
+  background: var(--brand-900);
 }
 
 .modalActionButton:focus-visible {

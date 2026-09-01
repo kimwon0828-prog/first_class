@@ -319,9 +319,13 @@
 
 .actionButtonSolid,
 .actionButtonPrimary {
-  border: 1px solid #2aad38;
-  background: #2aad38;
+  border: 1px solid var(--brand-700);
+  background: var(--brand-700);
   color: #ffffff;
+}
+
+.actionButtonPrimary:hover {
+  background: var(--brand-900);
 }
 
 .actionButtonOutline,
