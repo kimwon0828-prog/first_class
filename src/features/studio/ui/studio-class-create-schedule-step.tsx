@@ -114,25 +114,32 @@ export const StudioClassCreateScheduleStep = ({
   return (
     <div className={styles.scheduleStepLayout}>
       <section className={styles.sectionBlock}>
-        <p className={styles.sectionLabel}>기본 운영시간</p>
+        <p className={styles.sectionLabel}>예약 가능한 시간</p>
         <section className={styles.sectionCard}>
           <div className={styles.sectionHeader}>
             <div className={styles.noteBlock}>
-              <strong className={styles.noteTitle}>기본 운영시간</strong>
-              <p className={styles.noteText}>학부모가 예약할 수 있는 날짜와 시간을 설정해 주세요.</p>
+              <strong className={styles.noteTitle}>예약 가능한 시간</strong>
+              <p className={styles.noteText}>
+                학부모가 체험수업을 신청할 수 있는 요일과 시간을 설정해 주세요.
+              </p>
             </div>
           </div>
           <StudioOperatingHoursSummary
-            title="반복되는 예약 가능 시간"
-            emptyDescription="아직 기본 운영시간이 설정되지 않았어요."
+            title="매주 예약받을 시간"
+            emptyDescription="아직 예약받을 시간이 설정되지 않았어요."
             summary={summary}
             actionLabel="설정하기"
             onOpen={() => setIsModalOpen(true)}
           />
-          <p className={styles.subtleText}>설정한 규칙을 기준으로 실제 예약 가능한 시간이 자동으로 생성돼요.</p>
+          <p className={styles.subtleText}>설정한 요일과 시간을 기준으로 실제 예약 가능한 시간이 자동으로 만들어져요.</p>
         </section>
       </section>
 
+      {generatedSlots.length === 0 ? (
+        <p className={styles.subtleText}>
+          예약 시간을 설정하면 실제 예약 가능한 일정이 여기에 표시됩니다.
+        </p>
+      ) : (
       <section className={styles.sectionBlock}>
         <p className={styles.sectionLabel}>생성될 예약 일정</p>
         <section className={styles.sectionCard}>
@@ -214,31 +221,12 @@ export const StudioClassCreateScheduleStep = ({
                 )}
               </aside>
             </div>
-          ) : (
-            <div className={styles.emptyCard}>
-              <strong className={styles.noteTitle}>생성될 일정이 아직 없어요.</strong>
-              <p className={styles.noteText}>기본 운영시간을 설정하면 실제 생성될 예약 일정을 캘린더에서 확인할 수 있어요.</p>
-            </div>
-          )}
+          ) : null}
 
-          <p className={styles.subtleText}>저장 전에는 DB에 반영되지 않아요.</p>
+          <p className={styles.subtleText}>등록하기 전에는 저장되지 않아요.</p>
         </section>
       </section>
-
-      <section className={styles.sectionBlock}>
-        <p className={styles.sectionLabel}>날짜별 예외</p>
-        <section className={styles.sectionCard}>
-          <div className={styles.noteBlock}>
-            <strong className={styles.noteTitle}>날짜별 예외 일정</strong>
-            <p className={styles.noteText}>
-              신규 등록 단계에서는 아직 날짜별 휴무, 추가 운영, 특정 시간 마감, 정원 변경을 직접 편집하지 않습니다.
-            </p>
-            <p className={styles.subtleText}>
-              프로그램을 등록한 뒤 수업 관리 화면에서 날짜별 예외 일정을 추가하고 수정할 수 있어요.
-            </p>
-          </div>
-        </section>
-      </section>
+      )}
 
       {slotsError ? <p className={styles.errorText}>{slotsError}</p> : null}
 

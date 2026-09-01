@@ -18,11 +18,7 @@ import {
   type UpsertStudioClassActionState
 } from "@/features/studio/actions/upsert-studio-class"
 import { getStudioClassFieldExamples } from "@/features/studio/lib/studio-class-field-examples"
-import { studioClassIntroTemplates } from "@/features/studio/lib/studio-class-intro-templates"
-import {
-  normalizeStudioClassSubjectOption,
-  studioClassProgramTypeOptions
-} from "@/features/studio/lib/studio-class-options"
+import { studioClassProgramTypeOptions } from "@/features/studio/lib/studio-class-options"
 import {
   buildCreateClassScheduleDraftSlots,
   createDefaultCreateClassScheduleDraft,
@@ -102,9 +98,9 @@ const initialActionState: UpsertStudioClassActionState = {
 }
 
 const createFormTabs: Array<{ id: CreateFormTabId; label: string }> = [
-  { id: "info", label: "수업 정보" },
-  { id: "schedule", label: "예약 시간" },
-  { id: "visibility", label: "공개 · 신청 설정" }
+  { id: "info", label: "수업 소개" },
+  { id: "schedule", label: "예약받을 시간" },
+  { id: "visibility", label: "최종 확인" }
 ]
 
 const classFormatOptions = [
@@ -564,6 +560,7 @@ export const StudioClassCreateWizard = ({
 
   const resolveStepForErrors = (errors: ValidationErrors): WizardStepId => {
     if (
+      errors.programType ||
       errors.title ||
       errors.subject ||
       errors.targetGrades ||
@@ -577,7 +574,7 @@ export const StudioClassCreateWizard = ({
       return 2
     }
 
-    if (errors.programType || errors.visibility || errors.slots) {
+    if (errors.visibility || errors.slots) {
       return 3
     }
 
@@ -587,6 +584,16 @@ export const StudioClassCreateWizard = ({
   const moveToStep = (nextStep: WizardStepId) => {
     setCurrentStep(normalizeCurrentStep(nextStep))
     scrollToTop()
+  }
+
+  const handleStepNext = (fromStep: WizardStepId) => {
+    const errors = applyStepValidation(fromStep)
+    if (Object.keys(errors).length > 0) {
+      moveToStep(resolveStepForErrors(errors))
+      return
+    }
+
+    moveToStep((fromStep + 1) as WizardStepId)
   }
 
   const handleFinalSubmit = (event: React.FormEvent<HTMLFormElement>) => {
@@ -662,24 +669,20 @@ export const StudioClassCreateWizard = ({
     }
   }
 
-  const applyIntroTemplate = () => {
-    if (!selectedSubjectSelection) {
-      setFieldErrors((current) => ({ ...current, subject: "예시 문구를 넣으려면 먼저 과목을 선택해 주세요." }))
-      setCurrentStep(1)
-      return
-    }
-
-    const legacyTemplateSubject = normalizeStudioClassSubjectOption(
-      selectedSubjectSelection.subject.code
-    )
-    updateValue(
-      "description",
-      legacyTemplateSubject
-        ? studioClassIntroTemplates[legacyTemplateSubject]
-        : fieldExamples.description
-    )
-    setFieldErrors((current) => ({ ...current, description: undefined }))
-  }
+  // 최종 확인용 요약. 새 state 를 만들지 않고 현재 form 값에서만 만든다.
+  // 비어 있는 항목은 "-" 로 채우지 않고 그냥 빼며, 필수값 누락은 기존 validation 이 잡는다.
+  const finalSummaryItems = [
+    selectedSubjectSelection?.subject.name ?? selectedSubjectCategory?.name ?? null,
+    values.targetGrades.length > 0 ? formatStoredTargetGrades(values.targetGrades.join(",")) : null,
+    values.classFormat.trim() || null,
+    studioClassProgramTypeOptions.find((option) => option.value === values.programType)?.label ?? null,
+    generatedScheduleSlots.length > 0 ? `예약 시간 ${generatedScheduleSlots.length}개` : null,
+    values.trialPrice.trim()
+      ? Number(values.trialPrice) > 0
+        ? `${Number(values.trialPrice).toLocaleString("ko-KR")}원`
+        : "무료"
+      : null
+  ].filter((item): item is string => Boolean(item))
 
   const previewTitle = values.title.trim() || "프로그램명이 여기에 표시돼요"
   const previewImageUrl = coverImagePreviewUrl || values.coverImageUrl
@@ -721,14 +724,36 @@ export const StudioClassCreateWizard = ({
             </div>
           </div>
           <div className={styles.headerRight}>
-            <button
-              type="submit"
-              form={formId}
-              className={styles.saveButton}
-              disabled={isPending || isUploadingCoverImage}
-            >
-              {isPending ? "등록 중..." : "수업 등록"}
-            </button>
+            {currentStep > 1 ? (
+              <button
+                type="button"
+                className={styles.stepBackButton}
+                onClick={() => moveToStep((currentStep - 1) as WizardStepId)}
+                disabled={isPending}
+              >
+                이전
+              </button>
+            ) : null}
+            {currentStep === 1 ? (
+              <button type="button" className={styles.saveButton} onClick={() => handleStepNext(1)}>
+                다음 · 예약 시간
+              </button>
+            ) : null}
+            {currentStep === 2 ? (
+              <button type="button" className={styles.saveButton} onClick={() => handleStepNext(2)}>
+                다음 · 최종 확인
+              </button>
+            ) : null}
+            {currentStep === 3 ? (
+              <button
+                type="submit"
+                form={formId}
+                className={styles.saveButton}
+                disabled={isPending || isUploadingCoverImage}
+              >
+                {isPending ? "등록 중..." : "수업 등록"}
+              </button>
+            ) : null}
           </div>
         </header>
 
@@ -799,14 +824,13 @@ export const StudioClassCreateWizard = ({
             {currentStep === 1 ? (
               <div className={styles.panelInner}>
                 <div className={styles.panelHeader}>
-                  <h2 className={styles.panelTitle}>수업 정보</h2>
+                  <h2 className={styles.panelTitle}>어떤 수업인가요?</h2>
                   <p className={styles.panelDescription}>
-                    학부모가 가장 먼저 보는 기본 정보와 소개 문구, 대표 이미지를 한 번에 정리해 주세요.
+                    프로그램 기본 정보와 학부모에게 보여줄 내용을 작성해 주세요.
                   </p>
                 </div>
 
-                <div className={styles.infoGrid}>
-                  <div className={styles.infoMainColumn}>
+                <div className={styles.infoMainColumn}>
                     <div className={styles.infoSection}>
                       <p className={styles.tabSectionLabel}>기본 정보</p>
                       <section className={styles.infoSectionCard}>
@@ -901,6 +925,30 @@ export const StudioClassCreateWizard = ({
                           ) : null}
                           {renderFieldError(fieldErrors.classFormat)}
                         </div>
+
+                        <div className={styles.fieldBlock}>
+                          <label className={styles.fieldLabel}>프로그램 유형 *</label>
+                          <div className={styles.chipRow}>
+                            {studioClassProgramTypeOptions.map((option) => (
+                              <button
+                                key={option.value}
+                                type="button"
+                                className={`${styles.choiceChip} ${
+                                  values.programType === option.value ? styles.choiceChipSelected : ""
+                                }`}
+                                onClick={() => updateValue("programType", option.value)}
+                              >
+                                {option.label}
+                              </button>
+                            ))}
+                          </div>
+                          <p className={styles.helperText}>
+                            {values.programType === "level_test"
+                              ? "레벨테스트로 저장돼요. 유형에 따라 학부모 화면의 신청 안내 문구가 달라져요."
+                              : "체험수업으로 저장돼요. 유형에 따라 학부모 화면의 신청 안내 문구가 달라져요."}
+                          </p>
+                          {renderFieldError(fieldErrors.programType)}
+                        </div>
                       </section>
                     </div>
 
@@ -908,14 +956,9 @@ export const StudioClassCreateWizard = ({
                       <p className={styles.tabSectionLabel}>상세 소개</p>
                       <section className={styles.infoSectionCard}>
                         <div className={styles.fieldBlock}>
-                          <div className={styles.labelRow}>
-                            <label className={styles.fieldLabel} htmlFor="class-description">
-                              프로그램 소개 *
-                            </label>
-                            <button type="button" className={styles.secondaryInlineButton} onClick={applyIntroTemplate}>
-                              ✨ 예시 문구 넣기
-                            </button>
-                          </div>
+                          <label className={styles.fieldLabel} htmlFor="class-description">
+                            프로그램 소개 *
+                          </label>
                           <textarea
                             id="class-description"
                             className={styles.textarea}
@@ -1012,65 +1055,6 @@ export const StudioClassCreateWizard = ({
                         </div>
                       </section>
                     </div>
-                  </div>
-
-                  <aside className={styles.infoSideColumn}>
-                    <div className={styles.previewRail}>
-                      <section className={styles.infoPreviewCard}>
-                        <div className={styles.infoPreviewHeader}>
-                          <h3 className={styles.infoPreviewTitle}>학부모에게 보이는 화면</h3>
-                          <p className={styles.infoPreviewDescription}>
-                            현재 입력한 값을 바탕으로 공개 화면에 가까운 미리보기를 보여줍니다.
-                          </p>
-                        </div>
-
-                        <div className={styles.infoPreviewImageFrame}>
-                          {previewImageUrl ? (
-                            <>
-                              {/* eslint-disable-next-line @next/next/no-img-element */}
-                              <img src={previewImageUrl} alt={`${previewTitle} 대표 이미지`} className={styles.infoPreviewImage} />
-                            </>
-                          ) : (
-                            <div className={styles.infoPreviewImageEmpty}>대표 이미지가 비어 있습니다.</div>
-                          )}
-                        </div>
-
-                        <div className={styles.infoPreviewMetaRow}>
-                          {selectedSubjectCategory ? (
-                            <span className={styles.infoPreviewPill}>
-                              {selectedSubjectSelection?.subject.name ?? selectedSubjectCategory.name}
-                            </span>
-                          ) : null}
-                          {values.targetGrades.length > 0 ? (
-                            <span className={styles.infoPreviewPill}>
-                              {formatStoredTargetGrades(values.targetGrades.join(","))}
-                            </span>
-                          ) : null}
-                          {values.trialPrice.trim() ? (
-                            <span className={styles.infoPreviewPill}>
-                              {Number(values.trialPrice) > 0 ? `${Number(values.trialPrice).toLocaleString("ko-KR")}원` : "무료"}
-                            </span>
-                          ) : null}
-                        </div>
-
-                        <div className={styles.infoPreviewHeader}>
-                          <h4 className={styles.infoPreviewHeading}>{previewTitle}</h4>
-                          <p className={styles.infoPreviewFormat}>{values.classFormat.trim() || "수업 방식이 아직 입력되지 않았습니다."}</p>
-                        </div>
-
-                        {infoPreviewSections.map((section) => (
-                          <section key={section.title} className={styles.infoPreviewSection}>
-                            <h5 className={styles.infoPreviewSectionTitle}>{section.title}</h5>
-                            {section.value ? (
-                              <p className={styles.infoPreviewSectionBody}>{section.value}</p>
-                            ) : (
-                              <p className={styles.infoPreviewSectionEmpty}>{section.empty}</p>
-                            )}
-                          </section>
-                        ))}
-                      </section>
-                    </div>
-                  </aside>
                 </div>
               </div>
             ) : null}
@@ -1090,8 +1074,10 @@ export const StudioClassCreateWizard = ({
                 <section className={styles.sectionCard}>
                   <div className={styles.sectionHeader}>
                     <div>
-                      <h3 className={styles.sectionTitle}>B. 담당 선생님 배정 방식</h3>
-                      <p className={styles.sectionDescription}>신청 후 배정할지, 기본 담당을 미리 지정할지 선택해 주세요.</p>
+                      <h3 className={styles.sectionTitle}>담당 선생님은 언제 정할까요?</h3>
+                      <p className={styles.sectionDescription}>
+                        신청이 들어온 뒤 직접 정하거나, 미리 기본 담당 선생님을 지정할 수 있어요.
+                      </p>
                     </div>
                   </div>
 
@@ -1156,102 +1142,142 @@ export const StudioClassCreateWizard = ({
           <div className={styles.tabPanel} hidden={activeTab !== "visibility"}>
             <div className={styles.panelInner}>
               <div className={styles.panelHeader}>
-                <h2 className={styles.panelTitle}>공개 · 신청 설정</h2>
+                <h2 className={styles.panelTitle}>등록 전에 확인해 주세요.</h2>
                 <p className={styles.panelDescription}>
-                  공개 여부와 프로그램 유형, 신청비를 정리해 두면 학부모 화면과 신청 흐름이 더 명확해집니다.
+                  학부모에게 보이는 내용과 공개 설정을 확인한 뒤 등록해 주세요.
                 </p>
               </div>
 
-              <div className={styles.visibilityLayout}>
-                <div className={styles.settingsSection}>
-                  <p className={styles.tabSectionLabel}>공개 상태</p>
-                  <section className={styles.settingsCard}>
-                    <label className={styles.toggleCard}>
-                      <div className={styles.toggleRow}>
-                        <div className={styles.toggleLabelWrap}>
-                          <p className={styles.toggleTitle}>
-                            {values.visibility === "public" ? "학부모에게 공개중" : "비공개"}
-                          </p>
-                          <p className={styles.toggleDescription}>
-                            {values.visibility === "public"
-                              ? "학부모가 수업을 보고 신청할 수 있어요."
-                              : "학부모에게 노출되지 않고 새로운 신청을 받을 수 없어요."}
-                          </p>
-                        </div>
-                        <span className={styles.toggleSwitch}>
+              <div className={styles.infoGrid}>
+                <div className={styles.infoMainColumn}>
+                  {finalSummaryItems.length > 0 ? (
+                    <p className={styles.finalSummary}>{finalSummaryItems.join("  ·  ")}</p>
+                  ) : null}
+
+                  <div className={styles.visibilityLayout}>
+                    <div className={styles.settingsSection}>
+                      <p className={styles.tabSectionLabel}>학부모에게 공개</p>
+                      <section className={styles.settingsCard}>
+                        <label className={styles.toggleCard}>
+                          <div className={styles.toggleRow}>
+                            <div className={styles.toggleLabelWrap}>
+                              <p className={styles.toggleTitle}>
+                                {values.visibility === "public" ? "공개" : "비공개"}
+                              </p>
+                              <p className={styles.toggleDescription}>
+                                {values.visibility === "public"
+                                  ? "등록 후 학부모가 이 수업을 확인하고 신청할 수 있어요."
+                                  : "아직 학부모에게 보이지 않아요."}
+                              </p>
+                            </div>
+                            <span className={styles.toggleSwitch}>
+                              <input
+                                type="checkbox"
+                                checked={values.visibility === "public"}
+                                onChange={(event) => updateValue("visibility", event.target.checked ? "public" : "private")}
+                                disabled={isPending}
+                                className={styles.toggleInput}
+                              />
+                              <span className={styles.toggleSlider} aria-hidden="true" />
+                            </span>
+                          </div>
+                        </label>
+                        {values.visibility === "public" && !canPublish ? (
+                          <p className={styles.warningText}>예약시간이 없어서 지금은 공개로 등록할 수 없어요.</p>
+                        ) : null}
+                        {renderFieldError(fieldErrors.visibility)}
+                        {fieldErrors.slots ? <p className={styles.errorText}>{fieldErrors.slots}</p> : null}
+                      </section>
+                    </div>
+
+                    <div className={styles.settingsSection}>
+                      <p className={styles.tabSectionLabel}>신청비</p>
+                      <section className={styles.settingsCard}>
+                        <div className={styles.fieldBlock}>
+                          <label className={styles.fieldLabel} htmlFor="create-trial-price">
+                            1회 신청비 (원)
+                          </label>
                           <input
-                            type="checkbox"
-                            checked={values.visibility === "public"}
-                            onChange={(event) => updateValue("visibility", event.target.checked ? "public" : "private")}
-                            disabled={isPending}
-                            className={styles.toggleInput}
+                            id="create-trial-price"
+                            type="number"
+                            min={0}
+                            step={1000}
+                            value={values.trialPrice}
+                            onChange={(event) => updateValue("trialPrice", event.target.value)}
+                            className={styles.input}
+                            placeholder="0"
                           />
-                          <span className={styles.toggleSlider} aria-hidden="true" />
-                        </span>
-                      </div>
-                    </label>
-                    {values.visibility === "public" && !canPublish ? (
-                      <p className={styles.warningText}>예약시간이 없어서 지금은 공개로 등록할 수 없어요.</p>
+                          <p className={styles.toggleDescription}>0원이면 학부모 화면에 무료로 표시돼요.</p>
+                        </div>
+                      </section>
+                    </div>
+
+                    {fieldErrors.description ? (
+                      <section className={styles.settingsCard}>
+                        <p className={styles.errorText}>{fieldErrors.description}</p>
+                        <p className={styles.helperText}>프로그램 소개는 `수업 소개` 탭에서 10자 이상 작성해 주세요.</p>
+                      </section>
                     ) : null}
-                    {renderFieldError(fieldErrors.visibility)}
-                    {fieldErrors.slots ? <p className={styles.errorText}>{fieldErrors.slots}</p> : null}
-                  </section>
+                  </div>
                 </div>
 
-                <div className={styles.settingsSection}>
-                  <p className={styles.tabSectionLabel}>프로그램 유형</p>
-                  <section className={styles.settingsCard}>
-                    <div className={styles.fieldBlock}>
-                      <div className={styles.chipRow}>
-                        {studioClassProgramTypeOptions.map((option) => (
-                          <button
-                            key={option.value}
-                            type="button"
-                            className={`${styles.choiceChip} ${values.programType === option.value ? styles.choiceChipSelected : ""}`}
-                            onClick={() => updateValue("programType", option.value)}
-                          >
-                            {option.label}
-                          </button>
-                        ))}
-                      </div>
-                      <p className={styles.toggleDescription}>
-                        {values.programType === "level_test"
-                          ? "레벨테스트로 저장돼요. 유형에 따라 학부모 화면의 신청 안내 문구가 달라져요."
-                          : "체험수업으로 저장돼요. 유형에 따라 학부모 화면의 신청 안내 문구가 달라져요."}
+                <aside className={styles.infoSideColumn}>
+                  <div className={styles.previewRail}>
+                  <section className={styles.infoPreviewCard}>
+                    <div className={styles.infoPreviewHeader}>
+                      <h3 className={styles.infoPreviewTitle}>학부모에게 보이는 화면</h3>
+                      <p className={styles.infoPreviewDescription}>
+                        현재 입력한 값을 바탕으로 공개 화면에 가까운 미리보기를 보여줍니다.
                       </p>
-                      {renderFieldError(fieldErrors.programType)}
                     </div>
-                  </section>
-                </div>
 
-                <div className={styles.settingsSection}>
-                  <p className={styles.tabSectionLabel}>신청비</p>
-                  <section className={styles.settingsCard}>
-                    <div className={styles.fieldBlock}>
-                      <label className={styles.fieldLabel} htmlFor="create-trial-price">
-                        1회 신청비 (원)
-                      </label>
-                      <input
-                        id="create-trial-price"
-                        type="number"
-                        min={0}
-                        step={1000}
-                        value={values.trialPrice}
-                        onChange={(event) => updateValue("trialPrice", event.target.value)}
-                        className={styles.input}
-                        placeholder="0"
-                      />
-                      <p className={styles.toggleDescription}>0원이면 학부모 화면에 무료로 표시돼요.</p>
+                    <div className={styles.infoPreviewImageFrame}>
+                      {previewImageUrl ? (
+                        <>
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={previewImageUrl} alt={`${previewTitle} 대표 이미지`} className={styles.infoPreviewImage} />
+                        </>
+                      ) : (
+                        <div className={styles.infoPreviewImageEmpty}>대표 이미지가 비어 있습니다.</div>
+                      )}
                     </div>
-                  </section>
-                </div>
 
-                {fieldErrors.description ? (
-                  <section className={styles.settingsCard}>
-                    <p className={styles.errorText}>{fieldErrors.description}</p>
-                    <p className={styles.helperText}>프로그램 소개는 `수업 정보` 탭에서 10자 이상 작성해 주세요.</p>
+                    <div className={styles.infoPreviewMetaRow}>
+                      {selectedSubjectCategory ? (
+                        <span className={styles.infoPreviewPill}>
+                          {selectedSubjectSelection?.subject.name ?? selectedSubjectCategory.name}
+                        </span>
+                      ) : null}
+                      {values.targetGrades.length > 0 ? (
+                        <span className={styles.infoPreviewPill}>
+                          {formatStoredTargetGrades(values.targetGrades.join(","))}
+                        </span>
+                      ) : null}
+                      {values.trialPrice.trim() ? (
+                        <span className={styles.infoPreviewPill}>
+                          {Number(values.trialPrice) > 0 ? `${Number(values.trialPrice).toLocaleString("ko-KR")}원` : "무료"}
+                        </span>
+                      ) : null}
+                    </div>
+
+                    <div className={styles.infoPreviewHeader}>
+                      <h4 className={styles.infoPreviewHeading}>{previewTitle}</h4>
+                      <p className={styles.infoPreviewFormat}>{values.classFormat.trim() || "수업 방식이 아직 입력되지 않았습니다."}</p>
+                    </div>
+
+                    {infoPreviewSections.map((section) => (
+                      <section key={section.title} className={styles.infoPreviewSection}>
+                        <h5 className={styles.infoPreviewSectionTitle}>{section.title}</h5>
+                        {section.value ? (
+                          <p className={styles.infoPreviewSectionBody}>{section.value}</p>
+                        ) : (
+                          <p className={styles.infoPreviewSectionEmpty}>{section.empty}</p>
+                        )}
+                      </section>
+                    ))}
                   </section>
-                ) : null}
+                  </div>
+                </aside>
               </div>
             </div>
           </div>

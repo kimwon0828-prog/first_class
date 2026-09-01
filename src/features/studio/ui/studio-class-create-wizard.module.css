@@ -990,3 +990,38 @@
     align-items: stretch;
   }
 }
+
+/* Step 이동용 보조 버튼. Primary(.saveButton) 와 경쟁하지 않는 Ghost 성격이다. */
+.stepBackButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  padding: 0 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  color: var(--text-2);
+  font-size: 14px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.stepBackButton:hover {
+  border-color: var(--brand-700);
+  color: var(--brand-700);
+}
+
+.stepBackButton:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+/* 최종 확인 요약 한 줄. 카드로 감싸지 않는다. */
+.finalSummary {
+  margin: 0 0 16px;
+  color: var(--text-2);
+  font-size: 14px;
+  line-height: 22px;
+  font-weight: 700;
+}
