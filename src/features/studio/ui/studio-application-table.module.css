@@ -345,6 +345,18 @@
   flex-wrap: wrap;
 }
 
+/*
+ * 상태가 아니라 다음 행동 안내다. 배지와 시각적으로 경쟁하지 않도록
+ * 배경 없는 텍스트로 두고, 행 전체가 이미 상세로 가는 링크라 별도 링크를 만들지 않는다.
+ */
+.registrationCue {
+  flex-basis: 100%;
+  color: var(--blue-fg);
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 700;
+}
+
 
 
 .studentName,

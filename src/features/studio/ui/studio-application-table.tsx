@@ -92,6 +92,11 @@ const resolveScheduleDisplay = (application: StudioApplicationSummary) => {
   return { label: "희망", primary: selectedLabel ?? "일정 협의 필요" }
 }
 
+// 체험은 끝났는데 등록 결과가 아직 기록되지 않은 Case. 상태가 아니라 "다음 행동" 신호다.
+// 상태 배지(등록 미결정)와 나란히 두되, 배지가 아닌 텍스트로 구분한다.
+const needsRegistrationOutcome = (application: StudioApplicationSummary) =>
+  application.status === "completed" && application.registrationStatus === "undecided"
+
 // 등록 상태 배지는 결론이 있거나(등록/보류/미등록) 체험이 끝나 기록이 필요할 때만 덧붙인다.
 const shouldShowRegistrationBadge = (application: StudioApplicationSummary) =>
   application.registrationStatus === "enrolled" ||
@@ -339,6 +344,9 @@ export const StudioApplicationTable = ({ items, periodLabel }: StudioApplication
                                 {getStudioRegistrationStatusLabel(item.registrationStatus)}
                               </StudioStatusBadge>
                             ) : null}
+                            {needsRegistrationOutcome(item) ? (
+                              <span className={styles.registrationCue}>등록 결과 입력</span>
+                            ) : null}
                           </div>
                         </td>
                         <td>
@@ -405,6 +413,9 @@ export const StudioApplicationTable = ({ items, periodLabel }: StudioApplication
                         <StudioStatusBadge tone={getStudioRegistrationStatusTone(item.registrationStatus)}>
                           {getStudioRegistrationStatusLabel(item.registrationStatus)}
                         </StudioStatusBadge>
+                      ) : null}
+                      {needsRegistrationOutcome(item) ? (
+                        <span className={styles.registrationCue}>등록 결과 입력</span>
                       ) : null}
                     </div>
                   </div>
