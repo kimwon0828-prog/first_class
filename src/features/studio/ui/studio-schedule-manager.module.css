@@ -1,5 +1,5 @@
 .layout {
-  max-width: 1200px;
+  max-width: var(--studio-max);
   margin: 0 auto;
   display: grid;
   gap: 16px;
@@ -574,7 +574,7 @@
 
 @media (max-width: 1100px) {
   .layout {
-    max-width: 1200px;
+    max-width: var(--studio-max);
   }
 }
 

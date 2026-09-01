@@ -11,7 +11,7 @@
  */
 .page > * {
   width: 100%;
-  max-width: 1200px;
+  max-width: var(--studio-max);
   margin-left: auto;
   margin-right: auto;
 }
@@ -101,7 +101,7 @@
 }
 
 .summaryCard {
-  max-width: 1200px;
+  max-width: var(--studio-max);
   margin: 0 auto 18px;
   border: 1px solid #e7eae7;
   border-radius: 14px;
@@ -214,7 +214,7 @@
 }
 
 .timelineCard {
-  max-width: 1200px;
+  max-width: var(--studio-max);
   margin: 0 auto 18px;
   border: 1px solid #e7eae7;
   border-radius: 14px;
@@ -400,7 +400,7 @@
 }
 
 .body {
-  max-width: 1200px;
+  max-width: var(--studio-max);
   margin: 0 auto;
   display: grid;
   gap: 18px;

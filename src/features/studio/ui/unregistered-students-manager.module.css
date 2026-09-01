@@ -13,7 +13,7 @@
   justify-content: space-between;
   gap: 16px;
   width: 100%;
-  max-width: 1200px;
+  max-width: var(--studio-max);
   margin: 0 auto;
 }
 
@@ -47,7 +47,7 @@
 .closedSection,
 .groupList {
   width: 100%;
-  max-width: 1200px;
+  max-width: var(--studio-max);
   margin: 0 auto;
 }
 

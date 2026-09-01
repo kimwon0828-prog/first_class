@@ -1,5 +1,5 @@
 .page {
-  max-width: 1240px;
+  max-width: var(--studio-max);
   margin: 0 auto;
   display: grid;
   gap: 20px;

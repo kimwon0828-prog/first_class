@@ -11,7 +11,7 @@
 .workspace,
 .errorCard {
   width: 100%;
-  max-width: 1200px;
+  max-width: var(--studio-max);
   margin: 0 auto;
 }
 

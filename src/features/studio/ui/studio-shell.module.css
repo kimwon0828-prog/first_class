@@ -5,7 +5,7 @@
 }
 
 .sidebar {
-  width: 260px;
+  width: var(--side-w);
   flex: 0 0 auto;
   background: #ffffff;
   border-right: 1px solid #eeeeee;
