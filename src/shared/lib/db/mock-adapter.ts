@@ -57,7 +57,7 @@ import {
   buildSeoulOccurrenceRange,
   formatSeoulDateKey,
   formatSeoulOccurrenceLabel,
-  getSeoulDateTimeParts
+  resolveRequestedClassScheduleOccurrence
 } from "@/shared/lib/seoul-datetime"
 import { normalizeSubjectCategory } from "@/shared/constants/education-taxonomy"
 import { formatAdministrativeRegionLabel } from "@/features/location/lib/region-selection"
@@ -614,44 +614,6 @@ const parseSelectedScheduleOptionId = (value: string | undefined) => {
   }
 
   return null
-}
-
-const buildRequestedOccurrenceEndAt = (
-  requestedSlotAt: string,
-  schedule: Pick<StudioClassScheduleItem, "startTime" | "endTime">
-) => {
-  const startDate = new Date(requestedSlotAt)
-  if (Number.isNaN(startDate.getTime())) {
-    return null
-  }
-
-  const startTimeText = formatTimeText(schedule.startTime)
-  const endTimeText = formatTimeText(schedule.endTime)
-  const startHour = Number(startTimeText.slice(0, 2))
-  const startMinute = Number(startTimeText.slice(3, 5))
-  const endHour = Number(endTimeText.slice(0, 2))
-  const endMinute = Number(endTimeText.slice(3, 5))
-
-  if ([startHour, startMinute, endHour, endMinute].some((value) => Number.isNaN(value))) {
-    return null
-  }
-
-  const seoulStart = getSeoulDateTimeParts(startDate)
-
-  if (!seoulStart || seoulStart.hour !== startHour || seoulStart.minute !== startMinute) {
-    return null
-  }
-
-  const startMinutes = startHour * 60 + startMinute
-  const endMinutes = endHour * 60 + endMinute
-  const durationMinutes = endMinutes - startMinutes
-
-  if (durationMinutes <= 0) {
-    return null
-  }
-
-  const endDate = new Date(startDate.getTime() + durationMinutes * 60 * 1000)
-  return endDate.toISOString()
 }
 
 const getAppliedCountForSlot = (slotId: string, slotStartAt: string, teacherId?: string) => {
@@ -1937,6 +1899,9 @@ export const mockDataAdapter: DataAdapter = {
 
     if (input.actionType === "move_to_confirmed") {
       target.scheduledAt = nowIso
+      if (input.currentStatus === "new") {
+        target.contactedAt = nowIso
+      }
 
       const assignedTeacherId = target.assignedTeacherId ?? null
 
@@ -1955,12 +1920,16 @@ export const mockDataAdapter: DataAdapter = {
           throw new Error("failed_to_prepare_application_status_update")
         }
 
-        const requestedEndAt = buildRequestedOccurrenceEndAt(target.requestedSlotAt, schedule)
-        if (!requestedEndAt) {
+        const occurrence = resolveRequestedClassScheduleOccurrence({
+          requestedSlotAt: target.requestedSlotAt,
+          startTime: schedule.startTime,
+          endTime: schedule.endTime
+        })
+        if (!occurrence) {
           throw new Error("invalid_requested_class_schedule_occurrence")
         }
 
-        target.confirmedSlotAt = target.requestedSlotAt
+        target.confirmedSlotAt = occurrence.startAt
         if (!assignedTeacherId) {
           target.confirmedScheduleBlockId = null
         } else {
@@ -1968,8 +1937,8 @@ export const mockDataAdapter: DataAdapter = {
             (slot) =>
               slot.classId === target.classId &&
               slot.teacherId === assignedTeacherId &&
-              slot.startAt === target.requestedSlotAt &&
-              slot.endAt === requestedEndAt
+              slot.startAt === occurrence.startAt &&
+              slot.endAt === occurrence.endAt
           )
           const availableBlock = existingBlocks.find((slot) => slot.type === "available") ?? null
 
@@ -1984,8 +1953,8 @@ export const mockDataAdapter: DataAdapter = {
               teacherId: assignedTeacherId,
               classId: target.classId,
               type: "available",
-              startAt: target.requestedSlotAt,
-              endAt: requestedEndAt,
+              startAt: occurrence.startAt,
+              endAt: occurrence.endAt,
               capacity: Math.max(1, schedule.capacity ?? 1),
               appliedCount: 0,
               remainingCount: Math.max(1, schedule.capacity ?? 1),

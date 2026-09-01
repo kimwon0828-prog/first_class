@@ -4,9 +4,24 @@
   padding: 32px 24px 56px;
 }
 
-.header {
+/*
+ * 상세의 모든 섹션(Header / 다음 할 일 / 활동 기록 / 체험 결과 / 신청 정보)은
+ * 같은 content width 를 쓴다. 섹션마다 다른 폭을 쓰지 않는다.
+ * workflow 가 fragment 로 렌더하므로 그 섹션들도 .page 의 직계 자식이다.
+ */
+.page > * {
+  width: 100%;
   max-width: 1200px;
-  margin: 0 auto 18px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.page > * + * {
+  margin-top: 16px;
+}
+
+.header {
+  margin: 0;
 }
 
 .headerTopRow {
@@ -71,8 +86,6 @@
 }
 
 .errorCard {
-  max-width: 1200px;
-  margin: 0 auto 16px;
   border: 1px solid #fecaca;
   border-radius: 18px;
   background: #fff;
@@ -180,7 +193,7 @@
   justify-content: center;
   min-height: 42px;
   padding: 0 14px;
-  border-radius: 9px;
+  border-radius: 12px;
   border: 1px solid #e7eae7;
   background: #ffffff;
   color: #304030;
@@ -793,4 +806,200 @@
     grid-template-columns: 1fr;
     gap: 6px;
   }
+}
+
+/* ── Phase 2A: 상태와 무관하게 동일한 Case Header / 진행 상태 / 신청 정보 ── */
+
+.caseHeader {
+  border: 1px solid #e7eae7;
+  border-radius: 12px;
+  background: #ffffff;
+  padding: 22px 22px 18px;
+  display: grid;
+  gap: 16px;
+}
+
+.caseHeaderTop {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.caseIdentity {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.caseTitle {
+  margin: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: 26px;
+  line-height: 32px;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  color: #182118;
+}
+
+.caseTitleSub {
+  font-size: 15px;
+  line-height: 22px;
+  font-weight: 700;
+  color: #5f6d5f;
+}
+
+.caseSubline {
+  margin: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  flex-wrap: wrap;
+  font-size: 15px;
+  line-height: 22px;
+  font-weight: 700;
+  color: #334033;
+}
+
+.caseClassName {
+  font-weight: 800;
+}
+
+.caseInlineLink {
+  color: #2f7d4f;
+  font-size: 13px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.caseInlineLink:hover {
+  text-decoration: underline;
+}
+
+.caseDivider {
+  color: #b6c0b6;
+}
+
+.caseGuardian {
+  margin: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  flex-wrap: wrap;
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 700;
+  color: #5f6d5f;
+}
+
+.caseBadgeWrap {
+  flex-shrink: 0;
+}
+
+.caseActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.progressStrip {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding-top: 14px;
+  border-top: 1px solid #eef1ee;
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.progressLabel {
+  color: #8a938a;
+  font-weight: 700;
+}
+
+.progressSteps {
+  color: #5f6d5f;
+  font-weight: 700;
+}
+
+.progressCurrent {
+  color: #2f7d4f;
+  font-weight: 800;
+}
+
+.applicationInfoSection {
+  border: 1px solid #e7eae7;
+  background: #ffffff;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.applicationInfoHeader {
+  padding: 18px 20px;
+}
+
+.applicationInfoTitle {
+  margin: 0;
+  font-size: 16px;
+  line-height: 24px;
+  font-weight: 700;
+  color: #182118;
+}
+
+.applicationInfoBody {
+  border-top: 1px solid #eef1ee;
+  padding: 18px 20px 20px;
+  display: grid;
+  gap: 18px;
+}
+
+.applicationInfoGrid {
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px 20px;
+}
+
+@media (max-width: 860px) {
+  .caseHeader {
+    padding: 18px 16px 16px;
+  }
+
+  .caseTitle {
+    font-size: 22px;
+    line-height: 28px;
+  }
+
+  .caseHeaderTop {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .caseActions a {
+    flex: 1 1 auto;
+    text-align: center;
+  }
+
+  .applicationInfoGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* 신청 정보 셀은 카드형 테두리를 쓰지 않는다. */
+.applicationInfoGrid .infoCell {
+  padding: 12px 0;
+  border-right: 0;
+  border-bottom: 1px solid #f0f3f0;
+  border-radius: 0;
+}
+
+.applicationInfoGrid .infoCellWide {
+  grid-column: 1 / -1;
 }

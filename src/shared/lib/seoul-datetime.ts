@@ -132,6 +132,65 @@ export const buildSeoulOccurrenceRange = (dateText: string, startTime: string, e
   return { startAt, endAt }
 }
 
+type RequestedClassScheduleOccurrenceInput = {
+  requestedSlotAt: string
+  startTime: string
+  endTime: string
+}
+
+export type RequestedClassScheduleOccurrence = {
+  startAt: string
+  endAt: string
+}
+
+const formatTimeText = (value: string) => {
+  const trimmed = value.trim()
+  return trimmed.length >= 5 ? trimmed.slice(0, 5) : trimmed
+}
+
+/**
+ * 신청된 requested_slot_at 이 수업 일정(class_schedules)의 실제 occurrence 인지 검증한다.
+ *
+ * 서울 벽시계 기준 시각이 일정의 start_time 과 정확히 같아야 통과한다.
+ * 어긋나면 보정하지 않고 null 을 돌려준다 — 호출부가 validation error 를 낸다.
+ * (2026-09-01 backfill migration 으로 legacy UTC-local 값은 production 에서 0건이 되었다.
+ *  런타임에서 과거 값을 추측 복구하지 않는다.)
+ */
+export const resolveRequestedClassScheduleOccurrence = (
+  input: RequestedClassScheduleOccurrenceInput
+): RequestedClassScheduleOccurrence | null => {
+  const requestedStart = new Date(input.requestedSlotAt)
+  if (Number.isNaN(requestedStart.getTime())) {
+    return null
+  }
+
+  const startTimeText = formatTimeText(input.startTime)
+  const endTimeText = formatTimeText(input.endTime)
+  const startHour = Number(startTimeText.slice(0, 2))
+  const startMinute = Number(startTimeText.slice(3, 5))
+  const endHour = Number(endTimeText.slice(0, 2))
+  const endMinute = Number(endTimeText.slice(3, 5))
+
+  if ([startHour, startMinute, endHour, endMinute].some((value) => Number.isNaN(value))) {
+    return null
+  }
+
+  const durationMinutes = endHour * 60 + endMinute - (startHour * 60 + startMinute)
+  if (durationMinutes <= 0) {
+    return null
+  }
+
+  const seoulStart = getSeoulDateTimeParts(requestedStart)
+  if (!seoulStart || seoulStart.hour !== startHour || seoulStart.minute !== startMinute) {
+    return null
+  }
+
+  return {
+    startAt: input.requestedSlotAt,
+    endAt: new Date(requestedStart.getTime() + durationMinutes * 60 * 1000).toISOString()
+  }
+}
+
 export const formatSeoulDateKey = (value: string | Date) => {
   const parts = getSeoulDateTimeParts(value)
   if (!parts) {

@@ -40,6 +40,48 @@
   gap: 10px;
 }
 
+.compactForm {
+  margin-top: 0;
+}
+
+.compactButtonGroup {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.compactButtonGroup .primaryButton,
+.compactButtonGroup .secondaryButton,
+.compactButtonGroup .dangerButton {
+  width: auto;
+  height: auto;
+  min-height: 40px;
+  padding: 8px 16px;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.compactButtonGroup .secondaryButton {
+  border-color: #e7eae7;
+  background: #ffffff;
+  color: #5f6d5f;
+}
+
+.compactButtonGroup .secondaryButton:hover {
+  background: #fafafa;
+}
+
+.compactButtonGroup .dangerButton {
+  min-height: auto;
+  padding: 8px;
+  border-color: transparent;
+  background: #ffffff;
+  font-size: 13px;
+  font-weight: 700;
+}
+
 .currentRow {
   margin-top: 12px;
   display: flex;
@@ -209,4 +251,17 @@
 .badge_successSolid {
   background: #2aad38;
   color: #ffffff;
+}
+
+@media (max-width: 640px) {
+  .compactButtonGroup {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .compactButtonGroup .primaryButton,
+  .compactButtonGroup .secondaryButton,
+  .compactButtonGroup .dangerButton {
+    width: 100%;
+  }
 }

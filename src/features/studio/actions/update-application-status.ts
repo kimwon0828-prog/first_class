@@ -279,6 +279,27 @@ export async function updateApplicationStatusAction(
       }
     }
 
+    if (message === "invalid_requested_class_schedule_occurrence") {
+      return {
+        status: "error",
+        message: "희망 일정이 현재 수업 일정과 일치하지 않습니다. 일정 정보를 확인해 주세요."
+      }
+    }
+
+    if (message === "schedule_block_conflict_for_requested_occurrence") {
+      return {
+        status: "error",
+        message: "희망 시간에 이미 다른 일정이 있습니다. 일정 관리에서 시간을 확인해 주세요."
+      }
+    }
+
+    if (message === "failed_to_create_schedule_block_for_confirmation") {
+      return {
+        status: "error",
+        message: "일정 잠금에 실패했습니다. 잠시 후 다시 시도해 주세요."
+      }
+    }
+
     return {
       status: "error",
       message: "상태 변경에 실패했습니다. 잠시 후 다시 시도해 주세요."

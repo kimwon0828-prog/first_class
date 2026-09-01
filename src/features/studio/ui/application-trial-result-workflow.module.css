@@ -1,9 +1,8 @@
 .card {
   border: 1px solid #e7eae7;
   background: #ffffff;
-  border-radius: 14px;
+  border-radius: 12px;
   padding: 20px;
-  box-shadow: 0 1px 0 rgba(24, 33, 24, 0.03);
 }
 
 .sectionHeading {
@@ -846,5 +845,309 @@
   .mobileActionBar {
     left: 12px;
     right: 12px;
+  }
+}
+
+/* ── Phase 2A.1: 섹션 카드 / 활동 기록 ───────────────────────────── */
+
+/* 섹션 = 카드 하나. 바깥 wrapper + 안쪽 callout 중첩을 만들지 않는다. */
+.sectionCard {
+  display: grid;
+  gap: 12px;
+  padding: 18px 20px;
+}
+
+.sectionHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+/* 초록 점 대신 제목 typography 로만 구분한다. */
+.sectionTitle {
+  margin: 0;
+  font-size: 16px;
+  line-height: 24px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  color: #182118;
+}
+
+.sectionHeadActions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.sectionMetaLine {
+  margin: -4px 0 0;
+  font-size: 13px;
+  line-height: 20px;
+  color: #6b756b;
+  font-weight: 700;
+}
+
+/* ── 다음 할 일 ── */
+
+.todoBlock {
+  display: grid;
+  gap: 10px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.todoBlockWarning {
+  padding: 14px 16px;
+  border: 1px solid #f5e0c8;
+  border-radius: 12px;
+  background: #fff8f1;
+}
+
+.todoBlockSuccess {
+  padding: 14px 16px;
+  border: 1px solid #d6e9dc;
+  border-radius: 12px;
+  background: #f2f9f4;
+}
+
+.todoTitle {
+  margin: 0;
+  font-size: 15px;
+  line-height: 22px;
+  font-weight: 800;
+  color: #1c231c;
+}
+
+.todoDescription {
+  margin: 0;
+  font-size: 13px;
+  line-height: 20px;
+  color: #5f6d5f;
+  font-weight: 600;
+}
+
+.todoActionRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* ── 활동 기록 ── */
+
+.activityList {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 시스템 이벤트: 한 줄. */
+.activitySystemItem {
+  position: relative;
+  display: grid;
+  grid-template-columns: 12px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 0;
+}
+
+.activitySystemTitle {
+  font-size: 13px;
+  line-height: 20px;
+  font-weight: 700;
+  color: #4a544a;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.activitySystemTime {
+  font-size: 12px;
+  line-height: 18px;
+  color: #99a399;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* 상담 기록: 내용까지 읽히도록 펼친다. */
+.activityItem {
+  position: relative;
+  display: grid;
+  grid-template-columns: 12px minmax(0, 1fr);
+  gap: 10px;
+  padding: 10px 0;
+}
+
+.activitySystemItem::before,
+.activityItem::before {
+  content: "";
+  position: absolute;
+  left: 4px;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: #eaeeea;
+}
+
+.activitySystemItem:first-child::before,
+.activityItem:first-child::before {
+  top: 14px;
+}
+
+.activitySystemItem:last-child::before,
+.activityItem:last-child::before {
+  bottom: calc(100% - 14px);
+}
+
+.activityMarker {
+  position: relative;
+  z-index: 1;
+  margin-top: 6px;
+  width: 9px;
+  height: 9px;
+  border-radius: 999px;
+  background: #ffffff;
+  border: 2px solid #d3dad3;
+}
+
+.activitySystemItem .activityMarker {
+  margin-top: 0;
+  width: 7px;
+  height: 7px;
+  margin-left: 1px;
+}
+
+.activityMarkerConsultation {
+  border-color: #2f7d4f;
+  background: #2f7d4f;
+}
+
+.activityContent {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.activityHeadline {
+  margin: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.activityTitle {
+  color: #182118;
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+
+.activityTime {
+  color: #99a399;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.activityMeta {
+  color: #99a399;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+/* 상담 내용이 활동 기록의 본문이다. 가장 읽기 좋아야 한다. */
+.activityNote {
+  margin: 0;
+  color: #263026;
+  font-size: 15px;
+  line-height: 23px;
+  font-weight: 600;
+  white-space: pre-line;
+}
+
+.activityDetails {
+  margin: 0;
+  color: #6b756b;
+  font-size: 12px;
+  line-height: 18px;
+  font-weight: 600;
+}
+
+/* ── 체험 결과 ── */
+
+.resultCompact {
+  display: grid;
+  gap: 12px;
+}
+
+.resultGrid {
+  margin: 0;
+  display: grid;
+  gap: 0;
+}
+
+.resultGridRow {
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr);
+  gap: 14px;
+  align-items: baseline;
+  padding: 7px 0;
+  border-top: 1px solid #f1f4f1;
+}
+
+.resultGridRow:first-child {
+  border-top: 0;
+}
+
+.resultGridLabel {
+  margin: 0;
+  font-size: 13px;
+  line-height: 20px;
+  font-weight: 700;
+  color: #8a938a;
+}
+
+.resultGridValue {
+  margin: 0;
+  font-size: 14px;
+  line-height: 21px;
+  font-weight: 700;
+  color: #263026;
+  white-space: pre-line;
+}
+
+.compactEmpty {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 640px) {
+  .sectionCard {
+    padding: 16px;
+  }
+
+  .resultGridRow {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 2px;
+  }
+
+  .activitySystemItem {
+    grid-template-columns: 12px minmax(0, 1fr);
+  }
+
+  .activitySystemTime {
+    grid-column: 2;
   }
 }

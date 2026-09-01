@@ -18,7 +18,7 @@ import {
   buildSeoulOccurrenceRange,
   formatSeoulDateKey,
   formatSeoulOccurrenceLabel,
-  getSeoulDateTimeParts
+  resolveRequestedClassScheduleOccurrence
 } from "@/shared/lib/seoul-datetime"
 import {
   buildClassSubjectReadModel,
@@ -1258,48 +1258,6 @@ const parseSelectedScheduleOptionId = (value: string | undefined) => {
   }
 
   return null
-}
-
-const buildRequestedOccurrenceEndAt = (
-  requestedSlotAt: string,
-  classScheduleRow: Pick<ClassScheduleRow, "start_time" | "end_time">
-) => {
-  const startDate = new Date(requestedSlotAt)
-  if (Number.isNaN(startDate.getTime())) {
-    return null
-  }
-
-  const startTimeText = formatTimeText(classScheduleRow.start_time)
-  const endTimeText = formatTimeText(classScheduleRow.end_time)
-  const startHour = Number(startTimeText.slice(0, 2))
-  const startMinute = Number(startTimeText.slice(3, 5))
-  const endHour = Number(endTimeText.slice(0, 2))
-  const endMinute = Number(endTimeText.slice(3, 5))
-
-  if ([startHour, startMinute, endHour, endMinute].some((value) => Number.isNaN(value))) {
-    return null
-  }
-
-  const seoulStart = getSeoulDateTimeParts(startDate)
-
-  if (
-    !seoulStart ||
-    seoulStart.hour !== startHour ||
-    seoulStart.minute !== startMinute
-  ) {
-    return null
-  }
-
-  const startMinutes = startHour * 60 + startMinute
-  const endMinutes = endHour * 60 + endMinute
-  const durationMinutes = endMinutes - startMinutes
-
-  if (durationMinutes <= 0) {
-    return null
-  }
-
-  const endDate = new Date(startDate.getTime() + durationMinutes * 60 * 1000)
-  return endDate.toISOString()
 }
 
 const TEACHER_SELECT_FIELDS =
@@ -4477,6 +4435,9 @@ export const supabaseDataAdapter: DataAdapter = {
 
     if (input.actionType === "move_to_confirmed") {
       updatePayload.scheduled_at = nowIso
+      if (input.currentStatus === "new") {
+        updatePayload.contacted_at = nowIso
+      }
       const { data: currentRow, error: currentError } = await supabase
         .from("trial_applications")
         .select("class_id, requested_slot_at, requested_schedule_block_id, class_schedule_id, assigned_teacher_id")
@@ -4561,16 +4522,18 @@ export const supabaseDataAdapter: DataAdapter = {
           throw new Error("failed_to_prepare_application_status_update")
         }
 
-        const requestedSlotAt = currentRow.requested_slot_at
-        const requestedEndAt = buildRequestedOccurrenceEndAt(
-          requestedSlotAt,
-          classScheduleData as Pick<ClassScheduleRow, "start_time" | "end_time">
-        )
+        const occurrence = resolveRequestedClassScheduleOccurrence({
+          requestedSlotAt: currentRow.requested_slot_at,
+          startTime: classScheduleData.start_time,
+          endTime: classScheduleData.end_time
+        })
 
-        if (!requestedEndAt) {
+        if (!occurrence) {
           throw new Error("invalid_requested_class_schedule_occurrence")
         }
 
+        const requestedSlotAt = occurrence.startAt
+        const requestedEndAt = occurrence.endAt
         updatePayload.confirmed_slot_at = requestedSlotAt
 
         if (!assignedTeacherId) {

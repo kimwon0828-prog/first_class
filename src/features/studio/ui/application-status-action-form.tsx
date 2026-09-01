@@ -49,16 +49,37 @@ const ACTIONS_BY_STATUS: Record<ApplicationStatus, ActionButtonConfig[]> = {
   canceled: []
 }
 
+const CASE_DETAIL_ACTIONS_BY_STATUS: Record<ApplicationStatus, ActionButtonConfig[]> = {
+  new: [
+    { actionType: "move_to_confirmed", label: "일정 확정", tone: "primary" },
+    { actionType: "cancel", label: "취소 처리", tone: "danger" }
+  ],
+  reviewing: [
+    { actionType: "move_to_confirmed", label: "일정 확정", tone: "primary" },
+    { actionType: "cancel", label: "취소 처리", tone: "danger" }
+  ],
+  confirmed: [
+    { actionType: "move_to_completed", label: "체험 완료", tone: "primary" },
+    { actionType: "no_show", label: "노쇼 처리", tone: "secondary" }
+  ],
+  completed: [],
+  canceled: []
+}
+
 type ApplicationStatusActionFormProps = {
   applicationId: string
   currentStatus: ApplicationStatus
   onCompletedSaved?: () => void
+  variant?: "default" | "case-detail"
+  showActions?: boolean
 }
 
 export const ApplicationStatusActionForm = ({
   applicationId,
   currentStatus,
-  onCompletedSaved
+  onCompletedSaved,
+  variant = "default",
+  showActions = true
 }: ApplicationStatusActionFormProps) => {
   const router = useRouter()
   const action = updateApplicationStatusAction.bind(null, applicationId)
@@ -66,7 +87,10 @@ export const ApplicationStatusActionForm = ({
   const handledPromptTokenRef = useRef<string | null>(null)
   const completedSavedHandlerRef = useRef(onCompletedSaved)
 
-  const availableActions = ACTIONS_BY_STATUS[currentStatus]
+  const isCaseDetail = variant === "case-detail"
+  const availableActions = isCaseDetail
+    ? CASE_DETAIL_ACTIONS_BY_STATUS[currentStatus]
+    : ACTIONS_BY_STATUS[currentStatus]
   const statusLabel = STATUS_LABELS[currentStatus]
 
   useEffect(() => {
@@ -91,6 +115,51 @@ export const ApplicationStatusActionForm = ({
     router.refresh()
   }, [router, state.completedPromptToken, state.status])
 
+  const actionContent =
+    availableActions.length === 0 ? (
+      <div className={styles.empty}>
+        <p className={styles.emptyTitle}>처리가 종료된 신청입니다.</p>
+        <p className={styles.emptyDescription}>현재 상태에서는 추가 상태 변경이 필요하지 않아요.</p>
+      </div>
+    ) : (
+      <form
+        action={formAction}
+        className={`${styles.form} ${isCaseDetail ? styles.compactForm : ""}`}
+        aria-label={isCaseDetail ? "다음 할 일 상태 변경" : undefined}
+      >
+        {state.message ? (
+          <div className={`${styles.message} ${state.status === "error" ? styles.messageError : ""}`}>
+            {state.message}
+          </div>
+        ) : null}
+
+        <div className={`${styles.buttonGroup} ${isCaseDetail ? styles.compactButtonGroup : ""}`}>
+          {availableActions.map((item) => (
+            <button
+              key={item.actionType}
+              type="submit"
+              name="actionType"
+              value={item.actionType}
+              disabled={isPending}
+              className={
+                item.tone === "danger"
+                  ? styles.dangerButton
+                  : item.tone === "secondary"
+                    ? styles.secondaryButton
+                    : styles.primaryButton
+              }
+            >
+              {isPending ? "처리 중..." : item.label}
+            </button>
+          ))}
+        </div>
+      </form>
+    )
+
+  if (isCaseDetail) {
+    return showActions && availableActions.length > 0 ? actionContent : null
+  }
+
   return (
     <section className={styles.card} aria-label="상태 관리">
       <div className={styles.header}>
@@ -104,41 +173,7 @@ export const ApplicationStatusActionForm = ({
         <span className={styles.currentValue}>{statusLabel}</span>
       </div>
 
-      {availableActions.length === 0 ? (
-        <div className={styles.empty}>
-          <p className={styles.emptyTitle}>처리가 종료된 신청입니다.</p>
-          <p className={styles.emptyDescription}>현재 상태에서는 추가 상태 변경이 필요하지 않아요.</p>
-        </div>
-      ) : (
-        <form action={formAction} className={styles.form}>
-          {state.message ? (
-            <div className={`${styles.message} ${state.status === "error" ? styles.messageError : ""}`}>
-              {state.message}
-            </div>
-          ) : null}
-
-          <div className={styles.buttonGroup}>
-            {availableActions.map((item) => (
-              <button
-                key={item.actionType}
-                type="submit"
-                name="actionType"
-                value={item.actionType}
-                disabled={isPending}
-                className={
-                  item.tone === "danger"
-                    ? styles.dangerButton
-                    : item.tone === "secondary"
-                      ? styles.secondaryButton
-                      : styles.primaryButton
-                }
-              >
-                {isPending ? "처리 중..." : item.label}
-              </button>
-            ))}
-          </div>
-        </form>
-      )}
+      {actionContent}
     </section>
   )
 }
