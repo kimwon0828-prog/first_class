@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { Fragment, useActionState, useEffect, useMemo, useRef, useState } from "react"
+import { Fragment, useActionState, useCallback, useEffect, useMemo, useRef, useState } from "react"
 
 import {
   formatStoredTargetGrades
@@ -13,6 +13,7 @@ import {
   getLearnerGradesByGroup
 } from "@/shared/constants/education-taxonomy"
 import { getSupabaseBrowserClient } from "@/integrations/supabase/client"
+import { SEOUL_TIME_ZONE } from "@/shared/lib/seoul-datetime"
 import {
   upsertStudioClassAction,
   type UpsertStudioClassActionState
@@ -145,6 +146,64 @@ const createDefaultDraftValues = (): DraftValues => ({
 })
 
 const createDraftStorageKey = (organizationId: string) => `studio-class-create-draft:${organizationId}`
+
+// 같은 탭에서 "지금 작성 중"인지 표시하는 가벼운 marker.
+// 새로고침에서는 남아 있고(자동 복구), SPA 로 화면을 떠나면 지워진다(다음 진입에서 확인 Modal).
+const createDraftSessionKey = (organizationId: string) => `studio-class-create-active-session:${organizationId}`
+
+/**
+ * 사용자가 실제로 손댄 값이 하나라도 있는지. 자동 저장 때문에 default form 이 그대로
+ * 저장돼 있는 경우까지 "작성 중이던 수업"으로 오해하지 않기 위한 판정이다.
+ */
+const hasMeaningfulDraftValues = (values: DraftValues) => {
+  const defaults = createDefaultDraftValues()
+  const filled = [
+    values.title,
+    values.subjectCategoryId,
+    values.subjectId,
+    values.classFormat,
+    values.trialPrice,
+    values.description,
+    values.recommendedFor,
+    values.experiencePoints,
+    values.curriculum,
+    values.coverImageUrl,
+    values.teacherId
+  ].some((item) => typeof item === "string" && item.trim().length > 0)
+
+  return (
+    filled ||
+    (Array.isArray(values.targetGrades) && values.targetGrades.length > 0) ||
+    values.programType !== defaults.programType ||
+    values.assignmentMode !== defaults.assignmentMode ||
+    values.visibility !== defaults.visibility ||
+    buildCreateClassScheduleDraftSlots(values.scheduleDraft).length > 0
+  )
+}
+
+/** Modal 의 "마지막 저장" 한 줄. 새 date utility 를 만들지 않는다. */
+const formatDraftSavedAt = (value: string | undefined) => {
+  if (!value) {
+    return null
+  }
+
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) {
+    return null
+  }
+
+  return new Intl.DateTimeFormat("ko-KR", {
+    month: "long",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+    timeZone: SEOUL_TIME_ZONE
+  })
+    .format(date)
+    .replace(/\bAM\b/gi, "오전")
+    .replace(/\bPM\b/gi, "오후")
+}
 
 const LEARNER_GRADE_ORDER: string[] = LEARNER_GRADES.map((item) => item.value)
 
@@ -330,6 +389,9 @@ export const StudioClassCreateWizard = ({
   const [state, formAction, isPending] = useActionState(upsertStudioClassAction, initialActionState)
   const draftHydratedRef = useRef(false)
   const draftStorageKey = useMemo(() => createDraftStorageKey(organizationId), [organizationId])
+  const draftSessionKey = useMemo(() => createDraftSessionKey(organizationId), [organizationId])
+  // 사용자가 선택하기 전까지는 form 에 반영하지 않고 여기에만 들고 있는다.
+  const [pendingDraft, setPendingDraft] = useState<StoredDraft | null>(null)
 
   const generatedScheduleSlots = useMemo(
     () => buildCreateClassScheduleDraftSlots(values.scheduleDraft),
@@ -349,9 +411,8 @@ export const StudioClassCreateWizard = ({
   )
   const canPublish = generatedScheduleSlots.length > 0
 
-  useEffect(() => {
-    const parsed = parseStoredDraft(typeof window !== "undefined" ? window.localStorage.getItem(draftStorageKey) : null)
-    if (parsed) {
+  const applyStoredDraft = useCallback(
+    (parsed: StoredDraft) => {
       const restoredValues = { ...parsed.values } as DraftValues & { subject?: unknown }
       delete restoredValues.subject
       const restoredSubjectSelection =
@@ -381,13 +442,83 @@ export const StudioClassCreateWizard = ({
       setCustomClassFormat(
         nextClassFormatSelection === customClassFormatOptionValue ? normalizedClassFormat : ""
       )
-      setCurrentStep(normalizeCurrentStep(parsed.step))
-    } else {
+      // 과거 draft 는 step 이 없을 수 있다. 그때는 1단계부터 연다.
+      setCurrentStep(normalizeCurrentStep(parsed.step ?? 1))
+    },
+    [safeSubjectCatalog]
+  )
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      draftHydratedRef.current = true
+      return
+    }
+
+    const parsed = parseStoredDraft(window.localStorage.getItem(draftStorageKey))
+    let hasActiveSession = false
+    try {
+      hasActiveSession = window.sessionStorage.getItem(draftSessionKey) === "1"
+    } catch {}
+
+    // 이 탭에서 작성 중이던 흐름(단순 새로고침 포함)이면 묻지 않고 그대로 복구한다.
+    if (parsed && hasActiveSession) {
+      applyStoredDraft(parsed)
+      draftHydratedRef.current = true
+      return
+    }
+
+    // 새 작성 세션인데 실제로 손댄 초안이 남아 있으면, 반영하지 않고 먼저 물어본다.
+    if (parsed && hasMeaningfulDraftValues(parsed.values)) {
+      setPendingDraft(parsed)
       setClassFormatSelection("")
       setCustomClassFormat("")
+      // 선택 전에는 autosave 를 켜지 않는다. 켜면 빈 form 이 초안을 덮어쓴다.
+      return
     }
+
+    setClassFormatSelection("")
+    setCustomClassFormat("")
+    try {
+      window.sessionStorage.setItem(draftSessionKey, "1")
+    } catch {}
     draftHydratedRef.current = true
-  }, [draftStorageKey, safeSubjectCatalog])
+  }, [applyStoredDraft, draftSessionKey, draftStorageKey])
+
+  // SPA 로 이 화면을 떠나면 marker 를 지운다. 새로고침에서는 실행되지 않아 자동 복구가 유지된다.
+  useEffect(() => {
+    return () => {
+      try {
+        window.sessionStorage.removeItem(draftSessionKey)
+      } catch {}
+    }
+  }, [draftSessionKey])
+
+  const handleContinueDraft = () => {
+    if (!pendingDraft) {
+      return
+    }
+
+    applyStoredDraft(pendingDraft)
+    setPendingDraft(null)
+    try {
+      window.sessionStorage.setItem(draftSessionKey, "1")
+    } catch {}
+    draftHydratedRef.current = true
+  }
+
+  const handleDiscardDraft = () => {
+    try {
+      window.localStorage.removeItem(draftStorageKey)
+      window.sessionStorage.setItem(draftSessionKey, "1")
+    } catch {}
+    setValues(createDefaultDraftValues())
+    setClassFormatSelection("")
+    setCustomClassFormat("")
+    setFieldErrors({})
+    setCurrentStep(1)
+    setPendingDraft(null)
+    draftHydratedRef.current = true
+  }
 
   useEffect(() => {
     if (values.assignmentMode !== "preassigned") {
@@ -454,11 +585,14 @@ export const StudioClassCreateWizard = ({
 
     if (typeof window !== "undefined") {
       window.localStorage.removeItem(draftStorageKey)
+      try {
+        window.sessionStorage.removeItem(draftSessionKey)
+      } catch {}
       window.location.assign(createSuccessHref)
     } else {
       router.refresh()
     }
-  }, [createSuccessHref, draftStorageKey, router, state.ok])
+  }, [createSuccessHref, draftSessionKey, draftStorageKey, router, state.ok])
 
   const updateValue = <K extends keyof DraftValues>(key: K, nextValue: DraftValues[K]) => {
     setValues((current) => ({ ...current, [key]: nextValue }))
@@ -711,8 +845,44 @@ export const StudioClassCreateWizard = ({
   const activeTab = getTabForStep(currentStep)
   const formId = "studio-class-create-form"
 
+  const pendingDraftTitle = pendingDraft?.values.title?.trim() || null
+  const pendingDraftSavedAt = formatDraftSavedAt(pendingDraft?.updatedAt)
+
   return (
     <section className={styles.page}>
+      {pendingDraft ? (
+        <div
+          className={styles.draftOverlay}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="studio-class-draft-title"
+        >
+          <div className={styles.draftModal}>
+            <h2 id="studio-class-draft-title" className={styles.draftTitle}>
+              작성 중이던 수업이 있어요
+            </h2>
+            <p className={styles.draftBody}>
+              {pendingDraftTitle
+                ? `‘${pendingDraftTitle}’ 수업을 작성 중이었어요.`
+                : "이전에 작성하던 수업 내용을 저장해 두었어요."}
+            </p>
+            <p className={styles.draftBody}>이어서 작성할까요?</p>
+            {pendingDraftSavedAt ? (
+              <p className={styles.draftMeta}>마지막 저장 · {pendingDraftSavedAt}</p>
+            ) : null}
+            <p className={styles.draftMeta}>새로 시작하면 저장된 작성 내용은 삭제됩니다.</p>
+            <div className={styles.draftActions}>
+              <button type="button" className={styles.stepBackButton} onClick={handleDiscardDraft}>
+                새로 시작
+              </button>
+              <button type="button" className={styles.saveButton} onClick={handleContinueDraft}>
+                이어서 작성
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
       <div className={styles.stickyChrome}>
         <header className={styles.headerCard}>
           <div className={styles.headerLeft}>
