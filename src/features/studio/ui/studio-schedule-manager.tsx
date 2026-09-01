@@ -3,6 +3,11 @@
 import Link from "next/link"
 import { useMemo, useState } from "react"
 
+import {
+  getStudioStatusLabel,
+  getStudioStatusTone
+} from "@/features/studio/lib/application-status-labels"
+import { StudioStatusBadge } from "@/features/studio/ui/studio-status-badge"
 import type { ApplicationStatus, StudioApplicationSummary } from "@/shared/lib/db/adapter"
 
 import styles from "./studio-schedule-manager.module.css"
@@ -55,18 +60,6 @@ const getBoardDateValue = (item: StudioApplicationSummary) =>
 const hasVisibleDate = (item: StudioApplicationSummary) => Boolean(getBoardDateValue(item))
 
 const isPendingStatus = (status: ApplicationStatus) => status === "new" || status === "reviewing"
-
-const getStatusBadge = (status: ApplicationStatus) => {
-  if (status === "confirmed") {
-    return { label: "확정", tone: "infoSoft" as const }
-  }
-
-  if (status === "completed") {
-    return { label: "완료", tone: "successSoft" as const }
-  }
-
-  return { label: "검토 중", tone: "warningSoft" as const }
-}
 
 const normalizeText = (value: string | null | undefined) => {
   const trimmed = value?.trim()
@@ -429,7 +422,6 @@ export const StudioScheduleManager = ({ items }: StudioScheduleManagerProps) => 
                   return null
                 }
 
-                const statusBadge = getStatusBadge(item.status)
                 const selectedLabel = getSecondaryScheduleLabel(item)
                 const programLabel = item.classProgramType
                   ? PROGRAM_TYPE_LABELS[item.classProgramType]
@@ -448,7 +440,9 @@ export const StudioScheduleManager = ({ items }: StudioScheduleManagerProps) => 
                     <div className={styles.eventCard}>
                       <div className={styles.eventTop}>
                         <div className={styles.badgeRow}>
-                          <Badge label={statusBadge.label} tone={statusBadge.tone} />
+                          <StudioStatusBadge tone={getStudioStatusTone(item)}>
+                            {getStudioStatusLabel(item)}
+                          </StudioStatusBadge>
                           {programLabel ? <span className={styles.programPill}>{programLabel}</span> : null}
                         </div>
                       </div>
@@ -467,7 +461,7 @@ export const StudioScheduleManager = ({ items }: StudioScheduleManagerProps) => 
                           </div>
                           <div className={styles.metaRow}>
                             <span className={styles.metaLabel}>상태</span>
-                            <span className={styles.metaValue}>{statusBadge.label}</span>
+                            <span className={styles.metaValue}>{getStudioStatusLabel(item)}</span>
                           </div>
                           <div className={styles.metaRow}>
                             <span className={styles.metaLabel}>수업명</span>
@@ -505,21 +499,4 @@ export const StudioScheduleManager = ({ items }: StudioScheduleManagerProps) => 
       </section>
     </div>
   )
-}
-
-const Badge = ({
-  label,
-  tone
-}: {
-  label: string
-  tone:
-    | "successSoft"
-    | "warningSoft"
-    | "infoSoft"
-    | "neutralSoft"
-    | "dangerSoft"
-    | "darkSolid"
-    | "successSolid"
-}) => {
-  return <span className={`${styles.badge} ${styles[`badge_${tone}`]}`}>{label}</span>
 }

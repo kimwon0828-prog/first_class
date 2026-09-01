@@ -2,10 +2,9 @@ import Link from "next/link"
 import { notFound } from "next/navigation"
 
 import {
-  getStudioDisplayStatus,
   getStudioRegistrationStatusLabel,
-  getStudioStatusLabel,
-  STUDIO_APPLICATION_STATUS_LABELS
+  getStudioRegistrationStatusTone,
+  getStudioStatusLabel
 } from "@/features/studio/lib/application-status-labels"
 import { CASE_STAGE_LABELS, getCaseStage } from "@/features/studio/lib/case-view-model"
 import { requireTeacherStudioAccess } from "@/features/studio/lib/require-teacher-studio-access"
@@ -13,8 +12,8 @@ import { getStudioApplicationAssigneeOptions } from "@/features/studio/queries/g
 import { getStudioApplicationDetail } from "@/features/studio/queries/get-studio-application-detail"
 import { ApplicationAssigneeForm } from "@/features/studio/ui/application-assignee-form"
 import { ApplicationTrialResultWorkflow } from "@/features/studio/ui/application-trial-result-workflow"
+import { StudioStatusBadge } from "@/features/studio/ui/studio-status-badge"
 import { getSubjectLabel } from "@/shared/constants/education-taxonomy"
-import type { StudioApplicationSummary } from "@/shared/lib/db/adapter"
 import { getSeoulDateTimeParts, SEOUL_TIME_ZONE } from "@/shared/lib/seoul-datetime"
 
 import styles from "./page.module.css"
@@ -93,19 +92,6 @@ const formatScheduleRange = (scheduleStartAt: string, selectedLabel: string | nu
   }).format(endDate))
 
   return `${startText} ~ ${endText}`
-}
-
-const formatMonthDay = (value: string | null | undefined) => {
-  if (!value) {
-    return null
-  }
-
-  const parts = getSeoulDateTimeParts(value)
-  if (!parts) {
-    return null
-  }
-
-  return `${parts.month}월 ${parts.day}일`
 }
 
 const formatDateWithWeekdayTime = (value: string | null | undefined, options?: { hour12?: boolean }) => {
@@ -190,52 +176,6 @@ const detailViewSubjectAndProgramLabel = (subject: string | null, programTypeLab
   return programTypeLabel
 }
 
-const getRegistrationBadge = (registrationStatus: string | null | undefined) => {
-  if (registrationStatus === "enrolled") {
-    return { label: getStudioRegistrationStatusLabel("enrolled"), tone: "successSolid" as const }
-  }
-
-  if (registrationStatus === "pending") {
-    return { label: getStudioRegistrationStatusLabel("pending"), tone: "warningSoft" as const }
-  }
-
-  if (registrationStatus === "not_enrolled") {
-    return { label: getStudioRegistrationStatusLabel("not_enrolled"), tone: "neutralSoft" as const }
-  }
-
-  if (!registrationStatus || registrationStatus === "undecided") {
-    return { label: getStudioRegistrationStatusLabel("undecided"), tone: "infoSoft" as const }
-  }
-
-  return { label: "등록 미기록", tone: "neutralSoft" as const }
-}
-
-const getStatusBadge = (application: Pick<StudioApplicationSummary, "status" | "noShowAt">) => {
-  const displayStatus = getStudioDisplayStatus(application)
-
-  if (displayStatus === "new") {
-    return { label: STUDIO_APPLICATION_STATUS_LABELS.new, tone: "successSoft" as const }
-  }
-
-  if (displayStatus === "reviewing") {
-    return { label: STUDIO_APPLICATION_STATUS_LABELS.reviewing, tone: "warningSoft" as const }
-  }
-
-  if (displayStatus === "confirmed") {
-    return { label: STUDIO_APPLICATION_STATUS_LABELS.confirmed, tone: "infoSoft" as const }
-  }
-
-  if (displayStatus === "completed") {
-    return { label: STUDIO_APPLICATION_STATUS_LABELS.completed, tone: "neutralSoft" as const }
-  }
-
-  if (displayStatus === "no_show") {
-    return { label: STUDIO_APPLICATION_STATUS_LABELS.no_show, tone: "dangerSoft" as const }
-  }
-
-  return { label: STUDIO_APPLICATION_STATUS_LABELS.canceled, tone: "dangerSoft" as const }
-}
-
 const formatProgressDate = (value: string | null | undefined) => {
   if (!value) {
     return null
@@ -251,23 +191,6 @@ const formatProgressDate = (value: string | null | undefined) => {
     day: "numeric",
     timeZone: SEOUL_TIME_ZONE
   }).format(date)
-}
-
-const Badge = ({
-  label,
-  tone
-}: {
-  label: string
-  tone:
-    | "successSoft"
-    | "warningSoft"
-    | "infoSoft"
-    | "neutralSoft"
-    | "dangerSoft"
-    | "darkSolid"
-    | "successSolid"
-}) => {
-  return <span className={`${styles.badge} ${styles[`badge_${tone}`]}`}>{label}</span>
 }
 
 export default async function StudioApplicationDetailPage({ params }: StudioApplicationDetailPageProps) {
@@ -292,10 +215,8 @@ export default async function StudioApplicationDetailPage({ params }: StudioAppl
           : null
         const applicationDate = formatDateTime(data.createdAt) ?? "신청일 미기록"
         const applicationDateDetail = formatDateWithWeekdayTime(data.createdAt, { hour12: true }) ?? applicationDate
-        const completedDateLabel = formatMonthDay(data.completedAt)
-        const statusBadge = getStatusBadge(data)
-        const completedStatusText = completedDateLabel ? `${completedDateLabel} 체험 완료` : statusBadge.label
-        const registrationBadge = getRegistrationBadge(data.registrationStatus)
+        const registrationTone = getStudioRegistrationStatusTone(data.registrationStatus)
+        const registrationLabel = getStudioRegistrationStatusLabel(data.registrationStatus)
         const statusLabel = getStudioStatusLabel(data)
         const programTypeLabel =
           data.classProgramType === "trial_class"
@@ -323,8 +244,7 @@ export default async function StudioApplicationDetailPage({ params }: StudioAppl
               : "수업 정보 미연결")
         const completedMetaParts = [
           detailViewSubjectAndProgramLabel(classSubject, programTypeLabel),
-          parentName,
-          completedStatusText
+          parentName
         ].filter((value): value is string => Boolean(value))
         const phoneHref = parentPhone ? `tel:${parentPhone}` : null
         const smsHref = parentPhone ? `sms:${parentPhone}` : null
@@ -389,9 +309,8 @@ export default async function StudioApplicationDetailPage({ params }: StudioAppl
           confirmedSchedule,
           applicationDate,
           applicationDateDetail,
-          completedStatusText,
-          statusBadge,
-          registrationBadge,
+          registrationTone,
+          registrationLabel,
           statusLabel,
           programTypeLabel,
           parentName,
@@ -470,10 +389,9 @@ export default async function StudioApplicationDetailPage({ params }: StudioAppl
               </div>
 
               <div className={styles.caseBadgeWrap}>
-                <Badge
-                  label={detailView.registrationBadge.label}
-                  tone={detailView.registrationBadge.tone}
-                />
+                <StudioStatusBadge tone={detailView.registrationTone}>
+                  {detailView.registrationLabel}
+                </StudioStatusBadge>
               </div>
             </div>
 

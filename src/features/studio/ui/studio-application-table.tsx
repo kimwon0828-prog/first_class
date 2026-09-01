@@ -11,6 +11,13 @@ import {
   matchesStudioApplicationFilter,
   type StudioApplicationFilterKey
 } from "@/features/studio/lib/application-filters"
+import {
+  getStudioRegistrationStatusLabel,
+  getStudioRegistrationStatusTone,
+  getStudioStatusLabel,
+  getStudioStatusTone
+} from "@/features/studio/lib/application-status-labels"
+import { StudioStatusBadge } from "@/features/studio/ui/studio-status-badge"
 import { getSubjectLabel } from "@/shared/constants/education-taxonomy"
 import type { StudioApplicationSummary } from "@/shared/lib/db/adapter"
 import { SEOUL_TIME_ZONE } from "@/shared/lib/seoul-datetime"
@@ -85,49 +92,12 @@ const resolveScheduleDisplay = (application: StudioApplicationSummary) => {
   return { label: "희망", primary: selectedLabel ?? "일정 협의 필요" }
 }
 
-const getStatusBadge = (application: StudioApplicationSummary) => {
-  if (isNoShowApplication(application)) {
-    return { label: "노쇼", tone: "dangerSoft" as const }
-  }
-
-  if (application.status === "canceled") {
-    return { label: "취소", tone: "dangerSoft" as const }
-  }
-
-  if (application.status === "new") {
-    return { label: "신규 신청", tone: "successSoft" as const }
-  }
-
-  if (application.status === "reviewing") {
-    return { label: "상담/확인 중", tone: "warningSoft" as const }
-  }
-
-  if (application.status === "confirmed") {
-    return { label: "일정 확정", tone: "infoSoft" as const }
-  }
-
-  return { label: "체험 완료", tone: "neutralSoft" as const }
-}
-
-const getRegistrationBadge = (application: StudioApplicationSummary) => {
-  if (application.registrationStatus === "enrolled") {
-    return { label: "등록 완료", tone: "successSolid" as const }
-  }
-
-  if (application.registrationStatus === "pending") {
-    return { label: "등록 보류", tone: "warningSoft" as const }
-  }
-
-  if (application.registrationStatus === "not_enrolled") {
-    return { label: "미등록", tone: "dangerSoft" as const }
-  }
-
-  if (application.status === "completed") {
-    return { label: "등록 결과 입력", tone: "neutralSoft" as const }
-  }
-
-  return null
-}
+// 등록 상태 배지는 결론이 있거나(등록/보류/미등록) 체험이 끝나 기록이 필요할 때만 덧붙인다.
+const shouldShowRegistrationBadge = (application: StudioApplicationSummary) =>
+  application.registrationStatus === "enrolled" ||
+  application.registrationStatus === "pending" ||
+  application.registrationStatus === "not_enrolled" ||
+  application.status === "completed"
 
 const isTodoApplication = (application: StudioApplicationSummary) =>
   application.status === "new" ||
@@ -139,14 +109,6 @@ const isGoneApplication = (application: StudioApplicationSummary) =>
   isCanceledApplication(application) ||
   isNoShowApplication(application) ||
   application.registrationStatus === "not_enrolled"
-
-const Badge = ({
-  label,
-  tone
-}: {
-  label: string
-  tone: "successSoft" | "warningSoft" | "infoSoft" | "neutralSoft" | "dangerSoft" | "successSolid"
-}) => <span className={`${styles.badge} ${styles[`badge_${tone}`]}`}>{label}</span>
 
 type StudioApplicationTableProps = {
   items: StudioApplicationSummary[]
@@ -350,8 +312,6 @@ export const StudioApplicationTable = ({ items, periodLabel }: StudioApplication
                 </thead>
                 <tbody>
                   {filteredItems.map((item) => {
-                    const statusBadge = getStatusBadge(item)
-                    const registrationBadge = getRegistrationBadge(item)
                     const schedule = resolveScheduleDisplay(item)
                     const todo = isTodoApplication(item)
                     const gone = isGoneApplication(item)
@@ -371,8 +331,14 @@ export const StudioApplicationTable = ({ items, periodLabel }: StudioApplication
                       >
                         <td>
                           <div className={styles.badgeStack}>
-                            <Badge label={statusBadge.label} tone={statusBadge.tone} />
-                            {registrationBadge ? <Badge label={registrationBadge.label} tone={registrationBadge.tone} /> : null}
+                            <StudioStatusBadge tone={getStudioStatusTone(item)}>
+                              {getStudioStatusLabel(item)}
+                            </StudioStatusBadge>
+                            {shouldShowRegistrationBadge(item) ? (
+                              <StudioStatusBadge tone={getStudioRegistrationStatusTone(item.registrationStatus)}>
+                                {getStudioRegistrationStatusLabel(item.registrationStatus)}
+                              </StudioStatusBadge>
+                            ) : null}
                           </div>
                         </td>
                         <td>
@@ -414,8 +380,6 @@ export const StudioApplicationTable = ({ items, periodLabel }: StudioApplication
         {filteredItems.length > 0 ? (
           <div className={styles.mobileCards}>
             {filteredItems.map((item) => {
-              const statusBadge = getStatusBadge(item)
-              const registrationBadge = getRegistrationBadge(item)
               const schedule = resolveScheduleDisplay(item)
               const todo = isTodoApplication(item)
 
@@ -434,8 +398,14 @@ export const StudioApplicationTable = ({ items, periodLabel }: StudioApplication
                       <span className={styles.grade}>{item.childGrade}</span>
                     </div>
                     <div className={styles.badgeStack}>
-                      <Badge label={statusBadge.label} tone={statusBadge.tone} />
-                      {registrationBadge ? <Badge label={registrationBadge.label} tone={registrationBadge.tone} /> : null}
+                      <StudioStatusBadge tone={getStudioStatusTone(item)}>
+                        {getStudioStatusLabel(item)}
+                      </StudioStatusBadge>
+                      {shouldShowRegistrationBadge(item) ? (
+                        <StudioStatusBadge tone={getStudioRegistrationStatusTone(item.registrationStatus)}>
+                          {getStudioRegistrationStatusLabel(item.registrationStatus)}
+                        </StudioStatusBadge>
+                      ) : null}
                     </div>
                   </div>
                   <strong className={styles.className}>{item.classTitle ?? "수업 정보 없음"}</strong>

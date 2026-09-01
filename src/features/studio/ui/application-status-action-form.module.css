@@ -203,55 +203,13 @@
   color: #8a8a8a;
 }
 
-.badge {
-  border-radius: 999px;
-  padding: 6px 10px;
-  font-size: 12px;
-  line-height: 16px;
-  font-weight: 900;
-  border: 1px solid transparent;
-  white-space: nowrap;
-}
 
-.badge_successSoft {
-  background: #eaf8ec;
-  color: #2aad38;
-  border-color: #d8f0dc;
-}
 
-.badge_warningSoft {
-  background: #fff6df;
-  color: #b45309;
-  border-color: #ffe3a6;
-}
 
-.badge_infoSoft {
-  background: #eff6ff;
-  color: #1d4ed8;
-  border-color: #dbeafe;
-}
 
-.badge_neutralSoft {
-  background: #f2f2f2;
-  color: #666666;
-  border-color: #eeeeee;
-}
 
-.badge_dangerSoft {
-  background: #fef2f2;
-  color: #dc2626;
-  border-color: #fecaca;
-}
 
-.badge_darkSolid {
-  background: #111111;
-  color: #ffffff;
-}
 
-.badge_successSolid {
-  background: #2aad38;
-  color: #ffffff;
-}
 
 @media (max-width: 640px) {
   .compactButtonGroup {

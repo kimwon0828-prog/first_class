@@ -3,6 +3,13 @@
 import Link from "next/link"
 import { useState } from "react"
 
+import {
+  getStudioRegistrationStatusLabel,
+  getStudioRegistrationStatusTone,
+  getStudioStatusLabel,
+  getStudioStatusTone
+} from "@/features/studio/lib/application-status-labels"
+import { StudioStatusBadge } from "@/features/studio/ui/studio-status-badge"
 import type { StudioApplicationSummary, StudioDashboardSummary } from "@/shared/lib/db/adapter"
 import styles from "@/features/studio/ui/studio-dashboard.module.css"
 
@@ -38,70 +45,12 @@ const getProgramTypeLabel = (application: StudioApplicationSummary) => {
   return "체험수업"
 }
 
-const isNoShowApplication = (application: StudioApplicationSummary) =>
-  application.status === "canceled" && Boolean(application.noShowAt)
-
-const getPrimaryStatusBadge = (application: StudioApplicationSummary) => {
-  if (application.status === "new") {
-    return { label: "신규 신청", tone: "successSoft" as const }
-  }
-
-  if (application.status === "reviewing") {
-    return { label: "상담 대기", tone: "warningSoft" as const }
-  }
-
-  if (application.status === "confirmed") {
-    return { label: "수업 확정", tone: "infoSoft" as const }
-  }
-
-  if (isNoShowApplication(application)) {
-    return { label: "노쇼", tone: "neutralSoft" as const }
-  }
-
-  if (application.status === "completed") {
-    return { label: "체험 완료", tone: "darkSoft" as const }
-  }
-
-  return { label: "신청 취소", tone: "dangerSoft" as const }
-}
-
-const getSecondaryBadge = (application: StudioApplicationSummary) => {
-  if (application.registrationStatus === "enrolled") {
-    return { label: "등록 완료", tone: "successSolid" as const }
-  }
-
-  if (application.registrationStatus === "pending") {
-    return { label: "등록 보류", tone: "warningSoft" as const }
-  }
-
-  if (application.registrationStatus === "not_enrolled") {
-    return { label: "미등록", tone: "neutralSoft" as const }
-  }
-
-  if (application.status === "completed" && application.registrationStatus === "undecided") {
-    return { label: "등록 미정", tone: "neutralSoft" as const }
-  }
-
-  return null
-}
-
-const Badge = ({
-  label,
-  tone
-}: {
-  label: string
-  tone:
-    | "successSoft"
-    | "warningSoft"
-    | "infoSoft"
-    | "neutralSoft"
-    | "dangerSoft"
-    | "darkSolid"
-    | "darkSoft"
-    | "successSolid"
-}) => {
-  return <span className={`${styles.badge} ${styles[`badge_${tone}`]}`}>{label}</span>
-}
+// 등록 상태 배지는 결론이 있거나(등록/보류/미등록) 체험이 끝나 기록이 필요할 때만 덧붙인다.
+const shouldShowRegistrationBadge = (application: StudioApplicationSummary) =>
+  application.registrationStatus === "enrolled" ||
+  application.registrationStatus === "pending" ||
+  application.registrationStatus === "not_enrolled" ||
+  (application.status === "completed" && application.registrationStatus === "undecided")
 
 const getPriorityRank = (application: StudioApplicationSummary) => {
   if (application.status === "new") {
@@ -302,8 +251,6 @@ export const StudioDashboardSummaryView = ({
         ) : (
           <div className={styles.priorityQueueGrid}>
             {queueItems.map((item) => {
-              const primaryBadge = getPrimaryStatusBadge(item)
-              const secondaryBadge = getSecondaryBadge(item)
               const scheduleLabel = item.status === "confirmed" ? "확정 일정" : "희망 일정"
               const isNewCard = item.status === "new"
               const detailHref = `/studio/applications/${item.id}`
@@ -323,8 +270,14 @@ export const StudioDashboardSummaryView = ({
                       </p>
                     </div>
                     <div className={styles.badgeRow}>
-                      <Badge label={primaryBadge.label} tone={primaryBadge.tone} />
-                      {secondaryBadge ? <Badge label={secondaryBadge.label} tone={secondaryBadge.tone} /> : null}
+                      <StudioStatusBadge tone={getStudioStatusTone(item)}>
+                        {getStudioStatusLabel(item)}
+                      </StudioStatusBadge>
+                      {shouldShowRegistrationBadge(item) ? (
+                        <StudioStatusBadge tone={getStudioRegistrationStatusTone(item.registrationStatus)}>
+                          {getStudioRegistrationStatusLabel(item.registrationStatus)}
+                        </StudioStatusBadge>
+                      ) : null}
                     </div>
                   </div>
 
@@ -424,8 +377,6 @@ export const StudioDashboardSummaryView = ({
                 </thead>
                 <tbody>
                   {recentItems.map((item) => {
-                    const primaryBadge = getPrimaryStatusBadge(item)
-                    const secondaryBadge = getSecondaryBadge(item)
                     return (
                       <tr key={item.id} className={styles.tr}>
                         <td className={styles.td}>{formatDateTime(item.createdAt)}</td>
@@ -435,9 +386,13 @@ export const StudioDashboardSummaryView = ({
                         <td className={styles.td}>{item.classTitle ?? "-"}</td>
                         <td className={styles.td}>
                           <div className={styles.badgeRow}>
-                            <Badge label={primaryBadge.label} tone={primaryBadge.tone} />
-                            {secondaryBadge ? (
-                              <Badge label={secondaryBadge.label} tone={secondaryBadge.tone} />
+                            <StudioStatusBadge tone={getStudioStatusTone(item)}>
+                              {getStudioStatusLabel(item)}
+                            </StudioStatusBadge>
+                            {shouldShowRegistrationBadge(item) ? (
+                              <StudioStatusBadge tone={getStudioRegistrationStatusTone(item.registrationStatus)}>
+                                {getStudioRegistrationStatusLabel(item.registrationStatus)}
+                              </StudioStatusBadge>
                             ) : null}
                           </div>
                         </td>
@@ -461,8 +416,6 @@ export const StudioDashboardSummaryView = ({
 
             <div className={styles.mobileList}>
               {recentItems.map((item) => {
-                const primaryBadge = getPrimaryStatusBadge(item)
-                const secondaryBadge = getSecondaryBadge(item)
                 return (
                   <article key={item.id} className={styles.mobileItem}>
                     <div className={styles.mobileItemTop}>
@@ -470,9 +423,13 @@ export const StudioDashboardSummaryView = ({
                         {item.childName} <span className={styles.mobileItemSub}>· {item.childGrade}</span>
                       </p>
                       <div className={styles.badgeRow}>
-                        <Badge label={primaryBadge.label} tone={primaryBadge.tone} />
-                        {secondaryBadge ? (
-                          <Badge label={secondaryBadge.label} tone={secondaryBadge.tone} />
+                        <StudioStatusBadge tone={getStudioStatusTone(item)}>
+                          {getStudioStatusLabel(item)}
+                        </StudioStatusBadge>
+                        {shouldShowRegistrationBadge(item) ? (
+                          <StudioStatusBadge tone={getStudioRegistrationStatusTone(item.registrationStatus)}>
+                            {getStudioRegistrationStatusLabel(item.registrationStatus)}
+                          </StudioStatusBadge>
                         ) : null}
                       </div>
                     </div>

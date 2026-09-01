@@ -345,24 +345,7 @@
   flex-wrap: wrap;
 }
 
-.badge {
-  display: inline-flex;
-  align-items: center;
-  min-height: 26px;
-  padding: 4px 9px;
-  border-radius: 999px;
-  font-size: 12px;
-  line-height: 16px;
-  font-weight: 800;
-  white-space: nowrap;
-}
 
-.badge_successSoft { background: #f3fbf4; color: #2aad38; }
-.badge_warningSoft { background: #fff3d6; color: #8a5a00; }
-.badge_infoSoft { background: #eef3fb; color: #1f5fa8; }
-.badge_neutralSoft { background: #f2f2f2; color: #666666; }
-.badge_dangerSoft { background: #fef2f2; color: #dc2626; }
-.badge_successSolid { background: #2aad38; color: #ffffff; }
 
 .studentName,
 .className,

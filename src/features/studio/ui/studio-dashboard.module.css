@@ -522,65 +522,14 @@
   flex-wrap: wrap;
 }
 
-.badge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 6px 10px;
-  border-radius: 999px;
-  border: 1px solid transparent;
-  font-size: 12px;
-  line-height: 14px;
-  font-weight: 800;
-}
 
-.badge_successSoft {
-  background: #f2fbf3;
-  color: #1e8c2b;
-  border-color: #d9ecdd;
-}
 
-.badge_warningSoft {
-  background: #fff7e8;
-  color: #c98a1e;
-  border-color: #f4e2be;
-}
 
-.badge_infoSoft {
-  background: #eef5ff;
-  color: #3b7dd8;
-  border-color: #d9e7ff;
-}
 
-.badge_neutralSoft {
-  background: #f1f3f1;
-  color: #667085;
-  border-color: #e2e5e2;
-}
 
-.badge_dangerSoft {
-  background: #fff2f2;
-  color: #d64545;
-  border-color: #f6d4d4;
-}
 
-.badge_darkSoft {
-  background: #f4f4f5;
-  color: #111827;
-  border-color: #e5e7eb;
-}
 
-.badge_darkSolid {
-  background: #111827;
-  color: #ffffff;
-  border-color: #111827;
-}
 
-.badge_successSolid {
-  background: #2aad38;
-  color: #ffffff;
-  border-color: #2aad38;
-}
 
 .tableWrap {
   display: none;
