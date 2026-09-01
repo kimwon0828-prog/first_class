@@ -95,6 +95,17 @@ Migrations are timestamped SQL in `supabase/migrations/` — append a new file, 
 - Academy areas are constrained to `shared/config/academy-areas.ts`, and only 은행사거리학원가 is currently enabled — the others are deliberately marked 준비 중.
 - MVP program types are exactly `trial_class` and `level_test`; application status is `new | reviewing | confirmed | completed | canceled`. Don't widen either without a docs change — planned expansion is along separate attendance/result/consultation/registration axes.
 
+## Studio UI 작업
+
+`/studio` 하위 UI를 생성하거나 수정할 때는 루트의 `STUDIO_DESIGN_SYSTEM.md`(현재 v1.1)를 **먼저 읽고 준수한다.**
+
+- 문서에 정의되지 않은 color / spacing / radius / max-width / card pattern / button hierarchy / status representation / page layout pattern 을 임의로 추가하지 않는다.
+- List / Detail / Settings / Form 화면을 만들기 전에 문서의 해당 Page Pattern(특히 Case List Pattern, Case Detail Pattern)을 먼저 확인하고, 화면마다 새 레이아웃을 발명하지 않는다.
+- 필요한 규칙이 문서에 없거나 기존 코드와 문서가 충돌하면 임의로 구현하지 말고 먼저 보고한다.
+- 규칙을 바꿔야 하면 문서를 먼저 고치고 코드에 반영한다.
+
+단, 아래 `작업 제약`의 안전/DB/git 규칙이 이 문서보다 우선한다.
+
 ## 작업 제약 (Working Constraints)
 - 데이터 로직(src/features/**/queries/*, supabase-adapter.ts)을 포함해 코드 전반을 다룰 수 있다.
   단, 쿼리 파일/adapter/DB 스키마를 수정하기 전에는 반드시 "제안 → 확인"을 거친다.
