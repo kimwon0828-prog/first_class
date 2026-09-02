@@ -1,9 +1,8 @@
 .card {
-  border: 1px solid #eeeeee;
+  border: 1px solid var(--border);
   background: var(--surface);
-  border-radius: 18px;
+  border-radius: var(--r-lg);
   padding: var(--s5);
-  box-shadow: 0 1px 0 rgba(17, 17, 17, 0.02);
 }
 
 .header {
@@ -18,14 +17,14 @@
   font-size: 16px;
   line-height: 22px;
   font-weight: 900;
-  color: #111111;
+  color: var(--text-1);
 }
 
 .description {
   margin: 10px 0 0;
   font-size: 14px;
   line-height: 22px;
-  color: #8a8a8a;
+  color: var(--text-2);
 }
 
 .currentRow {
@@ -35,9 +34,9 @@
   align-items: flex-start;
   gap: var(--s3);
   padding: 12px 14px;
-  border-radius: 14px;
+  border-radius: var(--r-md);
   background: var(--surface-sub);
-  border: 1px solid #f2f2f2;
+  border: 1px solid var(--border);
 }
 
 .currentInfo {
@@ -49,14 +48,14 @@
   font-size: 12px;
   line-height: 16px;
   font-weight: 900;
-  color: #8a8a8a;
+  color: var(--text-2);
 }
 
 .currentValue {
   font-size: 14px;
   line-height: 20px;
   font-weight: 800;
-  color: #111111;
+  color: var(--text-1);
 }
 
 .form {
@@ -74,18 +73,18 @@
   font-size: 13px;
   line-height: 18px;
   font-weight: 800;
-  color: #4a4a4a;
+  color: var(--text-2);
 }
 
 .select {
   width: 100%;
   height: 48px;
   border-radius: var(--r-md);
-  border: 1px solid #d9d9d9;
+  border: 1px solid var(--border-strong);
   padding: 0 14px;
   font-size: 15px;
   line-height: 20px;
-  color: #111111;
+  color: var(--text-1);
   background: var(--surface);
   outline: none;
 }
@@ -99,7 +98,7 @@
   margin: 0;
   font-size: 13px;
   line-height: 20px;
-  color: #8a8a8a;
+  color: var(--text-2);
   font-weight: 700;
 }
 
@@ -109,14 +108,14 @@
   font-size: 13px;
   line-height: 18px;
   font-weight: 800;
-  background: #f3fbf4;
-  color: #2aad38;
+  background: var(--green-bg);
+  color: var(--green-fg);
   border: 1px solid #d8f0dc;
 }
 
 .messageError {
-  background: #fff4f4;
-  color: #dc2626;
+  background: var(--red-bg);
+  color: var(--red-fg);
   border-color: #fecaca;
 }
 
@@ -151,10 +150,10 @@
   justify-content: center;
   min-height: 38px;
   padding: 0 14px;
-  border-radius: 10px;
-  border: 1px solid #d9d9d9;
+  border-radius: var(--r-md);
+  border: 1px solid var(--border-strong);
   background: var(--surface);
-  color: #304030;
+  color: var(--text-2);
   font-size: 13px;
   line-height: 18px;
   font-weight: 800;
@@ -163,5 +162,5 @@
 
 .secondaryButton:hover {
   border-color: #cfe9d2;
-  background: #f7faf7;
+  background: var(--surface-sub);
 }

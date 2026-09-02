@@ -1,9 +1,8 @@
 .card {
-  border: 1px solid #eeeeee;
+  border: 1px solid var(--border);
   background: var(--surface);
-  border-radius: 18px;
+  border-radius: var(--r-lg);
   padding: var(--s5);
-  box-shadow: 0 1px 0 rgba(17, 17, 17, 0.02);
 }
 
 .header {
@@ -19,7 +18,7 @@
   font-size: 16px;
   line-height: 22px;
   font-weight: 900;
-  color: #111111;
+  color: var(--text-1);
 }
 
 .description {
@@ -64,9 +63,9 @@
 }
 
 .compactButtonGroup .secondaryButton {
-  border-color: #e7eae7;
+  border-color: var(--border);
   background: var(--surface);
-  color: #5f6d5f;
+  color: var(--text-2);
 }
 
 .compactButtonGroup .secondaryButton:hover {
@@ -89,8 +88,8 @@
   justify-content: space-between;
   gap: 10px;
   padding: 10px 12px;
-  border-radius: 14px;
-  border: 1px solid #eeeeee;
+  border-radius: var(--r-md);
+  border: 1px solid var(--border);
   background: var(--surface);
 }
 
@@ -98,31 +97,31 @@
   font-size: 12px;
   line-height: 16px;
   font-weight: 900;
-  color: #8a8a8a;
+  color: var(--text-2);
 }
 
 .currentValue {
   font-size: 13px;
   line-height: 18px;
   font-weight: 900;
-  color: #111111;
+  color: var(--text-1);
 }
 
 .message {
-  border: 1px solid #eeeeee;
+  border: 1px solid var(--border);
   background: var(--surface-sub);
   border-radius: var(--r-md);
   padding: 12px 14px;
   font-size: 14px;
   line-height: 20px;
-  color: #111111;
+  color: var(--text-1);
   font-weight: 700;
 }
 
 .messageError {
   border-color: #fecaca;
-  background: #fef2f2;
-  color: #dc2626;
+  background: var(--red-bg);
+  color: var(--red-fg);
 }
 
 .primaryButton {
@@ -146,8 +145,8 @@
   height: 48px;
   border: 1px solid #dbeafe;
   border-radius: var(--r-md);
-  background: #eff6ff;
-  color: #1d4ed8;
+  background: var(--blue-bg);
+  color: var(--blue-fg);
   font-size: 15px;
   font-weight: 900;
   cursor: pointer;
@@ -162,8 +161,8 @@
   height: 48px;
   border: 1px solid #fecaca;
   border-radius: var(--r-md);
-  background: #fef2f2;
-  color: #dc2626;
+  background: var(--red-bg);
+  color: var(--red-fg);
   font-size: 15px;
   font-weight: 900;
   cursor: pointer;
@@ -182,8 +181,8 @@
 
 .empty {
   margin-top: 14px;
-  border: 1px dashed #d9d9d9;
-  border-radius: 14px;
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--r-md);
   padding: 14px;
   background: var(--surface);
 }
@@ -193,14 +192,14 @@
   font-size: 14px;
   line-height: 20px;
   font-weight: 900;
-  color: #111111;
+  color: var(--text-1);
 }
 
 .emptyDescription {
   margin: var(--s2) 0 0;
   font-size: 13px;
   line-height: 20px;
-  color: #8a8a8a;
+  color: var(--text-2);
 }
 
 

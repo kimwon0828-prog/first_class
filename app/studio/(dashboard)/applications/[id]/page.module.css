@@ -1,6 +1,6 @@
 .page {
   min-height: 100dvh;
-  background: #f6f7f6;
+  background: var(--bg);
   padding: 32px 24px 56px;
 }
 
@@ -40,16 +40,16 @@
   height: 40px;
   padding: 0 var(--s3);
   border-radius: var(--r-md);
-  border: 1px solid #e7eae7;
+  border: 1px solid var(--border);
   background: var(--surface);
-  color: #3b463c;
+  color: var(--text-2);
   font-size: 13px;
   font-weight: 800;
   text-decoration: none;
 }
 
 .backLink:hover {
-  border-color: #cfd6cf;
+  border-color: var(--border-strong);
 }
 
 .headerTitleRow {
@@ -87,7 +87,7 @@
 
 .errorCard {
   border: 1px solid #fecaca;
-  border-radius: 18px;
+  border-radius: var(--r-lg);
   background: var(--surface);
   padding: 16px 18px;
 }
@@ -96,7 +96,7 @@
   margin: 0;
   font-size: 14px;
   line-height: 20px;
-  color: #dc2626;
+  color: var(--red-fg);
   font-weight: 700;
 }
 
@@ -194,9 +194,9 @@
   min-height: 42px;
   padding: 0 14px;
   border-radius: var(--r-md);
-  border: 1px solid #e7eae7;
+  border: 1px solid var(--border);
   background: var(--surface);
-  color: #304030;
+  color: var(--text-2);
   font-size: 14px;
   font-weight: 800;
   text-decoration: none;
@@ -204,8 +204,8 @@
 
 .actionButtonTint {
   border-color: #cfe9d2;
-  background: #f2fbf3;
-  color: #1e8c2b;
+  background: var(--green-bg);
+  color: var(--green-fg);
 }
 
 .actionButtonSecondary:hover,
@@ -371,14 +371,14 @@
   font-size: 12px;
   line-height: 16px;
   font-weight: 800;
-  color: #7a867a;
+  color: var(--text-2);
 }
 
 .summaryValue {
   margin: 0;
   font-size: 14px;
   line-height: 20px;
-  color: #182118;
+  color: var(--text-1);
   font-weight: 800;
 }
 
@@ -386,7 +386,7 @@
   margin: 0;
   font-size: 15px;
   line-height: 20px;
-  color: #1e8c2b;
+  color: var(--green-fg);
   font-weight: 900;
 }
 
@@ -394,7 +394,7 @@
   margin: 0;
   font-size: 14px;
   line-height: 22px;
-  color: #182118;
+  color: var(--text-1);
   font-weight: 700;
   white-space: pre-wrap;
 }
@@ -536,8 +536,8 @@
   display: grid;
   gap: var(--s2);
   padding: var(--s4);
-  border-right: 1px solid #e7eae7;
-  border-bottom: 1px solid #e7eae7;
+  border-right: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
   background: var(--surface);
 }
 
@@ -769,7 +769,7 @@
 /* ── Phase 2A: 상태와 무관하게 동일한 Case Header / 진행 상태 / 신청 정보 ── */
 
 .caseHeader {
-  border: 1px solid #e7eae7;
+  border: 1px solid var(--border);
   border-radius: var(--r-md);
   background: var(--surface);
   padding: 22px 22px 18px;
@@ -801,14 +801,14 @@
   line-height: 32px;
   font-weight: 900;
   letter-spacing: -0.02em;
-  color: #182118;
+  color: var(--text-1);
 }
 
 .caseTitleSub {
   font-size: 15px;
   line-height: 22px;
   font-weight: 700;
-  color: #5f6d5f;
+  color: var(--text-2);
 }
 
 .caseSubline {
@@ -820,7 +820,7 @@
   font-size: 15px;
   line-height: 22px;
   font-weight: 700;
-  color: #334033;
+  color: var(--text-2);
 }
 
 .caseClassName {
@@ -828,7 +828,7 @@
 }
 
 .caseInlineLink {
-  color: #2f7d4f;
+  color: var(--green-fg);
   font-size: 13px;
   font-weight: 700;
   text-decoration: none;
@@ -839,7 +839,7 @@
 }
 
 .caseDivider {
-  color: #b6c0b6;
+  color: var(--text-3);
 }
 
 .caseGuardian {
@@ -851,7 +851,7 @@
   font-size: 14px;
   line-height: 20px;
   font-weight: 700;
-  color: #5f6d5f;
+  color: var(--text-2);
 }
 
 .caseBadgeWrap {
@@ -871,28 +871,28 @@
   gap: 10px;
   flex-wrap: wrap;
   padding-top: 14px;
-  border-top: 1px solid #eef1ee;
+  border-top: 1px solid var(--border);
   font-size: 13px;
   line-height: 20px;
 }
 
 .progressLabel {
-  color: #8a938a;
+  color: var(--text-3);
   font-weight: 700;
 }
 
 .progressSteps {
-  color: #5f6d5f;
+  color: var(--text-2);
   font-weight: 700;
 }
 
 .progressCurrent {
-  color: #2f7d4f;
+  color: var(--green-fg);
   font-weight: 800;
 }
 
 .applicationInfoSection {
-  border: 1px solid #e7eae7;
+  border: 1px solid var(--border);
   background: var(--surface);
   border-radius: var(--r-md);
   overflow: hidden;
@@ -907,11 +907,11 @@
   font-size: 16px;
   line-height: 24px;
   font-weight: 700;
-  color: #182118;
+  color: var(--text-1);
 }
 
 .applicationInfoBody {
-  border-top: 1px solid #eef1ee;
+  border-top: 1px solid var(--border);
   padding: 18px 20px 20px;
   display: grid;
   gap: 18px;
@@ -954,7 +954,7 @@
 .applicationInfoGrid .infoCell {
   padding: var(--s3) 0;
   border-right: 0;
-  border-bottom: 1px solid #f0f3f0;
+  border-bottom: 1px solid var(--border);
   border-radius: 0;
 }
 

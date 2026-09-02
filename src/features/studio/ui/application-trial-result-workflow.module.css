@@ -1,5 +1,5 @@
 .card {
-  border: 1px solid #e7eae7;
+  border: 1px solid var(--border);
   background: var(--surface);
   border-radius: var(--r-md);
   padding: var(--s5);
@@ -19,7 +19,7 @@
   font-size: 20px;
   line-height: 26px;
   font-weight: 900;
-  color: #182118;
+  color: var(--text-1);
 }
 
 .sectionDescription {
@@ -83,7 +83,7 @@
   border: 0;
   padding: 0;
   background: transparent;
-  color: #495849;
+  color: var(--text-2);
   font-size: 14px;
   line-height: 20px;
   font-weight: 800;
@@ -91,7 +91,7 @@
 }
 
 .inlineTextButton:hover {
-  color: #1f2b1f;
+  color: var(--text-1);
 }
 
 .todoBody {
@@ -118,7 +118,7 @@
   justify-content: center;
   min-height: 42px;
   padding: 0 14px;
-  border-radius: 10px;
+  border-radius: var(--r-md);
   font-size: 14px;
   font-weight: 800;
   cursor: pointer;
@@ -141,9 +141,9 @@
 }
 
 .secondaryButton {
-  border: 1px solid #d9e0d9;
-  background: #f8faf8;
-  color: #314031;
+  border: 1px solid var(--border);
+  background: var(--surface-sub);
+  color: var(--text-2);
 }
 
 .primaryButton:disabled,
@@ -295,9 +295,9 @@
   min-height: 34px;
   padding: 0 var(--s3);
   border-radius: var(--r-full);
-  border: 1px solid #dbe4db;
-  background: #f7faf7;
-  color: #324032;
+  border: 1px solid var(--border);
+  background: var(--surface-sub);
+  color: var(--text-2);
   font-size: 13px;
   line-height: 18px;
   font-weight: 700;
@@ -309,8 +309,8 @@
 
 .choiceChipActive {
   border-color: var(--brand-500);
-  background: #eef9f0;
-  color: #1f8f2c;
+  background: var(--green-bg);
+  color: var(--green-fg);
 }
 
 .resultValue {
@@ -367,7 +367,7 @@
   margin: 0;
   font-size: 15px;
   line-height: 22px;
-  color: #5f6c5f;
+  color: var(--text-2);
   font-weight: 700;
 }
 
@@ -567,7 +567,7 @@
   display: none;
   gap: 10px;
   padding: 10px;
-  border-radius: 18px;
+  border-radius: var(--r-lg);
   border: 1px solid rgba(223, 228, 223, 0.9);
   background: rgba(255, 255, 255, 0.88);
   backdrop-filter: blur(18px);
@@ -589,9 +589,9 @@
 }
 
 .mobileActionButtonSecondary {
-  border: 1px solid #d9e0d9;
+  border: 1px solid var(--border);
   background: var(--surface);
-  color: #314031;
+  color: var(--text-2);
 }
 
 .mobileActionButtonPrimary {
@@ -619,9 +619,9 @@
 .dialogCardWide {
   position: relative;
   width: min(100%, 460px);
-  border-radius: 18px;
+  border-radius: var(--r-lg);
   background: var(--surface);
-  border: 1px solid #e7eae7;
+  border: 1px solid var(--border);
   box-shadow: 0 20px 44px rgba(17, 24, 17, 0.16);
   padding: var(--s6);
 }
@@ -638,7 +638,7 @@
   right: 16px;
   border: 0;
   background: transparent;
-  color: #7b877b;
+  color: var(--text-2);
   font-size: 13px;
   line-height: 18px;
   font-weight: 800;
@@ -656,14 +656,14 @@
   font-size: 22px;
   line-height: 28px;
   font-weight: 900;
-  color: #182118;
+  color: var(--text-1);
 }
 
 .dialogDescription {
   margin: 0;
   font-size: 14px;
   line-height: 22px;
-  color: #667366;
+  color: var(--text-2);
 }
 
 .dialogActions {
@@ -686,19 +686,19 @@
   font-size: 14px;
   line-height: 20px;
   font-weight: 700;
-  border: 1px solid #dbe4db;
+  border: 1px solid var(--border);
 }
 
 .messageError {
-  background: #fff4f4;
+  background: var(--red-bg);
   border-color: #f3c3c3;
-  color: #d64545;
+  color: var(--red-fg);
 }
 
 .messageSuccess {
-  background: #eef9f0;
+  background: var(--green-bg);
   border-color: #cfe9d2;
-  color: #1f8f2c;
+  color: var(--green-fg);
 }
 
 .formSection {
@@ -716,14 +716,14 @@
   font-size: 15px;
   line-height: 22px;
   font-weight: 800;
-  color: #182118;
+  color: var(--text-1);
 }
 
 .formDescription {
   margin: 0;
   font-size: 13px;
   line-height: 20px;
-  color: #758275;
+  color: var(--text-2);
 }
 
 .fieldGrid {
@@ -741,23 +741,23 @@
   font-size: 13px;
   line-height: 18px;
   font-weight: 800;
-  color: #475647;
+  color: var(--text-2);
 }
 
 .fieldHelp {
   margin: 0;
   font-size: 12px;
   line-height: 18px;
-  color: #758275;
+  color: var(--text-2);
 }
 
 .input,
 .textarea {
   width: 100%;
   border-radius: var(--r-md);
-  border: 1px solid #dbe4db;
+  border: 1px solid var(--border);
   background: var(--surface);
-  color: #182118;
+  color: var(--text-1);
   font-size: 14px;
   line-height: 20px;
   padding: 12px 14px;
@@ -880,7 +880,7 @@
   line-height: 24px;
   font-weight: 800;
   letter-spacing: -0.01em;
-  color: #182118;
+  color: var(--text-1);
 }
 
 .sectionHeadActions {
@@ -894,7 +894,7 @@
   margin: -4px 0 0;
   font-size: 13px;
   line-height: 20px;
-  color: #6b756b;
+  color: var(--text-2);
   font-weight: 700;
 }
 
@@ -913,14 +913,14 @@
   padding: 14px 16px;
   border: 1px solid #f5e0c8;
   border-radius: var(--r-md);
-  background: #fff8f1;
+  background: var(--amber-bg);
 }
 
 .todoBlockSuccess {
   padding: 14px 16px;
   border: 1px solid #d6e9dc;
   border-radius: var(--r-md);
-  background: #f2f9f4;
+  background: var(--green-bg);
 }
 
 .todoTitle {
@@ -928,14 +928,14 @@
   font-size: 15px;
   line-height: 22px;
   font-weight: 800;
-  color: #1c231c;
+  color: var(--text-1);
 }
 
 .todoDescription {
   margin: 0;
   font-size: 13px;
   line-height: 20px;
-  color: #5f6d5f;
+  color: var(--text-2);
   font-weight: 600;
 }
 
@@ -970,7 +970,7 @@
   font-size: 13px;
   line-height: 20px;
   font-weight: 700;
-  color: #4a544a;
+  color: var(--text-2);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -979,7 +979,7 @@
 .activitySystemTime {
   font-size: 12px;
   line-height: 18px;
-  color: #99a399;
+  color: var(--text-3);
   font-weight: 600;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
@@ -1002,7 +1002,7 @@
   top: 0;
   bottom: 0;
   width: 1px;
-  background: #eaeeea;
+  background: var(--surface-sub);
 }
 
 .activitySystemItem:first-child::before,
@@ -1023,7 +1023,7 @@
   height: 9px;
   border-radius: var(--r-full);
   background: var(--surface);
-  border: 2px solid #d3dad3;
+  border: 2px solid var(--border);
 }
 
 .activitySystemItem .activityMarker {
@@ -1034,8 +1034,8 @@
 }
 
 .activityMarkerConsultation {
-  border-color: #2f7d4f;
-  background: #2f7d4f;
+  border-color: var(--green-fg);
+  background: var(--green-fg);
 }
 
 .activityContent {
@@ -1054,20 +1054,20 @@
 }
 
 .activityTitle {
-  color: #182118;
+  color: var(--text-1);
   font-size: 14px;
   font-weight: 800;
   letter-spacing: -0.01em;
 }
 
 .activityTime {
-  color: #99a399;
+  color: var(--text-3);
   font-size: 12px;
   font-weight: 600;
 }
 
 .activityMeta {
-  color: #99a399;
+  color: var(--text-3);
   font-size: 12px;
   font-weight: 600;
 }
@@ -1075,7 +1075,7 @@
 /* 상담 내용이 활동 기록의 본문이다. 가장 읽기 좋아야 한다. */
 .activityNote {
   margin: 0;
-  color: #263026;
+  color: var(--text-1);
   font-size: 15px;
   line-height: 23px;
   font-weight: 600;
@@ -1084,7 +1084,7 @@
 
 .activityDetails {
   margin: 0;
-  color: #6b756b;
+  color: var(--text-2);
   font-size: 12px;
   line-height: 18px;
   font-weight: 600;
@@ -1109,7 +1109,7 @@
   gap: 14px;
   align-items: baseline;
   padding: 7px 0;
-  border-top: 1px solid #f1f4f1;
+  border-top: 1px solid var(--border);
 }
 
 .resultGridRow:first-child {
@@ -1121,7 +1121,7 @@
   font-size: 13px;
   line-height: 20px;
   font-weight: 700;
-  color: #8a938a;
+  color: var(--text-3);
 }
 
 .resultGridValue {
@@ -1129,7 +1129,7 @@
   font-size: 14px;
   line-height: 21px;
   font-weight: 700;
-  color: #263026;
+  color: var(--text-1);
   white-space: pre-line;
 }
 
