@@ -97,7 +97,7 @@ Migrations are timestamped SQL in `supabase/migrations/` — append a new file, 
 
 ## Studio UI 작업
 
-`/studio` 하위 UI를 생성하거나 수정할 때는 루트의 `STUDIO_DESIGN_SYSTEM.md`(현재 v1.1)를 **먼저 읽고 준수한다.**
+`/studio` 하위 UI를 생성하거나 수정할 때는 루트의 `STUDIO_DESIGN_SYSTEM.md`(현재 Studio Design System)를 **먼저 읽고 준수한다.**
 
 - 문서에 정의되지 않은 color / spacing / radius / max-width / card pattern / button hierarchy / status representation / page layout pattern 을 임의로 추가하지 않는다.
 - List / Detail / Settings / Form 화면을 만들기 전에 문서의 해당 Page Pattern(특히 Case List Pattern, Case Detail Pattern)을 먼저 확인하고, 화면마다 새 레이아웃을 발명하지 않는다.
