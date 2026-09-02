@@ -1,877 +1,659 @@
 .root {
+  /*
+   * 목록 surface 안쪽에서 텍스트가 시작하는 지점.
+   * .workspace border 1px + .row / .listHead 의 padding-inline 18px 이다.
+   * 제목·설명·검색 Toolbar 를 이 축에 맞춰 목록 본문과 한 줄로 읽히게 한다.
+   */
+  --teachers-content-inset: 19px;
   display: grid;
-  gap: 20px;
-  color: #111111;
+  gap: 24px;
 }
 
-.headerRow {
+/* ── Page Header ─────────────────────────────────────────────────── */
+
+.header {
   display: flex;
-  align-items: flex-end;
   justify-content: space-between;
-  gap: 16px;
+  gap: var(--s4);
   flex-wrap: wrap;
+  align-items: flex-end;
 }
 
-.headerCopy {
+.headerLeft {
   display: grid;
-  gap: 8px;
+  gap: var(--s2);
+  /* CTA 는 오른쪽 정렬 그대로 두고 왼쪽 텍스트 블록만 본문 축으로 옮긴다. */
+  padding-left: var(--teachers-content-inset);
 }
 
-.headerActionWrap {
-  display: inline-flex;
+.headerRight {
+  display: flex;
+  justify-content: flex-end;
 }
 
-.pageTitle {
+.title {
   margin: 0;
   font-size: 30px;
-  line-height: 1.1;
+  line-height: 36px;
   letter-spacing: -0.04em;
   font-weight: 800;
-  color: #111111;
+  color: var(--text-1);
 }
 
-.pageDescription {
+.description {
   margin: 0;
   font-size: 14px;
-  line-height: 1.6;
-  color: #4a4a4a;
+  line-height: 22px;
+  color: var(--text-2);
 }
+
+/* ── Buttons ─────────────────────────────────────────────────────── */
+
+.primaryButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 40px;
+  padding: 0 16px;
+  border: 1px solid var(--brand-700);
+  border-radius: var(--r-md);
+  background: var(--brand-700);
+  color: #ffffff;
+  font-size: 15px;
+  font-weight: 800;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.primaryButton:hover:not(:disabled) {
+  background: var(--brand-900);
+  border-color: var(--brand-900);
+}
+
+.primaryButton:disabled,
+.secondaryButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.secondaryButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 40px;
+  padding: 0 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  color: var(--text-1);
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.secondaryButton:hover:not(:disabled) {
+  background: var(--surface-sub);
+}
+
+/* ── Action feedback ─────────────────────────────────────────────── */
 
 .feedback {
   margin: 0;
-  border-radius: 14px;
-  padding: 13px 16px;
-  font-size: 14px;
+  padding: var(--s3) var(--s4);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  font-size: 13px;
   line-height: 20px;
-  font-weight: 700;
+  font-weight: 600;
 }
 
 .feedbackSuccess {
-  border: 1px solid #dcefdc;
-  background: #f2fbf3;
-  color: #1e8c2b;
+  border-color: var(--green-bg);
+  background: var(--green-bg);
+  color: var(--green-fg);
 }
 
 .feedbackError {
-  border: 1px solid #ffd9d9;
-  background: #fff5f5;
-  color: #dc2626;
+  border-color: var(--red-bg);
+  background: var(--red-bg);
+  color: var(--red-fg);
 }
 
-.summaryBar {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 16px;
-  padding: 16px 18px;
-  border: 1px solid #e7eae7;
-  border-radius: 14px;
-  background: #ffffff;
-}
-
-.summaryItems {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-
-.summaryItem {
-  font-size: 14px;
-  line-height: 20px;
-  color: #4a4a4a;
-}
-
-.summaryItem strong {
-  color: #111111;
-  font-weight: 800;
-}
-
-.summaryItemWarning {
-  color: #c98a1e;
-}
-
-.summaryDot {
-  width: 4px;
-  height: 4px;
-  border-radius: 999px;
-  background: #c7ccc7;
-}
-
-.capacityWrap {
-  min-width: 220px;
-  display: grid;
-  grid-template-columns: auto minmax(120px, 1fr) auto;
-  align-items: center;
-  gap: 10px;
-}
-
-.capacityLabel,
-.capacityCount {
-  font-size: 13px;
-  line-height: 18px;
-  color: #6b716b;
-  font-weight: 700;
-}
-
-.capacityTrack {
-  height: 8px;
-  border-radius: 999px;
-  background: #edf0ed;
-  overflow: hidden;
-}
-
-.capacityFill {
-  height: 100%;
-  min-width: 8px;
-  border-radius: inherit;
-  background: linear-gradient(90deg, #2aad38, #1e8c2b);
-}
+/* ── Toolbar ─────────────────────────────────────────────────────── */
 
 .toolbar {
   display: flex;
-  gap: 12px;
   align-items: center;
-  padding: 16px 18px;
-  border: 1px solid #e7eae7;
-  border-radius: 14px;
-  background: #ffffff;
+  gap: var(--s2);
+  flex-wrap: wrap;
+  /* 목록 본문과 같은 content axis. */
+  padding: 0 0 0 var(--teachers-content-inset);
 }
 
 .searchWrap {
-  flex: 1 1 auto;
+  /* 검색은 목록의 보조 도구다. 가로 공간을 독차지하지 않는다. */
+  flex: 1 1 240px;
+  max-width: 420px;
 }
 
 .search {
   width: 100%;
-  height: 46px;
-  border: 1px solid #d8ddd8;
-  border-radius: 12px;
-  background: #ffffff;
-  padding: 0 14px;
+  height: 40px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  color: var(--text-1);
   font-size: 14px;
-  color: #111111;
 }
 
-.search:focus,
-.input:focus,
-.textarea:focus {
-  outline: none;
-  border-color: #2aad38;
-  box-shadow: 0 0 0 3px rgba(42, 173, 56, 0.14);
+.search::placeholder {
+  color: var(--text-3);
 }
 
 .pills {
   display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
+  gap: var(--s1);
 }
 
 .pill {
   height: 40px;
-  padding: 0 14px;
-  border-radius: 999px;
-  border: 1px solid #d8ddd8;
-  background: #ffffff;
-  color: #4a4a4a;
+  padding: 0 var(--s3);
+  border: 1px solid var(--border);
+  border-radius: var(--r-full);
+  background: var(--surface);
+  color: var(--text-2);
   font-size: 13px;
   font-weight: 700;
   cursor: pointer;
+}
+
+.pill:hover {
+  background: var(--surface-sub);
 }
 
 .pillActive {
-  border-color: #cfe8d2;
-  background: #f2fbf3;
-  color: #1e8c2b;
+  border-color: var(--brand-700);
+  background: var(--brand-50);
+  color: var(--brand-700);
 }
 
-.listSection {
-  display: grid;
-  gap: 16px;
+@media (max-width: 640px) {
+  .searchWrap {
+    flex: 1 1 100%;
+    max-width: none;
+  }
 }
 
-.cards {
-  display: grid;
-  gap: 16px;
+/* ── v2 List Page: 행은 행이다. 카드로 띄우지 않는다. ────────────────── */
+
+.workspace {
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  overflow: hidden;
 }
 
-.teacherCard {
-  display: grid;
-  gap: 16px;
-  padding: 20px;
-  border: 1px solid #e7eae7;
-  border-radius: 14px;
-  background: #ffffff;
-}
-
-.teacherCardInactive {
-  background: #fbfcfb;
-}
-
-.teacherTop {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 16px;
-}
-
-.teacherIdentity {
-  display: flex;
-  gap: 14px;
-  min-width: 0;
-}
-
-.avatar {
-  width: 52px;
-  height: 52px;
-  border-radius: 12px;
-  background: #f2fbf3;
-  color: #1e8c2b;
-  display: grid;
-  place-items: center;
-  font-size: 17px;
-  font-weight: 800;
-  flex: 0 0 auto;
-}
-
-.teacherHeading {
-  display: grid;
-  gap: 7px;
-  min-width: 0;
-}
-
-.nameRow {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  flex-wrap: wrap;
-}
-
-.teacherName {
-  font-size: 17px;
-  line-height: 24px;
-  font-weight: 800;
-  color: #111111;
-}
-
-.teacherSummary {
+.resultMeta {
   margin: 0;
-  font-size: 14px;
-  line-height: 20px;
-  color: #4a4a4a;
-}
-
-.teacherSubjectLine {
-  margin: 2px 0 0;
+  padding: var(--s3) 18px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text-2);
   font-size: 13px;
-  color: #475569;
 }
 
-.statusChip,
-.attentionChip,
-.previewBadge {
+.listHead,
+.row {
+  display: grid;
+  grid-template-columns: 2fr 1.2fr 1.2fr 0.7fr auto;
+  gap: 14px;
+  align-items: center;
+  padding: var(--s3) 18px;
+}
+
+.listHead {
+  border-bottom: 1px solid var(--border);
+  background: var(--surface-sub);
+  color: var(--text-3);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.row + .row {
+  border-top: 1px solid var(--border);
+}
+
+.row:hover {
+  background: var(--surface-sub);
+}
+
+/* ── Cells ───────────────────────────────────────────────────────── */
+
+.cellTeacher {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  min-width: 0;
+}
+
+/*
+ * 선생님은 "사람"이 주체라 작은 identity marker 만 둔다.
+ * 프로필 사진 기능이 없으므로 이니셜을 쓴다. 장식용 portrait 이 아니다.
+ */
+.avatar {
+  flex: 0 0 auto;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: 999px;
-  padding: 6px 10px;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--r-full);
+  background: var(--brand-50);
+  color: var(--brand-700);
   font-size: 12px;
-  line-height: 16px;
-  font-weight: 700;
-}
-
-.statusActive,
-.previewBadgeActive {
-  background: #e7f7ea;
-  color: #1e8c2b;
-}
-
-.statusInactive,
-.previewBadgeInactive {
-  background: #eef0ee;
-  color: #6b716b;
-}
-
-.attentionChip {
-  background: #fff5e4;
-  color: #c98a1e;
-}
-
-.actions {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.publicStateCard {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 16px;
-  padding: 16px;
-  border-radius: 12px;
-}
-
-.publicStateCardActive {
-  background: #f2fbf3;
-  border: 1px solid #d8eddc;
-}
-
-.publicStateCardInactive {
-  background: #f8f9f8;
-  border: 1px solid #ecefec;
-}
-
-.publicStateCopy {
-  display: grid;
-  gap: 4px;
-}
-
-.publicStateTitle {
-  font-size: 15px;
-  line-height: 20px;
   font-weight: 800;
-  color: #111111;
 }
 
-.publicStateDescription,
-.fieldDescription,
-.lockDescription,
-.internalHint {
-  margin: 0;
-  font-size: 13px;
-  line-height: 19px;
-  color: #6b716b;
-}
-
-.profileGrid {
-  margin: 0;
-  display: grid;
-  gap: 10px;
-}
-
-.profileRow {
-  display: grid;
-  grid-template-columns: 92px minmax(0, 1fr);
-  gap: 10px;
-  align-items: start;
-}
-
-.profileLabel,
-.internalLabel {
-  margin: 0;
-  font-size: 13px;
-  line-height: 19px;
-  color: #8a8a8a;
+.teacherName {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-1);
+  font-size: 14px;
   font-weight: 700;
 }
 
-.profileValue,
-.internalValue {
-  margin: 0;
-  font-size: 14px;
-  line-height: 21px;
-  color: #111111;
-  font-weight: 600;
-}
-
-.inlineWriteButton {
-  padding: 0;
-  border: 0;
-  background: transparent;
-  color: #c98a1e;
-  font-size: 14px;
-  line-height: 21px;
-  font-weight: 700;
-  cursor: pointer;
-}
-
-.quoteBlock {
+.cellText {
   display: grid;
-  gap: 8px;
-  padding: 14px 16px;
-  border-left: 3px solid #2aad38;
-  border-radius: 0 12px 12px 0;
-  background: #fbfdfb;
+  gap: 2px;
+  min-width: 0;
+  color: var(--text-1);
+  font-size: 13px;
 }
 
-.quoteLabel {
+.cellSub {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-2);
   font-size: 12px;
-  line-height: 16px;
-  color: #8a8a8a;
+}
+
+.cellMuted {
+  color: var(--text-3);
+}
+
+.cellStatus {
+  display: flex;
+}
+
+.cellActions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--s2);
+}
+
+/* ── Status badge ────────────────────────────────────────────────── */
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  height: 24px;
+  padding: 0 var(--s2);
+  border: 1px solid transparent;
+  border-radius: var(--r-full);
+  font-size: 12px;
   font-weight: 700;
+  white-space: nowrap;
 }
 
-.quoteText {
-  margin: 0;
-  font-size: 14px;
-  line-height: 22px;
-  color: #111111;
-  font-weight: 600;
+.badgeActive {
+  background: var(--green-bg);
+  color: var(--green-fg);
 }
 
-.internalWrap {
-  display: grid;
-  gap: 10px;
+.badgeInactive {
+  background: var(--gray-bg);
+  color: var(--gray-fg);
 }
 
-.internalToggle {
-  justify-self: flex-start;
-  padding: 0;
+/* ── Row actions ─────────────────────────────────────────────────── */
+
+.rowActionStrong {
   border: 0;
-  background: transparent;
-  color: #4a4a4a;
+  padding: 0;
+  background: none;
+  color: var(--brand-700);
   font-size: 13px;
-  line-height: 18px;
   font-weight: 700;
   cursor: pointer;
 }
 
-.internalPanel {
-  display: grid;
-  gap: 12px;
-  padding: 14px 16px;
-  border: 1px solid #ecefec;
-  border-radius: 12px;
-  background: #fafbfa;
+.rowActionStrong:hover {
+  text-decoration: underline;
 }
 
-.internalGrid {
-  margin: 0;
-  display: grid;
-  gap: 10px;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+.rowMenu {
+  position: relative;
+  display: flex;
+  align-items: center;
 }
 
-.internalItem {
-  display: grid;
-  gap: 4px;
+.rowMenuButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--text-3);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
 }
 
-.emptyCard,
-.emptySoft {
+.rowMenuButton:hover,
+.rowMenuButtonOpen {
+  background: var(--surface-sub);
+  color: var(--text-1);
+}
+
+.rowMenuList {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  z-index: 20;
+  min-width: 148px;
+  display: grid;
+  padding: var(--s1);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.07);
+}
+
+/*
+ * .workspace 가 overflow: hidden 이라 목록 아래로 열린 메뉴는 잘린다.
+ * 마지막 2개 행만 위로 연다. 간격(4px)은 아래로 열 때와 동일하다.
+ * .list 의 자식은 .row 뿐이라 nth-last-child 가 행 순서와 정확히 일치한다.
+ */
+.row:nth-last-child(-n + 2) .rowMenuList {
+  top: auto;
+  bottom: calc(100% + 4px);
+}
+
+.rowMenuItem {
+  display: block;
+  width: 100%;
+  border: 0;
+  padding: var(--s2) var(--s3);
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--text-1);
+  font-size: 13px;
+  line-height: 20px;
+  font-weight: 600;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.rowMenuItem:hover:not(:disabled) {
+  background: var(--surface-sub);
+}
+
+.rowMenuItem:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* 되돌릴 수 없는 삭제는 메뉴 안에서만, 그리고 위험 색으로만 보인다. */
+.rowMenuItemDanger {
+  color: var(--red-fg);
+}
+
+.rowMenuItemDanger:hover:not(:disabled) {
+  background: var(--red-bg);
+}
+
+/* ── Empty ───────────────────────────────────────────────────────── */
+
+.empty {
   display: grid;
   justify-items: center;
-  gap: 10px;
-  padding: 32px 24px;
-  border-radius: 14px;
+  gap: var(--s2);
+  padding: 56px 18px;
   text-align: center;
-  background: #ffffff;
-}
-
-.emptyCard {
-  border: 1px dashed #cfd5cf;
-}
-
-.emptySoft {
-  border: 1px solid #e7eae7;
-  background: #fafbfa;
-}
-
-.emptyIcon {
-  width: 44px;
-  height: 44px;
-  border-radius: 12px;
-  background: #f2fbf3;
-  position: relative;
-}
-
-.emptyIcon::after {
-  content: "";
-  position: absolute;
-  inset: 13px;
-  border-radius: 999px;
-  background: #2aad38;
 }
 
 .emptyTitle {
   margin: 0;
-  font-size: 17px;
-  line-height: 24px;
-  font-weight: 800;
-  color: #111111;
-}
-
-.emptyDescription,
-.emptySlotDescription {
-  margin: 0;
-  font-size: 14px;
-  line-height: 21px;
-  color: #6b716b;
-}
-
-.emptySlotCard {
-  display: grid;
-  gap: 10px;
-  padding: 20px;
-  border: 1px dashed #bfdac2;
-  border-radius: 14px;
-  background: #fbfdfb;
-}
-
-.emptySlotTitle {
-  margin: 0;
-  font-size: 16px;
-  line-height: 22px;
+  color: var(--text-1);
+  font-size: 15px;
   font-weight: 700;
-  color: #111111;
 }
 
-.panelRoot {
+.emptyDescription {
+  margin: 0 0 var(--s2);
+  color: var(--text-2);
+  font-size: 13px;
+}
+
+/* ── Drawer (contextual edit) ────────────────────────────────────── */
+
+.drawerRoot {
   position: fixed;
   inset: 0;
   z-index: 40;
 }
 
-.panelOverlay {
+.drawerOverlay {
   position: absolute;
   inset: 0;
   border: 0;
-  background: rgba(17, 17, 17, 0.32);
+  background: rgba(17, 17, 17, 0.28);
   cursor: pointer;
 }
 
-.panel {
+.drawer {
   position: absolute;
   top: 0;
   right: 0;
+  /* 한 컬럼 form 3개가 답답하지 않을 만큼만. 뒤 workspace 가 계속 보인다. */
   width: min(460px, 100%);
   height: 100%;
-  background: #ffffff;
+  background: var(--surface);
+  /* Drawer 는 overlay 라 shadow 를 허용한다(Design System v2). */
   box-shadow: -16px 0 40px rgba(17, 17, 17, 0.14);
 }
 
-.panelForm {
+.drawerForm {
   height: 100%;
   display: grid;
   grid-template-rows: auto minmax(0, 1fr) auto;
 }
 
-.panelHeader,
-.panelFooter {
+.drawerHeader {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 12px;
-  padding: 18px 20px;
-  border-bottom: 1px solid #eef0ee;
+  gap: var(--s3);
+  padding: var(--s4) 20px;
+  border-bottom: 1px solid var(--border);
 }
 
-.panelFooter {
-  border-top: 1px solid #eef0ee;
-  border-bottom: 0;
-  background: rgba(255, 255, 255, 0.96);
-}
-
-.panelEyebrow {
-  margin: 0 0 6px;
-  font-size: 12px;
-  line-height: 16px;
-  color: #8a8a8a;
-  font-weight: 700;
-}
-
-.panelTitle {
+.drawerTitle {
   margin: 0;
-  font-size: 22px;
-  line-height: 28px;
+  font-size: 18px;
+  line-height: 26px;
   font-weight: 800;
-  color: #111111;
+  color: var(--text-1);
 }
 
-.panelCloseButton {
-  border: 1px solid #d8ddd8;
-  border-radius: 10px;
-  background: #ffffff;
-  color: #4a4a4a;
-  height: 38px;
-  padding: 0 12px;
-  font-size: 13px;
-  font-weight: 700;
+.drawerCloseButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--text-3);
+  font-size: 14px;
   cursor: pointer;
 }
 
-.panelBody {
+.drawerCloseButton:hover {
+  background: var(--surface-sub);
+  color: var(--text-1);
+}
+
+.drawerBody {
   overflow-y: auto;
   display: grid;
   align-content: start;
-  gap: 14px;
-  padding: 20px;
-  background: #f6f7f6;
+  gap: 24px;
+  padding: 24px 20px;
 }
 
-.formSection {
-  display: grid;
-  align-content: start;
-  gap: 14px;
-  padding: 16px;
-  border: 1px solid #e7eae7;
-  border-radius: 14px;
-  background: #ffffff;
+.drawerFooter {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--s2);
+  padding: var(--s4) 20px;
+  border-top: 1px solid var(--border);
 }
 
-.formSectionHeader {
-  display: grid;
-  gap: 6px;
-}
-
-.formSectionTitle,
-.fieldTitle {
-  margin: 0;
-  font-size: 16px;
-  line-height: 22px;
-  font-weight: 800;
-  color: #111111;
-}
+/* ── Form fields ─────────────────────────────────────────────────── */
 
 .field {
   display: grid;
-  gap: 8px;
+  gap: var(--s2);
 }
 
 .label {
+  color: var(--text-1);
   font-size: 14px;
   line-height: 20px;
-  color: #111111;
   font-weight: 700;
-}
-
-.fieldHint {
-  font-size: 12px;
-  line-height: 18px;
-  color: #8a8a8a;
 }
 
 .optionalText {
   margin-left: 6px;
-  color: #8a8a8a;
+  color: var(--text-3);
   font-size: 13px;
+  font-weight: 600;
+}
+
+.fieldHint {
+  color: var(--text-2);
+  font-size: 12px;
   line-height: 18px;
-  font-weight: 700;
-}
-
-.publicFieldRow {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 16px;
-}
-
-.chipGroup {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.choiceChip {
-  height: 38px;
-  padding: 0 14px;
-  border: 1px solid #d8ddd8;
-  border-radius: 999px;
-  background: #ffffff;
-  color: #4a4a4a;
-  font-size: 13px;
-  font-weight: 700;
-  cursor: pointer;
-}
-
-.choiceChipActive {
-  border-color: #bde3c1;
-  background: #f2fbf3;
-  color: #1e8c2b;
-}
-
-.input,
-.textarea {
-  width: 100%;
-  border: 1px solid #d8ddd8;
-  border-radius: 11px;
-  background: #ffffff;
-  color: #111111;
-  font-size: 14px;
 }
 
 .input {
-  height: 46px;
-  padding: 0 14px;
-}
-
-.textarea {
-  min-height: 92px;
-  padding: 12px 14px;
-  line-height: 20px;
-  resize: vertical;
-}
-
-.lockNotice {
-  display: grid;
-  gap: 6px;
-  padding: 14px 16px;
-  border: 1px solid #ecefec;
-  border-radius: 12px;
-  background: #fafbfa;
-}
-
-.lockTitle {
-  font-size: 14px;
-  line-height: 20px;
-  font-weight: 700;
-  color: #111111;
-}
-
-.advancedToggle {
-  justify-self: flex-start;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  color: #111111;
-  font-size: 14px;
-  line-height: 20px;
-  font-weight: 800;
-  cursor: pointer;
-}
-
-.advancedList {
-  display: grid;
-  gap: 10px;
-}
-
-.advancedItem {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.advancedLabel {
-  font-size: 14px;
-  line-height: 20px;
-  color: #4a4a4a;
-  font-weight: 600;
-}
-
-.previewCard {
-  display: grid;
-  gap: 14px;
-  padding: 16px;
-  border: 1px solid #e7eae7;
-  border-radius: 14px;
-  background: #fbfdfb;
-}
-
-.previewTop {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.previewAvatar {
-  width: 44px;
+  width: 100%;
   height: 44px;
-  border-radius: 12px;
-  background: #f2fbf3;
-  color: #1e8c2b;
-  display: grid;
-  place-items: center;
-  font-size: 16px;
-  font-weight: 800;
-}
-
-.previewHeading {
-  flex: 1 1 auto;
-  display: grid;
-  gap: 4px;
-}
-
-.previewName {
-  font-size: 15px;
-  line-height: 20px;
-  color: #111111;
-  font-weight: 800;
-}
-
-.previewSummary {
-  margin: 0;
-  font-size: 13px;
-  line-height: 18px;
-  color: #6b716b;
-}
-
-.previewIntro {
-  margin: 0;
+  padding: 0 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  color: var(--text-1);
   font-size: 14px;
-  line-height: 21px;
-  color: #111111;
-  font-weight: 600;
+}
+
+.input:focus {
+  outline: none;
+  border-color: var(--brand-700);
+}
+
+.input:disabled {
+  background: var(--surface-sub);
+}
+
+.switchField {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--s4);
+}
+
+.switchCopy {
+  display: grid;
+  gap: var(--s1);
 }
 
 .formMessage {
   margin: 0;
-  border-radius: 12px;
-  padding: 12px 14px;
-  font-size: 14px;
+  padding: var(--s3);
+  border-radius: var(--r-md);
+  font-size: 13px;
   line-height: 20px;
-  font-weight: 700;
+  font-weight: 600;
 }
 
 .formMessageSuccess {
-  border: 1px solid #dcefdc;
-  background: #f2fbf3;
-  color: #1e8c2b;
+  background: var(--green-bg);
+  color: var(--green-fg);
 }
 
 .formMessageError {
-  border: 1px solid #ffd9d9;
-  background: #fff5f5;
-  color: #dc2626;
+  background: var(--red-bg);
+  color: var(--red-fg);
 }
 
-.formHint {
-  margin: 0;
-  font-size: 13px;
-  line-height: 18px;
-  color: #c98a1e;
-  font-weight: 700;
-}
+/* ── SMS switch ──────────────────────────────────────────────────── */
 
 .switchRoot {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--s2);
   border: 0;
-  background: transparent;
-  color: #4a4a4a;
   padding: 0;
+  background: none;
   cursor: pointer;
 }
 
-.switchRootCompact {
-  gap: 6px;
+.switchRoot:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .switchTrack {
-  width: 46px;
-  height: 26px;
-  border-radius: 999px;
-  background: #cfd5cf;
-  padding: 3px;
-  box-sizing: border-box;
-  display: inline-flex;
-  align-items: center;
-  transition: background-color 160ms ease;
+  position: relative;
+  display: inline-block;
+  width: 44px;
+  height: 24px;
+  border-radius: var(--r-full);
+  background: var(--border-strong);
+  transition: background 120ms ease;
 }
 
 .switchThumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
   width: 20px;
   height: 20px;
-  border-radius: 999px;
-  background: #ffffff;
-  box-shadow: 0 1px 3px rgba(17, 17, 17, 0.18);
-  transition: transform 160ms ease;
+  border-radius: var(--r-full);
+  background: var(--surface);
+  transition: transform 120ms ease;
 }
 
 .switchRootActive .switchTrack {
-  background: #2aad38;
+  background: var(--brand-700);
 }
 
 .switchRootActive .switchThumb {
@@ -879,114 +661,46 @@
 }
 
 .switchLabel {
+  color: var(--text-2);
   font-size: 12px;
-  line-height: 16px;
   font-weight: 700;
-  color: #6b716b;
 }
 
-.switchRootActive .switchLabel {
-  color: #1e8c2b;
-}
+/* ── Responsive ──────────────────────────────────────────────────── */
 
-.switchRoot:disabled,
-.primaryButton:disabled,
-.secondaryButton:disabled,
-.secondaryButtonSmall:disabled {
-  opacity: 0.55;
-  cursor: not-allowed;
-}
-
-.primaryButton,
-.secondaryButton,
-.secondaryButtonSmall {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 12px;
-  font-weight: 700;
-  cursor: pointer;
-}
-
-.primaryButton {
-  height: 46px;
-  padding: 0 16px;
-  border: 1px solid var(--brand-700);
-  background: var(--brand-700);
-  color: #ffffff;
-  font-size: 14px;
-}
-
-.primaryButton:hover {
-  background: var(--brand-900);
-  border-color: var(--brand-900);
-}
-
-.secondaryButton {
-  height: 44px;
-  padding: 0 14px;
-  border: 1px solid #d8ddd8;
-  background: #ffffff;
-  color: #111111;
-  font-size: 14px;
-}
-
-.secondaryButtonSmall {
-  height: 36px;
-  padding: 0 12px;
-  border: 1px solid #d8ddd8;
-  background: #ffffff;
-  color: #111111;
-  font-size: 13px;
-}
-
-.dangerButtonSmall {
-  border-color: #f0d4d4;
-  color: #c2402f;
-}
-
-.dangerButtonSmall:hover {
-  border-color: #e0b4b4;
-  background: #fdf6f5;
-}
-
-.secondaryButton:hover,
-.secondaryButtonSmall:hover,
-.panelCloseButton:hover {
-  border-color: #bfc5bf;
-}
-
-@media (max-width: 900px) {
-  .summaryBar,
-  .toolbar,
-  .publicFieldRow,
-  .publicStateCard {
-    flex-direction: column;
-    align-items: stretch;
+@media (max-width: 1024px) {
+  .listHead {
+    display: none;
   }
 
-  .capacityWrap {
-    min-width: 0;
-    width: 100%;
+  .row {
+    grid-template-columns: 1fr auto;
+    gap: var(--s2) var(--s3);
+    align-items: start;
   }
 
-  .teacherTop {
-    flex-direction: column;
+  .cellTeacher {
+    grid-column: 1;
   }
 
-  .actions {
-    width: 100%;
+  .cellStatus {
+    grid-column: 2;
+    justify-self: end;
   }
 
-  .secondaryButtonSmall {
-    flex: 1 1 0;
+  .cellText,
+  .cellActions {
+    grid-column: 1 / -1;
   }
 
-  .internalGrid {
-    grid-template-columns: 1fr;
+  .cellText {
+    display: flex;
+    align-items: baseline;
+    gap: var(--s2);
+    flex-wrap: wrap;
   }
 
-  .panel {
-    width: 100%;
+  .cellActions {
+    justify-content: flex-start;
   }
 }

@@ -28,8 +28,7 @@ const initialState: UpsertStudioTeacherActionState = {
 }
 
 const getInitials = (value: string) => value.trim().slice(0, 2) || "선생"
-const toText = (value: string | null) => value?.trim() || null
-const formatPhone = (value: string | null) => (toText(value) ? value : "미기록")
+
 export const StudioTeachersManager = ({
   items,
   assignmentsByTeacherId
@@ -38,12 +37,16 @@ export const StudioTeachersManager = ({
   const [actionFeedback, setActionFeedback] = useState<string | null>(null)
   const [query, setQuery] = useState("")
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive">("all")
-  const [openInternalTeacherId, setOpenInternalTeacherId] = useState<string | null>(null)
+  // 한 번에 하나의 행 메뉴만 열린다.
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null)
   const [isStatusActionPending, startStatusActionTransition] = useTransition()
   const [isDeleteActionPending, startDeleteActionTransition] = useTransition()
 
   const selectedTeacher = items.find((item) => item.id === panelState.teacherId) ?? null
   const shouldShowSearch = items.length >= 3
+  const totalCount = items.length
+  const activeCount = items.filter((item) => item.isActive).length
+  const inactiveCount = totalCount - activeCount
 
   const filteredItems = useMemo(() => {
     if (!shouldShowSearch) {
@@ -79,6 +82,26 @@ export const StudioTeachersManager = ({
         .some((value) => value.toLowerCase().includes(needle))
     })
   }, [assignmentsByTeacherId, items, query, shouldShowSearch, statusFilter])
+
+  useEffect(() => {
+    if (!openMenuId) {
+      return
+    }
+
+    const close = () => setOpenMenuId(null)
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        close()
+      }
+    }
+
+    window.addEventListener("click", close)
+    window.addEventListener("keydown", onKeyDown)
+    return () => {
+      window.removeEventListener("click", close)
+      window.removeEventListener("keydown", onKeyDown)
+    }
+  }, [openMenuId])
 
   const openCreatePanel = () => {
     setPanelState({ isOpen: true, teacherId: null })
@@ -125,19 +148,19 @@ export const StudioTeachersManager = ({
 
   return (
     <div className={styles.root}>
-      <section className={styles.headerRow}>
-        <div className={styles.headerCopy}>
-          <h1 className={styles.pageTitle}>선생님 관리</h1>
-          <p className={styles.pageDescription}>
+      <header className={styles.header}>
+        <div className={styles.headerLeft}>
+          <h1 className={styles.title}>선생님 관리</h1>
+          <p className={styles.description}>
             학원 내부 선생님 명부예요. 수업 배정과 알림 발송에 사용됩니다.
           </p>
         </div>
-        <span className={styles.headerActionWrap}>
+        <div className={styles.headerRight}>
           <button type="button" onClick={openCreatePanel} className={styles.primaryButton}>
-            + 선생님 등록
+            선생님 등록
           </button>
-        </span>
-      </section>
+        </div>
+      </header>
 
       {actionFeedback ? (
         <p
@@ -146,26 +169,19 @@ export const StudioTeachersManager = ({
               ? styles.feedbackError
               : styles.feedbackSuccess
           }`}
+          role="status"
         >
           {actionFeedback}
         </p>
       ) : null}
 
-      <section className={styles.summaryBar} aria-label="선생님 요약">
-        <div className={styles.summaryItems}>
-          <span className={styles.summaryItem}>
-            <strong>{items.length}명</strong> 등록
-          </span>
-        </div>
-      </section>
-
       {shouldShowSearch ? (
-        <section className={styles.toolbar}>
+        <section className={styles.toolbar} aria-label="필터 및 검색">
           <div className={styles.searchWrap}>
             <input
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              placeholder="선생님 이름이나 담당 수업을 검색해 보세요"
+              placeholder="선생님 이름 / 담당 수업 검색"
               className={styles.search}
               aria-label="선생님 검색"
             />
@@ -196,56 +212,59 @@ export const StudioTeachersManager = ({
         </section>
       ) : null}
 
-      <section className={styles.listSection}>
+      <section className={styles.workspace} aria-label="선생님 목록">
+        <p className={styles.resultMeta}>
+          전체 {totalCount}명 · 활성 {activeCount}명 · 비활성 {inactiveCount}명
+          {filteredItems.length !== totalCount ? ` · 조건에 맞는 선생님 ${filteredItems.length}명` : ""}
+        </p>
+
         {items.length === 0 ? (
-          <div className={styles.emptyCard}>
-            <div className={styles.emptyIcon} aria-hidden="true" />
-            <p className={styles.emptyTitle}>아직 등록된 선생님이 없어요.</p>
-            <p className={styles.emptyDescription}>
-              수업 소개에 연결할 선생님 프로필을 먼저 만들어 두세요.
-            </p>
+          <div className={styles.empty}>
+            <p className={styles.emptyTitle}>등록된 선생님이 없습니다.</p>
+            <p className={styles.emptyDescription}>수업을 담당할 선생님을 등록해 보세요.</p>
+            <button type="button" onClick={openCreatePanel} className={styles.primaryButton}>
+              선생님 등록
+            </button>
           </div>
         ) : filteredItems.length === 0 ? (
-          <div className={styles.emptySoft}>
+          <div className={styles.empty}>
             <p className={styles.emptyTitle}>조건에 맞는 선생님이 없어요.</p>
             <p className={styles.emptyDescription}>다른 검색어로 다시 확인해 주세요.</p>
           </div>
         ) : (
-          <div className={styles.cards}>
-            {filteredItems.map((item) => (
-              <TeacherCard
-                key={item.id}
-                item={item}
-                onEdit={() => openEditPanel(item.id)}
-                onToggleStatus={() => handleStatusAction(item)}
-                onDelete={() => handleDeleteAction(item)}
-                internalOpen={openInternalTeacherId === item.id}
-                onToggleInternal={() =>
-                  setOpenInternalTeacherId((current) => (current === item.id ? null : item.id))
-                }
-                assignment={assignmentsByTeacherId[item.id] ?? null}
-                statusPending={isStatusActionPending}
-                deletePending={isDeleteActionPending}
-              />
-            ))}
-          </div>
-        )}
+          <>
+            <div className={styles.listHead} aria-hidden="true">
+              <span>선생님</span>
+              <span>담당 수업</span>
+              <span>과목</span>
+              <span>상태</span>
+              <span />
+            </div>
 
-        {items.length > 0 ? (
-          <section className={styles.emptySlotCard}>
-            <p className={styles.emptySlotTitle}>선생님을 더 등록할 수 있어요</p>
-            <p className={styles.emptySlotDescription}>
-선생님을 등록해 두면 수업 배정과 알림 발송 대상을 지정할 수 있어요.
-            </p>
-            <button type="button" onClick={openCreatePanel} className={styles.secondaryButton}>
-              + 선생님 등록
-            </button>
-          </section>
-        ) : null}
+            <ul className={styles.list}>
+              {filteredItems.map((item) => (
+                <TeacherRow
+                  key={item.id}
+                  item={item}
+                  assignment={assignmentsByTeacherId[item.id] ?? null}
+                  menuOpen={openMenuId === item.id}
+                  onToggleMenu={() =>
+                    setOpenMenuId((current) => (current === item.id ? null : item.id))
+                  }
+                  onEdit={() => openEditPanel(item.id)}
+                  onToggleStatus={() => handleStatusAction(item)}
+                  onDelete={() => handleDeleteAction(item)}
+                  statusPending={isStatusActionPending}
+                  deletePending={isDeleteActionPending}
+                />
+              ))}
+            </ul>
+          </>
+        )}
       </section>
 
       {panelState.isOpen ? (
-        <TeacherFormPanel
+        <TeacherFormDrawer
           key={selectedTeacher?.id ?? "create"}
           initialItem={selectedTeacher}
           onClose={closePanel}
@@ -256,103 +275,113 @@ export const StudioTeachersManager = ({
   )
 }
 
-const TeacherCard = ({
+const TeacherRow = ({
   item,
+  assignment,
+  menuOpen,
+  onToggleMenu,
   onEdit,
   onToggleStatus,
   onDelete,
-  internalOpen,
-  onToggleInternal,
-  assignment,
   statusPending,
   deletePending
 }: {
   item: StudioTeacherSummary
+  assignment: StudioTeacherAssignmentSummary | null
+  menuOpen: boolean
+  onToggleMenu: () => void
   onEdit: () => void
   onToggleStatus: () => void
   onDelete: () => void
-  internalOpen: boolean
-  onToggleInternal: () => void
-  assignment: StudioTeacherAssignmentSummary | null
   statusPending: boolean
   deletePending: boolean
 }) => {
   // 담당 정보는 legacy teachers.subjects/target_students 가 아니라 실제 수업 배정에서 온다.
   const classCount = assignment?.classCount ?? 0
+  const firstClassTitle = assignment?.classTitles?.[0] ?? null
   const subjectLine = (assignment?.subjectLabels ?? []).join(" · ")
 
   return (
-    <article className={`${styles.teacherCard} ${!item.isActive ? styles.teacherCardInactive : ""}`}>
-      <div className={styles.teacherTop}>
-        <div className={styles.teacherIdentity}>
-          <div className={styles.avatar} aria-hidden="true">
-            {getInitials(item.displayName)}
-          </div>
-          <div className={styles.teacherHeading}>
-            <div className={styles.nameRow}>
-              <strong className={styles.teacherName}>{item.displayName}</strong>
-              <span className={`${styles.statusChip} ${item.isActive ? styles.statusActive : styles.statusInactive}`}>
-                {item.isActive ? "활성" : "비활성"}
+    <li className={styles.row}>
+      <div className={styles.cellTeacher}>
+        <span className={styles.avatar} aria-hidden="true">
+          {getInitials(item.displayName)}
+        </span>
+        <span className={styles.teacherName}>{item.displayName}</span>
+      </div>
+
+      <div className={styles.cellText}>
+        {classCount > 0 ? (
+          <>
+            {`${classCount}개`}
+            {firstClassTitle ? (
+              <span className={styles.cellSub}>
+                {classCount > 1 ? `${firstClassTitle} 외 ${classCount - 1}개` : firstClassTitle}
               </span>
-            </div>
-            <p className={styles.teacherSummary}>
-              {classCount > 0 ? `담당 수업 ${classCount}개` : "담당 수업 없음"}
-            </p>
-            {subjectLine ? <p className={styles.teacherSubjectLine}>{subjectLine}</p> : null}
-          </div>
-        </div>
-
-        <div className={styles.actions}>
-          <button type="button" onClick={onEdit} className={styles.secondaryButtonSmall}>
-            수정
-          </button>
-          <button
-            type="button"
-            onClick={onToggleStatus}
-            disabled={statusPending}
-            className={styles.secondaryButtonSmall}
-          >
-            {item.isActive ? "비활성화" : "활성화"}
-          </button>
-          <button
-            type="button"
-            onClick={onDelete}
-            disabled={deletePending}
-            className={`${styles.secondaryButtonSmall} ${styles.dangerButtonSmall}`}
-          >
-            삭제
-          </button>
-        </div>
+            ) : null}
+          </>
+        ) : (
+          <span className={styles.cellMuted}>담당 수업 없음</span>
+        )}
       </div>
 
-      <div className={styles.internalWrap}>
-        <button type="button" onClick={onToggleInternal} className={styles.internalToggle}>
-          {internalOpen ? "내부 운영 정보 닫기" : "내부 운영 정보 보기 (연락처 · 알림 설정)"}
+      <div className={styles.cellText}>
+        {subjectLine ? subjectLine : <span className={styles.cellMuted}>—</span>}
+      </div>
+
+      <div className={styles.cellStatus}>
+        <span
+          className={`${styles.badge} ${item.isActive ? styles.badgeActive : styles.badgeInactive}`}
+        >
+          {item.isActive ? "활성" : "비활성"}
+        </span>
+      </div>
+
+      <div className={styles.cellActions}>
+        <button type="button" onClick={onEdit} className={styles.rowActionStrong}>
+          수정
         </button>
-
-        {internalOpen ? (
-          <div className={styles.internalPanel}>
-            <dl className={styles.internalGrid}>
-              <div className={styles.internalItem}>
-                <dt className={styles.internalLabel}>연락처</dt>
-                <dd className={styles.internalValue}>{formatPhone(item.phone)}</dd>
-              </div>
-              <div className={styles.internalItem}>
-                <dt className={styles.internalLabel}>알림 설정</dt>
-                <dd className={styles.internalValue}>{item.smsEnabled ? "문자 수신 동의" : "문자 수신 안 함"}</dd>
-              </div>
-            </dl>
-            <p className={styles.internalHint}>
-이 정보는 학원 내부 운영과 알림 발송에만 사용됩니다.
-            </p>
-          </div>
-        ) : null}
+        <div className={styles.rowMenu} onClick={(event) => event.stopPropagation()}>
+          <button
+            type="button"
+            className={`${styles.rowMenuButton} ${menuOpen ? styles.rowMenuButtonOpen : ""}`}
+            aria-label={`${item.displayName} 관리 메뉴`}
+            aria-haspopup="menu"
+            aria-expanded={menuOpen}
+            onClick={onToggleMenu}
+          >
+            ⋯
+          </button>
+          {menuOpen ? (
+            <div className={styles.rowMenuList} role="menu">
+              {/* 상태 배지("활성"/"비활성")와 헷갈리지 않도록 행동형으로 적는다. */}
+              <button
+                type="button"
+                role="menuitem"
+                className={styles.rowMenuItem}
+                onClick={onToggleStatus}
+                disabled={statusPending}
+              >
+                {item.isActive ? "비활성화하기" : "활성화하기"}
+              </button>
+              <button
+                type="button"
+                role="menuitem"
+                className={`${styles.rowMenuItem} ${styles.rowMenuItemDanger}`}
+                onClick={onDelete}
+                disabled={deletePending}
+              >
+                삭제
+              </button>
+            </div>
+          ) : null}
+        </div>
       </div>
-    </article>
+    </li>
   )
 }
 
-const TeacherFormPanel = ({
+const TeacherFormDrawer = ({
   initialItem,
   onClose,
   onComplete
@@ -384,108 +413,116 @@ const TeacherFormPanel = ({
     }
   }, [onClose, onComplete, state.message, state.ok])
 
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        onClose()
+      }
+    }
+
+    window.addEventListener("keydown", onKeyDown)
+    return () => window.removeEventListener("keydown", onKeyDown)
+  }, [onClose])
+
   return (
-    <div className={styles.panelRoot}>
-      <button type="button" className={styles.panelOverlay} aria-label="패널 닫기" onClick={onClose} />
+    <div className={styles.drawerRoot}>
+      <button type="button" className={styles.drawerOverlay} aria-label="닫기" onClick={onClose} />
       <aside
-        className={styles.panel}
+        className={styles.drawer}
         role="dialog"
         aria-modal="true"
-        aria-label={isCreateMode ? "선생님 등록" : "선생님 정보 수정"}
+        aria-label={isCreateMode ? "선생님 등록" : "선생님 수정"}
       >
-        <form action={formAction} className={styles.panelForm}>
+        <form action={formAction} className={styles.drawerForm}>
           <input type="hidden" name="mode" value={isCreateMode ? "create" : "update"} />
           {!isCreateMode ? <input type="hidden" name="teacherId" value={initialItem.id} /> : null}
           {/* 토글이 button 이라 값을 스스로 제출하지 못한다. boolean 을 안정적으로 넘기기 위한 hidden 이다. */}
           <input type="hidden" name="smsEnabled" value={smsEnabled ? "on" : ""} />
 
-          <header className={styles.panelHeader}>
-            <div>
-              <h2 className={styles.panelTitle}>{isCreateMode ? "선생님 등록" : "선생님 정보 수정"}</h2>
-            </div>
-            <button type="button" onClick={onClose} className={styles.panelCloseButton}>
-              닫기
+          <header className={styles.drawerHeader}>
+            <h2 className={styles.drawerTitle}>{isCreateMode ? "선생님 등록" : "선생님 수정"}</h2>
+            <button
+              type="button"
+              onClick={onClose}
+              className={styles.drawerCloseButton}
+              aria-label="닫기"
+            >
+              ✕
             </button>
           </header>
 
-          <div className={styles.panelBody}>
-            <section className={styles.formSection}>
-              <div className={styles.formSectionHeader}>
-                <h3 className={styles.formSectionTitle}>기본 정보</h3>
-              </div>
+          <div className={styles.drawerBody}>
+            <label className={styles.field}>
+              <span className={styles.label}>선생님 이름</span>
+              <input
+                name="displayName"
+                value={displayName}
+                onChange={(event) => setDisplayName(event.target.value)}
+                required
+                minLength={2}
+                maxLength={30}
+                disabled={isPending}
+                className={styles.input}
+                placeholder="예: 김수업 선생님"
+              />
+            </label>
 
-              <label className={styles.field}>
-                <span className={styles.label}>선생님 이름</span>
-                <input
-                  name="displayName"
-                  value={displayName}
-                  onChange={(event) => setDisplayName(event.target.value)}
-                  required
-                  minLength={2}
-                  maxLength={30}
-                  disabled={isPending}
-                  className={styles.input}
-                  placeholder="예: 김수업 선생님"
-                />
-              </label>
-            </section>
+            <label className={styles.field}>
+              <span className={styles.label}>
+                전화번호
+                <span className={styles.optionalText}>(선택)</span>
+              </span>
+              <input
+                name="phone"
+                type="tel"
+                value={phone}
+                onChange={(event) => setPhone(event.target.value)}
+                disabled={isPending}
+                className={styles.input}
+                placeholder="예: 010-1234-5678"
+              />
+              <span className={styles.fieldHint}>
+                전화번호는 학원 내부 운영용으로만 사용되며 학부모에게 공개되지 않아요.
+              </span>
+            </label>
 
-            <section className={styles.formSection}>
-              <div className={styles.formSectionHeader}>
-                <h3 className={styles.formSectionTitle}>내부 운영 정보</h3>
-              </div>
-
-              <label className={styles.field}>
-                <span className={styles.label}>
-                  전화번호
-                  <span className={styles.optionalText}>(선택)</span>
-                </span>
-                <input
-                  name="phone"
-                  type="tel"
-                  value={phone}
-                  onChange={(event) => setPhone(event.target.value)}
-                  disabled={isPending}
-                  className={styles.input}
-                  placeholder="예: 010-1234-5678"
-                />
+            <div className={styles.switchField}>
+              <div className={styles.switchCopy}>
+                <strong className={styles.label}>문자 알림 수신</strong>
                 <span className={styles.fieldHint}>
-                  전화번호는 학원 내부 운영용으로만 사용되며 학부모에게 공개되지 않아요.
+                  수업 일정 및 학원 운영 관련 알림 문자를 받을 수 있어요.
                 </span>
-              </label>
-
-              <div className={styles.publicFieldRow}>
-                <div>
-                  <strong className={styles.fieldTitle}>문자 알림 수신</strong>
-                  <p className={styles.fieldDescription}>
-                    수업 일정 및 학원 운영 관련 알림 문자를 받을 수 있어요.
-                  </p>
-                </div>
-                <SmsSwitch
-                  checked={smsEnabled}
-                  onToggle={() => setSmsEnabled((current) => !current)}
-                  disabled={isPending}
-                />
               </div>
-            </section>
+              <SmsSwitch
+                checked={smsEnabled}
+                onToggle={() => setSmsEnabled((current) => !current)}
+                disabled={isPending}
+              />
+            </div>
 
             {state.message ? (
               <p
                 className={`${styles.formMessage} ${
                   state.ok ? styles.formMessageSuccess : styles.formMessageError
                 }`}
+                role="status"
               >
                 {state.message}
               </p>
             ) : null}
           </div>
 
-          <div className={styles.panelFooter}>
-            <button type="button" onClick={onClose} className={styles.secondaryButton} disabled={isPending}>
+          <div className={styles.drawerFooter}>
+            <button
+              type="button"
+              onClick={onClose}
+              className={styles.secondaryButton}
+              disabled={isPending}
+            >
               취소
             </button>
             <button type="submit" className={styles.primaryButton} disabled={isPending}>
-              {isPending ? "저장 중..." : isCreateMode ? "선생님 등록" : "변경 사항 저장"}
+              {isPending ? "저장 중..." : isCreateMode ? "등록하기" : "저장하기"}
             </button>
           </div>
         </form>
