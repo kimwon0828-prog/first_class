@@ -1,137 +1,150 @@
-import { resolveStudioDateRange } from "@/features/studio/lib/studio-date-range"
-import { getStudioOrganizationName } from "@/features/studio/lib/get-studio-organization-name"
+import Link from "next/link"
+
 import { requireTeacherStudioAccess } from "@/features/studio/lib/require-teacher-studio-access"
+import {
+  buildStudioDashboardView,
+  type StudioDashboardScheduleItem
+} from "@/features/studio/lib/studio-dashboard-view"
 import { getStudioApplications } from "@/features/studio/queries/get-studio-applications"
-import { getStudioDashboardTeacherOptions } from "@/features/studio/queries/get-studio-dashboard-teacher-options"
-import { buildStudioDashboardSummary } from "@/features/studio/queries/get-studio-dashboard-summary"
-import { StudioDashboardFilterBar } from "@/features/studio/ui/studio-dashboard-filter-bar"
-import { StudioDashboardSummaryView } from "@/features/studio/ui/studio-dashboard-summary"
+import { StudioStatusBadge } from "@/features/studio/ui/studio-status-badge"
 
-import styles from "@/features/studio/ui/studio-dashboard.module.css"
+import styles from "./page.module.css"
 
-const uuidPattern =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
-
-type StudioIndexPageProps = {
-  searchParams?: Promise<{ teacherId?: string; startDate?: string; endDate?: string }>
-}
-
-const formatToday = () =>
-  new Intl.DateTimeFormat("ko-KR", { dateStyle: "full" }).format(new Date())
-
-export default async function StudioIndexPage({ searchParams }: StudioIndexPageProps) {
+export default async function StudioIndexPage() {
   const teacher = await requireTeacherStudioAccess()
-  const resolvedSearchParams = searchParams ? await searchParams : undefined
-  const teacherIdParam = String(resolvedSearchParams?.teacherId ?? "").trim()
-  const selectedDateRange = resolveStudioDateRange({
-    startDate: resolvedSearchParams?.startDate,
-    endDate: resolvedSearchParams?.endDate
-  })
-  // 형식만 먼저 거르고, 소속 검증은 filterOptions 가 도착한 뒤에 한다.
-  // 이렇게 해야 applications 조회를 teacher options 와 같은 wave 에서 시작할 수 있다.
-  const candidateTeacherId =
-    teacherIdParam && teacherIdParam !== "all" && uuidPattern.test(teacherIdParam)
-      ? teacherIdParam
-      : null
-  const [
-    { data: filterOptions, error: filterError },
-    organizationName,
-    candidateApplicationsResult
-  ] = await Promise.all([
-    getStudioDashboardTeacherOptions(teacher.organizationId),
-    getStudioOrganizationName(teacher.organizationId),
-    getStudioApplications(teacher.organizationId, {
-      teacherId: candidateTeacherId,
-      createdAtFrom: selectedDateRange.createdAtFrom,
-      createdAtTo: selectedDateRange.createdAtTo
-    })
-  ])
-  const availableTeacherIdSet = new Set(filterOptions.map((option) => option.teacherId))
-  const validatedTeacherId =
-    candidateTeacherId && availableTeacherIdSet.has(candidateTeacherId) ? candidateTeacherId : null
-  const selectedTeacherId = validatedTeacherId ?? "all"
-  const selectedTeacherName =
-    selectedTeacherId !== "all"
-      ? (filterOptions.find((option) => option.teacherId === selectedTeacherId)?.teacherName ?? null)
-      : null
-  const safeOrganizationName = selectedTeacherName ? "학원" : (organizationName ?? "학원")
+  // /studio/schedule 과 같은 한 번의 조회다. 세 영역 모두 이 결과에서 파생한다.
+  const { data: applications, error } = await getStudioApplications(teacher.organizationId)
+  const view = buildStudioDashboardView(applications)
 
-  const greetingTitle = selectedTeacherName
-    ? `안녕하세요, ${selectedTeacherName} 선생님`
-    : `안녕하세요, ${safeOrganizationName} 관리자님`
-  // candidate 가 이 organization 의 teacher 가 아니면 기존과 동일하게 "전체" 결과여야 한다.
-  // 이 비정상 경로에서만 한 번 더 조회한다.
-  const { data: applications, error } =
-    candidateTeacherId && !validatedTeacherId
-      ? await getStudioApplications(teacher.organizationId, {
-          teacherId: null,
-          createdAtFrom: selectedDateRange.createdAtFrom,
-          createdAtTo: selectedDateRange.createdAtTo
-        })
-      : candidateApplicationsResult
-  const summary = buildStudioDashboardSummary(applications)
-  const actionableCount = summary.actionableCount
-  const applicationsParams = new URLSearchParams()
+  const scheduleTitle = view.scheduleMode === "today" ? "오늘 체험 일정" : "다가오는 체험 일정"
 
-  if (validatedTeacherId) {
-    applicationsParams.set("teacherId", validatedTeacherId)
-  }
+  const renderScheduleRow = (item: StudioDashboardScheduleItem) => (
+    <li key={item.id} className={styles.row}>
+      <Link href={item.href} className={styles.rowLink}>
+        <span className={styles.rowTime}>
+          <strong className={styles.rowTimeValue}>{item.timeLabel}</strong>
+          {item.dateLabel ? <span className={styles.rowTimeDate}>{item.dateLabel}</span> : null}
+        </span>
 
-  if (selectedDateRange.startDate && selectedDateRange.endDate) {
-    applicationsParams.set("startDate", selectedDateRange.startDate)
-    applicationsParams.set("endDate", selectedDateRange.endDate)
-  }
+        <span className={styles.rowBody}>
+          <span className={styles.rowTitle}>{item.studentName}</span>
+          <span className={styles.rowMeta}>
+            {item.classTitle}
+            {item.teacherName ? ` · ${item.teacherName}` : " · 담당 미배정"}
+          </span>
+        </span>
 
-  const applicationsHref = applicationsParams.size
-    ? `/studio/applications?${applicationsParams.toString()}`
-    : "/studio/applications"
+        <StudioStatusBadge tone={item.statusTone}>{item.statusLabel}</StudioStatusBadge>
+      </Link>
+    </li>
+  )
 
   return (
     <div className={styles.page}>
-      <div className={styles.container}>
-        <header className={styles.welcomeCard}>
-          <div className={styles.welcomeLeft}>
-            <h1 className={styles.pageTitle}>{greetingTitle}</h1>
-            <p className={styles.pageDescription}>
-              {actionableCount > 0 ? (
-                <>
-                  {formatToday()} · 지금 확인이 필요한 신청이{" "}
-                  <strong className={styles.pageDescriptionAccent}>{actionableCount}건</strong> 있어요.
-                </>
-              ) : (
-                `${formatToday()} · 오늘은 새로 확인할 신청이 없어요.`
-              )}
-            </p>
-          </div>
+      <header className={styles.header}>
+        <h1 className={styles.title}>대시보드</h1>
+        <p className={styles.subtitle}>
+          {view.todayLabel} · 오늘 확인할 신청과 체험 일정을 한눈에 확인하세요.
+        </p>
+      </header>
 
-          <div className={styles.welcomeRight}>
-            <StudioDashboardFilterBar
-              options={filterOptions}
-              selectedTeacherId={selectedTeacherId}
-              selectedRange={selectedDateRange}
-            />
-            {filterError ? (
-              <div className={styles.inlineAlert}>
-                <p className={styles.inlineAlertText}>{filterError}</p>
+      {error ? (
+        <section className={styles.errorCard} role="alert">
+          <p className={styles.errorText}>{error}</p>
+        </section>
+      ) : (
+        <>
+          <div className={styles.workspace}>
+            <section className={styles.panel} aria-labelledby="dashboard-actions-title">
+              <div className={styles.panelHead}>
+                <h2 className={styles.panelTitle} id="dashboard-actions-title">
+                  오늘 확인할 일
+                </h2>
+                {view.actionTotalCount > 0 ? (
+                  <span className={styles.panelCount}>{view.actionTotalCount}건</span>
+                ) : null}
+                <Link href="/studio/cases" className={styles.panelAction}>
+                  상담·등록에서 보기 →
+                </Link>
               </div>
-            ) : null}
-          </div>
-        </header>
 
-        {error ? (
-          <section className={styles.alertDanger}>
-            <p className={styles.alertText}>{error}</p>
-          </section>
-        ) : (
-          <StudioDashboardSummaryView
-            summary={summary}
-            applications={applications}
-            applicationsHref={applicationsHref}
-            selectedRangeLabel={selectedDateRange.label}
-            selectedTeacherName={selectedTeacherName}
-          />
-        )}
-      </div>
+              {view.actionItems.length === 0 ? (
+                <p className={styles.empty}>지금 확인이 필요한 신청이 없습니다.</p>
+              ) : (
+                <ul className={styles.list}>
+                  {view.actionItems.map((item) => (
+                    <li key={item.id} className={styles.row}>
+                      <Link href={item.href} className={styles.rowLink}>
+                        <span className={styles.rowBody}>
+                          <span className={styles.rowTitle}>
+                            {item.studentName}
+                            <span className={styles.rowTitleSub}> · {item.studentGrade}</span>
+                          </span>
+                          <span className={styles.rowMeta}>{item.classTitle}</span>
+                          <span className={styles.rowAction}>{item.actionLabel}</span>
+                        </span>
+
+                        <StudioStatusBadge tone={item.statusTone}>{item.statusLabel}</StudioStatusBadge>
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
+
+            <section className={styles.panel} aria-labelledby="dashboard-schedule-title">
+              <div className={styles.panelHead}>
+                <h2 className={styles.panelTitle} id="dashboard-schedule-title">
+                  {scheduleTitle}
+                </h2>
+                {view.todayScheduleCount > 0 ? (
+                  <span className={styles.panelCount}>{view.todayScheduleCount}건</span>
+                ) : null}
+                <Link href="/studio/schedule" className={styles.panelAction}>
+                  일정 관리에서 보기 →
+                </Link>
+              </div>
+
+              {view.scheduleItems.length === 0 ? (
+                <p className={styles.empty}>예정된 체험 일정이 없습니다.</p>
+              ) : (
+                <ul className={styles.list}>{view.scheduleItems.map(renderScheduleRow)}</ul>
+              )}
+            </section>
+          </div>
+
+          {view.resultItems.length > 0 ? (
+            <section className={styles.panelWide} aria-labelledby="dashboard-results-title">
+              <div className={styles.panelHead}>
+                <h2 className={styles.panelTitle} id="dashboard-results-title">
+                  최근 등록 결과
+                </h2>
+                <Link href="/studio/cases?view=closed" className={styles.panelAction}>
+                  완료·종료에서 보기 →
+                </Link>
+              </div>
+
+              <ul className={styles.list}>
+                {view.resultItems.map((item) => (
+                  <li key={item.id} className={styles.row}>
+                    <Link href={item.href} className={styles.rowLink}>
+                      <span className={styles.rowBody}>
+                        <span className={styles.rowTitle}>{item.studentName}</span>
+                        <span className={styles.rowMeta}>
+                          {item.classTitle}
+                          {item.whenLabel ? ` · ${item.whenLabel}` : ""}
+                        </span>
+                      </span>
+
+                      <StudioStatusBadge tone={item.outcomeTone}>{item.outcomeLabel}</StudioStatusBadge>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ) : null}
+        </>
+      )}
     </div>
   )
 }

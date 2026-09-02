@@ -4,7 +4,7 @@ import { useRouter, useSearchParams } from "next/navigation"
 import { useMemo, useTransition } from "react"
 
 import type { StudioDashboardTeacherFilterOption } from "@/shared/lib/db/adapter"
-import styles from "@/features/studio/ui/studio-dashboard.module.css"
+import styles from "@/features/studio/ui/studio-teacher-filter.module.css"
 
 type StudioTeacherFilterProps = {
   options: StudioDashboardTeacherFilterOption[]

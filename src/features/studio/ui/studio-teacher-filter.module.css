@@ -1,0 +1,39 @@
+/*
+ * /studio/applications 의 선생님 필터 전용 스타일.
+ *
+ * 원래 studio-dashboard.module.css 에 있었으나 Dashboard 가 자체 CSS 로 옮겨가면서
+ * 유일한 소비자인 이 컴포넌트 옆으로 그대로 가져왔다. 선언은 바꾸지 않았다.
+ * /studio/applications 는 v2 미적용 화면이라 tokenization 은 그 화면 작업에서 함께 한다.
+ */
+
+.teacherFilter {
+  display: grid;
+  gap: 6px;
+  width: 100%;
+  max-width: 320px;
+}
+
+.teacherFilterLabel {
+  color: #6b7280;
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 700;
+}
+
+.select {
+  width: 100%;
+  min-height: 40px;
+  padding: 0 12px;
+  border: 1px solid #d6dbd6;
+  border-radius: 9px;
+  background: #ffffff;
+  color: #111827;
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.select:focus {
+  outline: none;
+  border-color: #2aad38;
+  box-shadow: 0 0 0 3px rgba(42, 173, 56, 0.16);
+}

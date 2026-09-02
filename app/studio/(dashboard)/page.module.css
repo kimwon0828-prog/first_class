@@ -1,0 +1,246 @@
+/*
+ * Dashboard.
+ *
+ * List Page 와 같은 shell(page / header / max-width 컨테이너)을 쓰고,
+ * 본문만 2단 workspace 로 나눈다. Surface 는 workspace panel 세 개뿐이고
+ * 행마다 카드를 만들지 않는다. 카드 섀도우는 쓰지 않는다(디자인 시스템 §2.5).
+ */
+
+.page {
+  min-height: 100dvh;
+  padding: 32px 24px 56px;
+  background: var(--bg);
+  color: var(--text-1);
+}
+
+.header,
+.workspace,
+.panelWide,
+.errorCard {
+  width: 100%;
+  max-width: var(--studio-max);
+  margin: 0 auto;
+}
+
+.header {
+  margin-bottom: var(--s5);
+}
+
+.title {
+  margin: 0;
+  color: var(--text-1);
+  font-size: 30px;
+  line-height: 36px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+}
+
+.subtitle {
+  margin: 6px 0 0;
+  color: var(--text-2);
+  font-size: 14px;
+  line-height: 22px;
+}
+
+.workspace {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--s4);
+  align-items: start;
+}
+
+.panelWide {
+  margin-top: var(--s4);
+}
+
+.panel,
+.panelWide {
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  overflow: hidden;
+}
+
+/* Title · Count · Text action. 큰 CTA 버튼은 두지 않는다. */
+.panelHead {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border);
+}
+
+.panelTitle {
+  margin: 0;
+  color: var(--text-1);
+  font-size: 15px;
+  line-height: 22px;
+  font-weight: 800;
+}
+
+.panelCount {
+  color: var(--text-2);
+  font-size: 13px;
+  line-height: 20px;
+  font-weight: 700;
+}
+
+.panelAction {
+  margin-left: auto;
+  color: var(--brand-700);
+  font-size: 13px;
+  line-height: 20px;
+  font-weight: 700;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.panelAction:hover {
+  text-decoration: underline;
+}
+
+.panelAction:focus-visible {
+  outline: 2px solid var(--brand-500);
+  outline-offset: 2px;
+  border-radius: var(--r-sm);
+}
+
+.list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.row + .row {
+  border-top: 1px solid var(--border);
+}
+
+.rowLink {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s3);
+  padding: 12px 18px;
+  color: inherit;
+  text-decoration: none;
+}
+
+.rowLink:hover {
+  background: var(--surface-sub);
+}
+
+.rowLink:focus-visible {
+  outline: 2px solid var(--brand-500);
+  outline-offset: -2px;
+}
+
+/* 일정 행의 시각 열. 시간이 먼저 읽혀야 한다. */
+.rowTime {
+  display: grid;
+  gap: 2px;
+  flex: 0 0 auto;
+  min-width: 52px;
+}
+
+.rowTimeValue {
+  color: var(--text-1);
+  font-size: 15px;
+  line-height: 22px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.rowTimeDate {
+  color: var(--text-3);
+  font-size: 12px;
+  line-height: 16px;
+}
+
+.rowBody {
+  display: grid;
+  gap: 2px;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.rowTitle {
+  color: var(--text-1);
+  font-size: 14px;
+  line-height: 22px;
+  font-weight: 700;
+}
+
+.rowTitleSub {
+  color: var(--text-2);
+  font-weight: 500;
+}
+
+.rowMeta {
+  color: var(--text-2);
+  font-size: 13px;
+  line-height: 20px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 다음 행동은 안내 문구다. 시간 약속이 있는 것만 색을 쓰는 Case 목록과 달리 여기는 항상 본문 색이다. */
+.rowAction {
+  color: var(--text-3);
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.empty {
+  margin: 0;
+  padding: 28px 18px;
+  color: var(--text-3);
+  font-size: 13px;
+  line-height: 20px;
+  text-align: center;
+}
+
+.errorCard {
+  padding: var(--s4);
+  border: 1px solid var(--red-fg);
+  border-radius: var(--r-md);
+  background: var(--red-bg);
+}
+
+.errorText {
+  margin: 0;
+  color: var(--red-fg);
+  font-size: 14px;
+  line-height: 22px;
+}
+
+@media (max-width: 900px) {
+  .page {
+    padding: 24px 16px 48px;
+  }
+
+  .workspace {
+    grid-template-columns: 1fr;
+  }
+
+  .title {
+    font-size: 24px;
+    line-height: 32px;
+  }
+}
+
+@media (max-width: 640px) {
+  .panelHead {
+    flex-wrap: wrap;
+    row-gap: 4px;
+  }
+
+  /* 좁은 화면에서는 text action 이 제목 아래 줄로 내려간다. 가로로 잘리지 않게 한다. */
+  .panelAction {
+    margin-left: 0;
+    flex-basis: 100%;
+  }
+
+  .rowMeta {
+    white-space: normal;
+  }
+}
