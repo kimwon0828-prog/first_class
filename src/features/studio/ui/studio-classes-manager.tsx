@@ -33,6 +33,8 @@ export const StudioClassesManager = ({ items }: StudioClassesManagerProps) => {
   const [query, setQuery] = useState("")
   const [toastState, setToastState] = useState<null | "created" | "updated">(null)
   const [pendingHref, setPendingHref] = useState<string | null>(null)
+  // 한 번에 하나의 행 메뉴만 열린다.
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null)
   const totalCount = items.length
   const activeCount = items.filter((item) => item.isActive).length
   const inactiveCount = totalCount - activeCount
@@ -83,6 +85,26 @@ export const StudioClassesManager = ({ items }: StudioClassesManagerProps) => {
     url.searchParams.delete("created")
     window.history.replaceState({}, "", url.toString())
   }, [searchParams])
+
+  useEffect(() => {
+    if (!openMenuId) {
+      return
+    }
+
+    const close = () => setOpenMenuId(null)
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        close()
+      }
+    }
+
+    window.addEventListener("click", close)
+    window.addEventListener("keydown", onKeyDown)
+    return () => {
+      window.removeEventListener("click", close)
+      window.removeEventListener("keydown", onKeyDown)
+    }
+  }, [openMenuId])
 
   useEffect(() => {
     if (!toastState) {
@@ -235,12 +257,6 @@ export const StudioClassesManager = ({ items }: StudioClassesManagerProps) => {
                   </div>
 
                   <div className={styles.cellActions}>
-                    {item.isActive ? (
-                      <Link href={`/classes/${item.id}`} className={styles.rowAction}>
-                        미리보기
-                      </Link>
-                    ) : null}
-                    <ToggleClassActiveButton classId={item.id} isActive={item.isActive} />
                     <Link
                       href={`/studio/classes/${item.id}/edit`}
                       className={styles.rowActionStrong}
@@ -249,6 +265,33 @@ export const StudioClassesManager = ({ items }: StudioClassesManagerProps) => {
                     >
                       {pendingHref === `/studio/classes/${item.id}/edit` ? "이동 중..." : "수정"}
                     </Link>
+
+                    <div
+                      className={styles.rowMenu}
+                      onClick={(event) => event.stopPropagation()}
+                    >
+                      <button
+                        type="button"
+                        className={`${styles.rowMenuButton} ${
+                          openMenuId === item.id ? styles.rowMenuButtonOpen : ""
+                        }`}
+                        aria-label={`${item.title} 관리 메뉴`}
+                        aria-haspopup="menu"
+                        aria-expanded={openMenuId === item.id}
+                        onClick={() => setOpenMenuId((current) => (current === item.id ? null : item.id))}
+                      >
+                        ⋯
+                      </button>
+
+                      {openMenuId === item.id ? (
+                        <div className={styles.rowMenuList} role="menu">
+                          <Link href={`/classes/${item.id}`} className={styles.rowMenuItem} role="menuitem">
+                            미리보기
+                          </Link>
+                          <ToggleClassActiveButton classId={item.id} isActive={item.isActive} />
+                        </div>
+                      ) : null}
+                    </div>
                   </div>
                 </li>
               ))}
@@ -262,11 +305,12 @@ export const StudioClassesManager = ({ items }: StudioClassesManagerProps) => {
 
 const ToggleClassActiveButton = ({ classId, isActive }: { classId: string; isActive: boolean }) => {
   return (
-    <form action={submitToggleStudioClassActiveAction}>
+    <form action={submitToggleStudioClassActiveAction} className={styles.rowMenuForm}>
       <input type="hidden" name="classId" value={classId} />
       <input type="hidden" name="nextIsActive" value={String(!isActive)} />
-      <button type="submit" className={styles.rowAction}>
-        {isActive ? "비공개" : "공개"}
+      {/* 상태 배지("공개 중"/"비공개")와 헷갈리지 않도록 행동형으로 적는다. */}
+      <button type="submit" className={styles.rowMenuItem} role="menuitem">
+        {isActive ? "비공개하기" : "공개하기"}
       </button>
     </form>
   )

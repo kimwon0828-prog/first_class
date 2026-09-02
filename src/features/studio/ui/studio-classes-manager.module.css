@@ -84,25 +84,26 @@
 }
 
 .toolbar {
-  background: transparent;
-  border: 0;
-  border-radius: 0;
-  padding: 16px;
-  display: grid;
-  gap: 12px;
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  flex-wrap: wrap;
+  padding: 0;
 }
 
 .searchWrap {
-  width: 100%;
+  /* 검색은 목록의 보조 도구다. 가로 공간을 독차지하지 않는다. */
+  flex: 1 1 240px;
+  max-width: 420px;
 }
 
 .search {
   width: 100%;
-  height: 48px;
+  height: 40px;
   border-radius: var(--r-md);
   border: 1px solid var(--border);
-  padding: 0 14px;
-  font-size: 15px;
+  padding: 0 12px;
+  font-size: 14px;
   line-height: 20px;
   color: var(--text-1);
   background: var(--surface);
@@ -122,7 +123,7 @@
 
 .pill {
   height: 40px;
-  padding: 0 12px;
+  padding: 0 var(--s3);
   border-radius: var(--r-full);
   border: 1px solid var(--border);
   background: var(--surface);
@@ -209,13 +210,11 @@
   color: var(--text-3);
 }
 
-@media (min-width: 640px) {
-
-  .toolbar {
-    grid-template-columns: 1fr auto;
-    align-items: center;
+@media (max-width: 640px) {
+  .searchWrap {
+    flex: 1 1 100%;
+    max-width: none;
   }
-
 }
 
 @media (min-width: 960px) {
@@ -325,7 +324,6 @@
 }
 
 /* 행 안의 보조 액션. 버튼처럼 채우지 않아 목록 밀도를 해치지 않는다. */
-.rowAction,
 .rowActionStrong {
   border: 0;
   padding: 0;
@@ -337,17 +335,11 @@
   white-space: nowrap;
 }
 
-.rowAction {
-  color: var(--text-2);
-  font-weight: 600;
-}
-
 .rowActionStrong {
   color: var(--brand-700);
   font-weight: 700;
 }
 
-.rowAction:hover,
 .rowActionStrong:hover {
   text-decoration: underline;
 }
@@ -387,4 +379,71 @@
   .cellActions {
     justify-content: flex-start;
   }
+}
+
+/* ── 행 보조 액션 메뉴. 새 UI 인프라를 만들지 않고 이 목록 안에서만 쓴다. ── */
+
+.rowMenu {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.rowMenuButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--text-3);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.rowMenuButton:hover,
+.rowMenuButtonOpen {
+  background: var(--surface-sub);
+  color: var(--text-1);
+}
+
+.rowMenuList {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  z-index: 20;
+  min-width: 148px;
+  display: grid;
+  padding: var(--s1);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.07);
+}
+
+.rowMenuItem {
+  display: block;
+  width: 100%;
+  border: 0;
+  padding: var(--s2) var(--s3);
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--text-1);
+  font-size: 13px;
+  line-height: 20px;
+  font-weight: 600;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.rowMenuItem:hover {
+  background: var(--surface-sub);
+}
+
+.rowMenuForm {
+  display: block;
 }
