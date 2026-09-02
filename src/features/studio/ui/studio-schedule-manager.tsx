@@ -210,7 +210,10 @@ const TimeGrid = ({
               return (
                 <div
                   key={dateKey}
-                  className={`${styles.timeColumn} ${dateKey === todayKey ? styles.timeColumnToday : ""}`}
+                  className={`${styles.timeColumn} ${
+                    // 열이 여러 개일 때만 오늘을 칠한다. Day View 는 열이 하나라 grid 전체가 물든다.
+                    dateKeys.length > 1 && dateKey === todayKey ? styles.timeColumnToday : ""
+                  }`}
                 >
                   {timeRange.hourMarkers.map((minutes) => {
                     const markerStyle: MarkerStyle = {

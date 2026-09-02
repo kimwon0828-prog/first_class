@@ -187,7 +187,10 @@ export const formatDayLabel = (dateKey: CalendarDateKey) => {
   return `${civil.year}년 ${civil.month}월 ${civil.day}일 ${weekday}요일`
 }
 
-/** Studio 주간 보기는 한국 운영 문맥에 맞춰 월요일부터 일요일까지 표시한다. */
+/**
+ * 주간 보기는 일요일에서 시작해 토요일로 끝난다.
+ * buildMonthGrid 와 같은 순서라 view 를 바꿔도 요일 열 위치가 그대로다.
+ */
 export const getWeekDateKeys = (anchorDateKey: CalendarDateKey): CalendarDateKey[] => {
   const civil = parseDateKey(anchorDateKey)
   if (!civil) {
@@ -195,11 +198,10 @@ export const getWeekDateKeys = (anchorDateKey: CalendarDateKey): CalendarDateKey
   }
 
   const anchorDayNumber = toDayNumber(civil)
-  const mondayOffset = (toWeekday(anchorDayNumber) + 6) % DAYS_IN_WEEK
-  const mondayDayNumber = anchorDayNumber - mondayOffset
+  const sundayDayNumber = anchorDayNumber - toWeekday(anchorDayNumber)
 
   return Array.from({ length: DAYS_IN_WEEK }, (_, index) => {
-    const date = fromDayNumber(mondayDayNumber + index)
+    const date = fromDayNumber(sundayDayNumber + index)
     return buildDateKey(date.year, date.month, date.day)
   })
 }
