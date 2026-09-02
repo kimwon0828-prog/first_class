@@ -68,9 +68,13 @@
   color: var(--text-1);
 }
 
-/* hover 는 active 보다 약하다. brand 색까지 가지 않는다. */
-.navItem:hover .navIcon {
-  color: var(--text-2);
+/*
+ * hover 는 inactive 보다 진하지만 brand 색까지 가지 않는다. green 은 active 하나만 쓴다.
+ * :not(.navItemActive) 로 한정하지 않으면 이 rule 이 active rule 보다
+ * specificity 가 높아, active 항목에 마우스를 올릴 때 green 이 사라진다.
+ */
+.navItem:not(.navItemActive):hover .navIcon {
+  color: var(--text-1);
 }
 
 .navItemActive {
@@ -89,7 +93,7 @@
  */
 .navIcon {
   flex: 0 0 auto;
-  color: var(--text-3);
+  color: var(--text-2);
 }
 
 .navItemActive .navIcon {
@@ -109,13 +113,18 @@
   padding: var(--s1);
 }
 
+/*
+ * 로그아웃 link 가 빠지고 한 줄짜리 account entry 만 남았다.
+ * 카드 padding 14 -> 6, 안쪽 row padding 8 -> 5, avatar 42 -> 36 으로
+ * 전체 높이를 86px 에서 58px 로 줄인다(약 33%).
+ */
 .accountCard {
   border: 1px solid var(--border);
   border-radius: var(--r-lg);
   background: var(--surface);
   display: grid;
   gap: var(--s3);
-  padding: 14px;
+  padding: 6px 14px;
 }
 
 .accountProfileLink {
@@ -127,7 +136,7 @@
   color: inherit;
   border: 1px solid transparent;
   border-radius: var(--r-md);
-  padding: 8px 10px;
+  padding: 5px 10px;
 }
 
 .accountProfileLink:hover {
@@ -150,8 +159,8 @@
 }
 
 .accountAvatar {
-  width: 42px;
-  height: 42px;
+  width: 36px;
+  height: 36px;
   border-radius: var(--r-full);
   display: grid;
   place-items: center;
@@ -249,7 +258,7 @@
   }
 
   .accountCard {
-    padding: 12px;
+    padding: 6px 12px;
     border-radius: var(--r-md);
     min-width: max-content;
   }
