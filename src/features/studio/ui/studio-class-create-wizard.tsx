@@ -1197,32 +1197,46 @@ export const StudioClassCreateWizard = ({
                       <p className={styles.tabSectionLabel}>대표 이미지</p>
                       <section className={styles.infoSectionCard}>
                         <div className={styles.fieldBlock}>
-                          <span className={styles.fieldLabel}>대표 이미지 업로드</span>
-                          <span className={styles.helperText}>1200 × 900px · 4:3 · JPG · PNG · WebP · 5MB 이하</span>
-                          <input
-                            type="file"
-                            accept="image/jpeg,image/png,image/webp"
-                            className={styles.fileInput}
-                            disabled={isUploadingCoverImage || isPending}
-                            onChange={(event) => {
-                              const file = event.target.files?.[0]
-                              void handleCoverImageChange(file ?? null)
-                            }}
-                          />
+                          <span className={styles.fieldLabel}>대표 이미지</span>
+                          {/* 이미지가 놓일 자리 자체가 업로드 트리거다. input 은 시각적으로만 숨긴다. */}
+                          <label className={styles.uploader}>
+                            <input
+                              type="file"
+                              accept="image/jpeg,image/png,image/webp"
+                              className={styles.uploaderInput}
+                              disabled={isUploadingCoverImage || isPending}
+                              onChange={(event) => {
+                                const file = event.target.files?.[0]
+                                void handleCoverImageChange(file ?? null)
+                              }}
+                            />
+                            {previewImageUrl ? (
+                              <>
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img
+                                  src={previewImageUrl}
+                                  alt="대표 이미지 미리보기"
+                                  className={styles.uploaderImage}
+                                />
+                                <span className={styles.uploaderOverlay}>
+                                  {isUploadingCoverImage ? "업로드 중..." : "이미지 변경"}
+                                </span>
+                              </>
+                            ) : (
+                              <span className={styles.uploaderEmpty}>
+                                <span className={styles.uploaderEmptyTitle}>대표 이미지 등록</span>
+                                <span className={styles.uploaderEmptyHint}>
+                                  {isUploadingCoverImage ? "업로드 중..." : "이미지를 클릭해 업로드하세요"}
+                                </span>
+                                <span className={styles.uploaderEmptyMeta}>
+                                  1200 × 900px · 4:3 · JPG · PNG · WebP · 5MB 이하
+                                </span>
+                              </span>
+                            )}
+                          </label>
                         </div>
 
                         {coverImageUploadError ? renderFieldError(coverImageUploadError) : null}
-
-                        <div className={styles.infoPreviewImageFrame}>
-                          {previewImageUrl ? (
-                            <>
-                              {/* eslint-disable-next-line @next/next/no-img-element */}
-                              <img src={previewImageUrl} alt="대표 이미지 미리보기" className={styles.infoPreviewImage} />
-                            </>
-                          ) : (
-                            <div className={styles.infoPreviewImageEmpty}>대표 이미지가 아직 없습니다.</div>
-                          )}
-                        </div>
                       </section>
                     </div>
                 </div>
