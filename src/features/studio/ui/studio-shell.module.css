@@ -68,6 +68,11 @@
   color: var(--text-1);
 }
 
+/* hover 는 active 보다 약하다. brand 색까지 가지 않는다. */
+.navItem:hover .navIcon {
+  color: var(--text-2);
+}
+
 .navItemActive {
   background: var(--brand-50);
   border-color: var(--brand-100);
@@ -78,15 +83,17 @@
   opacity: 0.7;
 }
 
-.navDot {
-  width: 8px;
-  height: 8px;
-  border-radius: var(--r-full);
-  background: var(--border-strong);
+/*
+ * 메뉴 아이콘. 크기와 stroke 는 다섯 개가 동일하고 색만 상태에 따라 바뀐다.
+ * 아이콘별 색은 쓰지 않는다.
+ */
+.navIcon {
+  flex: 0 0 auto;
+  color: var(--text-3);
 }
 
-.navItemActive .navDot {
-  background: var(--brand-500);
+.navItemActive .navIcon {
+  color: var(--brand-700);
 }
 
 .navPendingText {
@@ -136,8 +143,7 @@
   opacity: 0.75;
 }
 
-.accountProfileLink:focus-visible,
-.accountLink:focus-visible {
+.accountProfileLink:focus-visible {
   outline: none;
   box-shadow: 0 0 0 3px rgba(42, 173, 56, 0.16);
   border-color: var(--brand-500);
@@ -183,30 +189,6 @@
   font-size: 14px;
   line-height: 1;
   font-weight: 800;
-}
-
-.accountActions {
-  display: flex;
-  padding-top: var(--s3);
-  border-top: 1px solid var(--border);
-}
-
-.accountLink {
-  display: inline-flex;
-  align-items: center;
-  min-height: 36px;
-  padding: 0 2px;
-  border: 1px solid transparent;
-  border-radius: var(--r-sm);
-  color: var(--text-2);
-  text-decoration: none;
-  font-size: 13px;
-  line-height: 18px;
-  font-weight: 700;
-}
-
-.accountLink:hover {
-  color: var(--text-1);
 }
 
 .main {
@@ -274,11 +256,6 @@
 
   .accountProfileLink {
     min-width: max-content;
-  }
-
-  .accountActions {
-    padding-top: 0;
-    border-top: 0;
   }
 
   .content {

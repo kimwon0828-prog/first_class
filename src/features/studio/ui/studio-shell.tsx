@@ -20,7 +20,75 @@ type StudioShellProps = {
 type NavItem = {
   href: string
   label: string
+  icon: (props: { className?: string }) => ReactNode
 }
+
+/*
+ * 이 저장소에는 icon 패키지가 없다. 다른 화면과 같은 방식(inline SVG,
+ * viewBox 24, stroke=currentColor, strokeWidth 2, round cap/join)으로 그린다.
+ * 색은 CSS 가 정한다. 아이콘별 색을 지정하지 않는다.
+ */
+const NavIcon = ({ className, children }: { className?: string; children: ReactNode }) => (
+  <svg
+    className={className}
+    width="18"
+    height="18"
+    viewBox="0 0 24 24"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden="true"
+  >
+    {children}
+  </svg>
+)
+
+const DashboardIcon = ({ className }: { className?: string }) => (
+  <NavIcon className={className}>
+    <rect x="3" y="3" width="7" height="9" rx="1" />
+    <rect x="14" y="3" width="7" height="5" rx="1" />
+    <rect x="14" y="12" width="7" height="9" rx="1" />
+    <rect x="3" y="16" width="7" height="5" rx="1" />
+  </NavIcon>
+)
+
+const CasesIcon = ({ className }: { className?: string }) => (
+  <NavIcon className={className}>
+    <path d="M9 4h6a1 1 0 0 1 1 1v1H8V5a1 1 0 0 1 1-1Z" />
+    <path d="M16 5h2a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h2" />
+    <path d="M9 11h6" />
+    <path d="M9 15h4" />
+  </NavIcon>
+)
+
+const ClassesIcon = ({ className }: { className?: string }) => (
+  <NavIcon className={className}>
+    <path d="M12 7v13" />
+    <path d="M12 7a4 4 0 0 0-4-3H3v13h5a4 4 0 0 1 4 3" />
+    <path d="M12 7a4 4 0 0 1 4-3h5v13h-5a4 4 0 0 0-4 3" />
+  </NavIcon>
+)
+
+const ScheduleIcon = ({ className }: { className?: string }) => (
+  <NavIcon className={className}>
+    <rect x="3" y="5" width="18" height="16" rx="2" />
+    <path d="M3 10h18" />
+    <path d="M8 3v4" />
+    <path d="M16 3v4" />
+  </NavIcon>
+)
+
+const TeachersIcon = ({ className }: { className?: string }) => (
+  <NavIcon className={className}>
+    <path d="M15 20v-1a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v1" />
+    <circle cx="8.5" cy="8" r="3.5" />
+    <path d="M22 20v-1a4 4 0 0 0-3-3.87" />
+    <path d="M16 4.13a4 4 0 0 1 0 7.75" />
+  </NavIcon>
+)
 
 /**
  * 메뉴에서 감췄지만 아직 살아 있는 legacy 경로를 어떤 메뉴로 접어 보여줄지 한 곳에서 관리한다.
@@ -67,11 +135,11 @@ export const StudioShell = ({ children, organizationName, logoImagePath }: Studi
   // 신청 관리(/studio/applications)와 상담 관리(/studio/unregistered)는 상담·등록으로 합쳤다.
   // 두 route 는 롤백/기능 비교를 위해 살아 있고, 메뉴에서만 감춘다(NAV_ALIAS_PATHS 참고).
   const navItems: NavItem[] = [
-    { href: "/studio", label: "대시보드" },
-    { href: "/studio/cases", label: "상담·등록" },
-    { href: "/studio/classes", label: "수업 관리" },
-    { href: "/studio/schedule", label: "일정 관리" },
-    { href: "/studio/teachers", label: "선생님 관리" }
+    { href: "/studio", label: "대시보드", icon: DashboardIcon },
+    { href: "/studio/cases", label: "상담·등록", icon: CasesIcon },
+    { href: "/studio/classes", label: "수업 관리", icon: ClassesIcon },
+    { href: "/studio/schedule", label: "일정 관리", icon: ScheduleIcon },
+    { href: "/studio/teachers", label: "선생님 관리", icon: TeachersIcon }
   ]
 
   useEffect(() => {
@@ -105,6 +173,7 @@ export const StudioShell = ({ children, organizationName, logoImagePath }: Studi
         <nav className={styles.nav}>
           {navItems.map((item) => {
             const active = isActivePath(pathname, item.href)
+            const Icon = item.icon
             return (
               <Link
                 key={item.href}
@@ -123,7 +192,7 @@ export const StudioShell = ({ children, organizationName, logoImagePath }: Studi
                   }
                 }}
               >
-                <span className={styles.navDot} aria-hidden="true" />
+                <Icon className={styles.navIcon} />
                 <span className={styles.navLabel}>{item.label}</span>
                 {pendingHref === item.href ? <span className={styles.navPendingText}>이동 중...</span> : null}
               </Link>
@@ -171,12 +240,6 @@ export const StudioShell = ({ children, organizationName, logoImagePath }: Studi
                 {">"}
               </span>
             </Link>
-
-            <div className={styles.accountActions}>
-              <Link href="/studio/sign-out" prefetch={false} className={styles.accountLink}>
-                로그아웃
-              </Link>
-            </div>
           </div>
         </div>
       </aside>
