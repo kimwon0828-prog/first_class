@@ -186,7 +186,11 @@
 
 .barRow {
   display: grid;
-  grid-template-columns: 72px minmax(0, 1fr) 32px 92px;
+  /*
+   * count 열을 고정 32px 이 아니라 내용 폭으로 둔다. 그래야 숫자가 열 오른쪽 끝이 아니라
+   * bar 가 끝나는 지점 바로 옆에 붙는다. grid 열이라 행끼리는 여전히 세로로 정렬된다.
+   */
+  grid-template-columns: 72px minmax(0, 1fr) minmax(20px, auto) 92px;
   align-items: center;
   gap: var(--s2);
 }
@@ -199,7 +203,8 @@
 }
 
 .barTrack {
-  height: 10px;
+  /* progress indicator 가 아니라 categorical bar 로 읽히도록 3px 만 두껍게 한다. */
+  height: 13px;
   border-radius: var(--r-full);
   background: var(--surface-sub);
   overflow: hidden;
@@ -241,7 +246,11 @@
 
 .donutFigure {
   position: relative;
-  width: 148px;
+  /*
+   * 카드 폭 대비 도넛이 작아 보여 약 9.5% 키운다.
+   * stroke 는 viewBox 기준이라 두께 비율은 그대로다.
+   */
+  width: 162px;
   max-width: 100%;
 }
 
@@ -339,30 +348,37 @@
   font-variant-numeric: tabular-nums;
 }
 
+/*
+ * 차트 설명이지 두 번째 KPI 카드가 아니다.
+ * 라벨과 값을 한 줄로 붙이고, 값은 상단 KPI(26px)보다 확실히 작게 둔다.
+ */
 .conversionFoot {
-  display: grid;
-  gap: 2px;
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  flex-wrap: wrap;
   padding-top: var(--s3);
   border-top: 1px solid var(--border);
 }
 
 .conversionLabel {
   color: var(--text-2);
-  font-size: 12px;
-  line-height: 18px;
+  font-size: 13px;
+  line-height: 20px;
   font-weight: 700;
 }
 
 .conversionValue {
   color: var(--text-1);
-  font-size: 22px;
-  line-height: 30px;
+  font-size: 16px;
+  line-height: 24px;
   font-weight: 800;
   font-variant-numeric: tabular-nums;
 }
 
 .conversionMeta {
-  color: var(--text-3);
+  flex-basis: 100%;
+  color: var(--text-2);
   font-size: 12px;
   line-height: 18px;
 }
@@ -562,7 +578,7 @@
 
   /* 좁은 화면에서는 도달률을 접고 label / bar / count 만 남긴다. 가로 스크롤을 만들지 않는다. */
   .barRow {
-    grid-template-columns: 60px minmax(0, 1fr) 28px;
+    grid-template-columns: 60px minmax(0, 1fr) minmax(18px, auto);
   }
 
   .barReached {
