@@ -17,7 +17,7 @@
 }
 
 .page > * + * {
-  margin-top: 16px;
+  margin-top: var(--s4);
 }
 
 .header {
@@ -28,9 +28,9 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 12px;
+  gap: var(--s3);
   flex-wrap: wrap;
-  margin-bottom: 16px;
+  margin-bottom: var(--s4);
 }
 
 .backLink {
@@ -38,10 +38,10 @@
   align-items: center;
   justify-content: center;
   height: 40px;
-  padding: 0 12px;
-  border-radius: 12px;
+  padding: 0 var(--s3);
+  border-radius: var(--r-md);
   border: 1px solid #e7eae7;
-  background: #ffffff;
+  background: var(--surface);
   color: #3b463c;
   font-size: 13px;
   font-weight: 800;
@@ -88,7 +88,7 @@
 .errorCard {
   border: 1px solid #fecaca;
   border-radius: 18px;
-  background: #fff;
+  background: var(--surface);
   padding: 16px 18px;
 }
 
@@ -193,9 +193,9 @@
   justify-content: center;
   min-height: 42px;
   padding: 0 14px;
-  border-radius: 12px;
+  border-radius: var(--r-md);
   border: 1px solid #e7eae7;
-  background: #ffffff;
+  background: var(--surface);
   color: #304030;
   font-size: 14px;
   font-weight: 800;
@@ -534,11 +534,11 @@
 
 .infoCell {
   display: grid;
-  gap: 8px;
-  padding: 16px;
+  gap: var(--s2);
+  padding: var(--s4);
   border-right: 1px solid #e7eae7;
   border-bottom: 1px solid #e7eae7;
-  background: #ffffff;
+  background: var(--surface);
 }
 
 .infoCell:nth-child(2n) {
@@ -770,18 +770,18 @@
 
 .caseHeader {
   border: 1px solid #e7eae7;
-  border-radius: 12px;
-  background: #ffffff;
+  border-radius: var(--r-md);
+  background: var(--surface);
   padding: 22px 22px 18px;
   display: grid;
-  gap: 16px;
+  gap: var(--s4);
 }
 
 .caseHeaderTop {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  gap: 16px;
+  gap: var(--s4);
   flex-wrap: wrap;
 }
 
@@ -795,7 +795,7 @@
   margin: 0;
   display: flex;
   align-items: baseline;
-  gap: 8px;
+  gap: var(--s2);
   flex-wrap: wrap;
   font-size: 26px;
   line-height: 32px;
@@ -861,7 +861,7 @@
 .caseActions {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--s2);
   flex-wrap: wrap;
 }
 
@@ -893,8 +893,8 @@
 
 .applicationInfoSection {
   border: 1px solid #e7eae7;
-  background: #ffffff;
-  border-radius: 12px;
+  background: var(--surface);
+  border-radius: var(--r-md);
   overflow: hidden;
 }
 
@@ -952,7 +952,7 @@
 
 /* 신청 정보 셀은 카드형 테두리를 쓰지 않는다. */
 .applicationInfoGrid .infoCell {
-  padding: 12px 0;
+  padding: var(--s3) 0;
   border-right: 0;
   border-bottom: 1px solid #f0f3f0;
   border-radius: 0;

@@ -1,15 +1,15 @@
 .card {
   border: 1px solid #eeeeee;
-  background: #ffffff;
+  background: var(--surface);
   border-radius: 18px;
-  padding: 20px;
+  padding: var(--s5);
   box-shadow: 0 1px 0 rgba(17, 17, 17, 0.02);
 }
 
 .header {
   display: flex;
   justify-content: space-between;
-  gap: 12px;
+  gap: var(--s3);
   align-items: flex-start;
   flex-wrap: wrap;
 }
@@ -32,7 +32,7 @@
 .form {
   margin-top: 14px;
   display: grid;
-  gap: 12px;
+  gap: var(--s3);
 }
 
 .buttonGroup {
@@ -48,7 +48,7 @@
   display: flex;
   align-items: center;
   justify-content: flex-start;
-  gap: 8px;
+  gap: var(--s2);
   flex-wrap: wrap;
 }
 
@@ -58,32 +58,32 @@
   width: auto;
   height: auto;
   min-height: 40px;
-  padding: 8px 16px;
+  padding: var(--s2) var(--s4);
   font-size: 14px;
   font-weight: 800;
 }
 
 .compactButtonGroup .secondaryButton {
   border-color: #e7eae7;
-  background: #ffffff;
+  background: var(--surface);
   color: #5f6d5f;
 }
 
 .compactButtonGroup .secondaryButton:hover {
-  background: #fafafa;
+  background: var(--surface-sub);
 }
 
 .compactButtonGroup .dangerButton {
   min-height: auto;
-  padding: 8px;
+  padding: var(--s2);
   border-color: transparent;
-  background: #ffffff;
+  background: var(--surface);
   font-size: 13px;
   font-weight: 700;
 }
 
 .currentRow {
-  margin-top: 12px;
+  margin-top: var(--s3);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -91,7 +91,7 @@
   padding: 10px 12px;
   border-radius: 14px;
   border: 1px solid #eeeeee;
-  background: #ffffff;
+  background: var(--surface);
 }
 
 .currentLabel {
@@ -110,8 +110,8 @@
 
 .message {
   border: 1px solid #eeeeee;
-  background: #fafafa;
-  border-radius: 12px;
+  background: var(--surface-sub);
+  border-radius: var(--r-md);
   padding: 12px 14px;
   font-size: 14px;
   line-height: 20px;
@@ -129,7 +129,7 @@
   width: 100%;
   height: 48px;
   border: 0;
-  border-radius: 12px;
+  border-radius: var(--r-md);
   background: var(--brand-700);
   color: #ffffff;
   font-size: 15px;
@@ -145,7 +145,7 @@
   width: 100%;
   height: 48px;
   border: 1px solid #dbeafe;
-  border-radius: 12px;
+  border-radius: var(--r-md);
   background: #eff6ff;
   color: #1d4ed8;
   font-size: 15px;
@@ -161,7 +161,7 @@
   width: 100%;
   height: 48px;
   border: 1px solid #fecaca;
-  border-radius: 12px;
+  border-radius: var(--r-md);
   background: #fef2f2;
   color: #dc2626;
   font-size: 15px;
@@ -185,7 +185,7 @@
   border: 1px dashed #d9d9d9;
   border-radius: 14px;
   padding: 14px;
-  background: #ffffff;
+  background: var(--surface);
 }
 
 .emptyTitle {
@@ -197,7 +197,7 @@
 }
 
 .emptyDescription {
-  margin: 8px 0 0;
+  margin: var(--s2) 0 0;
   font-size: 13px;
   line-height: 20px;
   color: #8a8a8a;

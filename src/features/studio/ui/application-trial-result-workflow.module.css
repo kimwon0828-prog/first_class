@@ -1,8 +1,8 @@
 .card {
   border: 1px solid #e7eae7;
-  background: #ffffff;
-  border-radius: 12px;
-  padding: 20px;
+  background: var(--surface);
+  border-radius: var(--r-md);
+  padding: var(--s5);
 }
 
 .sectionHeading {
@@ -284,7 +284,7 @@
 .selectionWrap {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: var(--s2);
 }
 
 .summaryChip,
@@ -293,8 +293,8 @@
   align-items: center;
   justify-content: center;
   min-height: 34px;
-  padding: 0 12px;
-  border-radius: 999px;
+  padding: 0 var(--s3);
+  border-radius: var(--r-full);
   border: 1px solid #dbe4db;
   background: #f7faf7;
   color: #324032;
@@ -308,7 +308,7 @@
 }
 
 .choiceChipActive {
-  border-color: #2aad38;
+  border-color: var(--brand-500);
   background: #eef9f0;
   color: #1f8f2c;
 }
@@ -578,7 +578,7 @@
 .mobileActionButtonPrimary {
   flex: 1;
   min-height: 46px;
-  border-radius: 12px;
+  border-radius: var(--r-md);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -590,7 +590,7 @@
 
 .mobileActionButtonSecondary {
   border: 1px solid #d9e0d9;
-  background: #ffffff;
+  background: var(--surface);
   color: #314031;
 }
 
@@ -611,7 +611,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 20px;
+  padding: var(--s5);
   background: rgba(15, 23, 15, 0.44);
 }
 
@@ -620,10 +620,10 @@
   position: relative;
   width: min(100%, 460px);
   border-radius: 18px;
-  background: #ffffff;
+  background: var(--surface);
   border: 1px solid #e7eae7;
   box-shadow: 0 20px 44px rgba(17, 24, 17, 0.16);
-  padding: 24px;
+  padding: var(--s6);
 }
 
 .dialogCardWide {
@@ -677,11 +677,11 @@
 .form {
   display: grid;
   gap: 18px;
-  margin-top: 20px;
+  margin-top: var(--s5);
 }
 
 .message {
-  border-radius: 12px;
+  border-radius: var(--r-md);
   padding: 12px 14px;
   font-size: 14px;
   line-height: 20px;
@@ -703,12 +703,12 @@
 
 .formSection {
   display: grid;
-  gap: 12px;
+  gap: var(--s3);
 }
 
 .formHeader {
   display: grid;
-  gap: 4px;
+  gap: var(--s1);
 }
 
 .formTitle {
@@ -729,12 +729,12 @@
 .fieldGrid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
+  gap: var(--s3);
 }
 
 .field {
   display: grid;
-  gap: 8px;
+  gap: var(--s2);
 }
 
 .fieldLabel {
@@ -754,9 +754,9 @@
 .input,
 .textarea {
   width: 100%;
-  border-radius: 12px;
+  border-radius: var(--r-md);
   border: 1px solid #dbe4db;
-  background: #ffffff;
+  background: var(--surface);
   color: #182118;
   font-size: 14px;
   line-height: 20px;
@@ -774,7 +774,7 @@
   }
 
   .dialogCardWide {
-    padding: 20px;
+    padding: var(--s5);
   }
 
   .fieldGrid {
@@ -825,7 +825,7 @@
 
   .dialogOverlay {
     align-items: flex-end;
-    padding: 12px;
+    padding: var(--s3);
   }
 
   .dialogCard,
@@ -861,7 +861,7 @@
 /* 섹션 = 카드 하나. 바깥 wrapper + 안쪽 callout 중첩을 만들지 않는다. */
 .sectionCard {
   display: grid;
-  gap: 12px;
+  gap: var(--s3);
   padding: 18px 20px;
 }
 
@@ -869,7 +869,7 @@
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  gap: 12px;
+  gap: var(--s3);
   flex-wrap: wrap;
 }
 
@@ -912,14 +912,14 @@
 .todoBlockWarning {
   padding: 14px 16px;
   border: 1px solid #f5e0c8;
-  border-radius: 12px;
+  border-radius: var(--r-md);
   background: #fff8f1;
 }
 
 .todoBlockSuccess {
   padding: 14px 16px;
   border: 1px solid #d6e9dc;
-  border-radius: 12px;
+  border-radius: var(--r-md);
   background: #f2f9f4;
 }
 
@@ -942,7 +942,7 @@
 .todoActionRow {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--s2);
   flex-wrap: wrap;
 }
 
@@ -1021,8 +1021,8 @@
   margin-top: 6px;
   width: 9px;
   height: 9px;
-  border-radius: 999px;
-  background: #ffffff;
+  border-radius: var(--r-full);
+  background: var(--surface);
   border: 2px solid #d3dad3;
 }
 
@@ -1042,14 +1042,14 @@
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--s1);
 }
 
 .activityHeadline {
   margin: 0;
   display: flex;
   align-items: baseline;
-  gap: 8px;
+  gap: var(--s2);
   flex-wrap: wrap;
 }
 
@@ -1094,7 +1094,7 @@
 
 .resultCompact {
   display: grid;
-  gap: 12px;
+  gap: var(--s3);
 }
 
 .resultGrid {
@@ -1137,13 +1137,13 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: var(--s3);
   flex-wrap: wrap;
 }
 
 @media (max-width: 640px) {
   .sectionCard {
-    padding: 16px;
+    padding: var(--s4);
   }
 
   .resultGridRow {
