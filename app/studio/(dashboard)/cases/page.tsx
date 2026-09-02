@@ -138,6 +138,14 @@ const resolveClassText = (item: StudioCaseListItem) => {
   return item.klass.title?.trim() || subjectLabel || "수업 정보 준비 중"
 }
 
+// 진행 중 Case 의 단계별 badge tone. 표현만 담당하며 stage 판정/라벨은 case-view-model 이 정한다.
+const CASE_STAGE_TONE_CLASS: Record<string, string> = {
+  new: styles.stageBadgeAmber,
+  reviewing: styles.stageBadgeBlue,
+  confirmed: styles.stageBadgeGreen,
+  completed: styles.stageBadgeAmber
+}
+
 export default async function StudioCasesPage({ searchParams }: StudioCasesPageProps) {
   const teacher = await requireTeacherStudioAccess()
   const resolvedSearchParams = searchParams ? await searchParams : undefined
@@ -291,7 +299,11 @@ export default async function StudioCasesPage({ searchParams }: StudioCasesPageP
 
                       <span className={styles.cellStage}>
                         <span
-                          className={`${styles.stageBadge} ${closed ? styles.stageBadgeClosed : ""}`}
+                          className={`${styles.stageBadge} ${
+                            closed
+                              ? styles.stageBadgeClosed
+                              : CASE_STAGE_TONE_CLASS[item.stage] ?? styles.stageBadgeBlue
+                          }`}
                         >
                           {CASE_STAGE_LABELS[item.stage]}
                         </span>

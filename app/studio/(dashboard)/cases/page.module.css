@@ -244,17 +244,36 @@
   display: inline-flex;
   align-items: center;
   padding: 4px 10px;
-  border: 1px solid #dbeafe;
+  border: 1px solid transparent;
   border-radius: var(--r-full);
-  background: var(--blue-bg);
-  color: var(--blue-fg);
   font-size: 12px;
   font-weight: 600;
   white-space: nowrap;
 }
 
+/*
+ * 진행 중 Case 는 단계별 tone 으로 구분한다.
+ *   amber = 확인/후속 행동이 필요한 단계
+ *   blue  = 상담/처리 진행 중
+ *   green = 일정 확정 완료
+ * 라벨과 stage 판정(getCaseStage)은 그대로이며 여기서는 표현만 다르게 한다.
+ */
+.stageBadgeAmber {
+  background: var(--amber-bg);
+  color: var(--amber-fg);
+}
+
+.stageBadgeBlue {
+  background: var(--blue-bg);
+  color: var(--blue-fg);
+}
+
+.stageBadgeGreen {
+  background: var(--green-bg);
+  color: var(--green-fg);
+}
+
 .stageBadgeClosed {
-  border-color: var(--border);
   background: var(--gray-bg);
   color: var(--gray-fg);
 }
