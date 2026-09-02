@@ -62,7 +62,13 @@
   min-width: 0;
 }
 
-.navItem:hover {
+/*
+ * hover visual 은 inactive 메뉴에만 적용한다.
+ * :not(.navItemActive) 가 없으면 이 rule 이 .navItemActive 보다 specificity 가 높아,
+ * active 항목에 마우스를 올릴 때 brand 배경이 neutral 로 바뀐다.
+ * 아이콘의 hover rule 과 같은 원칙이다.
+ */
+.navItem:not(.navItemActive):hover {
   background: var(--surface-sub);
   border-color: var(--border);
   color: var(--text-1);
