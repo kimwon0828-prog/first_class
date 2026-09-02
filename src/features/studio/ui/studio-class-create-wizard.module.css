@@ -17,6 +17,12 @@
   padding-top: 6px;
 }
 
+/*
+ * Step Navigation 을 없애기 전에는 이 헤더가 탭 줄과 이어진 카드의 윗부분이라
+ * 위쪽 모서리만 둥글고 아래는 탭과 붙는 구분선이었다.
+ * 이제 헤더가 독립 surface 이므로 네 모서리를 같은 값으로 맞추고 테두리를 닫는다.
+ * radius 는 기존 top radius 와 같은 12px(--r-md) 이다.
+ */
 .headerCard {
   display: flex;
   justify-content: space-between;
@@ -24,10 +30,9 @@
   align-items: center;
   flex-wrap: wrap;
   padding: 12px 18px;
-  border-bottom: 1px solid var(--border);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
   background: var(--surface);
-  border-top-left-radius: 12px;
-  border-top-right-radius: 12px;
 }
 
 .headerLeft {
@@ -672,11 +677,13 @@
     padding-top: 0;
   }
 
-  .headerCard,
-
   .headerCard {
     min-height: auto;
     padding: 0 0 12px;
+    /* 좁은 화면에서는 전체 폭을 쓰므로 카드가 아니라 구분선으로 둔다. */
+    border: 0;
+    border-bottom: 1px solid var(--border);
+    border-radius: 0;
   }
 
   .feedbackCard {
