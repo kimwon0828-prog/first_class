@@ -104,49 +104,6 @@
   cursor: not-allowed;
 }
 
-.tabBar {
-  display: flex;
-  gap: 14px;
-  overflow-x: auto;
-  padding: 0 18px;
-  border-bottom: 1px solid var(--border);
-  background: var(--surface);
-  border-bottom-left-radius: 12px;
-  border-bottom-right-radius: 12px;
-}
-
-.tabButton {
-  position: relative;
-  flex: 0 0 auto;
-  min-height: 46px;
-  padding: 0 2px;
-  border: none;
-  background: transparent;
-  color: var(--text-2);
-  font-size: 14px;
-  line-height: 20px;
-  font-weight: 600;
-}
-
-.tabButtonActive {
-  color: var(--brand-700);
-}
-
-.tabButton::after {
-  content: "";
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  height: 2px;
-  border-radius: var(--r-full);
-  background: transparent;
-}
-
-.tabButtonActive::after {
-  background: var(--brand-500);
-}
-
 .form {
   display: grid;
   gap: var(--s5);
@@ -716,18 +673,10 @@
   }
 
   .headerCard,
-  .tabBar {
-    background: transparent;
-  }
 
   .headerCard {
     min-height: auto;
     padding: 0 0 12px;
-  }
-
-  .tabBar {
-    overflow-x: auto;
-    white-space: nowrap;
   }
 
   .feedbackCard {

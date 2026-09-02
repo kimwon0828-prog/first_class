@@ -98,12 +98,6 @@ const initialActionState: UpsertStudioClassActionState = {
   message: ""
 }
 
-const createFormTabs: Array<{ id: CreateFormTabId; label: string }> = [
-  { id: "info", label: "수업 소개" },
-  { id: "schedule", label: "예약받을 시간" },
-  { id: "visibility", label: "최종 확인" }
-]
-
 const classFormatOptions = [
   "1:1 개별수업",
   "개별진도 수업",
@@ -235,18 +229,6 @@ const getTabForStep = (step: WizardStepId): CreateFormTabId => {
   }
 
   return "visibility"
-}
-
-const getStepForTab = (tab: CreateFormTabId): WizardStepId => {
-  if (tab === "info") {
-    return 1
-  }
-
-  if (tab === "schedule") {
-    return 2
-  }
-
-  return 3
 }
 
 const normalizeCurrentStep = (step: WizardStepId): WizardStepId => (step === 4 ? 3 : step)
@@ -926,24 +908,6 @@ export const StudioClassCreateWizard = ({
             ) : null}
           </div>
         </header>
-
-        <nav className={styles.tabBar} aria-label="신규 수업 등록 탭">
-          {createFormTabs.map((tab) => {
-            const isSelected = activeTab === tab.id
-
-            return (
-              <button
-                key={tab.id}
-                type="button"
-                className={`${styles.tabButton} ${isSelected ? styles.tabButtonActive : ""}`}
-                aria-pressed={isSelected}
-                onClick={() => moveToStep(getStepForTab(tab.id))}
-              >
-                {tab.label}
-              </button>
-            )
-          })}
-        </nav>
       </div>
 
       <form id={formId} className={styles.form} action={formAction} onSubmit={handleFinalSubmit}>
