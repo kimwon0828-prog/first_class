@@ -140,10 +140,10 @@ const resolveClassText = (item: StudioCaseListItem) => {
 
 // 진행 중 Case 의 단계별 badge tone. 표현만 담당하며 stage 판정/라벨은 case-view-model 이 정한다.
 const CASE_STAGE_TONE_CLASS: Record<string, string> = {
-  new: styles.stageBadgeAmber,
-  reviewing: styles.stageBadgeBlue,
+  new: styles.stageBadgeBlue,
+  reviewing: styles.stageBadgeAmber,
   confirmed: styles.stageBadgeGreen,
-  completed: styles.stageBadgeAmber
+  completed: styles.stageBadgeGray
 }
 
 export default async function StudioCasesPage({ searchParams }: StudioCasesPageProps) {
@@ -301,7 +301,7 @@ export default async function StudioCasesPage({ searchParams }: StudioCasesPageP
                         <span
                           className={`${styles.stageBadge} ${
                             closed
-                              ? styles.stageBadgeClosed
+                              ? styles.stageBadgeGray
                               : CASE_STAGE_TONE_CLASS[item.stage] ?? styles.stageBadgeBlue
                           }`}
                         >

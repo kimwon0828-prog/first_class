@@ -252,10 +252,11 @@
 }
 
 /*
- * 진행 중 Case 는 단계별 tone 으로 구분한다.
- *   amber = 확인/후속 행동이 필요한 단계
- *   blue  = 상담/처리 진행 중
+ * 진행 중 Case 는 workflow 단계를 한눈에 구분할 수 있도록 tone 을 모두 다르게 준다.
+ *   blue  = 신규 정보 / workflow 시작
+ *   amber = 상담·확인 등 지금 손이 필요한 단계
  *   green = 일정 확정 완료
+ *   gray  = 체험수업 단계가 끝난 상태(Case 종료가 아니다. 후속 긴급도는 `다음 행동` 이 담당)
  * 라벨과 stage 판정(getCaseStage)은 그대로이며 여기서는 표현만 다르게 한다.
  */
 .stageBadgeAmber {
@@ -273,7 +274,7 @@
   color: var(--green-fg);
 }
 
-.stageBadgeClosed {
+.stageBadgeGray {
   background: var(--gray-bg);
   color: var(--gray-fg);
 }
