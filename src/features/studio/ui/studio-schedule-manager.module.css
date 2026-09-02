@@ -1,645 +1,480 @@
-.layout {
-  max-width: var(--studio-max);
-  margin: 0 auto;
+.root {
   display: grid;
-  gap: 16px;
+  gap: 24px;
 }
 
-.main {
+/* ── Calendar Canvas ─────────────────────────────────────────────── */
+
+.canvas {
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  padding: 18px;
   display: grid;
-  gap: 14px;
+  gap: var(--s3);
 }
 
-.card,
-.calendarCard,
-.detailSection {
-  border: 1px solid #eeeeee;
-  background: #ffffff;
-  border-radius: 18px;
-  padding: 20px;
-  box-shadow: 0 1px 0 rgba(17, 17, 17, 0.02);
-}
-
-.todayCard {
-  border: 1px solid #d8f0dc;
-  background: #f3fbf4;
-  border-radius: 22px;
-  padding: 20px;
-}
-
-.todayHeader {
+.canvasHeader {
   display: flex;
-  justify-content: space-between;
-  gap: 16px;
   align-items: center;
+  justify-content: space-between;
+  gap: var(--s3);
   flex-wrap: wrap;
 }
 
-.todayHeaderLeft {
-  display: flex;
-  gap: 12px;
-  align-items: center;
-}
-
-.todayKicker {
-  margin: 0 0 4px;
-  font-size: 12px;
-  line-height: 16px;
-  font-weight: 900;
-  letter-spacing: 0.04em;
-  color: #2aad38;
-}
-
-.todayTitle {
-  margin: 0;
-  font-size: 18px;
-  line-height: 24px;
-  font-weight: 900;
-  color: #111111;
-}
-
-.todayCount {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 6px;
-}
-
-.todayCountValue {
-  font-size: 32px;
-  line-height: 34px;
-  font-weight: 900;
-  letter-spacing: -0.03em;
-  color: #111111;
-}
-
-.todayCountUnit {
-  font-size: 13px;
-  line-height: 18px;
-  font-weight: 800;
-  color: #666666;
-}
-
-.todayDescription {
-  margin: 12px 0 0;
-  font-size: 13px;
-  line-height: 20px;
-  color: #4a4a4a;
-}
-
-.todayMetaRow {
-  margin-top: 14px;
-  display: grid;
-  gap: 10px;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-
-.todayMetaItem {
-  border: 1px solid #eaf8ec;
-  background: #ffffff;
-  border-radius: 16px;
-  padding: 12px;
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  gap: 10px;
-}
-
-.todayMetaLabel {
-  font-size: 12px;
-  line-height: 16px;
-  color: #8a8a8a;
-  font-weight: 800;
-}
-
-.todayMetaValue {
-  font-size: 14px;
-  line-height: 20px;
-  color: #111111;
-  font-weight: 900;
-}
-
-.todayActions {
-  margin-top: 14px;
-  display: grid;
-}
-
-.cardHeader,
-.boardHeader,
-.detailHeader,
-.calendarHeader {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 14px;
-  flex-wrap: wrap;
-}
-
-.cardHeader {
-  margin-bottom: 14px;
-}
-
-.cardTitle,
-.calendarTitle,
-.detailTitle {
-  margin: 0;
-  font-size: 16px;
-  line-height: 22px;
-  font-weight: 900;
-  color: #111111;
-}
-
-.boardTitle {
+.monthLabel {
   margin: 0;
   font-size: 20px;
-  line-height: 26px;
-  font-weight: 900;
-  color: #111111;
-}
-
-.cardDescription,
-.boardDescription,
-.calendarSubtitle {
-  margin: 8px 0 0;
-  font-size: 14px;
-  line-height: 22px;
-  color: #8a8a8a;
-}
-
-.boardHeaderRight,
-.calendarNav {
-  display: flex;
-  gap: 10px;
-  align-items: center;
-  flex-wrap: wrap;
-}
-
-.infoPanel {
-  display: grid;
-  gap: 14px;
-  border: 1px solid #f2f2f2;
-  background: #fafafa;
-  border-radius: 16px;
-  padding: 16px;
-}
-
-.infoText {
-  margin: 0;
-  font-size: 14px;
-  line-height: 22px;
-  color: #4a4a4a;
-}
-
-.infoActions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-}
-
-.buttonSecondary,
-.buttonPrimaryInline,
-.buttonGhost {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 12px;
-  text-decoration: none;
+  line-height: 28px;
   font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--text-1);
+}
+
+.canvasNav {
+  display: flex;
+  align-items: center;
+  gap: var(--s1);
+}
+
+/* 달 이동은 보조 동작이다. Primary CTA 처럼 보이지 않는다. */
+.navButton {
+  height: 32px;
+  padding: 0 var(--s3);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  color: var(--text-1);
+  font-size: 13px;
+  font-weight: 700;
   cursor: pointer;
 }
 
-.buttonSecondary {
-  height: 44px;
-  padding: 0 14px;
-  border: 1px solid #d9d9d9;
-  background: #ffffff;
-  color: #111111;
-  font-size: 14px;
+.navIconButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  color: var(--text-2);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
 }
 
-.buttonSecondary:hover {
-  border-color: #bdbdbd;
+.navButton:hover,
+.navIconButton:hover {
+  background: var(--surface-sub);
+  color: var(--text-1);
 }
 
-.buttonPrimaryInline {
-  height: 44px;
-  padding: 0 18px;
-  background: #2aad38;
-  color: #ffffff;
-  font-size: 14px;
-  font-weight: 900;
+/* ── Action alerts ───────────────────────────────────────────────── */
+
+/* KPI 카드가 아니다. 캘린더 헤더보다 강해 보이면 안 된다. */
+.alertRow {
+  display: flex;
+  gap: var(--s2);
+  flex-wrap: wrap;
 }
 
-.buttonPrimaryInline:hover {
-  background: #249b31;
-}
-
-.buttonGhost {
-  height: 40px;
-  padding: 0 12px;
-  border: 1px solid #e5e7eb;
-  background: #ffffff;
-  color: #4a4a4a;
-  font-size: 13px;
-}
-
-.buttonGhost:hover {
-  background: #f9fafb;
-  border-color: #d1d5db;
-}
-
-.calendarCard {
-  display: grid;
-  gap: 16px;
-}
-
-.weekdayRow {
-  display: grid;
-  grid-template-columns: repeat(7, minmax(0, 1fr));
-  gap: 8px;
-}
-
-.weekdayCell {
-  text-align: center;
+.alert {
+  display: inline-flex;
+  align-items: center;
+  height: 24px;
+  padding: 0 var(--s2);
+  border-radius: var(--r-full);
   font-size: 12px;
-  line-height: 16px;
-  font-weight: 900;
-  color: #8a8a8a;
+  font-weight: 700;
+  white-space: nowrap;
 }
 
+.alertAmber {
+  background: var(--amber-bg);
+  color: var(--amber-fg);
+}
+
+.alertGray {
+  background: var(--gray-bg);
+  color: var(--gray-fg);
+}
+
+/* ── Month grid ──────────────────────────────────────────────────── */
+
+.weekdayRow,
 .monthGrid {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
-  gap: 8px;
 }
 
-.monthDay {
+.weekdayRow {
+  gap: 6px;
+}
+
+.weekdayCell {
+  padding: var(--s1) var(--s2);
+  color: var(--text-3);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.monthGrid {
+  gap: 6px;
+}
+
+.cell {
+  position: relative;
   min-height: 112px;
-  border: 1px solid #e5e7eb;
-  background: #ffffff;
-  border-radius: 16px;
-  padding: 10px;
   display: grid;
   align-content: start;
-  gap: 10px;
-  text-align: left;
+  gap: var(--s1);
+  padding: var(--s2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--surface);
+}
+
+.cellMuted {
+  background: var(--surface-sub);
+}
+
+/* 선택 날짜: soft brand. 강한 fill 을 쓰지 않는다. */
+.cellSelected {
+  border-color: var(--brand-700);
+  background: var(--brand-50);
+}
+
+/* 오늘은 별도 표식으로만 구분한다(선택과 중복 장식하지 않는다). */
+.cellToday .cellDay {
+  color: var(--brand-700);
+  font-weight: 800;
+}
+
+/* 셀 전체를 날짜 선택 영역으로 깐다. 이벤트 링크가 이 위에 온다. */
+.cellSelect {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  border: 0;
+  border-radius: var(--r-md);
+  background: transparent;
   cursor: pointer;
-  color: #111111;
 }
 
-.monthDay:hover {
-  border-color: #cdd4dd;
-  background: #fcfcfc;
+.cellSelect:hover {
+  background: var(--surface-sub);
 }
 
-.monthDayMuted {
-  background: #fafafa;
-  color: #a3a3a3;
+.cellSelected .cellSelect:hover {
+  background: transparent;
 }
 
-.monthDaySelected {
-  border-color: #2aad38;
-  box-shadow: 0 0 0 2px rgba(42, 173, 56, 0.12);
-}
-
-.monthDayToday {
-  background: #f3fbf4;
-}
-
-.monthDayTop {
+.cellHead {
+  position: relative;
   display: flex;
+  align-items: center;
   justify-content: space-between;
-  align-items: center;
-  gap: 8px;
+  gap: var(--s1);
+  /* 숫자는 표시만 한다. 클릭은 아래 .cellSelect 가 받는다. */
+  pointer-events: none;
 }
 
-.monthDayNumber {
-  font-size: 15px;
-  line-height: 20px;
-  font-weight: 900;
-}
-
-.monthTotal {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 38px;
-  height: 22px;
-  padding: 0 8px;
-  border-radius: 999px;
-  background: #f2f2f2;
-  color: #4a4a4a;
-  font-size: 11px;
-  line-height: 14px;
-  font-weight: 900;
-}
-
-.dayStats {
-  display: grid;
-  gap: 6px;
-}
-
-.dayStat {
-  display: inline-flex;
-  align-items: center;
-  border-radius: 999px;
-  padding: 4px 8px;
-  font-size: 11px;
-  line-height: 14px;
-  font-weight: 900;
-  width: fit-content;
-}
-
-.dayStatPending {
-  background: #fff6df;
-  color: #b45309;
-}
-
-.dayStatConfirmed {
-  background: #eff6ff;
-  color: #1d4ed8;
-}
-
-.dayStatCompleted {
-  background: #eaf8ec;
-  color: #2aad38;
-}
-
-.detailSection {
-  display: grid;
-  gap: 14px;
-}
-
-.detailCount {
+.cellDay {
+  color: var(--text-1);
   font-size: 13px;
-  line-height: 18px;
-  color: #8a8a8a;
-  font-weight: 800;
-}
-
-.timeline {
-  display: grid;
-  gap: 14px;
-}
-
-.timelineItem {
-  display: grid;
-  grid-template-columns: 92px minmax(0, 1fr);
-  gap: 12px;
-  align-items: start;
-}
-
-.timeCol {
-  padding-top: 10px;
-}
-
-.timeText {
-  font-size: 14px;
-  line-height: 18px;
-  font-weight: 900;
-  color: #111111;
-}
-
-.timeSub {
-  margin-top: 6px;
-  font-size: 12px;
-  line-height: 16px;
-  font-weight: 800;
-  color: #8a8a8a;
-}
-
-.eventCard {
-  border: 1px solid #eeeeee;
-  background: #ffffff;
-  border-radius: 18px;
-  padding: 16px;
-  box-shadow: 0 1px 0 rgba(17, 17, 17, 0.02);
-}
-
-.eventTop {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-
-.badgeRow {
-  display: inline-flex;
-  gap: 6px;
-  flex-wrap: wrap;
-  align-items: center;
-}
-
-.programPill {
-  border-radius: 999px;
-  padding: 6px 10px;
-  font-size: 12px;
-  line-height: 16px;
-  font-weight: 900;
-  background: #f2f2f2;
-  color: #4a4a4a;
-  border: 1px solid #eeeeee;
-}
-
-.eventBody {
-  margin-top: 12px;
-  display: grid;
-  gap: 12px;
-}
-
-.eventTitle {
-  font-size: 16px;
-  line-height: 22px;
-  font-weight: 900;
-  color: #111111;
-}
-
-.eventSubtitle {
-  margin: -4px 0 0;
-  font-size: 13px;
-  line-height: 20px;
-  color: #4a4a4a;
-  font-weight: 800;
-}
-
-.eventNote {
-  margin: 0;
-  border: 1px solid #eaf8ec;
-  background: #f3fbf4;
-  color: #256d2d;
-  border-radius: 12px;
-  padding: 10px 12px;
-  font-size: 13px;
-  line-height: 18px;
   font-weight: 700;
 }
 
-.metaGrid {
+.cellMuted .cellDay {
+  color: var(--text-3);
+}
+
+.todayMark {
+  color: var(--brand-700);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+/* ── Event row ───────────────────────────────────────────────────── */
+
+.cellEvents {
+  position: relative;
   display: grid;
-  gap: 10px;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 2px;
+  min-width: 0;
 }
 
-.metaRow {
+/* 셀을 강한 색으로 채우지 않는다. 상태는 왼쪽 3px indicator 로만 말한다. */
+.event {
   display: flex;
-  justify-content: space-between;
-  gap: 10px;
-  align-items: baseline;
-  border: 1px solid #f2f2f2;
-  background: #fafafa;
-  border-radius: 14px;
-  padding: 10px 12px;
-}
-
-.metaLabel {
-  font-size: 12px;
-  line-height: 16px;
-  font-weight: 900;
-  color: #8a8a8a;
-}
-
-.metaValue {
-  font-size: 13px;
-  line-height: 18px;
-  font-weight: 900;
-  color: #111111;
-}
-
-.eventFooter {
-  margin-top: 14px;
-  padding-top: 14px;
-  border-top: 1px solid #f2f2f2;
-  display: flex;
-  justify-content: space-between;
-  gap: 10px;
   align-items: center;
-  flex-wrap: wrap;
-}
-
-.footerHint {
+  gap: 5px;
+  min-width: 0;
+  padding: 2px 4px;
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--text-1);
   font-size: 12px;
-  line-height: 16px;
-  color: #8a8a8a;
-  font-weight: 800;
-}
-
-.linkButton {
-  font-size: 13px;
   line-height: 18px;
-  color: #2aad38;
-  font-weight: 900;
   text-decoration: none;
-  border-radius: 10px;
-  padding: 8px 10px;
-  background: #f3fbf4;
-  border: 1px solid #d8f0dc;
 }
 
-.linkButton:hover {
-  background: #eaf8ec;
+.event:hover {
+  background: var(--surface-sub);
 }
 
-.emptyCard {
-  border: 1px dashed #d9d9d9;
-  background: #ffffff;
-  border-radius: 22px;
-  padding: 28px 24px;
+.eventTone {
+  flex: 0 0 auto;
+  width: 3px;
+  height: 12px;
+  border-radius: var(--r-full);
+}
+
+.eventToneGreen {
+  background: var(--green-fg);
+}
+
+.eventToneAmber {
+  background: var(--amber-fg);
+}
+
+.eventToneBlue {
+  background: var(--blue-fg);
+}
+
+.eventToneGray {
+  background: var(--gray-fg);
+}
+
+.eventToneRed {
+  background: var(--red-fg);
+}
+
+.eventTime {
+  flex: 0 0 auto;
+  color: var(--text-2);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.eventName {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+}
+
+.eventMore {
+  position: relative;
+  padding: 0 4px;
+  color: var(--text-3);
+  font-size: 11px;
+  font-weight: 600;
+  /* 안내 텍스트다. 클릭은 셀 선택으로 넘긴다. */
+  pointer-events: none;
+}
+
+/* ── Selected day detail ─────────────────────────────────────────── */
+
+.detailSection {
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  overflow: hidden;
+}
+
+.detailHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s3);
+  padding: var(--s3) 18px;
+  border-bottom: 1px solid var(--border);
+}
+
+.detailTitle {
+  margin: 0;
+  font-size: 15px;
+  line-height: 22px;
+  font-weight: 700;
+  color: var(--text-1);
+}
+
+.detailCount {
+  color: var(--text-2);
+  font-size: 13px;
+}
+
+.empty {
+  display: grid;
+  justify-items: center;
+  gap: var(--s2);
+  padding: 48px 18px;
   text-align: center;
 }
 
 .emptyTitle {
   margin: 0;
-  font-size: 16px;
-  line-height: 22px;
-  font-weight: 900;
-  color: #111111;
+  color: var(--text-1);
+  font-size: 14px;
+  font-weight: 700;
 }
 
 .emptyDescription {
-  margin: 10px 0 0;
-  font-size: 14px;
-  line-height: 22px;
-  color: #8a8a8a;
+  margin: 0;
+  color: var(--text-2);
+  font-size: 13px;
 }
 
-.emptyActions {
-  margin-top: 16px;
+.timeline {
   display: grid;
-  justify-content: center;
 }
 
-
-
-
-
-@media (max-width: 1100px) {
-  .layout {
-    max-width: var(--studio-max);
-  }
+.timelineItem {
+  display: grid;
+  grid-template-columns: 84px minmax(0, 1fr);
+  gap: var(--s4);
+  padding: var(--s4) 18px;
 }
 
-@media (max-width: 720px) {
-  .todayMetaRow,
-  .metaGrid {
-    grid-template-columns: 1fr;
+.timelineItem + .timelineItem {
+  border-top: 1px solid var(--border);
+}
+
+.timeCol {
+  display: grid;
+  align-content: start;
+  gap: 2px;
+}
+
+.timeText {
+  color: var(--text-1);
+  font-size: 15px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.timeSub {
+  color: var(--text-3);
+  font-size: 12px;
+}
+
+.eventCard {
+  display: grid;
+  align-content: start;
+  gap: var(--s2);
+  min-width: 0;
+}
+
+.badgeRow {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  flex-wrap: wrap;
+}
+
+.programPill {
+  display: inline-flex;
+  align-items: center;
+  height: 24px;
+  padding: 0 var(--s2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-full);
+  color: var(--text-2);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.eventCardTitle {
+  color: var(--text-1);
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.eventCardSubtitle {
+  margin: 0;
+  color: var(--text-2);
+  font-size: 13px;
+}
+
+.eventNote {
+  margin: 0;
+  color: var(--text-3);
+  font-size: 12px;
+}
+
+.metaGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: var(--s2) var(--s4);
+  margin: var(--s1) 0 0;
+}
+
+.metaRow {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.metaLabel {
+  color: var(--text-3);
+  font-size: 12px;
+}
+
+.metaValue {
+  margin: 0;
+  color: var(--text-1);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.metaMuted {
+  color: var(--text-3);
+  font-weight: 600;
+}
+
+.eventFooter {
+  display: flex;
+  justify-content: flex-start;
+}
+
+.linkButton {
+  color: var(--brand-700);
+  font-size: 13px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.linkButton:hover {
+  text-decoration: underline;
+}
+
+/* ── Responsive ──────────────────────────────────────────────────── */
+
+@media (max-width: 900px) {
+  .canvas {
+    padding: var(--s3);
   }
 
-  .monthDay {
-    min-height: 88px;
-    padding: 8px;
+  .cell {
+    min-height: 92px;
   }
 
-  .dayStats {
+  .eventTime {
     display: none;
   }
 
-  .monthTotal {
-    min-width: 32px;
-    height: 20px;
-    padding: 0 6px;
-  }
-}
-
-@media (max-width: 560px) {
-  .calendarCard,
-  .detailSection,
-  .card,
-  .todayCard {
-    padding: 16px;
-  }
-
-  .weekdayRow,
-  .monthGrid {
-    gap: 6px;
-  }
-
-  .monthDay {
-    min-height: 72px;
-    border-radius: 14px;
-  }
-
-  .monthDayTop {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
-  .buttonSecondary,
-  .buttonPrimaryInline {
-    width: 100%;
-  }
-
   .timelineItem {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--s2);
   }
 
   .timeCol {
-    padding-top: 0;
     display: flex;
     align-items: baseline;
-    gap: 10px;
-  }
-
-  .timeSub {
-    margin-top: 0;
+    gap: var(--s2);
   }
 }

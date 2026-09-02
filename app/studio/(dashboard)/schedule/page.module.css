@@ -1,92 +1,57 @@
 .page {
+  background: var(--bg);
   min-height: 100dvh;
-  background: #fafafa;
-  padding: 32px 24px 56px;
+}
+
+.container {
+  max-width: var(--studio-max);
+  margin: 0 auto;
+  padding: 32px 24px 48px;
+  display: grid;
+  gap: 24px;
 }
 
 .header {
-  max-width: var(--studio-max);
-  margin: 0 auto 24px;
-}
-
-.headerTop {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 24px;
-  flex-wrap: wrap;
-}
-
-.brandKicker {
-  margin: 0 0 10px;
-  font-size: 13px;
-  line-height: 18px;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  color: #2aad38;
+  display: grid;
+  gap: var(--s2);
+  /* 캘린더 canvas 안쪽 여백(border 1px + padding 18px)과 본문 축을 맞춘다. */
+  padding-left: 19px;
 }
 
 .title {
   margin: 0;
   font-size: 30px;
   line-height: 36px;
-  font-weight: 800;
   letter-spacing: -0.04em;
-  color: #111111;
+  font-weight: 800;
+  color: var(--text-1);
 }
 
 .subtitle {
-  margin: 12px 0 0;
+  margin: 0;
   font-size: 14px;
   line-height: 22px;
-  color: #666666;
-}
-
-.headerActions {
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-  align-items: center;
-}
-
-.secondaryButton {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  height: 44px;
-  padding: 0 14px;
-  border-radius: 12px;
-  border: 1px solid #d9d9d9;
-  background: #ffffff;
-  color: #111111;
-  font-size: 14px;
-  font-weight: 700;
-  text-decoration: none;
-}
-
-.secondaryButton:hover {
-  border-color: #bdbdbd;
+  color: var(--text-2);
 }
 
 .errorCard {
-  max-width: var(--studio-max);
-  margin: 0 auto 16px;
-  border: 1px solid #fecaca;
-  border-radius: 18px;
-  background: #fff;
-  padding: 16px 18px;
+  border: 1px solid var(--red-bg);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  padding: 14px 16px;
 }
 
 .errorText {
   margin: 0;
-  font-size: 14px;
-  line-height: 20px;
-  color: #dc2626;
+  font-size: 13px;
+  line-height: 18px;
   font-weight: 600;
+  color: var(--red-fg);
 }
 
-@media (max-width: 720px) {
-  .page {
-    padding: 28px 20px 48px;
+@media (min-width: 960px) {
+  .container {
+    padding: 32px 32px 56px;
+    gap: 32px;
   }
 }
