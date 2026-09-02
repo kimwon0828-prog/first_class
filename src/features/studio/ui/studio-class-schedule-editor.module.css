@@ -5,7 +5,7 @@
 
 .infoCard,
 .exceptionCard {
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--border);
   border-radius: var(--r-md);
   background: var(--surface);
 }
@@ -14,13 +14,13 @@
   padding: 18px 20px;
   display: grid;
   gap: 10px;
-  background: #fcfdfc;
+  background: var(--surface-sub);
 }
 
 .infoTitle,
 .exceptionTitle {
   margin: 0;
-  color: #111827;
+  color: var(--text-1);
   font-size: 18px;
   line-height: 26px;
   font-weight: 800;
@@ -32,7 +32,7 @@
 .calendarDraftHint,
 .weeklyText {
   margin: 0;
-  color: #4b5563;
+  color: var(--text-2);
   font-size: 14px;
   line-height: 22px;
 }
@@ -43,7 +43,7 @@
   align-items: flex-start;
   gap: var(--s4);
   padding: var(--s5) var(--s5) var(--s4);
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid var(--border);
 }
 
 .exceptionToolbar,
@@ -57,10 +57,10 @@
 .iconButton,
 .toggleButton {
   min-height: 38px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--border);
   border-radius: var(--r-md);
   background: var(--surface);
-  color: #111827;
+  color: var(--text-1);
   padding: 0 14px;
   font-size: 13px;
   line-height: 18px;
@@ -76,13 +76,13 @@
   display: grid;
   gap: var(--s1);
   padding: 14px 16px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--border);
   border-radius: var(--r-md);
-  background: #f9faf9;
+  background: var(--surface-sub);
 }
 
 .weeklyTitle {
-  color: #111827;
+  color: var(--text-1);
   font-size: 14px;
   line-height: 20px;
   font-weight: 800;
@@ -95,7 +95,7 @@
 
 .calendarPane {
   padding: var(--s5);
-  border-right: 1px solid #e5e7eb;
+  border-right: 1px solid var(--border);
 }
 
 .calendarHeader,
@@ -108,7 +108,7 @@
 
 .calendarMonthLabel {
   margin: 0;
-  color: #111827;
+  color: var(--text-1);
   font-size: 24px;
   line-height: 30px;
   font-weight: 900;
@@ -120,7 +120,7 @@
 
 .panelPane {
   padding: var(--s5);
-  background: #fcfcfd;
+  background: var(--surface-sub);
 }
 
 .noticeBadge,
@@ -138,12 +138,12 @@
 
 .noticeBadge {
   background: var(--brand-50);
-  color: #1f8b2c;
+  color: var(--brand-700);
 }
 
 .noticeBadgeMuted {
-  background: #f3f4f6;
-  color: #4b5563;
+  background: var(--gray-bg);
+  color: var(--gray-fg);
 }
 
 .calendarDraftHint {
@@ -157,7 +157,7 @@
 
   .calendarPane {
     border-right: 0;
-    border-bottom: 1px solid #f1f5f9;
+    border-bottom: 1px solid var(--border);
   }
 }
 

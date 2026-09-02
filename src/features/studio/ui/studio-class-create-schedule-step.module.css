@@ -10,7 +10,7 @@
 
 .sectionLabel {
   margin: 0;
-  color: #9ca3af;
+  color: var(--text-3);
   font-size: 12px;
   line-height: 16px;
   font-weight: 700;
@@ -22,7 +22,7 @@
   display: grid;
   gap: var(--s4);
   padding: var(--s5);
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--border);
   border-radius: var(--r-md);
   background: var(--surface);
 }
@@ -44,21 +44,21 @@
   font-size: 15px;
   line-height: 22px;
   font-weight: 800;
-  color: #111827;
+  color: var(--text-1);
 }
 
 .noteText {
   margin: 0;
   font-size: 14px;
   line-height: 22px;
-  color: #4b5563;
+  color: var(--text-2);
 }
 
 .subtleText {
   margin: 0;
   font-size: 13px;
   line-height: 20px;
-  color: #6b7280;
+  color: var(--text-2);
 }
 
 .metricRow {
@@ -80,17 +80,17 @@
 
 .metricChip {
   background: var(--brand-50);
-  color: #1f8b2c;
+  color: var(--brand-700);
 }
 
 .metricChipMuted {
-  background: #f3f4f6;
-  color: #4b5563;
+  background: var(--gray-bg);
+  color: var(--gray-fg);
 }
 
 .metricChipWarning {
-  background: #fff7ed;
-  color: #b45309;
+  background: var(--amber-bg);
+  color: var(--amber-fg);
 }
 
 .previewLayout {
@@ -104,9 +104,9 @@
   display: grid;
   gap: 14px;
   padding: 18px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--border);
   border-radius: var(--r-md);
-  background: #fcfdfc;
+  background: var(--surface-sub);
 }
 
 .previewToolbar {
@@ -118,7 +118,7 @@
 
 .previewMonthLabel {
   margin: 0;
-  color: #111827;
+  color: var(--text-1);
   font-size: 16px;
   line-height: 22px;
   font-weight: 800;
@@ -127,10 +127,10 @@
 .iconButton {
   min-height: 36px;
   padding: 0 12px;
-  border: 1px solid #e5e7eb;
-  border-radius: 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
   background: var(--surface);
-  color: #111827;
+  color: var(--text-1);
   font-size: 13px;
   line-height: 18px;
   font-weight: 700;
@@ -145,7 +145,7 @@
   display: grid;
   gap: var(--s2);
   padding: 14px 16px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--border);
   border-radius: var(--r-md);
   background: var(--surface);
 }
@@ -159,7 +159,7 @@
 }
 
 .generatedSlotTime {
-  color: #111827;
+  color: var(--text-1);
   font-size: 14px;
   line-height: 20px;
   font-weight: 800;
@@ -168,7 +168,7 @@
 .generatedSlotMeta,
 .emptyText {
   margin: 0;
-  color: #4b5563;
+  color: var(--text-2);
   font-size: 13px;
   line-height: 20px;
 }

@@ -12,7 +12,7 @@
 
 .title {
   margin: 0;
-  color: #111827;
+  color: var(--text-1);
   font-size: 20px;
   line-height: 26px;
   font-weight: 900;
@@ -30,11 +30,11 @@
 
 .description,
 .hint {
-  color: #6b7280;
+  color: var(--text-2);
 }
 
 .message {
-  color: #15803d;
+  color: var(--brand-700);
   font-weight: 700;
 }
 
@@ -44,7 +44,7 @@
 }
 
 .warningText {
-  color: #b45309;
+  color: var(--amber-fg);
   font-weight: 700;
 }
 
@@ -87,21 +87,21 @@
 
 .buttonSecondary,
 .stepperButton {
-  border: 1px solid #d7dce2;
+  border: 1px solid var(--border);
   background: var(--surface);
-  color: #111827;
+  color: var(--text-1);
 }
 
 .buttonDanger {
   border: 1px solid #fecaca;
   background: var(--surface);
-  color: #dc2626;
+  color: var(--red-fg);
 }
 
 .extraCard,
 .timeCard {
-  border: 1px solid #edf0f3;
-  border-radius: 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
   background: var(--surface);
 }
 
@@ -124,7 +124,7 @@
 }
 
 .fieldLabel {
-  color: #111827;
+  color: var(--text-1);
   font-size: 13px;
   line-height: 18px;
   font-weight: 800;
@@ -133,10 +133,10 @@
 .input {
   width: 100%;
   min-height: 42px;
-  border: 1px solid #d7dce2;
+  border: 1px solid var(--border);
   border-radius: var(--r-md);
   background: var(--surface);
-  color: #111827;
+  color: var(--text-1);
   font-size: 14px;
   line-height: 20px;
   padding: 0 14px;
@@ -150,7 +150,7 @@
 }
 
 .timeHeadline {
-  color: #111827;
+  color: var(--text-1);
   font-size: 16px;
   line-height: 22px;
   font-weight: 800;
@@ -171,18 +171,18 @@
 }
 
 .metaBadge {
-  background: #ecfdf3;
-  color: #166534;
+  background: var(--green-bg);
+  color: var(--green-fg);
 }
 
 .metaBadgeMuted {
-  background: #f3f4f6;
-  color: #4b5563;
+  background: var(--gray-bg);
+  color: var(--gray-fg);
 }
 
 .metaBadgeWarning {
-  background: #fff7ed;
-  color: #b45309;
+  background: var(--amber-bg);
+  color: var(--amber-fg);
 }
 
 .capacityRow {
@@ -196,7 +196,7 @@
 .stepperValue {
   min-width: 52px;
   text-align: center;
-  color: #111827;
+  color: var(--text-1);
   font-size: 14px;
   line-height: 20px;
   font-weight: 800;

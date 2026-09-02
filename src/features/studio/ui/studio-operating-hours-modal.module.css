@@ -15,13 +15,13 @@
   overflow: auto;
   border-radius: var(--r-lg);
   background: var(--surface);
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--border);
   box-shadow: 0 24px 70px rgba(15, 23, 42, 0.2);
 }
 
 .header {
   padding: 24px 24px 18px;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid var(--border);
 }
 
 .title {
@@ -29,14 +29,14 @@
   font-size: 22px;
   line-height: 30px;
   font-weight: 800;
-  color: #111827;
+  color: var(--text-1);
 }
 
 .section {
   display: grid;
   gap: var(--s4);
   padding: 22px 24px;
-  border-bottom: 1px solid #f1f5f9;
+  border-bottom: 1px solid var(--border);
 }
 
 .sectionHeader {
@@ -50,7 +50,7 @@
   font-size: 15px;
   line-height: 22px;
   font-weight: 800;
-  color: #111827;
+  color: var(--text-1);
 }
 
 .rowGrid {
@@ -68,7 +68,7 @@
   font-size: 13px;
   line-height: 18px;
   font-weight: 700;
-  color: #374151;
+  color: var(--text-1);
 }
 
 .input {
@@ -76,12 +76,12 @@
   min-width: 0;
   height: 48px;
   padding: 0 14px;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--border-strong);
   border-radius: var(--r-md);
   background: var(--surface);
   font-size: 15px;
   line-height: 20px;
-  color: #111827;
+  color: var(--text-1);
 }
 
 .hint,
@@ -91,7 +91,7 @@
   margin: 0;
   font-size: 13px;
   line-height: 19px;
-  color: #6b7280;
+  color: var(--text-2);
 }
 
 .checkboxRow,
@@ -101,7 +101,7 @@
   gap: 10px;
   font-size: 14px;
   line-height: 20px;
-  color: #111827;
+  color: var(--text-1);
 }
 
 .modeList {
@@ -118,9 +118,9 @@
   display: grid;
   gap: 14px;
   padding: var(--s4);
-  border: 1px solid #e5e7eb;
-  border-radius: 14px;
-  background: #f9fafb;
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--surface-sub);
 }
 
 .groupHeader {
@@ -134,7 +134,7 @@
   font-size: 15px;
   line-height: 22px;
   font-weight: 800;
-  color: #111827;
+  color: var(--text-1);
 }
 
 .weekdayRow {
@@ -146,10 +146,10 @@
 .weekdayButton {
   min-width: 38px;
   height: 38px;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--border-strong);
   border-radius: var(--r-full);
   background: var(--surface);
-  color: #111827;
+  color: var(--text-1);
   font-size: 13px;
   line-height: 18px;
   font-weight: 700;
@@ -157,8 +157,8 @@
 }
 
 .weekdayButtonSelected {
-  border-color: #16a34a;
-  background: #16a34a;
+  border-color: var(--brand-700);
+  background: var(--brand-700);
   color: #ffffff;
 }
 
@@ -171,8 +171,8 @@
   display: grid;
   gap: 10px;
   padding: 14px;
-  border: 1px solid #dcfce7;
-  border-radius: 14px;
+  border: 1px solid var(--brand-100);
+  border-radius: var(--r-md);
   background: var(--surface);
 }
 
@@ -194,7 +194,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  color: #94a3b8;
+  color: var(--text-3);
   font-weight: 700;
   padding-bottom: 14px;
 }
@@ -219,16 +219,16 @@
 
 .secondaryButton {
   justify-self: flex-start;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--border-strong);
   background: var(--surface);
-  color: #111827;
+  color: var(--text-1);
   padding: 11px 16px;
 }
 
 .textButton {
   border: 0;
   background: transparent;
-  color: #6b7280;
+  color: var(--text-2);
   padding: 0;
 }
 
@@ -248,19 +248,25 @@
 }
 
 .cancelButton {
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--border-strong);
   background: var(--surface);
-  color: #111827;
+  color: var(--text-1);
   min-width: 120px;
   padding: 13px 18px;
 }
 
 .saveButton {
-  border: 1px solid #16a34a;
-  background: #16a34a;
+  border: 1px solid var(--brand-700);
+  background: var(--brand-700);
   color: #ffffff;
   min-width: 120px;
   padding: 13px 18px;
+}
+
+/* Primary 는 brand-700 / hover brand-900 이다(UI-1B Foundation). */
+.saveButton:hover {
+  border-color: var(--brand-900);
+  background: var(--brand-900);
 }
 
 @media (max-width: 768px) {
@@ -299,7 +305,7 @@
     position: sticky;
     bottom: 0;
     background: var(--surface);
-    border-top: 1px solid #e5e7eb;
+    border-top: 1px solid var(--border);
     padding-left: 18px;
     padding-right: 18px;
   }

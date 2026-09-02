@@ -15,7 +15,7 @@
 }
 
 .label {
-  color: #6b7280;
+  color: var(--text-2);
   font-size: 12px;
   line-height: 18px;
   font-weight: 700;
@@ -25,10 +25,10 @@
   width: 100%;
   min-height: 42px;
   padding: 0 12px;
-  border: 1px solid #e5e7eb;
-  border-radius: 9px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
   background: var(--surface);
-  color: #111827;
+  color: var(--text-1);
   font-size: 14px;
   line-height: 20px;
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
@@ -36,13 +36,13 @@
 
 .select:focus {
   outline: none;
-  border-color: #2aad38;
+  border-color: var(--brand-500);
   box-shadow: 0 0 0 3px rgba(42, 173, 56, 0.12);
 }
 
 .select:disabled {
-  background: #f9fafb;
-  color: #9ca3af;
+  background: var(--surface-sub);
+  color: var(--text-3);
   cursor: not-allowed;
 }
 
@@ -54,7 +54,7 @@
 }
 
 .hint {
-  color: #6b7280;
+  color: var(--text-2);
 }
 
 .error {

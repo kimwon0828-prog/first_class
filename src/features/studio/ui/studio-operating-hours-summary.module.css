@@ -2,7 +2,7 @@
   display: grid;
   gap: var(--s4);
   padding: var(--s5);
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--border);
   border-radius: var(--r-md);
   background: var(--surface);
 }
@@ -20,7 +20,7 @@
   font-size: 18px;
   line-height: 26px;
   font-weight: 800;
-  color: #111827;
+  color: var(--text-1);
 }
 
 .description,
@@ -28,14 +28,14 @@
   margin: 8px 0 0;
   font-size: 14px;
   line-height: 22px;
-  color: #4b5563;
+  color: var(--text-2);
 }
 
 .actionButton {
-  border: 1px solid #e5e7eb;
-  border-radius: 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
   background: var(--surface);
-  color: #111827;
+  color: var(--text-1);
   font-size: 14px;
   line-height: 20px;
   font-weight: 700;
@@ -52,23 +52,23 @@
   font-size: 13px;
   line-height: 18px;
   font-weight: 700;
-  color: #1f8b2c;
+  color: var(--brand-700);
 }
 
 .groupCard {
   display: grid;
   gap: 6px;
   padding: var(--s4);
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--border);
   border-radius: var(--r-md);
-  background: #f9faf9;
+  background: var(--surface-sub);
 }
 
 .groupWeekdays {
   font-size: 15px;
   line-height: 22px;
   font-weight: 800;
-  color: #111827;
+  color: var(--text-1);
 }
 
 .timeList {
@@ -81,7 +81,7 @@
   margin: 0;
   font-size: 14px;
   line-height: 21px;
-  color: #374151;
+  color: var(--text-1);
 }
 
 @media (max-width: 720px) {

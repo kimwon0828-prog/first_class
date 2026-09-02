@@ -12,7 +12,7 @@
 
 .weekdayCell {
   padding: 8px 0;
-  color: #6b7280;
+  color: var(--text-2);
   font-size: 12px;
   line-height: 16px;
   font-weight: 700;
@@ -20,13 +20,13 @@
 }
 
 .weekdayCellSunday {
-  color: #ef4444;
+  color: var(--red-fg);
 }
 
 .dayCell {
   min-height: 108px;
-  border: 1px solid #e5e7eb;
-  border-radius: 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
   background: var(--surface);
   padding: 10px 10px 12px;
   display: grid;
@@ -37,7 +37,7 @@
 
 .dayCellMuted {
   background: var(--surface-sub);
-  color: #9ca3af;
+  color: var(--text-3);
 }
 
 .dayCellPast {
@@ -45,13 +45,13 @@
 }
 
 .dayCellSelected {
-  border-color: #2aad38;
-  background: #f3fbf4;
+  border-color: var(--brand-500);
+  background: var(--brand-50);
   box-shadow: inset 0 0 0 1px rgba(42, 173, 56, 0.14);
 }
 
 .dayCellToday {
-  border-color: #cdeed0;
+  border-color: var(--brand-100);
 }
 
 .dayTop {
@@ -62,7 +62,7 @@
 }
 
 .dayNumber {
-  color: #111827;
+  color: var(--text-1);
   font-size: 16px;
   line-height: 20px;
   font-weight: 800;
@@ -79,8 +79,8 @@
   min-height: 20px;
   padding: 0 8px;
   border-radius: var(--r-full);
-  background: #f3fbf4;
-  color: #15803d;
+  background: var(--brand-50);
+  color: var(--brand-700);
   font-size: 11px;
   line-height: 14px;
   font-weight: 800;
@@ -107,23 +107,23 @@
 }
 
 .dayMetric {
-  background: #f8fafc;
-  color: #475569;
+  background: var(--surface-sub);
+  color: var(--text-2);
 }
 
 .dayStatus {
-  background: #f3fbf4;
-  color: #15803d;
+  background: var(--brand-50);
+  color: var(--brand-700);
 }
 
 .dayStatusClosed {
-  background: #fff7ed;
-  color: #b45309;
+  background: var(--amber-bg);
+  color: var(--amber-fg);
 }
 
 .dayStatusHidden {
-  background: #f3f4f6;
-  color: #4b5563;
+  background: var(--gray-bg);
+  color: var(--gray-fg);
 }
 
 .lockBadge {
