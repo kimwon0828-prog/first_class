@@ -69,6 +69,18 @@ export const StudioClassesManager = ({ items }: StudioClassesManagerProps) => {
     })
   }, [items, query, statusFilter])
 
+  // 공개 중인 수업을 먼저 보여준다.
+  // Array.prototype.filter 는 순서를 보존하므로 각 그룹 안에서는 기존 상대 순서가 그대로다.
+  // 새 정렬 기준(이름/생성일 등)을 만들지 않고, 원본 배열도 mutate 하지 않는다.
+  const visibleItems = useMemo(() => {
+    const activeItems = filteredItems.filter((item) => item.isActive)
+    if (activeItems.length === 0 || activeItems.length === filteredItems.length) {
+      return filteredItems
+    }
+
+    return [...activeItems, ...filteredItems.filter((item) => !item.isActive)]
+  }, [filteredItems])
+
   useEffect(() => {
     const success = searchParams.get("success")
     const normalized =
@@ -211,7 +223,7 @@ export const StudioClassesManager = ({ items }: StudioClassesManagerProps) => {
             </div>
 
             <ul className={styles.list}>
-              {filteredItems.map((item) => (
+              {visibleItems.map((item) => (
                 <li key={item.id} className={styles.row}>
                   <div className={styles.cellClass}>
                     <Link
