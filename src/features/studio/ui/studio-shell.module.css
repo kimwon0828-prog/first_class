@@ -1,14 +1,14 @@
 .shell {
   min-height: 100dvh;
-  background: #f7f7f7;
+  background: var(--bg);
   display: flex;
 }
 
 .sidebar {
   width: var(--side-w);
   flex: 0 0 auto;
-  background: #ffffff;
-  border-right: 1px solid #eeeeee;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
   padding: 18px 16px 16px;
   display: flex;
   flex-direction: column;
@@ -21,7 +21,7 @@
 .sidebarTop {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--s2);
   padding: 6px 6px 10px;
 }
 
@@ -35,13 +35,13 @@
   line-height: 16px;
   font-weight: 800;
   letter-spacing: 0.14em;
-  color: #2aad38;
+  color: var(--brand-500);
 }
 
 .nav {
   display: grid;
   gap: 6px;
-  padding: 4px;
+  padding: var(--s1);
 }
 
 .navItem {
@@ -49,8 +49,8 @@
   align-items: center;
   gap: 10px;
   padding: 10px 12px;
-  border-radius: 14px;
-  color: #4a4a4a;
+  border-radius: var(--r-md);
+  color: var(--text-2);
   text-decoration: none;
   font-size: 14px;
   line-height: 20px;
@@ -63,15 +63,15 @@
 }
 
 .navItem:hover {
-  background: #fafafa;
-  border-color: #eeeeee;
-  color: #111111;
+  background: var(--surface-sub);
+  border-color: var(--border);
+  color: var(--text-1);
 }
 
 .navItemActive {
-  background: #f3fbf4;
-  border-color: #d8f0dc;
-  color: #111111;
+  background: var(--brand-50);
+  border-color: var(--brand-100);
+  color: var(--text-1);
 }
 
 .navItemPending {
@@ -81,33 +81,33 @@
 .navDot {
   width: 8px;
   height: 8px;
-  border-radius: 999px;
-  background: #d9d9d9;
+  border-radius: var(--r-full);
+  background: var(--border-strong);
 }
 
 .navItemActive .navDot {
-  background: #2aad38;
+  background: var(--brand-500);
 }
 
 .navPendingText {
   margin-left: auto;
   font-size: 11px;
   line-height: 16px;
-  color: #2aad38;
+  color: var(--brand-500);
   font-weight: 800;
 }
 
 .sidebarBottom {
   margin-top: auto;
-  padding: 4px;
+  padding: var(--s1);
 }
 
 .accountCard {
-  border: 1px solid #eeeeee;
-  border-radius: 18px;
-  background: #ffffff;
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  background: var(--surface);
   display: grid;
-  gap: 12px;
+  gap: var(--s3);
   padding: 14px;
 }
 
@@ -115,11 +115,11 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: var(--s3);
   text-decoration: none;
   color: inherit;
   border: 1px solid transparent;
-  border-radius: 14px;
+  border-radius: var(--r-md);
   padding: 8px 10px;
 }
 
@@ -128,8 +128,8 @@
 }
 
 .accountProfileLinkActive {
-  background: #f3fbf4;
-  border-color: #d8f0dc;
+  background: var(--brand-50);
+  border-color: var(--brand-100);
 }
 
 .accountProfileLinkPending {
@@ -140,19 +140,19 @@
 .accountLink:focus-visible {
   outline: none;
   box-shadow: 0 0 0 3px rgba(42, 173, 56, 0.16);
-  border-color: #2aad38;
+  border-color: var(--brand-500);
 }
 
 .accountAvatar {
   width: 42px;
   height: 42px;
-  border-radius: 999px;
+  border-radius: var(--r-full);
   display: grid;
   place-items: center;
   overflow: hidden;
   flex: 0 0 auto;
-  background: #f2fbf3;
-  color: #1e8c2b;
+  background: var(--brand-50);
+  color: var(--brand-700);
   font-weight: 900;
   font-size: 16px;
   line-height: 1;
@@ -170,7 +170,7 @@
   min-width: 0;
   font-size: 15px;
   line-height: 22px;
-  color: #111111;
+  color: var(--text-1);
   font-weight: 800;
   white-space: nowrap;
   overflow: hidden;
@@ -179,7 +179,7 @@
 
 .accountChevron {
   flex: 0 0 auto;
-  color: #8a8a8a;
+  color: var(--text-3);
   font-size: 14px;
   line-height: 1;
   font-weight: 800;
@@ -187,8 +187,8 @@
 
 .accountActions {
   display: flex;
-  padding-top: 12px;
-  border-top: 1px solid #f0f0f0;
+  padding-top: var(--s3);
+  border-top: 1px solid var(--border);
 }
 
 .accountLink {
@@ -197,8 +197,8 @@
   min-height: 36px;
   padding: 0 2px;
   border: 1px solid transparent;
-  border-radius: 10px;
-  color: #4a4a4a;
+  border-radius: var(--r-sm);
+  color: var(--text-2);
   text-decoration: none;
   font-size: 13px;
   line-height: 18px;
@@ -206,7 +206,7 @@
 }
 
 .accountLink:hover {
-  color: #111111;
+  color: var(--text-1);
 }
 
 .main {
@@ -237,7 +237,7 @@
     height: auto;
     position: static;
     border-right: none;
-    border-bottom: 1px solid #eeeeee;
+    border-bottom: 1px solid var(--border);
     flex-direction: row;
     align-items: flex-start;
     gap: 14px;
@@ -257,7 +257,7 @@
   .nav {
     grid-auto-flow: column;
     grid-auto-columns: max-content;
-    gap: 8px;
+    gap: var(--s2);
     padding: 0;
   }
 
@@ -268,7 +268,7 @@
 
   .accountCard {
     padding: 12px;
-    border-radius: 14px;
+    border-radius: var(--r-md);
     min-width: max-content;
   }
 
