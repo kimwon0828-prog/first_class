@@ -16,7 +16,10 @@ export type StudioScheduleEvent = {
   isDurationFallback: boolean
   timeLabel: string
   childName: string
+  classId: string
   classTitle: string
+  /** 필터 key 는 이름이 아니라 id 다(동명이인 방지). 미배정이면 null. */
+  assignedTeacherId: string | null
   assignedTeacherName: string | null
   status: ApplicationStatus
   statusLabel: string
@@ -126,7 +129,9 @@ export const buildStudioScheduleEvents = (
       isDurationFallback: duration.isDurationFallback,
       timeLabel: formatClockMinutes(startMinutes),
       childName: item.childName,
+      classId: item.classId,
       classTitle: item.classTitle?.trim() || "수업 정보 없음",
+      assignedTeacherId: item.assignedTeacherId,
       assignedTeacherName: normalizeText(item.assignedTeacherName),
       status: item.status,
       statusLabel: getStudioStatusLabel(item),
@@ -302,4 +307,138 @@ export const buildStudioScheduleTimeRange = (
       (_, index) => startMinutes + index * 60
     )
   }
+}
+
+
+// ── Calendar filters ────────────────────────────────────────────────
+//
+// 새 query 를 만들지 않는다. 옵션도 필터링도 이미 만들어 둔 event 목록에서만 파생한다.
+
+/** 미배정 일정을 고르기 위한 예약어. 실제 teacher id 와 섞이지 않는다(uuid 가 아니다). */
+export const UNASSIGNED_TEACHER_FILTER = "unassigned"
+export const ALL_FILTER = "all"
+
+export type StudioScheduleStatusFilter = "all" | "reviewing" | "confirmed" | "completed"
+
+/**
+ * Calendar 는 Application Status 를 쓴다. Case Stage 가 아니다.
+ * 취소/노쇼는 캘린더 자체에서 제외되므로 옵션에 넣지 않는다.
+ */
+export const STUDIO_SCHEDULE_STATUS_FILTERS: Array<{
+  value: StudioScheduleStatusFilter
+  label: string
+  statuses: ApplicationStatus[]
+}> = [
+  { value: "all", label: "전체", statuses: [] },
+  { value: "reviewing", label: "상담/확인", statuses: ["new", "reviewing"] },
+  { value: "confirmed", label: "일정 확정", statuses: ["confirmed"] },
+  { value: "completed", label: "체험 완료", statuses: ["completed"] }
+]
+
+const STATUS_FILTER_MAP = new Map(
+  STUDIO_SCHEDULE_STATUS_FILTERS.map((option) => [option.value, new Set(option.statuses)])
+)
+
+export type StudioScheduleFilterOption = {
+  value: string
+  label: string
+}
+
+export type StudioScheduleFilterOptions = {
+  teachers: StudioScheduleFilterOption[]
+  classes: StudioScheduleFilterOption[]
+}
+
+export type StudioScheduleFilters = {
+  teacherId: string
+  classId: string
+  status: StudioScheduleStatusFilter
+}
+
+export const EMPTY_STUDIO_SCHEDULE_FILTERS: StudioScheduleFilters = {
+  teacherId: ALL_FILTER,
+  classId: ALL_FILTER,
+  status: ALL_FILTER
+}
+
+export const hasActiveStudioScheduleFilter = (filters: StudioScheduleFilters) =>
+  filters.teacherId !== ALL_FILTER ||
+  filters.classId !== ALL_FILTER ||
+  filters.status !== ALL_FILTER
+
+/**
+ * 옵션은 "필터가 걸리지 않은 전체 event" 에서 만든다.
+ * 필터 결과에서 만들면 선생님을 고른 순간 수업 옵션이 사라지는 식으로 UI 가 흔들린다.
+ */
+export const buildStudioScheduleFilterOptions = (
+  events: StudioScheduleEvent[]
+): StudioScheduleFilterOptions => {
+  const teacherLabelById = new Map<string, string>()
+  const classLabelById = new Map<string, string>()
+  let hasUnassigned = false
+
+  for (const event of events) {
+    if (event.assignedTeacherId && event.assignedTeacherName) {
+      if (!teacherLabelById.has(event.assignedTeacherId)) {
+        teacherLabelById.set(event.assignedTeacherId, event.assignedTeacherName)
+      }
+    } else {
+      hasUnassigned = true
+    }
+
+    if (event.classId && !classLabelById.has(event.classId)) {
+      classLabelById.set(event.classId, event.classTitle)
+    }
+  }
+
+  const byLabel = (left: StudioScheduleFilterOption, right: StudioScheduleFilterOption) =>
+    left.label.localeCompare(right.label, "ko-KR")
+
+  const teachers: StudioScheduleFilterOption[] = [{ value: ALL_FILTER, label: "전체" }]
+  if (hasUnassigned) {
+    // 미배정을 목록 위쪽에 둔다. 담당자를 정해야 하는 건이라 먼저 보이는 편이 낫다.
+    teachers.push({ value: UNASSIGNED_TEACHER_FILTER, label: "미배정" })
+  }
+  teachers.push(
+    ...Array.from(teacherLabelById, ([value, label]) => ({ value, label })).sort(byLabel)
+  )
+
+  const classes: StudioScheduleFilterOption[] = [
+    { value: ALL_FILTER, label: "전체" },
+    ...Array.from(classLabelById, ([value, label]) => ({ value, label })).sort(byLabel)
+  ]
+
+  return { teachers, classes }
+}
+
+/** teacher AND class AND status. 원본 배열은 건드리지 않는다. */
+export const filterStudioScheduleEvents = (
+  events: StudioScheduleEvent[],
+  filters: StudioScheduleFilters
+): StudioScheduleEvent[] => {
+  if (!hasActiveStudioScheduleFilter(filters)) {
+    return events
+  }
+
+  const statuses = STATUS_FILTER_MAP.get(filters.status)
+
+  return events.filter((event) => {
+    if (filters.teacherId === UNASSIGNED_TEACHER_FILTER) {
+      if (event.assignedTeacherId) {
+        return false
+      }
+    } else if (filters.teacherId !== ALL_FILTER && event.assignedTeacherId !== filters.teacherId) {
+      return false
+    }
+
+    if (filters.classId !== ALL_FILTER && event.classId !== filters.classId) {
+      return false
+    }
+
+    if (statuses && statuses.size > 0 && !statuses.has(event.status)) {
+      return false
+    }
+
+    return true
+  })
 }

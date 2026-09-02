@@ -78,6 +78,195 @@
   line-height: 18px;
 }
 
+/* ── 2-column workspace ──────────────────────────────────────────── */
+
+/*
+ * 좌측 보조 패널 + 메인 캘린더. card-in-card 로 감싸지 않는다.
+ * 232px: --studio-max(1200) - container padding(64) - gap(24) = canvas 880px 이 남고
+ * 7열 Month cell 이 약 120px 을 확보한다.
+ */
+.workspace {
+  display: grid;
+  grid-template-columns: 232px minmax(0, 1fr);
+  gap: 24px;
+  align-items: start;
+}
+
+.sidebarPanel {
+  display: grid;
+  gap: var(--s4);
+  padding: var(--s4);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+}
+
+/* ── Mini Calendar ───────────────────────────────────────────────── */
+
+.mini {
+  display: grid;
+  gap: var(--s2);
+}
+
+.miniHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s1);
+}
+
+.miniMonth {
+  color: var(--text-1);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.miniNavButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: 0;
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--text-2);
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.miniNavButton:hover {
+  background: var(--surface-sub);
+  color: var(--text-1);
+}
+
+.miniWeekdayRow,
+.miniGrid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 2px;
+}
+
+.miniWeekday {
+  padding: 2px 0;
+  color: var(--text-3);
+  font-size: 11px;
+  font-weight: 600;
+  text-align: center;
+}
+
+.miniDay {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  aspect-ratio: 1;
+  border: 1px solid transparent;
+  border-radius: var(--r-full);
+  background: transparent;
+  color: var(--text-1);
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.miniDay:hover {
+  background: var(--surface-sub);
+}
+
+.miniDayMuted {
+  color: var(--text-3);
+}
+
+/* 선택일은 soft brand, 오늘은 글자색. 겹쳐도 장식이 과하지 않다. */
+.miniDaySelected {
+  border-color: var(--brand-700);
+  background: var(--brand-50);
+  color: var(--brand-700);
+  font-weight: 800;
+}
+
+.miniDayToday {
+  color: var(--brand-700);
+  font-weight: 800;
+}
+
+/* ── Filters ─────────────────────────────────────────────────────── */
+
+.filterPanel {
+  display: grid;
+  gap: var(--s4);
+  padding-top: var(--s4);
+  border-top: 1px solid var(--border);
+}
+
+.filterGroup {
+  display: grid;
+  gap: var(--s2);
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.filterLegend {
+  padding: 0;
+  color: var(--text-3);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.filterOptions {
+  display: grid;
+  gap: 2px;
+}
+
+/* 큰 버튼 카드를 세로로 쌓지 않는다. compact 한 선택 행이다. */
+.filterOption {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  min-width: 0;
+  padding: 5px var(--s2);
+  border-radius: var(--r-sm);
+  cursor: pointer;
+}
+
+.filterOption:hover {
+  background: var(--surface-sub);
+}
+
+.filterRadio {
+  flex: 0 0 auto;
+  width: 13px;
+  height: 13px;
+  margin: 0;
+  accent-color: var(--brand-700);
+}
+
+.filterOptionLabel {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-1);
+  font-size: 13px;
+}
+
+.filterReset {
+  justify-self: start;
+  border: 0;
+  padding: 0;
+  background: none;
+  color: var(--brand-700);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.filterReset:hover {
+  text-decoration: underline;
+}
+
 .canvas {
   display: grid;
   gap: var(--s3);
@@ -552,6 +741,60 @@
   line-height: 18px;
   text-align: center;
   pointer-events: none;
+}
+
+@media (max-width: 1024px) {
+  /* 두 열을 유지하면 Month cell 이 100px 아래로 떨어진다. 패널을 캘린더 위로 올린다. */
+  .workspace {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .sidebarPanel {
+    grid-template-columns: 232px minmax(0, 1fr);
+    align-items: start;
+  }
+
+  .filterPanel {
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(0, 1fr);
+    align-content: start;
+    padding-top: 0;
+    padding-left: var(--s4);
+    border-top: 0;
+    border-left: 1px solid var(--border);
+  }
+
+  .filterReset {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 640px) {
+  /* Main Month View 가 이미 있으므로 Mini Calendar 로 공간을 쓰지 않는다. */
+  .mini {
+    display: none;
+  }
+
+  .sidebarPanel {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .filterPanel {
+    grid-auto-flow: row;
+    padding-left: 0;
+    border-left: 0;
+  }
+
+  .filterOptions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--s1);
+  }
+
+  .filterOption {
+    border: 1px solid var(--border);
+    border-radius: var(--r-full);
+  }
 }
 
 @media (max-width: 760px) {
