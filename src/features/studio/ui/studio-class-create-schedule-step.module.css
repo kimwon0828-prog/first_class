@@ -35,15 +35,6 @@
   flex-wrap: wrap;
 }
 
-.noteCard {
-  display: grid;
-  gap: 12px;
-  padding: 20px 24px;
-  border: 1px solid #e5e7eb;
-  border-radius: 16px;
-  background: #ffffff;
-}
-
 .noteBlock {
   display: grid;
   gap: 6px;
@@ -109,8 +100,7 @@
 }
 
 .previewCalendarCard,
-.previewDayCard,
-.emptyCard {
+.previewDayCard {
   display: grid;
   gap: 14px;
   padding: 18px;
@@ -190,9 +180,7 @@
   line-height: 20px;
 }
 
-@media (max-width: 720px) {
-  .sectionCard,
-  .noteCard {
+@media (max-width: 720px) {.sectionCard {
     padding: 18px;
   }
 
@@ -200,9 +188,8 @@
     grid-template-columns: 1fr;
   }
 
-  .previewCalendarCard,
-  .previewDayCard,
-  .emptyCard {
+.previewCalendarCard,
+.previewDayCard {
     padding: 16px;
   }
 

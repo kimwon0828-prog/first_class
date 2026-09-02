@@ -320,8 +320,7 @@
   font-weight: 700;
 }
 
-.choiceChip,
-.segmentButton {
+.choiceChip {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -336,8 +335,7 @@
   font-weight: 700;
 }
 
-.choiceChipSelected,
-.segmentButtonActive {
+.choiceChipSelected {
   border-color: #2aad38;
   background: #2aad38;
   color: #ffffff;
@@ -375,20 +373,6 @@
   outline: none;
   border-color: #2aad38;
   box-shadow: 0 0 0 3px rgba(42, 173, 56, 0.12);
-}
-
-.readonlyField {
-  width: 100%;
-  min-height: 42px;
-  display: flex;
-  align-items: center;
-  padding: 0 12px;
-  border: 1px solid #e5e7eb;
-  border-radius: 9px;
-  background: #f9fafb;
-  color: #4b5563;
-  font-size: 14px;
-  line-height: 20px;
 }
 
 .infoGrid {
@@ -665,121 +649,6 @@
   line-height: 20px;
 }
 
-.segmentRow {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.slotComposerGrid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 12px;
-  align-items: end;
-}
-
-.inlineActionRow {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-
-.primaryInlineButton,
-.secondaryInlineButton,
-.deleteButton,
-.previewCta,
-.primaryActionButton,
-.secondaryActionButton {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 44px;
-  padding: 0 16px;
-  border-radius: 10px;
-  font-size: 14px;
-  line-height: 20px;
-  font-weight: 800;
-  text-decoration: none;
-}
-
-.primaryInlineButton,
-.primaryActionButton,
-.previewCta {
-  border: none;
-  background: #2aad38;
-  color: #ffffff;
-}
-
-.secondaryInlineButton,
-.secondaryActionButton,
-.deleteButton {
-  border: 1px solid #d7dcd7;
-  background: #ffffff;
-  color: #111827;
-}
-
-.slotList {
-  display: grid;
-  gap: 10px;
-  list-style: none;
-  margin: 0;
-  padding: 0;
-}
-
-.slotItem {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 16px;
-  border: 1px solid #e4e7e4;
-  border-radius: 14px;
-  background: #ffffff;
-}
-
-.slotTextGroup {
-  display: grid;
-  gap: 6px;
-}
-
-.slotBadge,
-.previewProgramBadge,
-.previewSlotChip {
-  display: inline-flex;
-  width: fit-content;
-  align-items: center;
-  justify-content: center;
-  padding: 6px 12px;
-  border-radius: 999px;
-  background: #f2fbf3;
-  color: #1e8c2b;
-  font-size: 12px;
-  line-height: 16px;
-  font-weight: 800;
-}
-
-.previewChipRow,
-.previewSlotList {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.previewChip {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 8px 12px;
-  border-radius: 999px;
-  background: #ffffff;
-  border: 1px solid #d7dcd7;
-  color: #111827;
-  font-size: 13px;
-  line-height: 18px;
-  font-weight: 700;
-}
-
 .assignmentGrid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -802,8 +671,7 @@
   line-height: 20px;
 }
 
-.assignmentCard span,
-.disabledReason {
+.assignmentCard span {
   color: #6b7280;
   font-size: 13px;
   line-height: 20px;
@@ -813,10 +681,6 @@
 .assignmentCardSelected {
   border-color: #2aad38;
   background: #f2fbf3;
-}
-
-.assignmentCardDisabled {
-  opacity: 0.56;
 }
 
 .emptyState {
@@ -829,103 +693,6 @@
   line-height: 22px;
 }
 
-.calendarPreviewWrap {
-  display: grid;
-  gap: 16px;
-}
-
-.generatedDayPanel {
-  display: grid;
-  gap: 10px;
-  padding: 16px;
-  border: 1px solid #e4e7e4;
-  border-radius: 16px;
-  background: #fafdfa;
-}
-
-.previewCard {
-  position: sticky;
-  top: 104px;
-  height: fit-content;
-  display: grid;
-  gap: 18px;
-}
-
-.previewImageArea {
-  overflow: hidden;
-  border-radius: 16px;
-  background: #f2fbf3;
-  aspect-ratio: 4 / 3;
-}
-
-.previewImage,
-.imagePreviewImage {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  object-position: center;
-}
-
-.previewFallback,
-.imagePreview {
-  width: 100%;
-  height: 100%;
-  display: grid;
-  place-items: center;
-  color: #1e8c2b;
-  font-size: 24px;
-  line-height: 1.3;
-  font-weight: 800;
-  background: linear-gradient(135deg, #f2fbf3 0%, #d8f0dc 100%);
-}
-
-.imagePreview {
-  aspect-ratio: 4 / 3;
-  overflow: hidden;
-  border-radius: 16px;
-  background: #f2fbf3;
-}
-
-.imagePreviewPlaceholder {
-  padding: 18px;
-  text-align: center;
-  font-size: 14px;
-  line-height: 20px;
-}
-
-.previewBody {
-  display: grid;
-  gap: 12px;
-}
-
-.previewHeading {
-  margin: 0;
-  color: #111827;
-  font-size: 22px;
-  line-height: 1.3;
-  font-weight: 900;
-}
-
-.previewMeta,
-.previewDescription,
-.previewTeacherMeta {
-  margin: 0;
-  color: #4b5563;
-  font-size: 14px;
-  line-height: 22px;
-}
-
-.previewTeacherMeta {
-  display: grid;
-  gap: 4px;
-}
-
-.previewSlotEmpty {
-  color: #9ca3af;
-  font-size: 13px;
-  line-height: 20px;
-}
-
 @media (max-width: 1080px) {
   .page {
     padding-right: 20px;
@@ -936,8 +703,7 @@
     grid-template-columns: 1fr;
   }
 
-  .previewRail,
-  .previewCard {
+.previewRail {
     position: static;
   }
 }
@@ -971,25 +737,14 @@
     padding: 18px;
   }
 
-  .basicInfoCard {
-    padding: 16px;
-  }
-
   .infoSectionCard,
   .infoPreviewCard {
     padding: 16px;
   }
 
-  .slotComposerGrid,
-  .assignmentGrid {
+.assignmentGrid {
     grid-template-columns: 1fr;
-  }
-
-  .slotItem {
-    flex-direction: column;
-    align-items: stretch;
-  }
-}
+  }}
 
 /* Step 이동용 보조 버튼. Primary(.saveButton) 와 경쟁하지 않는 Ghost 성격이다. */
 .stepBackButton {

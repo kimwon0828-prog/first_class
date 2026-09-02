@@ -301,7 +301,6 @@
 .actionButtonSolid,
 .actionButtonOutline,
 .actionButtonPrimary,
-.actionButtonSecondary,
 .linkButtonGhost,
 .buttonSecondarySm {
   display: inline-flex;
@@ -329,16 +328,10 @@
 }
 
 .actionButtonOutline,
-.actionButtonSecondary,
 .buttonSecondarySm {
   border: 1px solid #d6dbd6;
   background: #ffffff;
   color: #111827;
-}
-
-.actionButtonDisabled {
-  opacity: 0.55;
-  pointer-events: none;
 }
 
 .linkButtonGhost {
@@ -489,47 +482,12 @@
   flex-wrap: wrap;
 }
 
-.inlineStatusAction {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.inlineStatusAction :global(button) {
-  min-height: 40px;
-  padding: 0 14px;
-  border: 1px solid #2aad38;
-  border-radius: 9px;
-  background: #2aad38;
-  color: #ffffff;
-  font-size: 14px;
-  line-height: 20px;
-  font-weight: 700;
-}
-
-.inlineStatusMessage {
-  margin: 0;
-  color: #b42318;
-  font-size: 12px;
-  line-height: 16px;
-  font-weight: 700;
-}
-
 .badgeRow {
   display: inline-flex;
   align-items: center;
   gap: 6px;
   flex-wrap: wrap;
 }
-
-
-
-
-
-
-
-
-
 
 .tableWrap {
   display: none;

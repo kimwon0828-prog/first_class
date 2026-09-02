@@ -21,13 +21,6 @@
   color: var(--text-1);
 }
 
-.description {
-  margin: 10px 0 0;
-  font-size: 14px;
-  line-height: 22px;
-  color: #8a8a8a;
-}
-
 .form {
   margin-top: 14px;
   display: grid;
@@ -201,14 +194,6 @@
   line-height: 20px;
   color: var(--text-2);
 }
-
-
-
-
-
-
-
-
 
 @media (max-width: 640px) {
   .compactButtonGroup {

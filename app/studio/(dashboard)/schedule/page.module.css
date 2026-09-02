@@ -11,44 +11,6 @@
   gap: 24px;
 }
 
-.header {
-  display: grid;
-  gap: var(--s2);
-  /* 캘린더 canvas 안쪽 여백(border 1px + padding 18px)과 본문 축을 맞춘다. */
-  padding-left: 19px;
-}
-
-.title {
-  margin: 0;
-  font-size: 30px;
-  line-height: 36px;
-  letter-spacing: -0.04em;
-  font-weight: 800;
-  color: var(--text-1);
-}
-
-.subtitle {
-  margin: 0;
-  font-size: 14px;
-  line-height: 22px;
-  color: var(--text-2);
-}
-
-.errorCard {
-  border: 1px solid var(--red-bg);
-  border-radius: var(--r-lg);
-  background: var(--surface);
-  padding: 14px 16px;
-}
-
-.errorText {
-  margin: 0;
-  font-size: 13px;
-  line-height: 18px;
-  font-weight: 600;
-  color: var(--red-fg);
-}
-
 @media (min-width: 960px) {
   .container {
     padding: 32px 32px 56px;
