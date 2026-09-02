@@ -1,0 +1,164 @@
+.control {
+  display: flex;
+  align-items: center;
+  gap: var(--s4);
+  padding: var(--s3) var(--s4);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--surface);
+}
+
+.heading {
+  display: grid;
+  flex: 0 0 auto;
+  gap: var(--s1);
+}
+
+.title,
+.description {
+  margin: 0;
+}
+
+.title {
+  color: var(--text-1);
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 20px;
+}
+
+.description {
+  color: var(--text-3);
+  font-size: 12px;
+  line-height: 16px;
+}
+
+.quickList {
+  display: flex;
+  align-items: center;
+  gap: var(--s1);
+  flex-wrap: wrap;
+}
+
+.quickOption,
+.customSummary {
+  border-radius: var(--r-sm);
+  color: var(--text-2);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 20px;
+  text-decoration: none;
+}
+
+.quickOption {
+  padding: var(--s1) var(--s2);
+}
+
+.quickOption:hover,
+.customSummary:hover {
+  background: var(--surface-sub);
+  color: var(--text-1);
+}
+
+.quickOption:focus-visible,
+.customSummary:focus-visible,
+.field input:focus-visible,
+.applyButton:focus-visible {
+  outline: 2px solid var(--brand-500);
+  outline-offset: 2px;
+}
+
+.quickOptionActive {
+  background: var(--brand-50);
+  color: var(--brand-700);
+}
+
+.custom {
+  position: relative;
+  margin-left: auto;
+}
+
+.customSummary {
+  padding: var(--s1) var(--s2);
+  cursor: pointer;
+  list-style: none;
+}
+
+.customSummary::-webkit-details-marker {
+  display: none;
+}
+
+.customForm {
+  position: absolute;
+  z-index: 10;
+  top: calc(100% + var(--s2));
+  right: 0;
+  min-width: 360px;
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  align-items: end;
+  gap: var(--s2);
+  padding: var(--s3);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--surface);
+}
+
+.field {
+  display: grid;
+  gap: var(--s1);
+  color: var(--text-2);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 16px;
+}
+
+.field input {
+  width: 100%;
+  height: 36px;
+  padding: 0 var(--s2);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-sm);
+  background: var(--surface);
+  color: var(--text-1);
+  font: inherit;
+}
+
+.applyButton {
+  height: 36px;
+  padding: 0 var(--s3);
+  border: 1px solid var(--brand-700);
+  border-radius: var(--r-sm);
+  background: var(--brand-700);
+  color: var(--surface);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.applyButton:hover {
+  background: var(--brand-900);
+}
+
+@media (max-width: 900px) {
+  .control {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .custom {
+    width: 100%;
+    margin-left: 0;
+  }
+
+  .customForm {
+    position: static;
+    min-width: 0;
+    margin-top: var(--s2);
+  }
+}
+
+@media (max-width: 640px) {
+  .customForm {
+    grid-template-columns: 1fr;
+  }
+}

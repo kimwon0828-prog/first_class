@@ -10,6 +10,7 @@ export type StudioDateRangePreset =
   | "custom"
 
 export type StudioDateRangeQueryInput = {
+  preset?: string | null
   startDate?: string | null
   endDate?: string | null
 }
@@ -181,18 +182,23 @@ export const resolveStudioDateRange = (
 ): StudioResolvedDateRange => {
   const defaultPreset = options?.defaultPreset ?? "thisMonth"
   const fallbackPreset = options?.fallbackPreset ?? defaultPreset
+  const requestedPreset = input.preset?.trim()
   const startDate = input.startDate?.trim() ?? ""
   const endDate = input.endDate?.trim() ?? ""
 
   if (!startDate && !endDate) {
-    const presetRange = buildStudioDateRangeFromPreset(defaultPreset)
+    const matchedRequestedPreset = STUDIO_DATE_RANGE_PRESET_OPTIONS.find(
+      (option) => option.value === requestedPreset && option.value !== "custom"
+    )?.value as Exclude<StudioDateRangePreset, "custom"> | undefined
+    const resolvedPreset = matchedRequestedPreset ?? defaultPreset
+    const presetRange = buildStudioDateRangeFromPreset(resolvedPreset)
     return {
-      preset: defaultPreset,
+      preset: resolvedPreset,
       startDate: presetRange?.startDate ?? null,
       endDate: presetRange?.endDate ?? null,
       createdAtFrom: presetRange?.startDate ? getStudioDateRangeStartIso(presetRange.startDate) : null,
       createdAtTo: presetRange?.endDate ? getStudioDateRangeEndIso(presetRange.endDate) : null,
-      label: toRangeLabel(defaultPreset, presetRange?.startDate ?? null, presetRange?.endDate ?? null)
+      label: toRangeLabel(resolvedPreset, presetRange?.startDate ?? null, presetRange?.endDate ?? null)
     }
   }
 

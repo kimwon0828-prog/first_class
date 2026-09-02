@@ -1,7 +1,7 @@
 // Dashboard 표시 모델.
 //
 // 새 query 를 만들지 않는다. /studio/schedule 과 같은 listStudioApplications 한 번의 결과에서
-// 세 영역(오늘 확인할 일 / 체험 일정 / 최근 등록 결과)을 전부 파생한다.
+// 세 영역(지금 확인할 일 / 체험 일정 / 최근 등록 완료)을 전부 파생한다.
 //
 // 상태 판정은 기존 helper 만 쓴다. Dashboard 가 새로 판정하는 상태는 없다.
 //   - getCaseStage / isCaseClosedStage : status + no_show_at + registration_status → 한 단계
@@ -87,12 +87,12 @@ export type StudioDashboardScheduleItem = {
   statusTone: StudioStatusTone
 }
 
-export type StudioDashboardResultItem = {
+export type StudioDashboardRegistrationItem = {
   id: string
   href: string
   studentName: string
   classTitle: string
-  /** 등록은 enrolled_at, 미등록은 체험 완료 시각이다. 라벨이 어느 쪽인지 함께 말해 준다. */
+  /** 등록 결과가 실제 기록된 enrolled_at 만 사용한다. */
   whenLabel: string | null
   outcomeLabel: string
   outcomeTone: StudioStatusTone
@@ -105,7 +105,7 @@ export type StudioDashboardView = {
   scheduleMode: "today" | "upcoming"
   scheduleItems: StudioDashboardScheduleItem[]
   todayScheduleCount: number
-  resultItems: StudioDashboardResultItem[]
+  recentRegistrationItems: StudioDashboardRegistrationItem[]
   todayLabel: string
 }
 
@@ -167,10 +167,6 @@ const resolveActionKind = (
   return "NEEDS_REGISTRATION"
 }
 
-/** 등록 결과가 난 시점. 미등록은 lost_at 이 read model 에 없어 체험 완료 시각으로 본다. */
-const resolveDecidedAt = (item: StudioApplicationSummary) =>
-  item.registrationStatus === "enrolled" ? (item.enrolledAt ?? item.completedAt) : item.completedAt
-
 const buildActionItems = (applications: StudioApplicationSummary[], now: Date) => {
   const nowMs = now.getTime()
   const matched: Array<{ item: StudioApplicationSummary; kind: StudioDashboardActionKind }> = []
@@ -212,32 +208,27 @@ const buildActionItems = (applications: StudioApplicationSummary[], now: Date) =
   }))
 }
 
-const buildResultItems = (applications: StudioApplicationSummary[]) => {
+const buildRecentRegistrationItems = (applications: StudioApplicationSummary[]) => {
   return applications
-    .filter((item) => {
-      const stage = getCaseStage({
-        status: item.status,
-        noShowAt: item.noShowAt,
-        registrationStatus: item.registrationStatus ?? "undecided"
-      })
-      return stage === "enrolled" || stage === "not_enrolled"
-    })
-    .map((item) => ({ item, decidedAt: resolveDecidedAt(item) }))
+    .filter(
+      (item): item is StudioApplicationSummary & { enrolledAt: string } =>
+        item.registrationStatus === "enrolled" && Boolean(item.enrolledAt)
+    )
+    .map((item) => ({ item, enrolledAt: item.enrolledAt }))
     .sort(
-      (left, right) => (toTimestamp(right.decidedAt) ?? 0) - (toTimestamp(left.decidedAt) ?? 0)
+      (left, right) => (toTimestamp(right.enrolledAt) ?? 0) - (toTimestamp(left.enrolledAt) ?? 0)
     )
     .slice(0, STUDIO_DASHBOARD_SECTION_LIMIT)
-    .map<StudioDashboardResultItem>(({ item, decidedAt }) => {
-      const dateKey = decidedAt ? toSeoulDateKey(decidedAt) : null
+    .map<StudioDashboardRegistrationItem>(({ item, enrolledAt }) => {
+      const dateKey = toSeoulDateKey(enrolledAt)
       const dateText = dateKey ? formatSelectedDateLabel(dateKey) : null
-      const suffix = item.registrationStatus === "enrolled" ? "등록" : "체험 완료"
 
       return {
         id: item.id,
         href: toDetailHref(item.id),
         studentName: item.childName,
         classTitle: normalizeClassTitle(item.classTitle),
-        whenLabel: dateText ? `${dateText} ${suffix}` : null,
+        whenLabel: dateText ? `${dateText} 등록` : null,
         outcomeLabel: getStudioRegistrationStatusLabel(item.registrationStatus),
         outcomeTone: getStudioRegistrationStatusTone(item.registrationStatus)
       }
@@ -292,7 +283,7 @@ export const buildStudioDashboardView = (
     scheduleMode: schedule.scheduleMode,
     scheduleItems: schedule.scheduleItems,
     todayScheduleCount: schedule.todayScheduleCount,
-    resultItems: buildResultItems(applications),
+    recentRegistrationItems: buildRecentRegistrationItems(applications),
     todayLabel: formatSelectedDateLabel(todayKey)
   }
 }
