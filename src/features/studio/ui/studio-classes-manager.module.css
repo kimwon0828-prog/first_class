@@ -424,6 +424,16 @@
   box-shadow: 0 8px 28px rgba(0, 0, 0, 0.07);
 }
 
+/*
+ * .workspace 가 overflow: hidden 이라 목록 아래로 열린 메뉴는 잘린다.
+ * 마지막 2개 행만 위로 연다. 간격(4px)은 아래로 열 때와 동일하다.
+ * .list 의 자식은 .row 뿐이라 nth-last-child 가 행 순서와 정확히 일치한다.
+ */
+.row:nth-last-child(-n + 2) .rowMenuList {
+  top: auto;
+  bottom: calc(100% + 4px);
+}
+
 .rowMenuItem {
   display: block;
   width: 100%;
