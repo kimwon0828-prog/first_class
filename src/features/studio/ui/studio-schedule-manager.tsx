@@ -332,38 +332,81 @@ const MiniCalendar = ({
   )
 }
 
+/** 선생님/수업이 늘어나도 좌측 패널이 끝없이 길어지지 않도록 기본 노출을 제한한다. */
+const DEFAULT_VISIBLE_FILTER_OPTIONS = 5
+
 const FilterGroup = ({
   name,
   legend,
   options,
   value,
-  onChange
+  onChange,
+  maxVisibleOptions
 }: {
   name: string
   legend: string
   options: StudioScheduleFilterOption[]
   value: string
   onChange: (next: string) => void
-}) => (
-  <fieldset className={styles.filterGroup}>
-    <legend className={styles.filterLegend}>{legend}</legend>
-    <div className={styles.filterOptions}>
-      {options.map((option) => (
-        <label key={option.value} className={styles.filterOption}>
-          <input
-            type="radio"
-            name={name}
-            className={styles.filterRadio}
-            value={option.value}
-            checked={value === option.value}
-            onChange={() => onChange(option.value)}
-          />
-          <span className={styles.filterOptionLabel}>{option.label}</span>
-        </label>
-      ))}
-    </div>
-  </fieldset>
-)
+  /** 생략하면 접지 않는다(상태 필터처럼 항목 수가 고정된 그룹). */
+  maxVisibleOptions?: number
+}) => {
+  const [expanded, setExpanded] = useState(false)
+
+  const { visibleOptions, hiddenCount } = useMemo(() => {
+    if (maxVisibleOptions == null || expanded) {
+      return { visibleOptions: options, hiddenCount: 0 }
+    }
+
+    // 첫 항목("전체")은 항상 보인다. 제한은 실제 선택지에만 건다.
+    const [allOption, ...rest] = options
+    if (rest.length <= maxVisibleOptions) {
+      return { visibleOptions: options, hiddenCount: 0 }
+    }
+
+    const head = rest.slice(0, maxVisibleOptions)
+    // 선택된 항목이 잘려 나가면 화면에서 무엇이 걸렸는지 알 수 없다. 그때만 뒤에 붙인다.
+    const selected = rest.find((option) => option.value === value)
+    const shown = selected && !head.includes(selected) ? [...head, selected] : head
+
+    return {
+      visibleOptions: allOption ? [allOption, ...shown] : shown,
+      hiddenCount: rest.length - shown.length
+    }
+  }, [expanded, maxVisibleOptions, options, value])
+
+  return (
+    <fieldset className={styles.filterGroup}>
+      <legend className={styles.filterLegend}>{legend}</legend>
+      <div className={styles.filterOptions}>
+        {visibleOptions.map((option) => (
+          <label key={option.value} className={styles.filterOption}>
+            <input
+              type="radio"
+              name={name}
+              className={styles.filterRadio}
+              value={option.value}
+              checked={value === option.value}
+              onChange={() => onChange(option.value)}
+            />
+            <span className={styles.filterOptionLabel}>{option.label}</span>
+          </label>
+        ))}
+      </div>
+
+      {hiddenCount > 0 || expanded ? (
+        <button
+          type="button"
+          className={styles.filterMore}
+          onClick={() => setExpanded((current) => !current)}
+          aria-expanded={expanded}
+        >
+          {expanded ? "접기" : `더 보기 ${hiddenCount}개`}
+        </button>
+      ) : null}
+    </fieldset>
+  )
+}
 
 export const StudioScheduleManager = ({
   items,
@@ -553,6 +596,7 @@ export const StudioScheduleManager = ({
               options={filterOptions.teachers}
               value={filters.teacherId}
               onChange={(next) => applyFilters({ ...filters, teacherId: next })}
+              maxVisibleOptions={DEFAULT_VISIBLE_FILTER_OPTIONS}
             />
             <FilterGroup
               name="schedule-class"
@@ -560,6 +604,7 @@ export const StudioScheduleManager = ({
               options={filterOptions.classes}
               value={filters.classId}
               onChange={(next) => applyFilters({ ...filters, classId: next })}
+              maxVisibleOptions={DEFAULT_VISIBLE_FILTER_OPTIONS}
             />
             <FilterGroup
               name="schedule-status"

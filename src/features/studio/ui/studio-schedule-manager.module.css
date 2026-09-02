@@ -252,6 +252,23 @@
   font-size: 13px;
 }
 
+/* 목록을 접고 펴는 작은 텍스트 액션. 버튼 위계를 만들지 않는다. */
+.filterMore {
+  justify-self: start;
+  border: 0;
+  padding: 0 var(--s2);
+  background: none;
+  color: var(--text-2);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.filterMore:hover {
+  color: var(--text-1);
+  text-decoration: underline;
+}
+
 .filterReset {
   justify-self: start;
   border: 0;
