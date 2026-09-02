@@ -935,3 +935,55 @@
 .uploaderInput:disabled ~ .uploaderImage {
   opacity: 0.6;
 }
+
+/* ── Step 1 Form Surface ───────────────────────────────────────────
+ * 기본 정보 / 상세 소개 / 대표 이미지가 각각 독립 카드로 떠 있으면
+ * 세 섹션이 같은 무게로 읽혀 긴 설정 페이지처럼 보인다.
+ * 면은 하나만 두고, 안에서 divider 와 제목으로 나눈다.
+ * (Step 3 의 .infoMainColumn 은 미리보기 열과 짝이라 그대로 둔다.)
+ */
+.formSurface {
+  display: grid;
+  align-self: start;
+  padding: var(--s6);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+}
+
+.formSurface .infoSection {
+  display: grid;
+  gap: var(--s3);
+}
+
+.formSurface .infoSection + .infoSection {
+  margin-top: var(--s6);
+  padding-top: var(--s6);
+  border-top: 1px solid var(--border);
+}
+
+/* 카드였던 것이 이제 section body 다. */
+.formSurface .infoSectionCard {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+/* section 제목: page title 보다 약하고 field label 보다 강하다. */
+.formSurface .tabSectionLabel {
+  color: var(--text-1);
+  font-size: 15px;
+  line-height: 22px;
+  font-weight: 800;
+  letter-spacing: normal;
+  text-transform: none;
+}
+
+/*
+ * 대표 이미지가 Form 전체 폭을 4:3 으로 차지하면 화면의 주인공이 되어 버린다.
+ * 클릭 영역은 충분히 두되 비중만 낮춘다. 좁은 화면에서는 자연히 100% 로 풀린다.
+ */
+.formSurface .uploader {
+  max-width: 520px;
+}

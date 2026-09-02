@@ -1000,7 +1000,8 @@ export const StudioClassCreateWizard = ({
                   </p>
                 </div>
 
-                <div className={styles.infoMainColumn}>
+                {/* Step 1 은 하나의 Form 면이다. section 마다 카드를 반복하지 않는다. */}
+                <div className={styles.formSurface}>
                     <div className={styles.infoSection}>
                       <p className={styles.tabSectionLabel}>기본 정보</p>
                       <section className={styles.infoSectionCard}>
