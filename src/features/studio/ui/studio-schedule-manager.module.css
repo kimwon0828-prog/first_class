@@ -1,17 +1,90 @@
 .root {
   display: grid;
-  gap: 24px;
+  gap: 32px;
 }
 
-/* ── Calendar Canvas ─────────────────────────────────────────────── */
+.pageHeader {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--s4);
+  padding: 0 19px;
+}
+
+.pageHeading {
+  display: grid;
+  gap: var(--s2);
+}
+
+.pageTitle {
+  margin: 0;
+  color: var(--text-1);
+  font-size: 30px;
+  font-weight: 800;
+  line-height: 36px;
+  letter-spacing: -0.04em;
+}
+
+.pageSubtitle {
+  margin: 0;
+  color: var(--text-2);
+  font-size: 14px;
+  line-height: 22px;
+}
+
+.viewControl {
+  display: inline-flex;
+  padding: 2px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--surface-sub);
+}
+
+.viewButton {
+  min-width: 40px;
+  height: 32px;
+  padding: 0 var(--s3);
+  border: 0;
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--text-2);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.viewButton:hover {
+  color: var(--text-1);
+}
+
+.viewButtonActive {
+  background: var(--brand-50);
+  color: var(--brand-700);
+}
+
+.errorCard {
+  margin: 0 19px;
+  padding: 14px 16px;
+  border: 1px solid var(--red-bg);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+}
+
+.errorText {
+  margin: 0;
+  color: var(--red-fg);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 18px;
+}
 
 .canvas {
+  display: grid;
+  gap: var(--s3);
+  padding: 18px;
   border: 1px solid var(--border);
   border-radius: var(--r-lg);
   background: var(--surface);
-  padding: 18px;
-  display: grid;
-  gap: var(--s3);
 }
 
 .canvasHeader {
@@ -22,13 +95,13 @@
   flex-wrap: wrap;
 }
 
-.monthLabel {
+.periodLabel {
   margin: 0;
-  font-size: 20px;
-  line-height: 28px;
-  font-weight: 800;
-  letter-spacing: -0.02em;
   color: var(--text-1);
+  font-size: 20px;
+  font-weight: 800;
+  line-height: 28px;
+  letter-spacing: -0.02em;
 }
 
 .canvasNav {
@@ -37,17 +110,20 @@
   gap: var(--s1);
 }
 
-/* 달 이동은 보조 동작이다. Primary CTA 처럼 보이지 않는다. */
-.navButton {
+.navButton,
+.navIconButton {
   height: 32px;
-  padding: 0 var(--s3);
   border: 1px solid var(--border);
   border-radius: var(--r-md);
   background: var(--surface);
   color: var(--text-1);
+  cursor: pointer;
+}
+
+.navButton {
+  padding: 0 var(--s3);
   font-size: 13px;
   font-weight: 700;
-  cursor: pointer;
 }
 
 .navIconButton {
@@ -55,14 +131,10 @@
   align-items: center;
   justify-content: center;
   width: 32px;
-  height: 32px;
-  border: 1px solid var(--border);
-  border-radius: var(--r-md);
-  background: var(--surface);
+  padding: 0;
   color: var(--text-2);
   font-size: 16px;
   line-height: 1;
-  cursor: pointer;
 }
 
 .navButton:hover,
@@ -71,9 +143,6 @@
   color: var(--text-1);
 }
 
-/* ── Action alerts ───────────────────────────────────────────────── */
-
-/* KPI 카드가 아니다. 캘린더 헤더보다 강해 보이면 안 된다. */
 .alertRow {
   display: flex;
   gap: var(--s2);
@@ -101,7 +170,12 @@
   color: var(--gray-fg);
 }
 
-/* ── Month grid ──────────────────────────────────────────────────── */
+.calendarEmptyNote {
+  margin: 0;
+  color: var(--text-3);
+  font-size: 13px;
+  line-height: 18px;
+}
 
 .weekdayRow,
 .monthGrid {
@@ -109,7 +183,8 @@
   grid-template-columns: repeat(7, minmax(0, 1fr));
 }
 
-.weekdayRow {
+.weekdayRow,
+.monthGrid {
   gap: 6px;
 }
 
@@ -118,10 +193,6 @@
   color: var(--text-3);
   font-size: 12px;
   font-weight: 600;
-}
-
-.monthGrid {
-  gap: 6px;
 }
 
 .cell {
@@ -140,21 +211,19 @@
   background: var(--surface-sub);
 }
 
-/* 선택 날짜: soft brand. 강한 fill 을 쓰지 않는다. */
 .cellSelected {
   border-color: var(--brand-700);
   background: var(--brand-50);
 }
 
-/* 오늘은 별도 표식으로만 구분한다(선택과 중복 장식하지 않는다). */
 .cellToday .cellDay {
   color: var(--brand-700);
   font-weight: 800;
 }
 
-/* 셀 전체를 날짜 선택 영역으로 깐다. 이벤트 링크가 이 위에 온다. */
 .cellSelect {
   position: absolute;
+  z-index: 0;
   inset: 0;
   width: 100%;
   border: 0;
@@ -171,13 +240,17 @@
   background: transparent;
 }
 
-.cellHead {
+.cellHead,
+.cellEvents {
   position: relative;
+  z-index: 1;
+}
+
+.cellHead {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--s1);
-  /* 숫자는 표시만 한다. 클릭은 아래 .cellSelect 가 받는다. */
   pointer-events: none;
 }
 
@@ -197,17 +270,13 @@
   font-weight: 700;
 }
 
-/* ── Event row ───────────────────────────────────────────────────── */
-
 .cellEvents {
-  position: relative;
   display: grid;
   gap: 2px;
   min-width: 0;
 }
 
-/* 셀을 강한 색으로 채우지 않는다. 상태는 왼쪽 3px indicator 로만 말한다. */
-.event {
+.monthEvent {
   display: flex;
   align-items: center;
   gap: 5px;
@@ -221,45 +290,45 @@
   text-decoration: none;
 }
 
-.event:hover {
+.monthEvent:hover {
   background: var(--surface-sub);
 }
 
-.eventTone {
+.monthEventTone {
   flex: 0 0 auto;
   width: 3px;
   height: 12px;
   border-radius: var(--r-full);
 }
 
-.eventToneGreen {
+.monthToneGreen {
   background: var(--green-fg);
 }
 
-.eventToneAmber {
+.monthToneAmber {
   background: var(--amber-fg);
 }
 
-.eventToneBlue {
+.monthToneBlue {
   background: var(--blue-fg);
 }
 
-.eventToneGray {
+.monthToneGray {
   background: var(--gray-fg);
 }
 
-.eventToneRed {
+.monthToneRed {
   background: var(--red-fg);
 }
 
-.eventTime {
+.monthEventTime {
   flex: 0 0 auto;
   color: var(--text-2);
   font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
 
-.eventName {
+.monthEventName {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -268,213 +337,254 @@
 }
 
 .eventMore {
-  position: relative;
   padding: 0 4px;
   color: var(--text-3);
   font-size: 11px;
   font-weight: 600;
-  /* 안내 텍스트다. 클릭은 셀 선택으로 넘긴다. */
   pointer-events: none;
 }
 
-/* ── Selected day detail ─────────────────────────────────────────── */
-
-.detailSection {
-  border: 1px solid var(--border);
-  border-radius: var(--r-lg);
-  background: var(--surface);
-  overflow: hidden;
-}
-
-.detailHeader {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--s3);
-  padding: var(--s3) 18px;
-  border-bottom: 1px solid var(--border);
-}
-
-.detailTitle {
-  margin: 0;
-  font-size: 15px;
-  line-height: 22px;
-  font-weight: 700;
-  color: var(--text-1);
-}
-
-.detailCount {
-  color: var(--text-2);
-  font-size: 13px;
-}
-
-.empty {
-  display: grid;
-  justify-items: center;
-  gap: var(--s2);
-  padding: 48px 18px;
-  text-align: center;
-}
-
-.emptyTitle {
-  margin: 0;
-  color: var(--text-1);
-  font-size: 14px;
-  font-weight: 700;
-}
-
-.emptyDescription {
-  margin: 0;
-  color: var(--text-2);
-  font-size: 13px;
-}
-
-.timeline {
-  display: grid;
-}
-
-.timelineItem {
-  display: grid;
-  grid-template-columns: 84px minmax(0, 1fr);
-  gap: var(--s4);
-  padding: var(--s4) 18px;
-}
-
-.timelineItem + .timelineItem {
+.timeGridScroll {
+  overflow-x: auto;
   border-top: 1px solid var(--border);
 }
 
-.timeCol {
-  display: grid;
-  align-content: start;
-  gap: 2px;
+.dayTimeGrid {
+  width: 100%;
+  min-width: 0;
 }
 
-.timeText {
+.weekTimeGrid {
+  min-width: 1080px;
+}
+
+.timeGridHeader {
+  display: grid;
+  grid-template-columns: 64px repeat(var(--time-column-count), minmax(0, 1fr));
+  min-height: 56px;
+  border-bottom: 1px solid var(--border);
+}
+
+.timeGridCorner {
+  border-right: 1px solid var(--border);
+}
+
+.timeGridDateHead {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s2);
+  padding: var(--s2);
+  border-right: 1px solid var(--border);
+  color: var(--text-2);
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.timeGridDateHead:last-child {
+  border-right: 0;
+}
+
+.timeGridDateHead strong {
   color: var(--text-1);
-  font-size: 15px;
-  font-weight: 800;
+  font-size: 16px;
+}
+
+.timeGridDateHeadToday,
+.timeGridDateHeadToday strong {
+  color: var(--brand-700);
+}
+
+.timeGridBody {
+  position: relative;
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr);
+  height: var(--grid-height);
+}
+
+.timeAxis {
+  position: relative;
+  height: 100%;
+  border-right: 1px solid var(--border);
+}
+
+.timeLabel {
+  position: absolute;
+  top: var(--marker-top);
+  right: var(--s2);
+  transform: translateY(-50%);
+  color: var(--text-3);
+  font-size: 11px;
+  line-height: 16px;
   font-variant-numeric: tabular-nums;
 }
 
-.timeSub {
-  color: var(--text-3);
-  font-size: 12px;
+.timeColumns {
+  display: grid;
+  grid-template-columns: repeat(var(--time-column-count), minmax(0, 1fr));
+  min-width: 0;
 }
 
-.eventCard {
+.timeColumn {
+  position: relative;
+  min-width: 0;
+  border-right: 1px solid var(--border);
+}
+
+.timeColumn:last-child {
+  border-right: 0;
+}
+
+.timeColumnToday {
+  background: var(--brand-50);
+}
+
+.hourLine {
+  position: absolute;
+  z-index: 0;
+  top: var(--marker-top);
+  right: 0;
+  left: 0;
+  border-top: 1px solid var(--border);
+  pointer-events: none;
+}
+
+.timeEvent {
+  position: absolute;
+  z-index: 1;
+  top: var(--event-top);
+  left: calc(var(--event-left) + 4px);
+  width: calc(var(--event-width) - 8px);
+  height: var(--event-height);
+  min-height: 34px;
+  overflow: hidden;
   display: grid;
   align-content: start;
-  gap: var(--s2);
-  min-width: 0;
-}
-
-.badgeRow {
-  display: flex;
-  align-items: center;
-  gap: var(--s2);
-  flex-wrap: wrap;
-}
-
-.programPill {
-  display: inline-flex;
-  align-items: center;
-  height: 24px;
-  padding: 0 var(--s2);
-  border: 1px solid var(--border);
-  border-radius: var(--r-full);
-  color: var(--text-2);
-  font-size: 12px;
-  font-weight: 600;
-}
-
-.eventCardTitle {
+  gap: 1px;
+  padding: 5px 7px;
+  border: 0;
+  border-left: 3px solid currentcolor;
+  border-radius: var(--r-sm);
   color: var(--text-1);
-  font-size: 15px;
-  font-weight: 800;
-}
-
-.eventCardSubtitle {
-  margin: 0;
-  color: var(--text-2);
-  font-size: 13px;
-}
-
-.eventNote {
-  margin: 0;
-  color: var(--text-3);
-  font-size: 12px;
-}
-
-.metaGrid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: var(--s2) var(--s4);
-  margin: var(--s1) 0 0;
-}
-
-.metaRow {
-  display: grid;
-  gap: 2px;
-  min-width: 0;
-}
-
-.metaLabel {
-  color: var(--text-3);
-  font-size: 12px;
-}
-
-.metaValue {
-  margin: 0;
-  color: var(--text-1);
-  font-size: 13px;
-  font-weight: 600;
-}
-
-.metaMuted {
-  color: var(--text-3);
-  font-weight: 600;
-}
-
-.eventFooter {
-  display: flex;
-  justify-content: flex-start;
-}
-
-.linkButton {
-  color: var(--brand-700);
-  font-size: 13px;
-  font-weight: 700;
+  font-size: 11px;
+  line-height: 14px;
   text-decoration: none;
 }
 
-.linkButton:hover {
-  text-decoration: underline;
+.timeEvent:hover {
+  filter: brightness(0.98);
 }
 
-/* ── Responsive ──────────────────────────────────────────────────── */
+.timeEventHead {
+  display: flex;
+  align-items: center;
+  gap: var(--s1);
+  min-width: 0;
+}
 
-@media (max-width: 900px) {
+.timeEventTime,
+.timeEventStatus {
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.timeEventStatus {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.timeEventName,
+.timeEventClass,
+.timeEventTeacher {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.timeEventName {
+  font-weight: 700;
+}
+
+.timeEventCompact {
+  padding-right: 5px;
+  padding-left: 5px;
+}
+
+.timeToneGreen {
+  border-left-color: var(--green-fg);
+  background: var(--green-bg);
+  color: var(--green-fg);
+}
+
+.timeToneAmber {
+  border-left-color: var(--amber-fg);
+  background: var(--amber-bg);
+  color: var(--amber-fg);
+}
+
+.timeToneBlue {
+  border-left-color: var(--blue-fg);
+  background: var(--blue-bg);
+  color: var(--blue-fg);
+}
+
+.timeToneGray {
+  border-left-color: var(--gray-fg);
+  background: var(--gray-bg);
+  color: var(--gray-fg);
+}
+
+.timeToneRed {
+  border-left-color: var(--red-fg);
+  background: var(--red-bg);
+  color: var(--red-fg);
+}
+
+.timeGridEmpty {
+  position: absolute;
+  z-index: 2;
+  top: 32px;
+  right: 0;
+  left: 64px;
+  margin: 0;
+  color: var(--text-3);
+  font-size: 13px;
+  line-height: 18px;
+  text-align: center;
+  pointer-events: none;
+}
+
+@media (max-width: 760px) {
+  .root {
+    gap: 24px;
+  }
+
+  .pageHeader {
+    align-items: flex-start;
+    padding: 0;
+    flex-direction: column;
+  }
+
   .canvas {
     padding: var(--s3);
   }
 
+  .monthGrid,
+  .weekdayRow {
+    gap: 4px;
+  }
+
   .cell {
-    min-height: 92px;
+    min-height: 96px;
+    padding: var(--s1);
   }
 
-  .eventTime {
+  .monthEvent {
+    padding-right: 2px;
+    padding-left: 2px;
+  }
+
+  .monthEventTime {
     display: none;
-  }
-
-  .timelineItem {
-    grid-template-columns: minmax(0, 1fr);
-    gap: var(--s2);
-  }
-
-  .timeCol {
-    display: flex;
-    align-items: baseline;
-    gap: var(--s2);
   }
 }

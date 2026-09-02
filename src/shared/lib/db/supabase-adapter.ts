@@ -177,6 +177,8 @@ type EmbeddedClassRow = {
   teacher_display_name?: string | null
 }
 
+type EmbeddedClassScheduleRow = Pick<ClassScheduleRow, "start_time" | "end_time">
+
 type TrialApplicationRow = {
   id: string
   class_id: string
@@ -224,6 +226,7 @@ type TrialApplicationRow = {
   created_at: string
   updated_at: string
   classes?: EmbeddedClassRow[] | EmbeddedClassRow | null
+  class_schedules?: EmbeddedClassScheduleRow[] | EmbeddedClassScheduleRow | null
 }
 
 type ChildProfileRow = {
@@ -705,6 +708,14 @@ const getEmbeddedClassOrganization = (row: EmbeddedClassRow | null) => {
   return Array.isArray(row.organizations) ? (row.organizations[0] ?? null) : row.organizations
 }
 
+const getEmbeddedClassSchedule = (row: TrialApplicationRow): EmbeddedClassScheduleRow | null => {
+  if (!row.class_schedules) {
+    return null
+  }
+
+  return Array.isArray(row.class_schedules) ? (row.class_schedules[0] ?? null) : row.class_schedules
+}
+
 const mapApplication = (row: TrialApplicationRow): TrialApplicationSummary => {
   const embeddedClass = getEmbeddedClass(row)
 
@@ -754,6 +765,7 @@ const mapStudioApplication = (
   teacherNameById: Map<string, string> = new Map()
 ): StudioApplicationSummary => {
   const embeddedClass = getEmbeddedClass(row)
+  const embeddedClassSchedule = getEmbeddedClassSchedule(row)
 
   return {
     ...mapApplication(row),
@@ -761,6 +773,8 @@ const mapStudioApplication = (
     // 지역 표시는 organization 행정지역 metadata 로만 만든다. legacy classes.region 은 쓰지 않는다.
     classRegion: formatAdministrativeRegionLabel(getEmbeddedClassOrganization(embeddedClass) ?? {}),
     classAssignmentMode: resolveClassAssignmentMode(embeddedClass ?? {}),
+    scheduleStartTime: embeddedClassSchedule?.start_time ?? null,
+    scheduleEndTime: embeddedClassSchedule?.end_time ?? null,
     assignedTeacherId: row.assigned_teacher_id ?? null,
     assignedTeacherName: row.assigned_teacher_id
       ? teacherNameById.get(row.assigned_teacher_id) ?? null
@@ -3994,7 +4008,7 @@ export const supabaseDataAdapter: DataAdapter = {
     let query = supabase
       .from("trial_applications")
       .select(
-        "id, class_id, parent_id, child_name, child_grade, parent_name, parent_phone, class_schedule_id, requested_schedule_block_id, selected_schedule_label, requested_slot_at, confirmed_slot_at, assigned_teacher_id, contacted_at, scheduled_at, completed_at, enrolled_at, canceled_at, no_show_at, goal_type, registration_status, status, created_at, updated_at, classes!inner(title, subject, organization_id, program_type, organizations(sido, sigungu, bname))"
+        "id, class_id, parent_id, child_name, child_grade, parent_name, parent_phone, class_schedule_id, requested_schedule_block_id, selected_schedule_label, requested_slot_at, confirmed_slot_at, assigned_teacher_id, contacted_at, scheduled_at, completed_at, enrolled_at, canceled_at, no_show_at, goal_type, registration_status, status, created_at, updated_at, classes!inner(title, subject, organization_id, program_type, organizations(sido, sigungu, bname)), class_schedules(start_time, end_time)"
       )
       .eq("classes.organization_id", organizationId)
 

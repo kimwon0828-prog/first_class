@@ -75,7 +75,10 @@ type MockScheduleBlock = StudioScheduleBlockSummary & {
   classId: string | null
 }
 
-type MockApplicationRecord = StudioApplicationDetail & {
+type MockApplicationRecord = Omit<
+  StudioApplicationDetail,
+  "scheduleStartTime" | "scheduleEndTime"
+> & {
   childId: string | null
 }
 
@@ -1612,10 +1615,15 @@ export const mockDataAdapter: DataAdapter = {
       })
       .map((item) => {
         const classItem = classes.find((classRow) => classRow.id === item.classId)
+        const classSchedule = classItem?.schedules?.find(
+          (schedule) => schedule.id === item.classScheduleId
+        )
         const mapped: StudioApplicationSummary = {
           ...item,
           classSubject: classItem?.subject ?? null,
           classRegion: formatAdministrativeRegionLabel(mockOrganizationLocation),
+          scheduleStartTime: classSchedule?.startTime ?? null,
+          scheduleEndTime: classSchedule?.endTime ?? null,
           assignedTeacherId: item.assignedTeacherId ?? null,
           assignedTeacherName: getTeacherDisplayNameById(item.assignedTeacherId),
           registrationStatus:
@@ -1798,6 +1806,9 @@ export const mockDataAdapter: DataAdapter = {
     }
 
     const classItem = classes.find((item) => item.id === application.classId)
+    const classSchedule = classItem?.schedules?.find(
+      (schedule) => schedule.id === application.classScheduleId
+    )
     const logs = applicationLogs
       .filter((item) => item.applicationId === applicationId)
       .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))
@@ -1819,6 +1830,8 @@ export const mockDataAdapter: DataAdapter = {
         "classRegion" in application
           ? application.classRegion
           : formatAdministrativeRegionLabel(mockOrganizationLocation),
+      scheduleStartTime: classSchedule?.startTime ?? null,
+      scheduleEndTime: classSchedule?.endTime ?? null,
       assignedTeacherId: "assignedTeacherId" in application ? application.assignedTeacherId : null,
       assignedTeacherName:
         application.assignedTeacherName ?? getTeacherDisplayNameById(application.assignedTeacherId),

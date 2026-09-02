@@ -561,6 +561,8 @@ export type StudioApplicationSummary = TrialApplicationSummary & {
   classSubject: string | null
   classRegion: string | null
   classAssignmentMode: ClassAssignmentMode
+  scheduleStartTime: string | null
+  scheduleEndTime: string | null
   assignedTeacherId: string | null
   assignedTeacherName: string | null
   contactedAt: string | null

@@ -11,18 +11,7 @@ export default async function StudioSchedulePage() {
   return (
     <div className={styles.page}>
       <div className={styles.container}>
-        <header className={styles.header}>
-          <h1 className={styles.title}>일정 관리</h1>
-          <p className={styles.subtitle}>학부모 신청과 확정된 체험 일정을 확인해요.</p>
-        </header>
-
-        {error ? (
-          <section className={styles.errorCard} role="alert">
-            <p className={styles.errorText}>{error}</p>
-          </section>
-        ) : (
-          <StudioScheduleManager items={applications} />
-        )}
+        <StudioScheduleManager items={applications} error={error} />
       </div>
     </div>
   )

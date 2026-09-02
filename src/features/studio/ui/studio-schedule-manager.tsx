@@ -1,367 +1,450 @@
 "use client"
 
 import Link from "next/link"
-import { useMemo, useState } from "react"
+import { useMemo, useState, type CSSProperties } from "react"
 
+import type { StudioStatusTone } from "@/features/studio/lib/application-status-labels"
 import {
-  getStudioStatusLabel,
-  getStudioStatusTone
-} from "@/features/studio/lib/application-status-labels"
+  buildStudioScheduleEvents,
+  buildStudioScheduleTimeRange,
+  formatClockMinutes,
+  layoutOverlappingEvents,
+  type PositionedStudioScheduleEvent,
+  type StudioScheduleEvent
+} from "@/features/studio/lib/studio-schedule-events"
 import {
   SEOUL_WEEKDAY_SHORT_LABELS,
   buildMonthGrid,
+  formatDayLabel,
   formatMonthLabel,
   formatSelectedDateLabel,
+  formatWeekLabel,
   getSeoulTodayKey,
+  getWeekDateKeys,
   isSameMonth,
+  parseDateKey,
+  shiftDateKey,
   shiftMonthKey,
+  toDayNumber,
   toMonthStartKey,
-  toSeoulDateKey,
-  toSeoulTimeLabel
+  toWeekday
 } from "@/features/studio/lib/studio-schedule-month"
-import { StudioStatusBadge } from "@/features/studio/ui/studio-status-badge"
 import type { StudioApplicationSummary } from "@/shared/lib/db/adapter"
 
 import styles from "./studio-schedule-manager.module.css"
 
+type CalendarView = "day" | "week" | "month"
+
 type StudioScheduleManagerProps = {
   items: StudioApplicationSummary[]
+  error?: string | null
 }
 
-const PROGRAM_TYPE_LABELS: Record<NonNullable<StudioApplicationSummary["classProgramType"]>, string> = {
-  trial_class: "체험수업",
-  level_test: "레벨테스트"
+type EventStyle = CSSProperties & {
+  "--event-top": string
+  "--event-height": string
+  "--event-left": string
+  "--event-width": string
 }
 
-/** 캘린더에 표시할 시각. 확정 일정이 있으면 그것이 우선이다. */
-const getScheduledAt = (item: StudioApplicationSummary) =>
-  item.confirmedSlotAt ?? item.requestedSlotAt ?? null
-
-const normalizeText = (value: string | null | undefined) => {
-  const trimmed = value?.trim()
-  return trimmed ? trimmed : null
+type GridStyle = CSSProperties & {
+  "--grid-height": string
+  "--time-column-count": string
 }
 
-const formatPhone = (value: string | null) => (value?.trim() ? value : "-")
+type MarkerStyle = CSSProperties & {
+  "--marker-top": string
+}
 
-const getSecondaryScheduleLabel = (item: StudioApplicationSummary) => {
-  const selectedLabel = normalizeText(item.selectedScheduleLabel)
-  if (!selectedLabel) {
-    return null
+const VIEW_LABELS: Array<{ value: CalendarView; label: string }> = [
+  { value: "day", label: "일" },
+  { value: "week", label: "주" },
+  { value: "month", label: "월" }
+]
+
+const MONTH_TONE_CLASS: Record<StudioStatusTone, string> = {
+  green: styles.monthToneGreen,
+  amber: styles.monthToneAmber,
+  blue: styles.monthToneBlue,
+  gray: styles.monthToneGray,
+  red: styles.monthToneRed
+}
+
+const TIME_TONE_CLASS: Record<StudioStatusTone, string> = {
+  green: styles.timeToneGreen,
+  amber: styles.timeToneAmber,
+  blue: styles.timeToneBlue,
+  gray: styles.timeToneGray,
+  red: styles.timeToneRed
+}
+
+const MAX_EVENTS_PER_MONTH_CELL = 3
+const PIXELS_PER_HOUR = 64
+
+const groupEventsByDate = (events: StudioScheduleEvent[]) => {
+  const grouped = new Map<string, StudioScheduleEvent[]>()
+
+  for (const event of events) {
+    const current = grouped.get(event.dateKey)
+    if (current) {
+      current.push(event)
+    } else {
+      grouped.set(event.dateKey, [event])
+    }
   }
 
-  if (item.requestedSlotAt) {
-    return `선택 시간: ${selectedLabel}`
+  return grouped
+}
+
+const getWeekdayLabel = (dateKey: string) => {
+  const civil = parseDateKey(dateKey)
+  if (!civil) {
+    return dateKey
   }
 
-  return selectedLabel
+  return SEOUL_WEEKDAY_SHORT_LABELS[toWeekday(toDayNumber(civil))]
 }
 
-/** 상태 tone → 이벤트 좌측 indicator. Application Status 의미를 그대로 쓴다. */
-const EVENT_TONE_CLASS: Record<string, string> = {
-  green: styles.eventToneGreen,
-  amber: styles.eventToneAmber,
-  blue: styles.eventToneBlue,
-  gray: styles.eventToneGray,
-  red: styles.eventToneRed
+const getDayNumberLabel = (dateKey: string) => parseDateKey(dateKey)?.day ?? dateKey
+
+const CalendarEventBlock = ({
+  event,
+  rangeStart,
+  rangeEnd,
+  compact
+}: {
+  event: PositionedStudioScheduleEvent
+  rangeStart: number
+  rangeEnd: number
+  compact: boolean
+}) => {
+  const rangeMinutes = rangeEnd - rangeStart
+  const visibleStart = Math.max(event.startMinutes, rangeStart)
+  const visibleEnd = Math.min(event.endMinutes, rangeEnd)
+  const eventStyle: EventStyle = {
+    "--event-top": `${((visibleStart - rangeStart) / rangeMinutes) * 100}%`,
+    "--event-height": `${((visibleEnd - visibleStart) / rangeMinutes) * 100}%`,
+    "--event-left": `${(event.columnIndex / event.columnCount) * 100}%`,
+    "--event-width": `${100 / event.columnCount}%`
+  }
+  const title = `${event.timeLabel} · ${event.statusLabel} · ${event.childName} · ${event.classTitle} · ${event.assignedTeacherName ?? "미배정"}`
+
+  return (
+    <Link
+      href={event.detailHref}
+      className={`${styles.timeEvent} ${TIME_TONE_CLASS[event.tone]} ${
+        compact ? styles.timeEventCompact : ""
+      }`}
+      style={eventStyle}
+      title={title}
+      aria-label={title}
+    >
+      <span className={styles.timeEventHead}>
+        <span className={styles.timeEventTime}>{event.timeLabel}</span>
+        <span className={styles.timeEventStatus}>{event.statusLabel}</span>
+      </span>
+      <span className={styles.timeEventName}>{event.childName}</span>
+      <span className={styles.timeEventClass}>{event.classTitle}</span>
+      <span className={styles.timeEventTeacher}>{event.assignedTeacherName ?? "선생님 미배정"}</span>
+    </Link>
+  )
 }
 
-type CalendarEvent = {
-  item: StudioApplicationSummary
-  scheduledAt: string
-  dateKey: string
-  timeLabel: string
+const TimeGrid = ({
+  dateKeys,
+  eventsByDateKey,
+  todayKey,
+  compact
+}: {
+  dateKeys: string[]
+  eventsByDateKey: Map<string, StudioScheduleEvent[]>
+  todayKey: string
+  compact: boolean
+}) => {
+  const visibleEvents = dateKeys.flatMap((dateKey) => eventsByDateKey.get(dateKey) ?? [])
+  const timeRange = buildStudioScheduleTimeRange(visibleEvents)
+  const gridStyle: GridStyle = {
+    "--grid-height": `${((timeRange.endMinutes - timeRange.startMinutes) / 60) * PIXELS_PER_HOUR}px`,
+    "--time-column-count": String(dateKeys.length)
+  }
+
+  return (
+    <div className={styles.timeGridScroll}>
+      <div className={compact ? styles.weekTimeGrid : styles.dayTimeGrid}>
+        <div className={styles.timeGridHeader} style={gridStyle}>
+          <span className={styles.timeGridCorner} aria-hidden="true" />
+          {dateKeys.map((dateKey) => (
+            <div
+              key={dateKey}
+              className={`${styles.timeGridDateHead} ${
+                dateKey === todayKey ? styles.timeGridDateHeadToday : ""
+              }`}
+            >
+              <span>{getWeekdayLabel(dateKey)}요일</span>
+              <strong>{getDayNumberLabel(dateKey)}</strong>
+            </div>
+          ))}
+        </div>
+
+        <div className={styles.timeGridBody} style={gridStyle}>
+          <div className={styles.timeAxis}>
+            {timeRange.hourMarkers.map((minutes) => {
+              const markerStyle: MarkerStyle = {
+                "--marker-top": `${((minutes - timeRange.startMinutes) /
+                  (timeRange.endMinutes - timeRange.startMinutes)) *
+                  100}%`
+              }
+
+              return (
+                <span key={minutes} className={styles.timeLabel} style={markerStyle}>
+                  {formatClockMinutes(minutes)}
+                </span>
+              )
+            })}
+          </div>
+
+          <div className={styles.timeColumns}>
+            {dateKeys.map((dateKey) => {
+              const positionedEvents = layoutOverlappingEvents(eventsByDateKey.get(dateKey) ?? [])
+
+              return (
+                <div
+                  key={dateKey}
+                  className={`${styles.timeColumn} ${dateKey === todayKey ? styles.timeColumnToday : ""}`}
+                >
+                  {timeRange.hourMarkers.map((minutes) => {
+                    const markerStyle: MarkerStyle = {
+                      "--marker-top": `${((minutes - timeRange.startMinutes) /
+                        (timeRange.endMinutes - timeRange.startMinutes)) *
+                        100}%`
+                    }
+
+                    return <span key={minutes} className={styles.hourLine} style={markerStyle} />
+                  })}
+                  {positionedEvents.map((event) => (
+                    <CalendarEventBlock
+                      key={event.id}
+                      event={event}
+                      rangeStart={timeRange.startMinutes}
+                      rangeEnd={timeRange.endMinutes}
+                      compact={compact}
+                    />
+                  ))}
+                </div>
+              )
+            })}
+          </div>
+
+          {visibleEvents.length === 0 ? (
+            <p className={styles.timeGridEmpty}>이 기간에 예정된 일정이 없습니다.</p>
+          ) : null}
+        </div>
+      </div>
+    </div>
+  )
 }
 
-const MAX_EVENTS_PER_CELL = 3
-
-export const StudioScheduleManager = ({ items }: StudioScheduleManagerProps) => {
-  // 브라우저 로컬 오늘이 아니라 서울 오늘이다.
+export const StudioScheduleManager = ({ items, error }: StudioScheduleManagerProps) => {
   const todayKey = useMemo(() => getSeoulTodayKey(), [])
-  const [selectedDateKey, setSelectedDateKey] = useState(todayKey)
-  const [visibleMonthKey, setVisibleMonthKey] = useState(() => toMonthStartKey(todayKey))
-  const [pendingApplicationId, setPendingApplicationId] = useState<string | null>(null)
+  const [anchorDateKey, setAnchorDateKey] = useState(todayKey)
+  const [view, setView] = useState<CalendarView>("month")
 
-  // 표시 조건은 "취소가 아니고, 표시할 시각이 있다" 뿐이다.
-  // 담당 선생님이 없다는 이유로 실제 일정을 캘린더에서 숨기지 않는다.
-  const calendarEvents = useMemo(() => {
-    const events: CalendarEvent[] = []
-
-    for (const item of items) {
-      if (item.status === "canceled") {
-        continue
-      }
-
-      const scheduledAt = getScheduledAt(item)
-      if (!scheduledAt) {
-        continue
-      }
-
-      const dateKey = toSeoulDateKey(scheduledAt)
-      const timeLabel = toSeoulTimeLabel(scheduledAt)
-      if (!dateKey || !timeLabel) {
-        continue
-      }
-
-      events.push({ item, scheduledAt, dateKey, timeLabel })
-    }
-
-    // DB 반환 순서에 의존하지 않는다. 원본 items 는 건드리지 않는다.
-    return events.sort(
-      (left, right) =>
-        left.scheduledAt.localeCompare(right.scheduledAt) || left.item.id.localeCompare(right.item.id)
-    )
-  }, [items])
-
-  // 날짜별 1회 grouping. 셀마다 전체 배열을 다시 훑지 않는다.
-  const eventsByDateKey = useMemo(() => {
-    const grouped = new Map<string, CalendarEvent[]>()
-
-    for (const event of calendarEvents) {
-      const current = grouped.get(event.dateKey)
-      if (current) {
-        current.push(event)
-      } else {
-        grouped.set(event.dateKey, [event])
-      }
-    }
-
-    return grouped
-  }, [calendarEvents])
-
+  const calendarEvents = useMemo(() => buildStudioScheduleEvents(items), [items])
+  const eventsByDateKey = useMemo(() => groupEventsByDate(calendarEvents), [calendarEvents])
+  const visibleMonthKey = toMonthStartKey(anchorDateKey)
   const monthCells = useMemo(() => buildMonthGrid(visibleMonthKey), [visibleMonthKey])
+  const weekDateKeys = useMemo(() => getWeekDateKeys(anchorDateKey), [anchorDateKey])
+  const visibleDateKeys = useMemo(
+    () => (view === "day" ? [anchorDateKey] : weekDateKeys),
+    [anchorDateKey, view, weekDateKeys]
+  )
 
-  // Alert 는 지금 보고 있는 달을 기준으로 센다.
-  const monthAlerts = useMemo(() => {
+  const periodEvents = useMemo(() => {
+    if (view === "month") {
+      return calendarEvents.filter((event) => isSameMonth(event.dateKey, visibleMonthKey))
+    }
+
+    const visibleDates = new Set(visibleDateKeys)
+    return calendarEvents.filter((event) => visibleDates.has(event.dateKey))
+  }, [calendarEvents, view, visibleDateKeys, visibleMonthKey])
+
+  const alerts = useMemo(() => {
     let needsReview = 0
     let unassigned = 0
 
-    for (const event of calendarEvents) {
-      if (!isSameMonth(event.dateKey, visibleMonthKey)) {
-        continue
-      }
-
-      if (event.item.status === "new" || event.item.status === "reviewing") {
+    for (const event of periodEvents) {
+      if (event.status === "new" || event.status === "reviewing") {
         needsReview += 1
       }
-
-      if (!normalizeText(event.item.assignedTeacherName)) {
+      if (!event.assignedTeacherName) {
         unassigned += 1
       }
     }
 
     return { needsReview, unassigned }
-  }, [calendarEvents, visibleMonthKey])
+  }, [periodEvents])
 
-  const eventsForSelectedDay = eventsByDateKey.get(selectedDateKey) ?? []
+  const periodLabel =
+    view === "month"
+      ? formatMonthLabel(visibleMonthKey)
+      : view === "week"
+        ? formatWeekLabel(anchorDateKey)
+        : formatDayLabel(anchorDateKey)
 
-  const goToToday = () => {
-    setVisibleMonthKey(toMonthStartKey(todayKey))
-    setSelectedDateKey(todayKey)
+  const movePeriod = (offset: -1 | 1) => {
+    if (view === "month") {
+      setAnchorDateKey(shiftMonthKey(visibleMonthKey, offset))
+      return
+    }
+
+    setAnchorDateKey(shiftDateKey(anchorDateKey, view === "week" ? offset * 7 : offset))
   }
 
-  const moveMonth = (offset: number) => {
-    const nextMonthKey = shiftMonthKey(visibleMonthKey, offset)
-    setVisibleMonthKey(nextMonthKey)
-    setSelectedDateKey(nextMonthKey)
+  const selectMonthDate = (dateKey: string) => {
+    setAnchorDateKey(dateKey)
+    setView("day")
   }
 
   return (
     <div className={styles.root}>
-      <section className={styles.canvas} aria-label="월간 캘린더">
+      <header className={styles.pageHeader}>
+        <div className={styles.pageHeading}>
+          <h1 className={styles.pageTitle}>일정 관리</h1>
+          <p className={styles.pageSubtitle}>학부모 신청과 확정된 체험 일정을 확인해요.</p>
+        </div>
+        <div className={styles.viewControl} aria-label="캘린더 보기 방식">
+          {VIEW_LABELS.map((option) => (
+            <button
+              key={option.value}
+              type="button"
+              className={`${styles.viewButton} ${view === option.value ? styles.viewButtonActive : ""}`}
+              onClick={() => setView(option.value)}
+              aria-pressed={view === option.value}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+      </header>
+
+      {error ? (
+        <div className={styles.errorCard} role="alert">
+          <p className={styles.errorText}>{error}</p>
+        </div>
+      ) : null}
+
+      <section className={styles.canvas} aria-label={`${periodLabel} 캘린더`}>
         <header className={styles.canvasHeader}>
-          <h2 className={styles.monthLabel}>{formatMonthLabel(visibleMonthKey)}</h2>
+          <h2 className={styles.periodLabel}>{periodLabel}</h2>
           <div className={styles.canvasNav}>
-            <button type="button" className={styles.navButton} onClick={goToToday}>
+            <button type="button" className={styles.navButton} onClick={() => setAnchorDateKey(todayKey)}>
               오늘
             </button>
             <button
               type="button"
               className={styles.navIconButton}
-              onClick={() => moveMonth(-1)}
-              aria-label="이전 달"
+              onClick={() => movePeriod(-1)}
+              aria-label={view === "month" ? "이전 달" : view === "week" ? "이전 주" : "이전 날"}
             >
               ‹
             </button>
             <button
               type="button"
               className={styles.navIconButton}
-              onClick={() => moveMonth(1)}
-              aria-label="다음 달"
+              onClick={() => movePeriod(1)}
+              aria-label={view === "month" ? "다음 달" : view === "week" ? "다음 주" : "다음 날"}
             >
               ›
             </button>
           </div>
         </header>
 
-        {monthAlerts.needsReview > 0 || monthAlerts.unassigned > 0 ? (
+        {alerts.needsReview > 0 || alerts.unassigned > 0 ? (
           <div className={styles.alertRow}>
-            {monthAlerts.needsReview > 0 ? (
+            {alerts.needsReview > 0 ? (
               <span className={`${styles.alert} ${styles.alertAmber}`}>
-                확인 필요한 신청 {monthAlerts.needsReview}건
+                확인 필요한 신청 {alerts.needsReview}건
               </span>
             ) : null}
-            {monthAlerts.unassigned > 0 ? (
+            {alerts.unassigned > 0 ? (
               <span className={`${styles.alert} ${styles.alertGray}`}>
-                선생님 미배정 {monthAlerts.unassigned}건
+                선생님 미배정 {alerts.unassigned}건
               </span>
             ) : null}
           </div>
         ) : null}
 
-        <div className={styles.weekdayRow} aria-hidden="true">
-          {SEOUL_WEEKDAY_SHORT_LABELS.map((label) => (
-            <span key={label} className={styles.weekdayCell}>
-              {label}
-            </span>
-          ))}
-        </div>
-
-        <div className={styles.monthGrid}>
-          {monthCells.map((cell) => {
-            const dayEvents = eventsByDateKey.get(cell.key) ?? []
-            const visibleEvents = dayEvents.slice(0, MAX_EVENTS_PER_CELL)
-            const overflowCount = dayEvents.length - visibleEvents.length
-
-            return (
-              <div
-                key={cell.key}
-                className={[
-                  styles.cell,
-                  !cell.isCurrentMonth ? styles.cellMuted : "",
-                  cell.key === selectedDateKey ? styles.cellSelected : "",
-                  cell.key === todayKey ? styles.cellToday : ""
-                ]
-                  .filter(Boolean)
-                  .join(" ")}
-              >
-                {/* 셀 전체가 날짜 선택 영역이다. 이벤트 링크는 이 위에 얹힌다. */}
-                <button
-                  type="button"
-                  className={styles.cellSelect}
-                  onClick={() => setSelectedDateKey(cell.key)}
-                  aria-label={`${formatSelectedDateLabel(cell.key)} 선택`}
-                  aria-pressed={cell.key === selectedDateKey}
-                />
-
-                <span className={styles.cellHead}>
-                  <span className={styles.cellDay}>{cell.day}</span>
-                  {cell.key === todayKey ? <span className={styles.todayMark}>오늘</span> : null}
+        {view === "month" ? (
+          <>
+            {periodEvents.length === 0 ? (
+              <p className={styles.calendarEmptyNote}>이 달에 예정된 일정이 없습니다.</p>
+            ) : null}
+            <div className={styles.weekdayRow} aria-hidden="true">
+              {SEOUL_WEEKDAY_SHORT_LABELS.map((label) => (
+                <span key={label} className={styles.weekdayCell}>
+                  {label}
                 </span>
+              ))}
+            </div>
+            <div className={styles.monthGrid}>
+              {monthCells.map((cell) => {
+                const dayEvents = eventsByDateKey.get(cell.key) ?? []
+                const visibleEvents = dayEvents.slice(0, MAX_EVENTS_PER_MONTH_CELL)
+                const overflowCount = dayEvents.length - visibleEvents.length
 
-                {visibleEvents.length > 0 ? (
-                  <span className={styles.cellEvents}>
-                    {visibleEvents.map((event) => (
-                      <Link
-                        key={event.item.id}
-                        href={`/studio/applications/${event.item.id}`}
-                        className={styles.event}
-                        title={`${event.timeLabel} ${event.item.childName} · ${
-                          event.item.classTitle ?? ""
-                        } · ${getStudioStatusLabel(event.item)}`}
-                        aria-busy={pendingApplicationId === event.item.id}
-                        onClick={() => setPendingApplicationId(event.item.id)}
-                      >
-                        <span
-                          className={`${styles.eventTone} ${
-                            EVENT_TONE_CLASS[getStudioStatusTone(event.item)] ?? styles.eventToneGray
-                          }`}
-                          aria-hidden="true"
-                        />
-                        <span className={styles.eventTime}>{event.timeLabel}</span>
-                        <span className={styles.eventName}>{event.item.childName}</span>
-                      </Link>
-                    ))}
-                    {overflowCount > 0 ? (
-                      <span className={styles.eventMore}>외 {overflowCount}건</span>
+                return (
+                  <div
+                    key={cell.key}
+                    className={[
+                      styles.cell,
+                      !cell.isCurrentMonth ? styles.cellMuted : "",
+                      cell.key === anchorDateKey ? styles.cellSelected : "",
+                      cell.key === todayKey ? styles.cellToday : ""
+                    ]
+                      .filter(Boolean)
+                      .join(" ")}
+                  >
+                    <button
+                      type="button"
+                      className={styles.cellSelect}
+                      onClick={() => selectMonthDate(cell.key)}
+                      aria-label={`${formatSelectedDateLabel(cell.key)} 일간 보기`}
+                    />
+                    <span className={styles.cellHead}>
+                      <span className={styles.cellDay}>{cell.day}</span>
+                      {cell.key === todayKey ? <span className={styles.todayMark}>오늘</span> : null}
+                    </span>
+                    {visibleEvents.length > 0 ? (
+                      <span className={styles.cellEvents}>
+                        {visibleEvents.map((event) => (
+                          <Link
+                            key={event.id}
+                            href={event.detailHref}
+                            className={styles.monthEvent}
+                            title={`${event.timeLabel} ${event.childName} · ${event.classTitle} · ${event.statusLabel}`}
+                          >
+                            <span className={`${styles.monthEventTone} ${MONTH_TONE_CLASS[event.tone]}`} />
+                            <span className={styles.monthEventTime}>{event.timeLabel}</span>
+                            <span className={styles.monthEventName}>{event.childName}</span>
+                          </Link>
+                        ))}
+                        {overflowCount > 0 ? (
+                          <span className={styles.eventMore}>+{overflowCount}개 더보기</span>
+                        ) : null}
+                      </span>
                     ) : null}
-                  </span>
-                ) : null}
-              </div>
-            )
-          })}
-        </div>
-      </section>
-
-      <section className={styles.detailSection} aria-label="선택 날짜 일정">
-        <div className={styles.detailHeader}>
-          <h3 className={styles.detailTitle}>{formatSelectedDateLabel(selectedDateKey)} 일정</h3>
-          <span className={styles.detailCount}>{eventsForSelectedDay.length}건</span>
-        </div>
-
-        {eventsForSelectedDay.length === 0 ? (
-          <div className={styles.empty}>
-            <p className={styles.emptyTitle}>선택한 날짜에 등록된 일정이 없어요.</p>
-            <p className={styles.emptyDescription}>
-              신청을 확정하면 이곳에서 일정을 확인할 수 있습니다.
-            </p>
-          </div>
+                  </div>
+                )
+              })}
+            </div>
+          </>
         ) : (
-          <div className={styles.timeline}>
-            {eventsForSelectedDay.map((event) => {
-              const { item } = event
-              const selectedLabel = getSecondaryScheduleLabel(item)
-              const programLabel = item.classProgramType
-                ? PROGRAM_TYPE_LABELS[item.classProgramType]
-                : null
-              const timeMeta = item.confirmedSlotAt ? "확정 일정" : "희망 일정"
-              const assignedTeacherLabel = normalizeText(item.assignedTeacherName)
-
-              return (
-                <article key={item.id} className={styles.timelineItem}>
-                  <div className={styles.timeCol}>
-                    <span className={styles.timeText}>{event.timeLabel}</span>
-                    <span className={styles.timeSub}>{timeMeta}</span>
-                  </div>
-
-                  <div className={styles.eventCard}>
-                    <div className={styles.badgeRow}>
-                      <StudioStatusBadge tone={getStudioStatusTone(item)}>
-                        {getStudioStatusLabel(item)}
-                      </StudioStatusBadge>
-                      {programLabel ? <span className={styles.programPill}>{programLabel}</span> : null}
-                    </div>
-
-                    <strong className={styles.eventCardTitle}>{item.childName}</strong>
-                    <p className={styles.eventCardSubtitle}>
-                      {item.classTitle} · {item.childGrade}
-                    </p>
-                    {selectedLabel ? <p className={styles.eventNote}>{selectedLabel}</p> : null}
-
-                    <dl className={styles.metaGrid}>
-                      <div className={styles.metaRow}>
-                        <dt className={styles.metaLabel}>보호자</dt>
-                        <dd className={styles.metaValue}>{item.parentName ?? "-"}</dd>
-                      </div>
-                      <div className={styles.metaRow}>
-                        <dt className={styles.metaLabel}>보호자 연락처</dt>
-                        <dd className={styles.metaValue}>{formatPhone(item.parentPhone)}</dd>
-                      </div>
-                      <div className={styles.metaRow}>
-                        <dt className={styles.metaLabel}>담당 선생님</dt>
-                        <dd className={styles.metaValue}>
-                          {assignedTeacherLabel ?? (
-                            <span className={styles.metaMuted}>미배정</span>
-                          )}
-                        </dd>
-                      </div>
-                    </dl>
-
-                    <div className={styles.eventFooter}>
-                      <Link
-                        href={`/studio/applications/${item.id}`}
-                        className={styles.linkButton}
-                        aria-busy={pendingApplicationId === item.id}
-                        onClick={() => setPendingApplicationId(item.id)}
-                      >
-                        {pendingApplicationId === item.id ? "이동 중..." : "신청 상세 보기"}
-                      </Link>
-                    </div>
-                  </div>
-                </article>
-              )
-            })}
-          </div>
+          <TimeGrid
+            dateKeys={visibleDateKeys}
+            eventsByDateKey={eventsByDateKey}
+            todayKey={todayKey}
+            compact={view === "week"}
+          />
         )}
       </section>
     </div>

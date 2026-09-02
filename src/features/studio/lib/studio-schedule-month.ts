@@ -118,6 +118,16 @@ export const shiftMonthKey = (monthStartKey: CalendarDateKey, offset: number): C
   return buildDateKey(Math.floor(zeroBased / 12), (((zeroBased % 12) + 12) % 12) + 1, 1)
 }
 
+export const shiftDateKey = (dateKey: CalendarDateKey, offset: number): CalendarDateKey => {
+  const civil = parseDateKey(dateKey)
+  if (!civil) {
+    return dateKey
+  }
+
+  const shifted = fromDayNumber(toDayNumber(civil) + offset)
+  return buildDateKey(shifted.year, shifted.month, shifted.day)
+}
+
 export const formatMonthLabel = (monthStartKey: CalendarDateKey) => {
   const civil = parseDateKey(monthStartKey)
   return civil ? `${civil.year}년 ${civil.month}월` : monthStartKey
@@ -165,6 +175,52 @@ export const formatSelectedDateLabel = (dateKey: CalendarDateKey) => {
 
   const weekday = SEOUL_WEEKDAY_SHORT_LABELS[toWeekday(toDayNumber(civil))]
   return `${civil.month}월 ${civil.day}일 ${weekday}요일`
+}
+
+export const formatDayLabel = (dateKey: CalendarDateKey) => {
+  const civil = parseDateKey(dateKey)
+  if (!civil) {
+    return dateKey
+  }
+
+  const weekday = SEOUL_WEEKDAY_SHORT_LABELS[toWeekday(toDayNumber(civil))]
+  return `${civil.year}년 ${civil.month}월 ${civil.day}일 ${weekday}요일`
+}
+
+/** Studio 주간 보기는 한국 운영 문맥에 맞춰 월요일부터 일요일까지 표시한다. */
+export const getWeekDateKeys = (anchorDateKey: CalendarDateKey): CalendarDateKey[] => {
+  const civil = parseDateKey(anchorDateKey)
+  if (!civil) {
+    return []
+  }
+
+  const anchorDayNumber = toDayNumber(civil)
+  const mondayOffset = (toWeekday(anchorDayNumber) + 6) % DAYS_IN_WEEK
+  const mondayDayNumber = anchorDayNumber - mondayOffset
+
+  return Array.from({ length: DAYS_IN_WEEK }, (_, index) => {
+    const date = fromDayNumber(mondayDayNumber + index)
+    return buildDateKey(date.year, date.month, date.day)
+  })
+}
+
+export const formatWeekLabel = (anchorDateKey: CalendarDateKey) => {
+  const weekDateKeys = getWeekDateKeys(anchorDateKey)
+  const start = parseDateKey(weekDateKeys[0] ?? "")
+  const end = parseDateKey(weekDateKeys[weekDateKeys.length - 1] ?? "")
+  if (!start || !end) {
+    return anchorDateKey
+  }
+
+  if (start.year !== end.year) {
+    return `${start.year}년 ${start.month}월 ${start.day}일 ~ ${end.year}년 ${end.month}월 ${end.day}일`
+  }
+
+  if (start.month !== end.month) {
+    return `${start.year}년 ${start.month}월 ${start.day}일 ~ ${end.month}월 ${end.day}일`
+  }
+
+  return `${start.year}년 ${start.month}월 ${start.day}일 ~ ${end.month}월 ${end.day}일`
 }
 
 export const isSameMonth = (dateKey: CalendarDateKey, monthStartKey: CalendarDateKey) => {
