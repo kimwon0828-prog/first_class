@@ -1,6 +1,6 @@
 .scheduleStepLayout {
   display: grid;
-  gap: 24px;
+  gap: var(--s6);
 }
 
 .sectionBlock {
@@ -20,18 +20,18 @@
 
 .sectionCard {
   display: grid;
-  gap: 16px;
-  padding: 20px;
+  gap: var(--s4);
+  padding: var(--s5);
   border: 1px solid #e5e7eb;
-  border-radius: 12px;
-  background: #ffffff;
+  border-radius: var(--r-md);
+  background: var(--surface);
 }
 
 .sectionHeader {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  gap: 16px;
+  gap: var(--s4);
   flex-wrap: wrap;
 }
 
@@ -63,7 +63,7 @@
 
 .metricRow {
   display: flex;
-  gap: 8px;
+  gap: var(--s2);
   flex-wrap: wrap;
 }
 
@@ -71,7 +71,7 @@
 .metricChipMuted {
   display: inline-flex;
   align-items: center;
-  border-radius: 999px;
+  border-radius: var(--r-full);
   padding: 6px 10px;
   font-size: 12px;
   line-height: 16px;
@@ -79,7 +79,7 @@
 }
 
 .metricChip {
-  background: #eaf7ec;
+  background: var(--brand-50);
   color: #1f8b2c;
 }
 
@@ -105,7 +105,7 @@
   gap: 14px;
   padding: 18px;
   border: 1px solid #e5e7eb;
-  border-radius: 12px;
+  border-radius: var(--r-md);
   background: #fcfdfc;
 }
 
@@ -113,7 +113,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: var(--s3);
 }
 
 .previewMonthLabel {
@@ -129,7 +129,7 @@
   padding: 0 12px;
   border: 1px solid #e5e7eb;
   border-radius: 10px;
-  background: #ffffff;
+  background: var(--surface);
   color: #111827;
   font-size: 13px;
   line-height: 18px;
@@ -143,18 +143,18 @@
 
 .generatedSlotCard {
   display: grid;
-  gap: 8px;
+  gap: var(--s2);
   padding: 14px 16px;
   border: 1px solid #e5e7eb;
-  border-radius: 12px;
-  background: #ffffff;
+  border-radius: var(--r-md);
+  background: var(--surface);
 }
 
 .generatedSlotHeader {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: var(--s3);
   flex-wrap: wrap;
 }
 
@@ -175,7 +175,7 @@
 
 .errorText {
   margin: 0;
-  color: #b42318;
+  color: var(--red-fg);
   font-size: 14px;
   line-height: 20px;
 }
@@ -190,7 +190,7 @@
 
 .previewCalendarCard,
 .previewDayCard {
-    padding: 16px;
+    padding: var(--s4);
   }
 
   .generatedSlotHeader,

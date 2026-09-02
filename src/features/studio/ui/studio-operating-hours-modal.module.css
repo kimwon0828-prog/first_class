@@ -5,7 +5,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 24px;
+  padding: var(--s6);
   background: rgba(15, 23, 42, 0.48);
 }
 
@@ -13,8 +13,8 @@
   width: min(100%, 760px);
   max-height: min(90vh, 920px);
   overflow: auto;
-  border-radius: 16px;
-  background: #ffffff;
+  border-radius: var(--r-lg);
+  background: var(--surface);
   border: 1px solid #e5e7eb;
   box-shadow: 0 24px 70px rgba(15, 23, 42, 0.2);
 }
@@ -34,7 +34,7 @@
 
 .section {
   display: grid;
-  gap: 16px;
+  gap: var(--s4);
   padding: 22px 24px;
   border-bottom: 1px solid #f1f5f9;
 }
@@ -43,7 +43,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: var(--s3);
 }
 
 .sectionTitle {
@@ -56,12 +56,12 @@
 .rowGrid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
+  gap: var(--s3);
 }
 
 .field {
   display: grid;
-  gap: 8px;
+  gap: var(--s2);
 }
 
 .label {
@@ -77,8 +77,8 @@
   height: 48px;
   padding: 0 14px;
   border: 1px solid #d1d5db;
-  border-radius: 12px;
-  background: #ffffff;
+  border-radius: var(--r-md);
+  background: var(--surface);
   font-size: 15px;
   line-height: 20px;
   color: #111827;
@@ -117,7 +117,7 @@
 .groupCard {
   display: grid;
   gap: 14px;
-  padding: 16px;
+  padding: var(--s4);
   border: 1px solid #e5e7eb;
   border-radius: 14px;
   background: #f9fafb;
@@ -127,7 +127,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: var(--s3);
 }
 
 .groupTitle {
@@ -140,15 +140,15 @@
 .weekdayRow {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: var(--s2);
 }
 
 .weekdayButton {
   min-width: 38px;
   height: 38px;
   border: 1px solid #d1d5db;
-  border-radius: 999px;
-  background: #ffffff;
+  border-radius: var(--r-full);
+  background: var(--surface);
   color: #111827;
   font-size: 13px;
   line-height: 18px;
@@ -173,12 +173,12 @@
   padding: 14px;
   border: 1px solid #dcfce7;
   border-radius: 14px;
-  background: #ffffff;
+  background: var(--surface);
 }
 
 .timeRow {
   display: grid;
-  gap: 12px;
+  gap: var(--s3);
   align-items: end;
 }
 
@@ -203,14 +203,14 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 12px;
+  gap: var(--s3);
 }
 
 .secondaryButton,
 .cancelButton,
 .saveButton,
 .textButton {
-  border-radius: 12px;
+  border-radius: var(--r-md);
   font-size: 14px;
   line-height: 20px;
   font-weight: 700;
@@ -220,7 +220,7 @@
 .secondaryButton {
   justify-self: flex-start;
   border: 1px solid #d1d5db;
-  background: #ffffff;
+  background: var(--surface);
   color: #111827;
   padding: 11px 16px;
 }
@@ -237,19 +237,19 @@
   padding: 0 24px;
   font-size: 14px;
   line-height: 20px;
-  color: #b42318;
+  color: var(--red-fg);
 }
 
 .footer {
   display: flex;
   justify-content: center;
-  gap: 12px;
-  padding: 20px 24px 24px;
+  gap: var(--s3);
+  padding: var(--s5) var(--s6) var(--s6);
 }
 
 .cancelButton {
   border: 1px solid #d1d5db;
-  background: #ffffff;
+  background: var(--surface);
   color: #111827;
   min-width: 120px;
   padding: 13px 18px;
@@ -298,7 +298,7 @@
   .footer {
     position: sticky;
     bottom: 0;
-    background: #ffffff;
+    background: var(--surface);
     border-top: 1px solid #e5e7eb;
     padding-left: 18px;
     padding-right: 18px;

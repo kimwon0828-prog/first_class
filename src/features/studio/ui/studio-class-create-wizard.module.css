@@ -2,7 +2,7 @@
   max-width: var(--studio-max);
   margin: 0 auto;
   display: grid;
-  gap: 20px;
+  gap: var(--s5);
   padding: 22px 26px 40px;
   background: #f7f8f7;
 }
@@ -20,12 +20,12 @@
 .headerCard {
   display: flex;
   justify-content: space-between;
-  gap: 12px;
+  gap: var(--s3);
   align-items: center;
   flex-wrap: wrap;
   padding: 12px 18px;
   border-bottom: 1px solid #e5e7eb;
-  background: #ffffff;
+  background: var(--surface);
   border-top-left-radius: 12px;
   border-top-right-radius: 12px;
 }
@@ -42,7 +42,7 @@
 .headerRight {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: var(--s3);
   flex-wrap: nowrap;
   justify-content: flex-end;
 }
@@ -51,7 +51,7 @@
   min-width: 0;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--s2);
   flex-wrap: nowrap;
   flex: 1 1 auto;
 }
@@ -71,8 +71,8 @@
   align-items: center;
   justify-content: center;
   border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  background: #ffffff;
+  border-radius: var(--r-sm);
+  background: var(--surface);
   color: #111827;
   text-decoration: none;
   font-size: 16px;
@@ -85,9 +85,9 @@
   align-items: center;
   justify-content: center;
   min-height: 40px;
-  padding: 8px 20px;
+  padding: var(--s2) var(--s5);
   border: none;
-  border-radius: 8px;
+  border-radius: var(--r-sm);
   background: var(--brand-700);
   color: #ffffff;
   font-size: 14px;
@@ -110,7 +110,7 @@
   overflow-x: auto;
   padding: 0 18px;
   border-bottom: 1px solid #e5e7eb;
-  background: #ffffff;
+  background: var(--surface);
   border-bottom-left-radius: 12px;
   border-bottom-right-radius: 12px;
 }
@@ -139,7 +139,7 @@
   right: 0;
   bottom: 0;
   height: 2px;
-  border-radius: 999px;
+  border-radius: var(--r-full);
   background: transparent;
 }
 
@@ -149,12 +149,12 @@
 
 .form {
   display: grid;
-  gap: 20px;
+  gap: var(--s5);
 }
 
 .panel {
   display: grid;
-  gap: 20px;
+  gap: var(--s5);
 }
 
 .panelInner {
@@ -164,7 +164,7 @@
 
 .panelHeader {
   display: grid;
-  gap: 4px;
+  gap: var(--s1);
 }
 
 .panelTitle {
@@ -188,11 +188,11 @@
 
 .settingsCard {
   display: grid;
-  gap: 12px;
+  gap: var(--s3);
   padding: 24px 26px;
   border: 1px solid #e5e7eb;
-  border-radius: 12px;
-  background: #ffffff;
+  border-radius: var(--r-md);
+  background: var(--surface);
 }
 
 .visibilityLayout {
@@ -218,13 +218,13 @@
 
 .feedbackCard {
   border: 1px solid #e5e7eb;
-  border-radius: 12px;
-  background: #ffffff;
+  border-radius: var(--r-md);
+  background: var(--surface);
   box-shadow: 0 12px 32px rgba(17, 24, 39, 0.05);
 }
 
 .feedbackCard {
-  padding: 24px;
+  padding: var(--s6);
 }
 
 .feedbackCard {
@@ -242,7 +242,7 @@
 .feedbackError {
   border-color: #f3c4c4;
   background: #fff7f7;
-  color: #b42318;
+  color: var(--red-fg);
 }
 
 .fieldBlock {
@@ -251,7 +251,7 @@
 }
 
 .fieldBlock + .fieldBlock {
-  margin-top: 24px;
+  margin-top: var(--s6);
 }
 
 .fieldLabel {
@@ -274,7 +274,7 @@
   align-items: center;
   justify-content: center;
   padding: 4px 10px;
-  border-radius: 999px;
+  border-radius: var(--r-full);
   background: #f2fbf3;
   color: #1e8c2b;
   font-size: 12px;
@@ -291,7 +291,7 @@
 
 .errorText {
   margin: 0;
-  color: #b42318;
+  color: var(--red-fg);
   font-size: 13px;
   line-height: 20px;
   font-weight: 700;
@@ -300,12 +300,12 @@
 .chipRow {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: var(--s2);
 }
 
 .gradeGroupList {
   display: grid;
-  gap: 12px;
+  gap: var(--s3);
 }
 
 .gradeGroup {
@@ -326,9 +326,9 @@
   justify-content: center;
   min-height: 38px;
   padding: 0 16px;
-  border-radius: 999px;
+  border-radius: var(--r-full);
   border: 1px solid #e5e7eb;
-  background: #ffffff;
+  background: var(--surface);
   color: #111827;
   font-size: 13px;
   line-height: 18px;
@@ -347,7 +347,7 @@
   width: 100%;
   border: 1px solid #e5e7eb;
   border-radius: 9px;
-  background: #ffffff;
+  background: var(--surface);
   color: #111827;
   font-size: 14px;
   line-height: 20px;
@@ -403,11 +403,11 @@
 
 .infoSectionCard {
   display: grid;
-  gap: 16px;
-  padding: 20px;
+  gap: var(--s4);
+  padding: var(--s5);
   border: 1px solid #e5e7eb;
-  border-radius: 12px;
-  background: #ffffff;
+  border-radius: var(--r-md);
+  background: var(--surface);
 }
 
 .infoSectionCard .fieldBlock + .fieldBlock,
@@ -422,16 +422,16 @@
 
 .infoPreviewCard {
   display: grid;
-  gap: 16px;
-  padding: 20px;
+  gap: var(--s4);
+  padding: var(--s5);
   border: 1px solid #e5e7eb;
-  border-radius: 12px;
-  background: #ffffff;
+  border-radius: var(--r-md);
+  background: var(--surface);
 }
 
 .infoPreviewHeader {
   display: grid;
-  gap: 4px;
+  gap: var(--s1);
 }
 
 .infoPreviewTitle {
@@ -456,8 +456,8 @@
   aspect-ratio: 4 / 3;
   overflow: hidden;
   border: 1px solid #e5e7eb;
-  border-radius: 12px;
-  background: #eaf7ec;
+  border-radius: var(--r-md);
+  background: var(--brand-50);
 }
 
 .infoPreviewImage {
@@ -483,7 +483,7 @@
 .infoPreviewMetaRow {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: var(--s2);
 }
 
 .infoPreviewPill {
@@ -493,7 +493,7 @@
   width: fit-content;
   min-height: 28px;
   padding: 0 12px;
-  border-radius: 999px;
+  border-radius: var(--r-full);
   background: #f3f4f6;
   color: #4b5563;
   font-size: 12px;
@@ -540,7 +540,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 20px;
+  gap: var(--s5);
 }
 
 .toggleLabelWrap {
@@ -580,7 +580,7 @@
 .toggleSlider {
   position: absolute;
   inset: 0;
-  border-radius: 999px;
+  border-radius: var(--r-full);
   background: #d1d5db;
   transition: background-color 0.15s ease;
 }
@@ -593,7 +593,7 @@
   width: 24px;
   height: 24px;
   border-radius: 50%;
-  background: #ffffff;
+  background: var(--surface);
   box-shadow: 0 1px 2px rgba(17, 24, 39, 0.12);
   transition: transform 0.15s ease;
 }
@@ -617,9 +617,9 @@
 .sectionCard {
   display: grid;
   gap: 18px;
-  padding: 20px;
+  padding: var(--s5);
   border: 1px solid #e4e7e4;
-  border-radius: 16px;
+  border-radius: var(--r-lg);
   background: #fafdfa;
 }
 
@@ -631,7 +631,7 @@
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 12px;
+  gap: var(--s3);
 }
 
 .sectionTitle {
@@ -652,16 +652,16 @@
 .assignmentGrid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
+  gap: var(--s3);
 }
 
 .assignmentCard {
   display: grid;
   gap: 6px;
   padding: 18px;
-  border-radius: 16px;
+  border-radius: var(--r-lg);
   border: 1px solid #d7dcd7;
-  background: #ffffff;
+  background: var(--surface);
   color: #111827;
   text-align: left;
 }
@@ -687,7 +687,7 @@
   padding: 18px;
   border: 1px dashed #cbd5cb;
   border-radius: 14px;
-  background: #ffffff;
+  background: var(--surface);
   color: #6b7280;
   font-size: 14px;
   line-height: 22px;
@@ -695,8 +695,8 @@
 
 @media (max-width: 1080px) {
   .page {
-    padding-right: 20px;
-    padding-left: 20px;
+    padding-right: var(--s5);
+    padding-left: var(--s5);
   }
 
   .infoGrid {
@@ -739,7 +739,7 @@
 
   .infoSectionCard,
   .infoPreviewCard {
-    padding: 16px;
+    padding: var(--s4);
   }
 
 .assignmentGrid {
@@ -792,7 +792,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 24px;
+  padding: var(--s6);
   background: rgba(15, 23, 42, 0.48);
 }
 
@@ -800,8 +800,8 @@
   width: 100%;
   max-width: 420px;
   display: grid;
-  gap: 8px;
-  padding: 24px;
+  gap: var(--s2);
+  padding: var(--s6);
   border-radius: var(--r-lg);
   background: var(--surface);
 }
@@ -831,6 +831,6 @@
 .draftActions {
   display: flex;
   justify-content: flex-end;
-  gap: 8px;
-  margin-top: 16px;
+  gap: var(--s2);
+  margin-top: var(--s4);
 }

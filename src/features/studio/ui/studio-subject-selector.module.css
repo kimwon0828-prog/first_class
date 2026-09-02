@@ -1,12 +1,12 @@
 .selector {
   display: grid;
-  gap: 8px;
+  gap: var(--s2);
 }
 
 .selectGrid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
+  gap: var(--s3);
 }
 
 .field {
@@ -27,7 +27,7 @@
   padding: 0 12px;
   border: 1px solid #e5e7eb;
   border-radius: 9px;
-  background: #ffffff;
+  background: var(--surface);
   color: #111827;
   font-size: 14px;
   line-height: 20px;
@@ -58,7 +58,7 @@
 }
 
 .error {
-  color: #b42318;
+  color: var(--red-fg);
   font-weight: 700;
 }
 

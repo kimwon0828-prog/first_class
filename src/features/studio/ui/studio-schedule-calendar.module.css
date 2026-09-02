@@ -1,13 +1,13 @@
 .calendar {
   display: grid;
-  gap: 12px;
+  gap: var(--s3);
 }
 
 .weekdayRow,
 .monthGrid {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
-  gap: 8px;
+  gap: var(--s2);
 }
 
 .weekdayCell {
@@ -27,7 +27,7 @@
   min-height: 108px;
   border: 1px solid #e5e7eb;
   border-radius: 14px;
-  background: #ffffff;
+  background: var(--surface);
   padding: 10px 10px 12px;
   display: grid;
   align-content: start;
@@ -36,7 +36,7 @@
 }
 
 .dayCellMuted {
-  background: #fafafa;
+  background: var(--surface-sub);
   color: #9ca3af;
 }
 
@@ -58,7 +58,7 @@
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 8px;
+  gap: var(--s2);
 }
 
 .dayNumber {
@@ -78,7 +78,7 @@
   justify-content: center;
   min-height: 20px;
   padding: 0 8px;
-  border-radius: 999px;
+  border-radius: var(--r-full);
   background: #f3fbf4;
   color: #15803d;
   font-size: 11px;
@@ -100,7 +100,7 @@
   justify-content: center;
   min-height: 20px;
   padding: 0 8px;
-  border-radius: 999px;
+  border-radius: var(--r-full);
   font-size: 11px;
   line-height: 14px;
   font-weight: 700;
@@ -139,7 +139,7 @@
 
   .dayCell {
     min-height: 84px;
-    padding: 8px;
+    padding: var(--s2);
   }
 
   .dayNumber {

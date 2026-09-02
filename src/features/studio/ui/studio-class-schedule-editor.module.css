@@ -6,8 +6,8 @@
 .infoCard,
 .exceptionCard {
   border: 1px solid #e5e7eb;
-  border-radius: 12px;
-  background: #ffffff;
+  border-radius: var(--r-md);
+  background: var(--surface);
 }
 
 .infoCard {
@@ -41,8 +41,8 @@
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  gap: 16px;
-  padding: 20px 20px 16px;
+  gap: var(--s4);
+  padding: var(--s5) var(--s5) var(--s4);
   border-bottom: 1px solid #e5e7eb;
 }
 
@@ -50,7 +50,7 @@
 .infoBadges,
 .noticeRow {
   display: flex;
-  gap: 8px;
+  gap: var(--s2);
   flex-wrap: wrap;
 }
 
@@ -58,8 +58,8 @@
 .toggleButton {
   min-height: 38px;
   border: 1px solid #e5e7eb;
-  border-radius: 12px;
-  background: #ffffff;
+  border-radius: var(--r-md);
+  background: var(--surface);
   color: #111827;
   padding: 0 14px;
   font-size: 13px;
@@ -74,10 +74,10 @@
 
 .weeklyCard {
   display: grid;
-  gap: 4px;
+  gap: var(--s1);
   padding: 14px 16px;
   border: 1px solid #e5e7eb;
-  border-radius: 12px;
+  border-radius: var(--r-md);
   background: #f9faf9;
 }
 
@@ -94,7 +94,7 @@
 }
 
 .calendarPane {
-  padding: 20px;
+  padding: var(--s5);
   border-right: 1px solid #e5e7eb;
 }
 
@@ -103,7 +103,7 @@
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 12px;
+  gap: var(--s3);
 }
 
 .calendarMonthLabel {
@@ -115,11 +115,11 @@
 }
 
 .calendarHeader {
-  margin-bottom: 16px;
+  margin-bottom: var(--s4);
 }
 
 .panelPane {
-  padding: 20px;
+  padding: var(--s5);
   background: #fcfcfd;
 }
 
@@ -130,14 +130,14 @@
   justify-content: center;
   min-height: 26px;
   padding: 0 10px;
-  border-radius: 999px;
+  border-radius: var(--r-full);
   font-size: 12px;
   line-height: 16px;
   font-weight: 800;
 }
 
 .noticeBadge {
-  background: #eaf7ec;
+  background: var(--brand-50);
   color: #1f8b2c;
 }
 

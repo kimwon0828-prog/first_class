@@ -1,17 +1,17 @@
 .card {
   display: grid;
-  gap: 16px;
-  padding: 20px;
+  gap: var(--s4);
+  padding: var(--s5);
   border: 1px solid #e5e7eb;
-  border-radius: 12px;
-  background: #ffffff;
+  border-radius: var(--r-md);
+  background: var(--surface);
 }
 
 .header {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  gap: 16px;
+  gap: var(--s4);
   flex-wrap: wrap;
 }
 
@@ -34,7 +34,7 @@
 .actionButton {
   border: 1px solid #e5e7eb;
   border-radius: 10px;
-  background: #ffffff;
+  background: var(--surface);
   color: #111827;
   font-size: 14px;
   line-height: 20px;
@@ -45,7 +45,7 @@
 
 .summaryList {
   display: grid;
-  gap: 12px;
+  gap: var(--s3);
 }
 
 .summaryHeading {
@@ -58,9 +58,9 @@
 .groupCard {
   display: grid;
   gap: 6px;
-  padding: 16px;
+  padding: var(--s4);
   border: 1px solid #e5e7eb;
-  border-radius: 12px;
+  border-radius: var(--r-md);
   background: #f9faf9;
 }
 
@@ -73,7 +73,7 @@
 
 .timeList {
   display: grid;
-  gap: 4px;
+  gap: var(--s1);
 }
 
 .timeLabel,
