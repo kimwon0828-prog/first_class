@@ -1,5 +1,5 @@
 .page {
-  background: #fafafa;
+  background: var(--bg);
   min-height: 100dvh;
 }
 
@@ -35,7 +35,7 @@
   line-height: 16px;
   letter-spacing: 0.16em;
   font-weight: 800;
-  color: #2aad38;
+  color: var(--brand-700);
 }
 
 .title {
@@ -44,23 +44,23 @@
   line-height: 36px;
   letter-spacing: -0.04em;
   font-weight: 800;
-  color: #111111;
+  color: var(--text-1);
 }
 
 .description {
   margin: 0;
   font-size: 14px;
   line-height: 22px;
-  color: #666666;
+  color: var(--text-2);
 }
 
 .primaryButton {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  height: 48px;
+  height: 40px;
   padding: 0 16px;
-  border-radius: 12px;
+  border-radius: var(--r-md);
   background: var(--brand-700);
   border: 1px solid var(--brand-700);
   color: #ffffff;
@@ -76,9 +76,9 @@
 }
 
 .alertDanger {
-  background: #ffffff;
+  background: var(--surface);
   border: 1px solid #fecaca;
-  border-radius: 18px;
+  border-radius: var(--r-lg);
   padding: 14px 16px;
 }
 
@@ -86,7 +86,7 @@
   margin: 0;
   font-size: 13px;
   line-height: 18px;
-  color: #991b1b;
+  color: var(--red-fg);
   font-weight: 600;
 }
 

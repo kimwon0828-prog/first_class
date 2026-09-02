@@ -36,22 +36,6 @@ export const StudioClassesManager = ({ items }: StudioClassesManagerProps) => {
   const totalCount = items.length
   const activeCount = items.filter((item) => item.isActive).length
   const inactiveCount = totalCount - activeCount
-  const teacherCount = useMemo(() => {
-    const unique = new Set<string>()
-    items.forEach((item) => {
-      if (item.teacherId) {
-        unique.add(item.teacherId)
-        return
-      }
-
-      const fallback = (item.teacherDisplayName ?? item.teacherName ?? "").trim()
-      if (fallback) {
-        unique.add(fallback)
-      }
-    })
-    return unique.size
-  }, [items])
-
   const filteredItems = useMemo(() => {
     const needle = query.trim().toLowerCase()
 
@@ -132,41 +116,6 @@ export const StudioClassesManager = ({ items }: StudioClassesManagerProps) => {
         </div>
       ) : null}
 
-      <section className={styles.metrics} aria-label="수업 요약 지표">
-        <div className={styles.metricCard}>
-          <div className={styles.metricTop}>
-            <p className={styles.metricLabel}>전체 수업</p>
-            <span className={styles.metricAccent} aria-hidden="true" />
-          </div>
-          <p className={styles.metricValue}>{totalCount}</p>
-          <p className={styles.metricDescription}>등록된 수업 전체</p>
-        </div>
-        <div className={styles.metricCard}>
-          <div className={styles.metricTop}>
-            <p className={styles.metricLabel}>공개 중</p>
-            <span className={styles.metricAccent} aria-hidden="true" />
-          </div>
-          <p className={styles.metricValue}>{activeCount}</p>
-          <p className={styles.metricDescription}>학부모에게 노출 중인 수업</p>
-        </div>
-        <div className={styles.metricCard}>
-          <div className={styles.metricTop}>
-            <p className={styles.metricLabel}>비공개</p>
-            <span className={styles.metricAccentMuted} aria-hidden="true" />
-          </div>
-          <p className={styles.metricValue}>{inactiveCount}</p>
-          <p className={styles.metricDescription}>노출되지 않는 수업</p>
-        </div>
-        <div className={styles.metricCard}>
-          <div className={styles.metricTop}>
-            <p className={styles.metricLabel}>담당 선생님</p>
-            <span className={styles.metricAccent} aria-hidden="true" />
-          </div>
-          <p className={styles.metricValue}>{teacherCount}</p>
-          <p className={styles.metricDescription}>배정된 담당 수</p>
-        </div>
-      </section>
-
       <section className={styles.toolbar} aria-label="필터 및 검색">
         <div className={styles.searchWrap}>
           <input
@@ -202,169 +151,111 @@ export const StudioClassesManager = ({ items }: StudioClassesManagerProps) => {
         </div>
       </section>
 
-      <div className={styles.grid}>
-        <section className={styles.listCard} aria-label="수업 목록">
-          <header className={styles.listHeader}>
-            <div>
-              <h2 className={styles.listTitle}>수업 목록</h2>
-            </div>
-          </header>
+      <section className={styles.workspace} aria-label="수업 목록">
+        <p className={styles.resultMeta}>
+          전체 {totalCount}개 · 공개 {activeCount}개 · 비공개 {inactiveCount}개
+          {filteredItems.length !== totalCount ? ` · 조건에 맞는 수업 ${filteredItems.length}개` : ""}
+        </p>
 
-          {items.length === 0 ? (
-            <div className={styles.empty}>
-              <div className={styles.emptyIcon} aria-hidden="true" />
-              <p className={styles.emptyTitle}>아직 등록된 수업이 없어요.</p>
-              <p className={styles.emptyDescription}>
-                첫 수업을 등록하면 학부모가 수업을 확인하고 신청할 수 있어요.
-              </p>
-              <Link
-                href="/studio/classes/new"
-                className={styles.primaryButton}
-                aria-busy={pendingHref === "/studio/classes/new"}
-                onClick={() => setPendingHref("/studio/classes/new")}
-              >
-                {pendingHref === "/studio/classes/new" ? "이동 중..." : "수업 등록하기"}
-              </Link>
+        {items.length === 0 ? (
+          <div className={styles.empty}>
+            <p className={styles.emptyTitle}>아직 등록된 수업이 없어요.</p>
+            <p className={styles.emptyDescription}>
+              첫 수업을 등록하면 학부모가 수업을 확인하고 신청할 수 있어요.
+            </p>
+            <Link
+              href="/studio/classes/new"
+              className={styles.primaryButton}
+              aria-busy={pendingHref === "/studio/classes/new"}
+              onClick={() => setPendingHref("/studio/classes/new")}
+            >
+              {pendingHref === "/studio/classes/new" ? "이동 중..." : "수업 등록"}
+            </Link>
+          </div>
+        ) : filteredItems.length === 0 ? (
+          <div className={styles.empty}>
+            <p className={styles.emptyTitle}>검색 결과가 없어요.</p>
+            <p className={styles.emptyDescription}>다른 키워드로 다시 검색해 보세요.</p>
+          </div>
+        ) : (
+          <>
+            <div className={styles.listHead} aria-hidden="true">
+              <span>수업</span>
+              <span>대상 · 유형</span>
+              <span>담당</span>
+              <span>예약 시간</span>
+              <span>공개</span>
+              <span />
             </div>
-          ) : (
-            <>
-              <div className={styles.ctaCard}>
-                <div className={styles.ctaLeft}>
-                  <div className={styles.ctaText}>
-                    <p className={styles.ctaTitle}>새 프로그램을 등록해보세요</p>
-                    <p className={styles.ctaDescription}>
-                      체험수업, 레벨테스트, 정규 수업 정보를 등록하면 학부모가 바로 신청할 수 있어요.
-                    </p>
+
+            <ul className={styles.list}>
+              {filteredItems.map((item) => (
+                <li key={item.id} className={styles.row}>
+                  <div className={styles.cellClass}>
+                    <Link
+                      href={`/studio/classes/${item.id}/edit`}
+                      className={styles.classTitle}
+                      aria-busy={pendingHref === `/studio/classes/${item.id}/edit`}
+                      onClick={() => setPendingHref(`/studio/classes/${item.id}/edit`)}
+                    >
+                      {item.title}
+                    </Link>
+                    <span className={styles.classMeta}>
+                      {[formatClassSubjectDisplayLabel(item) || null, formatPrice(item.trialPrice)]
+                        .filter((value): value is string => Boolean(value))
+                        .join(" · ")}
+                    </span>
                   </div>
-                </div>
-                <Link
-                  href="/studio/classes/new"
-                  className={styles.ctaButton}
-                  aria-busy={pendingHref === "/studio/classes/new"}
-                  onClick={() => setPendingHref("/studio/classes/new")}
-                >
-                  {pendingHref === "/studio/classes/new" ? "이동 중..." : "새 수업 등록"}
-                </Link>
-              </div>
 
-              {filteredItems.length === 0 ? (
-                <div className={styles.emptySoft}>
-                  <p className={styles.emptyTitle}>검색 결과가 없어요.</p>
-                  <p className={styles.emptyDescription}>다른 키워드로 다시 검색해보세요.</p>
-                </div>
-              ) : (
-                <div className={styles.cards}>
-                  {filteredItems.map((item) => (
-                    <article key={item.id} className={styles.classCard}>
-                      <div className={styles.cardTop}>
-                        <div
-                          className={styles.cover}
-                          style={
-                            item.coverImageUrl
-                              ? undefined
-                              : {
-                                  background: "#f3fbf4",
-                                  border: "1px solid #eaf8ec"
-                                }
-                          }
-                        >
-                          {item.coverImageUrl ? (
-                            <>
-                              {/* eslint-disable-next-line @next/next/no-img-element */}
-                              <img
-                                src={item.coverImageUrl}
-                                alt={`${item.title} 대표 이미지`}
-                                className={styles.coverImage}
-                              />
-                            </>
-                          ) : (
-                            <div className={styles.coverPlaceholder}>
-                              <span className={styles.coverMark}>첫수업</span>
-                            </div>
-                          )}
-                        </div>
+                  <div className={styles.cellText}>
+                    {formatStoredTargetGrades(item.targetAge)}
+                    <span className={styles.cellSub}>{PROGRAM_TYPE_LABELS[item.programType]}</span>
+                  </div>
 
-                        <div className={styles.cardBody}>
-                          <div className={styles.badgeRow}>
-                            <span
-                              className={`${styles.badge} ${item.isActive ? styles.badgeActive : styles.badgeInactive}`}
-                            >
-                              {item.isActive ? "공개 중" : "비공개"}
-                            </span>
-                            <span className={styles.programPill}>{PROGRAM_TYPE_LABELS[item.programType]}</span>
-                          </div>
+                  <div className={styles.cellText}>
+                    {item.teacherDisplayName ?? item.teacherName ?? (
+                      <span className={styles.cellMuted}>미지정</span>
+                    )}
+                  </div>
 
-                          <p className={styles.classTitle}>{item.title}</p>
+                  <div className={styles.cellText}>
+                    {item.scheduleCount > 0 ? (
+                      `${item.scheduleCount}개`
+                    ) : (
+                      <span className={styles.cellMuted}>미설정</span>
+                    )}
+                  </div>
 
-                          <p className={styles.subtitle}>
-                            {formatStoredTargetGrades(item.targetAge)} · {formatClassSubjectDisplayLabel(item)}
-                          </p>
+                  <div className={styles.cellStatus}>
+                    <span
+                      className={`${styles.badge} ${item.isActive ? styles.badgeActive : styles.badgeInactive}`}
+                    >
+                      {item.isActive ? "공개 중" : "비공개"}
+                    </span>
+                  </div>
 
-                          <dl className={styles.metaGrid}>
-                            <div className={styles.metaItem}>
-                              <dt className={styles.metaLabel}>담당</dt>
-                              <dd className={styles.metaValue}>
-                                {item.teacherDisplayName ?? item.teacherName ?? "미지정"}
-                              </dd>
-                            </div>
-                            <div className={styles.metaItem}>
-                              <dt className={styles.metaLabel}>대상</dt>
-                              <dd className={styles.metaValue}>{formatStoredTargetGrades(item.targetAge)}</dd>
-                            </div>
-                            <div className={styles.metaItem}>
-                              <dt className={styles.metaLabel}>유형</dt>
-                              <dd className={styles.metaValue}>{PROGRAM_TYPE_LABELS[item.programType]}</dd>
-                            </div>
-                            <div className={styles.metaItem}>
-                              <dt className={styles.metaLabel}>과목</dt>
-                              <dd className={styles.metaValue}>
-                                {formatClassSubjectDisplayLabel(item) || "과목 정보 준비 중"}
-                              </dd>
-                            </div>
-                            <div className={styles.metaItem}>
-                              <dt className={styles.metaLabel}>체험비</dt>
-                              <dd className={styles.metaValue}>{formatPrice(item.trialPrice)}</dd>
-                            </div>
-                            <div className={styles.metaItem}>
-                              <dt className={styles.metaLabel}>예약 시간</dt>
-                              <dd className={styles.metaValue}>
-                                {item.scheduleCount > 0 ? `${item.scheduleCount}개 설정됨` : "미설정"}
-                              </dd>
-                            </div>
-                          </dl>
-                        </div>
-                      </div>
-
-                      <div className={styles.cardFooter}>
-                        <div className={styles.footerLeft}>
-                          {item.isActive ? (
-                            <Link href={`/classes/${item.id}`} className={styles.secondaryButtonSm}>
-                              미리보기
-                            </Link>
-                          ) : (
-                            <span className={styles.footerHint}>비공개 수업은 미리보기를 숨깁니다.</span>
-                          )}
-                        </div>
-                        <div className={styles.footerRight}>
-                          <ToggleClassActiveButton classId={item.id} isActive={item.isActive} />
-                          <Link
-                            href={`/studio/classes/${item.id}/edit`}
-                            className={styles.primaryButtonSm}
-                            aria-busy={pendingHref === `/studio/classes/${item.id}/edit`}
-                            onClick={() => setPendingHref(`/studio/classes/${item.id}/edit`)}
-                          >
-                            {pendingHref === `/studio/classes/${item.id}/edit` ? "이동 중..." : "수정하기"}
-                          </Link>
-                        </div>
-                      </div>
-                    </article>
-                  ))}
-                </div>
-              )}
-            </>
-          )}
-        </section>
-      </div>
+                  <div className={styles.cellActions}>
+                    {item.isActive ? (
+                      <Link href={`/classes/${item.id}`} className={styles.rowAction}>
+                        미리보기
+                      </Link>
+                    ) : null}
+                    <ToggleClassActiveButton classId={item.id} isActive={item.isActive} />
+                    <Link
+                      href={`/studio/classes/${item.id}/edit`}
+                      className={styles.rowActionStrong}
+                      aria-busy={pendingHref === `/studio/classes/${item.id}/edit`}
+                      onClick={() => setPendingHref(`/studio/classes/${item.id}/edit`)}
+                    >
+                      {pendingHref === `/studio/classes/${item.id}/edit` ? "이동 중..." : "수정"}
+                    </Link>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
+      </section>
     </div>
   )
 }
@@ -374,8 +265,8 @@ const ToggleClassActiveButton = ({ classId, isActive }: { classId: string; isAct
     <form action={submitToggleStudioClassActiveAction}>
       <input type="hidden" name="classId" value={classId} />
       <input type="hidden" name="nextIsActive" value={String(!isActive)} />
-      <button type="submit" className={styles.secondaryButtonSm}>
-        {isActive ? "비공개 전환" : "공개 전환"}
+      <button type="submit" className={styles.rowAction}>
+        {isActive ? "비공개" : "공개"}
       </button>
     </form>
   )
