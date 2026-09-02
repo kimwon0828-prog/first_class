@@ -96,6 +96,19 @@ export type ClassSummary = ClassSubjectReadModel & {
   distanceKm?: number
 }
 
+/**
+ * Studio Classes List 의 "예약 일정" 표시 모델.
+ * class_schedules row 개수가 아니라 운영자가 읽는 일정 요약이다.
+ * 계산은 features/studio/lib/class-schedule-summary.ts 가 한다.
+ */
+export type StudioClassScheduleSummaryKind = "none" | "weekly" | "single" | "multiple"
+
+export type StudioClassScheduleSummary = {
+  kind: StudioClassScheduleSummaryKind
+  primary: string
+  secondary: string | null
+}
+
 export type StudioClassListItem = ClassSubjectReadModel & {
   id: string
   programType: ClassProgramType
@@ -109,7 +122,7 @@ export type StudioClassListItem = ClassSubjectReadModel & {
   teacherName: string | null
   coverImageUrl: string | null
   isActive: boolean
-  scheduleCount: number
+  scheduleSummary: StudioClassScheduleSummary
 }
 
 export type OrganizationLocationInfo = {

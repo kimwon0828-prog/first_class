@@ -205,7 +205,7 @@ export const StudioClassesManager = ({ items }: StudioClassesManagerProps) => {
               <span>수업</span>
               <span>대상 · 유형</span>
               <span>담당</span>
-              <span>예약 시간</span>
+              <span>예약 일정</span>
               <span>공개</span>
               <span />
             </div>
@@ -241,10 +241,15 @@ export const StudioClassesManager = ({ items }: StudioClassesManagerProps) => {
                   </div>
 
                   <div className={styles.cellText}>
-                    {item.scheduleCount > 0 ? (
-                      `${item.scheduleCount}개`
+                    {item.scheduleSummary.kind === "none" ? (
+                      <span className={styles.cellMuted}>{item.scheduleSummary.primary}</span>
                     ) : (
-                      <span className={styles.cellMuted}>미설정</span>
+                      <>
+                        {item.scheduleSummary.primary}
+                        {item.scheduleSummary.secondary ? (
+                          <span className={styles.cellSub}>{item.scheduleSummary.secondary}</span>
+                        ) : null}
+                      </>
                     )}
                   </div>
 

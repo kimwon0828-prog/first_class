@@ -61,6 +61,7 @@ import {
 } from "@/shared/lib/seoul-datetime"
 import { normalizeSubjectCategory } from "@/shared/constants/education-taxonomy"
 import { formatAdministrativeRegionLabel } from "@/features/location/lib/region-selection"
+import { summarizeStudioClassSchedules } from "@/features/studio/lib/class-schedule-summary"
 import {
   buildClassSubjectReadModel,
   formatClassSubjectDisplayLabel,
@@ -389,7 +390,14 @@ const toStudioClassListItem = (item: ClassSummary): StudioClassListItem => ({
   teacherName: item.teacherName,
   coverImageUrl: item.coverImageUrl,
   isActive: item.isActive,
-  scheduleCount: item.schedules?.length ?? 0
+  scheduleSummary: summarizeStudioClassSchedules(
+    (item.schedules ?? []).map((schedule) => ({
+      scheduleType: schedule.scheduleType,
+      dayOfWeek: schedule.dayOfWeek,
+      specificDate: schedule.specificDate,
+      startTime: schedule.startTime
+    }))
+  )
 })
 
 const toMockClassSchedules = (input: {

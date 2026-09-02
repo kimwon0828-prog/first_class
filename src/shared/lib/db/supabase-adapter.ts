@@ -29,6 +29,11 @@ import {
 } from "@/shared/lib/subject-master"
 import { normalizeSubjectCategory } from "@/shared/constants/education-taxonomy"
 import { formatAdministrativeRegionLabel } from "@/features/location/lib/region-selection"
+import {
+  EMPTY_STUDIO_CLASS_SCHEDULE_SUMMARY,
+  summarizeStudioClassSchedules
+} from "@/features/studio/lib/class-schedule-summary"
+import type { StudioClassScheduleSummaryInput } from "@/features/studio/lib/class-schedule-summary"
 import type {
   ActivateStudioTeacherInput,
   StudioTeacherReferenceCounts,
@@ -62,6 +67,7 @@ import type {
   StudioUnregisteredApplicationItem,
   StudioUnregisteredListOptions,
   StudioClassListItem,
+  StudioClassScheduleSummary,
   StudioClassInput,
   StudioClassScheduleBookingStatus,
   StudioClassScheduleItem,
@@ -393,7 +399,7 @@ const mapClass = (
 const mapStudioClassListItem = (
   row: StudioClassListRow,
   teacherName: string | null,
-  scheduleCount: number
+  scheduleSummary: StudioClassScheduleSummary
 ): StudioClassListItem => {
   const resolvedTeacherName = teacherName ?? row.teacher_display_name ?? null
 
@@ -416,7 +422,7 @@ const mapStudioClassListItem = (
     teacherName: resolvedTeacherName,
     coverImageUrl: row.cover_image_url ?? null,
     isActive: row.is_active,
-    scheduleCount
+    scheduleSummary
   }
 }
 
@@ -560,34 +566,74 @@ const attachClassSchedulesToRows = async (
   }))
 }
 
-const getScheduleCountByClassId = async (
+/** PostgREST 는 한 응답에서 최대 1000 row 만 돌려준다. 그 이상은 나눠 받는다. */
+const SCHEDULE_SUMMARY_PAGE_SIZE = 1000
+
+/**
+ * Classes List 의 "예약 일정" 요약.
+ *
+ * 반복 수업이 occurrence 단위로 저장돼 한 수업에 수백 row 가 생길 수 있고,
+ * 조직 전체 합계가 1000 row 를 넘으면 예전 count 쿼리는 조용히 잘린 값을 돌려줬다.
+ * (실제로 384 row 짜리 수업이 목록에 34개로 보였다.)
+ * classIds 는 이미 organization scope 가 확정된 목록이라 다른 조직 데이터가 섞이지 않는다.
+ */
+const getScheduleSummaryByClassId = async (
   supabase: Awaited<ReturnType<typeof getSupabaseServerClient>>,
   classIds: string[]
 ) => {
   const uniqueClassIds = Array.from(new Set(classIds.filter(Boolean)))
   if (uniqueClassIds.length === 0) {
-    return new Map<string, number>()
+    return new Map<string, StudioClassScheduleSummary>()
   }
 
-  const { data, error } = await supabase
-    .from("class_schedules")
-    .select("class_id")
-    .in("class_id", uniqueClassIds)
+  const rowsByClassId = new Map<string, StudioClassScheduleSummaryInput[]>()
 
-  if (error) {
-    throw new Error("failed_to_fetch_studio_class_schedule_counts")
-  }
+  for (let offset = 0; ; offset += SCHEDULE_SUMMARY_PAGE_SIZE) {
+    const { data, error } = await supabase
+      .from("class_schedules")
+      .select("class_id, schedule_type, day_of_week, specific_date, start_time")
+      .in("class_id", uniqueClassIds)
+      .order("id", { ascending: true })
+      .range(offset, offset + SCHEDULE_SUMMARY_PAGE_SIZE - 1)
 
-  const countByClassId = new Map<string, number>()
-  for (const row of (data ?? []) as Array<{ class_id: string | null }>) {
-    if (!row.class_id) {
-      continue
+    if (error) {
+      throw new Error("failed_to_fetch_studio_class_schedule_summaries")
     }
 
-    countByClassId.set(row.class_id, (countByClassId.get(row.class_id) ?? 0) + 1)
+    const page = (data ?? []) as Array<{
+      class_id: string | null
+      schedule_type: string | null
+      day_of_week: number | null
+      specific_date: string | null
+      start_time: string | null
+    }>
+
+    for (const row of page) {
+      if (!row.class_id) {
+        continue
+      }
+
+      const current = rowsByClassId.get(row.class_id) ?? []
+      current.push({
+        scheduleType: row.schedule_type,
+        dayOfWeek: row.day_of_week,
+        specificDate: row.specific_date,
+        startTime: row.start_time
+      })
+      rowsByClassId.set(row.class_id, current)
+    }
+
+    if (page.length < SCHEDULE_SUMMARY_PAGE_SIZE) {
+      break
+    }
   }
 
-  return countByClassId
+  const summaryByClassId = new Map<string, StudioClassScheduleSummary>()
+  for (const [classId, rows] of rowsByClassId) {
+    summaryByClassId.set(classId, summarizeStudioClassSchedules(rows))
+  }
+
+  return summaryByClassId
 }
 
 const getEmbeddedOrganization = (row: ClassRow): OrganizationLocationRow | null => {
@@ -2551,8 +2597,8 @@ export const supabaseDataAdapter: DataAdapter = {
       supabase,
       (data ?? []) as StudioClassListRow[]
     )
-    const [scheduleCountByClassId, teacherNameMap] = await Promise.all([
-      getScheduleCountByClassId(
+    const [scheduleSummaryByClassId, teacherNameMap] = await Promise.all([
+      getScheduleSummaryByClassId(
         supabase,
         classRows.map((row) => row.id)
       ),
@@ -2565,7 +2611,7 @@ export const supabaseDataAdapter: DataAdapter = {
       mapStudioClassListItem(
         row,
         row.teacher_id ? (teacherNameMap.get(row.teacher_id) ?? null) : null,
-        scheduleCountByClassId.get(row.id) ?? 0
+        scheduleSummaryByClassId.get(row.id) ?? EMPTY_STUDIO_CLASS_SCHEDULE_SUMMARY
       )
     )
 
