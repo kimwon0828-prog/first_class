@@ -1,10 +1,36 @@
-# 첫수업 Studio 디자인 시스템 v1.1
+# 첫수업 Studio 디자인 시스템 v2
 
 파트너 센터(`/studio`) 전용 기준 문서. 학원 운영자가 쓰는 **업무 도구**의 규칙이다.
 학부모 페이지(`/classes`, `/my`)에는 적용하지 않는다 — 그쪽은 480px 모바일 컬럼 체계로 별도 관리.
 
 AI 코딩 에이전트(Codex, Claude Code)는 `/studio` 하위 UI 작업 시 이 문서를 준수한다.
 여기 없는 값을 새로 만들지 말 것. 필요하면 구현하지 말고 보고할 것.
+
+## Design Direction v2
+
+> **넓고 정돈된 SaaS 작업 공간의 구조를 빌려오되, 화면의 주인공은 첫수업의 Green 브랜드와
+> 상담 → 체험 → 등록으로 이어지는 원장의 업무 흐름이다.**
+
+### 외부 레퍼런스(Base)의 위치
+
+v2는 외부 SaaS 템플릿 **Base**의 화면들(Dashboard / List / Calendar / Board / Drawer /
+Modal / Split Form / Auth 등)을 검토해 도출했다.
+
+Base는 **visual clone target 이 아니다.** 참고하는 것은 아래뿐이다.
+
+- 정보 위계
+- page composition
+- workspace density
+- interaction pattern
+- overlay 사용 방식
+- list / calendar / form 구조
+
+**가져오지 않는 것**: Base 로고 · 보라색 primary · Base 타이포그래피 · 일러스트 스타일 ·
+Upgrade Now 카드 · 커머스형 KPI · 제품/매출 중심 IA · 장식 차트 · 모든 row 를 카드로 띄우는 방식 ·
+불필요한 아바타 장식.
+
+첫수업은 **기존 로고 · 기존 폰트 · 기존 Green · 기존 semantic tone · 현재 Studio IA** 를 그대로 유지한다.
+v2 는 기존 Foundation(UI-1A~1E)을 폐기하는 redesign 이 아니라, 그 위에 **화면 문법**을 얹는 작업이다.
 
 ### AI 코딩 에이전트 작업 절차
 
@@ -57,7 +83,21 @@ Studio에서 신청 한 건(`trial_applications.id`)은 신청·상담·일정�
 시스템 내부 status transition을 사용자 action depth로 그대로 노출하지 않는다.
 한 번의 업무 판단으로 끝나는 흐름이라면 중간 상태를 위한 별도 클릭 단계를 만들지 않는다.
 
-### 0.3 동일 데이터, 다른 View
+### 0.3 Workspace 우선
+
+Studio 는 **사이드바 + 넓은 Main Workspace** 구조다.
+Main 은 `--bg` 위에 놓이고, `--surface` 는 **필요한 영역에만** 쓴다.
+
+**모든 내용을 Card 안에 넣지 않는다.** 표·폼·목록은 카드로 감싸지 않아도 되는 것이 기본이고,
+위계는 `surface + border + spacing` 으로 만든다.
+
+### 0.4 정돈됨 ≠ 저밀도
+
+넓고 밝은 인상을 위해 정보량을 줄이지 않는다.
+`상담·등록 목록`, `일정 목록` 같은 화면은 **한 화면에서 충분한 행을 볼 수 있는가** 가 더 중요하다.
+예쁘게 보이려고 row height · padding · card gap 을 키우지 않는다.
+
+### 0.5 동일 데이터, 다른 View
 
 목록·캘린더·홈은 서로 다른 데이터 모델이 아니라 **같은 Case를 다른 관점에서 보는 View**다.
 View마다 상태 정의나 라벨을 새로 만들지 않는다. 공용 상수·공용 파생 함수를 쓴다.
@@ -243,7 +283,10 @@ Studio의 상태는 두 축이다. **하나로 합쳐 표현하지 않는다.**
 ### 2.5 섀도우
 
 **카드 무섀도우.** `1px solid var(--border)` 플랫 아웃라인.
-예외: 모달, 드롭다운, 토스트, 스티키 바 — `0 8px 28px rgba(0,0,0,.07)` 수준까지.
+일반 카드의 위계는 `surface + border + spacing` 으로 만든다.
+
+예외 — **실제로 다른 레이어 위에 뜨는 것만**: 모달, 드로어, 드롭다운, 토스트, 스티키/플로팅 바,
+포커스 링. `0 8px 28px rgba(0,0,0,.07)` 수준까지.
 
 ### 2.6 Content Width
 
@@ -259,7 +302,20 @@ Studio의 상태는 두 축이다. **하나로 합쳐 표현하지 않는다.**
 
 ## 3. Page Pattern
 
-새 화면을 만들기 전에 아래 4개 중 무엇인지 먼저 정한다.
+새 화면을 만들기 전에 **아래 9개 중 무엇인지 먼저 정한다.**
+화면마다 같은 카드 조합을 복사하지 않고, 업무 유형에 맞는 패턴을 고른다.
+
+| # | Pattern | 언제 쓰는가 | 상태 |
+|---|---|---|---|
+| 1 | List Page | 많은 항목을 빠르게 훑고 하나를 고른다 | 사용 중 |
+| 2 | Detail Page | 한 대상의 현재 상황과 다음 행동을 다룬다 | 사용 중 |
+| 3 | List + Context Panel | 목록을 떠나지 않고 선택 항목을 확인한다 | **Future** |
+| 4 | Full-page Form | 여러 판단·여러 섹션이 있는 생성/수정 | 사용 중 |
+| 5 | Split Form + Preview | 입력 결과를 실제 산출물로 확인해야 한다 | **Future** |
+| 6 | Calendar Workspace | 시간축이 주인공인 운영 화면 | 개선 예정 |
+| 7 | Board View | 단계 이동이 주 업무일 때 | **Future** |
+| 8 | Dashboard | 오늘 처리할 일을 고른다 | 개선 예정 |
+| 9 | Settings / Form Page | 설정값을 바꾼다 | 사용 중 |
 
 ### 3.1 List Page
 
@@ -269,6 +325,15 @@ Tabs / Filter / Search
 List / Table
 Pagination
 ```
+
+적용: `/studio/cases`, 수업 관리, 선생님 관리.
+
+- 페이지 제목은 짧게. 필터·검색은 **목록 가까이** 둔다.
+- 표/목록 주변에 카드를 겹치지 않는다.
+- **각 row 를 떠 있는 카드로 만들지 않는다.** 행은 행이다.
+- 상태는 soft semantic 배지(§6.4).
+- 핵심 action 만 밖에 노출하고, 나머지는 `···` 컨텍스트 메뉴(§6.8).
+- row 간격은 업무 효율을 해치지 않는 선에서 유지한다(§0.4).
 
 ### 3.2 Detail Page
 
@@ -281,20 +346,95 @@ Domain Information
 Additional Information
 ```
 
-### 3.3 Settings Page
+적용: `/studio/applications/[id]`.
+
+**현재 상황 → 다음 행동 → 핵심 정보 → 사람이 남긴 기록 → 시스템 기록** 순서가 명확해야 한다.
+일반 Detail 에 KPI 카드를 넣지 않으며, 사람의 활동이 시스템 이벤트보다 크게 보여야 한다(§4.2).
+
+### 3.3 List + Context Panel *(Future)*
+
+```
+[ List ............................ | Context Panel ]
+```
+
+목록을 떠나지 않고 선택한 항목의 핵심만 확인하는 구조.
+**Full Detail 의 대체물이 아니다.** 패널에는 identity · 상태 · 핵심 metadata · 최근 정보 ·
+대표 action 정도만 둔다. 편집과 워크플로는 Full Detail 로 보낸다.
+
+후보: Case quick preview, 선생님 상세, 수업 quick info. **이번 단계에서 구현하지 않는다.**
+
+### 3.4 Full-page Form
+
+```
+Page Header (+ 단계)
+Section …
+최종 확인
+```
+
+적용: `/studio/classes/new`.
+
+여러 섹션 · 여러 판단 · 단계가 있는 업무는 Full Page 다.
+**모든 폼을 Drawer 로 바꾸지 않는다.** 한 영역의 Primary CTA 는 최대 1개(§6.1).
+
+### 3.5 Split Form + Preview *(Future)*
+
+```
+[ 입력 ............ | 실제 결과 Preview ]
+```
+
+왼쪽은 입력, 오른쪽은 **사용자가 실제로 보게 될 결과물**이다.
+Preview 가 장식이면 이 패턴을 쓰지 않는다.
+
+후보: 체험수업 평가 리포트, 학부모 전달용 리포트, 등록 전환 인포그래픽, 공개 수업 미리보기.
+
+### 3.6 Calendar Workspace
+
+```
+[ 보조 패널 | 캘린더 캔버스 ]
+```
+
+왼쪽 보조 패널 후보: 미니 캘린더, 선생님 필터, 수업 필터, 일정 상태 필터.
+오른쪽 캔버스: **Day / Week / Month** 우선순위로 만든다.
+
+- Year View 는 실제 운영 필요가 확인되기 전까지 만들지 않는다.
+- 일정 데이터의 주인공은 **체험수업 / 레벨테스트 운영 일정**이다.
+- 일반 개인 캘린더 앱으로 확장하지 않는다(§12).
+- 시간축(Timeline) 표현은 Day / Week 안에서 쓴다.
+
+### 3.7 Board View *(Future)*
+
+단계 이동 자체가 주 업무일 때만 고려한다.
+Case 기준 후보 컬럼: 신규 신청 · 상담·확인 · 일정 확정 · 체험 후 관리.
+
+**한 기능에 List / Board / Timeline 을 전부 넣지 않는다.**
+상담·등록의 Primary View 는 **List** 이며 Board 는 optional 후보다.
+Timeline 을 상담·등록에 억지로 넣지 않는다.
+
+### 3.8 Dashboard
+
+첫수업 Dashboard 는 **Analytics-first 가 아니라 Action-first** 다.
+첫 질문은 언제나 **"오늘 무엇을 처리해야 하는가?"** 다.
+
+상단(우선순위 영역) 후보:
+
+- 신규 신청
+- 오늘 연락 필요
+- 오늘 체험수업
+- 후속 상담 지연
+
+그 아래에 신청 추이 · 체험 전환 · 등록 전환 같은 운영 지표를 둘 수 있다.
+**KPI 카드 4개를 만드는 것이 Dashboard 의 목적이 되어서는 안 된다.**
+
+차트는 다음을 모두 만족할 때만 쓴다: 실제 의사결정에 도움 · 추세/비교가 텍스트보다 명확 ·
+데이터가 충분히 신뢰 가능. 한 카드에는 하나의 질문만 담고,
+그라디언트 · 다색 · 장식용 도넛은 쓰지 않으며, 모든 series 를 첫수업 Green 으로 칠하지 않는다.
+
+### 3.9 Settings / Form Page
 
 ```
 Page Header
 Sub Navigation
 Settings Sections
-```
-
-### 3.4 Form Page
-
-```
-Page Header + Save
-Form
-Preview (필요한 화면만)
 ```
 
 ---
@@ -517,11 +657,38 @@ Studio를 Studio답게 만드는 요소들. 새로 만들지 말고 이걸 재�
 - 정보 안내: `--brand-50` 배경 + `i` 아이콘 원형 + 제목(13px/700) + 본문(12px `--text-2`). 화면 상단 1개까지.
 - 경고: `--amber-bg` 배경 + `--amber-fg` 텍스트, 12px, radius `--r-sm`. **조건부로만 노출** — 상시 노출되면 아무도 안 읽는다.
 
-### 6.7 빈 상태
+### 6.7 빈 상태 · 완료 상태
 
-`--text-3`, 중앙 정렬, 2줄 이내, **다음 행동을 반드시 안내**한다.
+**빈 상태**: `--text-3`, 중앙 정렬, 2줄 이내, **다음 행동을 반드시 안내**한다.
 `이 날짜에 생성된 타임이 없어요` / `아래에서 이 날짜에만 시간을 추가할 수 있어요` + 액션 버튼.
 필터 결과 0건이면 `[조건 초기화]` 버튼 필수. 일러스트·이모지 남용 금지.
+
+**완료 상태**: 인라인 피드백 · 토스트 · 도착한 화면 자체로 알리는 것이 기본이다.
+전체 화면 성공 페이지는 온보딩 완료처럼 **정말 중요한 순간에만** 쓴다.
+큰 일러스트를 기본 패턴으로 삼지 않는다.
+
+### 6.8 오버레이 위계 — Modal / Drawer / Full Page
+
+> **Modal = short task · Drawer = contextual edit · Full Page = complex workflow**
+
+| | 쓰는 경우 | 예 |
+|---|---|---|
+| **Modal** | 짧은 결정, 확인, 한 가지 작업 | 일정 간단 추가, 삭제 확인, 짧은 상태 변경 |
+| **Drawer** | 현재 맥락을 유지한 채 간단히 추가/수정 | 선생님 추가·수정, 간단한 metadata 편집, 후속 일정 설정 |
+| **Full Page** | 여러 섹션·여러 판단·단계·Preview | 수업 등록 |
+
+- **Modal 안에 긴 폼이나 위저드를 넣지 않는다.**
+- **Drawer 는 Full Page 를 대체하지 않는다.** 지금 보고 있는 맥락과 무관한 내용을 Drawer 로 띄우지 않는다.
+- 단순 작업을 Full Page 로 만들지 않는다.
+
+### 6.9 보조 액션 — `···`
+
+한 화면에 액션 버튼을 동시에 많이 노출하지 않는다.
+
+- Primary 또는 그 화면의 핵심 액션 → **밖에 노출**
+- 수정 · 복제 · 공개/비공개 · 삭제 · 기타 관리 → **`···` 컨텍스트 메뉴 우선 검토**
+
+단 사용 빈도가 매우 높은 핵심 액션까지 억지로 메뉴 안에 숨기지 않는다.
 
 ---
 
@@ -574,7 +741,55 @@ Studio를 Studio답게 만드는 요소들. 새로 만들지 말고 이걸 재�
 
 ---
 
-## 11. 금지 목록
+## 11. Reference 화면
+
+새 화면을 만들거나 기존 화면을 개선할 때, 아래를 **기준 구현**으로 보고 맞춘다.
+
+| 역할 | 화면 |
+|---|---|
+| **Reference List** | `/studio/cases` |
+| **Reference Detail** | `/studio/applications/[id]` |
+| **Reference Complex Form** | `/studio/classes/new` |
+
+수업 관리 · 일정 관리 · 선생님 관리를 개선할 때는 위 세 화면과 이 문서의 원칙을 함께 따른다.
+"레퍼런스와 다르게 만들 이유"가 설명되지 않으면 레퍼런스를 따른다.
+
+---
+
+## 12. 제품 범위 (Product Boundary)
+
+**UI 레퍼런스는 기능 추가의 근거가 아니다.**
+Base 에 있다는 이유만으로 첫수업에 기능을 만들지 않는다.
+
+이 문서는 다음을 도입할 근거가 **아니다**: 메신저 · 범용 Task manager · 인보이스 ·
+커머스 analytics · 개인 캘린더 · 알림 센터.
+
+첫수업의 핵심은 하나다.
+
+```
+학부모/학생 신청 → 상담·확인 → 체험수업 → 체험 결과 → 후속 상담 → 등록 / 미등록
+```
+
+새 화면을 제안하기 전에 **이 흐름의 어느 단계를 돕는가**를 먼저 답한다.
+답이 없으면 만들지 않는다.
+
+---
+
+## 13. Future Patterns — 아직 구현하지 않음
+
+아래는 **방향**이지 구현 요구사항이 아니다. 지금 만들지 않는다.
+
+- **Case Board View** — 단계 이동이 주 업무로 확인될 때 (§3.7)
+- **Case Context Panel** — 목록에서 빠르게 확인이 필요할 때 (§3.3)
+- **Split Form + Preview** — 학부모 전달용 리포트가 생길 때 (§3.5)
+- **Calendar Day / Week / Month Workspace** — 일정 관리 개선 시 (§3.6)
+- **Drawer 기반 선생님 편집기** — 선생님 관리 개선 시 (§6.8)
+
+착수 전에 이 문서를 먼저 갱신하고, 그 다음 코드에 반영한다.
+
+---
+
+## 14. 금지 목록
 
 1. 여기 없는 색·간격·크기를 새로 만들지 않는다. 필요하면 구현 말고 보고.
 2. `#2AAD38`을 텍스트·버튼 배경에 사용 금지.
@@ -593,9 +808,23 @@ Studio를 Studio답게 만드는 요소들. 새로 만들지 말고 이걸 재�
 15. Case Detail에 KPI 카드 금지.
 16. DB에 없는 이력을 Timeline에 추측으로 생성 금지.
 
+### v2 Anti-pattern
+
+17. 외부 레퍼런스(Base) 화면을 그대로 복제 금지. 보라색 등 외부 palette 도입 금지.
+18. 모든 것을 Card 로 감싸기 금지. 목록의 각 row 를 떠 있는 카드로 만들기 금지.
+19. 장식용 차트 · 장식용 일러스트 금지.
+20. 한 화면(한 영역)에 Primary CTA 2개 이상 금지.
+21. 단순 작업을 Full Page 로, 복잡한 작업을 Modal 로 만들기 금지.
+22. 현재 맥락과 무관한 Drawer 금지.
+23. 필요 없는 Board / Timeline View 추가 금지.
+24. KPI 를 위한 KPI(대시보드 카드 채우기) 금지.
+25. 보조 액션 버튼 남발 금지 — `···` 우선(§6.9).
+26. 디자인 때문에 업무 density 희생 금지(§0.4).
+27. UI 레퍼런스를 근거로 제품 범위 확대 금지(§12).
+
 ---
 
-## 12. 토큰 블록 (globals.css)
+## 15. 토큰 블록 (globals.css)
 
 ```css
 :root{
@@ -652,7 +881,7 @@ Studio를 Studio답게 만드는 요소들. 새로 만들지 말고 이걸 재�
 
 ---
 
-## 13. 브랜드 — 변경하지 않는 것
+## 16. 브랜드 — 변경하지 않는 것
 
 - 첫수업 로고
 - 현재 Studio 폰트
@@ -660,15 +889,22 @@ Studio를 Studio답게 만드는 요소들. 새로 만들지 말고 이걸 재�
 - 브랜드 이름
 - 전체적으로 밝고 차분한 SaaS 성격
 
-v1.1은 특정 외부 제품(Wise 등)의 디자인을 복제하는 작업이 **아니다.**
+v2 는 특정 외부 제품(Wise, Base 등)의 디자인을 복제하는 작업이 **아니다.**
 참고하는 것은 원칙뿐이다: hierarchy · density · component consistency · action clarity ·
 neutral surface usage · restrained decoration.
 
+**Green 사용 범위**: Primary CTA · 활성 내비게이션 · 의미 있는 상호작용 · 선택/포커스 ·
+핵심 브랜드 액센트. 화면 전체를 Green 으로 물들이지 않는다.
+
+**Foundation 은 유지한다**: `--brand-*` · `--text-*` · `--bg` · `--surface` · `--surface-sub` ·
+`--border` · `--border-strong` · semantic(`--green/amber/blue/gray/red-*`) · radius · spacing ·
+`--studio-max` · `--side-w`, 그리고 현재 버튼·배지 Foundation. v2 에서 새 토큰을 만들지 않는다.
+
 ---
 
-*v1.1 — 2026.09. Studio IA를 Case 중심(대시보드 · 상담·등록 · 수업 관리 · 일정 관리 · 선생님 관리)으로 개편하면서 갱신.
-`trial_applications.id` = 하나의 Case라는 전제 위에 Case List / Case Detail Pattern, Content Width 규칙,
-Detail 금지 규칙, 구독 원칙, AI 에이전트 작업 절차를 추가했다.
-v1.0에 남아 있던 구 본문 폭, 토큰에 없는 구분선 변수, 토큰 밖 radius, 4px 배수가 아닌 카드 패딩 등
-서로 충돌하던 값은 모두 제거하고 토큰 기준으로 통일했다.
+*v2 — 2026.09. 외부 SaaS 레퍼런스(Base)의 화면들을 검토해 **화면 문법**을 공식화했다.
+Design Direction, Workspace/Density 원칙, Page Pattern 9종, 오버레이 위계(Modal/Drawer/Full Page),
+보조 액션 `···`, Reference 화면, 제품 범위, Future Patterns, v2 Anti-pattern 을 추가했다.
+토큰·버튼·배지·레이아웃 Foundation(UI-1A~1E)은 그대로 유지하며 새 토큰을 만들지 않았다.
+v1.1 까지의 Case 규칙과 금지 규칙도 그대로 살아 있다.
 변경 시 이 문서를 먼저 고치고 코드에 반영한다.*
