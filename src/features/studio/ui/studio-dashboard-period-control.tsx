@@ -39,6 +39,12 @@ const buildPresetHref = (
   return `${basePath}?${params.toString()}`
 }
 
+/**
+ * 성과 분석 header 안에 들어가는 기간 선택.
+ *
+ * 자체 제목/설명을 두지 않는다. 어떤 영역에 적용되는지는 header 의 제목이 말해 준다.
+ * href / searchParams 규칙은 그대로다.
+ */
 export const StudioDashboardPeriodControl = ({
   selectedRange,
   basePath = "/studio"
@@ -46,15 +52,8 @@ export const StudioDashboardPeriodControl = ({
   const today = buildStudioDateRangeFromPreset("today")?.endDate ?? ""
 
   return (
-    <section className={styles.control} aria-labelledby="dashboard-period-title">
-      <div className={styles.heading}>
-        <h2 className={styles.title} id="dashboard-period-title">
-          성과 기간
-        </h2>
-        <p className={styles.description}>운영 현황과 전환 흐름에만 적용됩니다.</p>
-      </div>
-
-      <nav className={styles.quickList} aria-label="성과 기간 빠른 선택">
+    <div className={styles.control}>
+      <nav className={styles.quickList} aria-label="성과 기간 선택">
         {QUICK_PRESETS.map((option) => (
           <Link
             key={option.value}
@@ -95,6 +94,6 @@ export const StudioDashboardPeriodControl = ({
           </button>
         </form>
       </details>
-    </section>
+    </div>
   )
 }

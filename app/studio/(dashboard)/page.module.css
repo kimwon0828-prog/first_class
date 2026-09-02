@@ -14,8 +14,7 @@
 }
 
 .header,
-.periodControlWrap,
-.performance,
+.analytics,
 .workspace,
 .panelWide,
 .errorCard {
@@ -28,9 +27,6 @@
   margin-bottom: var(--s5);
 }
 
-.periodControlWrap {
-  margin-bottom: var(--s4);
-}
 
 .title {
   margin: 0;
@@ -57,174 +53,318 @@
 
 /* ── Operations summary / conversion infographic ─────────────── */
 
-.performance {
+/* ============ 성과 분석 ============ */
+
+.analytics {
+  display: grid;
+  gap: var(--s4);
   margin-bottom: var(--s4);
-  padding: var(--s6);
+}
+
+.analyticsHead {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--s3);
+  flex-wrap: wrap;
+}
+
+.analyticsHeading {
+  min-width: 0;
+}
+
+.analyticsTitle {
+  margin: 0;
+  color: var(--text-1);
+  font-size: 18px;
+  line-height: 26px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.analyticsDescription {
+  margin: 2px 0 0;
+  color: var(--text-2);
+  font-size: 13px;
+  line-height: 20px;
+}
+
+/* compact stat card 4개. 장식 없이 label / 숫자 / context 세 줄이다. */
+.kpiRow {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--s3);
+}
+
+.kpiCard {
+  display: grid;
+  gap: 2px;
+  padding: 14px 16px;
   border: 1px solid var(--border);
   border-radius: var(--r-lg);
   background: var(--surface);
 }
 
-.performanceHead {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: var(--s6);
-}
-
-.performanceHeading {
-  display: grid;
-  gap: var(--s1);
-}
-
-.performanceEyebrow,
-.performanceTitle,
-.performanceDescription {
+.kpiLabel {
   margin: 0;
-}
-
-.performanceEyebrow {
-  color: var(--brand-700);
+  color: var(--text-2);
   font-size: 12px;
+  line-height: 18px;
   font-weight: 700;
-  line-height: 16px;
 }
 
-.performanceTitle {
+.kpiValue {
   color: var(--text-1);
-  font-size: 16px;
+  font-size: 26px;
+  line-height: 34px;
   font-weight: 800;
-  line-height: 24px;
   letter-spacing: -0.02em;
-}
-
-.performanceDescription {
-  color: var(--text-2);
-  font-size: 13px;
-  line-height: 20px;
-}
-
-.conversionSummary {
-  display: grid;
-  justify-items: end;
-  gap: var(--s1);
-  min-width: 152px;
-  padding-left: var(--s6);
-  border-left: 1px solid var(--border);
-}
-
-.conversionLabel,
-.conversionMeta {
-  color: var(--text-2);
-  font-size: 12px;
-  font-weight: 700;
-  line-height: 16px;
-}
-
-.conversionValue {
-  color: var(--green-fg);
-  font-size: 28px;
-  font-weight: 800;
-  line-height: 36px;
-  letter-spacing: -0.03em;
   font-variant-numeric: tabular-nums;
 }
 
-.pipeline {
+.kpiContext {
+  margin: 0;
+  color: var(--text-3);
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.chartRow {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  margin: var(--s6) 0 0;
+  grid-template-columns: 2fr 1fr;
+  gap: var(--s3);
+  align-items: start;
+}
+
+.chartCard {
+  display: grid;
+  gap: var(--s4);
+  padding: 18px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+}
+
+.chartHead {
+  display: grid;
+  gap: 2px;
+}
+
+.chartTitle {
+  margin: 0;
+  color: var(--text-1);
+  font-size: 15px;
+  line-height: 22px;
+  font-weight: 800;
+}
+
+.chartDescription {
+  margin: 0;
+  color: var(--text-2);
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.chartEmpty {
+  margin: 0;
+  padding: 24px 0;
+  color: var(--text-3);
+  font-size: 13px;
+  line-height: 20px;
+  text-align: center;
+}
+
+/* ---- horizontal bar chart ---- */
+
+.barList {
+  display: grid;
+  gap: var(--s3);
+  margin: 0;
   padding: 0;
   list-style: none;
 }
 
-.pipelineStep {
-  min-width: 0;
+.barRow {
   display: grid;
-  justify-items: center;
-  gap: var(--s1);
-  text-align: center;
+  grid-template-columns: 72px minmax(0, 1fr) 32px 92px;
+  align-items: center;
+  gap: var(--s2);
 }
 
-.pipelineContext {
-  color: var(--text-3);
-  font-size: 11px;
-  font-weight: 700;
-  line-height: 16px;
-}
-
-.pipelineLabel {
+.barLabel {
   color: var(--text-2);
   font-size: 13px;
+  line-height: 20px;
   font-weight: 700;
+}
+
+.barTrack {
+  height: 10px;
+  border-radius: var(--r-full);
+  background: var(--surface-sub);
+  overflow: hidden;
+}
+
+/* 다섯 단계 모두 같은 green 이다. 단계마다 색을 바꾸지 않는다. */
+.barFill {
+  display: block;
+  height: 100%;
+  min-width: 0;
+  border-radius: var(--r-full);
+  background: var(--brand-500);
+}
+
+.barCount {
+  color: var(--text-1);
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 800;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.barReached {
+  color: var(--text-3);
+  font-size: 12px;
+  line-height: 18px;
+  text-align: right;
+  white-space: nowrap;
+}
+
+/* ---- donut ---- */
+
+.donutBody {
+  display: grid;
+  gap: var(--s4);
+  justify-items: center;
+}
+
+.donutFigure {
+  position: relative;
+  width: 148px;
+  max-width: 100%;
+}
+
+.donut {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.donutTrack {
+  fill: none;
+  stroke: var(--surface-sub);
+}
+
+.donutSegment {
+  fill: none;
+}
+
+.donutEnrolled {
+  stroke: var(--green-fg);
+  color: var(--green-fg);
+}
+
+.donutNotEnrolled {
+  stroke: var(--gray-fg);
+  color: var(--gray-fg);
+}
+
+.donutPending {
+  stroke: var(--amber-fg);
+  color: var(--amber-fg);
+}
+
+.donutCenter {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 2px;
+  pointer-events: none;
+}
+
+.donutCenterLabel {
+  color: var(--text-2);
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 700;
+}
+
+.donutCenterValue {
+  color: var(--text-1);
+  font-size: 20px;
+  line-height: 26px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+/* donut 이 아니라 이 legend 가 실제 정보다. */
+.legend {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  list-style: none;
+}
+
+.legendItem {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+}
+
+.legendDot {
+  flex: 0 0 auto;
+  width: 8px;
+  height: 8px;
+  border-radius: var(--r-full);
+  background: currentColor;
+}
+
+.legendLabel {
+  color: var(--text-2);
+  font-size: 13px;
   line-height: 20px;
 }
 
-.pipelineValue {
+.legendValue {
+  margin-left: auto;
   color: var(--text-1);
-  font-size: 28px;
-  font-weight: 800;
-  line-height: 36px;
-  font-variant-numeric: tabular-nums;
-}
-
-.pipelineTrack {
-  position: relative;
-  width: 100%;
-  height: 16px;
-}
-
-.pipelineTrack::after {
-  position: absolute;
-  z-index: 0;
-  top: 7px;
-  left: 50%;
-  width: 100%;
-  border-top: 2px solid var(--border-strong);
-  content: "";
-}
-
-.pipelineStep:last-child .pipelineTrack::after {
-  display: none;
-}
-
-.pipelineDot {
-  position: absolute;
-  z-index: 1;
-  top: var(--s1);
-  left: 50%;
-  width: var(--s2);
-  height: var(--s2);
-  transform: translateX(-50%);
-  border: 2px solid var(--surface);
-  border-radius: var(--r-full);
-  background: var(--brand-700);
-}
-
-.pipelineStep:last-child .pipelineDot {
-  background: var(--green-fg);
-}
-
-.pipelineRate {
-  min-height: 16px;
-  color: var(--text-3);
-  font-size: 11px;
+  font-size: 13px;
+  line-height: 20px;
   font-weight: 700;
-  line-height: 16px;
   font-variant-numeric: tabular-nums;
 }
 
-.performanceFoot {
-  display: flex;
-  gap: var(--s4);
-  margin-top: var(--s5);
-  padding-top: var(--s4);
+.conversionFoot {
+  display: grid;
+  gap: 2px;
+  padding-top: var(--s3);
   border-top: 1px solid var(--border);
+}
+
+.conversionLabel {
   color: var(--text-2);
   font-size: 12px;
+  line-height: 18px;
   font-weight: 700;
-  line-height: 16px;
-  flex-wrap: wrap;
+}
+
+.conversionValue {
+  color: var(--text-1);
+  font-size: 22px;
+  line-height: 30px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.conversionMeta {
+  color: var(--text-3);
+  font-size: 12px;
+  line-height: 18px;
 }
 
 .panelWide {
@@ -400,31 +540,12 @@
     grid-template-columns: 1fr;
   }
 
-  .performanceHead {
-    align-items: stretch;
-    flex-direction: column;
+  .kpiRow {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .conversionSummary {
-    justify-items: start;
-    padding-top: var(--s4);
-    padding-left: 0;
-    border-top: 1px solid var(--border);
-    border-left: 0;
-  }
-
-  .pipeline {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: var(--s4);
-  }
-
-  .pipelineStep {
-    padding-top: var(--s3);
-    border-top: 1px solid var(--border);
-  }
-
-  .pipelineTrack {
-    display: none;
+  .chartRow {
+    grid-template-columns: 1fr;
   }
 
   .title {
@@ -434,12 +555,18 @@
 }
 
 @media (max-width: 640px) {
-  .performance {
-    padding: var(--s4);
+  .analyticsHead {
+    align-items: flex-start;
+    flex-direction: column;
   }
 
-  .pipeline {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+  /* 좁은 화면에서는 도달률을 접고 label / bar / count 만 남긴다. 가로 스크롤을 만들지 않는다. */
+  .barRow {
+    grid-template-columns: 60px minmax(0, 1fr) 28px;
+  }
+
+  .barReached {
+    display: none;
   }
 
   .panelHead {

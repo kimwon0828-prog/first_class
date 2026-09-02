@@ -1,84 +1,64 @@
+/*
+ * 성과 분석 header 의 기간 선택.
+ * 자체 surface 를 만들지 않는다 — header 줄 위에 그대로 얹히는 chip row 다.
+ */
+
 .control {
   display: flex;
   align-items: center;
-  gap: var(--s4);
-  padding: var(--s3) var(--s4);
-  border: 1px solid var(--border);
-  border-radius: var(--r-md);
-  background: var(--surface);
-}
-
-.heading {
-  display: grid;
-  flex: 0 0 auto;
-  gap: var(--s1);
-}
-
-.title,
-.description {
-  margin: 0;
-}
-
-.title {
-  color: var(--text-1);
-  font-size: 13px;
-  font-weight: 800;
-  line-height: 20px;
-}
-
-.description {
-  color: var(--text-3);
-  font-size: 12px;
-  line-height: 16px;
+  gap: var(--s2);
+  flex-wrap: wrap;
 }
 
 .quickList {
   display: flex;
   align-items: center;
-  gap: var(--s1);
+  gap: 4px;
   flex-wrap: wrap;
 }
 
-.quickOption,
-.customSummary {
-  border-radius: var(--r-sm);
+.quickOption {
+  padding: 5px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-full);
+  background: var(--surface);
   color: var(--text-2);
   font-size: 12px;
+  line-height: 18px;
   font-weight: 700;
-  line-height: 20px;
   text-decoration: none;
+  white-space: nowrap;
 }
 
-.quickOption {
-  padding: var(--s1) var(--s2);
-}
-
-.quickOption:hover,
-.customSummary:hover {
-  background: var(--surface-sub);
+.quickOption:hover {
+  border-color: var(--border-strong);
   color: var(--text-1);
 }
 
-.quickOption:focus-visible,
-.customSummary:focus-visible,
-.field input:focus-visible,
-.applyButton:focus-visible {
-  outline: 2px solid var(--brand-500);
-  outline-offset: 2px;
-}
-
 .quickOptionActive {
+  border-color: var(--brand-100);
   background: var(--brand-50);
   color: var(--brand-700);
 }
 
+.quickOption:focus-visible {
+  outline: 2px solid var(--brand-500);
+  outline-offset: 2px;
+}
+
 .custom {
-  position: relative;
-  margin-left: auto;
+  min-width: 0;
 }
 
 .customSummary {
-  padding: var(--s1) var(--s2);
+  padding: 5px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-full);
+  color: var(--text-2);
+  font-size: 12px;
+  line-height: 18px;
+  font-weight: 700;
+  white-space: nowrap;
   cursor: pointer;
   list-style: none;
 }
@@ -87,78 +67,67 @@
   display: none;
 }
 
+.customSummary:hover {
+  border-color: var(--border-strong);
+  color: var(--text-1);
+}
+
+.customSummary:focus-visible {
+  outline: 2px solid var(--brand-500);
+  outline-offset: 2px;
+}
+
+/* 떠 있는 popover 가 아니라 열리면 자리를 차지하는 in-flow 폼이다. shadow 를 쓰지 않는다. */
 .customForm {
-  position: absolute;
-  z-index: 10;
-  top: calc(100% + var(--s2));
-  right: 0;
-  min-width: 360px;
   display: grid;
-  grid-template-columns: 1fr 1fr auto;
-  align-items: end;
   gap: var(--s2);
+  margin-top: 6px;
   padding: var(--s3);
+  min-width: 220px;
   border: 1px solid var(--border);
   border-radius: var(--r-md);
-  background: var(--surface);
+  background: var(--surface-sub);
 }
 
 .field {
   display: grid;
-  gap: var(--s1);
+  gap: 4px;
   color: var(--text-2);
   font-size: 12px;
-  font-weight: 700;
   line-height: 16px;
+  font-weight: 700;
 }
 
 .field input {
-  width: 100%;
-  height: 36px;
-  padding: 0 var(--s2);
-  border: 1px solid var(--border-strong);
+  min-height: 34px;
+  padding: 0 10px;
+  border: 1px solid var(--border);
   border-radius: var(--r-sm);
   background: var(--surface);
   color: var(--text-1);
-  font: inherit;
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.field input:focus-visible {
+  outline: 2px solid var(--brand-500);
+  outline-offset: 1px;
+  border-color: var(--brand-500);
 }
 
 .applyButton {
-  height: 36px;
-  padding: 0 var(--s3);
+  min-height: 34px;
   border: 1px solid var(--brand-700);
   border-radius: var(--r-sm);
   background: var(--brand-700);
   color: var(--surface);
-  font-size: 12px;
+  font-size: 13px;
+  line-height: 20px;
   font-weight: 700;
   cursor: pointer;
 }
 
-.applyButton:hover {
-  background: var(--brand-900);
-}
-
-@media (max-width: 900px) {
-  .control {
-    align-items: flex-start;
-    flex-direction: column;
-  }
-
-  .custom {
-    width: 100%;
-    margin-left: 0;
-  }
-
-  .customForm {
-    position: static;
-    min-width: 0;
-    margin-top: var(--s2);
-  }
-}
-
-@media (max-width: 640px) {
-  .customForm {
-    grid-template-columns: 1fr;
-  }
+.applyButton:focus-visible {
+  outline: 2px solid var(--brand-500);
+  outline-offset: 2px;
 }
