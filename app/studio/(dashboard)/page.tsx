@@ -6,14 +6,7 @@ import {
   STUDIO_DONUT_VIEWBOX,
   buildStudioDashboardAnalytics
 } from "@/features/studio/lib/studio-dashboard-analytics"
-import {
-  buildStudioDashboardMetrics,
-  selectStudioDashboardCohort
-} from "@/features/studio/lib/studio-dashboard-metrics"
-import {
-  buildStudioPreferredTimeInsight,
-  type StudioPreferredTimeRankingItem
-} from "@/features/studio/lib/studio-parent-demand-insight"
+import { buildStudioDashboardMetrics } from "@/features/studio/lib/studio-dashboard-metrics"
 import { requireTeacherStudioAccess } from "@/features/studio/lib/require-teacher-studio-access"
 import {
   buildStudioDashboardView,
@@ -37,33 +30,6 @@ const DONUT_SEGMENT_CLASS: Record<string, string> = {
   pending: styles.donutPending
 }
 
-const renderDemandRanking = (
-  title: string,
-  titleId: string,
-  items: StudioPreferredTimeRankingItem[]
-) => (
-  <section className={styles.demandRanking} aria-labelledby={titleId}>
-    <h3 className={styles.demandRankingTitle} id={titleId}>
-      {title}
-    </h3>
-    <ol className={styles.demandRankingList}>
-      {items.map((item) => (
-        <li key={item.key} className={styles.demandRankingItem}>
-          <span className={styles.demandRankingHead}>
-            <span className={styles.demandRankingLabel}>{item.label}</span>
-            <span className={styles.demandRankingValue}>
-              {item.count}건 · {item.percentage.toFixed(1)}%
-            </span>
-          </span>
-          <span className={styles.demandBar} aria-hidden="true">
-            <span className={styles.demandBarFill} style={{ width: `${item.relativePercent}%` }} />
-          </span>
-        </li>
-      ))}
-    </ol>
-  </section>
-)
-
 export default async function StudioIndexPage({ searchParams }: StudioIndexPageProps) {
   const teacher = await requireTeacherStudioAccess()
   const resolvedSearchParams = searchParams ? await searchParams : undefined
@@ -78,8 +44,6 @@ export default async function StudioIndexPage({ searchParams }: StudioIndexPageP
   // 기간 필터는 같은 조회 결과에서 performance cohort 만 고른다. Action 영역에는 적용하지 않는다.
   const metrics = buildStudioDashboardMetrics(applications, selectedDateRange)
   const analytics = buildStudioDashboardAnalytics(metrics)
-  const dashboardCohort = selectStudioDashboardCohort(applications, selectedDateRange)
-  const preferredTimeInsight = buildStudioPreferredTimeInsight(dashboardCohort)
   const donutCenter = STUDIO_DONUT_VIEWBOX / 2
 
   const scheduleTitle = view.scheduleMode === "today" ? "오늘 체험 일정" : "다가오는 체험 일정"
@@ -240,71 +204,6 @@ export default async function StudioIndexPage({ searchParams }: StudioIndexPageP
                 </footer>
               </article>
             </div>
-          </section>
-
-          <section className={styles.demandInsight} aria-labelledby="dashboard-demand-title">
-            <header className={styles.demandHead}>
-              <div>
-                <h2 className={styles.demandTitle} id="dashboard-demand-title">
-                  학부모 희망 시간
-                </h2>
-                <p className={styles.demandDescription}>
-                  선택 기간에 접수된 신청의 희망 일정 기준
-                </p>
-              </div>
-              <span className={styles.demandSample}>
-                분석 가능 {preferredTimeInsight.totalCount}건
-              </span>
-            </header>
-
-            {preferredTimeInsight.cohortCount === 0 ? (
-              <p className={styles.demandEmpty}>선택 기간에 접수된 신청이 없습니다.</p>
-            ) : !preferredTimeInsight.hasSufficientSample ? (
-              <p className={styles.demandEmpty}>
-                희망 시간 분석을 위한 신청 데이터가 더 필요합니다.
-              </p>
-            ) : (
-              <>
-                <div className={styles.demandTop}>
-                  <div className={styles.demandTopHeading}>
-                    <h3 className={styles.demandTopTitle}>
-                      {preferredTimeInsight.topCombinationTieCount > 1
-                        ? "공동 최다 요청 조합"
-                        : "가장 많이 요청된 조합"}
-                    </h3>
-                    {preferredTimeInsight.topCombinationTieCount > 2 ? (
-                      <p className={styles.demandTopNote}>
-                        동일 1위 {preferredTimeInsight.topCombinationTieCount}개 중 2개 표시
-                      </p>
-                    ) : null}
-                  </div>
-                  <ul className={styles.demandTopList}>
-                    {preferredTimeInsight.topCombinations.map((item) => (
-                      <li key={item.key} className={styles.demandTopItem}>
-                        <span className={styles.demandTopLabel}>{item.label}</span>
-                        <strong className={styles.demandTopValue}>{item.count}건</strong>
-                        <span className={styles.demandTopPercentage}>
-                          전체 신청의 {item.percentage.toFixed(1)}%
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-
-                <div className={styles.demandRankingGrid}>
-                  {renderDemandRanking(
-                    "인기 요일",
-                    "dashboard-demand-weekday-title",
-                    preferredTimeInsight.weekdayRanking
-                  )}
-                  {renderDemandRanking(
-                    "인기 시간",
-                    "dashboard-demand-hour-title",
-                    preferredTimeInsight.hourRanking
-                  )}
-                </div>
-              </>
-            )}
           </section>
 
           <div className={styles.workspace}>
