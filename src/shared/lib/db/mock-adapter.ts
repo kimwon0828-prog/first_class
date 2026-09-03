@@ -1634,7 +1634,16 @@ export const mockDataAdapter: DataAdapter = {
 
         return mapped
       })
-      .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))
+      // supabase adapter 와 같은 정렬이어야 한다: created_at desc, 동률이면 id desc.
+      .sort((a, b) =>
+        a.createdAt === b.createdAt
+          ? a.id < b.id
+            ? 1
+            : -1
+          : a.createdAt < b.createdAt
+            ? 1
+            : -1
+      )
   },
   async listStudioUnregisteredApplications(
     organizationId,

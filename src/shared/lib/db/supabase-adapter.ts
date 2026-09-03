@@ -1376,6 +1376,14 @@ const getProfileNameMap = async (profileIds: string[]) => {
   )
 }
 
+/**
+ * listStudioApplications 의 page 크기.
+ *
+ * PostgREST 의 db max_rows(supabase/config.toml: 1000)와 같은 값이다.
+ * 이보다 크게 잡으면 서버가 조용히 잘라내 마지막 페이지 판정이 틀린다.
+ */
+const STUDIO_APPLICATION_PAGE_SIZE = 1000
+
 const getStudioTeacherDisplayNameMap = async (teacherIds: string[]) => {
   const uniqueTeacherIds = Array.from(new Set(teacherIds.filter(Boolean)))
   if (uniqueTeacherIds.length === 0) {
@@ -4039,32 +4047,76 @@ export const supabaseDataAdapter: DataAdapter = {
   },
   async listStudioApplications(organizationId, options: StudioApplicationListOptions = {}) {
     const supabase = await getSupabaseServerClient()
-    let query = supabase
-      .from("trial_applications")
-      .select(
-        "id, class_id, parent_id, child_name, child_grade, parent_name, parent_phone, class_schedule_id, requested_schedule_block_id, selected_schedule_label, requested_slot_at, confirmed_slot_at, assigned_teacher_id, contacted_at, scheduled_at, completed_at, enrolled_at, canceled_at, no_show_at, goal_type, registration_status, status, created_at, updated_at, classes!inner(title, subject, organization_id, program_type, organizations(sido, sigungu, bname)), class_schedules(start_time, end_time), confirmed_block:schedule_blocks!trial_applications_confirmed_schedule_block_id_fkey(end_at)"
+
+    // range 마다 같은 조건/정렬로 다시 만든다. Supabase query builder 는 재사용하면
+    // 이전 range 가 남으므로 페이지마다 새로 빌드해야 한다.
+    const buildQuery = () => {
+      let query = supabase
+        .from("trial_applications")
+        .select(
+          "id, class_id, parent_id, child_name, child_grade, parent_name, parent_phone, class_schedule_id, requested_schedule_block_id, selected_schedule_label, requested_slot_at, confirmed_slot_at, assigned_teacher_id, contacted_at, scheduled_at, completed_at, enrolled_at, canceled_at, no_show_at, goal_type, registration_status, status, created_at, updated_at, classes!inner(title, subject, organization_id, program_type, organizations(sido, sigungu, bname)), class_schedules(start_time, end_time), confirmed_block:schedule_blocks!trial_applications_confirmed_schedule_block_id_fkey(end_at)",
+          // 총 개수를 알아야 서버가 page 를 잘라도 끝을 정확히 안다.
+          // 같은 request 에 실려 오므로 query 가 늘지 않는다(getStudioCases 와 같은 방식).
+          { count: "exact" }
+        )
+        // trial_applications 에는 organization_id 가 없다. 조직 스코프는 이 inner join 이 유일하다.
+        .eq("classes.organization_id", organizationId)
+
+      if (options.teacherId) {
+        query = query.eq("assigned_teacher_id", options.teacherId)
+      }
+
+      if (options.createdAtFrom) {
+        query = query.gte("created_at", options.createdAtFrom)
+      }
+
+      if (options.createdAtTo) {
+        query = query.lte("created_at", options.createdAtTo)
+      }
+
+      // created_at 만으로는 동률 row 의 순서가 정해지지 않아 페이지 경계에서
+      // 같은 row 가 두 번 오거나 아예 빠질 수 있다. id 로 tie-break 한다.
+      // "최근 신청 먼저" 라는 기존 의미는 그대로다.
+      return query
+        .order("created_at", { ascending: false })
+        .order("id", { ascending: false })
+    }
+
+    // 전체를 반환하는 계약이라 page 를 끝까지 이어 붙인다.
+    //
+    // 종료 조건을 "page 가 가득 차지 않으면 끝" 으로 두면 안 된다.
+    // PostgREST 는 요청한 range 보다 db max_rows 가 작으면 말없이 잘라서 주므로,
+    // 잘린 페이지를 마지막 페이지로 오해해 그대로 truncation 이 재현된다.
+    // 그래서 첫 페이지의 exact count 를 기준으로 삼고, 커서는 실제로 받은
+    // row 수만큼만 전진시킨다. 서버가 얼마를 잘라 주든 정확히 이어 붙는다.
+    const rows: TrialApplicationRow[] = []
+    let totalCount: number | null = null
+
+    for (;;) {
+      const { data, error, count } = await buildQuery().range(
+        rows.length,
+        rows.length + STUDIO_APPLICATION_PAGE_SIZE - 1
       )
-      .eq("classes.organization_id", organizationId)
 
-    if (options.teacherId) {
-      query = query.eq("assigned_teacher_id", options.teacherId)
+      if (error) {
+        throw new Error("failed_to_fetch_studio_applications")
+      }
+
+      if (totalCount === null) {
+        totalCount = count ?? 0
+      }
+
+      const page = (data ?? []) as TrialApplicationRow[]
+      rows.push(...page)
+
+      // 다 받았거나(정상 종료), 서버가 더 줄 게 없으면(방어) 끝낸다.
+      // 두 조건 중 하나는 반드시 성립하므로 무한 loop 이 되지 않는다.
+      if (rows.length >= totalCount || page.length === 0) {
+        break
+      }
     }
 
-    if (options.createdAtFrom) {
-      query = query.gte("created_at", options.createdAtFrom)
-    }
-
-    if (options.createdAtTo) {
-      query = query.lte("created_at", options.createdAtTo)
-    }
-
-    const { data, error } = await query.order("created_at", { ascending: false })
-
-    if (error) {
-      throw new Error("failed_to_fetch_studio_applications")
-    }
-
-    const rows = (data ?? []) as TrialApplicationRow[]
+    // teacher 이름은 페이지마다가 아니라 전체 row 를 모은 뒤 한 번만 조회한다(N+1 방지).
     const teacherNameById = await getStudioTeacherDisplayNameMap(
       rows
         .map((row) => row.assigned_teacher_id)
