@@ -1,26 +1,65 @@
 /*
  * 본문보다 눈에 띄면 실패다. 얇은 구분선 + 작은 글씨만 쓴다.
- * 배경을 따로 칠하지 않고 page 배경을 그대로 쓴다.
+ * 배경을 따로 칠하지 않고 page 배경을 그대로 쓴다. 카드로 만들지 않는다.
  */
 
 .footer {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
+  flex-direction: column;
   gap: var(--s3);
-  flex-wrap: wrap;
   width: 100%;
   max-width: var(--studio-max);
   margin: 0 auto;
-  padding: var(--s4) 24px var(--s6);
+  padding: var(--s5) 24px var(--s6);
   border-top: 1px solid var(--border);
 }
 
-.copyright {
+/* Desktop 2-column. 회사 정보가 더 길어 1.4:1 로 둔다. */
+.columns {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+  gap: var(--s3) var(--s6);
+}
+
+.column {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+/* 회사명 / 고객센터 제목만 한 단계 진하다. */
+.columnTitle {
+  margin: 0 0 2px;
+  color: var(--text-2);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 18px;
+}
+
+.detail {
   margin: 0;
   color: var(--text-3);
   font-size: 12px;
   line-height: 18px;
+  /* 긴 주소가 가로로 넘치지 않게 한다. */
+  overflow-wrap: anywhere;
+}
+
+.contactLink {
+  color: var(--text-3);
+  text-decoration: none;
+}
+
+.contactLink:hover {
+  color: var(--text-2);
+  text-decoration: underline;
+}
+
+.contactLink:focus-visible {
+  outline: 2px solid var(--brand-500);
+  outline-offset: 2px;
+  border-radius: var(--r-sm);
 }
 
 .links {
@@ -28,6 +67,8 @@
   align-items: center;
   gap: var(--s4);
   flex-wrap: wrap;
+  padding-top: var(--s3);
+  border-top: 1px solid var(--border);
 }
 
 .link {
@@ -48,12 +89,22 @@
   border-radius: var(--r-sm);
 }
 
+.copyright {
+  margin: 0;
+  color: var(--text-3);
+  font-size: 12px;
+  line-height: 18px;
+}
+
 @media (max-width: 640px) {
   .footer {
-    align-items: flex-start;
-    flex-direction: column;
-    gap: var(--s2);
-    padding: var(--s4) 16px var(--s5);
+    padding: var(--s5) 16px var(--s5);
+  }
+
+  /* 회사 정보 → 고객센터 → 정책 링크 → copyright 순서로 쌓인다. */
+  .columns {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--s3);
   }
 
   .links {

@@ -4,6 +4,7 @@ import type { ReactNode } from "react"
 
 import styles from "./legal-page.module.css"
 import { POC_DISCOVERY_HREF } from "@/shared/config/discovery"
+import { COMPANY_ADDRESS, COMPANY_INFO } from "@/shared/config/company-info"
 
 type LegalSection = {
   title: string
@@ -66,12 +67,12 @@ export function LegalPageLayout({
             <div className={styles.businessBox}>
               <h2 className={styles.businessTitle}>사업자 정보</h2>
               <ul className={styles.businessList}>
-                <li>상호명: 첫수업</li>
-                <li>대표자명: 김원식</li>
-                <li>사업자등록번호: 775-07-03279</li>
-                <li>주소: 경기도 고양시 일산동구 무궁화로 20-38, 5층 500-17호(장항동, 로데오탑)</li>
-                <li>대표 이메일: kimwon0828@naver.com</li>
-                <li>대표 연락처: 01083840825</li>
+                <li>상호명: {COMPANY_INFO.name}</li>
+                <li>대표자명: {COMPANY_INFO.representative}</li>
+                <li>사업자등록번호: {COMPANY_INFO.businessRegistrationNumber}</li>
+                <li>주소: {COMPANY_ADDRESS}</li>
+                <li>대표 이메일: {COMPANY_INFO.representativeEmail}</li>
+                <li>대표 연락처: {COMPANY_INFO.customerCenterPhone}</li>
               </ul>
             </div>
           </footer>

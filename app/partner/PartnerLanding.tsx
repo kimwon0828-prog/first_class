@@ -6,6 +6,7 @@ import PartnerInquiryForm from "./PartnerInquiryForm"
 import PartnerLossCalculator from "./PartnerLossCalculator"
 import styles from "./partner.module.css"
 import { POC_DISCOVERY_HREF } from "@/shared/config/discovery"
+import { COMPANY_ADDRESS, COMPANY_INFO } from "@/shared/config/company-info"
 
 const TALLY_URL = "https://tally.so/r/b5XeNL"
 const PARTNER_LINK = "firstsuup.com/c/은행사거리-○○학원"
@@ -694,20 +695,21 @@ export default function PartnerLanding() {
             <div>
               <h5>고객센터</h5>
               <p className={styles.tnum}>
-                010-8384-0825
+                {COMPANY_INFO.customerCenterPhone}
                 <br />
-                hello@firstsuup.com
+                {COMPANY_INFO.customerCenterEmail}
                 <br />
-                평일 09:00 – 18:00
+                {COMPANY_INFO.customerCenterHours}
                 <br />
-                (주말·공휴일 휴무)
+                ({COMPANY_INFO.customerCenterClosed})
               </p>
             </div>
           </div>
           <div className={styles.ftBot}>
-            첫수업 · 대표 김원식 · 사업자등록번호 775-07-03279
+            {COMPANY_INFO.name} · 대표 {COMPANY_INFO.representative} · 사업자등록번호{" "}
+            {COMPANY_INFO.businessRegistrationNumber}
             <br />
-            경기도 고양시 일산동구 무궁화로 20-38, 5층 500-17호 (장항동, 골레오빌)
+            {COMPANY_ADDRESS}
             <br />
             <br />© 2026 첫수업. All Rights Reserved.
           </div>

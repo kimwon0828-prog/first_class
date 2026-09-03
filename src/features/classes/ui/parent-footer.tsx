@@ -2,6 +2,8 @@ import Link from "next/link"
 import Image from "next/image"
 
 import styles from "./parent-footer.module.css"
+import { COMPANY_ADDRESS, COMPANY_INFO } from "@/shared/config/company-info"
+
 
 export function ParentFooter() {
   return (
@@ -25,14 +27,14 @@ export function ParentFooter() {
       <details className={styles.businessDetails}>
         <summary className={styles.summary}>사업자 정보</summary>
         <div className={styles.infoBlock}>
-          <p className={styles.infoText}>상호명: 첫수업</p>
-          <p className={styles.infoText}>대표자명: 김원식</p>
-          <p className={styles.infoText}>사업자등록번호: 775-07-03279</p>
+          <p className={styles.infoText}>상호명: {COMPANY_INFO.name}</p>
+          <p className={styles.infoText}>대표자명: {COMPANY_INFO.representative}</p>
           <p className={styles.infoText}>
-            주소: 경기도 고양시 일산동구 무궁화로 20-38, 5층 500-17호(장항동, 로데오탑)
+            사업자등록번호: {COMPANY_INFO.businessRegistrationNumber}
           </p>
-          <p className={styles.infoText}>대표 이메일: hello@firstsuup.com</p>
-          <p className={styles.infoText}>대표 연락처: 010-8384-0825</p>
+          <p className={styles.infoText}>주소: {COMPANY_ADDRESS}</p>
+          <p className={styles.infoText}>대표 이메일: {COMPANY_INFO.customerCenterEmail}</p>
+          <p className={styles.infoText}>대표 연락처: {COMPANY_INFO.customerCenterPhone}</p>
         </div>
       </details>
 
