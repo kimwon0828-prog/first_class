@@ -3,10 +3,14 @@
 // 확정된 체험이 끝났는지만 판정한다. DB status 는 건드리지 않는다 — 시간이 지났다는 이유로
 // confirmed 를 completed 로 저장하지 않는다. 여기서 나오는 값은 오직 표시용이다.
 //
-// 종료 시각 = 확정 시각(confirmed_slot_at) + 수업 길이.
-// 수업 길이는 studio-schedule-events 의 getScheduleDuration 을 그대로 쓴다.
-// 새로 duration 을 추정하지 않는다 — 그 함수가 값을 모를 때 쓰는 60분 fallback 도 쓰지 않고,
-// "종료 시각을 알 수 없음(null)" 으로 취급한다.
+// 종료 시각 source 우선순위는 이 파일만 안다. 화면들은 값만 넘긴다.
+//
+//   1순위  confirmed_schedule_block_id 가 가리키는 schedule_blocks.end_at
+//          그 신청에 실제로 확정된 예약 구간이다. 예약 뒤 블록 시간이 조정돼도 정확하다.
+//   2순위  confirmed_slot_at + class_schedules 의 정확한 수업 길이
+//          블록 end_at 을 못 읽을 때만 쓴다. 길이는 studio-schedule-events 의
+//          getScheduleDuration 을 그대로 쓰고, 그 함수의 60분 fallback 은 쓰지 않는다.
+//   그 외  unknown. 추정하지 않는다.
 //
 // 시각 비교는 절대 시각(epoch ms)끼리 한다. confirmed_slot_at 은 timestamptz 이고
 // duration 은 고정 분(minute)이라 종료 시각도 절대 시각이다. 따라서 실행 환경의
@@ -15,7 +19,9 @@
 import { getScheduleDuration } from "@/features/studio/lib/studio-schedule-events"
 
 export type TrialScheduleWindow = {
-  /** 확정 시각. 없으면 종료 시각도 알 수 없다(희망 일정으로 대신 보지 않는다). */
+  /** 1순위. 확정된 예약 블록의 종료 시각(schedule_blocks.end_at). */
+  confirmedBlockEndAt: string | null
+  /** 2순위의 기준점. 없으면 길이를 알아도 종료 시각을 만들 수 없다. */
   confirmedSlotAt: string | null
   scheduleStartTime: string | null
   scheduleEndTime: string | null
@@ -32,12 +38,15 @@ const toTimestamp = (value: string | null | undefined) => {
   return Number.isNaN(parsed) ? null : parsed
 }
 
-/**
- * 확정 체험의 종료 시각(epoch ms). 다음 중 하나라도 없으면 null 이다.
- *   - 확정 시각이 없다
- *   - class_schedules 의 start_time / end_time 을 못 읽는다(join 누락, legacy invalid)
- */
+/** 확정 체험의 종료 시각(epoch ms). 위 우선순위로 찾고, 못 찾으면 null 이다. */
 export const resolveTrialEndAtMs = (input: TrialScheduleWindow): number | null => {
+  // 1순위 — 실제 확정된 예약 블록.
+  const blockEndAt = toTimestamp(input.confirmedBlockEndAt)
+  if (blockEndAt != null) {
+    return blockEndAt
+  }
+
+  // 2순위 — 확정 시각 + 수업 길이.
   const startedAt = toTimestamp(input.confirmedSlotAt)
   if (startedAt == null) {
     return null

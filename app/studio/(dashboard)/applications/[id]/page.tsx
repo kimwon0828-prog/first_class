@@ -284,6 +284,7 @@ export default async function StudioApplicationDetailPage({ params }: StudioAppl
           status: data.status,
           noShowAt: data.noShowAt,
           registrationStatus: data.registrationStatus,
+          confirmedBlockEndAt: data.confirmedBlockEndAt,
           confirmedSlotAt: data.confirmedSlotAt,
           scheduleStartTime: data.scheduleStartTime,
           scheduleEndTime: data.scheduleEndTime

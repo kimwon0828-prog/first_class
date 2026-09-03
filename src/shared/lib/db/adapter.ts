@@ -563,6 +563,8 @@ export type StudioApplicationSummary = TrialApplicationSummary & {
   classAssignmentMode: ClassAssignmentMode
   scheduleStartTime: string | null
   scheduleEndTime: string | null
+  /** 확정된 예약 블록의 종료 시각. 체험 종료 판정의 1순위 source 다. */
+  confirmedBlockEndAt: string | null
   assignedTeacherId: string | null
   assignedTeacherName: string | null
   contactedAt: string | null

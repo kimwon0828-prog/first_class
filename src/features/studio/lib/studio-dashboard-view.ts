@@ -133,6 +133,7 @@ const toDisplayStage = (item: StudioApplicationSummary, now: Date) =>
       status: item.status,
       noShowAt: item.noShowAt,
       registrationStatus: item.registrationStatus ?? "undecided",
+      confirmedBlockEndAt: item.confirmedBlockEndAt,
       confirmedSlotAt: item.confirmedSlotAt,
       scheduleStartTime: item.scheduleStartTime,
       scheduleEndTime: item.scheduleEndTime

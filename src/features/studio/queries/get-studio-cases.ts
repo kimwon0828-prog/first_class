@@ -40,13 +40,19 @@ const CASE_SELECT_FIELDS =
   "id, class_id, child_name, child_grade, parent_name, parent_phone, assigned_teacher_id, " +
   "requested_slot_at, confirmed_slot_at, status, registration_status, created_at, completed_at, " +
   "enrolled_at, canceled_at, no_show_at, lost_at, next_contact_at, last_activity_at, " +
-  // 확정 체험의 종료 시각을 파생하려면 수업 길이가 필요하다. embed 라 query 는 늘지 않는다.
+  // 확정 체험의 종료 시각 판정에 필요한 값. 둘 다 embed 라 query 는 늘지 않는다.
+  // schedule_blocks 는 이 테이블과 관계가 3개라 FK 이름 hint 없이는 모호하다(PGRST201).
   "class_schedules(start_time, end_time), " +
+  "confirmed_block:schedule_blocks!trial_applications_confirmed_schedule_block_id_fkey(end_at), " +
   "classes!inner(id, title, subject, organization_id)"
 
 type CaseScheduleRow = {
   start_time: string | null
   end_time: string | null
+}
+
+type CaseConfirmedBlockRow = {
+  end_at: string | null
 }
 
 type CaseClassRow = {
@@ -78,6 +84,7 @@ type CaseApplicationRow = {
   last_activity_at: string | null
   classes: CaseClassRow | CaseClassRow[] | null
   class_schedules: CaseScheduleRow | CaseScheduleRow[] | null
+  confirmed_block: CaseConfirmedBlockRow | CaseConfirmedBlockRow[] | null
 }
 
 type CaseConsultationLogRow = {
@@ -128,6 +135,19 @@ const getEmbeddedClass = (row: CaseApplicationRow): CaseClassRow | null => {
  * 한 class 에 수업 시간이 여러 개 있어도 이 embed 는 그 신청이 고른 하나만 돌려준다.
  * 그래도 배열이 두 개 이상으로 오면 특정할 수 없으므로 첫 번째를 고르지 않고 null 이다.
  */
+/** 확정된 예약 블록 한 개. to-one FK 지만 배열이 둘 이상이면 특정할 수 없어 null 이다. */
+const getEmbeddedConfirmedBlock = (row: CaseApplicationRow): CaseConfirmedBlockRow | null => {
+  if (!row.confirmed_block) {
+    return null
+  }
+
+  if (!Array.isArray(row.confirmed_block)) {
+    return row.confirmed_block
+  }
+
+  return row.confirmed_block.length === 1 ? row.confirmed_block[0] : null
+}
+
 const getEmbeddedSchedule = (row: CaseApplicationRow): CaseScheduleRow | null => {
   if (!row.class_schedules) {
     return null
@@ -348,6 +368,7 @@ export const getStudioCases = async (
     const items = rows.map((row): StudioCaseListItem => {
       const embeddedClass = getEmbeddedClass(row)
       const embeddedSchedule = getEmbeddedSchedule(row)
+      const embeddedConfirmedBlock = getEmbeddedConfirmedBlock(row)
       const latestConsultation = latestConsultationById.get(row.id) ?? null
 
       const attentionInput: CaseAttentionInput = {
@@ -355,6 +376,7 @@ export const getStudioCases = async (
         noShowAt: row.no_show_at ?? null,
         registrationStatus: row.registration_status,
         assignedTeacherId: row.assigned_teacher_id ?? null,
+        confirmedBlockEndAt: embeddedConfirmedBlock?.end_at ?? null,
         confirmedSlotAt: row.confirmed_slot_at ?? null,
         requestedSlotAt: row.requested_slot_at,
         scheduleStartTime: embeddedSchedule?.start_time ?? null,

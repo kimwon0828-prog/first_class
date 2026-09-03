@@ -107,6 +107,7 @@ const toDisplayStatusInput = (item: StudioApplicationSummary, now: Date) => ({
     item.status === "confirmed" &&
     isTrialTimeEnded(
       {
+        confirmedBlockEndAt: item.confirmedBlockEndAt,
         confirmedSlotAt: item.confirmedSlotAt,
         scheduleStartTime: item.scheduleStartTime,
         scheduleEndTime: item.scheduleEndTime

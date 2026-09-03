@@ -153,6 +153,7 @@ const getNextActionState = (application: StudioApplicationDetail, now: Date): Ne
     // 종료 시각을 모르면(unknown) 끝났다고 말하지 않고 예정 문구를 유지한다.
     const completion = getTrialCompletionState(
       {
+        confirmedBlockEndAt: application.confirmedBlockEndAt,
         confirmedSlotAt: application.confirmedSlotAt,
         scheduleStartTime: application.scheduleStartTime,
         scheduleEndTime: application.scheduleEndTime
