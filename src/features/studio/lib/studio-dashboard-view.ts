@@ -4,7 +4,7 @@
 // 세 영역(지금 확인할 일 / 체험 일정 / 최근 등록 완료)을 전부 파생한다.
 //
 // 상태 판정은 기존 helper 만 쓴다. Dashboard 가 새로 판정하는 상태는 없다.
-//   - getCaseStage / isCaseClosedStage : status + no_show_at + registration_status → 한 단계
+//   - getCaseDisplayStage / isCaseClosedStage : 표시용 단계(확정 체험 종료 시각 반영)
 //   - getStudioStatusLabel / getStudioStatusTone : 공식 배지 매핑(디자인 시스템 §2.2)
 //   - buildStudioScheduleEvents : 캘린더와 같은 KST 일정 파생
 //
@@ -19,7 +19,7 @@ import {
   getStudioStatusTone,
   type StudioStatusTone
 } from "@/features/studio/lib/application-status-labels"
-import { getCaseStage, isCaseClosedStage } from "@/features/studio/lib/case-view-model"
+import { getCaseDisplayStage, isCaseClosedStage } from "@/features/studio/lib/case-view-model"
 import { buildStudioScheduleEvents } from "@/features/studio/lib/studio-schedule-events"
 import {
   formatSelectedDateLabel,
@@ -47,7 +47,7 @@ export type StudioDashboardActionKind =
 
 const ACTION_LABELS: Record<StudioDashboardActionKind, string> = {
   UNASSIGNED: "담당자를 배정해 주세요.",
-  NEEDS_COMPLETION: "체험이 끝났다면 완료 처리해 주세요.",
+  NEEDS_COMPLETION: "체험 완료 처리 후 결과를 기록해 주세요.",
   REVIEW_NEW: "신청 내용을 확인해 주세요.",
   NEEDS_REGISTRATION: "체험 결과와 등록 여부를 기록해 주세요.",
   CONFIRM_SCHEDULE: "체험 일정을 확정해 주세요."
@@ -132,15 +132,37 @@ const hasTrialTimePassed = (item: StudioApplicationSummary, nowMs: number) => {
   return slotAt != null && slotAt <= nowMs
 }
 
+/**
+ * 표시용 단계. 확정 체험의 종료 시각이 지났으면 체험 완료로 보여준다.
+ * DB status 는 그대로다 — 실적 집계(studio-dashboard-metrics)는 이 함수를 쓰지 않는다.
+ */
+const toDisplayStage = (item: StudioApplicationSummary, now: Date) =>
+  getCaseDisplayStage(
+    {
+      status: item.status,
+      noShowAt: item.noShowAt,
+      registrationStatus: item.registrationStatus ?? "undecided",
+      confirmedSlotAt: item.confirmedSlotAt,
+      scheduleStartTime: item.scheduleStartTime,
+      scheduleEndTime: item.scheduleEndTime
+    },
+    now
+  )
+
+/** 배지는 표시 단계를 따른다. completed 로 파생되면 체험 완료 배지가 된다. */
+const toBadgeInput = (item: StudioApplicationSummary, now: Date) => ({
+  status: toDisplayStage(item, now) === "completed" && item.status === "confirmed"
+    ? ("completed" as const)
+    : item.status,
+  noShowAt: item.noShowAt
+})
+
 const resolveActionKind = (
   item: StudioApplicationSummary,
-  nowMs: number
+  now: Date
 ): StudioDashboardActionKind | null => {
-  const stage = getCaseStage({
-    status: item.status,
-    noShowAt: item.noShowAt,
-    registrationStatus: item.registrationStatus ?? "undecided"
-  })
+  const nowMs = now.getTime()
+  const stage = toDisplayStage(item, now)
 
   // 종료된 Case 는 처리할 일이 없다.
   if (isCaseClosedStage(stage)) {
@@ -152,6 +174,8 @@ const resolveActionKind = (
   }
 
   if (stage === "confirmed") {
+    // 여기 남았다는 건 종료 시각을 모른다는 뜻이다(알았다면 위에서 completed 로 파생됐다).
+    // 그때만 기존처럼 시작 시각으로 판단해 목록에서 누락되지 않게 한다.
     return hasTrialTimePassed(item, nowMs) ? "NEEDS_COMPLETION" : null
   }
 
@@ -163,16 +187,16 @@ const resolveActionKind = (
     return "CONFIRM_SCHEDULE"
   }
 
-  // 여기 남는 진행 stage 는 completed + (undecided | pending) 뿐이다.
-  return "NEEDS_REGISTRATION"
+  // 여기 남는 진행 stage 는 completed 다.
+  // 실제 status 가 아직 confirmed 면(시간만 지난 파생 완료) 완료 처리가 먼저다.
+  return item.status === "confirmed" ? "NEEDS_COMPLETION" : "NEEDS_REGISTRATION"
 }
 
 const buildActionItems = (applications: StudioApplicationSummary[], now: Date) => {
-  const nowMs = now.getTime()
   const matched: Array<{ item: StudioApplicationSummary; kind: StudioDashboardActionKind }> = []
 
   for (const item of applications) {
-    const kind = resolveActionKind(item, nowMs)
+    const kind = resolveActionKind(item, now)
     if (kind) {
       matched.push({ item, kind })
     }
@@ -202,8 +226,8 @@ const buildActionItems = (applications: StudioApplicationSummary[], now: Date) =
     studentName: item.childName,
     studentGrade: item.childGrade,
     classTitle: normalizeClassTitle(item.classTitle),
-    statusLabel: getStudioStatusLabel(item),
-    statusTone: getStudioStatusTone(item),
+    statusLabel: getStudioStatusLabel(toBadgeInput(item, now)),
+    statusTone: getStudioStatusTone(toBadgeInput(item, now)),
     actionLabel: ACTION_LABELS[kind]
   }))
 }

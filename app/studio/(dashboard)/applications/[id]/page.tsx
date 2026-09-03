@@ -6,7 +6,7 @@ import {
   getStudioRegistrationStatusTone,
   getStudioStatusLabel
 } from "@/features/studio/lib/application-status-labels"
-import { CASE_STAGE_LABELS, getCaseStage } from "@/features/studio/lib/case-view-model"
+import { CASE_STAGE_LABELS, getCaseDisplayStage } from "@/features/studio/lib/case-view-model"
 import { requireTeacherStudioAccess } from "@/features/studio/lib/require-teacher-studio-access"
 import { getStudioApplicationAssigneeOptions } from "@/features/studio/queries/get-studio-application-assignee-options"
 import { getStudioApplicationDetail } from "@/features/studio/queries/get-studio-application-detail"
@@ -277,10 +277,14 @@ export default async function StudioApplicationDetailPage({ params }: StudioAppl
         const isTerminalCanceled = data.status === "canceled"
 
         // 큰 Stepper 대신 한 줄 요약으로 축소한다. 없는 timestamp 는 추정하지 않는다.
-        const caseStage = getCaseStage({
+        // 확정 체험의 종료 시각이 지났으면 표시만 "체험 완료" 로 앞당긴다(DB 는 confirmed 그대로).
+        const caseStage = getCaseDisplayStage({
           status: data.status,
           noShowAt: data.noShowAt,
-          registrationStatus: data.registrationStatus
+          registrationStatus: data.registrationStatus,
+          confirmedSlotAt: data.confirmedSlotAt,
+          scheduleStartTime: data.scheduleStartTime,
+          scheduleEndTime: data.scheduleEndTime
         })
         const closedStep =
           caseStage === "enrolled"

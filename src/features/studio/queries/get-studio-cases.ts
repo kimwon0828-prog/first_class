@@ -10,8 +10,8 @@ import {
 } from "@/features/studio/lib/case-filters"
 import {
   getCaseAttentionState,
+  getCaseDisplayStage,
   getCaseNextAction,
-  getCaseStage,
   type CaseAttentionInput,
   type StudioCaseListItem
 } from "@/features/studio/lib/case-view-model"
@@ -40,7 +40,14 @@ const CASE_SELECT_FIELDS =
   "id, class_id, child_name, child_grade, parent_name, parent_phone, assigned_teacher_id, " +
   "requested_slot_at, confirmed_slot_at, status, registration_status, created_at, completed_at, " +
   "enrolled_at, canceled_at, no_show_at, lost_at, next_contact_at, last_activity_at, " +
+  // 확정 체험의 종료 시각을 파생하려면 수업 길이가 필요하다. embed 라 query 는 늘지 않는다.
+  "class_schedules(start_time, end_time), " +
   "classes!inner(id, title, subject, organization_id)"
+
+type CaseScheduleRow = {
+  start_time: string | null
+  end_time: string | null
+}
 
 type CaseClassRow = {
   id: string
@@ -70,6 +77,7 @@ type CaseApplicationRow = {
   next_contact_at: string | null
   last_activity_at: string | null
   classes: CaseClassRow | CaseClassRow[] | null
+  class_schedules: CaseScheduleRow | CaseScheduleRow[] | null
 }
 
 type CaseConsultationLogRow = {
@@ -111,6 +119,14 @@ const getEmbeddedClass = (row: CaseApplicationRow): CaseClassRow | null => {
   }
 
   return row.classes ?? null
+}
+
+const getEmbeddedSchedule = (row: CaseApplicationRow): CaseScheduleRow | null => {
+  if (Array.isArray(row.class_schedules)) {
+    return row.class_schedules[0] ?? null
+  }
+
+  return row.class_schedules ?? null
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -320,6 +336,7 @@ export const getStudioCases = async (
     const now = new Date()
     const items = rows.map((row): StudioCaseListItem => {
       const embeddedClass = getEmbeddedClass(row)
+      const embeddedSchedule = getEmbeddedSchedule(row)
       const latestConsultation = latestConsultationById.get(row.id) ?? null
 
       const attentionInput: CaseAttentionInput = {
@@ -351,7 +368,17 @@ export const getStudioCases = async (
         },
         status: row.status,
         registrationStatus: row.registration_status,
-        stage: getCaseStage(attentionInput),
+        // 확정 체험의 종료 시각이 지났으면 표시만 체험 완료로 앞당긴다(DB 는 confirmed 그대로).
+        stage: getCaseDisplayStage(
+          {
+            ...attentionInput,
+            scheduleStartTime: embeddedSchedule?.start_time ?? null,
+            scheduleEndTime: embeddedSchedule?.end_time ?? null
+          },
+          now
+        ),
+        scheduleStartTime: embeddedSchedule?.start_time ?? null,
+        scheduleEndTime: embeddedSchedule?.end_time ?? null,
         requestedSlotAt: row.requested_slot_at,
         confirmedSlotAt: row.confirmed_slot_at ?? null,
         trialResultExists: attentionInput.trialResultExists,

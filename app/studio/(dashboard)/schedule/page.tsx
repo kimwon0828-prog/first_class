@@ -25,6 +25,7 @@ export default async function StudioSchedulePage({ searchParams }: StudioSchedul
           items={applications}
           error={error}
           initialUrlState={initialUrlState}
+          nowIso={new Date().toISOString()}
         />
       </div>
     </div>

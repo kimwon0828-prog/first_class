@@ -5,6 +5,7 @@ import {
 } from "@/features/studio/lib/application-status-labels"
 import { toSeoulDateKey } from "@/features/studio/lib/studio-schedule-month"
 import type { ApplicationStatus, StudioApplicationSummary } from "@/shared/lib/db/adapter"
+import { isTrialTimeEnded } from "@/features/studio/lib/trial-completion"
 import { getSeoulDateTimeParts } from "@/shared/lib/seoul-datetime"
 
 export type StudioScheduleEvent = {
@@ -96,8 +97,30 @@ export const formatClockMinutes = (minutes: number) => {
   return `${String(Math.floor(clamped / 60)).padStart(2, "0")}:${String(clamped % 60).padStart(2, "0")}`
 }
 
+/**
+ * 확정 체험의 종료 시각이 지났으면 배지만 "체험 완료" 로 보여준다. DB status 는 그대로다.
+ * now 는 호출자가 넘긴다 — 서버 렌더와 클라이언트 hydration 이 같은 값을 써야
+ * 경계 시각에 라벨이 갈리지 않는다.
+ */
+const toDisplayStatusInput = (item: StudioApplicationSummary, now: Date) => ({
+  status:
+    item.status === "confirmed" &&
+    isTrialTimeEnded(
+      {
+        confirmedSlotAt: item.confirmedSlotAt,
+        scheduleStartTime: item.scheduleStartTime,
+        scheduleEndTime: item.scheduleEndTime
+      },
+      now
+    )
+      ? ("completed" as const)
+      : item.status,
+  noShowAt: item.noShowAt
+})
+
 export const buildStudioScheduleEvents = (
-  items: StudioApplicationSummary[]
+  items: StudioApplicationSummary[],
+  now: Date = new Date()
 ): StudioScheduleEvent[] => {
   const events: StudioScheduleEvent[] = []
 
@@ -134,8 +157,8 @@ export const buildStudioScheduleEvents = (
       assignedTeacherId: item.assignedTeacherId,
       assignedTeacherName: normalizeText(item.assignedTeacherName),
       status: item.status,
-      statusLabel: getStudioStatusLabel(item),
-      tone: getStudioStatusTone(item),
+      statusLabel: getStudioStatusLabel(toDisplayStatusInput(item, now)),
+      tone: getStudioStatusTone(toDisplayStatusInput(item, now)),
       detailHref: `/studio/applications/${item.id}`
     })
   }

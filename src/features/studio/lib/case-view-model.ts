@@ -10,6 +10,7 @@
 // 이 파일은 순수 함수만 둔다(서버 전용 import 없음).
 
 import { getStudioDisplayStatus } from "@/features/studio/lib/application-status-labels"
+import { isTrialTimeEnded, type TrialScheduleWindow } from "@/features/studio/lib/trial-completion"
 import { getConsultationPipelineGroup } from "@/shared/lib/consultation-pipeline"
 import type {
   ApplicationRegistrationStatus,
@@ -89,6 +90,34 @@ export const getCaseStage = (input: CaseStageInput): CaseStage => {
   }
 
   return displayStatus
+}
+
+export type CaseDisplayStageInput = CaseStageInput & TrialScheduleWindow
+
+/**
+ * 화면에 보여줄 단계.
+ *
+ * 확정된 체험의 종료 시각이 지났으면 DB 가 아직 confirmed 여도 "체험 완료" 로 보여준다.
+ * 원장이 보기에 이미 끝난 수업이 "일정 확정" 으로 남아 있는 것이 사실과 다르기 때문이다.
+ *
+ * ⚠️ 표시 의미이지 저장 의미가 아니다.
+ *   - DB status 는 그대로 confirmed 다. 이 함수는 아무것도 저장하지 않는다.
+ *   - 실적 집계(studio-dashboard-metrics)는 getCaseStage 를 그대로 쓴다.
+ *     시간이 지났다는 이유로 체험 완료 실적에 넣지 않는다.
+ *   - 등록 결정 로직도 실제 status 를 본다.
+ *
+ * confirmed 가 아닌 단계는 손대지 않는다. 취소/노쇼는 시간이 지나도 취소/노쇼다.
+ */
+export const getCaseDisplayStage = (
+  input: CaseDisplayStageInput,
+  now: Date = new Date()
+): CaseStage => {
+  const stage = getCaseStage(input)
+  if (stage !== "confirmed") {
+    return stage
+  }
+
+  return isTrialTimeEnded(input, now) ? "completed" : stage
 }
 
 /** 목록에서 "지금 눈길이 가야 하는 이유". NONE 이면 급한 일이 없다는 뜻이다. */
@@ -295,6 +324,9 @@ export type StudioCaseListItem = {
 
   requestedSlotAt: string
   confirmedSlotAt: string | null
+  /** 확정 체험의 종료 시각 파생용. class_schedules 를 못 읽으면 null 이다. */
+  scheduleStartTime: string | null
+  scheduleEndTime: string | null
   trialResultExists: boolean
 
   latestConsultation: {

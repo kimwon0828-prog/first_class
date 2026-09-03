@@ -52,6 +52,8 @@ type StudioScheduleManagerProps = {
   items: StudioApplicationSummary[]
   error?: string | null
   initialUrlState: StudioScheduleUrlState
+  /** 서버가 정한 기준 시각. 체험 종료 표시가 hydration 전후로 달라지지 않게 한다. */
+  nowIso: string
 }
 
 type EventStyle = CSSProperties & {
@@ -411,9 +413,11 @@ const FilterGroup = ({
 export const StudioScheduleManager = ({
   items,
   error,
-  initialUrlState
+  initialUrlState,
+  nowIso
 }: StudioScheduleManagerProps) => {
-  const todayKey = useMemo(() => getSeoulTodayKey(), [])
+  // "오늘" 도 서버가 정한 기준 시각에서 뽑는다. 달력 강조와 체험 종료 표시가 같은 시각을 본다.
+  const todayKey = useMemo(() => getSeoulTodayKey(new Date(nowIso)), [nowIso])
   const [anchorDateKey, setAnchorDateKey] = useState(initialUrlState.dateKey ?? todayKey)
   const [view, setView] = useState<CalendarView>(initialUrlState.view)
   // Mini Calendar 가 보고 있는 달. anchor 와 따로 움직일 수 있지만 anchor 이동에는 항상 따라간다.
@@ -421,7 +425,10 @@ export const StudioScheduleManager = ({
     toMonthStartKey(initialUrlState.dateKey ?? todayKey)
   )
 
-  const baseEvents = useMemo(() => buildStudioScheduleEvents(items), [items])
+  const baseEvents = useMemo(
+    () => buildStudioScheduleEvents(items, new Date(nowIso)),
+    [items, nowIso]
+  )
   // 옵션은 필터가 걸리지 않은 전체 event 에서 만든다(§18).
   const filterOptions = useMemo(() => buildStudioScheduleFilterOptions(baseEvents), [baseEvents])
   const [filters, setFilters] = useState<StudioScheduleFilters>(() =>
