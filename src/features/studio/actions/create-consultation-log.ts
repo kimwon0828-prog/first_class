@@ -2,6 +2,10 @@
 
 import { revalidatePath } from "next/cache"
 
+import {
+  readRegularSchedulePreferenceInput,
+  resolveRegularSchedulePreferenceWrite
+} from "@/features/studio/lib/regular-schedule-preference-input"
 import { requireTeacherStudioAccess } from "@/features/studio/lib/require-teacher-studio-access"
 import { parseSeoulDateTimeLocalToIso } from "@/features/studio/lib/seoul-datetime"
 import {
@@ -237,7 +241,22 @@ export async function createConsultationLogAction(
     }
   }
 
+  // 희망 일정은 선택 입력이다. 지금 UI 에는 필드가 없으므로 대부분 "미전달"로 들어온다.
+  // "미전달"과 "undecided"를 절대 같게 처리하지 않는다.
+  const preferenceInput = readRegularSchedulePreferenceInput(formData)
+  if (preferenceInput.status === "invalid") {
+    return {
+      status: "error",
+      message: "정규수업 희망 일정 값이 올바르지 않습니다."
+    }
+  }
+
   const occurredAt = new Date().toISOString()
+  const preferenceWrite = resolveRegularSchedulePreferenceWrite({
+    input: preferenceInput,
+    current,
+    now: occurredAt
+  })
   const resolvedUnregisteredReason =
     registrationStatus === "not_enrolled" ? unregisteredReason : null
   const resolvedUnregisteredReasonNote =
@@ -284,14 +303,20 @@ export async function createConsultationLogAction(
       registrationStatusSnapshot: registrationStatus,
       nextAction,
       nextContactAt,
-      note
+      note,
+      // 스냅샷은 "이번에 입력한 값"이 아니라 "이 상담 시점의 Case 상태"다.
+      // 미전달이면 기존 current 값이 그대로 찍힌다(registrationStatusSnapshot 과 같은 의미).
+      regularSchedulePreferenceSnapshot: preferenceWrite.snapshot,
+      regularSchedulePreferenceNoteSnapshot: preferenceWrite.snapshotNote
     })
 
     await dataAdapter.updateStudioApplicationConsultationSnapshot({
       applicationId,
       currentStatus: current.status,
       nextContactAt,
-      lastActivityAt: occurredAt
+      lastActivityAt: occurredAt,
+      // 미전달이면 undefined 라 Case 의 희망 일정 컬럼을 건드리지 않는다.
+      regularSchedulePreferenceWrite: preferenceWrite.caseWrite
     })
 
     revalidatePath("/studio")

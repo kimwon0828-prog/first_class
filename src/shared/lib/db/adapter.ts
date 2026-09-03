@@ -1,3 +1,4 @@
+import type { RegularSchedulePreference } from "@/features/studio/lib/regular-schedule-preference"
 import type { ClassSubjectReadModel } from "@/shared/lib/subject-master"
 
 export type UserRole = "parent" | "teacher"
@@ -47,6 +48,15 @@ export type StudioConsultationLog = {
   nextAction: ConsultationLogNextAction | null
   nextContactAt: string | null
   note: string | null
+  /**
+   * 그 상담 시점의 정규수업 희망 일정 스냅샷(raw jsonb).
+   *
+   * 파싱하지 않은 원본을 그대로 넘긴다. adapter 가 조용히 null 로 바꾸면
+   * 미래 버전이나 깨진 값을 화면이 구분할 수 없게 된다.
+   * 해석은 regular-schedule-preference 의 parser 가 한다.
+   */
+  regularSchedulePreferenceSnapshot: unknown
+  regularSchedulePreferenceNoteSnapshot: string | null
   createdBy: string | null
   createdAt: string
   updatedAt: string
@@ -665,6 +675,15 @@ export type StudioApplicationDetail = StudioApplicationSummary & {
   nextContactAt: string | null
   lastActivityAt: string | null
   memo: string | null
+  /**
+   * 체험 이후 상담에서 확인한 정규수업 희망 일정(raw jsonb).
+   *
+   * ⚠️ 신청 당시 자유 입력인 preferredRegularSchedule 과 다른 값이다. 서로 복사하지 않는다.
+   * parser 를 거치지 않은 원본이라 unknown 이다.
+   */
+  regularSchedulePreference: unknown
+  regularSchedulePreferenceNote: string | null
+  regularSchedulePreferenceUpdatedAt: string | null
   trialResult: StudioTrialResult | null
   consultationLogs: StudioConsultationLog[]
   logs: ApplicationLogEntry[]
@@ -733,11 +752,26 @@ export type UpsertStudioTrialResultInput = {
   note: string | null
 }
 
+/**
+ * 희망 일정 컬럼 3개를 함께 쓴다.
+ *
+ * 이 필드가 아예 없으면(undefined) 컬럼을 건드리지 않는다.
+ * "전달되지 않음"과 "undecided" 는 다른 사실이라 undefined 로만 구분한다.
+ */
+export type RegularSchedulePreferenceWrite = {
+  /** canonical 값. null 이면 "기록 없음"으로 되돌린다. */
+  preference: RegularSchedulePreference | null
+  note: string | null
+  /** 실제로 값이 바뀐 경우에만 새 시각. 그대로면 기존 값을 넘겨 유지한다. */
+  updatedAt: string | null
+}
+
 export type UpdateStudioApplicationConsultationSnapshotInput = {
   applicationId: string
   currentStatus: ApplicationStatus
   nextContactAt: string | null
   lastActivityAt: string
+  regularSchedulePreferenceWrite?: RegularSchedulePreferenceWrite
 }
 
 export type CreateStudioConsultationLogInput = {
@@ -752,6 +786,9 @@ export type CreateStudioConsultationLogInput = {
   nextAction: ConsultationLogNextAction | null
   nextContactAt: string | null
   note: string | null
+  /** 그 상담 시점의 Case 상태. registrationStatusSnapshot 과 같은 의미다. */
+  regularSchedulePreferenceSnapshot: RegularSchedulePreference | null
+  regularSchedulePreferenceNoteSnapshot: string | null
 }
 
 export type UpdateStudioConsultationLogInput = {
@@ -762,12 +799,18 @@ export type UpdateStudioConsultationLogInput = {
   sentiment: ConsultationSentiment
   nextContactAt: string | null
   note: string
+  /** 없으면 기존 스냅샷을 그대로 둔다. 지금 UI 에는 희망 일정 입력이 없다. */
+  regularSchedulePreferenceSnapshotWrite?: {
+    preference: RegularSchedulePreference | null
+    note: string | null
+  }
 }
 
 export type UpdateStudioApplicationLatestConsultationSnapshotInput = {
   applicationId: string
   currentStatus: ApplicationStatus
   nextContactAt: string | null
+  regularSchedulePreferenceWrite?: RegularSchedulePreferenceWrite
 }
 
 export type UpdateStudioApplicationAssigneeInput = {

@@ -434,3 +434,35 @@ export const formatRegularSchedulePreferenceLines = (
 /** 한 줄로 합친 표시 문자열. */
 export const formatRegularSchedulePreference = (preference: RegularSchedulePreference) =>
   formatRegularSchedulePreferenceLines(preference).join(" 또는 ")
+
+// ─────────────────────────────────────────────────────────────
+// change detection
+// ─────────────────────────────────────────────────────────────
+
+/**
+ * 두 희망 일정이 같은 값인지 본다.
+ *
+ * raw JSON 문자열을 비교하면 안 된다. 키 순서나 요일 순서만 달라도 다른 값이 되어,
+ * 같은 조건을 다시 저장했을 뿐인데 updated_at 이 갱신된다.
+ * 그래서 양쪽을 validator(= canonical 정규화)에 통과시킨 뒤 비교한다.
+ */
+export const areRegularSchedulePreferencesEqual = (left: unknown, right: unknown) => {
+  if (left === null || left === undefined) {
+    return right === null || right === undefined
+  }
+
+  if (right === null || right === undefined) {
+    return false
+  }
+
+  const leftResult = validateRegularSchedulePreference(left)
+  const rightResult = validateRegularSchedulePreference(right)
+
+  // 한쪽이라도 읽을 수 없으면 "같다"고 단정하지 않는다.
+  if (!leftResult.ok || !rightResult.ok) {
+    return false
+  }
+
+  // validator 를 통과한 값은 키 순서와 요일 순서가 고정이라 문자열 비교가 안전하다.
+  return JSON.stringify(leftResult.value) === JSON.stringify(rightResult.value)
+}

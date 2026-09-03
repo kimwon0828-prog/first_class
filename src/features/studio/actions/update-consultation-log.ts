@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache"
 
+import { readRegularSchedulePreferenceInput } from "@/features/studio/lib/regular-schedule-preference-input"
 import { requireTeacherStudioAccess } from "@/features/studio/lib/require-teacher-studio-access"
 import { parseSeoulDateTimeLocalToIso } from "@/features/studio/lib/seoul-datetime"
 import { getStudioApplicationDetail } from "@/features/studio/queries/get-studio-application-detail"
@@ -115,6 +116,20 @@ export async function updateConsultationLogAction(
     }
   }
 
+  // 현재 수정 UI 에는 희망 일정 필드가 없다. 미전달이면 기존 스냅샷을 건드리지 않는다.
+  const preferenceInput = readRegularSchedulePreferenceInput(formData)
+  if (preferenceInput.status === "invalid") {
+    return {
+      status: "error",
+      message: "정규수업 희망 일정 값이 올바르지 않습니다."
+    }
+  }
+
+  const preferenceSnapshotWrite =
+    preferenceInput.status === "present"
+      ? { preference: preferenceInput.preference, note: preferenceInput.note }
+      : undefined
+
   const latestConsultationLog =
     current.consultationLogs.find((item) => item.activityType === "CONSULTATION") ?? null
   const shouldSyncLatestSnapshot = latestConsultationLog?.id === consultationLogId
@@ -127,14 +142,23 @@ export async function updateConsultationLogAction(
       channel,
       sentiment,
       nextContactAt,
-      note
+      note,
+      regularSchedulePreferenceSnapshotWrite: preferenceSnapshotWrite
     })
 
     if (shouldSyncLatestSnapshot) {
       await dataAdapter.updateStudioApplicationLatestConsultationSnapshot({
         applicationId,
         currentStatus: current.status,
-        nextContactAt
+        nextContactAt,
+        // 최신 log 를 고쳤을 때만 Case current 를 맞춘다. 과거 log 는 Case 를 바꾸지 않는다.
+        regularSchedulePreferenceWrite: preferenceSnapshotWrite
+          ? {
+              preference: preferenceSnapshotWrite.preference,
+              note: preferenceSnapshotWrite.note,
+              updatedAt: new Date().toISOString()
+            }
+          : undefined
       })
     }
 

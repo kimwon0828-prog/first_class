@@ -87,6 +87,7 @@ import type {
   StudioTrialResult,
   UpdateChildProfileInput,
   UpdateStudioApplicationAssigneeInput,
+  RegularSchedulePreferenceWrite,
   UpdateStudioApplicationConsultationSnapshotInput,
   UpdateStudioApplicationLatestConsultationSnapshotInput,
   UpdateStudioApplicationOutcomeInput,
@@ -226,6 +227,9 @@ type TrialApplicationRow = {
   follow_up_note?: string | null
   next_contact_at?: string | null
   last_activity_at?: string | null
+  regular_schedule_preference?: unknown
+  regular_schedule_preference_note?: string | null
+  regular_schedule_preference_updated_at?: string | null
   memo?: string | null
   status: TrialApplicationSummary["status"]
   created_at: string
@@ -282,6 +286,8 @@ type ConsultationLogRow = {
   channel: string | null
   sentiment: string | null
   registration_status_snapshot: string | null
+  regular_schedule_preference_snapshot?: unknown
+  regular_schedule_preference_note_snapshot?: string | null
   next_action: string | null
   next_contact_at: string | null
   note: string | null
@@ -903,6 +909,9 @@ const mapStudioConsultationLog = (row: ConsultationLogRow): StudioConsultationLo
       : null,
   nextContactAt: row.next_contact_at ?? null,
   note: row.note?.trim() ? row.note.trim() : null,
+  // 원본 그대로 넘긴다. 파싱/판정은 화면 쪽 parser 가 한다(조용히 null 로 바꾸지 않는다).
+  regularSchedulePreferenceSnapshot: row.regular_schedule_preference_snapshot ?? null,
+  regularSchedulePreferenceNoteSnapshot: row.regular_schedule_preference_note_snapshot ?? null,
   createdBy: row.created_by ?? null,
   createdAt: row.created_at,
   updatedAt: row.updated_at ?? row.created_at
@@ -1382,6 +1391,23 @@ const getProfileNameMap = async (profileIds: string[]) => {
  * PostgREST 의 db max_rows(supabase/config.toml: 1000)와 같은 값이다.
  * 이보다 크게 잡으면 서버가 조용히 잘라내 마지막 페이지 판정이 틀린다.
  */
+/**
+ * 희망 일정 3컬럼의 update payload.
+ *
+ * write 가 없으면 빈 객체다 — 컬럼을 아예 건드리지 않아 기존 값이 남는다.
+ * "전달되지 않음"을 "지우기"로 해석하지 않기 위한 구분이다.
+ */
+const buildRegularSchedulePreferenceUpdate = (
+  write: RegularSchedulePreferenceWrite | undefined
+) =>
+  write
+    ? {
+        regular_schedule_preference: write.preference,
+        regular_schedule_preference_note: write.note,
+        regular_schedule_preference_updated_at: write.updatedAt
+      }
+    : {}
+
 const STUDIO_APPLICATION_PAGE_SIZE = 1000
 
 const getStudioTeacherDisplayNameMap = async (teacherIds: string[]) => {
@@ -4267,7 +4293,7 @@ export const supabaseDataAdapter: DataAdapter = {
         ? supabase
             .from("consultation_logs")
             .select(
-              "id, application_id, occurred_at, activity_type, channel, sentiment, registration_status_snapshot, next_action, next_contact_at, note, created_by, created_at, updated_at"
+              "id, application_id, occurred_at, activity_type, channel, sentiment, registration_status_snapshot, regular_schedule_preference_snapshot, regular_schedule_preference_note_snapshot, next_action, next_contact_at, note, created_by, created_at, updated_at"
             )
             .in("application_id", applicationIds)
             .order("occurred_at", { ascending: false })
@@ -4405,7 +4431,7 @@ export const supabaseDataAdapter: DataAdapter = {
     const { data, error } = await supabase
       .from("trial_applications")
       .select(
-        "id, class_id, parent_id, child_name, child_grade, parent_name, parent_phone, child_school, child_notes, subject_experience_yn, subject_experience_duration, current_level, preferred_regular_schedule, goal_type, goal_note, class_schedule_id, requested_slot_at, requested_schedule_block_id, selected_schedule_label, confirmed_slot_at, confirmed_schedule_block_id, assigned_teacher_id, contacted_at, scheduled_at, completed_at, enrolled_at, canceled_at, no_show_at, consultation_note, trial_feedback, final_level, final_schedule, registration_status, registered_course, unregistered_reason, unregistered_reason_note, lost_at, follow_up_note, next_contact_at, last_activity_at, memo, status, created_at, updated_at, class_schedules(start_time, end_time), confirmed_block:schedule_blocks!trial_applications_confirmed_schedule_block_id_fkey(end_at), classes!inner(title, subject, organization_id, program_type, assignment_mode, organizations(name, sido, sigungu, bname))"
+        "id, class_id, parent_id, child_name, child_grade, parent_name, parent_phone, child_school, child_notes, subject_experience_yn, subject_experience_duration, current_level, preferred_regular_schedule, goal_type, goal_note, class_schedule_id, requested_slot_at, requested_schedule_block_id, selected_schedule_label, confirmed_slot_at, confirmed_schedule_block_id, assigned_teacher_id, contacted_at, scheduled_at, completed_at, enrolled_at, canceled_at, no_show_at, consultation_note, trial_feedback, final_level, final_schedule, registration_status, registered_course, unregistered_reason, unregistered_reason_note, lost_at, follow_up_note, next_contact_at, last_activity_at, regular_schedule_preference, regular_schedule_preference_note, regular_schedule_preference_updated_at, memo, status, created_at, updated_at, class_schedules(start_time, end_time), confirmed_block:schedule_blocks!trial_applications_confirmed_schedule_block_id_fkey(end_at), classes!inner(title, subject, organization_id, program_type, assignment_mode, organizations(name, sido, sigungu, bname))"
       )
       .eq("id", applicationId)
       .eq("classes.organization_id", organizationId)
@@ -4454,7 +4480,7 @@ export const supabaseDataAdapter: DataAdapter = {
     const { data: consultationLogData, error: consultationLogError } = await supabase
       .from("consultation_logs")
       .select(
-        "id, application_id, occurred_at, activity_type, channel, sentiment, registration_status_snapshot, next_action, next_contact_at, note, created_by, created_at, updated_at"
+        "id, application_id, occurred_at, activity_type, channel, sentiment, registration_status_snapshot, regular_schedule_preference_snapshot, regular_schedule_preference_note_snapshot, next_action, next_contact_at, note, created_by, created_at, updated_at"
       )
       .eq("application_id", applicationId)
       .order("occurred_at", { ascending: false })
@@ -4489,6 +4515,12 @@ export const supabaseDataAdapter: DataAdapter = {
       unregisteredReasonNote:
         (data as TrialApplicationRow).unregistered_reason_note ?? null,
       lostAt: (data as TrialApplicationRow).lost_at ?? null,
+      // 원본 그대로. preferredRegularSchedule(신청 시 자유 입력)과 다른 값이다.
+      regularSchedulePreference: (data as TrialApplicationRow).regular_schedule_preference ?? null,
+      regularSchedulePreferenceNote:
+        (data as TrialApplicationRow).regular_schedule_preference_note ?? null,
+      regularSchedulePreferenceUpdatedAt:
+        (data as TrialApplicationRow).regular_schedule_preference_updated_at ?? null,
       followUpNote: (data as TrialApplicationRow).follow_up_note ?? null,
       nextContactAt: (data as TrialApplicationRow).next_contact_at ?? null,
       lastActivityAt: (data as TrialApplicationRow).last_activity_at ?? null,
@@ -4876,12 +4908,15 @@ export const supabaseDataAdapter: DataAdapter = {
     input: UpdateStudioApplicationConsultationSnapshotInput
   ) {
     const supabase = await getSupabaseServerClient()
+    // 희망 일정은 next_contact_at 과 같은 UPDATE 문에 실어 보낸다.
+    // 별도 호출을 만들면 부분 저장 지점이 하나 더 생긴다.
     const { data, error } = await supabase
       .from("trial_applications")
       .update({
         next_contact_at: input.nextContactAt,
         last_activity_at: input.lastActivityAt,
-        updated_at: input.lastActivityAt
+        updated_at: input.lastActivityAt,
+        ...buildRegularSchedulePreferenceUpdate(input.regularSchedulePreferenceWrite)
       })
       .eq("id", input.applicationId)
       .eq("status", input.currentStatus)
@@ -4903,7 +4938,8 @@ export const supabaseDataAdapter: DataAdapter = {
     const { data, error } = await supabase
       .from("trial_applications")
       .update({
-        next_contact_at: input.nextContactAt
+        next_contact_at: input.nextContactAt,
+        ...buildRegularSchedulePreferenceUpdate(input.regularSchedulePreferenceWrite)
       })
       .eq("id", input.applicationId)
       .eq("status", input.currentStatus)
@@ -4930,6 +4966,8 @@ export const supabaseDataAdapter: DataAdapter = {
         channel: input.channel,
         sentiment: input.sentiment,
         registration_status_snapshot: input.registrationStatusSnapshot,
+        regular_schedule_preference_snapshot: input.regularSchedulePreferenceSnapshot,
+        regular_schedule_preference_note_snapshot: input.regularSchedulePreferenceNoteSnapshot,
         next_action: input.nextAction,
         next_contact_at: input.nextContactAt,
         note: input.note,
@@ -4966,7 +5004,16 @@ export const supabaseDataAdapter: DataAdapter = {
         channel: input.channel,
         sentiment: input.sentiment,
         next_contact_at: input.nextContactAt,
-        note: input.note
+        note: input.note,
+        // 전달되지 않으면 컬럼 자체를 payload 에서 뺀다. 기존 스냅샷을 지우면 안 된다.
+        ...(input.regularSchedulePreferenceSnapshotWrite
+          ? {
+              regular_schedule_preference_snapshot:
+                input.regularSchedulePreferenceSnapshotWrite.preference,
+              regular_schedule_preference_note_snapshot:
+                input.regularSchedulePreferenceSnapshotWrite.note
+            }
+          : {})
       })
       .eq("id", input.consultationLogId)
       .eq("application_id", input.applicationId)

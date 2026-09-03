@@ -2,6 +2,7 @@ import type {
   ActivateStudioTeacherInput,
   DeleteStudioTeacherInput,
   ApplicationLogEntry,
+  RegularSchedulePreferenceWrite,
   ApplicationRegistrationStatus,
   ApplicationUnregisteredReason,
   AvailableScheduleSlot,
@@ -80,6 +81,23 @@ type MockApplicationRecord = Omit<
   "scheduleStartTime" | "scheduleEndTime" | "confirmedBlockEndAt"
 > & {
   childId: string | null
+}
+
+/**
+ * 희망 일정 write 를 적용한다. write 가 없으면 아무것도 바꾸지 않는다.
+ * supabase adapter 의 buildRegularSchedulePreferenceUpdate 와 같은 규칙이다.
+ */
+const applyRegularSchedulePreferenceWrite = (
+  target: MockApplicationRecord,
+  write: RegularSchedulePreferenceWrite | undefined
+) => {
+  if (!write) {
+    return
+  }
+
+  target.regularSchedulePreference = write.preference
+  target.regularSchedulePreferenceNote = write.note
+  target.regularSchedulePreferenceUpdatedAt = write.updatedAt
 }
 
 const mockOrganizationId = "org-1"
@@ -2106,6 +2124,7 @@ export const mockDataAdapter: DataAdapter = {
     target.nextContactAt = input.nextContactAt
     target.lastActivityAt = input.lastActivityAt
     target.updatedAt = input.lastActivityAt
+    applyRegularSchedulePreferenceWrite(target, input.regularSchedulePreferenceWrite)
   },
   async createStudioConsultationLog(input: CreateStudioConsultationLogInput) {
     const existing = consultationLogs.find((item) => item.id === input.id)
@@ -2125,6 +2144,8 @@ export const mockDataAdapter: DataAdapter = {
       channel: input.channel,
       sentiment: input.sentiment,
       registrationStatusSnapshot: input.registrationStatusSnapshot,
+      regularSchedulePreferenceSnapshot: input.regularSchedulePreferenceSnapshot,
+      regularSchedulePreferenceNoteSnapshot: input.regularSchedulePreferenceNoteSnapshot,
       nextAction: input.nextAction,
       nextContactAt: input.nextContactAt,
       note: input.note,
@@ -2151,6 +2172,13 @@ export const mockDataAdapter: DataAdapter = {
     target.sentiment = input.sentiment
     target.note = input.note
     target.nextContactAt = input.nextContactAt
+    // 전달되지 않으면 기존 스냅샷을 그대로 둔다(supabase adapter 와 같은 동작).
+    if (input.regularSchedulePreferenceSnapshotWrite) {
+      target.regularSchedulePreferenceSnapshot =
+        input.regularSchedulePreferenceSnapshotWrite.preference
+      target.regularSchedulePreferenceNoteSnapshot =
+        input.regularSchedulePreferenceSnapshotWrite.note
+    }
     target.updatedAt = new Date().toISOString()
   },
   async updateStudioApplicationLatestConsultationSnapshot(
@@ -2165,6 +2193,7 @@ export const mockDataAdapter: DataAdapter = {
     }
 
     target.nextContactAt = input.nextContactAt
+    applyRegularSchedulePreferenceWrite(target, input.regularSchedulePreferenceWrite)
   },
   async upsertStudioTrialResult(input: UpsertStudioTrialResultInput) {
     const normalizedObservations = Array.from(new Set(input.observations.filter((item) => item.trim().length > 0)))
@@ -2296,6 +2325,10 @@ export const mockDataAdapter: DataAdapter = {
       subjectExperienceDuration: input.subjectExperienceDuration,
       currentLevel: input.currentLevel,
       preferredRegularSchedule: input.preferredRegularSchedule,
+      // 체험 이후 상담에서 채워지는 값이라 신청 시점에는 비어 있다.
+      regularSchedulePreference: null,
+      regularSchedulePreferenceNote: null,
+      regularSchedulePreferenceUpdatedAt: null,
       goalNote: input.goalNote,
       consultationNote: null,
       trialFeedback: null,
