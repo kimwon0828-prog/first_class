@@ -17,6 +17,11 @@ import {
   formatSeoulDateTime,
   formatSeoulDateTimeInputValue
 } from "@/features/studio/lib/seoul-datetime"
+import {
+  formatRegularSchedulePreference,
+  parseRegularSchedulePreference
+} from "@/features/studio/lib/regular-schedule-preference"
+import { RegularSchedulePreferenceEditor } from "@/features/studio/ui/regular-schedule-preference-editor"
 import type { StudioConsultationLog } from "@/shared/lib/db/adapter"
 
 import styles from "./application-trial-result-workflow.module.css"
@@ -154,6 +159,34 @@ export const ConsultationHistoryModal = ({
                         : "기록 없음")}
                   </p>
 
+                  {/*
+                    그 상담 시점의 희망 일정. 읽을 수 없는 값이어도 화면을 죽이지 않고
+                    "표시할 수 없음" 으로 알린다 — 원본은 그대로 둔다.
+                  */}
+                  {(() => {
+                    const parsed = parseRegularSchedulePreference(
+                      item.regularSchedulePreferenceSnapshot
+                    )
+
+                    if (parsed.status === "empty") {
+                      return null
+                    }
+
+                    return (
+                      <div className={styles.consultationNextContact}>
+                        <span className={styles.consultationNextContactLabel}>희망 일정</span>
+                        <span className={styles.consultationNextContactValue}>
+                          {parsed.status === "valid"
+                            ? formatRegularSchedulePreference(parsed.value)
+                            : "표시할 수 없는 기록"}
+                          {parsed.status === "valid" && item.regularSchedulePreferenceNoteSnapshot
+                            ? ` · ${item.regularSchedulePreferenceNoteSnapshot}`
+                            : ""}
+                        </span>
+                      </div>
+                    )
+                  })()}
+
                   {item.nextContactAt ? (
                     <div className={styles.consultationNextContact}>
                       <span className={styles.consultationNextContactLabel}>다음 연락</span>
@@ -284,6 +317,12 @@ const ConsultationHistoryEditor = ({
           disabled={isPending}
         />
       </label>
+
+      <RegularSchedulePreferenceEditor
+        currentPreference={log.regularSchedulePreferenceSnapshot}
+        currentNote={log.regularSchedulePreferenceNoteSnapshot}
+        disabled={isPending}
+      />
 
       <label className={styles.field}>
         <span className={styles.fieldLabel}>다음 연락일</span>

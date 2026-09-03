@@ -1,0 +1,237 @@
+/*
+ * 상담 중 10~20초 안에 입력하는 영역이다.
+ * 카드 안에 들어가므로 배경을 따로 칠하지 않고 구분선과 여백만 쓴다.
+ */
+
+.editor {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s3);
+  padding: var(--s4);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--surface-sub);
+}
+
+.header {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.title {
+  margin: 0;
+  color: var(--text-1);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 20px;
+}
+
+.description {
+  margin: 0;
+  color: var(--text-3);
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.notice,
+.guidance {
+  margin: 0;
+  padding: var(--s2) var(--s3);
+  border-radius: var(--r-sm);
+  background: var(--blue-bg);
+  color: var(--blue-fg);
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.undecidedRow {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  color: var(--text-1);
+  font-size: 13px;
+  line-height: 20px;
+  cursor: pointer;
+}
+
+.undecidedHelp {
+  color: var(--text-3);
+  font-size: 12px;
+}
+
+.group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s3);
+  padding: var(--s3);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  background: var(--surface);
+}
+
+.groupHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.groupLabel {
+  color: var(--text-2);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.removeButton {
+  border: 0;
+  background: none;
+  padding: 0;
+  color: var(--text-3);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.removeButton:hover {
+  color: var(--text-1);
+  text-decoration: underline;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.fieldLabel {
+  color: var(--text-2);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 18px;
+}
+
+.chipRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.chip,
+.dayChip,
+.shortcutChip {
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-full);
+  background: var(--surface);
+  color: var(--text-2);
+  font-size: 13px;
+  line-height: 20px;
+  cursor: pointer;
+  /* 상담 중 빠르게 누르는 버튼이라 터치 타깃을 확보한다. */
+  min-height: 36px;
+  padding: 0 12px;
+}
+
+.dayChip {
+  min-width: 40px;
+  padding: 0 8px;
+  text-align: center;
+}
+
+.shortcutChip {
+  border-style: dashed;
+  color: var(--text-3);
+}
+
+.chip:hover,
+.dayChip:hover,
+.shortcutChip:hover {
+  border-color: var(--text-3);
+  color: var(--text-1);
+}
+
+.chipActive {
+  border-color: var(--brand-500);
+  background: var(--brand-50);
+  color: var(--brand-700);
+  font-weight: 600;
+}
+
+.chip:focus-visible,
+.dayChip:focus-visible,
+.shortcutChip:focus-visible,
+.addButton:focus-visible,
+.removeButton:focus-visible,
+.select:focus-visible,
+.input:focus-visible {
+  outline: 2px solid var(--brand-500);
+  outline-offset: 2px;
+}
+
+.timeRow {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.tilde {
+  color: var(--text-3);
+  font-size: 13px;
+}
+
+.select,
+.input {
+  min-height: 36px;
+  padding: 0 10px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-sm);
+  background: var(--surface);
+  color: var(--text-1);
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.input {
+  width: 100%;
+}
+
+.addButton {
+  align-self: flex-start;
+  min-height: 36px;
+  padding: 0 12px;
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--r-sm);
+  background: none;
+  color: var(--text-2);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.addButton:hover {
+  border-color: var(--text-3);
+  color: var(--text-1);
+}
+
+.preview {
+  margin: 0;
+  color: var(--text-2);
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.error {
+  margin: 0;
+  color: var(--red-fg);
+  font-size: 12px;
+  line-height: 18px;
+}
+
+@media (max-width: 640px) {
+  .editor {
+    padding: var(--s3);
+  }
+
+  .timeRow .select {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+}

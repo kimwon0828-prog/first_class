@@ -348,3 +348,12 @@
 .applicationInfoGrid .infoCellWide {
   grid-column: 1 / -1;
 }
+
+/* 신청 시 자유 입력이 "정규수업 희망 일정"(등록 상담) 과 혼동되지 않게 출처를 덧붙인다. */
+.scheduleSourceHint {
+  display: block;
+  margin-top: 2px;
+  color: var(--text-3);
+  font-size: 12px;
+  line-height: 18px;
+}

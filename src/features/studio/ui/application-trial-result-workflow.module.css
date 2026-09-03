@@ -769,3 +769,12 @@
     grid-column: 2;
   }
 }
+
+/* 희망 일정 메모처럼 값에 덧붙는 보조 설명. */
+.resultGridHint {
+  display: block;
+  margin-top: 2px;
+  color: var(--text-3);
+  font-size: 12px;
+  line-height: 18px;
+}

@@ -8,7 +8,15 @@ import {
   createConsultationLogAction,
   type CreateConsultationLogActionState
 } from "@/features/studio/actions/create-consultation-log"
+import {
+  getStudioRegistrationStatusLabel,
+  getStudioRegistrationStatusTone
+} from "@/features/studio/lib/application-status-labels"
 import { buildCaseActivityEvents } from "@/features/studio/lib/case-activity"
+import {
+  formatRegularSchedulePreference,
+  parseRegularSchedulePreference
+} from "@/features/studio/lib/regular-schedule-preference"
 import { getTrialProgressState } from "@/features/studio/lib/trial-completion"
 import {
   CONSULTATION_CHANNEL_OPTIONS,
@@ -30,7 +38,9 @@ import {
   TRIAL_RESULT_UNREGISTERED_REASON_OPTIONS
 } from "@/features/studio/lib/trial-result-options"
 import { ApplicationStatusActionForm } from "@/features/studio/ui/application-status-action-form"
+import { StudioStatusBadge } from "@/features/studio/ui/studio-status-badge"
 import { ConsultationHistoryModal } from "@/features/studio/ui/consultation-history-modal"
+import { RegularSchedulePreferenceEditor } from "@/features/studio/ui/regular-schedule-preference-editor"
 import type {
   ApplicationRegistrationStatus,
   ApplicationUnregisteredReason,
@@ -691,7 +701,7 @@ export const ApplicationTrialResultWorkflow = ({
               </dd>
             </div>
             <div className={styles.resultGridRow}>
-              <dt className={styles.resultGridLabel}>추천 일정</dt>
+              <dt className={styles.resultGridLabel}>학원 추천 일정</dt>
               <dd className={styles.resultGridValue}>
                 {application.trialResult?.recommendedSchedule?.trim() || "-"}
               </dd>
@@ -702,19 +712,6 @@ export const ApplicationTrialResultWorkflow = ({
                 {application.trialResult?.note?.trim() || "-"}
               </dd>
             </div>
-            {application.registrationStatus === "not_enrolled" ? (
-              <div className={styles.resultGridRow}>
-                <dt className={styles.resultGridLabel}>미등록 사유</dt>
-                <dd className={styles.resultGridValue}>
-                  {[
-                    unregisteredReasonLabel,
-                    application.unregisteredReason === "other" ? application.unregisteredReasonNote : null
-                  ]
-                    .filter((item): item is string => Boolean(item))
-                    .join(" · ") || "-"}
-                </dd>
-              </div>
-            ) : null}
           </dl>
         </div>
       ) : isCompletedView ? (
@@ -730,11 +727,81 @@ export const ApplicationTrialResultWorkflow = ({
     </section>
   )
 
+  // 체험 결과(관찰)와 등록 상담(결정)을 카드로 분리한다.
+  // 실제 DB status 가 completed 일 때만 노출한다 — `체험 중` 에는 열지 않는다.
+  const preferenceParsed = parseRegularSchedulePreference(application.regularSchedulePreference)
+
+  const registrationConsultationSection = isCompletedView ? (
+    <section className={`${styles.card} ${styles.sectionCard}`} aria-label="등록 상담">
+      <div className={styles.sectionHead}>
+        <h2 className={styles.sectionTitle}>등록 상담</h2>
+        {canAddConsultation ? (
+          <div className={styles.sectionHeadActions}>
+            <button type="button" className={styles.inlineTextButton} onClick={openConsultationEditor}>
+              + 상담 기록
+            </button>
+          </div>
+        ) : null}
+      </div>
+
+      <dl className={styles.resultGrid}>
+        <div className={styles.resultGridRow}>
+          <dt className={styles.resultGridLabel}>등록 상태</dt>
+          <dd className={styles.resultGridValue}>
+            <StudioStatusBadge tone={getStudioRegistrationStatusTone(application.registrationStatus)}>
+              {getStudioRegistrationStatusLabel(application.registrationStatus)}
+            </StudioStatusBadge>
+          </dd>
+        </div>
+
+        <div className={styles.resultGridRow}>
+          <dt className={styles.resultGridLabel}>정규수업 희망 일정</dt>
+          <dd className={styles.resultGridValue}>
+            {preferenceParsed.status === "valid"
+              ? formatRegularSchedulePreference(preferenceParsed.value)
+              : preferenceParsed.status === "empty"
+                ? "아직 기록하지 않았어요."
+                : "표시할 수 없는 기록"}
+            {preferenceParsed.status === "valid" && application.regularSchedulePreferenceNote ? (
+              <span className={styles.resultGridHint}>
+                {application.regularSchedulePreferenceNote}
+              </span>
+            ) : null}
+          </dd>
+        </div>
+
+        {application.registrationStatus === "not_enrolled" ? (
+          <div className={styles.resultGridRow}>
+            <dt className={styles.resultGridLabel}>미등록 사유</dt>
+            <dd className={styles.resultGridValue}>
+              {[
+                unregisteredReasonLabel,
+                application.unregisteredReason === "other" ? application.unregisteredReasonNote : null
+              ]
+                .filter((item): item is string => Boolean(item))
+                .join(" · ") || "-"}
+            </dd>
+          </div>
+        ) : null}
+
+        {application.nextContactAt ? (
+          <div className={styles.resultGridRow}>
+            <dt className={styles.resultGridLabel}>다음 연락</dt>
+            <dd className={styles.resultGridValue}>
+              {formatSeoulDateTime(application.nextContactAt) ?? "-"}
+            </dd>
+          </div>
+        ) : null}
+      </dl>
+    </section>
+  ) : null
+
   return (
     <>
       {nextTodoSection}
       {activitySection}
       {trialResultSection}
+      {registrationConsultationSection}
 
       {sidebarContent ? <div className={styles.prioritySidebar}>{sidebarContent}</div> : null}
 
@@ -1131,6 +1198,16 @@ export const ApplicationTrialResultWorkflow = ({
                   ) : null}
                 </>
               ) : null}
+
+              <RegularSchedulePreferenceEditor
+                currentPreference={application.regularSchedulePreference}
+                currentNote={application.regularSchedulePreferenceNote}
+                disabled={isSavingConsultation}
+                showScheduleMismatchGuidance={
+                  selectedConsultationStatus === "not_enrolled" &&
+                  selectedConsultationUnregisteredReason === "schedule_mismatch"
+                }
+              />
 
               <Field label="다음 연락일">
                 <input

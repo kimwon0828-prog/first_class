@@ -500,8 +500,19 @@ export default async function StudioApplicationDetailPage({ params }: StudioAppl
                 ) : null}
                 {detailView.normalizedPreferredRegularSchedule ? (
                   <div className={styles.infoCell}>
-                    <dt className={styles.summaryLabel}>선호 정규 일정</dt>
-                    <dd className={styles.summaryValue}>{detailView.normalizedPreferredRegularSchedule}</dd>
+                    {/*
+                      세 일정 값이 비슷해 보이므로 라벨로 출처를 못 박는다.
+                        · 여기          — 신청 당시 학부모 자유 입력 (참고)
+                        · 등록 상담     — 체험 후 원장이 확인한 정규수업 희망 일정 (구조화)
+                        · 체험 결과     — 학원이 추천하는 일정
+                    */}
+                    <dt className={styles.summaryLabel}>신청 시 입력한 선호 일정</dt>
+                    <dd className={styles.summaryValue}>
+                      {detailView.normalizedPreferredRegularSchedule}
+                      <span className={styles.scheduleSourceHint}>
+                        학부모가 신청서에 직접 적은 참고 정보입니다.
+                      </span>
+                    </dd>
                   </div>
                 ) : null}
                 {detailView.childNotes ? (
