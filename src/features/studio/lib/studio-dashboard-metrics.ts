@@ -74,11 +74,17 @@ const isCreatedWithinRange = (
   return (from == null || createdAt >= from) && (to == null || createdAt <= to)
 }
 
+/** Dashboard의 기간 기반 분석이 함께 쓰는 created_at cohort selector. */
+export const selectStudioDashboardCohort = (
+  applications: StudioApplicationSummary[],
+  range: Pick<StudioResolvedDateRange, "createdAtFrom" | "createdAtTo">
+) => applications.filter((item) => isCreatedWithinRange(item, range))
+
 export const buildStudioDashboardMetrics = (
   applications: StudioApplicationSummary[],
   range: StudioResolvedDateRange
 ): StudioDashboardMetrics => {
-  const cohort = applications.filter((item) => isCreatedWithinRange(item, range))
+  const cohort = selectStudioDashboardCohort(applications, range)
   const stages = cohort.map((item) =>
     getCaseStage({
       status: item.status,
