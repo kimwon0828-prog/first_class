@@ -53,6 +53,9 @@ export const StudioSignInForm = ({ returnTo }: StudioSignInFormProps) => {
         <p
           data-role="form-message"
           data-tone={state.status}
+          // 로그인 실패를 화면으로만 알리면 스크린리더 사용자는 알 수 없다.
+          role={state.status === "error" ? "alert" : "status"}
+          aria-live={state.status === "error" ? "assertive" : "polite"}
           className={`${styles.message} ${state.status === "error" ? styles.error : styles.info}`}
         >
           {state.message}

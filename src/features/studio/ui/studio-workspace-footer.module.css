@@ -1,0 +1,62 @@
+/*
+ * 본문보다 눈에 띄면 실패다. 얇은 구분선 + 작은 글씨만 쓴다.
+ * 배경을 따로 칠하지 않고 page 배경을 그대로 쓴다.
+ */
+
+.footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s3);
+  flex-wrap: wrap;
+  width: 100%;
+  max-width: var(--studio-max);
+  margin: 0 auto;
+  padding: var(--s4) 24px var(--s6);
+  border-top: 1px solid var(--border);
+}
+
+.copyright {
+  margin: 0;
+  color: var(--text-3);
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.links {
+  display: flex;
+  align-items: center;
+  gap: var(--s4);
+  flex-wrap: wrap;
+}
+
+.link {
+  color: var(--text-3);
+  font-size: 12px;
+  line-height: 18px;
+  text-decoration: none;
+}
+
+.link:hover {
+  color: var(--text-2);
+  text-decoration: underline;
+}
+
+.link:focus-visible {
+  outline: 2px solid var(--brand-500);
+  outline-offset: 2px;
+  border-radius: var(--r-sm);
+}
+
+@media (max-width: 640px) {
+  .footer {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: var(--s2);
+    padding: var(--s4) 16px var(--s5);
+  }
+
+  .links {
+    gap: var(--s3);
+  }
+}

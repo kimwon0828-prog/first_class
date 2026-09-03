@@ -15,6 +15,8 @@ type StudioShellProps = {
   children: ReactNode
   organizationName?: string | null
   logoImagePath?: string | null
+  /** 본문 하단 footer. 서버에서 만들어 넘긴다(연도 계산이 hydration 을 타지 않게). */
+  footer?: ReactNode
 }
 
 type NavItem = {
@@ -116,7 +118,7 @@ const isActivePath = (pathname: string, href: string) => {
   return (NAV_ALIAS_PATHS[href] ?? []).some((alias) => matchesPath(pathname, alias))
 }
 
-export const StudioShell = ({ children, organizationName, logoImagePath }: StudioShellProps) => {
+export const StudioShell = ({ children, organizationName, logoImagePath, footer }: StudioShellProps) => {
   const pathname = usePathname() ?? ""
   const accountLabel = organizationName?.trim() || "학원"
   const accountInitial = accountLabel.slice(0, 1)
@@ -246,6 +248,7 @@ export const StudioShell = ({ children, organizationName, logoImagePath }: Studi
 
       <div className={styles.main}>
         <main className={styles.content}>{children}</main>
+        {footer}
       </div>
     </div>
   )
