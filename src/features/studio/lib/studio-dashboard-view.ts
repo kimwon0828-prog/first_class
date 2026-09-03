@@ -124,15 +124,6 @@ const toTimestamp = (value: string | null | undefined) => {
 }
 
 /**
- * 확정 일정이 없으면 희망 일정으로 본다(캘린더 / Case 목록과 같은 규칙).
- * 시각 비교는 절대 시각끼리 하므로 타임존 영향을 받지 않는다.
- */
-const hasTrialTimePassed = (item: StudioApplicationSummary, nowMs: number) => {
-  const slotAt = toTimestamp(item.confirmedSlotAt ?? item.requestedSlotAt)
-  return slotAt != null && slotAt <= nowMs
-}
-
-/**
  * 표시용 단계. 확정 체험의 종료 시각이 지났으면 체험 완료로 보여준다.
  * DB status 는 그대로다 — 실적 집계(studio-dashboard-metrics)는 이 함수를 쓰지 않는다.
  */
@@ -161,7 +152,6 @@ const resolveActionKind = (
   item: StudioApplicationSummary,
   now: Date
 ): StudioDashboardActionKind | null => {
-  const nowMs = now.getTime()
   const stage = toDisplayStage(item, now)
 
   // 종료된 Case 는 처리할 일이 없다.
@@ -174,9 +164,9 @@ const resolveActionKind = (
   }
 
   if (stage === "confirmed") {
-    // 여기 남았다는 건 종료 시각을 모른다는 뜻이다(알았다면 위에서 completed 로 파생됐다).
-    // 그때만 기존처럼 시작 시각으로 판단해 목록에서 누락되지 않게 한다.
-    return hasTrialTimePassed(item, nowMs) ? "NEEDS_COMPLETION" : null
+    // 여기 남았다는 건 아직 안 끝났거나 종료 시각을 모른다는 뜻이다.
+    // 둘 다 완료를 재촉하지 않는다(진행 중인 수업을 끝난 것처럼 말하지 않는다).
+    return null
   }
 
   if (stage === "new") {

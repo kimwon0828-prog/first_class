@@ -52,8 +52,29 @@ export const resolveTrialEndAtMs = (input: TrialScheduleWindow): number | null =
   return startedAt + duration.durationMinutes * MINUTE_MS
 }
 
-/** 확정 체험의 종료 시각이 지났는가. 종료 시각을 모르면 항상 false 다. */
-export const isTrialTimeEnded = (input: TrialScheduleWindow, now: Date = new Date()): boolean => {
+/**
+ * 확정 체험이 끝났는가에 대한 단 하나의 판정.
+ *
+ *   unknown     종료 시각을 모른다. 끝났는지 추정하지 않는다.
+ *   before_end  아직 안 끝났다(시작 전 + 진행 중을 모두 포함한다).
+ *   ended       종료 시각이 지났다.
+ *
+ * 화면/단계 판정은 전부 이 함수 하나를 본다. "끝났는가" 를 파일마다 다시 계산하지 않는다.
+ */
+export type TrialCompletionState = "unknown" | "before_end" | "ended"
+
+export const getTrialCompletionState = (
+  input: TrialScheduleWindow,
+  now: Date = new Date()
+): TrialCompletionState => {
   const endAt = resolveTrialEndAtMs(input)
-  return endAt != null && endAt <= now.getTime()
+  if (endAt == null) {
+    return "unknown"
+  }
+
+  return endAt <= now.getTime() ? "ended" : "before_end"
 }
+
+/** 종료 시각이 지났는가. 모르면 false — 추정하지 않는다. */
+export const isTrialTimeEnded = (input: TrialScheduleWindow, now: Date = new Date()): boolean =>
+  getTrialCompletionState(input, now) === "ended"

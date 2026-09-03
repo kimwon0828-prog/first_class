@@ -205,6 +205,8 @@ export default async function StudioApplicationDetailPage({ params }: StudioAppl
     notFound()
   }
 
+  // 서버가 정한 한 시각을 이 화면 전체가 공유한다(단계 표시와 다음 할 일이 같은 시각을 본다).
+  const nowIso = new Date().toISOString()
   const detailView = data
     ? (() => {
         const requestedSchedule =
@@ -285,7 +287,7 @@ export default async function StudioApplicationDetailPage({ params }: StudioAppl
           confirmedSlotAt: data.confirmedSlotAt,
           scheduleStartTime: data.scheduleStartTime,
           scheduleEndTime: data.scheduleEndTime
-        })
+        }, new Date(nowIso))
         const closedStep =
           caseStage === "enrolled"
             ? { label: "등록", at: data.enrolledAt }
@@ -530,7 +532,7 @@ export default async function StudioApplicationDetailPage({ params }: StudioAppl
           </section>
 
           {/* 3. 다음 할 일  4. 활동 기록  5. 체험 결과 */}
-          <ApplicationTrialResultWorkflow application={data} />
+          <ApplicationTrialResultWorkflow application={data} nowIso={nowIso} />
         </>
       ) : null}
     </div>

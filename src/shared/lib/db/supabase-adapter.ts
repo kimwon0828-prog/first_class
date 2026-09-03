@@ -708,12 +708,23 @@ const getEmbeddedClassOrganization = (row: EmbeddedClassRow | null) => {
   return Array.isArray(row.organizations) ? (row.organizations[0] ?? null) : row.organizations
 }
 
+/**
+ * 신청이 실제로 예약한 수업 시간 한 개.
+ *
+ * class_schedule_id 는 class_schedules 로 가는 FK 라 embed 결과는 to-one 이다.
+ * 그래도 배열로 오는 경우를 대비하되, 두 개 이상이면 어느 것인지 특정할 수 없으므로
+ * 첫 번째를 고르지 않고 null 을 돌려준다(추정하지 않는다).
+ */
 const getEmbeddedClassSchedule = (row: TrialApplicationRow): EmbeddedClassScheduleRow | null => {
   if (!row.class_schedules) {
     return null
   }
 
-  return Array.isArray(row.class_schedules) ? (row.class_schedules[0] ?? null) : row.class_schedules
+  if (!Array.isArray(row.class_schedules)) {
+    return row.class_schedules
+  }
+
+  return row.class_schedules.length === 1 ? row.class_schedules[0] : null
 }
 
 const mapApplication = (row: TrialApplicationRow): TrialApplicationSummary => {

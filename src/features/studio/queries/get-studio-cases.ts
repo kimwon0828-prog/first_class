@@ -121,12 +121,23 @@ const getEmbeddedClass = (row: CaseApplicationRow): CaseClassRow | null => {
   return row.classes ?? null
 }
 
+/**
+ * 신청이 실제로 예약한 수업 시간 한 개.
+ *
+ * class_schedule_id 가 class_schedules 로 가는 FK 라 embed 는 to-one 이다.
+ * 한 class 에 수업 시간이 여러 개 있어도 이 embed 는 그 신청이 고른 하나만 돌려준다.
+ * 그래도 배열이 두 개 이상으로 오면 특정할 수 없으므로 첫 번째를 고르지 않고 null 이다.
+ */
 const getEmbeddedSchedule = (row: CaseApplicationRow): CaseScheduleRow | null => {
-  if (Array.isArray(row.class_schedules)) {
-    return row.class_schedules[0] ?? null
+  if (!row.class_schedules) {
+    return null
   }
 
-  return row.class_schedules ?? null
+  if (!Array.isArray(row.class_schedules)) {
+    return row.class_schedules
+  }
+
+  return row.class_schedules.length === 1 ? row.class_schedules[0] : null
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -346,6 +357,8 @@ export const getStudioCases = async (
         assignedTeacherId: row.assigned_teacher_id ?? null,
         confirmedSlotAt: row.confirmed_slot_at ?? null,
         requestedSlotAt: row.requested_slot_at,
+        scheduleStartTime: embeddedSchedule?.start_time ?? null,
+        scheduleEndTime: embeddedSchedule?.end_time ?? null,
         trialResultExists: trialResultApplicationIds.has(row.id),
         hasAnyConsultationHistory: hasAnyConsultationHistoryById.get(row.id) ?? false,
         nextContactAt: row.next_contact_at ?? null
@@ -369,14 +382,7 @@ export const getStudioCases = async (
         status: row.status,
         registrationStatus: row.registration_status,
         // 확정 체험의 종료 시각이 지났으면 표시만 체험 완료로 앞당긴다(DB 는 confirmed 그대로).
-        stage: getCaseDisplayStage(
-          {
-            ...attentionInput,
-            scheduleStartTime: embeddedSchedule?.start_time ?? null,
-            scheduleEndTime: embeddedSchedule?.end_time ?? null
-          },
-          now
-        ),
+        stage: getCaseDisplayStage(attentionInput, now),
         scheduleStartTime: embeddedSchedule?.start_time ?? null,
         scheduleEndTime: embeddedSchedule?.end_time ?? null,
         requestedSlotAt: row.requested_slot_at,

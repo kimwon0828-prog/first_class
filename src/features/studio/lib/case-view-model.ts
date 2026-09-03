@@ -131,10 +131,9 @@ export type CaseAttention =
   | "UPCOMING_CONTACT"
   | "NONE"
 
-export type CaseAttentionInput = CaseStageInput & {
+export type CaseAttentionInput = CaseStageInput &
+  TrialScheduleWindow & {
   assignedTeacherId: string | null
-  /** 확정 일정이 없으면 희망 일정으로 대신 본다(캘린더와 같은 규칙). */
-  confirmedSlotAt: string | null
   requestedSlotAt: string
   trialResultExists: boolean
   hasAnyConsultationHistory: boolean
@@ -150,12 +149,6 @@ const isSameSeoulDay = (value: string, now: Date) => {
   const target = formatSeoulDateKey(value)
   const today = formatSeoulDateKey(now)
   return Boolean(target && today && target === today)
-}
-
-const hasTrialTimePassed = (input: CaseAttentionInput, now: Date) => {
-  const slotAt = input.confirmedSlotAt ?? input.requestedSlotAt
-  const parsed = new Date(slotAt).getTime()
-  return !Number.isNaN(parsed) && parsed <= now.getTime()
 }
 
 /**
@@ -204,7 +197,10 @@ export const getCaseAttentionState = (
     return "NEEDS_TRIAL_RESULT"
   }
 
-  if (stage === "confirmed" && hasTrialTimePassed(input, now)) {
+  // 확정 체험은 "종료 시각" 이 지났을 때만 완료를 재촉한다.
+  // 시작 시각으로 판단하면 수업이 진행 중인데 끝난 것처럼 말하게 된다.
+  // 종료 시각을 모르면(unknown) 재촉하지 않는다 — 추정하지 않는다.
+  if (stage === "confirmed" && isTrialTimeEnded(input, now)) {
     return "NEEDS_TRIAL_RESULT"
   }
 
@@ -270,7 +266,7 @@ export const getCaseNextAction = (
         key: attention,
         label:
           stage === "confirmed"
-            ? "체험이 끝났다면 완료 처리해 주세요."
+            ? "체험 완료 처리 후 결과를 기록해 주세요."
             : "체험 결과를 기록해 주세요.",
         tone: "default"
       }

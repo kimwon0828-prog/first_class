@@ -9,6 +9,7 @@ import {
   type CreateConsultationLogActionState
 } from "@/features/studio/actions/create-consultation-log"
 import { buildCaseActivityEvents } from "@/features/studio/lib/case-activity"
+import { getTrialCompletionState } from "@/features/studio/lib/trial-completion"
 import {
   CONSULTATION_CHANNEL_OPTIONS,
   CONSULTATION_SENTIMENT_OPTIONS,
@@ -54,6 +55,8 @@ const initialConsultationState: CreateConsultationLogActionState = {
 type ApplicationTrialResultWorkflowProps = {
   application: StudioApplicationDetail
   sidebarContent?: ReactNode
+  /** 서버가 정한 기준 시각. 체험 종료 판정이 hydration 전후로 갈리지 않게 한다. */
+  nowIso: string
 }
 
 type NextActionState = {
@@ -130,7 +133,7 @@ const getCompletedNextActionState = (application: StudioApplicationDetail): Next
   }
 }
 
-const getNextActionState = (application: StudioApplicationDetail): NextActionState => {
+const getNextActionState = (application: StudioApplicationDetail, now: Date): NextActionState => {
   if (application.status === "new" || application.status === "reviewing") {
     const requestedScheduleLabel =
       application.selectedScheduleLabel?.trim() ||
@@ -146,13 +149,22 @@ const getNextActionState = (application: StudioApplicationDetail): NextActionSta
 
   if (application.status === "confirmed") {
     const scheduleAt = application.confirmedSlotAt ?? application.requestedSlotAt
-    const scheduleTime = new Date(scheduleAt).getTime()
-    const isUpcoming = !Number.isNaN(scheduleTime) && scheduleTime > Date.now()
+    // "끝났는가" 는 trial-completion 하나만 판단한다. 여기서 다시 계산하지 않는다.
+    // 종료 시각을 모르면(unknown) 끝났다고 말하지 않고 예정 문구를 유지한다.
+    const completion = getTrialCompletionState(
+      {
+        confirmedSlotAt: application.confirmedSlotAt,
+        scheduleStartTime: application.scheduleStartTime,
+        scheduleEndTime: application.scheduleEndTime
+      },
+      now
+    )
 
     return {
-      title: isUpcoming
-        ? `${formatSeoulDateTime(scheduleAt) ?? "확정된 일정"} 체험수업 예정`
-        : "체험수업이 끝났다면 결과를 정리해 주세요.",
+      title:
+        completion === "ended"
+          ? "체험 완료 처리 후 결과를 기록해 주세요."
+          : `${formatSeoulDateTime(scheduleAt) ?? "확정된 일정"} 체험수업 예정`,
       description: null,
       tone: "default"
     }
@@ -255,7 +267,8 @@ const getCompletedTodoCardCopy = (
 
 export const ApplicationTrialResultWorkflow = ({
   application,
-  sidebarContent = null
+  sidebarContent = null,
+  nowIso
 }: ApplicationTrialResultWorkflowProps) => {
   const router = useRouter()
   const [isPromptOpen, setIsPromptOpen] = useState(false)
@@ -430,13 +443,16 @@ export const ApplicationTrialResultWorkflow = ({
     application.registrationStatus !== "enrolled" &&
     application.registrationStatus !== "not_enrolled"
   const unregisteredReasonLabel = getTrialResultUnregisteredReasonLabel(application.unregisteredReason)
-  const nextActionState = getNextActionState(application)
+  const now = useMemo(() => new Date(nowIso), [nowIso])
+  const nextActionState = getNextActionState(application, now)
   const confirmedScheduleAt = application.confirmedSlotAt ?? application.requestedSlotAt
   const confirmedScheduleTime = new Date(confirmedScheduleAt).getTime()
+  // 이 gate 는 "끝났는가" 가 아니라 "시작했는가" 다. 수업 중에 일찍 완료 처리하는 길을
+  // 막지 않으려고 시작 시각 기준을 유지한다. 시각만 서버가 정한 now 로 통일한다.
   const shouldShowStatusActions =
     application.status !== "confirmed" ||
     Number.isNaN(confirmedScheduleTime) ||
-    confirmedScheduleTime <= Date.now()
+    confirmedScheduleTime <= now.getTime()
   const consultationOnlyLogs = useMemo(
     () => application.consultationLogs.filter((item) => item.activityType === "CONSULTATION"),
     [application.consultationLogs]
