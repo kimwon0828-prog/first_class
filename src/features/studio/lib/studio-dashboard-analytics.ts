@@ -9,13 +9,6 @@ import type {
   StudioDashboardMetrics
 } from "@/features/studio/lib/studio-dashboard-metrics"
 
-export type StudioDashboardKpiCard = {
-  key: string
-  label: string
-  value: string
-  context: string
-}
-
 export type StudioDashboardStageBar = {
   key: StudioDashboardMetricKey
   label: string
@@ -37,7 +30,6 @@ export type StudioDashboardDonutSegment = {
 }
 
 export type StudioDashboardAnalytics = {
-  kpiCards: StudioDashboardKpiCard[]
   stageBars: StudioDashboardStageBar[]
   donutSegments: StudioDashboardDonutSegment[]
   donutTotal: number
@@ -65,7 +57,6 @@ export const buildStudioDashboardAnalytics = (
   metrics: StudioDashboardMetrics
 ): StudioDashboardAnalytics => {
   const applicationCount = metrics.steps[0]?.count ?? 0
-  const completedCount = metrics.steps[3]?.count ?? 0
 
   const stageBars = metrics.steps.map<StudioDashboardStageBar>((step, index) => {
     const reached = toRatioPercent(step.count, applicationCount)
@@ -95,32 +86,6 @@ export const buildStudioDashboardAnalytics = (
   })
 
   return {
-    kpiCards: [
-      {
-        key: "application",
-        label: "신청",
-        value: `${applicationCount}건`,
-        context: metrics.periodLabel
-      },
-      {
-        key: "completed",
-        label: "체험 완료",
-        value: `${completedCount}건`,
-        context: metrics.periodLabel
-      },
-      {
-        key: "enrolled",
-        label: "등록",
-        value: `${metrics.enrolledCount}건`,
-        context: metrics.periodLabel
-      },
-      {
-        key: "conversion",
-        label: "등록 전환율",
-        value: toFixedPercent(metrics.registrationConversionRate),
-        context: "결정 완료 기준"
-      }
-    ],
     stageBars,
     donutSegments,
     donutTotal,

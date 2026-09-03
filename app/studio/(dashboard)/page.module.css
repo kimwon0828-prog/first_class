@@ -16,7 +16,6 @@
 .header,
 .analytics,
 .workspace,
-.panelWide,
 .errorCard {
   width: 100%;
   max-width: var(--studio-max);
@@ -89,51 +88,10 @@
   line-height: 20px;
 }
 
-/* compact stat card 4개. 장식 없이 label / 숫자 / context 세 줄이다. */
-.kpiRow {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: var(--s3);
-}
 
-.kpiCard {
-  /*
-   * grid stretch 로 네 장의 높이가 같아진다(개별 min-height 를 두지 않는다).
-   * 내용은 항상 위에서부터 쌓이므로 label / 숫자 / context 의 위치도 네 장이 같다.
-   */
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-start;
-  gap: 2px;
-  padding: 14px 16px;
-  border: 1px solid var(--border);
-  border-radius: var(--r-lg);
-  background: var(--surface);
-}
 
-.kpiLabel {
-  margin: 0;
-  color: var(--text-2);
-  font-size: 12px;
-  line-height: 18px;
-  font-weight: 700;
-}
 
-.kpiValue {
-  color: var(--text-1);
-  font-size: 26px;
-  line-height: 34px;
-  font-weight: 800;
-  letter-spacing: -0.02em;
-  font-variant-numeric: tabular-nums;
-}
 
-.kpiContext {
-  margin: 0;
-  color: var(--text-3);
-  font-size: 12px;
-  line-height: 18px;
-}
 
 /* 두 카드의 위/아래 모서리가 맞도록 stretch 한다(align-items: start 를 쓰지 않는다). */
 .chartRow {
@@ -190,7 +148,12 @@
 .barList {
   flex: 1 1 auto;
   display: grid;
-  align-content: start;
+  /*
+   * 남는 세로 공간을 다섯 행이 똑같이 나눠 갖는다. gap 은 그대로라
+   * space-between 처럼 행이 뿔뿔이 떨어져 보이지 않는다.
+   * 각 행은 자체적으로 align-items: center 라 내용은 행 가운데에 남는다.
+   */
+  align-content: stretch;
   gap: var(--s3);
   margin: 0;
   padding: 0;
@@ -365,8 +328,7 @@
 }
 
 /*
- * 차트 설명이지 두 번째 KPI 카드가 아니다.
- * 라벨과 값을 한 줄로 붙이고, 값은 상단 KPI(26px)보다 확실히 작게 둔다.
+ * 차트 설명이다. 라벨과 값을 한 줄로 붙이고, 값은 카드 제목보다 조금 큰 정도로만 둔다.
  */
 .conversionFoot {
   display: flex;
@@ -399,9 +361,6 @@
   line-height: 18px;
 }
 
-.panelWide {
-  margin-top: var(--s4);
-}
 
 .panel {
   display: flex;
@@ -409,8 +368,7 @@
   height: 100%;
 }
 
-.panel,
-.panelWide {
+.panel {
   border: 1px solid var(--border);
   border-radius: var(--r-lg);
   background: var(--surface);
@@ -583,10 +541,6 @@
 
   .workspace {
     grid-template-columns: 1fr;
-  }
-
-  .kpiRow {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .chartRow {

@@ -98,21 +98,11 @@ export default async function StudioIndexPage({ searchParams }: StudioIndexPageP
               <StudioDashboardPeriodControl selectedRange={selectedDateRange} />
             </header>
 
-            <div className={styles.kpiRow}>
-              {analytics.kpiCards.map((card) => (
-                <article key={card.key} className={styles.kpiCard}>
-                  <p className={styles.kpiLabel}>{card.label}</p>
-                  <strong className={styles.kpiValue}>{card.value}</strong>
-                  <p className={styles.kpiContext}>{card.context}</p>
-                </article>
-              ))}
-            </div>
-
             <div className={styles.chartRow}>
               <article className={styles.chartCard} aria-labelledby="dashboard-stage-title">
                 <div className={styles.chartHead}>
                   <h3 className={styles.chartTitle} id="dashboard-stage-title">
-                    상담 → 등록 단계
+                    신청 → 등록 흐름
                   </h3>
                   <p className={styles.chartDescription}>
                     선택 기간 신청의 단계별 도달 현황
@@ -275,38 +265,6 @@ export default async function StudioIndexPage({ searchParams }: StudioIndexPageP
             </section>
           </div>
 
-          <section className={styles.panelWide} aria-labelledby="dashboard-results-title">
-            <div className={styles.panelHead}>
-              <h2 className={styles.panelTitle} id="dashboard-results-title">
-                최근 등록 완료
-              </h2>
-              <Link href="/studio/cases?view=closed" className={styles.panelAction}>
-                완료·종료에서 보기 →
-              </Link>
-            </div>
-
-            {view.recentRegistrationItems.length > 0 ? (
-              <ul className={styles.list}>
-                {view.recentRegistrationItems.map((item) => (
-                  <li key={item.id} className={styles.row}>
-                    <Link href={item.href} className={styles.rowLink}>
-                      <span className={styles.rowBody}>
-                        <span className={styles.rowTitle}>{item.studentName}</span>
-                        <span className={styles.rowMeta}>
-                          {item.classTitle}
-                          {item.whenLabel ? ` · ${item.whenLabel}` : ""}
-                        </span>
-                      </span>
-
-                      <StudioStatusBadge tone={item.outcomeTone}>{item.outcomeLabel}</StudioStatusBadge>
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className={styles.empty}>아직 등록 완료 기록이 없습니다.</p>
-            )}
-          </section>
         </>
       )}
     </div>

@@ -1,7 +1,7 @@
 // Dashboard performance summary.
 //
 // 기간은 각 milestone 발생일이 아니라 신청 created_at cohort 를 고른다. 그래야
-// 신청 → 상담/확인 → 일정 확정 → 체험 완료 → 등록 숫자가 같은 모집단을 공유하고,
+// 신청 → 신청 확인 → 일정 확정 → 체험 완료 → 등록 숫자가 같은 모집단을 공유하고,
 // 단계 사이 비율도 실제 conversion 으로 읽을 수 있다.
 //
 // application_logs 를 추가 조회하지 않는다. 기본 상태 계약이 순차적이므로 현재 Case
@@ -97,7 +97,8 @@ export const buildStudioDashboardMetrics = (
     reachedCount(3),
     stages.filter((stage) => stage === "enrolled").length
   ]
-  const labels = ["신청", "상담/확인", "일정 확정", "체험 완료", "등록"]
+  // reviewing 의 Dashboard 표기다. DB status 계약(reviewing)은 그대로다.
+  const labels = ["신청", "신청 확인", "일정 확정", "체험 완료", "등록"]
   const keys: StudioDashboardMetricKey[] = [
     "application",
     "reviewing",
