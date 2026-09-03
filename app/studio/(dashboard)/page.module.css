@@ -44,11 +44,11 @@
   line-height: 22px;
 }
 
+/* 두 panel 의 아래 모서리가 맞도록 stretch 한다. */
 .workspace {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: var(--s4);
-  align-items: start;
 }
 
 /* ── Operations summary / conversion infographic ─────────────── */
@@ -97,7 +97,13 @@
 }
 
 .kpiCard {
-  display: grid;
+  /*
+   * grid stretch 로 네 장의 높이가 같아진다(개별 min-height 를 두지 않는다).
+   * 내용은 항상 위에서부터 쌓이므로 label / 숫자 / context 의 위치도 네 장이 같다.
+   */
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
   gap: 2px;
   padding: 14px 16px;
   border: 1px solid var(--border);
@@ -129,16 +135,18 @@
   line-height: 18px;
 }
 
+/* 두 카드의 위/아래 모서리가 맞도록 stretch 한다(align-items: start 를 쓰지 않는다). */
 .chartRow {
   display: grid;
   grid-template-columns: 2fr 1fr;
-  gap: var(--s3);
-  align-items: start;
+  gap: var(--s4);
 }
 
 .chartCard {
-  display: grid;
+  display: flex;
+  flex-direction: column;
   gap: var(--s4);
+  height: 100%;
   padding: 18px;
   border: 1px solid var(--border);
   border-radius: var(--r-lg);
@@ -166,6 +174,9 @@
 }
 
 .chartEmpty {
+  flex: 1 1 auto;
+  display: grid;
+  align-content: center;
   margin: 0;
   padding: 24px 0;
   color: var(--text-3);
@@ -177,7 +188,9 @@
 /* ---- horizontal bar chart ---- */
 
 .barList {
+  flex: 1 1 auto;
   display: grid;
+  align-content: start;
   gap: var(--s3);
   margin: 0;
   padding: 0;
@@ -238,8 +251,11 @@
 
 /* ---- donut ---- */
 
+/* 남는 세로 공간은 여기서 흡수한다. 도넛과 legend 가 카드 가운데에 놓인다. */
 .donutBody {
+  flex: 1 1 auto;
   display: grid;
+  align-content: center;
   gap: var(--s4);
   justify-items: center;
 }
@@ -387,6 +403,12 @@
   margin-top: var(--s4);
 }
 
+.panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
 .panel,
 .panelWide {
   border: 1px solid var(--border);
@@ -440,6 +462,9 @@
 }
 
 .list {
+  /* 행은 위에서부터 쌓이고, 남는 공간은 아래에 남는다(한쪽 panel 만 짧아지지 않게). */
+  flex: 1 1 auto;
+  align-content: start;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -525,8 +550,12 @@
 }
 
 .empty {
+  /* 비어 있어도 sibling panel 높이를 유지하고, 문구는 남는 공간 가운데에 둔다. */
+  flex: 1 1 auto;
+  display: grid;
+  align-content: center;
   margin: 0;
-  padding: 28px 18px;
+  padding: 24px 18px;
   color: var(--text-3);
   font-size: 13px;
   line-height: 20px;
@@ -562,6 +591,23 @@
 
   .chartRow {
     grid-template-columns: 1fr;
+  }
+
+  /*
+   * 1단으로 바뀌면 equal-height 를 강제할 sibling 이 없다.
+   * height: 100% 를 풀어 내용이 적은 카드에 빈 공간이 생기지 않게 한다.
+   */
+  .chartCard,
+  .panel {
+    height: auto;
+  }
+
+  .barList,
+  .donutBody,
+  .chartEmpty,
+  .list,
+  .empty {
+    flex: 0 0 auto;
   }
 
   .title {
