@@ -30,8 +30,8 @@ const ACTION_CONFIG: Record<
   }
 > = {
   move_to_reviewing: {
-    label: "상담/확인 중",
-    note: "teacher가 신청을 상담/확인 중 상태로 변경했습니다.",
+    label: "신청 확인",
+    note: "teacher가 신청을 확인했습니다.",
     nextStatus: "reviewing",
     allowedCurrentStatuses: ["new"]
   },
@@ -39,7 +39,8 @@ const ACTION_CONFIG: Record<
     label: "일정 확정",
     note: "teacher가 체험 신청 일정을 확정했습니다.",
     nextStatus: "confirmed",
-    allowedCurrentStatuses: ["new", "reviewing"]
+    // new 에서 곧바로 확정할 수 없다. 반드시 신청 확인(reviewing)을 거친다.
+    allowedCurrentStatuses: ["reviewing"]
   },
   move_to_completed: {
     label: "체험 완료",
@@ -61,10 +62,11 @@ const ACTION_CONFIG: Record<
   }
 }
 
+/** 성공 토스트 문구용 짧은 이름. 배지 라벨은 application-status-labels 가 정한다. */
 const STATUS_LABELS: Record<ApplicationStatus, string> = {
   new: "신규",
-  reviewing: "확인 중",
-  confirmed: "확정",
+  reviewing: "신청 확인",
+  confirmed: "일정 확정",
   completed: "완료",
   canceled: "취소"
 }

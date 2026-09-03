@@ -65,7 +65,7 @@ export type CaseFilterOption<K extends string> = {
 export const CASE_ACTIVE_FILTERS: Array<CaseFilterOption<CaseActiveFilterKey>> = [
   { key: "all", label: "전체" },
   { key: "new", label: "신규 신청" },
-  { key: "reviewing", label: "상담/확인" },
+  { key: "reviewing", label: "신청 확인" },
   { key: "confirmed", label: "일정 확정" },
   { key: "post_trial", label: "체험 후 관리", description: "체험을 마치고 아직 등록 결론이 나지 않은 Case" }
 ]

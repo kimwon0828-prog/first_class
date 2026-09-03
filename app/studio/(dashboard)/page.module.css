@@ -259,8 +259,8 @@
 }
 
 .donutPending {
-  stroke: var(--amber-fg);
-  color: var(--amber-fg);
+  stroke: var(--blue-fg);
+  color: var(--blue-fg);
 }
 
 .donutCenter {

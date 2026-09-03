@@ -9,8 +9,8 @@ export type StudioDisplayStatus = ApplicationStatus | "no_show"
 
 export const STUDIO_APPLICATION_STATUS_LABELS: Record<StudioDisplayStatus, string> = {
   new: "신규 신청",
-  reviewing: "상담 대기",
-  confirmed: "수업 확정",
+  reviewing: "신청 확인",
+  confirmed: "일정 확정",
   completed: "체험 완료",
   canceled: "신청 취소",
   no_show: "노쇼"
@@ -40,7 +40,8 @@ export const STUDIO_APPLICATION_STATUS_TONES: Record<StudioDisplayStatus, Studio
 
 export const STUDIO_REGISTRATION_STATUS_TONES: Record<ApplicationRegistrationStatus, StudioStatusTone> = {
   undecided: "blue",
-  pending: "amber",
+  // undecided 와 함께 "결정 대기" 로 묶인다. 같은 개념이라 같은 tone 을 쓴다.
+  pending: "blue",
   enrolled: "green",
   not_enrolled: "gray"
 }

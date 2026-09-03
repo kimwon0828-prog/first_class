@@ -20,7 +20,7 @@ const initialState: UpdateApplicationStatusActionState = {
 
 const STATUS_LABELS: Record<ApplicationStatus, string> = {
   new: "신규 신청",
-  reviewing: "확인 중",
+  reviewing: "신청 확인",
   confirmed: "일정 확정",
   completed: "체험 완료",
   canceled: "처리 종료"
@@ -34,7 +34,8 @@ type ActionButtonConfig = {
 
 const ACTIONS_BY_STATUS: Record<ApplicationStatus, ActionButtonConfig[]> = {
   new: [
-    { actionType: "move_to_confirmed", label: "일정 확정", tone: "primary" },
+    // new 의 진행 액션은 신청 확인 하나다. 일정 확정은 reviewing 에서만 할 수 있다.
+    { actionType: "move_to_reviewing", label: "신청 확인", tone: "primary" },
     { actionType: "cancel", label: "취소 처리", tone: "danger" }
   ],
   reviewing: [
@@ -51,7 +52,8 @@ const ACTIONS_BY_STATUS: Record<ApplicationStatus, ActionButtonConfig[]> = {
 
 const CASE_DETAIL_ACTIONS_BY_STATUS: Record<ApplicationStatus, ActionButtonConfig[]> = {
   new: [
-    { actionType: "move_to_confirmed", label: "일정 확정", tone: "primary" },
+    // new 의 진행 액션은 신청 확인 하나다. 일정 확정은 reviewing 에서만 할 수 있다.
+    { actionType: "move_to_reviewing", label: "신청 확인", tone: "primary" },
     { actionType: "cancel", label: "취소 처리", tone: "danger" }
   ],
   reviewing: [

@@ -37,7 +37,7 @@ export type CaseActivityEvent = {
 
 const STATUS_TRANSITION_LABELS: Record<ApplicationStatus, string> = {
   new: "신규 신청",
-  reviewing: "상담/확인 시작",
+  reviewing: "신청 확인",
   confirmed: "일정 확정",
   completed: "체험 완료",
   canceled: "신청 취소"
