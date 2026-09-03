@@ -9,7 +9,7 @@ import {
   type CreateConsultationLogActionState
 } from "@/features/studio/actions/create-consultation-log"
 import { buildCaseActivityEvents } from "@/features/studio/lib/case-activity"
-import { getTrialCompletionState } from "@/features/studio/lib/trial-completion"
+import { getTrialProgressState } from "@/features/studio/lib/trial-completion"
 import {
   CONSULTATION_CHANNEL_OPTIONS,
   CONSULTATION_SENTIMENT_OPTIONS,
@@ -149,10 +149,11 @@ const getNextActionState = (application: StudioApplicationDetail, now: Date): Ne
 
   if (application.status === "confirmed") {
     const scheduleAt = application.confirmedSlotAt ?? application.requestedSlotAt
-    // "끝났는가" 는 trial-completion 하나만 판단한다. 여기서 다시 계산하지 않는다.
-    // 종료 시각을 모르면(unknown) 끝났다고 말하지 않고 예정 문구를 유지한다.
-    const completion = getTrialCompletionState(
+    // 진행 상태는 trial-completion 하나만 판단한다. 여기서 다시 계산하지 않는다.
+    // 배지는 어느 경우든 "체험 중" 이다. 여기서는 다음 행동 문구만 고른다.
+    const progress = getTrialProgressState(
       {
+        confirmedBlockStartAt: application.confirmedBlockStartAt,
         confirmedBlockEndAt: application.confirmedBlockEndAt,
         confirmedSlotAt: application.confirmedSlotAt,
         scheduleStartTime: application.scheduleStartTime,
@@ -163,9 +164,11 @@ const getNextActionState = (application: StudioApplicationDetail, now: Date): Ne
 
     return {
       title:
-        completion === "ended"
-          ? "체험 완료 처리 후 결과를 기록해 주세요."
-          : `${formatSeoulDateTime(scheduleAt) ?? "확정된 일정"} 체험수업 예정`,
+        progress === "after_scheduled_end"
+          ? "체험이 끝났다면 완료 처리해 주세요."
+          : progress === "in_trial"
+            ? "체험이 진행 중입니다."
+            : `${formatSeoulDateTime(scheduleAt) ?? "확정된 일정"} 체험수업 예정`,
       description: null,
       tone: "default"
     }

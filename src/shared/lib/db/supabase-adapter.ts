@@ -182,6 +182,7 @@ type EmbeddedClassScheduleRow = Pick<ClassScheduleRow, "start_time" | "end_time"
 
 /** confirmed_schedule_block_id 로 embed 한 확정 예약 블록. 종료 시각의 1순위 source 다. */
 type EmbeddedConfirmedBlockRow = {
+  start_at: string | null
   end_at: string | null
 }
 
@@ -814,6 +815,7 @@ const mapStudioApplication = (
     classAssignmentMode: resolveClassAssignmentMode(embeddedClass ?? {}),
     scheduleStartTime: embeddedClassSchedule?.start_time ?? null,
     scheduleEndTime: embeddedClassSchedule?.end_time ?? null,
+    confirmedBlockStartAt: getEmbeddedConfirmedBlock(row)?.start_at ?? null,
     confirmedBlockEndAt: getEmbeddedConfirmedBlock(row)?.end_at ?? null,
     assignedTeacherId: row.assigned_teacher_id ?? null,
     assignedTeacherName: row.assigned_teacher_id
@@ -4080,7 +4082,7 @@ export const supabaseDataAdapter: DataAdapter = {
       let query = supabase
         .from("trial_applications")
         .select(
-          "id, class_id, parent_id, child_name, child_grade, parent_name, parent_phone, class_schedule_id, requested_schedule_block_id, selected_schedule_label, requested_slot_at, confirmed_slot_at, assigned_teacher_id, contacted_at, scheduled_at, completed_at, enrolled_at, canceled_at, no_show_at, goal_type, registration_status, status, created_at, updated_at, classes!inner(title, subject, organization_id, program_type, organizations(sido, sigungu, bname)), class_schedules(start_time, end_time), confirmed_block:schedule_blocks!trial_applications_confirmed_schedule_block_id_fkey(end_at)",
+          "id, class_id, parent_id, child_name, child_grade, parent_name, parent_phone, class_schedule_id, requested_schedule_block_id, selected_schedule_label, requested_slot_at, confirmed_slot_at, assigned_teacher_id, contacted_at, scheduled_at, completed_at, enrolled_at, canceled_at, no_show_at, goal_type, registration_status, status, created_at, updated_at, classes!inner(title, subject, organization_id, program_type, organizations(sido, sigungu, bname)), class_schedules(start_time, end_time), confirmed_block:schedule_blocks!trial_applications_confirmed_schedule_block_id_fkey(start_at, end_at)",
           // 총 개수를 알아야 서버가 page 를 잘라도 끝을 정확히 안다.
           // 같은 request 에 실려 오므로 query 가 늘지 않는다(getStudioCases 와 같은 방식).
           { count: "exact" }
@@ -4431,7 +4433,7 @@ export const supabaseDataAdapter: DataAdapter = {
     const { data, error } = await supabase
       .from("trial_applications")
       .select(
-        "id, class_id, parent_id, child_name, child_grade, parent_name, parent_phone, child_school, child_notes, subject_experience_yn, subject_experience_duration, current_level, preferred_regular_schedule, goal_type, goal_note, class_schedule_id, requested_slot_at, requested_schedule_block_id, selected_schedule_label, confirmed_slot_at, confirmed_schedule_block_id, assigned_teacher_id, contacted_at, scheduled_at, completed_at, enrolled_at, canceled_at, no_show_at, consultation_note, trial_feedback, final_level, final_schedule, registration_status, registered_course, unregistered_reason, unregistered_reason_note, lost_at, follow_up_note, next_contact_at, last_activity_at, regular_schedule_preference, regular_schedule_preference_note, regular_schedule_preference_updated_at, memo, status, created_at, updated_at, class_schedules(start_time, end_time), confirmed_block:schedule_blocks!trial_applications_confirmed_schedule_block_id_fkey(end_at), classes!inner(title, subject, organization_id, program_type, assignment_mode, organizations(name, sido, sigungu, bname))"
+        "id, class_id, parent_id, child_name, child_grade, parent_name, parent_phone, child_school, child_notes, subject_experience_yn, subject_experience_duration, current_level, preferred_regular_schedule, goal_type, goal_note, class_schedule_id, requested_slot_at, requested_schedule_block_id, selected_schedule_label, confirmed_slot_at, confirmed_schedule_block_id, assigned_teacher_id, contacted_at, scheduled_at, completed_at, enrolled_at, canceled_at, no_show_at, consultation_note, trial_feedback, final_level, final_schedule, registration_status, registered_course, unregistered_reason, unregistered_reason_note, lost_at, follow_up_note, next_contact_at, last_activity_at, regular_schedule_preference, regular_schedule_preference_note, regular_schedule_preference_updated_at, memo, status, created_at, updated_at, class_schedules(start_time, end_time), confirmed_block:schedule_blocks!trial_applications_confirmed_schedule_block_id_fkey(start_at, end_at), classes!inner(title, subject, organization_id, program_type, assignment_mode, organizations(name, sido, sigungu, bname))"
       )
       .eq("id", applicationId)
       .eq("classes.organization_id", organizationId)

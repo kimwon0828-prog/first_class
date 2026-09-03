@@ -279,11 +279,13 @@ export default async function StudioApplicationDetailPage({ params }: StudioAppl
         const isTerminalCanceled = data.status === "canceled"
 
         // 큰 Stepper 대신 한 줄 요약으로 축소한다. 없는 timestamp 는 추정하지 않는다.
-        // 확정 체험의 종료 시각이 지났으면 표시만 "체험 완료" 로 앞당긴다(DB 는 confirmed 그대로).
+        // 확정 체험이 시작됐으면 표시만 "체험 중" 으로 바꾼다(DB 는 confirmed 그대로).
+        // 종료 시각이 지나도 "체험 완료" 로 만들지 않는다 — 완료는 원장이 확정한다.
         const caseStage = getCaseDisplayStage({
           status: data.status,
           noShowAt: data.noShowAt,
           registrationStatus: data.registrationStatus,
+          confirmedBlockStartAt: data.confirmedBlockStartAt,
           confirmedBlockEndAt: data.confirmedBlockEndAt,
           confirmedSlotAt: data.confirmedSlotAt,
           scheduleStartTime: data.scheduleStartTime,

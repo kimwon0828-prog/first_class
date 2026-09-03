@@ -10,7 +10,11 @@
 // 이 파일은 순수 함수만 둔다(서버 전용 import 없음).
 
 import { getStudioDisplayStatus } from "@/features/studio/lib/application-status-labels"
-import { isTrialTimeEnded, type TrialScheduleWindow } from "@/features/studio/lib/trial-completion"
+import {
+  isTrialScheduledEndPassed,
+  isTrialStarted,
+  type TrialScheduleWindow
+} from "@/features/studio/lib/trial-completion"
 import { getConsultationPipelineGroup } from "@/shared/lib/consultation-pipeline"
 import type {
   ApplicationRegistrationStatus,
@@ -26,6 +30,8 @@ export type CaseStage =
   | "new"
   | "reviewing"
   | "confirmed"
+  /** 표시 전용. confirmed + 시작 시각 도달. DB enum 이 아니다. */
+  | "in_trial"
   | "completed"
   // 종료
   | "enrolled"
@@ -33,13 +39,14 @@ export type CaseStage =
   | "canceled"
   | "no_show"
 
-export const CASE_ACTIVE_STAGES = ["new", "reviewing", "confirmed", "completed"] as const
+export const CASE_ACTIVE_STAGES = ["new", "reviewing", "confirmed", "in_trial", "completed"] as const
 export const CASE_CLOSED_STAGES = ["enrolled", "not_enrolled", "canceled", "no_show"] as const
 
 export const CASE_STAGE_LABELS: Record<CaseStage, string> = {
   new: "신규 신청",
   reviewing: "신청 확인",
   confirmed: "일정 확정",
+  in_trial: "체험 중",
   completed: "체험 완료",
   enrolled: "등록",
   not_enrolled: "미등록",
@@ -97,13 +104,16 @@ export type CaseDisplayStageInput = CaseStageInput & TrialScheduleWindow
 /**
  * 화면에 보여줄 단계.
  *
- * 확정된 체험의 종료 시각이 지났으면 DB 가 아직 confirmed 여도 "체험 완료" 로 보여준다.
- * 원장이 보기에 이미 끝난 수업이 "일정 확정" 으로 남아 있는 것이 사실과 다르기 때문이다.
+ * 확정된 체험이 시작됐으면 DB 가 아직 confirmed 여도 "체험 중" 으로 보여준다.
+ *
+ * ⚠️ 시간은 "체험 완료" 를 만들지 않는다.
+ *   예정 종료 시각이 지나도 계속 `체험 중` 이다. `체험 완료` 는 원장이 명시적으로
+ *   완료 처리했을 때(= 실제 status 가 completed 일 때)만 나온다.
  *
  * ⚠️ 표시 의미이지 저장 의미가 아니다.
  *   - DB status 는 그대로 confirmed 다. 이 함수는 아무것도 저장하지 않는다.
  *   - 실적 집계(studio-dashboard-metrics)는 getCaseStage 를 그대로 쓴다.
- *     시간이 지났다는 이유로 체험 완료 실적에 넣지 않는다.
+ *     `체험 중` 을 체험 완료 수치에 넣지 않는다.
  *   - 등록 결정 로직도 실제 status 를 본다.
  *
  * confirmed 가 아닌 단계는 손대지 않는다. 취소/노쇼는 시간이 지나도 취소/노쇼다.
@@ -117,7 +127,7 @@ export const getCaseDisplayStage = (
     return stage
   }
 
-  return isTrialTimeEnded(input, now) ? "completed" : stage
+  return isTrialStarted(input, now) ? "in_trial" : stage
 }
 
 /** 목록에서 "지금 눈길이 가야 하는 이유". NONE 이면 급한 일이 없다는 뜻이다. */
@@ -197,10 +207,11 @@ export const getCaseAttentionState = (
     return "NEEDS_TRIAL_RESULT"
   }
 
-  // 확정 체험은 "종료 시각" 이 지났을 때만 완료를 재촉한다.
-  // 시작 시각으로 판단하면 수업이 진행 중인데 끝난 것처럼 말하게 된다.
-  // 종료 시각을 모르면(unknown) 재촉하지 않는다 — 추정하지 않는다.
-  if (stage === "confirmed" && isTrialTimeEnded(input, now)) {
+  // 확정 체험은 "예정 종료 시각" 이 지났을 때만 완료를 재촉한다.
+  // 진행 중에 재촉하면 수업 중인데 끝난 것처럼 말하게 된다.
+  // 종료 시각을 모르면 재촉하지 않는다 — 추정하지 않는다.
+  // 배지는 그대로 `체험 중` 이다. 이 판정은 문구에만 쓴다.
+  if (stage === "confirmed" && isTrialScheduledEndPassed(input, now)) {
     return "NEEDS_TRIAL_RESULT"
   }
 

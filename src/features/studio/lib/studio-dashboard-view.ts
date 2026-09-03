@@ -15,11 +15,12 @@
 import {
   getStudioRegistrationStatusLabel,
   getStudioRegistrationStatusTone,
-  getStudioStatusLabel,
-  getStudioStatusTone,
+  STUDIO_APPLICATION_STATUS_LABELS,
+  STUDIO_APPLICATION_STATUS_TONES,
   type StudioStatusTone
 } from "@/features/studio/lib/application-status-labels"
 import { getCaseDisplayStage, isCaseClosedStage } from "@/features/studio/lib/case-view-model"
+import { resolveTrialDisplayStatus } from "@/features/studio/lib/trial-completion"
 import { buildStudioScheduleEvents } from "@/features/studio/lib/studio-schedule-events"
 import {
   formatSelectedDateLabel,
@@ -124,7 +125,7 @@ const toTimestamp = (value: string | null | undefined) => {
 }
 
 /**
- * 표시용 단계. 확정 체험의 종료 시각이 지났으면 체험 완료로 보여준다.
+ * 표시용 단계. 확정 체험이 시작됐으면 "체험 중" 으로 보여준다.
  * DB status 는 그대로다 — 실적 집계(studio-dashboard-metrics)는 이 함수를 쓰지 않는다.
  */
 const toDisplayStage = (item: StudioApplicationSummary, now: Date) =>
@@ -133,6 +134,7 @@ const toDisplayStage = (item: StudioApplicationSummary, now: Date) =>
       status: item.status,
       noShowAt: item.noShowAt,
       registrationStatus: item.registrationStatus ?? "undecided",
+      confirmedBlockStartAt: item.confirmedBlockStartAt,
       confirmedBlockEndAt: item.confirmedBlockEndAt,
       confirmedSlotAt: item.confirmedSlotAt,
       scheduleStartTime: item.scheduleStartTime,
@@ -142,12 +144,20 @@ const toDisplayStage = (item: StudioApplicationSummary, now: Date) =>
   )
 
 /** 배지는 표시 단계를 따른다. completed 로 파생되면 체험 완료 배지가 된다. */
-const toBadgeInput = (item: StudioApplicationSummary, now: Date) => ({
-  status: toDisplayStage(item, now) === "completed" && item.status === "confirmed"
-    ? ("completed" as const)
-    : item.status,
-  noShowAt: item.noShowAt
-})
+/** 배지는 4개 화면이 같은 함수를 쓴다. 여기서 다시 판정하지 않는다. */
+const toBadgeStatus = (item: StudioApplicationSummary, now: Date) =>
+  resolveTrialDisplayStatus(
+    {
+      status: item.status,
+      noShowAt: item.noShowAt,
+      confirmedBlockStartAt: item.confirmedBlockStartAt,
+      confirmedBlockEndAt: item.confirmedBlockEndAt,
+      confirmedSlotAt: item.confirmedSlotAt,
+      scheduleStartTime: item.scheduleStartTime,
+      scheduleEndTime: item.scheduleEndTime
+    },
+    now
+  )
 
 const resolveActionKind = (
   item: StudioApplicationSummary,
@@ -217,8 +227,8 @@ const buildActionItems = (applications: StudioApplicationSummary[], now: Date) =
     studentName: item.childName,
     studentGrade: item.childGrade,
     classTitle: normalizeClassTitle(item.classTitle),
-    statusLabel: getStudioStatusLabel(toBadgeInput(item, now)),
-    statusTone: getStudioStatusTone(toBadgeInput(item, now)),
+    statusLabel: STUDIO_APPLICATION_STATUS_LABELS[toBadgeStatus(item, now)],
+    statusTone: STUDIO_APPLICATION_STATUS_TONES[toBadgeStatus(item, now)],
     actionLabel: ACTION_LABELS[kind]
   }))
 }
@@ -257,8 +267,14 @@ const buildRecentRegistrationItems = (applications: StudioApplicationSummary[]) 
  * "다음 7일" 같은 고정 기간을 새로 만들지 않는다 — 가장 가까운 몇 건을 날짜와 함께 보여주면
  * 기간 정책 없이도 같은 질문("다음 체험이 언제인가")에 답할 수 있다.
  */
-const buildScheduleSection = (applications: StudioApplicationSummary[], todayKey: string) => {
-  const events = buildStudioScheduleEvents(applications)
+// now 를 반드시 넘긴다. 넘기지 않으면 배지만 벽시계 시간으로 계산돼
+// 같은 화면 안에서 "지금 확인할 일" 과 "다가오는 일정" 의 판정 기준이 갈린다.
+const buildScheduleSection = (
+  applications: StudioApplicationSummary[],
+  todayKey: string,
+  now: Date
+) => {
+  const events = buildStudioScheduleEvents(applications, now)
   const todayEvents = events.filter((event) => event.dateKey === todayKey)
   const isToday = todayEvents.length > 0
   const visible = isToday
@@ -290,7 +306,7 @@ export const buildStudioDashboardView = (
 ): StudioDashboardView => {
   const todayKey = getSeoulTodayKey(now)
   const actionItems = buildActionItems(applications, now)
-  const schedule = buildScheduleSection(applications, todayKey)
+  const schedule = buildScheduleSection(applications, todayKey, now)
 
   return {
     actionItems: actionItems.slice(0, STUDIO_DASHBOARD_SECTION_LIMIT),

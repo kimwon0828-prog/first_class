@@ -78,7 +78,7 @@ type MockScheduleBlock = StudioScheduleBlockSummary & {
 
 type MockApplicationRecord = Omit<
   StudioApplicationDetail,
-  "scheduleStartTime" | "scheduleEndTime" | "confirmedBlockEndAt"
+  "scheduleStartTime" | "scheduleEndTime" | "confirmedBlockStartAt" | "confirmedBlockEndAt"
 > & {
   childId: string | null
 }
@@ -1640,7 +1640,8 @@ export const mockDataAdapter: DataAdapter = {
           ...item,
           classSubject: classItem?.subject ?? null,
           classRegion: formatAdministrativeRegionLabel(mockOrganizationLocation),
-          // mock 은 예약 블록 종료 시각을 따로 갖지 않는다. 2순위(수업 길이)로만 판정된다.
+          // mock 은 예약 블록 시각을 따로 갖지 않는다. confirmedSlotAt / 수업 길이로만 판정된다.
+          confirmedBlockStartAt: null,
           confirmedBlockEndAt: null,
           scheduleStartTime: classSchedule?.startTime ?? null,
           scheduleEndTime: classSchedule?.endTime ?? null,
@@ -1860,6 +1861,7 @@ export const mockDataAdapter: DataAdapter = {
           ? application.classRegion
           : formatAdministrativeRegionLabel(mockOrganizationLocation),
       // mock 은 예약 블록 종료 시각을 따로 갖지 않는다. 2순위(수업 길이)로만 판정된다.
+      confirmedBlockStartAt: null,
       confirmedBlockEndAt: null,
       scheduleStartTime: classSchedule?.startTime ?? null,
       scheduleEndTime: classSchedule?.endTime ?? null,

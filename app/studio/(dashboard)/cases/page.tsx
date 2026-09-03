@@ -143,6 +143,8 @@ const CASE_STAGE_TONE_CLASS: Record<string, string> = {
   new: styles.stageBadgeBlue,
   reviewing: styles.stageBadgeAmber,
   confirmed: styles.stageBadgeGreen,
+  // 정상 진행이라 경고색을 쓰지 않는다(디자인 시스템 §2.2 파생 상태).
+  in_trial: styles.stageBadgeBlue,
   completed: styles.stageBadgeGray
 }
 

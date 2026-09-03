@@ -43,7 +43,7 @@ const CASE_SELECT_FIELDS =
   // 확정 체험의 종료 시각 판정에 필요한 값. 둘 다 embed 라 query 는 늘지 않는다.
   // schedule_blocks 는 이 테이블과 관계가 3개라 FK 이름 hint 없이는 모호하다(PGRST201).
   "class_schedules(start_time, end_time), " +
-  "confirmed_block:schedule_blocks!trial_applications_confirmed_schedule_block_id_fkey(end_at), " +
+  "confirmed_block:schedule_blocks!trial_applications_confirmed_schedule_block_id_fkey(start_at, end_at), " +
   "classes!inner(id, title, subject, organization_id)"
 
 type CaseScheduleRow = {
@@ -52,6 +52,7 @@ type CaseScheduleRow = {
 }
 
 type CaseConfirmedBlockRow = {
+  start_at: string | null
   end_at: string | null
 }
 
@@ -376,6 +377,7 @@ export const getStudioCases = async (
         noShowAt: row.no_show_at ?? null,
         registrationStatus: row.registration_status,
         assignedTeacherId: row.assigned_teacher_id ?? null,
+        confirmedBlockStartAt: embeddedConfirmedBlock?.start_at ?? null,
         confirmedBlockEndAt: embeddedConfirmedBlock?.end_at ?? null,
         confirmedSlotAt: row.confirmed_slot_at ?? null,
         requestedSlotAt: row.requested_slot_at,

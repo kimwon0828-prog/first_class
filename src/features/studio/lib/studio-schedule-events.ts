@@ -1,11 +1,11 @@
 import {
-  getStudioStatusLabel,
-  getStudioStatusTone,
+  STUDIO_APPLICATION_STATUS_LABELS,
+  STUDIO_APPLICATION_STATUS_TONES,
   type StudioStatusTone
 } from "@/features/studio/lib/application-status-labels"
 import { toSeoulDateKey } from "@/features/studio/lib/studio-schedule-month"
 import type { ApplicationStatus, StudioApplicationSummary } from "@/shared/lib/db/adapter"
-import { isTrialTimeEnded } from "@/features/studio/lib/trial-completion"
+import { resolveTrialDisplayStatus } from "@/features/studio/lib/trial-completion"
 import { getSeoulDateTimeParts } from "@/shared/lib/seoul-datetime"
 
 export type StudioScheduleEvent = {
@@ -98,26 +98,24 @@ export const formatClockMinutes = (minutes: number) => {
 }
 
 /**
- * 확정 체험의 종료 시각이 지났으면 배지만 "체험 완료" 로 보여준다. DB status 는 그대로다.
+ * 확정 체험이 시작됐으면 배지를 "체험 중" 으로 보여준다. DB status 는 그대로다.
+ * 예정 종료 시각이 지나도 계속 "체험 중" 이다 — 완료는 원장만 확정한다.
  * now 는 호출자가 넘긴다 — 서버 렌더와 클라이언트 hydration 이 같은 값을 써야
  * 경계 시각에 라벨이 갈리지 않는다.
  */
-const toDisplayStatusInput = (item: StudioApplicationSummary, now: Date) => ({
-  status:
-    item.status === "confirmed" &&
-    isTrialTimeEnded(
-      {
-        confirmedBlockEndAt: item.confirmedBlockEndAt,
-        confirmedSlotAt: item.confirmedSlotAt,
-        scheduleStartTime: item.scheduleStartTime,
-        scheduleEndTime: item.scheduleEndTime
-      },
-      now
-    )
-      ? ("completed" as const)
-      : item.status,
-  noShowAt: item.noShowAt
-})
+const toDisplayStatus = (item: StudioApplicationSummary, now: Date) =>
+  resolveTrialDisplayStatus(
+    {
+      status: item.status,
+      noShowAt: item.noShowAt,
+      confirmedBlockStartAt: item.confirmedBlockStartAt,
+      confirmedBlockEndAt: item.confirmedBlockEndAt,
+      confirmedSlotAt: item.confirmedSlotAt,
+      scheduleStartTime: item.scheduleStartTime,
+      scheduleEndTime: item.scheduleEndTime
+    },
+    now
+  )
 
 export const buildStudioScheduleEvents = (
   items: StudioApplicationSummary[],
@@ -158,8 +156,8 @@ export const buildStudioScheduleEvents = (
       assignedTeacherId: item.assignedTeacherId,
       assignedTeacherName: normalizeText(item.assignedTeacherName),
       status: item.status,
-      statusLabel: getStudioStatusLabel(toDisplayStatusInput(item, now)),
-      tone: getStudioStatusTone(toDisplayStatusInput(item, now)),
+      statusLabel: STUDIO_APPLICATION_STATUS_LABELS[toDisplayStatus(item, now)],
+      tone: STUDIO_APPLICATION_STATUS_TONES[toDisplayStatus(item, now)],
       detailHref: `/studio/applications/${item.id}`
     })
   }

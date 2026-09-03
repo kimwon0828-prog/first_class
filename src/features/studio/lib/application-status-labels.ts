@@ -5,12 +5,19 @@ import type {
   StudioApplicationSummary
 } from "@/shared/lib/db/adapter"
 
-export type StudioDisplayStatus = ApplicationStatus | "no_show"
+/**
+ * 배지에 쓰는 표시 상태.
+ *
+ * "in_trial" 은 DB enum 이 아니다 — confirmed + 시작 시각 도달에서 파생되는 화면 전용 상태다.
+ * 계산은 trial-completion 의 resolveTrialDisplayStatus 가 한다.
+ */
+export type StudioDisplayStatus = ApplicationStatus | "no_show" | "in_trial"
 
 export const STUDIO_APPLICATION_STATUS_LABELS: Record<StudioDisplayStatus, string> = {
   new: "신규 신청",
   reviewing: "신청 확인",
   confirmed: "일정 확정",
+  in_trial: "체험 중",
   completed: "체험 완료",
   canceled: "신청 취소",
   no_show: "노쇼"
@@ -33,6 +40,8 @@ export const STUDIO_APPLICATION_STATUS_TONES: Record<StudioDisplayStatus, Studio
   new: "amber",
   reviewing: "blue",
   confirmed: "green",
+  // 정상 진행이라 경고색을 쓰지 않는다. blue 는 reviewing 처럼 진행 축의 중간 상태에 이미 쓰고 있다.
+  in_trial: "blue",
   completed: "gray",
   canceled: "red",
   no_show: "red"
