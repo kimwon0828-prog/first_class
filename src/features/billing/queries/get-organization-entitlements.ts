@@ -3,6 +3,7 @@ import "server-only"
 import { cache } from "react"
 
 import {
+  NO_PAID_ENTITLEMENTS,
   resolveStudioEntitlements,
   type ResolvedStudioEntitlements
 } from "@/features/billing/lib/entitlements"
@@ -33,3 +34,24 @@ const getOrganizationEntitlementsCached = cache(
 export const getOrganizationEntitlements = async (
   organizationId: string
 ): Promise<ResolvedStudioEntitlements> => getOrganizationEntitlementsCached(organizationId)
+
+/**
+ * 화면 표시용 조회.
+ *
+ * 읽기 경로에서는 예외를 던지지 않는다. 조회에 실패하면 유료 기능이 닫힌 것으로
+ * 취급한다 — 확인하지 못한 권한을 열어 두는 것보다 잠긴 상태를 보여 주는 편이 안전하다.
+ * 무료 기능과 기존 데이터 열람은 이 경우에도 그대로 열려 있다.
+ */
+export const getStudioEntitlementsForDisplay = async (
+  organizationId: string
+): Promise<ResolvedStudioEntitlements> => {
+  try {
+    return await getOrganizationEntitlementsCached(organizationId)
+  } catch {
+    return {
+      entitlements: NO_PAID_ENTITLEMENTS,
+      billedPlanCode: "free",
+      hasInternalFullAccess: false
+    }
+  }
+}

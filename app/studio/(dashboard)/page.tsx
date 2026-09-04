@@ -1,5 +1,6 @@
 import Link from "next/link"
 
+import { getStudioEntitlementsForDisplay } from "@/features/billing/queries/get-organization-entitlements"
 import {
   STUDIO_DONUT_RADIUS,
   STUDIO_DONUT_STROKE,
@@ -40,10 +41,15 @@ export default async function StudioIndexPage({ searchParams }: StudioIndexPageP
   })
   // /studio/schedule 과 같은 한 번의 조회다. 세 영역 모두 이 결과에서 파생한다.
   const { data: applications, error } = await getStudioApplications(teacher.organizationId)
+  const { entitlements } = await getStudioEntitlementsForDisplay(teacher.organizationId)
   const view = buildStudioDashboardView(applications)
-  // 기간 필터는 같은 조회 결과에서 performance cohort 만 고른다. Action 영역에는 적용하지 않는다.
-  const metrics = buildStudioDashboardMetrics(applications, selectedDateRange)
-  const analytics = buildStudioDashboardAnalytics(metrics)
+  // 전환 분석은 유료다. 권한이 없으면 집계 자체를 하지 않는다 —
+  // 계산해 두고 렌더만 감추면 전환 수치가 서버 payload 에 그대로 실려 나간다.
+  // 운영 영역(확인할 일 / 예정 체험)은 같은 조회 결과에서 그대로 만든다.
+  const metrics = entitlements.canUseConversionAnalytics
+    ? buildStudioDashboardMetrics(applications, selectedDateRange)
+    : null
+  const analytics = metrics ? buildStudioDashboardAnalytics(metrics) : null
   const donutCenter = STUDIO_DONUT_VIEWBOX / 2
 
   const scheduleTitle = view.scheduleMode === "today" ? "오늘 체험 일정" : "다가오는 체험 일정"
@@ -91,119 +97,138 @@ export default async function StudioIndexPage({ searchParams }: StudioIndexPageP
                   성과 분석
                 </h2>
                 <p className={styles.analyticsDescription}>
-                  {metrics.periodLabel} · 접수된 신청 기준입니다.
+                  {metrics
+                    ? `${metrics.periodLabel} · 접수된 신청 기준입니다.`
+                    : "체험 이후 등록 전환을 기간별로 확인할 수 있습니다."}
                 </p>
               </div>
 
-              <StudioDashboardPeriodControl selectedRange={selectedDateRange} />
+              {metrics ? <StudioDashboardPeriodControl selectedRange={selectedDateRange} /> : null}
             </header>
 
-            <div className={styles.chartRow}>
-              <article className={styles.chartCard} aria-labelledby="dashboard-stage-title">
-                <div className={styles.chartHead}>
-                  <h3 className={styles.chartTitle} id="dashboard-stage-title">
-                    신청 → 등록 흐름
-                  </h3>
-                  <p className={styles.chartDescription}>
-                    선택 기간 신청의 단계별 도달 현황
-                  </p>
-                </div>
+            {analytics ? (
+              <div className={styles.chartRow}>
+                <article className={styles.chartCard} aria-labelledby="dashboard-stage-title">
+                  <div className={styles.chartHead}>
+                    <h3 className={styles.chartTitle} id="dashboard-stage-title">
+                      신청 → 등록 흐름
+                    </h3>
+                    <p className={styles.chartDescription}>
+                      선택 기간 신청의 단계별 도달 현황
+                    </p>
+                  </div>
 
-                {analytics.hasCohort ? (
-                  <ul className={styles.barList}>
-                    {analytics.stageBars.map((bar) => (
-                      <li key={bar.key} className={styles.barRow}>
-                        <span className={styles.barLabel}>{bar.label}</span>
-                        <span className={styles.barTrack}>
-                          <span
-                            className={styles.barFill}
-                            style={{ width: `${bar.fillPercent}%` }}
-                          />
-                        </span>
-                        <span className={styles.barCount}>{bar.count}</span>
-                        <span className={styles.barReached}>{bar.reachedLabel ?? ""}</span>
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p className={styles.chartEmpty}>선택 기간에 접수된 신청이 없습니다.</p>
-                )}
-              </article>
-
-              <article className={styles.chartCard} aria-labelledby="dashboard-donut-title">
-                <div className={styles.chartHead}>
-                  <h3 className={styles.chartTitle} id="dashboard-donut-title">
-                    등록 결과
-                  </h3>
-                  <p className={styles.chartDescription}>체험 완료 후 현재 등록 상태</p>
-                </div>
-
-                {analytics.hasDonutData ? (
-                  <div className={styles.donutBody}>
-                    <div className={styles.donutFigure}>
-                      {/* 그림은 장식이다. 실제 정보는 아래 legend 가 텍스트로 전달한다. */}
-                      <svg
-                        className={styles.donut}
-                        viewBox={`0 0 ${STUDIO_DONUT_VIEWBOX} ${STUDIO_DONUT_VIEWBOX}`}
-                        aria-hidden="true"
-                      >
-                        <g transform={`rotate(-90 ${donutCenter} ${donutCenter})`}>
-                          <circle
-                            className={styles.donutTrack}
-                            cx={donutCenter}
-                            cy={donutCenter}
-                            r={STUDIO_DONUT_RADIUS}
-                            strokeWidth={STUDIO_DONUT_STROKE}
-                          />
-                          {analytics.donutSegments
-                            .filter((segment) => segment.count > 0)
-                            .map((segment) => (
-                              <circle
-                                key={segment.key}
-                                className={`${styles.donutSegment} ${DONUT_SEGMENT_CLASS[segment.key]}`}
-                                cx={donutCenter}
-                                cy={donutCenter}
-                                r={STUDIO_DONUT_RADIUS}
-                                strokeWidth={STUDIO_DONUT_STROKE}
-                                strokeDasharray={`${segment.dashLength} ${
-                                  analytics.donutCircumference - segment.dashLength
-                                }`}
-                                strokeDashoffset={segment.dashOffset}
-                              />
-                            ))}
-                        </g>
-                      </svg>
-
-                      <span className={styles.donutCenter}>
-                        <span className={styles.donutCenterLabel}>체험 완료</span>
-                        <strong className={styles.donutCenterValue}>{analytics.donutTotal}건</strong>
-                      </span>
-                    </div>
-
-                    <ul className={styles.legend}>
-                      {analytics.donutSegments.map((segment) => (
-                        <li key={segment.key} className={styles.legendItem}>
-                          <span
-                            className={`${styles.legendDot} ${DONUT_SEGMENT_CLASS[segment.key]}`}
-                            aria-hidden="true"
-                          />
-                          <span className={styles.legendLabel}>{segment.label}</span>
-                          <span className={styles.legendValue}>{segment.count}건</span>
+                  {analytics.hasCohort ? (
+                    <ul className={styles.barList}>
+                      {analytics.stageBars.map((bar) => (
+                        <li key={bar.key} className={styles.barRow}>
+                          <span className={styles.barLabel}>{bar.label}</span>
+                          <span className={styles.barTrack}>
+                            <span
+                              className={styles.barFill}
+                              style={{ width: `${bar.fillPercent}%` }}
+                            />
+                          </span>
+                          <span className={styles.barCount}>{bar.count}</span>
+                          <span className={styles.barReached}>{bar.reachedLabel ?? ""}</span>
                         </li>
                       ))}
                     </ul>
-                  </div>
-                ) : (
-                  <p className={styles.chartEmpty}>아직 체험을 마친 신청이 없습니다.</p>
-                )}
+                  ) : (
+                    <p className={styles.chartEmpty}>선택 기간에 접수된 신청이 없습니다.</p>
+                  )}
+                </article>
 
-                <footer className={styles.conversionFoot}>
-                  <span className={styles.conversionLabel}>등록 전환율</span>
-                  <strong className={styles.conversionValue}>{analytics.conversionValue}</strong>
-                  <span className={styles.conversionMeta}>{analytics.conversionMeta}</span>
-                </footer>
+                <article className={styles.chartCard} aria-labelledby="dashboard-donut-title">
+                  <div className={styles.chartHead}>
+                    <h3 className={styles.chartTitle} id="dashboard-donut-title">
+                      등록 결과
+                    </h3>
+                    <p className={styles.chartDescription}>체험 완료 후 현재 등록 상태</p>
+                  </div>
+
+                  {analytics.hasDonutData ? (
+                    <div className={styles.donutBody}>
+                      <div className={styles.donutFigure}>
+                        {/* 그림은 장식이다. 실제 정보는 아래 legend 가 텍스트로 전달한다. */}
+                        <svg
+                          className={styles.donut}
+                          viewBox={`0 0 ${STUDIO_DONUT_VIEWBOX} ${STUDIO_DONUT_VIEWBOX}`}
+                          aria-hidden="true"
+                        >
+                          <g transform={`rotate(-90 ${donutCenter} ${donutCenter})`}>
+                            <circle
+                              className={styles.donutTrack}
+                              cx={donutCenter}
+                              cy={donutCenter}
+                              r={STUDIO_DONUT_RADIUS}
+                              strokeWidth={STUDIO_DONUT_STROKE}
+                            />
+                            {analytics.donutSegments
+                              .filter((segment) => segment.count > 0)
+                              .map((segment) => (
+                                <circle
+                                  key={segment.key}
+                                  className={`${styles.donutSegment} ${DONUT_SEGMENT_CLASS[segment.key]}`}
+                                  cx={donutCenter}
+                                  cy={donutCenter}
+                                  r={STUDIO_DONUT_RADIUS}
+                                  strokeWidth={STUDIO_DONUT_STROKE}
+                                  strokeDasharray={`${segment.dashLength} ${
+                                    analytics.donutCircumference - segment.dashLength
+                                  }`}
+                                  strokeDashoffset={segment.dashOffset}
+                                />
+                              ))}
+                          </g>
+                        </svg>
+
+                        <span className={styles.donutCenter}>
+                          <span className={styles.donutCenterLabel}>체험 완료</span>
+                          <strong className={styles.donutCenterValue}>{analytics.donutTotal}건</strong>
+                        </span>
+                      </div>
+
+                      <ul className={styles.legend}>
+                        {analytics.donutSegments.map((segment) => (
+                          <li key={segment.key} className={styles.legendItem}>
+                            <span
+                              className={`${styles.legendDot} ${DONUT_SEGMENT_CLASS[segment.key]}`}
+                              aria-hidden="true"
+                            />
+                            <span className={styles.legendLabel}>{segment.label}</span>
+                            <span className={styles.legendValue}>{segment.count}건</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ) : (
+                    <p className={styles.chartEmpty}>아직 체험을 마친 신청이 없습니다.</p>
+                  )}
+
+                  <footer className={styles.conversionFoot}>
+                    <span className={styles.conversionLabel}>등록 전환율</span>
+                    <strong className={styles.conversionValue}>{analytics.conversionValue}</strong>
+                    <span className={styles.conversionMeta}>{analytics.conversionMeta}</span>
+                  </footer>
+                </article>
+              </div>
+            ) : (
+              // 잠긴 것은 이 분석 하나다. 아래 운영 영역은 그대로 동작한다.
+              <article className={styles.chartCard} aria-labelledby="dashboard-analytics-locked-title">
+                <div className={styles.chartHead}>
+                  <h3 className={styles.chartTitle} id="dashboard-analytics-locked-title">
+                    스탠다드 플랜에서 볼 수 있습니다
+                  </h3>
+                  <p className={styles.chartDescription}>
+                    상담 기록을 남기면 신청 → 등록 흐름과 등록 전환율을 기간별로 확인할 수 있습니다.
+                  </p>
+                </div>
+                <p className={styles.chartEmpty}>
+                  이미 저장된 체험 결과와 상담 이력은 상담·등록 화면에서 계속 확인할 수 있습니다.
+                </p>
               </article>
-            </div>
+            )}
           </section>
 
           <div className={styles.workspace}>

@@ -86,6 +86,18 @@ type ApplicationTrialResultWorkflowProps = {
   sidebarContent?: ReactNode
   /** 서버가 정한 기준 시각. 체험 종료 판정이 hydration 전후로 갈리지 않게 한다. */
   nowIso: string
+  /**
+   * 유료 쓰기 권한. 서버에서 해석해 넘긴다.
+   *
+   * 화면에서 요금제 이름을 비교하지 않는다. 잠긴 경우에도 기존 체험 결과와
+   * 상담 이력은 그대로 보여 준다 — 잠기는 것은 새로 쓰기뿐이다.
+   * 실제 차단은 server action 이 하고, 여기서는 할 수 없는 버튼을 숨긴다.
+   */
+  paidWriteAccess: {
+    canWriteTrialResults: boolean
+    canWriteConsultations: boolean
+    canReopenConsultation: boolean
+  }
 }
 
 type NextActionState = {
@@ -303,7 +315,8 @@ export const ApplicationTrialResultWorkflow = ({
   application,
   sidebarContent = null,
   referenceSections = null,
-  nowIso
+  nowIso,
+  paidWriteAccess
 }: ApplicationTrialResultWorkflowProps) => {
   const router = useRouter()
   const [isPromptOpen, setIsPromptOpen] = useState(false)
@@ -517,13 +530,23 @@ export const ApplicationTrialResultWorkflow = ({
 
   const hasTrialResult = Boolean(application.trialResult)
   const isCompletedView = application.status === "completed"
-  const canAddConsultation =
+  // 상담을 새로 쓸 수 있는 Case 인가(업무 조건) + 쓸 수 있는 플랜인가(권한).
+  const isConsultationWritableCase =
     application.status === "completed" &&
     application.registrationStatus !== "enrolled" &&
     application.registrationStatus !== "not_enrolled"
+  const canAddConsultation =
+    isConsultationWritableCase && paidWriteAccess.canWriteConsultations
   // 재개는 미등록 종결에만 연다. 등록 완료(enrolled)는 취소/환불이라는 다른 의미라 대상이 아니다.
   const canReopenRegistration =
-    application.status === "completed" && application.registrationStatus === "not_enrolled"
+    application.status === "completed" &&
+    application.registrationStatus === "not_enrolled" &&
+    paidWriteAccess.canReopenConsultation
+  const canWriteTrialResult = paidWriteAccess.canWriteTrialResults
+  // 잠긴 안내는 한 화면에 하나만 둔다(디자인 시스템 §10.2).
+  // 체험 완료 이후 원장이 실제로 막히는 지점이 "다음 할 일" 이라 거기에 놓는다.
+  const isPaidWorkflowLocked =
+    isCompletedView && !paidWriteAccess.canWriteTrialResults && !paidWriteAccess.canWriteConsultations
   const unregisteredReasonLabel = getTrialResultUnregisteredReasonLabel(application.unregisteredReason)
   const now = useMemo(() => new Date(nowIso), [nowIso])
   const nextActionState = getNextActionState(application, now)
@@ -594,7 +617,9 @@ export const ApplicationTrialResultWorkflow = ({
 
   // 완료 Case 의 버튼 위계: 지금 가장 중요한 것 하나만 Primary 로 둔다.
   const completedPrimaryAction = !hasTrialResult
-    ? "trial_result"
+    ? canWriteTrialResult
+      ? "trial_result"
+      : null
     : canAddConsultation
       ? "consultation"
       : null
@@ -619,17 +644,23 @@ export const ApplicationTrialResultWorkflow = ({
           {completedTodoCard.description ? (
             <p className={styles.todoDescription}>{completedTodoCard.description}</p>
           ) : null}
-          {completedPrimaryAction ? (
+          {isPaidWorkflowLocked ? (
+            <p className={styles.todoDescription}>
+              체험 결과와 등록 상담 기록은 스탠다드 플랜에서 남길 수 있습니다. 이미 저장된 기록은
+              아래에서 그대로 확인할 수 있습니다.
+            </p>
+          ) : null}
+          {completedPrimaryAction || (isPaidWorkflowLocked && phoneHref) ? (
             <div className={styles.todoActionRow}>
               {completedPrimaryAction === "trial_result" ? (
                 <button type="button" className={styles.primaryButton} onClick={() => openEditor()}>
                   결과 기록
                 </button>
-              ) : (
+              ) : completedPrimaryAction === "consultation" ? (
                 <button type="button" className={styles.primaryButton} onClick={openConsultationEditor}>
                   상담 기록
                 </button>
-              )}
+              ) : null}
               {phoneHref ? (
                 <a href={phoneHref} className={styles.secondaryButton}>
                   전화 걸기
@@ -736,7 +767,7 @@ export const ApplicationTrialResultWorkflow = ({
     <section className={`${styles.card} ${styles.sectionCard}`} aria-label="체험 결과">
       <div className={styles.sectionHead}>
         <h2 className={styles.sectionTitle}>체험 결과</h2>
-        {hasTrialResult && isCompletedView ? (
+        {hasTrialResult && isCompletedView && canWriteTrialResult ? (
           <div className={styles.sectionHeadActions}>
             <button type="button" className={styles.inlineTextButton} onClick={() => openEditor()}>
               수정
@@ -787,9 +818,11 @@ export const ApplicationTrialResultWorkflow = ({
       ) : isCompletedView ? (
         <div className={styles.compactEmpty}>
           <p className={styles.simpleEmptyLine}>체험 결과가 아직 기록되지 않았어요.</p>
-          <button type="button" className={styles.secondaryButton} onClick={() => openEditor()}>
-            결과 기록
-          </button>
+          {canWriteTrialResult ? (
+            <button type="button" className={styles.secondaryButton} onClick={() => openEditor()}>
+              결과 기록
+            </button>
+          ) : null}
         </div>
       ) : null}
     </section>

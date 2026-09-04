@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache"
 
+import { requireStudioEntitlement } from "@/features/billing/lib/require-entitlement"
 import { requireTeacherStudioAccess } from "@/features/studio/lib/require-teacher-studio-access"
 import { getStudioTrialResultSaveContext } from "@/features/studio/queries/get-studio-trial-result-save-context"
 import { dataAdapter } from "@/shared/lib/db"
@@ -124,6 +125,17 @@ export async function upsertTrialResultAction(
   void previousState
 
   const teacher = await requireTeacherStudioAccess()
+
+  // 유료 기능이다. form 없이 action 이 직접 호출될 수 있으므로 서버에서 막는다.
+  // 조회 실패는 허용하지 않는다(fail closed).
+  const entitlement = await requireStudioEntitlement(teacher.organizationId, "canWriteTrialResults")
+  if (!entitlement.allowed) {
+    return {
+      status: "error",
+      message: entitlement.message
+    }
+  }
+
   const { data: current, error } = await getStudioTrialResultSaveContext(
     applicationId,
     teacher.organizationId

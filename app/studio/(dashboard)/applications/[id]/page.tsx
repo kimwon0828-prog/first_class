@@ -11,6 +11,7 @@ import { requireTeacherStudioAccess } from "@/features/studio/lib/require-teache
 import { getStudioApplicationAssigneeOptions } from "@/features/studio/queries/get-studio-application-assignee-options"
 import { getStudioApplicationDetail } from "@/features/studio/queries/get-studio-application-detail"
 import { ApplicationAssigneeForm } from "@/features/studio/ui/application-assignee-form"
+import { getStudioEntitlementsForDisplay } from "@/features/billing/queries/get-organization-entitlements"
 import { ApplicationTrialResultWorkflow } from "@/features/studio/ui/application-trial-result-workflow"
 import { StudioStatusBadge } from "@/features/studio/ui/studio-status-badge"
 import { getSubjectLabel } from "@/shared/constants/education-taxonomy"
@@ -207,6 +208,7 @@ export default async function StudioApplicationDetailPage({ params }: StudioAppl
 
   // 서버가 정한 한 시각을 이 화면 전체가 공유한다(단계 표시와 다음 할 일이 같은 시각을 본다).
   const nowIso = new Date().toISOString()
+  const { entitlements } = await getStudioEntitlementsForDisplay(teacher.organizationId)
   const detailView = data
     ? (() => {
         const requestedSchedule =
@@ -445,6 +447,11 @@ export default async function StudioApplicationDetailPage({ params }: StudioAppl
           <ApplicationTrialResultWorkflow
             application={data}
             nowIso={nowIso}
+            paidWriteAccess={{
+              canWriteTrialResults: entitlements.canWriteTrialResults,
+              canWriteConsultations: entitlements.canWriteConsultations,
+              canReopenConsultation: entitlements.canReopenConsultation
+            }}
             referenceSections={
         <section className={styles.applicationInfoSection} aria-labelledby="application-info-title">
             <div className={styles.applicationInfoHeader}>
