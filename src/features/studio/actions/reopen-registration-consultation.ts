@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache"
 import { requireTeacherStudioAccess } from "@/features/studio/lib/require-teacher-studio-access"
 import { getStudioApplicationDetail } from "@/features/studio/queries/get-studio-application-detail"
 import { dataAdapter } from "@/shared/lib/db"
+import type { StudioApplicationDetail } from "@/shared/lib/db/adapter"
 
 // 미등록으로 종결한 Case 의 등록 상담을 다시 연다.
 //
@@ -17,6 +18,49 @@ import { dataAdapter } from "@/shared/lib/db"
 // 실제 쓰기는 기존 updateStudioApplicationOutcome 을 그대로 쓴다.
 // 새 adapter method 를 만들면 lost_at / unregistered_reason 정리 규칙이
 // 두 곳으로 갈라진다.
+
+/**
+ * 현재 미등록 사유가 이력에 이미 보존되어 있는지 판정한다.
+ *
+ * 재개는 trial_applications 의 현재 사유를 null 로 만든다. 그 사유가 상담
+ * 이력에 구조화된 형태로 남아 있지 않으면 이 순간 영구 소실된다.
+ *
+ * "아무 log 에나 사유 스냅샷이 하나라도 있으면 통과" 로는 부족하다.
+ * 지금 종결 상태를 만든 상담이 그 사유를 담고 있어야 한다. 그래서
+ * 현재 종결을 대표하는 "가장 최근 CONSULTATION" 하나만 본다.
+ *
+ * LEGACY_IMPORT 는 증거로 쓰지 않는다. 이관 데이터에는 등록 결정 스냅샷이 없다.
+ */
+const isCurrentUnregisteredReasonPreserved = (current: StudioApplicationDetail) => {
+  if (!current.unregisteredReason) {
+    // 구조화 사유 자체가 없으면 소실될 것도 없다.
+    return true
+  }
+
+  // consultationLogs 는 occurred_at desc 다. 최신 상담 판정은 기존 idiom 을 그대로 쓴다.
+  const latestConsultationLog =
+    current.consultationLogs.find((item) => item.activityType === "CONSULTATION") ?? null
+
+  if (!latestConsultationLog) {
+    return false
+  }
+
+  if (latestConsultationLog.registrationStatusSnapshot !== "not_enrolled") {
+    return false
+  }
+
+  if (latestConsultationLog.unregisteredReasonSnapshot !== current.unregisteredReason) {
+    return false
+  }
+
+  if (current.unregisteredReason === "other") {
+    return (
+      latestConsultationLog.unregisteredReasonNoteSnapshot === current.unregisteredReasonNote
+    )
+  }
+
+  return true
+}
 
 export type ReopenRegistrationConsultationActionState = {
   status: "idle" | "error" | "success"
@@ -60,6 +104,14 @@ export async function reopenRegistrationConsultationAction(
     return {
       status: "error",
       message: "미등록으로 종결한 신청만 상담을 다시 시작할 수 있습니다."
+    }
+  }
+
+  if (!isCurrentUnregisteredReasonPreserved(current)) {
+    return {
+      status: "error",
+      message:
+        "이 신청은 이전 방식으로 저장된 미등록 기록이라, 과거 미등록 사유를 보존한 뒤 상담을 다시 시작할 수 있습니다."
     }
   }
 
