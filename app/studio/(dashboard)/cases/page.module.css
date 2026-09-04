@@ -274,6 +274,11 @@
   color: var(--green-fg);
 }
 
+.stageBadgeRed {
+  background: var(--red-bg);
+  color: var(--red-fg);
+}
+
 .stageBadgeGray {
   background: var(--gray-bg);
   color: var(--gray-fg);

@@ -490,6 +490,12 @@ Pagination
   - 오늘 처리해야 하는 일 → amber
   - 기한이 지난 일 → red
   - 일반 업무를 red로 칠하지 않는다. 다 빨가면 아무것도 빨갛지 않다.
+- **단계 배지 색은 화면마다 다시 정하지 않는다.** `getCaseStageTone` 하나만 쓴다
+  (진행 축 = `STUDIO_APPLICATION_STATUS_TONES`, 등록 결과 = `STUDIO_REGISTRATION_STATUS_TONES`).
+  목록이라는 이유로 로컬 매핑을 새로 만들면 같은 Case가 목록과 상세에서 다른 색이 된다.
+- **"종료됐다"는 이유만으로 전부 gray로 칠하지 않는다.**
+  - `취소` / `노쇼` — 예외 종료다. **red 를 유지한다.** 목록에서 바로 눈에 띄어야 한다.
+  - `등록`(green) / `미등록`(gray) — 정상 종료다. 각자의 등록 결과 tone 을 쓴다.
 - **행 전체가 클릭 타깃**이며 Case Detail로 이동한다.
 - **Pagination 기본 적용.** 25건 이상을 전체 client load한 뒤 잘라내는 방식 금지 — DB 레벨에서 페이징한다.
 

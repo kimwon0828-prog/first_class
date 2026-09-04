@@ -319,6 +319,30 @@
   margin-top: 18px;
 }
 
+/*
+ * 상담 form 전용. 희망 일정 조건을 2~3개 넣으면 저장 버튼이 스크롤 밖으로 밀려서
+ * 통화 중에 끝까지 내려야 저장할 수 있었다.
+ *
+ * 짧은 modal(체험 결과 프롬프트 / 성공 / 재개 확인 / 에러)에는 붙이지 않는다.
+ * 스크롤이 없는 곳에 붙이면 의미 없는 떠 있는 footer 만 생긴다.
+ *
+ * 카드 좌우 padding 만큼 음수 margin 으로 흘려보내 카드 폭 전체를 덮는다.
+ * 그래야 스크롤되는 내용이 footer 옆으로 비쳐 보이지 않는다.
+ * DOM 순서는 그대로다 — position 만 바꾸므로 탭 순서가 변하지 않는다.
+ */
+.dialogActionsSticky {
+  position: sticky;
+  bottom: 0;
+  z-index: 1;
+  margin: 18px calc(-1 * var(--s6)) calc(-1 * var(--s6));
+  padding: var(--s4) var(--s6);
+  padding-bottom: max(var(--s4), env(safe-area-inset-bottom));
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  border-bottom-left-radius: var(--r-lg);
+  border-bottom-right-radius: var(--r-lg);
+}
+
 .form {
   display: grid;
   gap: 18px;
@@ -419,6 +443,12 @@
     padding: var(--s5);
   }
 
+  .dialogActionsSticky {
+    margin: 18px calc(-1 * var(--s5)) calc(-1 * var(--s5));
+    padding: var(--s4) var(--s5);
+    padding-bottom: max(var(--s4), env(safe-area-inset-bottom));
+  }
+
   .fieldGrid {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -452,6 +482,11 @@
 
   .dialogActions {
     flex-direction: column-reverse;
+  }
+
+  .dialogActionsSticky {
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
   }
 
   .ghostButton,

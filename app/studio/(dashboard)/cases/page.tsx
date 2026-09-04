@@ -9,9 +9,11 @@ import {
   sanitizeCaseSearchQuery,
   type CaseViewKey
 } from "@/features/studio/lib/case-filters"
+import type { StudioStatusTone } from "@/features/studio/lib/application-status-labels"
 import {
   CASE_STAGE_LABELS,
   getCaseClosedAt,
+  getCaseStageTone,
   isCaseClosedStage,
   type CaseNextActionTone,
   type StudioCaseListItem
@@ -139,13 +141,14 @@ const resolveClassText = (item: StudioCaseListItem) => {
 }
 
 // 진행 중 Case 의 단계별 badge tone. 표현만 담당하며 stage 판정/라벨은 case-view-model 이 정한다.
-const CASE_STAGE_TONE_CLASS: Record<string, string> = {
-  new: styles.stageBadgeBlue,
-  reviewing: styles.stageBadgeAmber,
-  confirmed: styles.stageBadgeGreen,
-  // 정상 진행이라 경고색을 쓰지 않는다(디자인 시스템 §2.2 파생 상태).
-  in_trial: styles.stageBadgeBlue,
-  completed: styles.stageBadgeGray
+// tone 은 getCaseStageTone 이 정한다. 이 화면은 tone → class 만 옮긴다.
+// 여기서 단계별 색을 다시 판단하면 Cases 만 다른 색을 쓰게 된다.
+const STAGE_TONE_CLASS: Record<StudioStatusTone, string> = {
+  amber: styles.stageBadgeAmber,
+  blue: styles.stageBadgeBlue,
+  green: styles.stageBadgeGreen,
+  gray: styles.stageBadgeGray,
+  red: styles.stageBadgeRed
 }
 
 export default async function StudioCasesPage({ searchParams }: StudioCasesPageProps) {
@@ -302,9 +305,7 @@ export default async function StudioCasesPage({ searchParams }: StudioCasesPageP
                       <span className={styles.cellStage}>
                         <span
                           className={`${styles.stageBadge} ${
-                            closed
-                              ? styles.stageBadgeGray
-                              : CASE_STAGE_TONE_CLASS[item.stage] ?? styles.stageBadgeBlue
+                            STAGE_TONE_CLASS[getCaseStageTone(item.stage)]
                           }`}
                         >
                           {CASE_STAGE_LABELS[item.stage]}

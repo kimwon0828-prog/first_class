@@ -382,7 +382,7 @@ const ConsultationHistoryEditor = ({
         />
       </label>
 
-      <div className={styles.dialogActions}>
+      <div className={`${styles.dialogActions} ${styles.dialogActionsSticky}`}>
         <button type="button" className={styles.secondaryButton} onClick={onCancel} disabled={isPending}>
           목록으로
         </button>

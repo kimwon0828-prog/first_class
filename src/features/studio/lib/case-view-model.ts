@@ -9,7 +9,12 @@
 //   - getConsultationPipelineGroup : 체험 완료 이후 후속 연락 그룹 판정
 // 이 파일은 순수 함수만 둔다(서버 전용 import 없음).
 
-import { getStudioDisplayStatus } from "@/features/studio/lib/application-status-labels"
+import {
+  getStudioDisplayStatus,
+  STUDIO_APPLICATION_STATUS_TONES,
+  STUDIO_REGISTRATION_STATUS_TONES,
+  type StudioStatusTone
+} from "@/features/studio/lib/application-status-labels"
 import {
   isTrialScheduledEndPassed,
   isTrialStarted,
@@ -56,6 +61,24 @@ export const CASE_STAGE_LABELS: Record<CaseStage, string> = {
 
 export const isCaseClosedStage = (stage: CaseStage): boolean =>
   (CASE_CLOSED_STAGES as readonly string[]).includes(stage)
+
+/**
+ * Case 단계 배지의 tone.
+ *
+ * 화면마다 다시 판단하지 않는다. 진행 축은 STUDIO_APPLICATION_STATUS_TONES,
+ * 등록 결과는 STUDIO_REGISTRATION_STATUS_TONES 를 그대로 쓴다.
+ *
+ * ⚠️ "종료됐다" 는 이유만으로 전부 gray 로 칠하지 않는다.
+ *   취소 / 노쇼는 예외 종료라 red 를 유지해야 목록에서 바로 눈에 띈다.
+ *   등록(green) / 미등록(gray) 은 정상 종료라 각자의 tone 을 쓴다.
+ */
+export const getCaseStageTone = (stage: CaseStage): StudioStatusTone => {
+  if (stage === "enrolled" || stage === "not_enrolled") {
+    return STUDIO_REGISTRATION_STATUS_TONES[stage]
+  }
+
+  return STUDIO_APPLICATION_STATUS_TONES[stage]
+}
 
 export type CaseStageInput = {
   status: ApplicationStatus

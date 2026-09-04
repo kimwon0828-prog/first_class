@@ -1242,7 +1242,7 @@ export const ApplicationTrialResultWorkflow = ({
                 />
               </Field>
 
-              <div className={styles.dialogActions}>
+              <div className={`${styles.dialogActions} ${styles.dialogActionsSticky}`}>
                 <button
                   type="button"
                   className={styles.secondaryButton}
