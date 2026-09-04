@@ -3,10 +3,7 @@
 import { revalidatePath } from "next/cache"
 
 import { logSmsEventSafely } from "@/features/notifications/sms/log-sms-event"
-import {
-  readRegularSchedulePreferenceInput,
-  resolveRegularSchedulePreferenceWrite
-} from "@/features/studio/lib/regular-schedule-preference-input"
+import { readRegularSchedulePreferenceInput } from "@/features/studio/lib/regular-schedule-preference-input"
 import { requireTeacherStudioAccess } from "@/features/studio/lib/require-teacher-studio-access"
 import { parseSeoulDateTimeLocalToIso } from "@/features/studio/lib/seoul-datetime"
 import {
@@ -20,8 +17,7 @@ import type {
   ApplicationUnregisteredReason,
   ConsultationLogChannel,
   ConsultationLogNextAction,
-  ConsultationSentiment,
-  StudioApplicationDetail
+  ConsultationSentiment
 } from "@/shared/lib/db/adapter"
 
 export type CreateConsultationLogActionState = {
@@ -113,21 +109,6 @@ const resolveConsultationNextAction = (
   return "NONE"
 }
 
-const shouldUpdateOutcome = (
-  current: StudioApplicationDetail,
-  nextValue: {
-    registrationStatus: ApplicationRegistrationStatus
-    unregisteredReason: ApplicationUnregisteredReason | null
-    unregisteredReasonNote: string | null
-  }
-) => {
-  return (
-    current.registrationStatus !== nextValue.registrationStatus ||
-    current.unregisteredReason !== nextValue.unregisteredReason ||
-    current.unregisteredReasonNote !== nextValue.unregisteredReasonNote
-  )
-}
-
 export async function createConsultationLogAction(
   applicationId: string,
   previousState: CreateConsultationLogActionState = defaultState,
@@ -152,12 +133,9 @@ export async function createConsultationLogAction(
     }
   }
 
-  if (current.registrationStatus === "enrolled" || current.registrationStatus === "not_enrolled") {
-    return {
-      status: "error",
-      message: "종결된 신청에는 새 상담 기록을 추가할 수 없습니다."
-    }
-  }
+  // 종결 여부는 여기서 판정하지 않는다. transaction 안에서 잠근 row 를 보고,
+  // 그것도 submissionId 중복 확인 다음이다. 첫 저장이 commit 됐는데 응답만 유실된 재시도는
+  // "종결된 신청" 오류가 아니라 duplicate 로 끝나야 하기 때문이다.
 
   const submissionId = normalizeOptionalText(formData.get("submissionId"))
   if (!submissionId) {
@@ -253,11 +231,6 @@ export async function createConsultationLogAction(
   }
 
   const occurredAt = new Date().toISOString()
-  const preferenceWrite = resolveRegularSchedulePreferenceWrite({
-    input: preferenceInput,
-    current,
-    now: occurredAt
-  })
   const resolvedUnregisteredReason =
     registrationStatus === "not_enrolled" ? unregisteredReason : null
   const resolvedUnregisteredReasonNote =
@@ -265,77 +238,34 @@ export async function createConsultationLogAction(
       ? unregisteredReasonNote
       : null
   const nextAction = resolveConsultationNextAction(registrationStatus, nextContactAt)
-  // 등록 전환 알림은 "실제로 non-enrolled → enrolled 로 바뀐 상담"에서만 나간다.
-  // 위 가드에서 종결(enrolled / not_enrolled) Case 를 이미 돌려보내므로 여기의
-  // current.registrationStatus 는 반드시 undecided | pending 이다.
-  // 따라서 enrolled 로 저장하는 순간이 곧 전환 시점이고,
-  // enrolled → enrolled 재저장이나 메모/희망 일정/다음 연락만 바꾼 저장은 여기에 걸리지 않는다.
-  const isEnrollmentTransition = registrationStatus === "enrolled"
-  let outcomeUpdated = false
 
   try {
-    if (
-      shouldUpdateOutcome(current, {
-        registrationStatus,
-        unregisteredReason: resolvedUnregisteredReason,
-        unregisteredReasonNote: resolvedUnregisteredReasonNote
-      })
-    ) {
-      await dataAdapter.updateStudioApplicationOutcome({
-        applicationId,
-        actorId: teacher.id,
-        currentStatus: current.status,
-        previousRegistrationStatus: current.registrationStatus,
-        previousLostAt: current.lostAt,
-        consultationNote: current.consultationNote,
-        trialFeedback: current.trialFeedback,
-        registeredCourse: current.registeredCourse,
-        finalLevel: current.finalLevel,
-        finalSchedule: current.finalSchedule,
-        followUpNote: current.followUpNote,
-        registrationStatus,
-        unregisteredReason: resolvedUnregisteredReason,
-        unregisteredReasonNote: resolvedUnregisteredReasonNote,
-        note: "상담 기록에서 등록 전환을 저장했습니다."
-      })
-      outcomeUpdated = true
-    }
-
-    const logMode = await dataAdapter.createStudioConsultationLog({
-      id: submissionId,
+    // 등록 결과 · 상담 로그 · Case 스냅샷 · 감사 로그를 하나의 transaction 으로 저장한다.
+    // 조직 스코프, 상태 guard, 멱등 판정은 전부 잠근 row 기준으로 여기 안에서 다시 확인된다.
+    // 위에서 읽은 current 는 form 문맥과 희망 일정 비교용이지 transaction 의 근거가 아니다.
+    const result = await dataAdapter.createStudioConsultationTransaction({
+      submissionId,
       applicationId,
-      actorId: teacher.id,
       occurredAt,
-      activityType: "CONSULTATION",
       channel,
       sentiment,
-      registrationStatusSnapshot: registrationStatus,
+      note,
+      registrationStatus,
+      unregisteredReason: resolvedUnregisteredReason,
+      unregisteredReasonNote: resolvedUnregisteredReasonNote,
       nextAction,
       nextContactAt,
-      note,
-      // 스냅샷은 "이번에 입력한 값"이 아니라 "이 상담 시점의 Case 상태"다.
-      // 미전달이면 기존 current 값이 그대로 찍힌다(registrationStatusSnapshot 과 같은 의미).
-      regularSchedulePreferenceSnapshot: preferenceWrite.snapshot,
-      regularSchedulePreferenceNoteSnapshot: preferenceWrite.snapshotNote,
-      // 미등록 사유는 Case 의 현재 값과 달리 이후 재개로 지워지지 않는다.
-      // Case 컬럼에 쓰는 값과 같은 변수를 쓴다 — 두 곳이 어긋나면 이력이 거짓이 된다.
-      unregisteredReasonSnapshot: resolvedUnregisteredReason,
-      unregisteredReasonNoteSnapshot: resolvedUnregisteredReasonNote
+      // 미전달이면 Case 의 희망 일정을 건드리지 않는다. undecided 와 같게 처리하지 않는다.
+      preferenceProvided: preferenceInput.status === "present",
+      preference: preferenceInput.status === "present" ? preferenceInput.preference : null,
+      preferenceNote: preferenceInput.status === "present" ? preferenceInput.note : null,
+      outcomeNote: "상담 기록에서 등록 전환을 저장했습니다."
     })
 
-    await dataAdapter.updateStudioApplicationConsultationSnapshot({
-      applicationId,
-      currentStatus: current.status,
-      nextContactAt,
-      lastActivityAt: occurredAt,
-      // 미전달이면 undefined 라 Case 의 희망 일정 컬럼을 건드리지 않는다.
-      regularSchedulePreferenceWrite: preferenceWrite.caseWrite
-    })
-
-    // 저장이 모두 끝난 뒤에 보낸다. 같은 submissionId 로 재제출된 요청(duplicate)은
-    // 이미 첫 제출에서 발송했으므로 다시 보내지 않는다.
+    // 저장 commit 이후에만 보낸다. rollback 이면 여기까지 오지 않는다.
+    // 같은 submissionId 재제출(duplicate)은 첫 제출에서 이미 발송했으므로 다시 보내지 않는다.
     // logSmsEventSafely 는 실패해도 throw 하지 않아 저장을 되돌리지 않는다.
-    if (isEnrollmentTransition && outcomeUpdated && logMode === "created") {
+    if (result.mode === "created" && result.enrollmentTransition) {
       const updated = await dataAdapter
         .getStudioApplicationDetail(applicationId, teacher.organizationId)
         .catch(() => null)
@@ -365,10 +295,29 @@ export async function createConsultationLogAction(
     const message =
       caughtError instanceof Error ? caughtError.message : "failed_to_create_consultation_log"
 
-    if (
-      message === "application_outcome_status_conflict" ||
-      message === "application_consultation_snapshot_conflict"
-    ) {
+    if (message === "application_not_found_or_forbidden") {
+      return {
+        status: "error",
+        message: "조회 가능한 신청이 아니거나 신청 정보를 불러오지 못했습니다."
+      }
+    }
+
+    if (message === "application_not_completed") {
+      return {
+        status: "error",
+        message: "체험 완료 이후에만 상담 기록을 추가할 수 있습니다."
+      }
+    }
+
+    // 저장 직전에 다른 창에서 종결됐다는 뜻이다. 진입 guard 와 같은 문구를 쓴다.
+    if (message === "application_registration_terminal") {
+      return {
+        status: "error",
+        message: "종결된 신청에는 새 상담 기록을 추가할 수 없습니다."
+      }
+    }
+
+    if (message === "consultation_submission_conflict") {
       return {
         status: "error",
         message: "신청 상태가 변경되었습니다. 화면을 새로고침한 뒤 다시 시도해 주세요."

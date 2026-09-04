@@ -845,6 +845,41 @@ export type CreateStudioConsultationLogInput = {
   unregisteredReasonNoteSnapshot: string | null
 }
 
+/**
+ * 상담 생성 1회의 입력 전체. 세 개의 개별 mutation 대신 하나의 transaction 으로 저장한다.
+ *
+ * 희망 일정은 "미전달(preferenceProvided=false)"과 "명시적 값"을 구분한다 —
+ * 미전달이면 Case 의 현재 값을 그대로 두고, 상담 스냅샷에만 현재 값이 복사된다.
+ * updated_at bump 여부는 호출자가 정하지 않는다. DB 가 기존 값과 직접 비교한다.
+ */
+export type CreateStudioConsultationTransactionInput = {
+  /** consultation_logs.id 로 쓰이는 멱등 키. */
+  submissionId: string
+  applicationId: string
+  occurredAt: string
+  channel: ConsultationLogChannel
+  sentiment: ConsultationSentiment
+  note: string
+  registrationStatus: ApplicationRegistrationStatus
+  unregisteredReason: ApplicationUnregisteredReason | null
+  unregisteredReasonNote: string | null
+  nextAction: ConsultationLogNextAction
+  nextContactAt: string | null
+  preferenceProvided: boolean
+  preference: RegularSchedulePreference | null
+  preferenceNote: string | null
+  /** 등록 결과가 실제로 바뀔 때만 application_logs 에 남는 문구. */
+  outcomeNote: string
+}
+
+export type StudioConsultationTransactionResult = {
+  /** duplicate 면 이번 요청은 아무것도 쓰지 않았다는 뜻이다. */
+  mode: "created" | "duplicate"
+  outcomeUpdated: boolean
+  enrollmentTransition: boolean
+  registrationStatus: ApplicationRegistrationStatus
+}
+
 export type UpdateStudioConsultationLogInput = {
   applicationId: string
   consultationLogId: string
@@ -984,6 +1019,10 @@ export interface DataAdapter {
     input: UpdateStudioApplicationLatestConsultationSnapshotInput
   ): Promise<void>
   createStudioConsultationLog(input: CreateStudioConsultationLogInput): Promise<"created" | "duplicate">
+  /** 등록 결과 + 상담 로그 + Case 스냅샷 + 감사 로그를 한 transaction 으로 저장한다. */
+  createStudioConsultationTransaction(
+    input: CreateStudioConsultationTransactionInput
+  ): Promise<StudioConsultationTransactionResult>
   updateStudioConsultationLog(input: UpdateStudioConsultationLogInput): Promise<void>
   getStudioTrialResultSaveContext(
     applicationId: string,

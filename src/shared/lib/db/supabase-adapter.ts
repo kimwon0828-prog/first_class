@@ -36,6 +36,7 @@ import {
 import type { StudioClassScheduleSummaryInput } from "@/features/studio/lib/class-schedule-summary"
 import { isApplicationUnregisteredReason } from "@/shared/lib/db/adapter"
 import type {
+  StudioConsultationTransactionResult,
   StudioTrialResultSaveContext,
   ActivateStudioTeacherInput,
   StudioTeacherReferenceCounts,
@@ -47,6 +48,7 @@ import type {
   ConsultationLogNextAction,
   ConsultationSentiment,
   CreateStudioConsultationLogInput,
+  CreateStudioConsultationTransactionInput,
   UpdateStudioConsultationLogInput,
   ApplicationUnregisteredReason,
   AvailableScheduleSlot,
@@ -5023,6 +5025,48 @@ export const supabaseDataAdapter: DataAdapter = {
     }
 
     return "created"
+  },
+  async createStudioConsultationTransaction(input: CreateStudioConsultationTransactionInput) {
+    const supabase = await getSupabaseServerClient()
+    // 등록 결과 / 상담 로그 / Case 스냅샷 / 감사 로그를 하나의 transaction 으로 쓴다.
+    // 조직 스코프·상태 guard·멱등 판정은 전부 함수 안의 잠근 row 기준이다.
+    const { data, error } = await supabase.rpc("create_studio_consultation", {
+      p_submission_id: input.submissionId,
+      p_application_id: input.applicationId,
+      p_occurred_at: input.occurredAt,
+      p_channel: input.channel,
+      p_sentiment: input.sentiment,
+      p_note: input.note,
+      p_registration_status: input.registrationStatus,
+      p_unregistered_reason: input.unregisteredReason,
+      p_unregistered_reason_note: input.unregisteredReasonNote,
+      p_next_action: input.nextAction,
+      p_next_contact_at: input.nextContactAt,
+      p_preference_provided: input.preferenceProvided,
+      p_preference: input.preference,
+      p_preference_note: input.preferenceNote,
+      p_outcome_note: input.outcomeNote
+    })
+
+    if (error) {
+      // Postgres/PGRST 원문은 UI 로 넘기지 않는다. 도메인 코드로만 번역한다.
+      const domainError = [
+        "not_authenticated",
+        "application_not_found_or_forbidden",
+        "application_not_completed",
+        "application_registration_terminal",
+        "consultation_submission_conflict"
+      ].find((code) => error.message.includes(code))
+
+      throw new Error(domainError ?? "failed_to_create_consultation_transaction")
+    }
+
+    const result = data as StudioConsultationTransactionResult | null
+    if (!result) {
+      throw new Error("failed_to_create_consultation_transaction")
+    }
+
+    return result
   },
   async updateStudioConsultationLog(input: UpdateStudioConsultationLogInput) {
     const supabase = await getSupabaseServerClient()

@@ -12,6 +12,7 @@ import type {
   ChildProfile,
   ChildProfileInput,
   CreateStudioConsultationLogInput,
+  CreateStudioConsultationTransactionInput,
   UpdateStudioConsultationLogInput,
   CreateStudioTeacherInput,
   CreateStudioClassScheduleInput,
@@ -2159,6 +2160,113 @@ export const mockDataAdapter: DataAdapter = {
     })
 
     return "created"
+  },
+  async createStudioConsultationTransaction(input: CreateStudioConsultationTransactionInput) {
+    // in-memory 라 원자성은 구조적으로 보장된다. supabase 함수와 같은 순서·같은 판정을 쓴다.
+    const target = applications.find((item) => item.id === input.applicationId)
+    if (!target) {
+      throw new Error("application_not_found_or_forbidden")
+    }
+
+    // 멱등 확인이 상태 guard 보다 먼저다(commit 됐지만 응답이 유실된 재시도).
+    const existing = consultationLogs.find((item) => item.id === input.submissionId)
+    if (existing) {
+      if (existing.applicationId !== input.applicationId) {
+        throw new Error("consultation_submission_conflict")
+      }
+
+      return {
+        mode: "duplicate" as const,
+        outcomeUpdated: false,
+        enrollmentTransition: false,
+        registrationStatus: target.registrationStatus
+      }
+    }
+
+    if (target.status !== "completed") {
+      throw new Error("application_not_completed")
+    }
+
+    if (target.registrationStatus === "enrolled" || target.registrationStatus === "not_enrolled") {
+      throw new Error("application_registration_terminal")
+    }
+
+    const now = new Date().toISOString()
+    const reason = input.registrationStatus === "not_enrolled" ? input.unregisteredReason : null
+    const reasonNote =
+      input.registrationStatus === "not_enrolled" && input.unregisteredReason === "other"
+        ? input.unregisteredReasonNote
+        : null
+    const outcomeUpdated =
+      target.registrationStatus !== input.registrationStatus ||
+      target.unregisteredReason !== reason ||
+      target.unregisteredReasonNote !== reasonNote
+
+    if (outcomeUpdated) {
+      target.registrationStatus = input.registrationStatus
+      target.enrolledAt = input.registrationStatus === "enrolled" ? now : null
+      // 위 종결 guard 를 지났으므로 이전 상태는 undecided | pending 이다.
+      // "이미 미등록이던 Case 의 lost_at 유지" 분기는 여기서 도달할 수 없다.
+      target.lostAt = input.registrationStatus === "not_enrolled" ? now : null
+      target.unregisteredReason = reason
+      target.unregisteredReasonNote = reasonNote
+    }
+
+    if (input.preferenceProvided) {
+      const changed =
+        JSON.stringify(target.regularSchedulePreference ?? null) !==
+          JSON.stringify(input.preference ?? null) ||
+        target.regularSchedulePreferenceNote !== input.preferenceNote
+      target.regularSchedulePreference = input.preference
+      target.regularSchedulePreferenceNote = input.preferenceNote
+      if (changed) {
+        target.regularSchedulePreferenceUpdatedAt = now
+      }
+    }
+
+    target.nextContactAt = input.nextContactAt
+    target.lastActivityAt = input.occurredAt
+    target.updatedAt = now
+
+    consultationLogs.unshift({
+      id: input.submissionId,
+      applicationId: input.applicationId,
+      occurredAt: input.occurredAt,
+      activityType: "CONSULTATION",
+      channel: input.channel,
+      sentiment: input.sentiment,
+      registrationStatusSnapshot: input.registrationStatus,
+      regularSchedulePreferenceSnapshot: target.regularSchedulePreference,
+      regularSchedulePreferenceNoteSnapshot: target.regularSchedulePreferenceNote,
+      unregisteredReasonSnapshot: reason,
+      unregisteredReasonNoteSnapshot: reasonNote,
+      nextAction: input.nextAction,
+      nextContactAt: input.nextContactAt,
+      note: input.note,
+      createdBy: mockStudioActorProfileId,
+      createdAt: input.occurredAt,
+      updatedAt: input.occurredAt
+    })
+
+    if (outcomeUpdated) {
+      applicationLogs.unshift({
+        id: `log-${applicationLogs.length + 1}`,
+        applicationId: input.applicationId,
+        fromStatus: target.status,
+        toStatus: target.status,
+        actorId: mockStudioActorProfileId,
+        actorName: "테스트 선생님",
+        note: input.outcomeNote,
+        createdAt: now
+      })
+    }
+
+    return {
+      mode: "created" as const,
+      outcomeUpdated,
+      enrollmentTransition: outcomeUpdated && input.registrationStatus === "enrolled",
+      registrationStatus: target.registrationStatus
+    }
   },
   async updateStudioConsultationLog(input: UpdateStudioConsultationLogInput) {
     const target = consultationLogs.find(
