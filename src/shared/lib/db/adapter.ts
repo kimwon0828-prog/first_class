@@ -772,6 +772,56 @@ export type UpdateStudioApplicationStatusInput = {
   note: string
 }
 
+/**
+ * 요금제 코드.
+ *
+ * free 는 저장되지 않는다 — organization_subscriptions 에 row 가 없으면 free 다.
+ * pro 는 도메인만 열어 둔 값이고 현재 판매하지 않는다.
+ */
+export const ORGANIZATION_PLAN_CODES = ["free", "standard", "pro"] as const
+export type OrganizationPlanCode = (typeof ORGANIZATION_PLAN_CODES)[number]
+
+/** DB 에 실제로 저장되는 유료 요금제. free 는 여기에 없다. */
+export const ORGANIZATION_PAID_PLAN_CODES = ["standard", "pro"] as const
+export type OrganizationPaidPlanCode = (typeof ORGANIZATION_PAID_PLAN_CODES)[number]
+
+export const ORGANIZATION_SUBSCRIPTION_STATUSES = [
+  "trialing",
+  "active",
+  "past_due",
+  "canceled",
+  "expired"
+] as const
+export type OrganizationSubscriptionStatus = (typeof ORGANIZATION_SUBSCRIPTION_STATUSES)[number]
+
+export type OrganizationSubscription = {
+  organizationId: string
+  planCode: OrganizationPaidPlanCode
+  status: OrganizationSubscriptionStatus
+  currentPeriodStart: string | null
+  /** canceled 여도 이 시각까지는 유료 기간이다. */
+  currentPeriodEnd: string | null
+  cancelAtPeriodEnd: boolean
+}
+
+/**
+ * 결제와 무관한 내부 전체 권한.
+ *
+ * 상업 기능만 연다. admin 승인이나 보안 권한과는 관계가 없다.
+ */
+export type OrganizationEntitlementOverride = {
+  organizationId: string
+  fullAccess: boolean
+  reason: string
+  expiresAt: string | null
+}
+
+/** 요금제 사실과 override 를 그대로 담은 값. 해석은 resolver 가 한다. */
+export type OrganizationBillingSnapshot = {
+  subscription: OrganizationSubscription | null
+  override: OrganizationEntitlementOverride | null
+}
+
 export type UpdateStudioApplicationOutcomeInput = {
   applicationId: string
   actorId: string
@@ -1020,6 +1070,8 @@ export interface DataAdapter {
   ): Promise<void>
   createStudioConsultationLog(input: CreateStudioConsultationLogInput): Promise<"created" | "duplicate">
   /** 등록 결과 + 상담 로그 + Case 스냅샷 + 감사 로그를 한 transaction 으로 저장한다. */
+  /** 요금제 사실과 내부 override 를 그대로 읽는다. 해석은 billing resolver 가 한다. */
+  getOrganizationBillingSnapshot(organizationId: string): Promise<OrganizationBillingSnapshot>
   createStudioConsultationTransaction(
     input: CreateStudioConsultationTransactionInput
   ): Promise<StudioConsultationTransactionResult>

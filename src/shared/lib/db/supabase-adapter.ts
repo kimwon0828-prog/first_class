@@ -49,6 +49,11 @@ import type {
   ConsultationSentiment,
   CreateStudioConsultationLogInput,
   CreateStudioConsultationTransactionInput,
+  OrganizationBillingSnapshot,
+  OrganizationEntitlementOverride,
+  OrganizationPaidPlanCode,
+  OrganizationSubscription,
+  OrganizationSubscriptionStatus,
   UpdateStudioConsultationLogInput,
   ApplicationUnregisteredReason,
   AvailableScheduleSlot,
@@ -5025,6 +5030,72 @@ export const supabaseDataAdapter: DataAdapter = {
     }
 
     return "created"
+  },
+  async getOrganizationBillingSnapshot(organizationId: string) {
+    const supabase = await getSupabaseServerClient()
+    // 두 테이블 모두 자기 조직 SELECT 만 허용된다(RLS). 병렬로 한 번씩만 읽는다.
+    const [subscriptionResult, overrideResult] = await Promise.all([
+      supabase
+        .from("organization_subscriptions")
+        .select(
+          "organization_id, plan_code, subscription_status, current_period_start, current_period_end, cancel_at_period_end"
+        )
+        .eq("organization_id", organizationId)
+        .maybeSingle(),
+      supabase
+        .from("organization_entitlement_overrides")
+        .select("organization_id, full_access, reason, expires_at")
+        .eq("organization_id", organizationId)
+        .maybeSingle()
+    ])
+
+    // 조회 실패는 삼키지 않는다. 유료 기능을 실수로 열어 주는 fail-open 을 만들지 않기 위해
+    // 호출자(resolver)가 실패를 알아야 한다.
+    if (subscriptionResult.error) {
+      throw new Error("failed_to_fetch_organization_subscription")
+    }
+
+    if (overrideResult.error) {
+      throw new Error("failed_to_fetch_organization_entitlement_override")
+    }
+
+    const subscriptionRow = subscriptionResult.data as {
+      organization_id: string
+      plan_code: OrganizationPaidPlanCode
+      subscription_status: OrganizationSubscriptionStatus
+      current_period_start: string | null
+      current_period_end: string | null
+      cancel_at_period_end: boolean
+    } | null
+
+    const overrideRow = overrideResult.data as {
+      organization_id: string
+      full_access: boolean
+      reason: string
+      expires_at: string | null
+    } | null
+
+    const subscription: OrganizationSubscription | null = subscriptionRow
+      ? {
+          organizationId: subscriptionRow.organization_id,
+          planCode: subscriptionRow.plan_code,
+          status: subscriptionRow.subscription_status,
+          currentPeriodStart: subscriptionRow.current_period_start,
+          currentPeriodEnd: subscriptionRow.current_period_end,
+          cancelAtPeriodEnd: subscriptionRow.cancel_at_period_end
+        }
+      : null
+
+    const override: OrganizationEntitlementOverride | null = overrideRow
+      ? {
+          organizationId: overrideRow.organization_id,
+          fullAccess: overrideRow.full_access,
+          reason: overrideRow.reason,
+          expiresAt: overrideRow.expires_at
+        }
+      : null
+
+    return { subscription, override } satisfies OrganizationBillingSnapshot
   },
   async createStudioConsultationTransaction(input: CreateStudioConsultationTransactionInput) {
     const supabase = await getSupabaseServerClient()

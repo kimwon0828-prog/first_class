@@ -13,6 +13,7 @@ import type {
   ChildProfileInput,
   CreateStudioConsultationLogInput,
   CreateStudioConsultationTransactionInput,
+  OrganizationBillingSnapshot,
   UpdateStudioConsultationLogInput,
   CreateStudioTeacherInput,
   CreateStudioClassScheduleInput,
@@ -2160,6 +2161,11 @@ export const mockDataAdapter: DataAdapter = {
     })
 
     return "created"
+  },
+  async getOrganizationBillingSnapshot(organizationId: string) {
+    // mock 에는 유료 계약이 없다. row 없음 = FREE 라는 기본값을 그대로 표현한다.
+    void organizationId
+    return { subscription: null, override: null } satisfies OrganizationBillingSnapshot
   },
   async createStudioConsultationTransaction(input: CreateStudioConsultationTransactionInput) {
     // in-memory 라 원자성은 구조적으로 보장된다. supabase 함수와 같은 순서·같은 판정을 쓴다.
