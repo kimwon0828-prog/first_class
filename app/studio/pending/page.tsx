@@ -170,6 +170,26 @@ export default async function StudioPendingPage() {
               />
             </section>
           ) : null}
+
+          {/* 반려 상태에서도 로그아웃은 항상 가능해야 한다.
+              Studio 사용 권한과 세션 종료 권한을 묶지 않는다. */}
+          <div style={{ marginTop: 24 }}>
+            <Link
+              href="/studio/sign-out"
+              prefetch={false}
+              style={{
+                display: "inline-block",
+                padding: "12px 24px",
+                background: "#e5e7eb",
+                color: "#374151",
+                borderRadius: 8,
+                textDecoration: "none",
+                fontWeight: 500
+              }}
+            >
+              로그아웃
+            </Link>
+          </div>
         </>
       ) : (
         <>
@@ -199,8 +219,12 @@ export default async function StudioPendingPage() {
             </div>
           ) : null}
 
+          {/* Studio 로그아웃의 canonical 경로는 /studio/sign-out 이다.
+              (studio-mypage-page · studio/access 와 같은 링크를 쓴다)
+              여기서만 쓰던 /api/auth/sign-out 은 존재하지 않는 경로라 404 였고,
+              세션이 그대로 남아 승인 대기 화면에 갇혔다. */}
           <Link
-            href="/api/auth/sign-out"
+            href="/studio/sign-out"
             prefetch={false}
             style={{
               display: "inline-block",
