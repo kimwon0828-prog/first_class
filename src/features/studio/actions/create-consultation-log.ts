@@ -24,6 +24,11 @@ export type CreateConsultationLogActionState = {
   status: "idle" | "error" | "success"
   message: string
   successToken?: string | null
+  /**
+   * 성공의 종류. duplicate 는 "같은 제출이 이미 저장돼 있다"는 뜻이며
+   * 이번 입력값은 저장되지 않았다. 화면이 이를 구분해 알려야 한다.
+   */
+  successMode?: "created" | "duplicate"
 }
 
 const defaultState: CreateConsultationLogActionState = {
@@ -281,15 +286,26 @@ export async function createConsultationLogAction(
       }
     }
 
-    revalidatePath("/studio")
-    revalidatePath("/studio/cases")
-    revalidatePath("/studio/applications")
-    revalidatePath(`/studio/applications/${applicationId}`)
+    // 저장은 이미 commit 됐다. 화면 갱신이 실패해도 "저장 실패"로 보고하지 않는다.
+    try {
+      revalidatePath("/studio")
+      revalidatePath("/studio/cases")
+      revalidatePath("/studio/applications")
+      revalidatePath(`/studio/applications/${applicationId}`)
+    } catch (revalidateError) {
+      console.warn("non_critical_failed_to_revalidate_consultation_paths", revalidateError)
+    }
 
     return {
       status: "success",
-      message: "상담 기록을 저장했습니다.",
-      successToken: crypto.randomUUID()
+      // duplicate 는 "이번 입력을 저장했다"가 아니라 "같은 제출이 이미 저장돼 있다"는 뜻이다.
+      // 재시도 전에 내용을 고쳤더라도 그 수정본은 저장되지 않으므로 그렇게 말하지 않는다.
+      message:
+        result.mode === "duplicate"
+          ? "이미 저장된 상담 기록입니다. 내용을 바꾸려면 상담 이력에서 수정해 주세요."
+          : "상담 기록을 저장했습니다.",
+      successToken: crypto.randomUUID(),
+      successMode: result.mode
     }
   } catch (caughtError) {
     const message =

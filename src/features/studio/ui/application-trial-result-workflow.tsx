@@ -1379,10 +1379,14 @@ export const ApplicationTrialResultWorkflow = ({
           >
             <div className={styles.dialogBody}>
               <h3 id="consultation-success-title" className={styles.dialogTitle}>
-                상담 기록이 저장되었습니다.
+                {consultationState.successMode === "duplicate"
+                  ? "이미 저장된 상담 기록입니다."
+                  : "상담 기록이 저장되었습니다."}
               </h3>
               <p className={styles.dialogDescription}>
-                다음 연락 일정과 최근 활동 시각도 함께 반영되었습니다.
+                {consultationState.successMode === "duplicate"
+                  ? "같은 제출이 이미 저장돼 있어 이번에 입력한 내용은 반영되지 않았습니다. 내용을 바꾸려면 상담 이력에서 수정해 주세요."
+                  : "다음 연락 일정과 최근 활동 시각도 함께 반영되었습니다."}
               </p>
             </div>
             <div className={styles.dialogActions}>
