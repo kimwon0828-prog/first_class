@@ -45,6 +45,7 @@ import { ApplicationStatusActionForm } from "@/features/studio/ui/application-st
 import { StudioStatusBadge } from "@/features/studio/ui/studio-status-badge"
 import { ConsultationHistoryModal } from "@/features/studio/ui/consultation-history-modal"
 import { RegularSchedulePreferenceEditor } from "@/features/studio/ui/regular-schedule-preference-editor"
+import { SaveErrorDialog } from "@/features/studio/ui/save-error-dialog"
 import type {
   ApplicationRegistrationStatus,
   ApplicationUnregisteredReason,
@@ -323,6 +324,11 @@ export const ApplicationTrialResultWorkflow = ({
     trialResultAction,
     initialTrialResultState
   )
+  // 실패 문구는 form 안 inline 으로만 두면 스크롤 아래에서 안 보인다. dialog 로 올린다.
+  const [trialResultErrorMessage, setTrialResultErrorMessage] = useState<string | null>(null)
+  const trialResultSubmitButtonRef = useRef<HTMLButtonElement | null>(null)
+  const [consultationErrorMessage, setConsultationErrorMessage] = useState<string | null>(null)
+  const consultationSubmitButtonRef = useRef<HTMLButtonElement | null>(null)
   const [isReopenOpen, setIsReopenOpen] = useState(false)
   const reopenAction = reopenRegistrationConsultationAction.bind(null, application.id)
   const [reopenState, submitReopen, isReopening] = useActionState(
@@ -370,6 +376,7 @@ export const ApplicationTrialResultWorkflow = ({
 
   const openEditor = (options?: { refreshAfterClose?: boolean }) => {
     resetTrialResultSelections()
+    setTrialResultErrorMessage(null)
     setIsPromptOpen(false)
     setIsSuccessOpen(false)
     setRefreshOnEditorClose(Boolean(options?.refreshAfterClose))
@@ -378,6 +385,7 @@ export const ApplicationTrialResultWorkflow = ({
 
   const openConsultationEditor = () => {
     resetConsultationSelections()
+    setConsultationErrorMessage(null)
     setIsConsultationHistoryOpen(false)
     setIsConsultationSuccessOpen(false)
     setIsConsultationEditorOpen(true)
@@ -458,6 +466,30 @@ export const ApplicationTrialResultWorkflow = ({
     setIsConsultationEditorOpen(false)
     setIsConsultationSuccessOpen(true)
   }, [consultationState.status, consultationState.successToken])
+
+  // trialResultState / consultationState 는 제출마다 새 객체다.
+  // 같은 문구로 다시 실패해도 dialog 가 다시 뜬다.
+  useEffect(() => {
+    if (trialResultState.status === "error") {
+      setTrialResultErrorMessage(trialResultState.message)
+      return
+    }
+
+    if (trialResultState.status === "success") {
+      setTrialResultErrorMessage(null)
+    }
+  }, [trialResultState])
+
+  useEffect(() => {
+    if (consultationState.status === "error") {
+      setConsultationErrorMessage(consultationState.message)
+      return
+    }
+
+    if (consultationState.status === "success") {
+      setConsultationErrorMessage(null)
+    }
+  }, [consultationState])
 
   useEffect(() => {
     if (reopenState.status !== "success" || !reopenState.successToken) {
@@ -993,7 +1025,12 @@ export const ApplicationTrialResultWorkflow = ({
                 <button type="button" className={styles.secondaryButton} onClick={closeEditor} disabled={isSavingTrialResult}>
                   취소
                 </button>
-                <button type="submit" className={styles.primaryButton} disabled={isSavingTrialResult}>
+                <button
+                  ref={trialResultSubmitButtonRef}
+                  type="submit"
+                  className={styles.primaryButton}
+                  disabled={isSavingTrialResult}
+                >
                   {isSavingTrialResult ? "저장 중..." : hasTrialResult ? "수정 저장" : "결과 저장"}
                 </button>
               </div>
@@ -1203,7 +1240,12 @@ export const ApplicationTrialResultWorkflow = ({
                 >
                   취소
                 </button>
-                <button type="submit" className={styles.primaryButton} disabled={isSavingConsultation}>
+                <button
+                  ref={consultationSubmitButtonRef}
+                  type="submit"
+                  className={styles.primaryButton}
+                  disabled={isSavingConsultation}
+                >
                   {isSavingConsultation ? "저장 중..." : "상담 기록 저장"}
                 </button>
               </div>
@@ -1244,6 +1286,29 @@ export const ApplicationTrialResultWorkflow = ({
             </div>
           </div>
         </div>
+      ) : null}
+
+      {trialResultErrorMessage !== null ? (
+        <SaveErrorDialog
+          title="체험 결과를 저장하지 못했습니다"
+          message={trialResultErrorMessage}
+          onConfirm={() => {
+            setTrialResultErrorMessage(null)
+            trialResultSubmitButtonRef.current?.focus()
+          }}
+        />
+      ) : null}
+
+      {consultationErrorMessage !== null ? (
+        <SaveErrorDialog
+          title="상담 기록을 저장하지 못했습니다"
+          message={consultationErrorMessage}
+          onConfirm={() => {
+            setConsultationErrorMessage(null)
+            // 작성 중이던 form 의 저장 버튼으로 focus 를 돌려준다.
+            consultationSubmitButtonRef.current?.focus()
+          }}
+        />
       ) : null}
 
       {isReopenOpen ? (

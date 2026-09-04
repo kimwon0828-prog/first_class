@@ -23,6 +23,7 @@ import {
   parseRegularSchedulePreference
 } from "@/features/studio/lib/regular-schedule-preference"
 import { RegularSchedulePreferenceEditor } from "@/features/studio/ui/regular-schedule-preference-editor"
+import { SaveErrorDialog } from "@/features/studio/ui/save-error-dialog"
 import type { StudioConsultationLog } from "@/shared/lib/db/adapter"
 
 import styles from "./application-trial-result-workflow.module.css"
@@ -260,9 +261,23 @@ const ConsultationHistoryEditor = ({
   const [note, setNote] = useState(log.note ?? "")
   const [nextContactAt, setNextContactAt] = useState(formatSeoulDateTimeInputValue(log.nextContactAt))
   const handledSuccessTokenRef = useRef<string | null>(null)
+  // 신규 저장과 같은 이유로 dialog 를 쓴다. form 은 계속 mount 상태라 입력값이 남는다.
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const submitButtonRef = useRef<HTMLButtonElement | null>(null)
 
   const updateAction = updateConsultationLogAction.bind(null, applicationId, log.id)
   const [state, formAction, isPending] = useActionState(updateAction, initialUpdateState)
+
+  useEffect(() => {
+    if (state.status === "error") {
+      setErrorMessage(state.message)
+      return
+    }
+
+    if (state.status === "success") {
+      setErrorMessage(null)
+    }
+  }, [state])
 
   useEffect(() => {
     if (state.status !== "success" || !state.successToken) {
@@ -371,10 +386,26 @@ const ConsultationHistoryEditor = ({
         <button type="button" className={styles.secondaryButton} onClick={onCancel} disabled={isPending}>
           목록으로
         </button>
-        <button type="submit" className={styles.primaryButton} disabled={isPending}>
+        <button
+          ref={submitButtonRef}
+          type="submit"
+          className={styles.primaryButton}
+          disabled={isPending}
+        >
           {isPending ? "저장 중..." : "수정 저장"}
         </button>
       </div>
+
+      {errorMessage !== null ? (
+        <SaveErrorDialog
+          title="상담 기록을 수정하지 못했습니다"
+          message={errorMessage}
+          onConfirm={() => {
+            setErrorMessage(null)
+            submitButtonRef.current?.focus()
+          }}
+        />
+      ) : null}
     </form>
   )
 }
