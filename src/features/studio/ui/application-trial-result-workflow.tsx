@@ -75,6 +75,14 @@ const initialConsultationState: CreateConsultationLogActionState = {
 
 type ApplicationTrialResultWorkflowProps = {
   application: StudioApplicationDetail
+  /**
+   * 신청 정보 / 담당 선생님처럼 "이미 아는 참조 정보" 섹션.
+   *
+   * 다음 할 일 바로 아래에 놓기 위해 서버에서 만들어 넘긴다.
+   * 원장이 상세로 들어오는 이유는 "지금 무엇을 할지" 하나라서
+   * 참조 정보가 그보다 먼저 오면 안 된다(디자인 시스템 §4.2).
+   */
+  referenceSections?: ReactNode
   sidebarContent?: ReactNode
   /** 서버가 정한 기준 시각. 체험 종료 판정이 hydration 전후로 갈리지 않게 한다. */
   nowIso: string
@@ -112,8 +120,8 @@ const getCompletedNextActionState = (application: StudioApplicationDetail): Next
 
   if (application.registrationStatus === "not_enrolled") {
     return {
-      title: "미등록으로 종료되었습니다.",
-      description: null,
+      title: "미등록으로 종료했어요.",
+      description: "학부모가 다시 문의하면 등록 상담에서 상담을 재개할 수 있습니다.",
       tone: "default"
     }
   }
@@ -256,8 +264,9 @@ const getCompletedTodoCardCopy = (
 
   if (application.registrationStatus === "not_enrolled") {
     return {
-      title: "미등록으로 종료된 신청이에요.",
-      description: "추가 상담 대신 현재까지 기록만 확인해 주세요."
+      // 상담 재개가 가능하므로 "추가 상담을 하지 말라" 는 의미를 남기지 않는다.
+      title: "미등록으로 종료했어요.",
+      description: "학부모가 다시 문의하면 등록 상담에서 상담을 재개할 수 있습니다."
     }
   }
 
@@ -293,6 +302,7 @@ const getCompletedTodoCardCopy = (
 export const ApplicationTrialResultWorkflow = ({
   application,
   sidebarContent = null,
+  referenceSections = null,
   nowIso
 }: ApplicationTrialResultWorkflowProps) => {
   const router = useRouter()
@@ -720,7 +730,9 @@ export const ApplicationTrialResultWorkflow = ({
     </section>
   )
 
-  const trialResultSection = (
+  // 등록 상담과 같은 기준이다. 실제 status 가 completed 일 때만 연다.
+  // 아직 할 수 없는 일을 위한 빈 카드를 미리 만들지 않는다(디자인 시스템 §4.2).
+  const trialResultSection = !isCompletedView ? null : (
     <section className={`${styles.card} ${styles.sectionCard}`} aria-label="체험 결과">
       <div className={styles.sectionHead}>
         <h2 className={styles.sectionTitle}>체험 결과</h2>
@@ -779,9 +791,7 @@ export const ApplicationTrialResultWorkflow = ({
             결과 기록
           </button>
         </div>
-      ) : (
-        <p className={styles.simpleEmptyLine}>체험 완료 처리 후 결과를 기록할 수 있어요.</p>
-      )}
+      ) : null}
     </section>
   )
 
@@ -868,6 +878,7 @@ export const ApplicationTrialResultWorkflow = ({
   return (
     <>
       {nextTodoSection}
+      {referenceSections}
       {activitySection}
       {trialResultSection}
       {registrationConsultationSection}

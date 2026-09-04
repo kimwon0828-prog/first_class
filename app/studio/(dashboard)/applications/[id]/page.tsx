@@ -217,6 +217,9 @@ export default async function StudioApplicationDetailPage({ params }: StudioAppl
           : null
         const applicationDate = formatDateTime(data.createdAt) ?? "신청일 미기록"
         const applicationDateDetail = formatDateWithWeekdayTime(data.createdAt, { hour12: true }) ?? applicationDate
+        // 등록 축은 체험을 마친 뒤부터 의미가 있다. 체험 전에는 진행 축 배지와 경쟁만 한다.
+        // 파생 `체험 중` 이 아니라 실제 status 를 본다(디자인 시스템 §4.2 Case Header).
+        const showRegistrationBadge = data.status === "completed"
         const registrationTone = getStudioRegistrationStatusTone(data.registrationStatus)
         const registrationLabel = getStudioRegistrationStatusLabel(data.registrationStatus)
         const statusLabel = getStudioStatusLabel(data)
@@ -318,6 +321,7 @@ export default async function StudioApplicationDetailPage({ params }: StudioAppl
           confirmedSchedule,
           applicationDate,
           applicationDateDetail,
+          showRegistrationBadge,
           registrationTone,
           registrationLabel,
           statusLabel,
@@ -397,11 +401,13 @@ export default async function StudioApplicationDetailPage({ params }: StudioAppl
                 </p>
               </div>
 
-              <div className={styles.caseBadgeWrap}>
-                <StudioStatusBadge tone={detailView.registrationTone}>
-                  {detailView.registrationLabel}
-                </StudioStatusBadge>
-              </div>
+              {detailView.showRegistrationBadge ? (
+                <div className={styles.caseBadgeWrap}>
+                  <StudioStatusBadge tone={detailView.registrationTone}>
+                    {detailView.registrationLabel}
+                  </StudioStatusBadge>
+                </div>
+              ) : null}
             </div>
 
             {detailView.phoneHref || detailView.smsHref ? (
@@ -429,8 +435,18 @@ export default async function StudioApplicationDetailPage({ params }: StudioAppl
             </div>
           </section>
 
-          {/* 2. 신청 정보 — 일정 판단 전에 별도 펼침 없이 읽을 수 있어야 한다. */}
-          <section className={styles.applicationInfoSection} aria-labelledby="application-info-title">
+          {/*
+            2. 다음 할 일  3. 신청 정보  4. 담당 선생님  5. 활동 기록  6. 체험 결과  7. 등록 상담
+
+            참조 정보(신청 정보 + 담당 선생님)는 workflow 에 slot 으로 넘겨
+            "다음 할 일" 바로 아래에 렌더한다(디자인 시스템 §4.2).
+            CSS order 가 아니라 DOM 순서를 바꾸므로 탭 순서와 모바일 읽기 순서가 함께 맞는다.
+          */}
+          <ApplicationTrialResultWorkflow
+            application={data}
+            nowIso={nowIso}
+            referenceSections={
+        <section className={styles.applicationInfoSection} aria-labelledby="application-info-title">
             <div className={styles.applicationInfoHeader}>
               <h2 id="application-info-title" className={styles.applicationInfoTitle}>
                 신청 정보
@@ -466,7 +482,9 @@ export default async function StudioApplicationDetailPage({ params }: StudioAppl
                   </dd>
                 </div>
                 <div className={styles.infoCell}>
-                  <dt className={styles.summaryLabel}>희망 일정</dt>
+                  {/* 체험수업 예약 일시다. 등록 상담의 `정규수업 희망 일정` 과 다른 값이라
+                      "희망 일정" 이라는 말을 공유하지 않는다. */}
+                  <dt className={styles.summaryLabel}>체험 희망 일시</dt>
                   <dd className={styles.summaryValue}>
                     {detailView.requestedSchedule}
                     <Link href="/studio/schedule" className={styles.caseInlineLink}>
@@ -543,10 +561,9 @@ export default async function StudioApplicationDetailPage({ params }: StudioAppl
                 optionsError={assigneeOptionsResult.error}
               />
             </div>
-          </section>
-
-          {/* 3. 다음 할 일  4. 활동 기록  5. 체험 결과 */}
-          <ApplicationTrialResultWorkflow application={data} nowIso={nowIso} />
+        </section>
+            }
+          />
         </>
       ) : null}
     </div>
