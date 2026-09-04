@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache"
 
+import { logSmsEventSafely } from "@/features/notifications/sms/log-sms-event"
 import {
   readRegularSchedulePreferenceInput,
   resolveRegularSchedulePreferenceWrite
@@ -264,6 +265,13 @@ export async function createConsultationLogAction(
       ? unregisteredReasonNote
       : null
   const nextAction = resolveConsultationNextAction(registrationStatus, nextContactAt)
+  // 등록 전환 알림은 "실제로 non-enrolled → enrolled 로 바뀐 상담"에서만 나간다.
+  // 위 가드에서 종결(enrolled / not_enrolled) Case 를 이미 돌려보내므로 여기의
+  // current.registrationStatus 는 반드시 undecided | pending 이다.
+  // 따라서 enrolled 로 저장하는 순간이 곧 전환 시점이고,
+  // enrolled → enrolled 재저장이나 메모/희망 일정/다음 연락만 바꾼 저장은 여기에 걸리지 않는다.
+  const isEnrollmentTransition = registrationStatus === "enrolled"
+  let outcomeUpdated = false
 
   try {
     if (
@@ -290,9 +298,10 @@ export async function createConsultationLogAction(
         unregisteredReasonNote: resolvedUnregisteredReasonNote,
         note: "상담 기록에서 등록 전환을 저장했습니다."
       })
+      outcomeUpdated = true
     }
 
-    await dataAdapter.createStudioConsultationLog({
+    const logMode = await dataAdapter.createStudioConsultationLog({
       id: submissionId,
       applicationId,
       actorId: teacher.id,
@@ -318,6 +327,25 @@ export async function createConsultationLogAction(
       // 미전달이면 undefined 라 Case 의 희망 일정 컬럼을 건드리지 않는다.
       regularSchedulePreferenceWrite: preferenceWrite.caseWrite
     })
+
+    // 저장이 모두 끝난 뒤에 보낸다. 같은 submissionId 로 재제출된 요청(duplicate)은
+    // 이미 첫 제출에서 발송했으므로 다시 보내지 않는다.
+    // logSmsEventSafely 는 실패해도 throw 하지 않아 저장을 되돌리지 않는다.
+    if (isEnrollmentTransition && outcomeUpdated && logMode === "created") {
+      const updated = await dataAdapter
+        .getStudioApplicationDetail(applicationId, teacher.organizationId)
+        .catch(() => null)
+
+      if (updated) {
+        await logSmsEventSafely({
+          organizationId: teacher.organizationId,
+          application: updated,
+          createdBy: teacher.id,
+          recipientType: "parent",
+          eventType: "trial_enrolled"
+        })
+      }
+    }
 
     revalidatePath("/studio")
     revalidatePath("/studio/cases")
