@@ -1,23 +1,37 @@
-// Cases 의 파생 `체험 중` 필터 검증.
+// Cases 필터가 `체험 중` 을 배지와 다른 기준으로 근사하지 않는지 검증.
 //
 //   npx tsx scripts/verify-case-in-trial-filter.ts
 //
-// 목록은 DB 에서 페이징하므로 `체험 중` 도 DB 레벨에서 걸러야 한다.
-// 그런데 배지는 resolveTrialStartAtMs(confirmed_block.start_at → confirmed_slot_at)로
-// 판정하고, SQL 은 embed 컬럼을 필터할 수 없어 confirmed_slot_at 만 쓴다.
+// 배경.
+//   배지의 시작 시각 canonical source 는 resolveTrialStartAtMs 다.
+//     1순위 confirmed_block.start_at   2순위 confirmed_slot_at
+//   목록은 DB 에서 페이징하므로 필터도 DB 레벨이어야 하는데, PostgREST 로는
+//   이 fallback 을 표현할 수 없다(측정 결과는 아래 [3] 참고).
+//     - 논리식(or)에서 embed 컬럼 참조 불가 → PGRST100
+//     - embed 를 !inner 로 걸면 확정 블록이 없는 confirmed Case 가 통째로 사라짐
 //
-// 이 스크립트는 그 차이가 실제로 문제가 되는 지점을 고정한다.
-//   1. 두 값이 같으면 필터와 배지가 항상 일치한다.
-//   2. 두 값이 다르면 갈릴 수 있다 — 그 조합을 명시적으로 드러낸다.
-//   3. 필터 정의(in_trial / confirmed)가 서로 겹치지 않는다.
+//   그래서 `체험 중` 은 배지로만 두고 필터로는 만들지 않는다.
+//
+// 이 스크립트가 실패해야 하는 경우.
+//   1. 진행 중 필터에 `체험 중` 이 다시 생겼을 때
+//   2. 필터가 시작 시각으로 confirmed 를 가르기 시작했을 때
+//      (confirmed_slot_at 만 보는 근사는 [2] 의 D/E 에서 배지와 갈린다)
+//   3. 배지 쪽 canonical 우선순위(block → slot)가 바뀌었을 때
 
 import {
   CASE_ACTIVE_FILTERS,
-  getCaseFilterPredicate
+  getCaseFilterPredicate,
+  type CaseFilterPredicate
 } from "@/features/studio/lib/case-filters"
 import { getCaseDisplayStage } from "@/features/studio/lib/case-view-model"
 
 let failures = 0
+/** 직전 검사들이 전부 통과했을 때만 PASS 줄을 남긴다(실패 옆에 PASS 가 찍히지 않게). */
+const passLine = (before: number, message: string) => {
+  if (failures === before) {
+    console.log(`  PASS  ${message}`)
+  }
+}
 const check = (condition: unknown, message: string) => {
   if (condition) {
     return
@@ -30,34 +44,65 @@ const NOW = new Date("2026-09-05T03:00:00.000Z")
 const iso = (offsetMinutes: number) =>
   new Date(NOW.getTime() + offsetMinutes * 60 * 1000).toISOString()
 
-/** SQL 이 실제로 거르는 방식. applyCasePredicate 의 trialStarted 분기와 같은 규칙이다. */
-const sqlTrialStarted = (confirmedSlotAt: string | null) =>
-  confirmedSlotAt !== null && confirmedSlotAt <= NOW.toISOString()
+/** 배지 판정. 필터가 무엇을 하든 이 값이 화면에 보이는 단계다. */
+const badgeStage = (confirmedBlockStartAt: string | null, confirmedSlotAt: string | null) =>
+  getCaseDisplayStage(
+    {
+      status: "confirmed",
+      noShowAt: null,
+      registrationStatus: "undecided",
+      confirmedBlockStartAt,
+      confirmedBlockEndAt: null,
+      confirmedSlotAt,
+      scheduleStartTime: null,
+      scheduleEndTime: null
+    },
+    NOW
+  )
 
 // ─────────────────────────────────────────────────────────────
-console.log("\n[1] 필터 정의")
+console.log("\n[1] 진행 중 필터 목록")
 
+const filterListBefore = failures
 const keys = CASE_ACTIVE_FILTERS.map((option) => option.key)
-check(keys.includes("in_trial"), "`체험 중` 필터가 없다")
 check(
-  keys.indexOf("in_trial") === keys.indexOf("confirmed") + 1,
-  "`체험 중` 이 `일정 확정` 바로 뒤가 아니다"
+  JSON.stringify(keys) === JSON.stringify(["all", "new", "reviewing", "confirmed", "post_trial"]),
+  `진행 중 필터가 바뀌었다: ${keys.join(" · ")}`
 )
-console.log(`  PASS  진행 중 필터: ${keys.join(" · ")}`)
+check(
+  !keys.includes("in_trial" as (typeof keys)[number]),
+  "`체험 중` 이 필터로 다시 추가됐다 — 배지와 같은 기준을 DB 에서 표현할 수 없다"
+)
+passLine(filterListBefore, `진행 중 필터: ${keys.join(" · ")}`)
 
+// 필터 서술자에 시작 시각 축이 없어야 한다. 있으면 confirmed 가 근사 기준으로 갈린 것이다.
+const startAxisBefore = failures
+const START_TIME_PREDICATE_KEYS = ["trialStarted", "confirmedSlotAt", "startedBefore"]
+for (const key of keys) {
+  const predicate = getCaseFilterPredicate("active", key) as CaseFilterPredicate &
+    Record<string, unknown>
+  const found = START_TIME_PREDICATE_KEYS.filter((name) => predicate[name] !== undefined)
+  check(
+    found.length === 0,
+    `필터 ${key} 가 시작 시각으로 Case 를 가른다(${found.join(", ")}) — 배지와 갈릴 수 있다`
+  )
+}
+passLine(startAxisBefore, "어떤 필터도 체험 시작 시각으로 Case 를 가르지 않는다")
+
+const confirmedBefore = failures
 const confirmedPredicate = getCaseFilterPredicate("active", "confirmed")
-const inTrialPredicate = getCaseFilterPredicate("active", "in_trial")
-check(confirmedPredicate.trialStarted === "not_started", "`일정 확정` 이 시작 전으로 좁혀지지 않았다")
-check(inTrialPredicate.trialStarted === "started", "`체험 중` 이 시작 후로 좁혀지지 않았다")
 check(
-  JSON.stringify(confirmedPredicate.statusIn) === JSON.stringify(["confirmed"]) &&
-    JSON.stringify(inTrialPredicate.statusIn) === JSON.stringify(["confirmed"]),
-  "두 필터가 confirmed 이외의 status 를 본다"
+  JSON.stringify(confirmedPredicate) === JSON.stringify({ statusIn: ["confirmed"] }),
+  `\`일정 확정\` 이 status=confirmed 전체가 아니다: ${JSON.stringify(confirmedPredicate)}`
 )
-console.log("  PASS  두 필터는 status=confirmed 를 시작 시각으로만 가른다(겹치지 않음)")
+passLine(confirmedBefore, "`일정 확정` = status=confirmed 전체(체험 중 Case 를 숨기지 않는다)")
 
 // ─────────────────────────────────────────────────────────────
-console.log("\n[2] SQL 판정 = 화면 배지")
+console.log("\n[2] confirmed_slot_at 근사는 배지와 같지 않다")
+
+// confirmed_slot_at 만 보는 SQL 근사(= 예전 in_trial 필터의 판정).
+const slotOnlyStarted = (confirmedSlotAt: string | null) =>
+  confirmedSlotAt !== null && confirmedSlotAt <= NOW.toISOString()
 
 type Fixture = {
   id: string
@@ -65,108 +110,99 @@ type Fixture = {
   confirmedBlockStartAt: string | null
   confirmedSlotAt: string | null
   expectedStage: "confirmed" | "in_trial"
+  /** 근사와 배지가 갈리는 fixture 인가. */
+  expectedDivergence: boolean
 }
 
 const fixtures: Fixture[] = [
   {
     id: "A",
-    label: "시작 1시간 전 (block=slot)",
+    label: "block=slot=+60m",
     confirmedBlockStartAt: iso(60),
     confirmedSlotAt: iso(60),
-    expectedStage: "confirmed"
+    expectedStage: "confirmed",
+    expectedDivergence: false
   },
   {
     id: "B",
-    label: "시작 30분 경과 (block=slot)",
+    label: "block=slot=-30m",
     confirmedBlockStartAt: iso(-30),
     confirmedSlotAt: iso(-30),
-    expectedStage: "in_trial"
+    expectedStage: "in_trial",
+    expectedDivergence: false
   },
   {
     id: "C",
-    label: "예정 종료 경과 (block=slot)",
-    confirmedBlockStartAt: iso(-120),
-    confirmedSlotAt: iso(-120),
-    expectedStage: "in_trial"
+    label: "block 없음 · slot 만 -30m (fallback)",
+    confirmedBlockStartAt: null,
+    confirmedSlotAt: iso(-30),
+    expectedStage: "in_trial",
+    expectedDivergence: false
   },
   {
     id: "D",
-    label: "block 없음 · slot 만 있음(경과)",
-    confirmedBlockStartAt: null,
-    confirmedSlotAt: iso(-30),
-    expectedStage: "in_trial"
+    label: "block=+60m · slot=-60m",
+    confirmedBlockStartAt: iso(60),
+    confirmedSlotAt: iso(-60),
+    expectedStage: "confirmed",
+    expectedDivergence: true
   },
   {
     id: "E",
-    label: "block 없음 · slot 만 있음(예정)",
-    confirmedBlockStartAt: null,
+    label: "block=-60m · slot=+60m",
+    confirmedBlockStartAt: iso(-60),
     confirmedSlotAt: iso(60),
-    expectedStage: "confirmed"
+    expectedStage: "in_trial",
+    expectedDivergence: true
   },
   {
     id: "F",
-    label: "둘 다 없음",
+    label: "둘 다 없음(확정 블록 없는 confirmed)",
     confirmedBlockStartAt: null,
     confirmedSlotAt: null,
-    expectedStage: "confirmed"
+    expectedStage: "confirmed",
+    expectedDivergence: false
   }
 ]
 
 for (const fixture of fixtures) {
-  const stage = getCaseDisplayStage(
-    {
-      status: "confirmed",
-      noShowAt: null,
-      registrationStatus: "undecided",
-      confirmedBlockStartAt: fixture.confirmedBlockStartAt,
-      confirmedBlockEndAt: null,
-      confirmedSlotAt: fixture.confirmedSlotAt,
-      scheduleStartTime: null,
-      scheduleEndTime: null
-    },
-    NOW
-  )
-
-  const sqlSaysStarted = sqlTrialStarted(fixture.confirmedSlotAt)
-  const badgeSaysStarted = stage === "in_trial"
+  const stage = badgeStage(fixture.confirmedBlockStartAt, fixture.confirmedSlotAt)
+  const diverges = slotOnlyStarted(fixture.confirmedSlotAt) !== (stage === "in_trial")
 
   check(stage === fixture.expectedStage, `${fixture.id} 배지: 기대 ${fixture.expectedStage} / 실제 ${stage}`)
   check(
-    sqlSaysStarted === badgeSaysStarted,
-    `${fixture.id} SQL(${sqlSaysStarted}) 과 배지(${badgeSaysStarted}) 가 어긋난다`
+    diverges === fixture.expectedDivergence,
+    `${fixture.id} 근사 일치 여부가 기대와 다르다(기대 divergence=${fixture.expectedDivergence})`
   )
-  console.log(`  PASS  ${fixture.id}  ${fixture.label.padEnd(30)} → ${stage}`)
+  console.log(
+    `  PASS  ${fixture.id}  ${fixture.label.padEnd(34)} → 배지 ${stage}${diverges ? "  (slot 근사와 불일치)" : ""}`
+  )
 }
 
-// ─────────────────────────────────────────────────────────────
-console.log("\n[3] block 과 slot 이 어긋나는 경우")
-
-// 두 값이 다르면 배지는 block 을, SQL 은 slot 을 본다. 실제 데이터에서는 두 값이 같지만
-// (확정 시 같은 시각으로 함께 기록된다) 규칙이 바뀌면 여기서 먼저 드러난다.
-const divergent = getCaseDisplayStage(
-  {
-    status: "confirmed",
-    noShowAt: null,
-    registrationStatus: "undecided",
-    confirmedBlockStartAt: iso(60),
-    confirmedBlockEndAt: null,
-    confirmedSlotAt: iso(-60),
-    scheduleStartTime: null,
-    scheduleEndTime: null
-  },
-  NOW
-)
+// D/E 가 갈리는 한, confirmed_slot_at 근사를 필터로 쓰면 배지와 다른 목록이 나온다.
 check(
-  divergent === "confirmed",
-  `block 우선 규칙이 깨졌다 — resolveTrialStartAtMs 를 확인해야 한다 (실제 ${divergent})`
+  fixtures.some((fixture) => fixture.expectedDivergence),
+  "근사와 배지가 갈리는 fixture 가 하나도 없다 — 이 스크립트가 무의미해졌다"
 )
-console.log(
-  `  PASS  block(예정) ≠ slot(경과) → 배지=${divergent}, SQL=${sqlTrialStarted(iso(-60))} (기록: 두 값이 갈리면 필터가 앞설 수 있다)`
+console.log("  PASS  D/E 가 갈리므로 slot 근사 필터는 배지와 다른 목록을 만든다")
+
+// ─────────────────────────────────────────────────────────────
+console.log("\n[3] 배지 canonical 우선순위(block → slot)")
+
+check(
+  badgeStage(iso(60), iso(-60)) === "confirmed" && badgeStage(iso(-60), iso(60)) === "in_trial",
+  "resolveTrialStartAtMs 의 block 우선 규칙이 깨졌다"
 )
+console.log("  PASS  block.start_at 이 slot 보다 우선한다")
+
+// 측정 기록(로컬 PostgREST, 2026-09-04):
+//   or=(confirmed_schedule_block_id.is.null,confirmed_block.start_at.gt.…) → PGRST100
+//   !inner + confirmed_block.start_at=gt.now → 확정 블록 없는 confirmed 2건이 결과에서 빠짐
+console.log("  NOTE  PostgREST 로는 block→slot fallback 을 필터로 표현할 수 없다(파일 상단 주석 참고)")
 
 if (failures > 0) {
   console.error(`\nFAIL: ${failures}건 실패`)
   process.exit(1)
 }
 
-console.log("\nPASS: 체험 중 필터 검증 완료")
+console.log("\nPASS: `체험 중` 필터 보류 상태 검증 완료")

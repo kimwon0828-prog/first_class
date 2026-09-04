@@ -11,13 +11,7 @@ import type { ApplicationRegistrationStatus, ApplicationStatus } from "@/shared/
 
 export type CaseViewKey = "active" | "closed"
 
-export type CaseActiveFilterKey =
-  | "all"
-  | "new"
-  | "reviewing"
-  | "confirmed"
-  | "in_trial"
-  | "post_trial"
+export type CaseActiveFilterKey = "all" | "new" | "reviewing" | "confirmed" | "post_trial"
 export type CaseClosedFilterKey = "all" | "enrolled" | "not_enrolled" | "canceled" | "no_show"
 export type CaseFilterKey = CaseActiveFilterKey | CaseClosedFilterKey
 
@@ -45,19 +39,6 @@ export type CaseFilterPredicate = {
   registrationStatusIn?: ApplicationRegistrationStatus[]
   orExpression?: string
   noShowAt?: "null" | "not_null"
-  /**
-   * 확정된 체험의 시작 시각이 지났는지.
-   *
-   * 파생 단계 `체험 중`(in_trial)을 DB 레벨에서 거르기 위한 축이다.
-   * 목록은 DB 에서 페이징하므로 가져온 뒤 걸러내면 건수·페이지가 어긋난다.
-   *
-   * ⚠️ 시작 시각의 canonical source 는 resolveTrialStartAtMs 다
-   *    (confirmed_block.start_at → confirmed_slot_at 순서).
-   *    SQL 에서는 embed 컬럼으로 필터할 수 없어 confirmed_slot_at 만 쓴다.
-   *    두 값이 어긋나면 배지와 필터가 갈리므로
-   *    scripts/verify-case-in-trial-filter.ts 가 둘의 일치를 검증한다.
-   */
-  trialStarted?: "started" | "not_started"
 }
 
 const ACTIVE_OR_EXPRESSION = `status.in.(${CASE_PRE_COMPLETED_STATUSES.join(
@@ -85,8 +66,7 @@ export const CASE_ACTIVE_FILTERS: Array<CaseFilterOption<CaseActiveFilterKey>> =
   { key: "all", label: "전체" },
   { key: "new", label: "신규 신청" },
   { key: "reviewing", label: "신청 확인" },
-  { key: "confirmed", label: "일정 확정", description: "일정을 확정했고 아직 체험 시작 전인 Case" },
-  { key: "in_trial", label: "체험 중", description: "체험 시작 시각이 지났고 아직 완료 처리하지 않은 Case" },
+  { key: "confirmed", label: "일정 확정" },
   { key: "post_trial", label: "체험 후 관리", description: "체험을 마치고 아직 등록 결론이 나지 않은 Case" }
 ]
 
@@ -101,11 +81,15 @@ export const CASE_CLOSED_FILTERS: Array<CaseFilterOption<CaseClosedFilterKey>> =
 /**
  * 진행 중 필터.
  *
- * 다섯 개 필터(new/reviewing/confirmed/in_trial/post_trial)는 서로 겹치지 않고,
+ * 네 개 필터(new/reviewing/confirmed/post_trial)는 서로 겹치지 않고,
  * 합치면 view=active 전체와 정확히 같다.
  *
- * `일정 확정` 과 `체험 중` 은 둘 다 status=confirmed 지만 시작 시각으로 갈린다.
- * 한쪽에 나온 Case 가 다른 쪽에도 나오지 않는다.
+ * ⚠️ 파생 단계 `체험 중` 은 여기에 필터로 두지 않는다. 배지의 canonical 시작 시각은
+ *    resolveTrialStartAtMs(confirmed_block.start_at → confirmed_slot_at)인데,
+ *    PostgREST 는 논리식(or)에서 embed 컬럼을 참조할 수 없고, embed 를 !inner 로 걸면
+ *    시작 시각을 모르는 confirmed Case(확정 블록 없음)가 목록에서 통째로 사라진다.
+ *    같은 의미를 DB 에서 정확히 표현할 수 없으므로 필터로 만들지 않는다.
+ *    자세한 근거는 scripts/verify-case-in-trial-filter.ts 참고.
  *
  * "체험 후 관리" 는 next_contact_at 유무로 더 쪼개지 않는다. 다음 연락이 잡혔는지,
  * 오늘인지, 지났는지는 목록 안에서 getCaseAttentionState() / getCaseNextAction() 이
@@ -115,8 +99,7 @@ const ACTIVE_FILTER_PREDICATES: Record<CaseActiveFilterKey, CaseFilterPredicate>
   all: CASE_VIEW_PREDICATES.active,
   new: { statusIn: ["new"] },
   reviewing: { statusIn: ["reviewing"] },
-  confirmed: { statusIn: ["confirmed"], trialStarted: "not_started" },
-  in_trial: { statusIn: ["confirmed"], trialStarted: "started" },
+  confirmed: { statusIn: ["confirmed"] },
   post_trial: {
     statusIn: ["completed"],
     registrationStatusIn: CASE_ACTIVE_REGISTRATION_STATUSES

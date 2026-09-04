@@ -162,7 +162,7 @@ const getEmbeddedSchedule = (row: CaseApplicationRow): CaseScheduleRow | null =>
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-const applyCasePredicate = <T>(query: T, predicate: CaseFilterPredicate, nowIso: string): T => {
+const applyCasePredicate = <T>(query: T, predicate: CaseFilterPredicate): T => {
   // supabase-js 의 builder 는 체이닝마다 자기 자신을 돌려준다.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let next = query as any
@@ -183,13 +183,6 @@ const applyCasePredicate = <T>(query: T, predicate: CaseFilterPredicate, nowIso:
 
   if (predicate.orExpression) {
     next = next.or(predicate.orExpression)
-  }
-
-  // 파생 `체험 중` 을 DB 에서 가른다. 판정 기준은 case-filters 의 trialStarted 주석 참고.
-  if (predicate.trialStarted === "started") {
-    next = next.not("confirmed_slot_at", "is", null).lte("confirmed_slot_at", nowIso)
-  } else if (predicate.trialStarted === "not_started") {
-    next = next.or(`confirmed_slot_at.is.null,confirmed_slot_at.gt.${nowIso}`)
   }
 
   return next as T
@@ -224,16 +217,13 @@ export const getStudioCases = async (
       matchedClassIds = ((classData ?? []) as Array<{ id: string }>).map((row) => row.id)
     }
 
-    // 필터 판정과 목록 배지가 같은 시각을 보도록 한 번만 읽는다.
-    const nowIso = new Date().toISOString()
-
     // [Q2] 본문 + 총 개수. range 로 DB 레벨 pagination 을 한다.
     let query = supabase
       .from("trial_applications")
       .select(CASE_SELECT_FIELDS, { count: "exact" })
       .eq("classes.organization_id", organizationId)
 
-    query = applyCasePredicate(query, getCaseFilterPredicate(options.view, options.filter), nowIso)
+    query = applyCasePredicate(query, getCaseFilterPredicate(options.view, options.filter))
 
     if (searchQuery) {
       const escaped = `%${searchQuery}%`
@@ -375,7 +365,7 @@ export const getStudioCases = async (
       }
     }
 
-    const now = new Date(nowIso)
+    const now = new Date()
     const items = rows.map((row): StudioCaseListItem => {
       const embeddedClass = getEmbeddedClass(row)
       const embeddedSchedule = getEmbeddedSchedule(row)
