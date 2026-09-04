@@ -334,6 +334,7 @@ const ConsultationHistoryEditor = ({
                 key={item.value}
                 type="button"
                 className={`${styles.choiceChip} ${selected ? styles.choiceChipActive : ""}`}
+                aria-pressed={selected}
                 onClick={() => setSelectedChannel(item.value)}
                 disabled={isPending}
               >
@@ -358,6 +359,7 @@ const ConsultationHistoryEditor = ({
                 key={item.value}
                 type="button"
                 className={`${styles.choiceChip} ${selected ? styles.choiceChipActive : ""}`}
+                aria-pressed={selected}
                 onClick={() => setSelectedSentiment(item.value)}
                 disabled={isPending}
               >

@@ -980,6 +980,7 @@ export const ApplicationTrialResultWorkflow = ({
                         key={item}
                         type="button"
                         className={`${styles.choiceChip} ${selected ? styles.choiceChipActive : ""}`}
+                        aria-pressed={selected}
                         onClick={() => toggleObservation(item)}
                         disabled={isSavingTrialResult}
                       >
@@ -1102,6 +1103,7 @@ export const ApplicationTrialResultWorkflow = ({
                         key={item.value}
                         type="button"
                         className={`${styles.choiceChip} ${selected ? styles.choiceChipActive : ""}`}
+                        aria-pressed={selected}
                         onClick={() => setSelectedConsultationChannel(item.value)}
                         disabled={isSavingConsultation}
                       >
@@ -1126,6 +1128,7 @@ export const ApplicationTrialResultWorkflow = ({
                         key={item.value}
                         type="button"
                         className={`${styles.choiceChip} ${selected ? styles.choiceChipActive : ""}`}
+                        aria-pressed={selected}
                         onClick={() => setSelectedConsultationSentiment(item.value)}
                         disabled={isSavingConsultation}
                       >
@@ -1164,6 +1167,7 @@ export const ApplicationTrialResultWorkflow = ({
                         key={item.value}
                         type="button"
                         className={`${styles.choiceChip} ${selected ? styles.choiceChipActive : ""}`}
+                        aria-pressed={selected}
                         onClick={() => setSelectedConsultationStatus(item.value)}
                         disabled={isSavingConsultation}
                       >
@@ -1190,6 +1194,7 @@ export const ApplicationTrialResultWorkflow = ({
                             key={item.value}
                             type="button"
                             className={`${styles.choiceChip} ${selected ? styles.choiceChipActive : ""}`}
+                            aria-pressed={selected}
                             onClick={() => setSelectedConsultationUnregisteredReason(item.value)}
                             disabled={isSavingConsultation}
                           >

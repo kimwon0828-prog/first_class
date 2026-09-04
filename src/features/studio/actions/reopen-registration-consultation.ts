@@ -110,8 +110,9 @@ export async function reopenRegistrationConsultationAction(
   if (!isCurrentUnregisteredReasonPreserved(current)) {
     return {
       status: "error",
+      // 원장이 스스로 해결할 방법이 없는 상태다. 할 수 없는 행동을 안내하지 않는다.
       message:
-        "이 신청은 이전 방식으로 저장된 미등록 기록이라, 과거 미등록 사유를 보존한 뒤 상담을 다시 시작할 수 있습니다."
+        "이 신청은 이전 방식으로 저장된 기록이라 바로 상담을 재개할 수 없습니다. 관리자 확인이 필요합니다."
     }
   }
 
