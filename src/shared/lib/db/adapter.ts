@@ -738,6 +738,31 @@ export type StudioTrialResult = {
   updatedAt: string
 }
 
+/**
+ * 체험 결과 저장에만 필요한 최소 컨텍스트.
+ *
+ * 저장 전 확인해야 하는 것은 두 가지뿐이다.
+ *   - status: 체험 완료 이후에만 결과를 기록할 수 있다.
+ *   - trialResult: 변경 필드 안내 문구 계산 + 이 form 이 다루지 않는
+ *     parentReaction / nextAction 을 그대로 이어쓰기 위한 기존 값.
+ *
+ * 학생/학부모 정보, 상담 이력, 활동 로그, 일정, 등록 결정은 읽지 않는다.
+ * 전체 상세(getStudioApplicationDetail)는 이 목적에 과하다.
+ */
+export type StudioTrialResultSaveContext = {
+  status: ApplicationStatus
+  trialResult: Pick<
+    StudioTrialResult,
+    | "observations"
+    | "parentReaction"
+    | "recommendedCourse"
+    | "recommendedLevel"
+    | "recommendedSchedule"
+    | "nextAction"
+    | "note"
+  > | null
+}
+
 export type UpdateStudioApplicationStatusInput = {
   applicationId: string
   currentStatus: ApplicationStatus
@@ -960,6 +985,10 @@ export interface DataAdapter {
   ): Promise<void>
   createStudioConsultationLog(input: CreateStudioConsultationLogInput): Promise<"created" | "duplicate">
   updateStudioConsultationLog(input: UpdateStudioConsultationLogInput): Promise<void>
+  getStudioTrialResultSaveContext(
+    applicationId: string,
+    organizationId: string
+  ): Promise<StudioTrialResultSaveContext | null>
   upsertStudioTrialResult(input: UpsertStudioTrialResultInput): Promise<"created" | "updated">
   createTrialApplication(
     input: TrialApplicationInput

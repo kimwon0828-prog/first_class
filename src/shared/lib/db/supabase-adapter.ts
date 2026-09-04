@@ -36,6 +36,7 @@ import {
 import type { StudioClassScheduleSummaryInput } from "@/features/studio/lib/class-schedule-summary"
 import { isApplicationUnregisteredReason } from "@/shared/lib/db/adapter"
 import type {
+  StudioTrialResultSaveContext,
   ActivateStudioTeacherInput,
   StudioTeacherReferenceCounts,
   ApplicationLogEntry,
@@ -265,10 +266,20 @@ type ApplicationLogRow = {
   created_at: string
 }
 
-type TrialResultRow = {
+/** 체험 결과의 "내용" 컬럼만. 저장 컨텍스트는 이 만큼만 읽는다. */
+type TrialResultFieldsRow = {
+  observations: string[] | null
+  parent_reaction: string | null
+  recommended_course: string | null
+  recommended_level: string | null
+  recommended_schedule: string | null
+  next_action: string | null
+  note: string | null
+}
+
+type TrialResultRow = TrialResultFieldsRow & {
   id: string
   application_id: string
-  observations: string[] | null
   parent_reaction: string | null
   recommended_course: string | null
   recommended_level: string | null
@@ -848,9 +859,9 @@ const mapApplicationLog = (
   createdAt: row.created_at
 })
 
-const mapStudioTrialResult = (row: TrialResultRow): StudioTrialResult => ({
-  id: row.id,
-  applicationId: row.application_id,
+const mapStudioTrialResultFields = (
+  row: TrialResultFieldsRow
+): StudioTrialResultSaveContext["trialResult"] & object => ({
   observations: Array.isArray(row.observations) ? row.observations.filter((item): item is string => typeof item === "string") : [],
   parentReaction:
     row.parent_reaction === "positive" ||
@@ -868,7 +879,13 @@ const mapStudioTrialResult = (row: TrialResultRow): StudioTrialResult => ({
     row.next_action === "undecided"
       ? row.next_action
       : null,
-  note: row.note?.trim() ? row.note.trim() : null,
+  note: row.note?.trim() ? row.note.trim() : null
+})
+
+const mapStudioTrialResult = (row: TrialResultRow): StudioTrialResult => ({
+  id: row.id,
+  applicationId: row.application_id,
+  ...mapStudioTrialResultFields(row),
   createdBy: row.created_by ?? null,
   createdAt: row.created_at,
   updatedAt: row.updated_at
@@ -5038,6 +5055,42 @@ export const supabaseDataAdapter: DataAdapter = {
 
     if (!data) {
       throw new Error("consultation_log_update_conflict")
+    }
+  },
+  async getStudioTrialResultSaveContext(applicationId: string, organizationId: string) {
+    const supabase = await getSupabaseServerClient()
+    // 한 번의 SELECT 로 끝낸다. trial_results.application_id 에 UNIQUE 제약이 있어
+    // PostgREST 가 1:1 embed 로 돌려준다.
+    // organization scope 는 trial_applications 에 컬럼이 없으므로
+    // 다른 Studio 조회와 같이 classes!inner 로 건다.
+    const { data, error } = await supabase
+      .from("trial_applications")
+      .select(
+        "status, classes!inner(organization_id), trial_results(observations, parent_reaction, recommended_course, recommended_level, recommended_schedule, next_action, note)"
+      )
+      .eq("id", applicationId)
+      .eq("classes.organization_id", organizationId)
+      .maybeSingle()
+
+    if (error) {
+      throw new Error("failed_to_fetch_trial_result_save_context")
+    }
+
+    if (!data) {
+      return null
+    }
+
+    const row = data as unknown as {
+      status: TrialApplicationRow["status"]
+      trial_results?: TrialResultFieldsRow | TrialResultFieldsRow[] | null
+    }
+    const embedded = Array.isArray(row.trial_results)
+      ? (row.trial_results[0] ?? null)
+      : (row.trial_results ?? null)
+
+    return {
+      status: row.status,
+      trialResult: embedded ? mapStudioTrialResultFields(embedded) : null
     }
   },
   async upsertStudioTrialResult(input: UpsertStudioTrialResultInput) {

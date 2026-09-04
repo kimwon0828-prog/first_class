@@ -2199,6 +2199,33 @@ export const mockDataAdapter: DataAdapter = {
     target.nextContactAt = input.nextContactAt
     applyRegularSchedulePreferenceWrite(target, input.regularSchedulePreferenceWrite)
   },
+  async getStudioTrialResultSaveContext(applicationId: string, organizationId: string) {
+    if (organizationId !== mockOrganizationId) {
+      return null
+    }
+
+    const application = applications.find((item) => item.id === applicationId)
+    if (!application) {
+      return null
+    }
+
+    const trialResult = trialResults.find((item) => item.applicationId === applicationId) ?? null
+
+    return {
+      status: application.status,
+      trialResult: trialResult
+        ? {
+            observations: trialResult.observations,
+            parentReaction: trialResult.parentReaction,
+            recommendedCourse: trialResult.recommendedCourse,
+            recommendedLevel: trialResult.recommendedLevel,
+            recommendedSchedule: trialResult.recommendedSchedule,
+            nextAction: trialResult.nextAction,
+            note: trialResult.note
+          }
+        : null
+    }
+  },
   async upsertStudioTrialResult(input: UpsertStudioTrialResultInput) {
     const normalizedObservations = Array.from(new Set(input.observations.filter((item) => item.trim().length > 0)))
     const existing = trialResults.find((item) => item.applicationId === input.applicationId) ?? null

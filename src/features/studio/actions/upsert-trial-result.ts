@@ -3,9 +3,9 @@
 import { revalidatePath } from "next/cache"
 
 import { requireTeacherStudioAccess } from "@/features/studio/lib/require-teacher-studio-access"
-import { getStudioApplicationDetail } from "@/features/studio/queries/get-studio-application-detail"
+import { getStudioTrialResultSaveContext } from "@/features/studio/queries/get-studio-trial-result-save-context"
 import { dataAdapter } from "@/shared/lib/db"
-import type { StudioApplicationDetail } from "@/shared/lib/db/adapter"
+import type { StudioTrialResultSaveContext } from "@/shared/lib/db/adapter"
 
 // 이 action 은 체험 결과(trial_results)만 저장한다.
 // 등록 상태 / 미등록 사유 / enrolled_at / lost_at 는 등록 상담 경로에서만 바뀐다.
@@ -55,7 +55,7 @@ const areObservationListsEqual = (left: string[], right: string[]) => {
 }
 
 const getChangedFieldLabels = (
-  current: StudioApplicationDetail,
+  current: StudioTrialResultSaveContext,
   nextValue: {
     observations: string[]
     recommendedCourse: string | null
@@ -124,7 +124,10 @@ export async function upsertTrialResultAction(
   void previousState
 
   const teacher = await requireTeacherStudioAccess()
-  const { data: current, error } = await getStudioApplicationDetail(applicationId, teacher.organizationId)
+  const { data: current, error } = await getStudioTrialResultSaveContext(
+    applicationId,
+    teacher.organizationId
+  )
 
   if (error || !current) {
     return {
