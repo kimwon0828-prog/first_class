@@ -292,13 +292,6 @@ export const ApplicationTrialResultWorkflow = ({
   const [selectedObservations, setSelectedObservations] = useState<string[]>(
     application.trialResult?.observations ?? []
   )
-  const [selectedRegistrationStatus, setSelectedRegistrationStatus] =
-    useState<ApplicationRegistrationStatus>(application.registrationStatus)
-  const [selectedUnregisteredReason, setSelectedUnregisteredReason] =
-    useState<ApplicationUnregisteredReason | null>(application.unregisteredReason ?? null)
-  const [unregisteredReasonNote, setUnregisteredReasonNote] = useState(
-    application.unregisteredReasonNote ?? ""
-  )
   const [isConsultationEditorOpen, setIsConsultationEditorOpen] = useState(false)
   const [isConsultationHistoryOpen, setIsConsultationHistoryOpen] = useState(false)
   const [isConsultationSuccessOpen, setIsConsultationSuccessOpen] = useState(false)
@@ -342,11 +335,10 @@ export const ApplicationTrialResultWorkflow = ({
     application.trialResult?.recommendedSchedule
   ])
 
+  // 체험 결과 form 은 관찰 기록만 다룬다. 등록 결정(등록 상태 / 미등록 사유)은
+  // 등록 상담 form 의 몫이라 여기서 초기화할 상태가 없다.
   const resetTrialResultSelections = () => {
     setSelectedObservations(application.trialResult?.observations ?? [])
-    setSelectedRegistrationStatus(application.registrationStatus)
-    setSelectedUnregisteredReason(application.unregisteredReason ?? null)
-    setUnregisteredReasonNote(application.unregisteredReasonNote ?? "")
   }
 
   const resetConsultationSelections = () => {
@@ -872,7 +864,7 @@ export const ApplicationTrialResultWorkflow = ({
                 {hasTrialResult ? "체험 결과 수정" : "체험 결과 기록"}
               </h3>
               <p className={styles.dialogDescription}>
-                수업 관찰과 추천, 등록 전환 상태를 간단히 남겨두세요.
+                수업에서 관찰한 내용과 추천 사항을 간단히 남겨두세요.
               </p>
             </div>
 
@@ -940,73 +932,6 @@ export const ApplicationTrialResultWorkflow = ({
                   disabled={isSavingTrialResult}
                 />
               </Field>
-
-              <section className={styles.formSection}>
-                <div className={styles.formHeader}>
-                  <h4 className={styles.formTitle}>등록 전환</h4>
-                  <p className={styles.formDescription}>현재 등록 결정 상태를 선택해 주세요.</p>
-                </div>
-                <div className={styles.selectionWrap}>
-                  {TRIAL_RESULT_REGISTRATION_OPTIONS.map((item) => {
-                    const selected = selectedRegistrationStatus === item.value
-                    return (
-                      <button
-                        key={item.value}
-                        type="button"
-                        className={`${styles.choiceChip} ${selected ? styles.choiceChipActive : ""}`}
-                        onClick={() => setSelectedRegistrationStatus(item.value)}
-                        disabled={isSavingTrialResult}
-                      >
-                        {item.label}
-                      </button>
-                    )
-                  })}
-                  <input type="hidden" name="registrationStatus" value={selectedRegistrationStatus} />
-                </div>
-              </section>
-
-              {selectedRegistrationStatus === "not_enrolled" ? (
-                <>
-                  <section className={styles.formSection}>
-                    <div className={styles.formHeader}>
-                      <h4 className={styles.formTitle}>미등록 사유</h4>
-                      <p className={styles.formDescription}>미등록으로 결정한 이유를 선택해 주세요.</p>
-                    </div>
-                    <div className={styles.selectionWrap}>
-                      {TRIAL_RESULT_UNREGISTERED_REASON_OPTIONS.map((item) => {
-                        const selected = selectedUnregisteredReason === item.value
-                        return (
-                          <button
-                            key={item.value}
-                            type="button"
-                            className={`${styles.choiceChip} ${selected ? styles.choiceChipActive : ""}`}
-                            onClick={() => setSelectedUnregisteredReason(item.value)}
-                            disabled={isSavingTrialResult}
-                          >
-                            {item.label}
-                          </button>
-                        )
-                      })}
-                      {selectedUnregisteredReason ? (
-                        <input type="hidden" name="unregisteredReason" value={selectedUnregisteredReason} />
-                      ) : null}
-                    </div>
-                  </section>
-
-                  {selectedUnregisteredReason === "other" ? (
-                    <Field label="기타 사유">
-                      <input
-                        name="unregisteredReasonNote"
-                        value={unregisteredReasonNote}
-                        onChange={(event) => setUnregisteredReasonNote(event.target.value)}
-                        className={styles.input}
-                        placeholder="기타 사유를 입력해 주세요."
-                        disabled={isSavingTrialResult}
-                      />
-                    </Field>
-                  ) : null}
-                </>
-              ) : null}
 
               <Field label="체험 메모">
                 <textarea

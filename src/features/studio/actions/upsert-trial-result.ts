@@ -2,19 +2,14 @@
 
 import { revalidatePath } from "next/cache"
 
-import { logSmsEventSafely } from "@/features/notifications/sms/log-sms-event"
 import { requireTeacherStudioAccess } from "@/features/studio/lib/require-teacher-studio-access"
-import {
-  TRIAL_RESULT_REGISTRATION_OPTIONS,
-  TRIAL_RESULT_UNREGISTERED_REASON_OPTIONS
-} from "@/features/studio/lib/trial-result-options"
 import { getStudioApplicationDetail } from "@/features/studio/queries/get-studio-application-detail"
 import { dataAdapter } from "@/shared/lib/db"
-import type {
-  ApplicationRegistrationStatus,
-  ApplicationUnregisteredReason,
-  StudioApplicationDetail
-} from "@/shared/lib/db/adapter"
+import type { StudioApplicationDetail } from "@/shared/lib/db/adapter"
+
+// 이 action 은 체험 결과(trial_results)만 저장한다.
+// 등록 상태 / 미등록 사유 / enrolled_at / lost_at 는 등록 상담 경로에서만 바뀐다.
+// 여기서 같은 값을 다시 써 넣으면 enrolled_at 이 저장할 때마다 갱신되어 버린다.
 
 export type UpsertTrialResultActionState = {
   status: "idle" | "error" | "success"
@@ -28,13 +23,6 @@ const defaultState: UpsertTrialResultActionState = {
   message: "",
   successToken: null
 }
-
-const REGISTRATION_STATUS_VALUES = new Set(
-  TRIAL_RESULT_REGISTRATION_OPTIONS.map((item) => item.value)
-)
-const UNREGISTERED_REASON_VALUES = new Set(
-  TRIAL_RESULT_UNREGISTERED_REASON_OPTIONS.map((item) => item.value)
-)
 
 const normalizeOptionalText = (value: FormDataEntryValue | null) => {
   if (typeof value !== "string") {
@@ -55,30 +43,6 @@ const normalizeObservationValues = (values: FormDataEntryValue[]) =>
     )
   )
 
-const normalizeRegistrationStatus = (
-  value: FormDataEntryValue | null
-): ApplicationRegistrationStatus | null => {
-  if (typeof value !== "string" || value.trim().length === 0) {
-    return null
-  }
-
-  return REGISTRATION_STATUS_VALUES.has(value as ApplicationRegistrationStatus)
-    ? (value as ApplicationRegistrationStatus)
-    : null
-}
-
-const normalizeUnregisteredReason = (
-  value: FormDataEntryValue | null
-): ApplicationUnregisteredReason | null => {
-  if (typeof value !== "string" || value.trim().length === 0) {
-    return null
-  }
-
-  return UNREGISTERED_REASON_VALUES.has(value as ApplicationUnregisteredReason)
-    ? (value as ApplicationUnregisteredReason)
-    : null
-}
-
 const areObservationListsEqual = (left: string[], right: string[]) => {
   if (left.length !== right.length) {
     return false
@@ -97,9 +61,6 @@ const getChangedFieldLabels = (
     recommendedCourse: string | null
     recommendedLevel: string | null
     recommendedSchedule: string | null
-    registrationStatus: ApplicationRegistrationStatus
-    unregisteredReason: ApplicationUnregisteredReason | null
-    unregisteredReasonNote: string | null
     note: string | null
   }
 ) => {
@@ -121,18 +82,6 @@ const getChangedFieldLabels = (
 
     if (nextValue.recommendedSchedule) {
       initialFields.push("추천 일정")
-    }
-
-    if (current.registrationStatus !== nextValue.registrationStatus) {
-      initialFields.push("등록 전환")
-    }
-
-    if (nextValue.unregisteredReason) {
-      initialFields.push("미등록 사유")
-    }
-
-    if (nextValue.unregisteredReasonNote) {
-      initialFields.push("기타 사유 메모")
     }
 
     if (nextValue.note) {
@@ -158,18 +107,6 @@ const getChangedFieldLabels = (
 
   if (currentResult.recommendedSchedule !== nextValue.recommendedSchedule) {
     changes.push("추천 일정")
-  }
-
-  if (current.registrationStatus !== nextValue.registrationStatus) {
-    changes.push("등록 전환")
-  }
-
-  if (current.unregisteredReason !== nextValue.unregisteredReason) {
-    changes.push("미등록 사유")
-  }
-
-  if (current.unregisteredReasonNote !== nextValue.unregisteredReasonNote) {
-    changes.push("기타 사유 메모")
   }
 
   if (currentResult.note !== nextValue.note) {
@@ -208,75 +145,14 @@ export async function upsertTrialResultAction(
     recommendedCourse: normalizeOptionalText(formData.get("recommendedCourse")),
     recommendedLevel: normalizeOptionalText(formData.get("recommendedLevel")),
     recommendedSchedule: normalizeOptionalText(formData.get("recommendedSchedule")),
-    registrationStatus: normalizeRegistrationStatus(formData.get("registrationStatus")),
-    unregisteredReason: normalizeUnregisteredReason(formData.get("unregisteredReason")),
-    unregisteredReasonNote: normalizeOptionalText(formData.get("unregisteredReasonNote")),
     note: normalizeOptionalText(formData.get("note")),
     parentReaction: current.trialResult?.parentReaction ?? null,
     nextAction: current.trialResult?.nextAction ?? null
   }
 
-  if (!nextValue.registrationStatus) {
-    return {
-      status: "error",
-      message: "등록 전환 값이 올바르지 않습니다."
-    }
-  }
-
-  if (formData.get("unregisteredReason") && !nextValue.unregisteredReason) {
-    return {
-      status: "error",
-      message: "미등록 사유 값이 올바르지 않습니다."
-    }
-  }
-
-  if (nextValue.registrationStatus === "not_enrolled" && !nextValue.unregisteredReason) {
-    return {
-      status: "error",
-      message: "미등록 사유를 선택해 주세요."
-    }
-  }
-
-  if (
-    nextValue.registrationStatus === "not_enrolled" &&
-    nextValue.unregisteredReason === "other" &&
-    !nextValue.unregisteredReasonNote
-  ) {
-    return {
-      status: "error",
-      message: "기타 사유를 입력해 주세요."
-    }
-  }
-
-  const registrationStatus = nextValue.registrationStatus
-  const changedFieldLabels = getChangedFieldLabels(current, {
-    ...nextValue,
-    registrationStatus
-  })
-  let outcomeSaved = false
+  const changedFieldLabels = getChangedFieldLabels(current, nextValue)
 
   try {
-    await dataAdapter.updateStudioApplicationOutcome({
-      applicationId,
-      actorId: teacher.id,
-      currentStatus: current.status,
-      previousRegistrationStatus: current.registrationStatus,
-      previousLostAt: current.lostAt,
-      consultationNote: current.consultationNote,
-      trialFeedback: current.trialFeedback,
-      registeredCourse: nextValue.recommendedCourse,
-      finalLevel: nextValue.recommendedLevel,
-      finalSchedule: nextValue.recommendedSchedule,
-      followUpNote: current.followUpNote,
-      registrationStatus,
-      unregisteredReason:
-        registrationStatus === "not_enrolled" ? nextValue.unregisteredReason : null,
-      unregisteredReasonNote:
-        registrationStatus === "not_enrolled" ? nextValue.unregisteredReasonNote : null,
-      note: "체험 결과에서 등록 전환을 저장했습니다."
-    })
-    outcomeSaved = true
-
     const mode = await dataAdapter.upsertStudioTrialResult({
       applicationId,
       actorId: teacher.id,
@@ -288,22 +164,6 @@ export async function upsertTrialResultAction(
       note: nextValue.note,
       nextAction: nextValue.nextAction
     })
-
-    if (current.registrationStatus !== "enrolled" && registrationStatus === "enrolled") {
-      const updated = await dataAdapter
-        .getStudioApplicationDetail(applicationId, teacher.organizationId)
-        .catch(() => null)
-
-      if (updated) {
-        await logSmsEventSafely({
-          organizationId: teacher.organizationId,
-          application: updated,
-          createdBy: teacher.id,
-          recipientType: "parent",
-          eventType: "trial_enrolled"
-        })
-      }
-    }
 
     revalidatePath("/studio")
     revalidatePath("/studio/cases")
@@ -325,13 +185,6 @@ export async function upsertTrialResultAction(
   } catch (caughtError) {
     const message =
       caughtError instanceof Error ? caughtError.message : "failed_to_upsert_trial_result"
-
-    if (outcomeSaved) {
-      return {
-        status: "error",
-        message: "등록 전환은 저장되었을 수 있지만 체험 결과 저장에 실패했습니다. 새로고침 후 다시 저장해 주세요."
-      }
-    }
 
     if (message === "failed_to_check_trial_result") {
       return {
