@@ -5,6 +5,10 @@ import { useActionState, useCallback, useEffect, useMemo, useRef, useState } fro
 import { useRouter } from "next/navigation"
 
 import {
+  reopenRegistrationConsultationAction,
+  type ReopenRegistrationConsultationActionState
+} from "@/features/studio/actions/reopen-registration-consultation"
+import {
   createConsultationLogAction,
   type CreateConsultationLogActionState
 } from "@/features/studio/actions/create-consultation-log"
@@ -51,6 +55,12 @@ import type {
 import styles from "./application-trial-result-workflow.module.css"
 
 const initialTrialResultState: UpsertTrialResultActionState = {
+  status: "idle",
+  message: "",
+  successToken: null
+}
+
+const initialReopenState: ReopenRegistrationConsultationActionState = {
   status: "idle",
   message: "",
   successToken: null
@@ -313,6 +323,12 @@ export const ApplicationTrialResultWorkflow = ({
     trialResultAction,
     initialTrialResultState
   )
+  const [isReopenOpen, setIsReopenOpen] = useState(false)
+  const reopenAction = reopenRegistrationConsultationAction.bind(null, application.id)
+  const [reopenState, submitReopen, isReopening] = useActionState(
+    reopenAction,
+    initialReopenState
+  )
   const consultationAction = createConsultationLogAction.bind(null, application.id)
   const [consultationState, consultationFormAction, isSavingConsultation] = useActionState(
     consultationAction,
@@ -320,6 +336,7 @@ export const ApplicationTrialResultWorkflow = ({
   )
   const handledTrialResultSuccessTokenRef = useRef<string | null>(null)
   const handledConsultationSuccessTokenRef = useRef<string | null>(null)
+  const handledReopenSuccessTokenRef = useRef<string | null>(null)
 
   const recommendationSummary = useMemo(() => {
     return [
@@ -442,12 +459,29 @@ export const ApplicationTrialResultWorkflow = ({
     setIsConsultationSuccessOpen(true)
   }, [consultationState.status, consultationState.successToken])
 
+  useEffect(() => {
+    if (reopenState.status !== "success" || !reopenState.successToken) {
+      return
+    }
+
+    if (handledReopenSuccessTokenRef.current === reopenState.successToken) {
+      return
+    }
+
+    handledReopenSuccessTokenRef.current = reopenState.successToken
+    setIsReopenOpen(false)
+    router.refresh()
+  }, [reopenState.status, reopenState.successToken, router])
+
   const hasTrialResult = Boolean(application.trialResult)
   const isCompletedView = application.status === "completed"
   const canAddConsultation =
     application.status === "completed" &&
     application.registrationStatus !== "enrolled" &&
     application.registrationStatus !== "not_enrolled"
+  // 재개는 미등록 종결에만 연다. 등록 완료(enrolled)는 취소/환불이라는 다른 의미라 대상이 아니다.
+  const canReopenRegistration =
+    application.status === "completed" && application.registrationStatus === "not_enrolled"
   const unregisteredReasonLabel = getTrialResultUnregisteredReasonLabel(application.unregisteredReason)
   const now = useMemo(() => new Date(nowIso), [nowIso])
   const nextActionState = getNextActionState(application, now)
@@ -727,11 +761,22 @@ export const ApplicationTrialResultWorkflow = ({
     <section className={`${styles.card} ${styles.sectionCard}`} aria-label="등록 상담">
       <div className={styles.sectionHead}>
         <h2 className={styles.sectionTitle}>등록 상담</h2>
-        {canAddConsultation ? (
+        {canAddConsultation || canReopenRegistration ? (
           <div className={styles.sectionHeadActions}>
-            <button type="button" className={styles.inlineTextButton} onClick={openConsultationEditor}>
-              + 상담 기록
-            </button>
+            {canAddConsultation ? (
+              <button type="button" className={styles.inlineTextButton} onClick={openConsultationEditor}>
+                + 상담 기록
+              </button>
+            ) : null}
+            {canReopenRegistration ? (
+              <button
+                type="button"
+                className={styles.inlineTextButton}
+                onClick={() => setIsReopenOpen(true)}
+              >
+                상담 재개
+              </button>
+            ) : null}
           </div>
         ) : null}
       </div>
@@ -1197,6 +1242,43 @@ export const ApplicationTrialResultWorkflow = ({
                 확인
               </button>
             </div>
+          </div>
+        </div>
+      ) : null}
+
+      {isReopenOpen ? (
+        <div className={styles.dialogOverlay} role="presentation">
+          <div
+            className={styles.dialogCard}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="reopen-registration-title"
+          >
+            <div className={styles.dialogBody}>
+              <h3 id="reopen-registration-title" className={styles.dialogTitle}>
+                상담을 다시 진행할까요?
+              </h3>
+              <p className={styles.dialogDescription}>
+                현재 미등록 상태를 결정 대기로 변경하고 추가 상담을 기록할 수 있게 됩니다. 과거 상담
+                기록과 미등록 이력은 유지됩니다.
+              </p>
+              {reopenState.status === "error" && reopenState.message ? (
+                <div className={`${styles.message} ${styles.messageError}`}>{reopenState.message}</div>
+              ) : null}
+            </div>
+            <form action={submitReopen} className={styles.dialogActions}>
+              <button
+                type="button"
+                className={styles.secondaryButton}
+                onClick={() => setIsReopenOpen(false)}
+                disabled={isReopening}
+              >
+                취소
+              </button>
+              <button type="submit" className={styles.primaryButton} disabled={isReopening}>
+                {isReopening ? "처리 중..." : "상담 재개"}
+              </button>
+            </form>
           </div>
         </div>
       ) : null}
