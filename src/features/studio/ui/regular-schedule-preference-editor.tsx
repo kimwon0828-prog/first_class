@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 
 import {
   MAX_REGULAR_SCHEDULE_PREFERENCE_GROUPS,
@@ -139,7 +139,10 @@ export const RegularSchedulePreferenceEditor = ({
 
   const initial = parsed.status === "valid" ? parsed.value : null
 
+  // 순수 client UI 상태다. domain model(RegularSchedulePreference JSON)에는 넣지 않는다.
   const [touched, setTouched] = useState(false)
+  const [attemptedSubmit, setAttemptedSubmit] = useState(false)
+  const rootRef = useRef<HTMLElement | null>(null)
   const [state, setState] = useState<"specified" | "undecided">(
     initial?.state === "undecided" ? "undecided" : "specified"
   )
@@ -151,6 +154,33 @@ export const RegularSchedulePreferenceEditor = ({
   const [note, setNote] = useState(currentNote ?? "")
 
   const markTouched = () => setTouched(true)
+
+  /*
+    입력을 시작해 놓고(touched) 유효하지 않은 채 저장을 누르면 그대로 저장하지 않는다.
+    hidden input 이 나가지 않아 서버에는 "미전달" 로 보이고, 사용자가 쓰던 값이 조용히
+    사라지기 때문이다. 손대지 않은 상태는 원래 "미전달" 이 정상이라 막지 않는다.
+  */
+  const blockSubmitRef = useRef(false)
+
+  useEffect(() => {
+    const form = rootRef.current?.closest("form")
+    if (!form) {
+      return
+    }
+
+    const handleSubmit = (event: Event) => {
+      if (!blockSubmitRef.current) {
+        return
+      }
+
+      event.preventDefault()
+      event.stopPropagation()
+      setAttemptedSubmit(true)
+    }
+
+    form.addEventListener("submit", handleSubmit, true)
+    return () => form.removeEventListener("submit", handleSubmit, true)
+  }, [])
 
   const updateGroup = (key: string, patch: Partial<DraftGroup>) => {
     markTouched()
@@ -178,18 +208,29 @@ export const RegularSchedulePreferenceEditor = ({
 
   const candidate = toPreferenceValue(state, groups)
   const validation = validateRegularSchedulePreference(candidate)
-  const errorMessage = validation.ok
-    ? null
-    : (ERROR_MESSAGES[validation.code] ?? "희망 일정 값을 확인해 주세요.")
+
+  /*
+    처음 열었을 때 빈 조건은 "잘못 입력함" 이 아니라 "아직 입력 중" 이다.
+    사용자가 실제로 조작했거나(touched) 저장을 시도한 뒤에만 빨간 문구를 띄운다.
+    유효해지면 저장을 다시 누르지 않아도 즉시 사라진다 — 매 렌더에서 다시 계산하기 때문이다.
+    검증 규칙 자체는 domain module 그대로다.
+  */
+  const shouldShowError = (touched || attemptedSubmit) && !validation.ok
+  const errorMessage =
+    validation.ok || !shouldShowError
+      ? null
+      : (ERROR_MESSAGES[validation.code] ?? "희망 일정 값을 확인해 주세요.")
 
   // 손대지 않았으면 hidden input 을 내보내지 않는다 → 서버가 "미전달" 로 읽어 기존 값을 유지한다.
   const shouldSubmit = touched || note !== (currentNote ?? "")
   const serialized = validation.ok ? JSON.stringify(validation.value) : ""
 
+  blockSubmitRef.current = touched && !validation.ok
+
   const preview: RegularSchedulePreference | null = validation.ok ? validation.value : null
 
   return (
-    <section className={styles.editor} aria-label="정규수업 희망 일정">
+    <section ref={rootRef} className={styles.editor} aria-label="정규수업 희망 일정">
       <div className={styles.header}>
         <h4 className={styles.title}>정규수업 희망 일정</h4>
         <p className={styles.description}>

@@ -88,7 +88,12 @@ export const ConsultationHistoryModal = ({
 
   return (
     <div className={styles.dialogOverlay} role="presentation">
-      <div className={styles.dialogCardWide} role="dialog" aria-modal="true" aria-labelledby="consultation-history-title">
+      <div
+        className={`${styles.dialogCardWide} ${editingLog ? styles.dialogCardStickyActions : ""}`}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="consultation-history-title"
+      >
         <button type="button" className={styles.dialogClose} aria-label="닫기" onClick={onClose}>
           닫기
         </button>

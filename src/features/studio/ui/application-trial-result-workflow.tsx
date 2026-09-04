@@ -1052,7 +1052,12 @@ export const ApplicationTrialResultWorkflow = ({
 
       {isConsultationEditorOpen ? (
         <div className={styles.dialogOverlay} role="presentation">
-          <div className={styles.dialogCardWide} role="dialog" aria-modal="true" aria-labelledby="consultation-editor-title">
+          <div
+            className={`${styles.dialogCardWide} ${styles.dialogCardStickyActions}`}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="consultation-editor-title"
+          >
             <button
               type="button"
               className={styles.dialogClose}
