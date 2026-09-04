@@ -298,6 +298,8 @@ const run = async () => {
     nextContactAt: null,
     note: "1차 상담",
     regularSchedulePreferenceSnapshot: null,
+    unregisteredReasonSnapshot: null,
+    unregisteredReasonNoteSnapshot: null,
     regularSchedulePreferenceNoteSnapshot: null
   })
 
@@ -314,6 +316,8 @@ const run = async () => {
     nextContactAt: null,
     note: "2차 상담",
     regularSchedulePreferenceSnapshot: TUE_THU_AFTER_17,
+    unregisteredReasonSnapshot: null,
+    unregisteredReasonNoteSnapshot: null,
     regularSchedulePreferenceNoteSnapshot: "목요일 우선"
   })
 

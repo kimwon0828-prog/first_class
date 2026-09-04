@@ -316,7 +316,11 @@ export async function createConsultationLogAction(
       // 스냅샷은 "이번에 입력한 값"이 아니라 "이 상담 시점의 Case 상태"다.
       // 미전달이면 기존 current 값이 그대로 찍힌다(registrationStatusSnapshot 과 같은 의미).
       regularSchedulePreferenceSnapshot: preferenceWrite.snapshot,
-      regularSchedulePreferenceNoteSnapshot: preferenceWrite.snapshotNote
+      regularSchedulePreferenceNoteSnapshot: preferenceWrite.snapshotNote,
+      // 미등록 사유는 Case 의 현재 값과 달리 이후 재개로 지워지지 않는다.
+      // Case 컬럼에 쓰는 값과 같은 변수를 쓴다 — 두 곳이 어긋나면 이력이 거짓이 된다.
+      unregisteredReasonSnapshot: resolvedUnregisteredReason,
+      unregisteredReasonNoteSnapshot: resolvedUnregisteredReasonNote
     })
 
     await dataAdapter.updateStudioApplicationConsultationSnapshot({

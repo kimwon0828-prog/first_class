@@ -19,15 +19,31 @@ export type ApplicationRegistrationStatus =
   | "not_enrolled"
   | "pending"
 
-export type ApplicationUnregisteredReason =
-  | "schedule_mismatch"
-  | "cost_burden"
-  | "distance"
-  | "child_reaction"
-  | "comparing_other_academies"
-  | "no_response"
-  | "class_level_mismatch"
-  | "other"
+/**
+ * 미등록 사유의 canonical 값 목록.
+ *
+ * DB 의 trial_applications_unregistered_reason_check / consultation_logs 의
+ * 사유 스냅샷 CHECK 과 같은 집합이어야 한다. 라벨은 trial-result-options 가 갖는다.
+ */
+export const APPLICATION_UNREGISTERED_REASONS = [
+  "schedule_mismatch",
+  "cost_burden",
+  "distance",
+  "child_reaction",
+  "comparing_other_academies",
+  "no_response",
+  "class_level_mismatch",
+  "other"
+] as const
+
+export type ApplicationUnregisteredReason = (typeof APPLICATION_UNREGISTERED_REASONS)[number]
+
+/** DB 에서 읽은 raw text 를 좁힌다. 목록 밖 값은 조용히 null 로 둔다. */
+export const isApplicationUnregisteredReason = (
+  value: unknown
+): value is ApplicationUnregisteredReason =>
+  typeof value === "string" &&
+  (APPLICATION_UNREGISTERED_REASONS as readonly string[]).includes(value)
 
 export type ConsultationLogActivityType = "CONSULTATION" | "LEGACY_IMPORT" | "CALL_ATTEMPT"
 
@@ -57,6 +73,15 @@ export type StudioConsultationLog = {
    */
   regularSchedulePreferenceSnapshot: unknown
   regularSchedulePreferenceNoteSnapshot: string | null
+  /**
+   * 그 상담 시점의 미등록 사유 스냅샷.
+   *
+   * Case 의 현재 사유(trial_applications.unregistered_reason)와 다르다.
+   * 상담 재개로 현재 사유가 지워져도 이 값은 그대로 남는다.
+   * 사유 없이 미등록으로 남은 legacy 이력이 있어 null 일 수 있다.
+   */
+  unregisteredReasonSnapshot: ApplicationUnregisteredReason | null
+  unregisteredReasonNoteSnapshot: string | null
   createdBy: string | null
   createdAt: string
   updatedAt: string
@@ -790,6 +815,9 @@ export type CreateStudioConsultationLogInput = {
   /** 그 상담 시점의 Case 상태. registrationStatusSnapshot 과 같은 의미다. */
   regularSchedulePreferenceSnapshot: RegularSchedulePreference | null
   regularSchedulePreferenceNoteSnapshot: string | null
+  /** not_enrolled 상담에만 채운다. 다른 상태에서는 null 이어야 한다. */
+  unregisteredReasonSnapshot: ApplicationUnregisteredReason | null
+  unregisteredReasonNoteSnapshot: string | null
 }
 
 export type UpdateStudioConsultationLogInput = {

@@ -17,6 +17,7 @@ import {
   formatSeoulDateTime,
   formatSeoulDateTimeInputValue
 } from "@/features/studio/lib/seoul-datetime"
+import { getTrialResultUnregisteredReasonLabel } from "@/features/studio/lib/trial-result-options"
 import {
   formatRegularSchedulePreference,
   parseRegularSchedulePreference
@@ -158,6 +159,36 @@ export const ConsultationHistoryModal = ({
                         ? "과거 방식에서 이관된 상담 내용"
                         : "기록 없음")}
                   </p>
+
+                  {/*
+                    그 상담 시점의 미등록 사유. Case 의 현재 사유와 달리 상담 재개로 지워지지 않는다.
+                    사유 없이 미등록으로 남은 legacy 기록에는 이 줄을 만들지 않는다.
+                  */}
+                  {(() => {
+                    const reasonLabel = getTrialResultUnregisteredReasonLabel(
+                      item.unregisteredReasonSnapshot
+                    )
+
+                    if (!reasonLabel) {
+                      return null
+                    }
+
+                    return (
+                      <div className={styles.consultationNextContact}>
+                        <span className={styles.consultationNextContactLabel}>미등록 사유</span>
+                        <span className={styles.consultationNextContactValue}>
+                          {[
+                            reasonLabel,
+                            item.unregisteredReasonSnapshot === "other"
+                              ? item.unregisteredReasonNoteSnapshot
+                              : null
+                          ]
+                            .filter((value): value is string => Boolean(value))
+                            .join(" · ")}
+                        </span>
+                      </div>
+                    )
+                  })()}
 
                   {/*
                     그 상담 시점의 희망 일정. 읽을 수 없는 값이어도 화면을 죽이지 않고

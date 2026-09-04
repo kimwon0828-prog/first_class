@@ -2148,6 +2148,8 @@ export const mockDataAdapter: DataAdapter = {
       registrationStatusSnapshot: input.registrationStatusSnapshot,
       regularSchedulePreferenceSnapshot: input.regularSchedulePreferenceSnapshot,
       regularSchedulePreferenceNoteSnapshot: input.regularSchedulePreferenceNoteSnapshot,
+      unregisteredReasonSnapshot: input.unregisteredReasonSnapshot,
+      unregisteredReasonNoteSnapshot: input.unregisteredReasonNoteSnapshot,
       nextAction: input.nextAction,
       nextContactAt: input.nextContactAt,
       note: input.note,

@@ -34,6 +34,7 @@ import {
   summarizeStudioClassSchedules
 } from "@/features/studio/lib/class-schedule-summary"
 import type { StudioClassScheduleSummaryInput } from "@/features/studio/lib/class-schedule-summary"
+import { isApplicationUnregisteredReason } from "@/shared/lib/db/adapter"
 import type {
   ActivateStudioTeacherInput,
   StudioTeacherReferenceCounts,
@@ -289,6 +290,8 @@ type ConsultationLogRow = {
   registration_status_snapshot: string | null
   regular_schedule_preference_snapshot?: unknown
   regular_schedule_preference_note_snapshot?: string | null
+  unregistered_reason_snapshot?: string | null
+  unregistered_reason_note_snapshot?: string | null
   next_action: string | null
   next_contact_at: string | null
   note: string | null
@@ -914,6 +917,10 @@ const mapStudioConsultationLog = (row: ConsultationLogRow): StudioConsultationLo
   // 원본 그대로 넘긴다. 파싱/판정은 화면 쪽 parser 가 한다(조용히 null 로 바꾸지 않는다).
   regularSchedulePreferenceSnapshot: row.regular_schedule_preference_snapshot ?? null,
   regularSchedulePreferenceNoteSnapshot: row.regular_schedule_preference_note_snapshot ?? null,
+  unregisteredReasonSnapshot: isApplicationUnregisteredReason(row.unregistered_reason_snapshot)
+    ? row.unregistered_reason_snapshot
+    : null,
+  unregisteredReasonNoteSnapshot: row.unregistered_reason_note_snapshot ?? null,
   createdBy: row.created_by ?? null,
   createdAt: row.created_at,
   updatedAt: row.updated_at ?? row.created_at
@@ -4295,7 +4302,7 @@ export const supabaseDataAdapter: DataAdapter = {
         ? supabase
             .from("consultation_logs")
             .select(
-              "id, application_id, occurred_at, activity_type, channel, sentiment, registration_status_snapshot, regular_schedule_preference_snapshot, regular_schedule_preference_note_snapshot, next_action, next_contact_at, note, created_by, created_at, updated_at"
+              "id, application_id, occurred_at, activity_type, channel, sentiment, registration_status_snapshot, regular_schedule_preference_snapshot, regular_schedule_preference_note_snapshot, unregistered_reason_snapshot, unregistered_reason_note_snapshot, next_action, next_contact_at, note, created_by, created_at, updated_at"
             )
             .in("application_id", applicationIds)
             .order("occurred_at", { ascending: false })
@@ -4482,7 +4489,7 @@ export const supabaseDataAdapter: DataAdapter = {
     const { data: consultationLogData, error: consultationLogError } = await supabase
       .from("consultation_logs")
       .select(
-        "id, application_id, occurred_at, activity_type, channel, sentiment, registration_status_snapshot, regular_schedule_preference_snapshot, regular_schedule_preference_note_snapshot, next_action, next_contact_at, note, created_by, created_at, updated_at"
+        "id, application_id, occurred_at, activity_type, channel, sentiment, registration_status_snapshot, regular_schedule_preference_snapshot, regular_schedule_preference_note_snapshot, unregistered_reason_snapshot, unregistered_reason_note_snapshot, next_action, next_contact_at, note, created_by, created_at, updated_at"
       )
       .eq("application_id", applicationId)
       .order("occurred_at", { ascending: false })
@@ -4970,6 +4977,8 @@ export const supabaseDataAdapter: DataAdapter = {
         registration_status_snapshot: input.registrationStatusSnapshot,
         regular_schedule_preference_snapshot: input.regularSchedulePreferenceSnapshot,
         regular_schedule_preference_note_snapshot: input.regularSchedulePreferenceNoteSnapshot,
+        unregistered_reason_snapshot: input.unregisteredReasonSnapshot,
+        unregistered_reason_note_snapshot: input.unregisteredReasonNoteSnapshot,
         next_action: input.nextAction,
         next_contact_at: input.nextContactAt,
         note: input.note,
