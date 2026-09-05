@@ -7,6 +7,11 @@
 //   2. 그래도 어떤 학부모의 `/my` 에도 나타나지 않는다 — RLS 가 parent_id = auth.uid() 라서다.
 //   3. 기존 Marketplace 신청(parent_id 있음)의 동작은 그대로다.
 //   4. 이관 이력은 자기 조직만 읽을 수 있고, 학원 사용자가 직접 쓸 수 없다.
+//   5. 선택한 행 전체가 하나의 transaction 이다 — 한 행이라도 실패하면 아무것도 남지 않는다.
+//   6. 같은 batch 를 다시 제출해도 신청이 두 벌 생기지 않는다.
+//   7. 가져오기로는 SMS 가 한 건도 발생하지 않는다.
+//   8. 다른 조직의 수업·선생님 id 를 넣으면 전부 거절된다.
+//   9. 확정 예약은 예약 블록과 confirmed 필드가 함께 만들어지고, 서울 시각이 밀리지 않는다.
 //
 // 로컬 Supabase 전용이다. production 에는 실행하지 않는다.
 
@@ -36,6 +41,11 @@ const OTHER_ORG_ID = "e0a10000-0000-4000-8000-000000000001"
 const IMPORTED_APP_ID = "e0a11111-0000-4000-8000-000000000001"
 const PARENT_APP_ID = "e0a11111-0000-4000-8000-000000000002"
 const BATCH_ID = "e0a12222-0000-4000-8000-000000000001"
+// seed.sql 의 학원 명부 선생님.
+const TEACHER_ROSTER_ID = "22222222-2222-2222-2222-222222222221"
+
+/** 이 스크립트가 RPC 로 만든 batch. teardown 에서 정리한다. */
+const createdBatchIds: string[] = []
 
 let failures = 0
 const check = (condition: unknown, message: string) => {
@@ -88,12 +98,87 @@ const admin = async (path: string, init?: RequestInit) => {
   return result.body
 }
 
+let teacherTokenForRpc = ""
+
+const rpc = async (name: string, args: Record<string, unknown>) => {
+  const response = await fetch(`${REST_URL}/rest/v1/rpc/${name}`, {
+    method: "POST",
+    headers: {
+      apikey: SERVICE_KEY,
+      Authorization: `Bearer ${teacherTokenForRpc}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(args)
+  })
+  const text = await response.text()
+  return { ok: response.ok, status: response.status, body: text ? JSON.parse(text) : null }
+}
+
+/** preview 단계와 같은 방식으로 batch 를 만든다. */
+const createBatch = async () => {
+  const result = await rpc("create_studio_import_batch", {
+    p_import_type: "trial_reservations",
+    p_original_file_name: "검증.xlsx",
+    p_total_rows: 3,
+    p_valid_rows: 3
+  })
+
+  if (!result.ok || typeof result.body !== "string") {
+    throw new Error(`batch 생성 실패: ${JSON.stringify(result.body)}`)
+  }
+
+  createdBatchIds.push(result.body)
+  return result.body
+}
+
+const importRow = (
+  rowNumber: number,
+  overrides: Record<string, unknown>
+) => ({
+  rowNumber,
+  fingerprint: `fingerprint-${rowNumber}-${Math.random().toString(16).slice(2)}`,
+  classId: CLASS_ID,
+  childName: `이관학생${rowNumber}`,
+  childGrade: "elem_3",
+  childSchool: null,
+  parentName: "이관보호자",
+  parentPhone: "01011112222",
+  memo: null,
+  requestedSlotAt: "2026-09-15T07:00:00.000Z",
+  teacherId: null,
+  confirmedStartAt: null,
+  confirmedEndAt: null,
+  ...overrides
+})
+
 const teardown = async () => {
   await admin(`application_logs?application_id=in.(${IMPORTED_APP_ID},${PARENT_APP_ID})`, { method: "DELETE" })
   await admin(`trial_applications?id=in.(${IMPORTED_APP_ID},${PARENT_APP_ID})`, { method: "DELETE" })
   await admin(`studio_import_rows?batch_id=eq.${BATCH_ID}`, { method: "DELETE" })
   await admin(`studio_import_batches?id=eq.${BATCH_ID}`, { method: "DELETE" })
   await admin(`studio_import_batches?organization_id=eq.${OTHER_ORG_ID}`, { method: "DELETE" })
+  if (createdBatchIds.length > 0) {
+    const filter = `in.(${createdBatchIds.join(",")})`
+    const applications = (await admin(
+      `trial_applications?import_batch_id=${filter}&select=id`
+    )) as Array<{ id: string }>
+    const applicationFilter =
+      applications.length > 0
+        ? `in.(${applications.map((row) => row.id).join(",")})`
+        : "eq.00000000-0000-4000-8000-000000000000"
+
+    await admin(`application_logs?application_id=${applicationFilter}`, { method: "DELETE" })
+    // 블록을 먼저 지우면 FK 가 confirmed_schedule_block_id 만 NULL 로 만들어
+    // confirmed_state_check 를 깨뜨린다. 확정 필드를 함께 비운 뒤 지운다.
+    await admin(`trial_applications?import_batch_id=${filter}`, {
+      method: "PATCH",
+      body: JSON.stringify({ confirmed_slot_at: null, confirmed_schedule_block_id: null })
+    })
+    await admin(`schedule_blocks?related_application_id=${applicationFilter}`, { method: "DELETE" })
+    await admin(`trial_applications?import_batch_id=${filter}`, { method: "DELETE" })
+    await admin(`studio_import_rows?batch_id=${filter}`, { method: "DELETE" })
+    await admin(`studio_import_batches?id=${filter}`, { method: "DELETE" })
+  }
   await admin(`organizations?id=eq.${OTHER_ORG_ID}`, { method: "DELETE" })
 }
 
@@ -102,6 +187,7 @@ const run = async () => {
 
   const teacherToken = createToken(TEACHER_PROFILE_ID)
   const parentToken = createToken(PARENT_PROFILE_ID)
+  teacherTokenForRpc = teacherToken
 
   await admin("studio_import_batches", {
     method: "POST",
@@ -242,6 +328,195 @@ const run = async () => {
     })
     check(!write.ok, "학원 사용자가 이관 이력을 직접 만들 수 있다")
     passLine(before, "자기 조직만 읽고, 직접 쓰기는 막힌다")
+  }
+
+  // ───────────────────────────────────────────────────────────
+  console.log("\n[5] 가져오기 transaction · 확정 예약 · 시간대")
+  {
+    const before = failures
+    const batchId = await createBatch()
+    const startAt = "2026-09-15T07:00:00.000Z" // 서울 16:00
+    const endAt = "2026-09-15T08:00:00.000Z" // 서울 17:00
+    const result = await rpc("import_studio_trial_reservations", {
+      p_batch_id: batchId,
+      p_rows: [
+        importRow(2, { status: "new" }),
+        importRow(3, { status: "reviewing" }),
+        importRow(4, {
+          status: "confirmed",
+          teacherId: TEACHER_ROSTER_ID,
+          confirmedStartAt: startAt,
+          confirmedEndAt: endAt
+        })
+      ]
+    })
+
+    check(result.ok, `가져오기 실패: ${JSON.stringify(result.body)}`)
+    check(result.body?.mode === "created", `mode 가 created 가 아니다: ${result.body?.mode}`)
+    check(result.body?.importedRows === 3, `저장 건수가 다르다: ${result.body?.importedRows}`)
+
+    const applications = (await admin(
+      `trial_applications?import_batch_id=eq.${batchId}&select=status,parent_id,confirmed_slot_at,confirmed_schedule_block_id,assigned_teacher_id,requested_slot_at&order=status.asc`
+    )) as Array<Record<string, string | null>>
+    check(applications.length === 3, `신청 건수가 다르다: ${applications.length}`)
+    check(applications.every((row) => row.parent_id === null), "이관 신청에 parent_id 가 채워졌다")
+
+    const confirmed = applications.find((row) => row.status === "confirmed")
+    check(Boolean(confirmed?.confirmed_schedule_block_id), "확정 예약에 블록이 연결되지 않았다")
+    check(
+      confirmed?.confirmed_slot_at !== null &&
+        new Date(confirmed!.confirmed_slot_at!).toISOString() === startAt,
+      `확정 시각이 밀렸다: ${confirmed?.confirmed_slot_at}`
+    )
+    check(confirmed?.assigned_teacher_id === TEACHER_ROSTER_ID, "담당 선생님이 배정되지 않았다")
+
+    const block = (await admin(
+      `schedule_blocks?id=eq.${confirmed!.confirmed_schedule_block_id}&select=type,start_at,end_at,teacher_id`
+    )) as Array<Record<string, string>>
+    check(block[0]?.type === "trial_booked", "예약 블록 타입이 다르다")
+    check(new Date(block[0]!.start_at!).toISOString() === startAt, "블록 시작 시각이 밀렸다")
+    check(new Date(block[0]!.end_at!).toISOString() === endAt, "블록 종료 시각이 밀렸다")
+
+    const importRows = (await admin(
+      `studio_import_rows?batch_id=eq.${batchId}&select=status,row_number&order=row_number.asc`
+    )) as Array<{ status: string; row_number: number }>
+    check(importRows.length === 3, `가져오기 이력 행이 다르다: ${importRows.length}`)
+    check(importRows.every((row) => row.status === "imported"), "이력 상태가 imported 가 아니다")
+
+    const batch = (await admin(
+      `studio_import_batches?id=eq.${batchId}&select=status,imported_rows,completed_at`
+    )) as Array<Record<string, unknown>>
+    check(batch[0]?.status === "completed", "batch 가 completed 가 아니다")
+    check(batch[0]?.imported_rows === 3, "batch 저장 건수가 다르다")
+
+    passLine(before, "3건 저장 · 확정 예약 블록 생성 · 서울 16:00 그대로")
+
+    // ── 재시도(응답 유실 가정) ────────────────────────────────
+    const retryBefore = failures
+    const retry = await rpc("import_studio_trial_reservations", {
+      p_batch_id: batchId,
+      p_rows: [importRow(2, { status: "new" })]
+    })
+    check(retry.ok, `재시도가 실패했다: ${JSON.stringify(retry.body)}`)
+    check(retry.body?.mode === "duplicate", `재시도가 duplicate 가 아니다: ${retry.body?.mode}`)
+    const afterRetry = (await admin(
+      `trial_applications?import_batch_id=eq.${batchId}&select=id`
+    )) as Array<unknown>
+    check(afterRetry.length === 3, `재시도로 신청이 늘었다: ${afterRetry.length}`)
+    passLine(retryBefore, "같은 batch 재제출 → mutation 0, 첫 결과 그대로")
+
+    // ── SMS 0 ───────────────────────────────────────────────
+    const smsBefore = failures
+    const importedApplications = (await admin(
+      `trial_applications?import_batch_id=eq.${batchId}&select=id`
+    )) as Array<{ id: string }>
+    const smsRows = (await admin(
+      `sms_logs?trial_application_id=in.(${importedApplications.map((row) => row.id).join(",")})&select=id`
+    )) as Array<unknown>
+    check(smsRows.length === 0, `가져오기로 SMS 가 발생했다: ${smsRows.length}건`)
+    passLine(smsBefore, "가져오기 SMS 0건")
+  }
+
+  // ───────────────────────────────────────────────────────────
+  console.log("\n[6] 원자성 — 한 행이라도 실패하면 전부 롤백")
+  {
+    const before = failures
+    const batchId = await createBatch()
+    const result = await rpc("import_studio_trial_reservations", {
+      p_batch_id: batchId,
+      p_rows: [
+        importRow(2, { status: "new" }),
+        importRow(3, { status: "new" }),
+        // 3번째 행에서 실패시킨다(허용되지 않는 상태).
+        importRow(4, { status: "completed" })
+      ]
+    })
+
+    check(!result.ok, "허용되지 않는 상태가 통과했다")
+    const applications = (await admin(
+      `trial_applications?import_batch_id=eq.${batchId}&select=id`
+    )) as Array<unknown>
+    const importRows = (await admin(
+      `studio_import_rows?batch_id=eq.${batchId}&select=id`
+    )) as Array<unknown>
+    const batch = (await admin(
+      `studio_import_batches?id=eq.${batchId}&select=status,imported_rows`
+    )) as Array<Record<string, unknown>>
+
+    check(applications.length === 0, `부분 저장된 신청이 남았다: ${applications.length}`)
+    check(importRows.length === 0, `부분 저장된 이력이 남았다: ${importRows.length}`)
+    check(batch[0]?.status === "previewed", "실패했는데 batch 상태가 바뀌었다")
+    check(batch[0]?.imported_rows === 0, "실패했는데 저장 건수가 기록됐다")
+    passLine(before, "3번째 행 실패 → 신청 0 · 블록 0 · 이력 0 (부분 저장 없음)")
+  }
+
+  // ───────────────────────────────────────────────────────────
+  console.log("\n[7] 다른 조직 수업·선생님 주입")
+  {
+    const before = failures
+    // [4] 에서 이미 만들었으면 그대로 쓴다.
+    await admin("organizations", {
+      method: "POST",
+      headers: { Prefer: "resolution=merge-duplicates,return=representation" },
+      body: JSON.stringify({ id: OTHER_ORG_ID, name: "다른 학원", branch_name: "본원" })
+    })
+    const otherTeacher = (await admin("teachers", {
+      method: "POST",
+      body: JSON.stringify({
+        organization_id: OTHER_ORG_ID,
+        display_name: "다른 선생님"
+      })
+    })) as Array<{ id: string }>
+    const otherClass = (await admin("classes", {
+      method: "POST",
+      body: JSON.stringify({
+        organization_id: OTHER_ORG_ID,
+        teacher_id: otherTeacher[0]!.id,
+        title: "다른 조직 수업",
+        subject: "미술",
+        target_age: "7-9",
+        description: "fixture",
+        trial_price: 0,
+        is_active: true
+      })
+    })) as Array<{ id: string }>
+
+    const batchId = await createBatch()
+    const crossOrgClass = await rpc("import_studio_trial_reservations", {
+      p_batch_id: batchId,
+      p_rows: [importRow(2, { status: "new", classId: otherClass[0]!.id })]
+    })
+    check(!crossOrgClass.ok, "다른 조직 수업이 통과했다")
+    check(
+      JSON.stringify(crossOrgClass.body).includes("import_class_not_in_organization"),
+      `기대한 오류가 아니다: ${JSON.stringify(crossOrgClass.body)}`
+    )
+
+    const crossOrgTeacher = await rpc("import_studio_trial_reservations", {
+      p_batch_id: batchId,
+      p_rows: [
+        importRow(2, {
+          status: "confirmed",
+          teacherId: otherTeacher[0]!.id,
+          confirmedStartAt: "2026-09-15T07:00:00.000Z",
+          confirmedEndAt: "2026-09-15T08:00:00.000Z"
+        })
+      ]
+    })
+    check(!crossOrgTeacher.ok, "다른 조직 선생님이 통과했다")
+    check(
+      JSON.stringify(crossOrgTeacher.body).includes("import_teacher_not_in_organization"),
+      `기대한 오류가 아니다: ${JSON.stringify(crossOrgTeacher.body)}`
+    )
+
+    const applications = (await admin(
+      `trial_applications?import_batch_id=eq.${batchId}&select=id`
+    )) as Array<unknown>
+    check(applications.length === 0, "거절됐는데 신청이 남았다")
+
+    await admin(`classes?id=eq.${otherClass[0]!.id}`, { method: "DELETE" })
+    await admin(`teachers?id=eq.${otherTeacher[0]!.id}`, { method: "DELETE" })
+    passLine(before, "다른 조직 수업·선생님 → 전체 거절, mutation 0")
   }
 
   await teardown()

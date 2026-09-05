@@ -176,8 +176,16 @@ export default async function StudioCasesPage({ searchParams }: StudioCasesPageP
   return (
     <div className={styles.page}>
       <header className={styles.header}>
-        <h1 className={styles.title}>상담·등록</h1>
-        <p className={styles.subtitle}>신청부터 등록 결정까지 한 곳에서 관리하세요.</p>
+        <div className={styles.headerRow}>
+          <div>
+            <h1 className={styles.title}>상담·등록</h1>
+            <p className={styles.subtitle}>신청부터 등록 결정까지 한 곳에서 관리하세요.</p>
+          </div>
+          {/* 가져온 예약이 이 목록으로 들어오므로 진입점을 여기에 둔다(사이드바 항목 추가 없음). */}
+          <Link href="/studio/cases/import" className={styles.headerAction}>
+            기존 예약 가져오기
+          </Link>
+        </div>
       </header>
 
       <nav className={styles.tabs} aria-label="Case 보기">
