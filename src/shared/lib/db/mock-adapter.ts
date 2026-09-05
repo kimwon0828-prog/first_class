@@ -1650,7 +1650,9 @@ export const mockDataAdapter: DataAdapter = {
           assignedTeacherId: item.assignedTeacherId ?? null,
           assignedTeacherName: getTeacherDisplayNameById(item.assignedTeacherId),
           registrationStatus:
-            "registrationStatus" in item ? item.registrationStatus ?? "undecided" : "undecided"
+            "registrationStatus" in item ? item.registrationStatus ?? "undecided" : "undecided",
+          unregisteredReason:
+            "unregisteredReason" in item ? item.unregisteredReason ?? null : null
         }
 
         return mapped

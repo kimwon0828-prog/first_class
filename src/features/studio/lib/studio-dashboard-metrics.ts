@@ -10,7 +10,10 @@
 
 import { getCaseStage, type CaseStage } from "@/features/studio/lib/case-view-model"
 import type { StudioResolvedDateRange } from "@/features/studio/lib/studio-date-range"
-import type { StudioApplicationSummary } from "@/shared/lib/db/adapter"
+import type {
+  ApplicationUnregisteredReason,
+  StudioApplicationSummary
+} from "@/shared/lib/db/adapter"
 
 export type StudioDashboardMetricKey =
   | "application"
@@ -26,6 +29,20 @@ export type StudioDashboardMetricStep = {
   conversionFromPrevious: number | null
 }
 
+/**
+ * 미등록으로 종결한 Case 의 사유 분포.
+ *
+ * 같은 cohort(선택 기간의 created_at) 안에서만 센다. 상담 이력의 과거 스냅샷이 아니라
+ * Case 의 현재 결과만 본다 — Dashboard 의 다른 지표와 같은 기준이다.
+ * reason 이 null 인 Case 도 버리지 않는다. 합계가 미등록 수와 어긋나면 안 되기 때문이다.
+ *
+ * 라벨·상위 N·기타 묶기는 여기서 하지 않는다(표시 계층의 몫).
+ */
+export type StudioDashboardUnregisteredReasonCount = {
+  reason: ApplicationUnregisteredReason | null
+  count: number
+}
+
 export type StudioDashboardMetrics = {
   periodLabel: string
   steps: StudioDashboardMetricStep[]
@@ -34,6 +51,7 @@ export type StudioDashboardMetrics = {
   decidedCount: number
   pendingDecisionCount: number
   registrationConversionRate: number | null
+  unregisteredReasonCounts: StudioDashboardUnregisteredReasonCount[]
 }
 
 const STAGE_REACHED_LEVEL: Partial<Record<CaseStage, number>> = {
@@ -110,6 +128,17 @@ export const buildStudioDashboardMetrics = (
   const notEnrolledCount = stages.filter((stage) => stage === "not_enrolled").length
   const decidedCount = enrolledCount + notEnrolledCount
 
+  // 미등록으로 종결한 Case 만 센다. 다른 상태에 사유 값이 남아 있어도 집계하지 않는다.
+  const reasonCountMap = new Map<ApplicationUnregisteredReason | null, number>()
+  cohort.forEach((item, index) => {
+    if (stages[index] !== "not_enrolled") {
+      return
+    }
+
+    const reason = item.unregisteredReason ?? null
+    reasonCountMap.set(reason, (reasonCountMap.get(reason) ?? 0) + 1)
+  })
+
   return {
     periodLabel: range.label,
     steps: counts.map((count, index) => ({
@@ -123,6 +152,10 @@ export const buildStudioDashboardMetrics = (
     notEnrolledCount,
     decidedCount,
     pendingDecisionCount: Math.max(0, counts[3] - decidedCount),
-    registrationConversionRate: roundPercentage(enrolledCount, decidedCount)
+    registrationConversionRate: roundPercentage(enrolledCount, decidedCount),
+    unregisteredReasonCounts: Array.from(reasonCountMap.entries()).map(([reason, count]) => ({
+      reason,
+      count
+    }))
   }
 }

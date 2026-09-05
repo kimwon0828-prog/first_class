@@ -849,7 +849,10 @@ const mapStudioApplication = (
     canceledAt: row.canceled_at ?? null,
     noShowAt: row.no_show_at ?? null,
     enrolledAt: row.enrolled_at ?? null,
-    registrationStatus: row.registration_status ?? "undecided"
+    registrationStatus: row.registration_status ?? "undecided",
+    unregisteredReason: isApplicationUnregisteredReason(row.unregistered_reason)
+      ? row.unregistered_reason
+      : null
   }
 }
 
@@ -4114,7 +4117,7 @@ export const supabaseDataAdapter: DataAdapter = {
       let query = supabase
         .from("trial_applications")
         .select(
-          "id, class_id, parent_id, child_name, child_grade, parent_name, parent_phone, class_schedule_id, requested_schedule_block_id, selected_schedule_label, requested_slot_at, confirmed_slot_at, assigned_teacher_id, contacted_at, scheduled_at, completed_at, enrolled_at, canceled_at, no_show_at, goal_type, registration_status, status, created_at, updated_at, classes!inner(title, subject, organization_id, program_type, organizations(sido, sigungu, bname)), class_schedules(start_time, end_time), confirmed_block:schedule_blocks!trial_applications_confirmed_schedule_block_id_fkey(start_at, end_at)",
+          "id, class_id, parent_id, child_name, child_grade, parent_name, parent_phone, class_schedule_id, requested_schedule_block_id, selected_schedule_label, requested_slot_at, confirmed_slot_at, assigned_teacher_id, contacted_at, scheduled_at, completed_at, enrolled_at, canceled_at, no_show_at, goal_type, registration_status, unregistered_reason, status, created_at, updated_at, classes!inner(title, subject, organization_id, program_type, organizations(sido, sigungu, bname)), class_schedules(start_time, end_time), confirmed_block:schedule_blocks!trial_applications_confirmed_schedule_block_id_fkey(start_at, end_at)",
           // 총 개수를 알아야 서버가 page 를 잘라도 끝을 정확히 안다.
           // 같은 request 에 실려 오므로 query 가 늘지 않는다(getStudioCases 와 같은 방식).
           { count: "exact" }

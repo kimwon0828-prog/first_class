@@ -4,6 +4,10 @@
 // bar / donut 이 바로 그릴 수 있는 형태로 바꾸기만 한다.
 // metric formula 는 이 파일에 없다.
 
+import {
+  TRIAL_RESULT_UNREGISTERED_REASON_OPTIONS,
+  getTrialResultUnregisteredReasonLabel
+} from "@/features/studio/lib/trial-result-options"
 import type {
   StudioDashboardMetricKey,
   StudioDashboardMetrics
@@ -29,6 +33,19 @@ export type StudioDashboardDonutSegment = {
   dashOffset: number
 }
 
+/**
+ * 미등록 사유 표시 목록.
+ *
+ * 많은 순으로 정렬하고, 동률이면 사유 선택지의 원래 순서를 따른다(사유 미기록은 맨 뒤).
+ * 정렬만 하고 상위 N 이나 묶기는 하지 않는다 — 그건 리포트가 정한다.
+ */
+export type StudioDashboardUnregisteredReason = {
+  /** 사유 코드. 사유가 없는 Case 는 null 이다. */
+  key: string
+  label: string
+  count: number
+}
+
 export type StudioDashboardAnalytics = {
   stageBars: StudioDashboardStageBar[]
   donutSegments: StudioDashboardDonutSegment[]
@@ -38,6 +55,7 @@ export type StudioDashboardAnalytics = {
   conversionMeta: string
   hasCohort: boolean
   hasDonutData: boolean
+  unregisteredReasons: StudioDashboardUnregisteredReason[]
 }
 
 /** viewBox 120 기준. r 은 stroke 두께를 뺀 값이라 원이 잘리지 않는다. */
@@ -85,6 +103,26 @@ export const buildStudioDashboardAnalytics = (
     return { ...segment, dashLength, dashOffset }
   })
 
+  // 사유가 없는 Case 도 버리지 않는다. 목록의 합이 미등록 수와 같아야 한다.
+  const MISSING_REASON_KEY = "unrecorded"
+  const MISSING_REASON_LABEL = "미등록 사유 미기록"
+  const reasonOrder = new Map(
+    TRIAL_RESULT_UNREGISTERED_REASON_OPTIONS.map((option, index) => [option.value, index])
+  )
+  const unregisteredReasons = metrics.unregisteredReasonCounts
+    .map((item) => ({
+      key: item.reason ?? MISSING_REASON_KEY,
+      label: item.reason
+        ? getTrialResultUnregisteredReasonLabel(item.reason) ?? MISSING_REASON_LABEL
+        : MISSING_REASON_LABEL,
+      count: item.count,
+      order: item.reason
+        ? reasonOrder.get(item.reason) ?? TRIAL_RESULT_UNREGISTERED_REASON_OPTIONS.length
+        : Number.MAX_SAFE_INTEGER
+    }))
+    .sort((left, right) => right.count - left.count || left.order - right.order)
+    .map(({ key, label, count }) => ({ key, label, count }))
+
   return {
     stageBars,
     donutSegments,
@@ -96,6 +134,7 @@ export const buildStudioDashboardAnalytics = (
         ? `결정 완료 ${metrics.decidedCount}건 중 ${metrics.enrolledCount}건 등록`
         : "아직 등록 결정이 없습니다",
     hasCohort: applicationCount > 0,
-    hasDonutData: donutTotal > 0
+    hasDonutData: donutTotal > 0,
+    unregisteredReasons
   }
 }

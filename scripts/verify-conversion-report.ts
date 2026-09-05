@@ -48,6 +48,7 @@ type Fixture = {
   createdAt?: string
   noShowAt?: string | null
   confirmedBlockEndAt?: string | null
+  unregisteredReason?: StudioApplicationSummary["unregisteredReason"]
 }
 
 const application = (fixture: Fixture): StudioApplicationSummary =>
@@ -60,6 +61,7 @@ const application = (fixture: Fixture): StudioApplicationSummary =>
     childGrade: "elem_3",
     status: fixture.status,
     registrationStatus: fixture.registrationStatus,
+    unregisteredReason: fixture.unregisteredReason ?? null,
     noShowAt: fixture.noShowAt ?? null,
     confirmedBlockStartAt: null,
     confirmedBlockEndAt: fixture.confirmedBlockEndAt ?? null,
@@ -267,7 +269,99 @@ console.log("\n[7] 파일명 · 생성일")
 }
 
 // ─────────────────────────────────────────────────────────────
-console.log("\n[8] 내보내기 크기 계약")
+console.log("\n[8] 미등록 사유 — 같은 cohort · 합계 불변")
+{
+  const before = failures
+  const { metrics, analytics } = buildBoth([
+    application({ id: "1", status: "completed", registrationStatus: "not_enrolled", unregisteredReason: "schedule_mismatch" }),
+    application({ id: "2", status: "completed", registrationStatus: "not_enrolled", unregisteredReason: "schedule_mismatch" }),
+    application({ id: "3", status: "completed", registrationStatus: "not_enrolled", unregisteredReason: "cost_burden" }),
+    application({ id: "4", status: "completed", registrationStatus: "not_enrolled", unregisteredReason: "class_level_mismatch" })
+  ])
+
+  const byLabel = new Map(analytics.unregisteredReasons.map((item) => [item.label, item.count]))
+  check(byLabel.get("일정 불일치") === 2, `일정 불일치가 2가 아니다: ${byLabel.get("일정 불일치")}`)
+  check(byLabel.get("비용 부담") === 1, "비용 부담이 1이 아니다")
+  check(byLabel.get("수업/레벨 불일치") === 1, "수업/레벨 불일치가 1이 아니다")
+  check(metrics.notEnrolledCount === 4, "미등록 수가 4가 아니다")
+  check(
+    analytics.unregisteredReasons.reduce((sum, item) => sum + item.count, 0) === metrics.notEnrolledCount,
+    "사유 합계가 미등록 수와 다르다"
+  )
+  check(analytics.unregisteredReasons[0]?.label === "일정 불일치", "많은 순 정렬이 아니다")
+  passLine(before, "일정 불일치 2 · 비용 부담 1 · 수업/레벨 1 → 합계 = 미등록 4")
+}
+
+// ─────────────────────────────────────────────────────────────
+console.log("\n[9] 사유 미기록도 버리지 않는다")
+{
+  const before = failures
+  const { metrics, analytics } = buildBoth([
+    application({ id: "1", status: "completed", registrationStatus: "not_enrolled", unregisteredReason: "schedule_mismatch" }),
+    application({ id: "2", status: "completed", registrationStatus: "not_enrolled" }),
+    application({ id: "3", status: "completed", registrationStatus: "not_enrolled" })
+  ])
+
+  const missing = analytics.unregisteredReasons.find((item) => item.key === "unrecorded")
+  check(missing?.count === 2, `사유 미기록이 2가 아니다: ${missing?.count}`)
+  check(missing?.label === "미등록 사유 미기록", `기존 문구와 다르다: ${missing?.label}`)
+  check(
+    analytics.unregisteredReasons.reduce((sum, item) => sum + item.count, 0) === metrics.notEnrolledCount,
+    "사유 미기록을 빼서 합계가 어긋났다"
+  )
+  // 건수가 같을 때만 사유 미기록이 뒤로 간다(건수가 더 많으면 당연히 앞이다).
+  const tied = buildBoth([
+    application({ id: "1", status: "completed", registrationStatus: "not_enrolled", unregisteredReason: "schedule_mismatch" }),
+    application({ id: "2", status: "completed", registrationStatus: "not_enrolled" })
+  ]).analytics.unregisteredReasons
+  check(tied[0]?.key === "schedule_mismatch", "동률인데 사유가 앞이 아니다")
+  check(tied.at(-1)?.key === "unrecorded", "동률일 때 사유 미기록이 맨 뒤가 아니다")
+  passLine(before, "사유 미기록 2건 포함 · 합계 3 = 미등록 3 · 동률이면 미기록이 뒤")
+}
+
+// ─────────────────────────────────────────────────────────────
+console.log("\n[10] 미등록이 아닌 Case 의 사유는 세지 않는다")
+{
+  const before = failures
+  const { metrics, analytics } = buildBoth([
+    application({ id: "1", status: "completed", registrationStatus: "enrolled", unregisteredReason: "cost_burden" }),
+    application({ id: "2", status: "completed", registrationStatus: "pending", unregisteredReason: "distance" }),
+    application({ id: "3", status: "completed", registrationStatus: "undecided", unregisteredReason: "no_response" }),
+    application({ id: "4", status: "canceled", registrationStatus: "undecided", unregisteredReason: "distance" })
+  ])
+
+  check(metrics.unregisteredReasonCounts.length === 0, "미등록이 아닌 Case 의 사유를 셌다")
+  check(analytics.unregisteredReasons.length === 0, "표시 목록에 잘못된 사유가 들어갔다")
+  check(metrics.notEnrolledCount === 0, "미등록 수가 0이 아니다")
+  passLine(before, "등록 · 대기 · 취소 Case 의 잔여 사유 무시")
+}
+
+// ─────────────────────────────────────────────────────────────
+console.log("\n[11] 사유도 같은 cohort 경계를 따른다")
+{
+  const before = failures
+  const septemberRange = resolveStudioDateRange({
+    preset: "custom",
+    startDate: "2026-09-01",
+    endDate: "2026-09-30"
+  })
+  const { analytics } = buildBoth(
+    [
+      // 8월 신청 — 9월 cohort 가 아니다.
+      application({ id: "aug", status: "completed", registrationStatus: "not_enrolled", unregisteredReason: "distance", createdAt: "2026-08-20T01:00:00.000Z" }),
+      // 9월 신청
+      application({ id: "sep", status: "completed", registrationStatus: "not_enrolled", unregisteredReason: "cost_burden", createdAt: "2026-09-10T01:00:00.000Z" })
+    ],
+    septemberRange
+  )
+
+  check(analytics.unregisteredReasons.length === 1, "cohort 밖 사유가 섞였다")
+  check(analytics.unregisteredReasons[0]?.label === "비용 부담", "cohort 안 사유가 빠졌다")
+  passLine(before, "created_at cohort 밖 미등록 사유 제외")
+}
+
+// ─────────────────────────────────────────────────────────────
+console.log("\n[12] 내보내기 크기 계약")
 {
   const before = failures
   // 실제 PNG bitmap 은 브라우저에서 1080×1350 으로 확인했다(REPORT-2 보고 참고).

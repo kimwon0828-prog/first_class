@@ -648,6 +648,8 @@ export type StudioApplicationSummary = TrialApplicationSummary & {
   noShowAt: string | null
   enrolledAt: string | null
   registrationStatus: ApplicationRegistrationStatus
+  /** 미등록으로 종결한 Case 의 현재 사유. 그 외 상태에서는 의미 없는 값이다. */
+  unregisteredReason: ApplicationUnregisteredReason | null
 }
 
 export type StudioApplicationListOptions = {
