@@ -16,6 +16,7 @@
 //   4. 내부 전체 권한만 있는 조직은 우선 노출을 받지 못한다.
 //   5. boost 는 filter 가 아니다 — 무료 수업이 목록에서 사라지지 않는다.
 //   6. 과목 필터가 boost 와 무관하게 그대로 동작한다.
+//   7. 정렬 source 가 죽어도 organic 목록은 그대로 나온다(fail-safe organic).
 //
 // 로컬 Supabase 전용이다.
 
@@ -93,6 +94,42 @@ const listRanked = async (options?: { limit?: number; subjectFilter?: string }) 
     boost_eligible: boolean
   }>
 }
+
+/** 로컬 DB 에 직접 SQL 을 보낸다(권한 회수/복구 전용). */
+const sql = async (statement: string) => {
+  const { execFile } = await import("node:child_process")
+  const { promisify } = await import("node:util")
+  await promisify(execFile)("docker", [
+    "exec",
+    "-i",
+    "supabase_db_first-class-mvp",
+    "psql",
+    "-U",
+    "postgres",
+    "-d",
+    "postgres",
+    "-q",
+    "-c",
+    statement
+  ])
+}
+
+/** 정렬 view 조회. 실패 여부까지 그대로 돌려준다. */
+const listRankedRaw = async () => {
+  const response = await fetch(
+    `${REST_URL}/rest/v1/marketplace_ranked_classes?select=id&limit=1`,
+    { headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` } }
+  )
+  return { ok: response.ok, status: response.status }
+}
+
+/** fallback 경로. 앱의 organic source 와 같은 필터·정렬이다. */
+const listOrganic = async () =>
+  (await admin(
+    `classes?select=id,title,organization_id,created_at&is_active=eq.true&organization_id=in.(${ORGS.join(
+      ","
+    )})&order=created_at.desc`
+  )) as Array<{ id: string; title: string; organization_id: string; created_at: string }>
 
 const teardown = async () => {
   await admin(`classes?organization_id=in.(${ORGS.join(",")})`, { method: "DELETE" })
@@ -286,6 +323,46 @@ const run = async () => {
       "과목 필터가 boost 때문에 무너졌다"
     )
     passLine(before, "무료 수업 유지 · 필터 통과 결과 안에서만 순서 변경")
+  }
+
+  // ─────────────────────────────────────────────────────────
+  console.log("\n[6] 정렬 source 장애 → organic fallback")
+  {
+    const before = failures
+    await admin(`classes?organization_id=in.(${ORGS.join(",")})`, { method: "DELETE" })
+    await admin("classes", {
+      method: "POST",
+      body: JSON.stringify([
+        makeClass(1, STANDARD_ORG, "스탠다드-과거", iso(-30)),
+        makeClass(2, FREE_ORG, "무료-최신", iso(-1))
+      ])
+    })
+
+    // 정렬 view 를 읽을 수 없게 만든다(권한 회수). 앱이 보는 실패와 같은 형태다.
+    await sql("revoke select on table public.marketplace_ranked_classes from service_role;")
+    try {
+      const rankedFailed = await listRankedRaw()
+      check(rankedFailed.ok === false, "정렬 source 가 죽었는데 조회가 성공했다")
+
+      // fallback 대상(classes organic). 필터·limit 은 그대로이고 boost 정렬만 빠진다.
+      const organic = await listOrganic()
+      check(organic.length === 2, `organic fallback 결과가 다르다: ${organic.length}건`)
+      check(
+        organic[0]?.title === "무료-최신",
+        `fallback 이 created_at desc 가 아니다: ${organic[0]?.title}`
+      )
+      check(
+        organic.some((row) => row.title === "스탠다드-과거"),
+        "fallback 에서 Standard 수업이 사라졌다"
+      )
+    } finally {
+      await sql("grant select on table public.marketplace_ranked_classes to service_role;")
+    }
+
+    // 복구되면 다시 우선 노출이 적용된다.
+    const restored = await listRanked()
+    check(restored[0]?.title === "스탠다드-과거", "권한 복구 후 우선 노출이 돌아오지 않았다")
+    passLine(before, "정렬 source 장애 → 두 수업 모두 organic 순서로 유지, 복구되면 boost 복원")
   }
 
   await teardown()

@@ -156,13 +156,22 @@ const attachSubjectMaster = async (rows: PublicClassRow[]): Promise<PublicClassR
   }
 }
 
+/**
+ * 목록을 어디서 읽을지.
+ *
+ * ranked  우선 노출 정렬이 붙은 view.
+ * organic 기존 classes. 노출 자격 인프라에 문제가 생겼을 때의 fallback 이다.
+ */
+type PublicClassesQuerySource = "ranked" | "organic"
+
 const buildPublicClassesQuery = (
   selectFields: string,
-  options?: ListPublicClassesOptions
+  options?: ListPublicClassesOptions,
+  source: PublicClassesQuerySource = "ranked"
 ) => {
   const serviceRoleClient = getSupabaseServiceRoleClient()
-  // classes 가 아니라 marketplace_ranked_classes 를 읽는다.
-  // 컬럼은 classes 그대로이고 정렬용 boost_eligible 하나가 더 붙어 있다.
+  // ranked: marketplace_ranked_classes(= classes 컬럼 + boost_eligible).
+  // organic: classes 그대로. 우선 노출만 빠지고 목록은 그대로 나온다.
   //
   // 정렬은 반드시 DB 에서, limit 보다 먼저 끝나야 한다.
   // 가져온 뒤 JS 에서 정렬하면 기본 화면의 fetch limit(10) 때문에
@@ -170,11 +179,15 @@ const buildPublicClassesQuery = (
   //
   // boost 는 filter 가 아니라 ordering 이다 — 무료 수업이 목록에서 빠지지 않는다.
   let query = serviceRoleClient
-    .from("marketplace_ranked_classes")
+    .from(source === "ranked" ? "marketplace_ranked_classes" : "classes")
     .select(selectFields)
     .eq("is_active", true)
-    .order("boost_eligible", { ascending: false })
-    .order("created_at", { ascending: false })
+
+  if (source === "ranked") {
+    query = query.order("boost_eligible", { ascending: false })
+  }
+
+  query = query.order("created_at", { ascending: false })
 
   if (options?.subjectCategoryId) {
     query = query.eq("subject_category_id", options.subjectCategoryId)
@@ -284,13 +297,45 @@ const mapPublicClassSummary = (row: PublicClassRow): ClassSummary => {
   }
 }
 
+/** 한 source 안에서 legacy 컬럼 fallback 까지 시도한다. */
+const runPublicClassesQueryFromSource = async (
+  options: ListPublicClassesOptions | undefined,
+  source: PublicClassesQuerySource
+) => {
+  const initialResult = await buildPublicClassesQuery(PUBLIC_CLASS_SELECT_FIELDS, options, source)
+  return isMissingColumnError(initialResult.error)
+    ? await buildPublicClassesQuery(LEGACY_PUBLIC_CLASS_SELECT_FIELDS, options, source)
+    : initialResult
+}
+
+/**
+ * 공개 수업 목록 조회.
+ *
+ * 우선 노출 정렬(ranked)이 실패하면 기존 organic 목록으로 되돌아간다.
+ * 요금제 정보를 읽지 못했다는 이유로 학부모에게 보여줄 목록 자체가 사라지면
+ * 무료 학원까지 플랫폼에서 지워진다. 잃어도 되는 것은 boost 뿐이다.
+ *
+ * (Studio 의 유료 쓰기는 반대로 fail closed 다. 방향이 다른 것은 의도된 것이다.)
+ */
+const runPublicClassesQuery = async (options?: ListPublicClassesOptions) => {
+  const rankedResult = await runPublicClassesQueryFromSource(options, "ranked")
+  if (!rankedResult.error) {
+    return rankedResult
+  }
+
+  console.warn(
+    "[marketplace] ranked listing unavailable, falling back to organic ordering",
+    rankedResult.error.message
+  )
+
+  // 필터·limit·projection 은 ranked 와 완전히 같다. 빠지는 것은 boost 정렬 하나뿐이다.
+  return runPublicClassesQueryFromSource(options, "organic")
+}
+
 export const listPublicClassesWithSafeProjection = async (
   options?: ListPublicClassesOptions
 ): Promise<ClassSummary[]> => {
-  const initialResult = await buildPublicClassesQuery(PUBLIC_CLASS_SELECT_FIELDS, options)
-  const { data, error } = isMissingColumnError(initialResult.error)
-    ? await buildPublicClassesQuery(LEGACY_PUBLIC_CLASS_SELECT_FIELDS, options)
-    : initialResult
+  const { data, error } = await runPublicClassesQuery(options)
   if (error) {
     throw new Error("failed_to_fetch_public_classes")
   }
