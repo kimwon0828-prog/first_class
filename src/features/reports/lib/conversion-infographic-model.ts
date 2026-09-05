@@ -31,6 +31,14 @@ export type ConversionInfographicDecisionSegment = {
   visualSharePercent: number
 }
 
+export type ConversionInfographicReason = {
+  key: string
+  label: string
+  count: number
+  /** 가장 많은 사유 대비 막대 길이(%). 지표가 아니라 그림용 값이다. */
+  visualFillPercent: number
+}
+
 export type ConversionInfographicModel = {
   organizationName: string
   periodLabel: string
@@ -41,12 +49,24 @@ export type ConversionInfographicModel = {
   funnel: ConversionInfographicFunnelStep[]
   decisions: ConversionInfographicDecisionSegment[]
   decisionTotal: number
+  /** 상위 3개 + 나머지 합계. 사유가 없으면 빈 배열이고 그 경우 섹션을 그리지 않는다. */
+  topUnregisteredReasons: ConversionInfographicReason[]
   /** 신청 수에 취소·노쇼가 포함된다는 사실을 알리는 각주. */
   applicationFootnote: string
 }
 
 export const CONVERSION_INFOGRAPHIC_WIDTH = 1080
 export const CONVERSION_INFOGRAPHIC_HEIGHT = 1350
+
+/**
+ * 리포트에 보여줄 사유 개수.
+ *
+ * 나머지는 하나로 묶는다. 묶음 이름은 "기타" 가 아니라 "그 외" 다 —
+ * canonical 사유 목록에 이미 "기타"(other) 가 있어서 서로 다른 뜻이 겹치면 안 된다.
+ */
+const REPORT_REASON_LIMIT = 3
+const REMAINDER_REASON_KEY = "remainder"
+const REMAINDER_REASON_LABEL = "그 외"
 
 const APPLICATION_FOOTNOTE =
   "신청 수에는 해당 기간에 접수된 취소·노쇼 신청이 포함됩니다."
@@ -74,6 +94,38 @@ export type ConversionInfographicInput = {
   metrics: StudioDashboardMetrics
   analytics: StudioDashboardAnalytics
   generatedAt: Date
+}
+
+/**
+ * 상위 사유 + 나머지 묶음.
+ *
+ * 순서와 라벨은 analytics 가 정한 것을 그대로 쓴다. 여기서 하는 일은
+ * 상위 몇 개만 남기고 나머지를 한 줄로 합치는 표시용 묶기뿐이다.
+ */
+const buildTopReasons = (
+  reasons: StudioDashboardAnalytics["unregisteredReasons"]
+): ConversionInfographicReason[] => {
+  if (reasons.length === 0) {
+    return []
+  }
+
+  const top = reasons.slice(0, REPORT_REASON_LIMIT)
+  const remainderCount = reasons
+    .slice(REPORT_REASON_LIMIT)
+    .reduce((sum, item) => sum + item.count, 0)
+
+  const rows = [
+    ...top.map((item) => ({ key: item.key, label: item.label, count: item.count })),
+    ...(remainderCount > 0
+      ? [{ key: REMAINDER_REASON_KEY, label: REMAINDER_REASON_LABEL, count: remainderCount }]
+      : [])
+  ]
+
+  const maxCount = rows.reduce((max, item) => Math.max(max, item.count), 0)
+  return rows.map((item) => ({
+    ...item,
+    visualFillPercent: toVisualPercent(item.count, maxCount)
+  }))
 }
 
 /**
@@ -117,6 +169,7 @@ export const buildConversionInfographicModel = ({
       visualSharePercent: toVisualPercent(item.count, decisionTotal)
     })),
     decisionTotal,
+    topUnregisteredReasons: buildTopReasons(analytics.unregisteredReasons),
     applicationFootnote: APPLICATION_FOOTNOTE
   }
 }

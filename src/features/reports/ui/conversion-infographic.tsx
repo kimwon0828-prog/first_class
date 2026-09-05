@@ -75,6 +75,26 @@ export const ConversionInfographic = ({ model, captureRef }: ConversionInfograph
       ))}
     </ul>
 
+    {model.topUnregisteredReasons.length > 0 ? (
+      <>
+        <h2 className={styles.sectionTitle}>미등록 주요 사유</h2>
+        <ul className={styles.reasonList}>
+          {model.topUnregisteredReasons.map((reason) => (
+            <li key={reason.key} className={styles.reasonRow}>
+              <span className={styles.reasonLabel}>{reason.label}</span>
+              <span className={styles.reasonTrack}>
+                <span
+                  className={styles.reasonFill}
+                  style={{ width: `${reason.visualFillPercent}%` }}
+                />
+              </span>
+              <span className={styles.reasonCount}>{reason.count}</span>
+            </li>
+          ))}
+        </ul>
+      </>
+    ) : null}
+
     <div className={styles.footer}>
       <p className={styles.footnote}>{model.applicationFootnote}</p>
       <p className={styles.generatedAt}>생성일 {model.generatedDateLabel}</p>

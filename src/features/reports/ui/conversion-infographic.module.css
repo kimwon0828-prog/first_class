@@ -57,8 +57,9 @@
 }
 
 .kpiCard {
-  margin-top: 44px;
-  padding: 40px 44px;
+  flex: none;
+  margin-top: 36px;
+  padding: 34px 44px;
   border-radius: var(--r-lg);
   background: var(--brand-50);
 }
@@ -71,9 +72,9 @@
 }
 
 .kpiValue {
-  margin: 8px 0 0;
-  font-size: 104px;
-  line-height: 112px;
+  margin: 6px 0 0;
+  font-size: 92px;
+  line-height: 100px;
   font-weight: 800;
   letter-spacing: -0.05em;
   color: var(--brand-700);
@@ -87,19 +88,21 @@
 }
 
 .sectionTitle {
-  margin: 48px 0 20px;
+  flex: none;
+  margin: 36px 0 16px;
   font-size: 26px;
   font-weight: 700;
   color: var(--text-1);
 }
 
 .funnelList {
+  flex: none;
   list-style: none;
   margin: 0;
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 14px;
 }
 
 .funnelRow {
@@ -144,6 +147,9 @@
 
 .decisionBar {
   display: flex;
+  /* 리포트가 세로 flex 컨테이너라 내용이 늘면 고정 높이 막대가 0으로 눌린다.
+     축소 대상에서 빼 둔다. */
+  flex: none;
   height: 34px;
   border-radius: var(--r-full);
   overflow: hidden;
@@ -167,8 +173,9 @@
 }
 
 .decisionLegend {
+  flex: none;
   list-style: none;
-  margin: 20px 0 0;
+  margin: 18px 0 0;
   padding: 0;
   display: flex;
   gap: 40px;
@@ -216,4 +223,49 @@
   font-size: 18px;
   color: var(--text-3);
   white-space: nowrap;
+}
+
+/* 미등록 주요 사유 — funnel 과 같은 문법을 쓰되 중립 색으로 둔다. */
+.reasonList {
+  flex: none;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.reasonRow {
+  display: grid;
+  grid-template-columns: 230px 1fr 90px;
+  align-items: center;
+  gap: 20px;
+}
+
+.reasonLabel {
+  font-size: 24px;
+  font-weight: 600;
+  color: var(--text-2);
+}
+
+.reasonTrack {
+  display: flex;
+  height: 28px;
+  border-radius: var(--r-full);
+  background: var(--surface-sub);
+  overflow: hidden;
+}
+
+.reasonFill {
+  height: 100%;
+  border-radius: var(--r-full);
+  background: var(--gray-fg);
+}
+
+.reasonCount {
+  font-size: 28px;
+  font-weight: 800;
+  text-align: right;
+  letter-spacing: -0.02em;
 }
