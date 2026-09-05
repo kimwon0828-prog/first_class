@@ -198,7 +198,8 @@ type EmbeddedConfirmedBlockRow = {
 type TrialApplicationRow = {
   id: string
   class_id: string
-  parent_id: string
+  /** 엑셀로 이관한 예약에는 학부모 계정이 없다. */
+  parent_id: string | null
   child_id?: string | null
   child_name: string
   child_grade: string

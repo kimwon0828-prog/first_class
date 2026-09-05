@@ -486,6 +486,40 @@ export type UpdateStudioScheduleBlockTypeInput = {
   nextType: Extract<StudioScheduleBlockType, "available" | "blocked">
 }
 
+/**
+ * 엑셀 이관 이력.
+ *
+ * batch 는 멱등성의 근거다 — 같은 batch 를 다시 실행해도 신청이 두 벌 생기지 않는다.
+ * row 는 중복 후보 판정(fingerprint)과 "이 신청이 몇 번째 행에서 왔는지" 추적에 쓴다.
+ */
+export const STUDIO_IMPORT_TYPES = ["trial_reservations"] as const
+export type StudioImportType = (typeof STUDIO_IMPORT_TYPES)[number]
+
+export const STUDIO_IMPORT_BATCH_STATUSES = [
+  "previewed",
+  "importing",
+  "completed",
+  "failed"
+] as const
+export type StudioImportBatchStatus = (typeof STUDIO_IMPORT_BATCH_STATUSES)[number]
+
+export const STUDIO_IMPORT_ROW_STATUSES = ["imported", "skipped", "failed"] as const
+export type StudioImportRowStatus = (typeof STUDIO_IMPORT_ROW_STATUSES)[number]
+
+export type StudioImportBatch = {
+  id: string
+  organizationId: string
+  importType: StudioImportType
+  originalFileName: string | null
+  status: StudioImportBatchStatus
+  totalRows: number
+  validRows: number
+  importedRows: number
+  failedRows: number
+  createdAt: string
+  completedAt: string | null
+}
+
 export type TrialApplicationInput = {
   parentId: string
   classId: string
@@ -546,7 +580,11 @@ export type TrialApplicationSummary = {
   teacherDisplayName: string | null
   organizationAddress: string | null
   organizationAddressDetail: string | null
-  parentId: string
+  /**
+   * 신청한 학부모 계정. 엑셀로 이관한 예약에는 계정이 없어 null 이다.
+   * null 이면 어떤 학부모의 `/my` 에도 나타나지 않는다(RLS: parent_id = auth.uid()).
+   */
+  parentId: string | null
   childName: string
   childGrade: string
   parentName: string | null
