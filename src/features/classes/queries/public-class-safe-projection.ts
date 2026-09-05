@@ -161,10 +161,19 @@ const buildPublicClassesQuery = (
   options?: ListPublicClassesOptions
 ) => {
   const serviceRoleClient = getSupabaseServiceRoleClient()
+  // classes 가 아니라 marketplace_ranked_classes 를 읽는다.
+  // 컬럼은 classes 그대로이고 정렬용 boost_eligible 하나가 더 붙어 있다.
+  //
+  // 정렬은 반드시 DB 에서, limit 보다 먼저 끝나야 한다.
+  // 가져온 뒤 JS 에서 정렬하면 기본 화면의 fetch limit(10) 때문에
+  // created_at 기준 11번째인 Standard 수업이 영원히 노출되지 않는다.
+  //
+  // boost 는 filter 가 아니라 ordering 이다 — 무료 수업이 목록에서 빠지지 않는다.
   let query = serviceRoleClient
-    .from("classes")
+    .from("marketplace_ranked_classes")
     .select(selectFields)
     .eq("is_active", true)
+    .order("boost_eligible", { ascending: false })
     .order("created_at", { ascending: false })
 
   if (options?.subjectCategoryId) {
