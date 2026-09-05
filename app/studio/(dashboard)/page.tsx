@@ -2,6 +2,7 @@ import Link from "next/link"
 
 import { getStudioEntitlementsForDisplay } from "@/features/billing/queries/get-organization-entitlements"
 import {
+  buildConversionInfographicFileName,
   buildConversionInfographicModel,
   buildConversionInfographicPeriodFileLabel
 } from "@/features/reports/lib/conversion-infographic-model"
@@ -80,12 +81,14 @@ export default async function StudioIndexPage({ searchParams }: StudioIndexPageP
       analytics,
       generatedAt: new Date()
     })
-    infographicFileName = buildConversionInfographicPeriodFileLabel({
-      startDate: selectedDateRange.startDate,
-      endDate: selectedDateRange.endDate
+    infographicFileName = buildConversionInfographicFileName({
+      organizationName: academyName,
+      periodFileLabel: buildConversionInfographicPeriodFileLabel({
+        startDate: selectedDateRange.startDate,
+        endDate: selectedDateRange.endDate
+      })
     })
   }
-  void infographicFileName
 
   const scheduleTitle = view.scheduleMode === "today" ? "오늘 체험 일정" : "다가오는 체험 일정"
 
@@ -140,8 +143,11 @@ export default async function StudioIndexPage({ searchParams }: StudioIndexPageP
 
               <div className={styles.analyticsActions}>
                 {metrics ? <StudioDashboardPeriodControl selectedRange={selectedDateRange} /> : null}
-                {infographicModel ? (
-                  <ConversionInfographicLauncher model={infographicModel} />
+                {infographicModel && infographicFileName ? (
+                  <ConversionInfographicLauncher
+                    model={infographicModel}
+                    fileName={infographicFileName}
+                  />
                 ) : null}
               </div>
             </header>

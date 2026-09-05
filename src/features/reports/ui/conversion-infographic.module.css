@@ -6,6 +6,9 @@
  * 그래야 미리보기와 저장 결과가 같은 그림이 된다.
  */
 .report {
+  /* 캡처 크기와 실제 박스 크기가 어긋나지 않도록 여기서 직접 고정한다.
+     전역 reset 에 기대면 캡처 환경이 달라졌을 때 내용이 잘린다. */
+  box-sizing: border-box;
   width: 1080px;
   height: 1350px;
   display: flex;
@@ -113,6 +116,9 @@
 }
 
 .funnelTrack {
+  /* inline 요소인 span 이 막대가 되려면 flex item 이어야 한다.
+     block 이 아니면 height/width 가 무시돼 막대가 보이지 않는다. */
+  display: flex;
   height: 34px;
   border-radius: var(--r-full);
   background: var(--surface-sub);

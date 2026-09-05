@@ -12,6 +12,8 @@
 //   7. 기간 경계는 KST 기준이며 Dashboard 와 같은 모집단을 본다.
 
 import {
+  CONVERSION_INFOGRAPHIC_HEIGHT,
+  CONVERSION_INFOGRAPHIC_WIDTH,
   buildConversionInfographicFileName,
   buildConversionInfographicModel,
   buildConversionInfographicPeriodFileLabel,
@@ -262,6 +264,21 @@ console.log("\n[7] 파일명 · 생성일")
     "파일명 정규화가 다르다"
   )
   passLine(before, "생성일 KST · 기간 표기 · 파일명 sanitize")
+}
+
+// ─────────────────────────────────────────────────────────────
+console.log("\n[8] 내보내기 크기 계약")
+{
+  const before = failures
+  // 실제 PNG bitmap 은 브라우저에서 1080×1350 으로 확인했다(REPORT-2 보고 참고).
+  // 여기서는 그 크기를 정하는 상수가 바뀌지 않았는지만 고정한다.
+  check(CONVERSION_INFOGRAPHIC_WIDTH === 1080, `가로가 1080 이 아니다: ${CONVERSION_INFOGRAPHIC_WIDTH}`)
+  check(CONVERSION_INFOGRAPHIC_HEIGHT === 1350, `세로가 1350 이 아니다: ${CONVERSION_INFOGRAPHIC_HEIGHT}`)
+  check(
+    CONVERSION_INFOGRAPHIC_HEIGHT / CONVERSION_INFOGRAPHIC_WIDTH === 1350 / 1080,
+    "4:5 비율이 아니다"
+  )
+  passLine(before, "1080 × 1350 (4:5)")
 }
 
 if (failures > 0) {
