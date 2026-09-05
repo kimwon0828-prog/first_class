@@ -1,0 +1,213 @@
+/*
+ * 공유용 리포트 한 장.
+ *
+ * 실제 다운로드 크기(1080×1350)를 픽셀로 고정한다. 화면에서는 감싸는 쪽이
+ * transform: scale 로 줄여서 보여주고, 캡처는 이 원본 크기로 한다.
+ * 그래야 미리보기와 저장 결과가 같은 그림이 된다.
+ */
+.report {
+  width: 1080px;
+  height: 1350px;
+  display: flex;
+  flex-direction: column;
+  padding: 72px 72px 56px;
+  background: var(--surface);
+  color: var(--text-1);
+  /* 캡처 결과가 뷰어 설정에 흔들리지 않도록 리포트 안에서 폰트를 고정한다. */
+  font-family: Inter, Pretendard, -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+}
+
+.brandRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 20px;
+  border-bottom: 2px solid var(--text-1);
+}
+
+.wordmark {
+  font-size: 26px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: var(--brand-700);
+}
+
+.reportKind {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text-2);
+}
+
+.headline {
+  margin: 36px 0 0;
+  font-size: 52px;
+  line-height: 60px;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+}
+
+.periodLine {
+  margin: 12px 0 0;
+  font-size: 24px;
+  line-height: 32px;
+  color: var(--text-2);
+}
+
+.kpiCard {
+  margin-top: 44px;
+  padding: 40px 44px;
+  border-radius: var(--r-lg);
+  background: var(--brand-50);
+}
+
+.kpiLabel {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--brand-700);
+}
+
+.kpiValue {
+  margin: 8px 0 0;
+  font-size: 104px;
+  line-height: 112px;
+  font-weight: 800;
+  letter-spacing: -0.05em;
+  color: var(--brand-700);
+}
+
+.kpiMeta {
+  margin: 8px 0 0;
+  font-size: 24px;
+  line-height: 32px;
+  color: var(--text-2);
+}
+
+.sectionTitle {
+  margin: 48px 0 20px;
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--text-1);
+}
+
+.funnelList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.funnelRow {
+  display: grid;
+  grid-template-columns: 190px 1fr 90px;
+  align-items: center;
+  gap: 20px;
+}
+
+.funnelLabel {
+  font-size: 24px;
+  font-weight: 600;
+  color: var(--text-2);
+}
+
+.funnelTrack {
+  height: 34px;
+  border-radius: var(--r-full);
+  background: var(--surface-sub);
+  overflow: hidden;
+}
+
+.funnelFill {
+  height: 100%;
+  border-radius: var(--r-full);
+  background: var(--brand-500);
+}
+
+.funnelFillLast {
+  background: var(--brand-700);
+}
+
+.funnelCount {
+  font-size: 30px;
+  font-weight: 800;
+  text-align: right;
+  letter-spacing: -0.02em;
+}
+
+.decisionBar {
+  display: flex;
+  height: 34px;
+  border-radius: var(--r-full);
+  overflow: hidden;
+  background: var(--surface-sub);
+}
+
+.decisionSegment {
+  height: 100%;
+}
+
+.decisionEnrolled {
+  background: var(--green-fg);
+}
+
+.decisionPending {
+  background: var(--amber-fg);
+}
+
+.decisionNotEnrolled {
+  background: var(--gray-fg);
+}
+
+.decisionLegend {
+  list-style: none;
+  margin: 20px 0 0;
+  padding: 0;
+  display: flex;
+  gap: 40px;
+}
+
+.decisionItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 24px;
+  color: var(--text-2);
+}
+
+.decisionDot {
+  width: 16px;
+  height: 16px;
+  border-radius: var(--r-full);
+}
+
+.decisionValue {
+  font-weight: 800;
+  color: var(--text-1);
+}
+
+.footer {
+  margin-top: auto;
+  padding-top: 28px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.footnote {
+  margin: 0;
+  font-size: 18px;
+  line-height: 26px;
+  color: var(--text-3);
+  max-width: 640px;
+}
+
+.generatedAt {
+  margin: 0;
+  font-size: 18px;
+  color: var(--text-3);
+  white-space: nowrap;
+}

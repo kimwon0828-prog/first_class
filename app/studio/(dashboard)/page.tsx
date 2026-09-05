@@ -2,6 +2,12 @@ import Link from "next/link"
 
 import { getStudioEntitlementsForDisplay } from "@/features/billing/queries/get-organization-entitlements"
 import {
+  buildConversionInfographicModel,
+  buildConversionInfographicPeriodFileLabel
+} from "@/features/reports/lib/conversion-infographic-model"
+import { ConversionInfographicLauncher } from "@/features/reports/ui/conversion-infographic-launcher"
+import { getStudioSettingsOrganization } from "@/features/studio/queries/get-studio-settings-organization"
+import {
   STUDIO_DONUT_RADIUS,
   STUDIO_DONUT_STROKE,
   STUDIO_DONUT_VIEWBOX,
@@ -51,6 +57,35 @@ export default async function StudioIndexPage({ searchParams }: StudioIndexPageP
     : null
   const analytics = metrics ? buildStudioDashboardAnalytics(metrics) : null
   const donutCenter = STUDIO_DONUT_VIEWBOX / 2
+
+  // 공유용 리포트는 위에서 만든 지표를 그대로 다시 그린다. 숫자를 새로 세지 않는다.
+  // 유료 권한이 없으면 지표 자체가 없으므로 리포트도 만들지 않는다.
+  let infographicModel = null
+  let infographicFileName: string | null = null
+  if (metrics && analytics) {
+    let academyName = teacher.name?.trim() || "우리 학원"
+    try {
+      const organization = await getStudioSettingsOrganization(teacher)
+      academyName =
+        [organization?.name?.trim(), organization?.branchName?.trim()]
+          .filter((value): value is string => Boolean(value))
+          .join(" ") || academyName
+    } catch {
+      // 학원 이름은 표시용이다. 못 읽어도 리포트는 만든다.
+    }
+
+    infographicModel = buildConversionInfographicModel({
+      organizationName: academyName,
+      metrics,
+      analytics,
+      generatedAt: new Date()
+    })
+    infographicFileName = buildConversionInfographicPeriodFileLabel({
+      startDate: selectedDateRange.startDate,
+      endDate: selectedDateRange.endDate
+    })
+  }
+  void infographicFileName
 
   const scheduleTitle = view.scheduleMode === "today" ? "오늘 체험 일정" : "다가오는 체험 일정"
 
@@ -103,7 +138,12 @@ export default async function StudioIndexPage({ searchParams }: StudioIndexPageP
                 </p>
               </div>
 
-              {metrics ? <StudioDashboardPeriodControl selectedRange={selectedDateRange} /> : null}
+              <div className={styles.analyticsActions}>
+                {metrics ? <StudioDashboardPeriodControl selectedRange={selectedDateRange} /> : null}
+                {infographicModel ? (
+                  <ConversionInfographicLauncher model={infographicModel} />
+                ) : null}
+              </div>
             </header>
 
             {analytics ? (

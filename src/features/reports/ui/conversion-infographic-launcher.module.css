@@ -1,0 +1,111 @@
+.trigger {
+  display: inline-flex;
+  align-items: center;
+  height: 36px;
+  padding: 0 var(--s3);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  color: var(--text-1);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.trigger:hover {
+  border-color: var(--text-3);
+}
+
+.trigger:focus-visible,
+.primaryButton:focus-visible,
+.secondaryButton:focus-visible {
+  outline: 2px solid var(--brand-500);
+  outline-offset: 2px;
+}
+
+/* 작은 modal 이 아니라 전체 화면이다. 공유물 전체가 한눈에 보여야 한다. */
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+}
+
+.bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s3);
+  padding: var(--s4) var(--s5);
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+  flex-wrap: wrap;
+}
+
+.barTitle {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.barActions {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+}
+
+.primaryButton,
+.secondaryButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 40px;
+  padding: 0 var(--s4);
+  border-radius: var(--r-md);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.primaryButton {
+  border: 1px solid var(--brand-500);
+  background: var(--brand-500);
+  color: #ffffff;
+}
+
+.primaryButton:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.secondaryButton {
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  color: var(--text-1);
+}
+
+.stage {
+  flex: 1;
+  overflow: auto;
+  padding: var(--s5);
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+}
+
+/* 원본 1080×1350 을 화면 폭에 맞춰 줄인다. 비율은 유지한다. */
+.scaler {
+  transform-origin: top center;
+  flex: 0 0 auto;
+}
+
+.message {
+  margin: 0;
+  padding: var(--s2) var(--s3);
+  border-radius: var(--r-sm);
+  background: var(--red-bg);
+  color: var(--red-fg);
+  font-size: 13px;
+}

@@ -60,6 +60,13 @@
   margin-bottom: var(--s4);
 }
 
+.analyticsActions {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  flex-wrap: wrap;
+}
+
 .analyticsHead {
   display: flex;
   align-items: flex-end;
