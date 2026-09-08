@@ -1,0 +1,63 @@
+.page {
+  display: grid;
+  gap: var(--s5);
+  max-width: var(--studio-max);
+}
+
+.header {
+  display: grid;
+  gap: var(--s2);
+}
+
+.title {
+  margin: 0;
+  font-size: 24px;
+  line-height: 32px;
+  font-weight: 700;
+  color: var(--text-1);
+}
+
+.description,
+.hint {
+  margin: 0;
+  font-size: 14px;
+  line-height: 22px;
+  color: var(--text-2);
+}
+
+.notice {
+  margin: 0;
+  padding: var(--s3) var(--s4);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--surface-sub);
+  color: var(--text-2);
+  font-size: 14px;
+  line-height: 22px;
+}
+
+.card {
+  display: grid;
+  gap: var(--s3);
+  padding: var(--s5);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+}
+
+.cardTitle {
+  margin: 0;
+  font-size: 15px;
+  line-height: 22px;
+  font-weight: 700;
+  color: var(--text-1);
+}
+
+.planValue,
+.price {
+  margin: 0;
+  font-size: 20px;
+  line-height: 28px;
+  font-weight: 700;
+  color: var(--text-1);
+}

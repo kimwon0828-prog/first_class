@@ -1,0 +1,33 @@
+.wrapper {
+  display: grid;
+  gap: 8px;
+  justify-items: start;
+}
+
+.primary {
+  height: 40px;
+  padding: 0 16px;
+  border: 1px solid var(--brand-700);
+  border-radius: var(--r-md);
+  background: var(--brand-700);
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.primary:hover:not(:disabled) {
+  background: var(--brand-900);
+}
+
+.primary:disabled {
+  cursor: progress;
+  opacity: 0.7;
+}
+
+.message {
+  margin: 0;
+  font-size: 13px;
+  line-height: 20px;
+  color: var(--red-fg);
+}

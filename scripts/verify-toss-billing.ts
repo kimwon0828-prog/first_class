@@ -12,7 +12,11 @@
 //   4. timeout·5xx·409 는 실패가 아니라 "불명" 이다.
 //   5. 금액·주문번호가 다르면 결제를 반영하지 않는다.
 //   6. 월 기준일은 밀리지 않는다(1/31 → 2/28 → 3/31).
+//   7. 결제창 callback 은 저장해 둔 의도와 맞을 때만 진행한다(cross-org·재생 차단).
+//   8. 결제 결과를 모르면 원장에 쓰지 않는다.
 
+import { chargeSubscription } from "@/features/billing/lib/charge/charge-subscription"
+import { checkCheckoutCallback } from "@/features/billing/lib/checkout/checkout-guards"
 import {
   chargeTossBillingKey,
   getTossPaymentByOrderId,
@@ -45,6 +49,38 @@ const passLine = (before: number, message: string) => {
   if (failures === before) {
     console.log(`  PASS  ${message}`)
   }
+}
+
+// [11] 만 로컬 Supabase 를 쓴다. 나머지는 네트워크 없이 돈다.
+const REST_URL = process.env.SUPABASE_LOCAL_URL ?? "http://127.0.0.1:54321"
+const SERVICE_KEY =
+  process.env.SUPABASE_LOCAL_SERVICE_ROLE_KEY ??
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImV4cCI6MTk4MzgxMjk5Nn0.EGIM96RAZx35lJzdJsyH-qQwv8Hdp7fsn3W0YpN81IU"
+const ANON_KEY =
+  process.env.SUPABASE_LOCAL_ANON_KEY ??
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0"
+
+if (!REST_URL.includes("127.0.0.1") && !REST_URL.includes("localhost")) {
+  console.error("이 스크립트의 DB 검증 구간은 로컬 Supabase 전용이다.")
+  process.exit(1)
+}
+
+const admin = async (path: string, init?: RequestInit) => {
+  const response = await fetch(`${REST_URL}/rest/v1/${path}`, {
+    ...init,
+    headers: {
+      apikey: SERVICE_KEY,
+      Authorization: `Bearer ${SERVICE_KEY}`,
+      "Content-Type": "application/json",
+      Prefer: "return=representation",
+      ...(init?.headers ?? {})
+    }
+  })
+  const text = await response.text()
+  if (!response.ok) {
+    throw new Error(`${path} → ${response.status} ${text}`)
+  }
+  return text ? JSON.parse(text) : null
 }
 
 const SECRET = "test_sk_verifyverifyverify1234"
@@ -335,6 +371,290 @@ const run = async () => {
     const recovered = buildRenewalBillingPeriod(new Date("2027-02-28T10:00:00+09:00"), null)
     check(recovered.anchorDay === 28, `앵커 복구가 다르다: ${recovered.anchorDay}`)
     passLine(before, `1/31 → ${actual.join(" → ")}`)
+  }
+
+
+  // ───────────────────────────────────────────────────────────
+  console.log("\n[9] 결제창 callback 검증")
+  {
+    const before = failures
+    const ORG_A = "8cd6f7e4-fd75-48db-9b11-c7dfe43ef421"
+    const ORG_B = "5f279736-afbc-4be4-bb54-b42435f2c789"
+    const session = {
+      id: "3f2b1a44-0000-4000-8000-000000000abc",
+      organizationId: ORG_A,
+      customerKey: "fs-00000000000000000000000000000001",
+      planCode: "standard",
+      amount: 49000,
+      orderId: "fsc-3f2b1a4400004000800000000000abc",
+      paymentIdempotencyKey: "checkout:3f2b1a44-0000-4000-8000-000000000abc",
+      status: "pending",
+      expiresAt: "2026-09-08T12:00:00.000Z"
+    }
+    const now = new Date("2026-09-08T11:00:00.000Z")
+    const callback = { actorOrganizationId: ORG_A, customerKey: session.customerKey, authKey: "auth_1" }
+
+    // A. 정상 진입
+    check(checkCheckoutCallback(session, callback, now).ok, "정상 callback 이 거부됐다")
+
+    // B. 다른 조직이 남의 callback 을 재생
+    const crossOrg = checkCheckoutCallback(session, { ...callback, actorOrganizationId: ORG_B }, now)
+    check(!crossOrg.ok, "다른 조직의 callback 이 통과했다")
+    check(
+      !crossOrg.ok && crossOrg.code === "organization_mismatch",
+      "cross-org 거부 코드가 다르다"
+    )
+    check(
+      !crossOrg.ok && crossOrg.message === "결제 요청을 찾을 수 없습니다. 처음부터 다시 시도해 주세요.",
+      "cross-org 응답이 존재 여부를 알려 준다"
+    )
+
+    // C. 같은 callback 재생
+    const replay = checkCheckoutCallback({ ...session, status: "authorized" }, callback, now)
+    check(!replay.ok && replay.code === "already_processed", "이미 처리된 callback 이 통과했다")
+    check(
+      !checkCheckoutCallback({ ...session, status: "completed" }, callback, now).ok,
+      "완료된 세션이 다시 통과했다"
+    )
+
+    check(!checkCheckoutCallback(null, callback, now).ok, "세션 없는 callback 이 통과했다")
+    check(
+      !checkCheckoutCallback(session, { ...callback, authKey: "" }, now).ok,
+      "authKey 없는 callback 이 통과했다"
+    )
+    check(
+      !checkCheckoutCallback(session, callback, new Date("2026-09-08T12:00:01.000Z")).ok,
+      "만료된 세션이 통과했다"
+    )
+    passLine(before, "조직 불일치·재생·만료·누락 전부 차단")
+  }
+
+  // ───────────────────────────────────────────────────────────
+  console.log("\n[10] 결제 실행 분기")
+  {
+    const before = failures
+    const ORG = "8cd6f7e4-fd75-48db-9b11-c7dfe43ef421"
+    const ORDER_ID = "fsr-8cd6f7e4fd7548db9b11c7dfe43ef421-202610100000-a0"
+    const ATTEMPT_KEY = `renewal:${ORG}:2026-10-10T00:00:00.000Z:a0`
+
+    /** apply_billing_event 를 흉내 낸다 — 같은 멱등 키는 두 번 반영되지 않는다. */
+    const createLedger = () => {
+      const applied: Array<{ type: string; key: string }> = []
+      const apply = async (event: {
+        type: string
+        idempotencyKey?: string
+        [key: string]: unknown
+      }) => {
+        const key = String(event.idempotencyKey ?? "")
+        if (applied.some((item) => item.key === key)) {
+          return { mode: "duplicate" } as const
+        }
+        applied.push({ type: event.type, key })
+        return { mode: "applied", status: "active", currentPeriodEnd: null } as const
+      }
+      return { applied, apply: apply as never }
+    }
+
+    const donePayment = {
+      paymentKey: "pk_1",
+      orderId: ORDER_ID,
+      status: "DONE",
+      totalAmount: 49000,
+      approvedAt: "2026-10-10T09:00:00+09:00",
+      currency: "KRW"
+    }
+
+    const runCharge = async (
+      handler: Parameters<typeof mockFetch>[0],
+      ledger: ReturnType<typeof createLedger>
+    ) => {
+      const mock = mockFetch(handler)
+      const result = await chargeSubscription(
+        { secretKey: SECRET, fetchImpl: mock.impl },
+        {
+          organizationId: ORG,
+          billingKey: "bk_1",
+          customerKey: "fs-00000000000000000000000000000001",
+          planCode: "standard",
+          amount: plan.amount,
+          orderId: ORDER_ID,
+          orderName: "첫수업 스탠다드 구독",
+          idempotencyKey: ORDER_ID,
+          attemptKey: ATTEMPT_KEY,
+          eventType: "renewal_succeeded",
+          resolvePeriod: () => ({
+            periodStart: "2026-10-10T00:00:00.000Z",
+            periodEnd: "2026-11-10T00:00:00.000Z"
+          }),
+          applyEvent: ledger.apply
+        }
+      )
+      return { result, calls: mock.calls }
+    }
+
+    // E/I. 승인 성공 → 성공 이벤트 1건
+    {
+      const ledger = createLedger()
+      const { result } = await runCharge(() => ({ status: 200, body: donePayment }), ledger)
+      check(result.status === "succeeded", `성공 결제가 ${result.status} 로 분류됐다`)
+      check(
+        ledger.applied.length === 1 && ledger.applied[0].type === "renewal_succeeded",
+        `반영된 이벤트가 다르다: ${JSON.stringify(ledger.applied)}`
+      )
+    }
+
+    // F/J. 카드사 거절 → 실패 이벤트 1건
+    {
+      const ledger = createLedger()
+      const { result } = await runCharge((url, init) => {
+        if (init.method === "GET") {
+          return { status: 404, body: { code: "NOT_FOUND_PAYMENT" } }
+        }
+        return { status: 400, body: { code: "REJECT_CARD_COMPANY", message: "한도 초과" } }
+      }, ledger)
+      check(result.status === "declined", `거절이 ${result.status} 로 분류됐다`)
+      check(
+        ledger.applied.length === 1 && ledger.applied[0].type === "payment_failed",
+        "실패 이벤트가 남지 않았다"
+      )
+    }
+
+    // K. timeout → pending. 원장에 아무것도 쓰지 않는다.
+    {
+      const ledger = createLedger()
+      const { result, calls } = await runCharge((url, init) => {
+        if (init.method === "GET") {
+          return { status: 500, body: { code: "SERVER_ERROR" } }
+        }
+        return "timeout"
+      }, ledger)
+      check(result.status === "pending", `불명이 ${result.status} 로 분류됐다`)
+      check(ledger.applied.length === 0, "결과를 모르는데 원장에 썼다")
+      check(calls.some((call) => call.init.method === "GET"), "불명일 때 결제 조회를 하지 않았다")
+    }
+
+    // K'. timeout 이지만 실제로는 결제가 됐던 경우 → 조회로 성공 확정
+    {
+      const ledger = createLedger()
+      const { result } = await runCharge((url, init) => {
+        if (init.method === "GET") {
+          return { status: 200, body: donePayment }
+        }
+        return "timeout"
+      }, ledger)
+      check(result.status === "succeeded", "조회로 확인된 성공이 반영되지 않았다")
+      check(ledger.applied.length === 1, "성공이 원장에 반영되지 않았다")
+    }
+
+    // G. 금액이 다른 결제 → 성공도 실패도 아니다
+    {
+      const ledger = createLedger()
+      const { result } = await runCharge(
+        () => ({ status: 200, body: { ...donePayment, totalAmount: 1000 } }),
+        ledger
+      )
+      check(result.status === "mismatch", `금액 불일치가 ${result.status} 로 분류됐다`)
+      check(ledger.applied.length === 0, "금액이 다른 결제를 반영했다")
+    }
+
+    // H. 같은 시도 재실행 → 결제 이벤트는 한 번만 반영된다
+    {
+      const ledger = createLedger()
+      await runCharge(() => ({ status: 200, body: donePayment }), ledger)
+      const second = await runCharge(() => ({ status: 200, body: donePayment }), ledger)
+      check(second.result.status === "succeeded", "재실행이 실패했다")
+      check(ledger.applied.length === 1, `같은 시도가 두 번 반영됐다: ${ledger.applied.length}`)
+      const idempotencyHeaders = second.calls
+        .filter((call) => call.init.method === "POST")
+        .map((call) => (call.init.headers as Record<string, string>)["Idempotency-Key"])
+      check(
+        idempotencyHeaders.every((value) => value === ORDER_ID),
+        "재실행이 다른 멱등키를 보냈다 — Toss 에서 이중 결제가 된다"
+      )
+    }
+    passLine(before, "성공·거절·불명·불일치·재실행 분기가 계약대로 갈린다")
+  }
+
+
+  // ───────────────────────────────────────────────────────────
+  console.log("\n[11] checkout 세션 저장소 (로컬 Supabase)")
+  {
+    const before = failures
+    const ORG_ID = "b21e0000-0000-4000-8000-000000000011"
+    const SESSION_ID = "b21e0000-0000-4000-8000-0000000000c1"
+    const attempt = buildInitialBillingAttempt(SESSION_ID)
+
+    const cleanup = async () => {
+      await admin(`billing_checkout_sessions?organization_id=eq.${ORG_ID}`, { method: "DELETE" })
+      await admin(`organizations?id=eq.${ORG_ID}`, { method: "DELETE" })
+    }
+
+    await cleanup()
+    await admin("organizations", {
+      method: "POST",
+      body: JSON.stringify({ id: ORG_ID, name: "결제창 검증", branch_name: "본원" })
+    })
+
+    const insertSession = (id: string, orderId: string, key: string, customerKey: string) =>
+      admin("billing_checkout_sessions", {
+        method: "POST",
+        body: JSON.stringify({
+          id,
+          organization_id: ORG_ID,
+          customer_key: customerKey,
+          plan_code: "standard",
+          amount: 49000,
+          order_id: orderId,
+          payment_idempotency_key: key,
+          expires_at: new Date(Date.now() + 30 * 60 * 1000).toISOString()
+        })
+      })
+
+    await insertSession(SESSION_ID, attempt.orderId, attempt.attemptKey, "fs-000000000000000000000000000000c1")
+
+    // C. 조건부 claim 이 재생을 막는다. 두 번째 요청은 0행이다.
+    const claim = async () => {
+      const rows = (await admin(
+        `billing_checkout_sessions?id=eq.${SESSION_ID}&status=eq.pending`,
+        {
+          method: "PATCH",
+          body: JSON.stringify({ status: "authorized", authorized_at: new Date().toISOString() })
+        }
+      )) as Array<unknown>
+      return rows.length
+    }
+
+    check((await claim()) === 1, "첫 callback 이 세션을 선점하지 못했다")
+    check((await claim()) === 0, "두 번째 callback 도 세션을 선점했다 — 재생이 뚫린다")
+
+    // 같은 조직이 결제창을 다시 열면 새 세션이 필요하다. 키는 겹치면 안 된다.
+    const duplicateOrder = await admin("billing_checkout_sessions", {
+      method: "POST",
+      body: JSON.stringify({
+        id: "b21e0000-0000-4000-8000-0000000000c2",
+        organization_id: ORG_ID,
+        customer_key: "fs-000000000000000000000000000000c2",
+        plan_code: "standard",
+        amount: 49000,
+        order_id: attempt.orderId,
+        payment_idempotency_key: "checkout:other",
+        expires_at: new Date().toISOString()
+      })
+    }).then(
+      () => "inserted",
+      () => "rejected"
+    )
+    check(duplicateOrder === "rejected", "같은 주문번호로 세션이 두 개 만들어졌다")
+
+    // 학원 계정(authenticated)은 결제 의도를 읽지도 만들지도 못한다.
+    const anonRead = await fetch(
+      `${REST_URL}/rest/v1/billing_checkout_sessions?select=id`,
+      { headers: { apikey: ANON_KEY, Authorization: `Bearer ${ANON_KEY}` } }
+    )
+    check(anonRead.status !== 200, `anon 이 결제 의도를 읽었다: ${anonRead.status}`)
+
+    await cleanup()
+    passLine(before, "조건부 claim 1회 · 주문번호 유일 · 외부 읽기 차단")
   }
 
   if (failures > 0) {
