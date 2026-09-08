@@ -108,6 +108,7 @@ console.log("\n[2] 스탠다드 이용 중")
   // J. 유료인데 결제수단이 없다 — 자동 결제가 없으므로 "다음 결제일" 이라고 쓰지 않는다.
   const noMethod = present({ subscription: subscription(), override: null }, false)
   check(noMethod.dateRow?.label === "이용 종료 예정일", `결제수단 없음 날짜 라벨이 다르다: ${noMethod.dateRow?.label}`)
+  check(noMethod.monthlyAmount === null, "청구되지 않는 구독에 월 요금이 표시된다")
   check(noMethod.billingMethodMissing, "결제수단 없음이 표시되지 않는다")
   check(noMethod.alert !== null, "결제수단 없음인데 안내가 없다")
   check(!noMethod.canCancel, "결제수단이 없는데 해지 액션을 노출한다")
@@ -194,6 +195,8 @@ console.log("\n[5] 만료 · 수동 체험 · 내부 권한")
   check(poc.dateRow?.label === "이용 종료 예정일", "PoC 에 다음 결제일이라고 거짓 표시한다")
   check(poc.dateRow?.value === "2026년 12월 31일", `PoC 종료일이 다르다: ${poc.dateRow?.value}`)
   check(!poc.canCancel, "자동 결제가 없는 PoC 에 해지 액션을 노출한다")
+  // 청구되지 않는 구독에 월 요금을 적으면 청구 중이라고 오해한다.
+  check(poc.monthlyAmount === null, "수동 체험에 월 요금이 표시된다")
 
   // H. 내부 전체 권한 — 결제 사실은 무료다.
   const internal = present(

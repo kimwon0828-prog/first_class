@@ -1,4 +1,5 @@
 import { StartStandardButton } from "@/features/billing/ui/start-standard-button"
+import { SubscriptionActions } from "@/features/billing/ui/subscription-actions"
 import {
   formatBillingAmount,
   formatBillingDate,
@@ -79,6 +80,12 @@ export const BillingPage = ({ overview, notice }: BillingPageProps) => {
             </div>
           ) : null}
         </dl>
+
+        <SubscriptionActions
+          canCancel={presentation.canCancel}
+          canResume={presentation.canResume}
+          endDate={presentation.dateRow?.value ?? null}
+        />
 
         {presentation.hasInternalFullAccess ? (
           <p className={styles.hint}>

@@ -8,6 +8,7 @@
 //   2. 결제 수단이 없는 구독에 "다음 결제일" 이라고 쓰지 않는다 — 자동 결제가 없다.
 //   3. 내부 전체 권한을 "결제 중" 으로 표시하지 않는다. 결제 사실과 사용 가능 기능은 별개다.
 //   4. 유예는 "3일" 이 아니라 실제 종료 시각을 보여준다.
+//   5. 청구되지 않는 구독에 월 요금을 적지 않는다.
 
 import type { ResolvedStudioEntitlements } from "@/features/billing/lib/entitlements"
 import type { OrganizationSubscription } from "@/shared/lib/db/adapter"
@@ -164,7 +165,10 @@ export const resolveBillingPresentation = (
   }
 
   const planLabel = PLAN_LABEL[billedPlanCode] ?? PLAN_LABEL.standard
-  const monthlyAmount = billedPlanCode === "standard" ? standardAmount : null
+  // 월 요금은 실제로 청구되는 구독에만 쓴다. 수동으로 부여한 체험처럼 결제수단이 없는
+  // 구독에 "월 요금 49,000원" 이라고 적으면 청구되고 있다고 오해하게 된다.
+  const monthlyAmount =
+    billedPlanCode === "standard" && hasActiveBillingMethod ? standardAmount : null
   const periodEnd = subscription?.currentPeriodEnd ?? null
   const status = subscription?.status ?? "active"
 
