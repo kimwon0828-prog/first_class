@@ -103,3 +103,49 @@ export const buildRenewalBillingAttempt = (
 
 /** 주문명. 명세서에 그대로 찍히므로 조직명 같은 식별 정보를 넣지 않는다. */
 export const buildBillingOrderName = (planName: string) => `첫수업 ${planName} 구독`
+
+export type DecodedBillingOrder =
+  | { kind: "checkout"; checkoutSessionId: string }
+  | { kind: "renewal"; organizationId: string; periodEndCompact: string; attemptNumber: number }
+  | { kind: "unknown" }
+
+const expandUuid = (compact: string) =>
+  `${compact.slice(0, 8)}-${compact.slice(8, 12)}-${compact.slice(12, 16)}-${compact.slice(16, 20)}-${compact.slice(20)}`
+
+/**
+ * 주문번호에서 결제 주체를 되짚는다.
+ *
+ * webhook 과 대사는 orderId 만 들고 온다. 어떤 조직의 어떤 시도인지 알아야
+ * 같은 멱등 키로 반영할 수 있다. 주문번호를 우리가 만들었기 때문에 되짚을 수 있다.
+ *
+ * ⚠️ 되짚은 값은 "주장" 일 뿐이다. 실제 반영 전에 DB 의 세션·구독과 다시 대조한다.
+ */
+export const decodeBillingOrderId = (orderId: string): DecodedBillingOrder => {
+  const checkout = /^fsc-([0-9a-f]{32})$/.exec(orderId)
+  if (checkout) {
+    return { kind: "checkout", checkoutSessionId: expandUuid(checkout[1]) }
+  }
+
+  const renewal = /^fsr-([0-9a-f]{32})-(\d{12})-a(\d)$/.exec(orderId)
+  if (renewal) {
+    return {
+      kind: "renewal",
+      organizationId: expandUuid(renewal[1]),
+      periodEndCompact: renewal[2],
+      attemptNumber: Number(renewal[3])
+    }
+  }
+
+  return { kind: "unknown" }
+}
+
+/** 202610100000 → 2026-10-10T00:00:00.000Z */
+export const expandBillingInstant = (compact: string): string | null => {
+  const matched = /^(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})$/.exec(compact)
+  if (!matched) {
+    return null
+  }
+
+  const [, year, month, day, hour, minute] = matched
+  return `${year}-${month}-${day}T${hour}:${minute}:00.000Z`
+}

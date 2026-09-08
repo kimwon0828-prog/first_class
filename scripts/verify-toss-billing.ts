@@ -15,6 +15,7 @@
 //   7. 결제창 callback 은 저장해 둔 의도와 맞을 때만 진행한다(cross-org·재생 차단).
 //   8. 결제 결과를 모르면 원장에 쓰지 않는다.
 //   9. 자동 갱신 대상은 구독+빌링키뿐이다. PoC·내부 override·해지 예약은 결제하지 않는다.
+//  10. webhook body 로는 아무것도 바꾸지 않는다. 같은 이벤트는 한 번만 기록된다.
 
 import { chargeSubscription } from "@/features/billing/lib/charge/charge-subscription"
 import { checkCheckoutCallback } from "@/features/billing/lib/checkout/checkout-guards"
@@ -27,8 +28,14 @@ import {
 import { generateTossCustomerKey, isValidTossCustomerKey } from "@/features/billing/lib/toss/customer-key"
 import {
   buildInitialBillingAttempt,
-  buildRenewalBillingAttempt
+  buildRenewalBillingAttempt,
+  decodeBillingOrderId,
+  expandBillingInstant
 } from "@/features/billing/lib/toss/identifiers"
+import {
+  HANDLED_WEBHOOK_EVENTS,
+  parseTossWebhook
+} from "@/features/billing/lib/webhook/webhook-contract"
 import { buildTossBasicAuthHeader, checkTossKeyPair } from "@/features/billing/lib/toss/keys"
 import { verifyTossPayment } from "@/features/billing/lib/toss/verify-payment"
 import {
@@ -808,6 +815,123 @@ const run = async () => {
 
     await cleanup()
     passLine(before, "구독+빌링키만 대상 · PoC·override·해지예약 제외")
+  }
+
+
+  // ───────────────────────────────────────────────────────────
+  console.log("\n[14] webhook 해석 · 주문번호 역추적")
+  {
+    const before = failures
+    const ORG = "8cd6f7e4-fd75-48db-9b11-c7dfe43ef421"
+    const SESSION = "3f2b1a44-0000-4000-8000-000000000abc"
+
+    const body = {
+      eventType: "PAYMENT_STATUS_CHANGED",
+      createdAt: "2026-10-10T09:00:00.000000",
+      data: { paymentKey: "pk_1", orderId: "fsc-3f2b1a4400004000800000000000abc", status: "DONE" }
+    }
+
+    const withId = parseTossWebhook(body, "trans-1")
+    check(withId.ok && withId.envelope.eventId === "trans-1", "재전송 식별자를 쓰지 않았다")
+
+    // P. 같은 사건이 재전송 식별자 없이 두 번 와도 같은 fingerprint 여야 한다.
+    const first = parseTossWebhook(body, null)
+    const second = parseTossWebhook(JSON.parse(JSON.stringify(body)), null)
+    check(
+      first.ok && second.ok && first.envelope.eventId === second.envelope.eventId,
+      "같은 webhook 이 다른 식별자를 만든다 — 중복 차단이 안 된다"
+    )
+    const otherStatus = parseTossWebhook(
+      { ...body, data: { ...body.data, status: "ABORTED" } },
+      null
+    )
+    check(
+      otherStatus.ok && first.ok && otherStatus.envelope.eventId !== first.envelope.eventId,
+      "다른 상태 변경이 같은 식별자로 묶였다"
+    )
+
+    check(!parseTossWebhook(null, null).ok, "빈 body 가 통과했다")
+    check(!parseTossWebhook({ data: {} }, null).ok, "eventType 없는 body 가 통과했다")
+    check(
+      HANDLED_WEBHOOK_EVENTS.has("PAYMENT_STATUS_CHANGED") &&
+        HANDLED_WEBHOOK_EVENTS.has("BILLING_DELETED"),
+      "처리 대상 이벤트가 다르다"
+    )
+    check(!HANDLED_WEBHOOK_EVENTS.has("DEPOSIT_CALLBACK"), "무관한 이벤트를 처리 대상으로 잡았다")
+
+    // 주문번호 역추적. 우리가 만든 형식만 인식한다.
+    const checkout = decodeBillingOrderId(buildInitialBillingAttempt(SESSION).orderId)
+    check(
+      checkout.kind === "checkout" && checkout.checkoutSessionId === SESSION,
+      "checkout 주문번호를 되짚지 못했다"
+    )
+
+    const renewalOrder = buildRenewalBillingAttempt(ORG, "2026-10-10T00:00:00.000Z", 2)
+    const renewal = decodeBillingOrderId(renewalOrder.orderId)
+    check(
+      renewal.kind === "renewal" &&
+        renewal.organizationId === ORG &&
+        renewal.attemptNumber === 2 &&
+        expandBillingInstant(renewal.periodEndCompact) === "2026-10-10T00:00:00.000Z",
+      `갱신 주문번호를 되짚지 못했다: ${JSON.stringify(renewal)}`
+    )
+
+    // Q. 남이 만든 주문번호는 인식하지 않는다.
+    for (const forged of ["order_12345", "fsc-notahex", "fsr-abc", ""]) {
+      check(
+        decodeBillingOrderId(forged).kind === "unknown",
+        `우리 것이 아닌 주문번호를 인식했다: ${forged}`
+      )
+    }
+    passLine(before, "재전송 식별자·fingerprint·주문번호 역추적 · 위조 주문 거부")
+  }
+
+  // ───────────────────────────────────────────────────────────
+  console.log("\n[15] webhook 중복 저장 (로컬 Supabase)")
+  {
+    const before = failures
+    const EVENT_ID = "verify-toss-webhook-1"
+    const cleanup = () =>
+      admin(`billing_webhook_events?provider_event_id=eq.${EVENT_ID}`, { method: "DELETE" })
+
+    await cleanup()
+    const insert = () =>
+      admin("billing_webhook_events", {
+        method: "POST",
+        body: JSON.stringify({
+          provider: "toss",
+          provider_event_id: EVENT_ID,
+          event_type: "PAYMENT_STATUS_CHANGED",
+          processing_status: "received"
+        })
+      }).then(
+        () => "inserted",
+        () => "rejected"
+      )
+
+    check((await insert()) === "inserted", "첫 webhook 이 기록되지 않았다")
+    // P. 같은 이벤트 재전송 → 두 번째는 저장 자체가 거부된다.
+    check((await insert()) === "rejected", "같은 webhook 이 두 번 기록됐다")
+
+    const anonRead = await fetch(`${REST_URL}/rest/v1/billing_webhook_events?select=id`, {
+      headers: { apikey: ANON_KEY, Authorization: `Bearer ${ANON_KEY}` }
+    })
+    check(anonRead.status !== 200, `anon 이 webhook 기록을 읽었다: ${anonRead.status}`)
+
+    // raw payload 를 통째로 담는 컬럼이 없다.
+    const columns = (await admin("billing_webhook_events?select=*&limit=1")) as Array<
+      Record<string, unknown>
+    >
+    if (columns.length > 0) {
+      const names = Object.keys(columns[0])
+      check(
+        !names.some((name) => /payload|raw|body/.test(name)),
+        `raw payload 컬럼이 있다: ${names.join(", ")}`
+      )
+    }
+
+    await cleanup()
+    passLine(before, "재전송 저장 거부 · 외부 읽기 차단 · raw payload 컬럼 없음")
   }
 
   if (failures > 0) {
