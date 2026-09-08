@@ -319,6 +319,34 @@ Studio의 상태는 두 축이다. **하나로 합쳐 표현하지 않는다.**
 - 이유 없이 어떤 Section만 full width, 어떤 Section만 좁은 중앙 카드로 만드는 것을 **금지**한다.
 - 구현은 개별 Section마다 `max-width`를 반복하지 말고 **컨테이너에서 한 번** 처리한다.
 
+### 2.7 Workspace Background
+
+**Studio의 작업 공간은 White(`--surface`)가 기본이다.**
+정보의 구분은 넓은 회색 면이 아니라 **border · spacing · typography 위계**로 만들고,
+필요한 곳에만 subtle neutral surface를 쓴다.
+
+| 역할 | 값 |
+|---|---|
+| Workspace canvas (사이드바 오른쪽 전체 + footer 밴드) | `--surface` |
+| 카드·패널 | `--surface` + `1px solid var(--border)` |
+| 보조 neutral surface | `--surface-sub` |
+
+- **큰 회색 page fill 금지.** 페이지 전체·섹션 전체·대시보드 영역을 `--bg` 같은 회색으로 덮지 않는다.
+  회색 캔버스 위에 흰 카드를 얹는 2층 구조는 관리자 템플릿처럼 보이고, 브랜드 Green의 대비를 깎는다.
+- `--surface-sub`는 **테이블 헤더 · 필터/컨트롤 그룹 · 보조 정보 블록 · 비활성 영역 ·
+  인라인 보조 안내** 같은 부분 그룹핑에만 쓴다. 페이지 캔버스로 쓰지 않는다.
+- Green은 **primary action · active state · status · 작은 accent** 전용이다.
+  흰 배경에서 Green이 더 선명해지므로 면적을 늘리지 않는다(§2.1).
+- Gray는 **보조 정보 · 테이블 헤더 · 비활성 · 부분 그룹핑** 정도로 제한한다.
+
+**canvas 색의 주인은 `StudioShell` 하나다**(`.shell`). 페이지 wrapper는 배경을 다시 칠하지 않는다 —
+페이지마다 `background`를 반복하면 어느 값이 참인지 알 수 없게 되고, 한 화면만 회색으로 남는다.
+예외는 **스크롤 본문이 비쳐 보이면 안 되는 sticky chrome** 처럼 불투명 배경이 기능적으로 필요한 경우이며,
+이때도 canvas와 같은 `--surface`를 쓴다.
+
+White 캔버스 위에서는 카드 경계가 유일한 구분선이므로 **border 품질이 중요하다.**
+`--border` / `--border-strong` 외의 새 gray를 만들지 않고, 경계를 shadow로 대체하지 않는다(§2.5).
+
 ---
 
 ## 3. Page Pattern
