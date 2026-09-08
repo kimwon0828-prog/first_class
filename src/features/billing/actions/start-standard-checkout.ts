@@ -35,6 +35,9 @@ export type StandardCheckoutTicket = {
   planName: string
 }
 
+/** 결제를 열 수 없는 모든 사유에 쓰는 단일 문구. 내부 사정을 구분해 알리지 않는다. */
+const BILLING_UNAVAILABLE_MESSAGE = "결제 기능을 준비 중입니다. 잠시 후 다시 시도해 주세요."
+
 const CALLBACK_PATH = "/studio/billing/callback"
 const FAIL_PATH = "/studio/billing"
 
@@ -55,12 +58,11 @@ export const startStandardCheckout = async (): Promise<ActionResult<StandardChec
   const access = await requireTeacherStudioAccess()
 
   const runtime = getTossRuntime()
-  if (runtime.status === "missing") {
-    return { ok: false, message: "결제 준비가 아직 완료되지 않았습니다. 잠시 후 다시 시도해 주세요." }
-  }
-  if (runtime.status === "invalid") {
-    // 키가 잘못 꽂힌 상태로 결제창을 띄우지 않는다.
-    return { ok: false, message: "결제 설정을 확인하는 중입니다. 잠시 후 다시 시도해 주세요." }
+  if (runtime.status !== "ready") {
+    // missing · invalid · blocked 를 사용자에게 구분해 알리지 않는다.
+    // 키 종류나 배포 환경 같은 내부 사정을 노출하지 않기 위해 문구를 하나로 둔다.
+    // (blocked 는 production 에 test 키가 꽂힌 경우 등이며, 그때는 결제창 자체를 열지 않는다.)
+    return { ok: false, message: BILLING_UNAVAILABLE_MESSAGE }
   }
 
   const plan = getPurchasableBillingPlan("standard")

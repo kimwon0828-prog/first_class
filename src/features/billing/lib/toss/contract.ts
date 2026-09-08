@@ -89,12 +89,17 @@ export type TossPayment = {
   card?: TossCard | null
 }
 
+/**
+ * 빌링키 발급 응답(Billing object).
+ *
+ * 카드 정보는 최상위 cardCompany/cardNumber 가 아니라 card 객체 안에 있다.
+ * (실측 2026-09: card.issuerCode = "11", card.number = "54092612****789*")
+ * 최상위 legacy 필드는 오지 않을 수 있으므로 card 를 기준으로 읽는다.
+ */
 export type TossBillingKeyIssued = {
   billingKey: string
   customerKey: string
-  cardCompany?: string | null
-  /** 마스킹된 번호. */
-  cardNumber?: string | null
+  card?: TossCard | null
   authenticatedAt?: string | null
   method?: string | null
 }

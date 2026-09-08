@@ -19,6 +19,8 @@ import { getTossRuntime } from "@/features/billing/lib/toss/server"
 // 결과를 모르면(timeout 등) 아무것도 반영하지 않는다. 대사가 마무리한다.
 
 export type RenewalRunSummary = {
+  /** 이 배포에서 결제를 실행할 수 없어 아무것도 하지 않았을 때의 사유. */
+  blocked?: string
   scanned: number
   charged: number
   declined: number
@@ -39,7 +41,17 @@ const BILLING_KEY_INVALID_CODES = new Set([
 export const runBillingRenewals = async (now: Date = new Date()): Promise<RenewalRunSummary> => {
   const runtime = getTossRuntime()
   if (runtime.status !== "ready") {
-    throw new Error("toss_billing_not_configured")
+    // 결제를 실행할 수 없는 배포다(예: production 에 test 키). 조회조차 하지 않고 끝낸다.
+    // 예외로 던지지 않는 이유: 매시간 500 을 내는 대신 사유를 응답에 남긴다.
+    return {
+      blocked: runtime.status === "blocked" ? runtime.code : runtime.status,
+      scanned: 0,
+      charged: 0,
+      declined: 0,
+      pending: 0,
+      mismatched: 0,
+      skipped: 0
+    }
   }
 
   const candidates = await findRenewalCandidates(now)

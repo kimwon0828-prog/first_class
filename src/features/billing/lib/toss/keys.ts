@@ -102,3 +102,68 @@ export const checkTossKeyPair = (
 /** Authorization: Basic base64(`${secretKey}:`). 콜론이 빠지면 인증이 실패한다. */
 export const buildTossBasicAuthHeader = (secretKey: string) =>
   `Basic ${Buffer.from(`${secretKey}:`, "utf8").toString("base64")}`
+
+// ─────────────────────────────────────────────────────────────
+// 배포 환경별 결제 허용 규칙
+//
+// 사고 시나리오: production 에 test 키가 꽂힌 채 결제 코드가 배포되면,
+// 실제 사용자가 Toss sandbox 결제창으로 결제를 "성공" 시켜 production 구독을
+// active 로 만들 수 있다. 돈은 오가지 않는데 유료 기능이 열린다.
+//
+// 그래서 production 에서는 test 키를 fail-closed 로 막는다. 키가 잘못 꽂힌 것을
+// 조용히 넘기지 않고 결제 진입 자체를 닫는다.
+//
+// 실제 결제는 live 키 + 명시적 allowLive 두 조건을 모두 만족할 때만 열린다.
+// ─────────────────────────────────────────────────────────────
+
+/** Vercel 이 주는 배포 환경. 값이 없으면 로컬로 본다. */
+export type TossDeploymentEnvironment = "production" | "preview" | "development"
+
+export const normalizeDeploymentEnvironment = (
+  value: string | null | undefined
+): TossDeploymentEnvironment => {
+  const normalized = value?.trim().toLowerCase()
+  if (normalized === "production") {
+    return "production"
+  }
+  if (normalized === "preview") {
+    return "preview"
+  }
+  return "development"
+}
+
+export type TossBillingMode =
+  | { allowed: true; deployment: TossDeploymentEnvironment; keyEnvironment: TossKeyEnvironment }
+  | { allowed: false; code: TossBillingBlockCode }
+
+export type TossBillingBlockCode =
+  /** production 인데 test 키가 꽂혀 있다. sandbox 결제로 유료가 열리면 안 된다. */
+  | "test_key_in_production"
+  /** live 키가 있지만 명시적으로 켜지 않았다. */
+  | "live_billing_not_enabled"
+
+/**
+ * 이 배포에서 provider 결제를 실행해도 되는가.
+ *
+ * checkout 시작 · 갱신 승인 · 대사의 provider mutation 이 전부 이 판정을 따른다.
+ * 판정 결과에는 키 값도, 어떤 키가 꽂혔는지도 담지 않는다.
+ */
+export const resolveTossBillingMode = (input: {
+  deployment: TossDeploymentEnvironment
+  keyEnvironment: TossKeyEnvironment
+  allowLive: boolean
+}): TossBillingMode => {
+  if (input.keyEnvironment === "live" && !input.allowLive) {
+    return { allowed: false, code: "live_billing_not_enabled" }
+  }
+
+  if (input.deployment === "production" && input.keyEnvironment === "test") {
+    return { allowed: false, code: "test_key_in_production" }
+  }
+
+  return {
+    allowed: true,
+    deployment: input.deployment,
+    keyEnvironment: input.keyEnvironment
+  }
+}

@@ -36,8 +36,14 @@ import {
   HANDLED_WEBHOOK_EVENTS,
   parseTossWebhook
 } from "@/features/billing/lib/webhook/webhook-contract"
-import { buildTossBasicAuthHeader, checkTossKeyPair } from "@/features/billing/lib/toss/keys"
-import { verifyTossPayment } from "@/features/billing/lib/toss/verify-payment"
+import {
+  buildTossBasicAuthHeader,
+  checkTossKeyPair,
+  normalizeDeploymentEnvironment,
+  resolveTossBillingMode
+} from "@/features/billing/lib/toss/keys"
+import { settleStoredPayment } from "@/features/billing/lib/settle/settle-payment-core"
+import { pickStorableCardDisplay, verifyTossPayment } from "@/features/billing/lib/toss/verify-payment"
 import {
   addBillingMonths,
   buildInitialBillingPeriod,
@@ -968,6 +974,155 @@ const run = async () => {
 
     await cleanup()
     passLine(before, "재전송 저장 거부 · 외부 읽기 차단 · raw payload 컬럼 없음")
+  }
+
+
+  // ───────────────────────────────────────────────────────────
+  console.log("\n[16] 배포 환경별 결제 허용")
+  {
+    const before = failures
+    const rows = [
+      ["local  + test", "development", "test", false, true],
+      ["preview + test", "preview", "test", false, true],
+      ["prod   + test", "production", "test", false, false],
+      ["prod   + live (allowLive off)", "production", "live", false, false],
+      ["prod   + live (allowLive on)", "production", "live", true, true],
+      ["local  + live (allowLive off)", "development", "live", false, false]
+    ] as const
+
+    for (const [label, deployment, keyEnvironment, allowLive, expected] of rows) {
+      const mode = resolveTossBillingMode({
+        deployment: deployment as "production" | "preview" | "development",
+        keyEnvironment: keyEnvironment as "test" | "live",
+        allowLive
+      })
+      check(mode.allowed === expected, `${label}: 기대 ${expected ? "허용" : "차단"} / 실제 ${mode.allowed ? "허용" : "차단"}`)
+      if (!expected && !mode.allowed) {
+        check(
+          mode.code === "test_key_in_production" || mode.code === "live_billing_not_enabled",
+          `${label}: 차단 사유가 예상 밖이다(${mode.code})`
+        )
+      }
+    }
+
+    // production + test 를 막는 것이 이 가드의 핵심이다.
+    const blocked = resolveTossBillingMode({
+      deployment: "production",
+      keyEnvironment: "test",
+      allowLive: true
+    })
+    check(
+      !blocked.allowed && blocked.code === "test_key_in_production",
+      "allowLive 를 켜면 production 에서 test 키가 통과한다"
+    )
+
+    check(normalizeDeploymentEnvironment("production") === "production", "VERCEL_ENV 해석이 다르다")
+    check(normalizeDeploymentEnvironment("preview") === "preview", "preview 해석이 다르다")
+    check(normalizeDeploymentEnvironment(undefined) === "development", "값이 없으면 로컬로 봐야 한다")
+    check(normalizeDeploymentEnvironment("PRODUCTION") === "production", "대소문자 처리가 다르다")
+    passLine(before, "prod+test 차단 · live 는 명시 허용에서만 · local/preview+test 허용")
+  }
+
+  // ───────────────────────────────────────────────────────────
+  console.log("\n[17] 카드 표시 정보 매핑")
+  {
+    const before = failures
+    // 실제 TEST 응답에서 확인한 모양.
+    const issued = {
+      billingKey: "bk_x",
+      customerKey: "fs-00000000000000000000000000000001",
+      card: { issuerCode: "11", number: "54092612****789*" }
+    }
+    const stored = pickStorableCardDisplay(issued)
+    check(stored.cardCompany === "11", `발급사 코드가 저장되지 않는다: ${stored.cardCompany}`)
+    check(
+      stored.cardNumberMasked === "54092612****789*",
+      `마스킹 번호가 저장되지 않는다: ${stored.cardNumberMasked}`
+    )
+    // 저장 제약: 마스킹 문자가 있어야 통과한다(DB CHECK 와 같은 규칙).
+    check(/\*/.test(String(stored.cardNumberMasked)), "마스킹되지 않은 번호가 저장된다")
+
+    // legacy 최상위 필드만 오는 응답으로는 더 이상 읽지 않는다(그런 응답은 실재하지 않는다).
+    const legacyOnly = pickStorableCardDisplay({
+      billingKey: "bk_y",
+      customerKey: "fs-2",
+      cardCompany: "신한",
+      cardNumber: "1234"
+    } as never)
+    check(
+      legacyOnly.cardCompany === null && legacyOnly.cardNumberMasked === null,
+      "legacy 필드를 다시 읽고 있다"
+    )
+
+    // 결제 객체와 빌링키 객체가 같은 구조를 쓴다.
+    const fromPayment = pickStorableCardDisplay({ card: { issuerCode: "11", number: "5409****" } })
+    check(fromPayment.cardCompany === "11", "결제 객체 매핑이 다르다")
+    check(pickStorableCardDisplay(null).cardCompany === null, "카드 정보가 없을 때 터진다")
+    passLine(before, "card.issuerCode · card.number 만 저장 · 임의 회사명 매핑 없음")
+  }
+
+  // ───────────────────────────────────────────────────────────
+  console.log("\n[18] 정산 결과 라벨 — DB 가 한 일과 같아야 한다")
+  {
+    const before = failures
+    const attempt = {
+      id: "11111111-1111-4111-8111-111111111111",
+      organizationId: "bb111111-1111-4111-8111-111111111111",
+      provider: "toss" as const,
+      orderId: "fsr-bb111111111141118111111111111111-202610100000-a0",
+      providerIdempotencyKey: "fsr-bb111111111141118111111111111111-202610100000-a0",
+      attemptKey: "renewal:bb111111-1111-4111-8111-111111111111:2026-10-10T00:00:00.000Z:a0",
+      attemptKind: "renewal" as const,
+      attemptNumber: 0,
+      checkoutSessionId: null,
+      planCode: "standard" as const,
+      amount: 49000,
+      periodStart: "2026-10-10T00:00:00.000Z",
+      periodEnd: "2026-11-10T00:00:00.000Z",
+      anchorDay: 10,
+      status: "pending" as const,
+      providerPaymentId: null,
+      paidAt: null,
+      failureCode: null
+    }
+    const donePayment = {
+      paymentKey: "pk_1",
+      orderId: attempt.orderId,
+      status: "DONE",
+      totalAmount: 49000,
+      approvedAt: "2026-10-10T09:00:00+09:00",
+      currency: "KRW"
+    }
+    const settleWith = async (mode: Record<string, unknown>) =>
+      settleStoredPayment(
+        { secretKey: SECRET, fetchImpl: mockFetch(() => ({ status: 200, body: donePayment })).impl },
+        attempt,
+        (async () => mode) as never
+      )
+
+    const applied = await settleWith({ mode: "applied", status: "active", currentPeriodEnd: null })
+    check(applied.status === "applied", `applied 가 ${applied.status} 로 보고됐다`)
+
+    // 이미 반영된 결제를 다시 정산하면 DB 는 아무것도 쓰지 않는다. 라벨도 그래야 한다.
+    const duplicate = await settleWith({ mode: "duplicate" })
+    check(
+      duplicate.status === "duplicate",
+      `이미 반영된 결제를 ${duplicate.status} 로 보고했다 — 대사 판단이 거짓이 된다`
+    )
+
+    const stale = await settleWith({ mode: "stale" })
+    check(stale.status === "stale", `stale 이 ${stale.status} 로 보고됐다`)
+
+    const ignored = await settleWith({ mode: "ignored", reason: "subscription_missing" })
+    check(ignored.status === "ignored", `ignored 가 ${ignored.status} 로 보고됐다`)
+    check(
+      ignored.status === "ignored" && ignored.reason === "subscription_missing",
+      "무시 사유가 유실됐다"
+    )
+
+    const terminal = await settleWith({ mode: "terminal_conflict", status: "canceled" })
+    check(terminal.status === "ignored", `terminal_conflict 가 ${terminal.status} 로 보고됐다`)
+    passLine(before, "applied · duplicate · stale · ignored 를 DB mode 그대로 보고")
   }
 
   if (failures > 0) {

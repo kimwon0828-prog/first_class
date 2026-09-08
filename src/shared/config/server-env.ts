@@ -1,6 +1,13 @@
 import "server-only"
 
-import { checkTossKeyPair, type TossKeyEnvironment } from "@/features/billing/lib/toss/keys"
+import {
+  checkTossKeyPair,
+  normalizeDeploymentEnvironment,
+  resolveTossBillingMode,
+  type TossBillingBlockCode,
+  type TossDeploymentEnvironment,
+  type TossKeyEnvironment
+} from "@/features/billing/lib/toss/keys"
 import { getPublicEnv } from "@/shared/config/env"
 
 type ServerEnv = {
@@ -76,6 +83,7 @@ export type TossBillingEnv = {
   /** 서버 전용. 응답·로그·client bundle 어디에도 나가면 안 된다. */
   secretKey: string
   environment: TossKeyEnvironment
+  deployment: TossDeploymentEnvironment
 }
 
 export type TossBillingEnvResult =
@@ -84,6 +92,8 @@ export type TossBillingEnvResult =
   | { status: "missing" }
   /** 키가 있는데 규칙에 어긋난다. 조용히 진행하지 않고 실패시킨다. */
   | { status: "invalid"; code: string; message: string }
+  /** 키는 멀쩡하지만 이 배포에서는 결제를 실행하면 안 된다. */
+  | { status: "blocked"; code: TossBillingBlockCode }
 
 /**
  * Toss 자동결제 키.
@@ -108,8 +118,19 @@ export const getTossBillingEnv = (): TossBillingEnvResult => {
     return { status: "invalid", code: checked.code, message: checked.message }
   }
 
+  // 배포 환경까지 본다. production 에 test 키가 꽂혀 있으면 결제를 열지 않는다.
+  const deployment = normalizeDeploymentEnvironment(process.env.VERCEL_ENV)
+  const mode = resolveTossBillingMode({
+    deployment,
+    keyEnvironment: checked.environment,
+    allowLive
+  })
+  if (!mode.allowed) {
+    return { status: "blocked", code: mode.code }
+  }
+
   return {
     status: "ready",
-    env: { clientKey, secretKey, environment: checked.environment }
+    env: { clientKey, secretKey, environment: checked.environment, deployment }
   }
 }

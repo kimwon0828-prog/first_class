@@ -49,7 +49,7 @@ export const BillingPage = ({ resolved, tossReady, notice }: BillingPageProps) =
         ) : tossReady ? (
           <StartStandardButton />
         ) : (
-          <p className={styles.hint}>결제 준비가 아직 완료되지 않았습니다.</p>
+          <p className={styles.hint}>결제 기능을 준비 중입니다.</p>
         )}
       </section>
     </div>

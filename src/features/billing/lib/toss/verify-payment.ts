@@ -7,6 +7,7 @@
 
 import {
   TOSS_TERMINAL_FAILURE_STATUSES,
+  type TossCard,
   type TossPayment
 } from "@/features/billing/lib/toss/contract"
 
@@ -78,8 +79,15 @@ export const verifyTossPayment = (
   return { verdict: "verified", payment, approvedAt: payment.approvedAt }
 }
 
-/** 저장해도 되는 카드 표시 정보만 골라낸다. 원번호·CVC·유효기간은 애초에 오지 않는다. */
-export const pickStorableCardDisplay = (payment: TossPayment) => ({
-  cardCompany: payment.card?.issuerCode ?? null,
-  cardNumberMasked: payment.card?.number ?? null
+/**
+ * 저장해도 되는 카드 표시 정보만 골라낸다. 원번호·CVC·유효기간은 애초에 오지 않는다.
+ *
+ * 결제 객체와 빌링키 객체가 같은 card 구조를 쓰므로 한 함수로 처리한다.
+ * cardCompany 자리에는 Toss 공식 발급사 코드(issuerCode)를 그대로 넣는다 —
+ * 사람이 읽는 회사명으로 바꾸는 매핑표를 임의로 만들지 않는다(BILLING-4).
+ * number 는 Toss 가 마스킹해 준 값이며, 우리가 원번호를 복원하지 않는다.
+ */
+export const pickStorableCardDisplay = (source: { card?: TossCard | null } | null | undefined) => ({
+  cardCompany: source?.card?.issuerCode ?? null,
+  cardNumberMasked: source?.card?.number ?? null
 })

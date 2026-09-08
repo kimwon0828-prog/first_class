@@ -23,6 +23,7 @@ import { getPurchasableBillingPlan } from "@/features/billing/lib/plan-catalog"
 import { issueTossBillingKey } from "@/features/billing/lib/toss/client"
 import { buildBillingOrderName } from "@/features/billing/lib/toss/identifiers"
 import { getTossRuntime } from "@/features/billing/lib/toss/server"
+import { pickStorableCardDisplay } from "@/features/billing/lib/toss/verify-payment"
 
 // 카드 인증이 끝난 뒤의 서버 처리.
 //
@@ -98,8 +99,7 @@ export const completeStandardCheckout = async (input: {
       organizationId: checked.session.organizationId,
       customerKey: checked.session.customerKey,
       billingKey: issued.data.billingKey,
-      cardCompany: issued.data.cardCompany ?? null,
-      cardNumberMasked: issued.data.cardNumber ?? null
+      ...pickStorableCardDisplay(issued.data)
     })
     customer = {
       organizationId: checked.session.organizationId,

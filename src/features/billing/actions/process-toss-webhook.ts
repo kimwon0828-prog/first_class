@@ -88,9 +88,11 @@ export const processTossWebhook = async (
 
   const runtime = getTossRuntime()
   if (runtime.status !== "ready") {
-    // 우리 설정 문제다. 재전송을 받아야 한다.
-    await finishEvent(envelope.eventId, "failed", "toss_not_configured")
-    return { httpStatus: 500, outcome: "toss_not_configured" }
+    // 결제 조회로 확인할 수 없는 배포다(설정 누락이거나 production + test 키).
+    // 상태를 바꾸지 않고 재전송을 받는다 — 설정이 고쳐지면 그때 처리된다.
+    const reason = runtime.status === "blocked" ? runtime.code : runtime.status
+    await finishEvent(envelope.eventId, "failed", `toss_unavailable:${reason}`)
+    return { httpStatus: 500, outcome: `toss_unavailable:${reason}` }
   }
 
   if (envelope.eventType === "BILLING_DELETED") {
@@ -107,14 +109,16 @@ export const processTossWebhook = async (
 
   try {
     const settled = await settleOrder(runtime.config, envelope.orderId)
+    // duplicate/stale 은 "이미 반영됨" 이다. 처리 완료로 본다(재전송을 멈춘다).
+    const processed =
+      settled.status === "applied" ||
+      settled.status === "duplicate" ||
+      settled.status === "stale" ||
+      settled.status === "failed_recorded"
     await finishEvent(
       envelope.eventId,
-      settled.status === "applied" || settled.status === "failed_recorded"
-        ? "processed"
-        : settled.status === "pending"
-          ? "received"
-          : "ignored",
-      settled.status === "applied" ? null : ("reason" in settled ? settled.reason : null)
+      processed ? "processed" : settled.status === "pending" ? "received" : "ignored",
+      "reason" in settled ? settled.reason : null
     )
 
     if (settled.status === "pending") {
