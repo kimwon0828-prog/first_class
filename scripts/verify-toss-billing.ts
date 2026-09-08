@@ -14,9 +14,11 @@
 //   6. 월 기준일은 밀리지 않는다(1/31 → 2/28 → 3/31).
 //   7. 결제창 callback 은 저장해 둔 의도와 맞을 때만 진행한다(cross-org·재생 차단).
 //   8. 결제 결과를 모르면 원장에 쓰지 않는다.
+//   9. 자동 갱신 대상은 구독+빌링키뿐이다. PoC·내부 override·해지 예약은 결제하지 않는다.
 
 import { chargeSubscription } from "@/features/billing/lib/charge/charge-subscription"
 import { checkCheckoutCallback } from "@/features/billing/lib/checkout/checkout-guards"
+import { decideRenewal } from "@/features/billing/lib/renewal/renewal-schedule"
 import {
   chargeTossBillingKey,
   getTossPaymentByOrderId,
@@ -655,6 +657,157 @@ const run = async () => {
 
     await cleanup()
     passLine(before, "조건부 claim 1회 · 주문번호 유일 · 외부 읽기 차단")
+  }
+
+
+  // ───────────────────────────────────────────────────────────
+  console.log("\n[12] 갱신 시도 시점")
+  {
+    const before = failures
+    const periodEnd = "2026-10-10T00:00:00.000Z"
+    const at = (offsetHours: number) =>
+      new Date(new Date(periodEnd).getTime() + offsetHours * 60 * 60 * 1000)
+    const active = {
+      subscriptionStatus: "active",
+      currentPeriodEnd: periodEnd,
+      gracePeriodEnd: null,
+      cancelAtPeriodEnd: false
+    }
+
+    check(decideRenewal(active, at(-1)).due === false, "기간이 남았는데 결제했다")
+    const first = decideRenewal(active, at(0))
+    check(first.due && first.attemptNumber === 0, "기간 종료 시점의 1차 시도가 안 잡혔다")
+
+    // L. 유예 안의 재시도 — 차수가 하루마다 하나씩 올라간다.
+    const pastDue = {
+      subscriptionStatus: "past_due",
+      currentPeriodEnd: periodEnd,
+      gracePeriodEnd: "2026-10-13T00:00:00.000Z",
+      cancelAtPeriodEnd: false
+    }
+    const retry1 = decideRenewal(pastDue, at(24))
+    const retry2 = decideRenewal(pastDue, at(48))
+    check(retry1.due && retry1.attemptNumber === 1, "2차 시도 차수가 다르다")
+    check(retry2.due && retry2.attemptNumber === 2, "3차 시도 차수가 다르다")
+    // 같은 시각이면 몇 번을 물어도 같은 차수다 — Cron 중복 실행이 이중 결제로 가지 않는다.
+    check(
+      JSON.stringify(decideRenewal(pastDue, at(30))) === JSON.stringify(decideRenewal(pastDue, at(30))),
+      "같은 시각에 차수가 흔들린다"
+    )
+    // 유예가 끝나면 더 시도하지 않는다.
+    const afterGrace = decideRenewal(pastDue, at(73))
+    check(!afterGrace.due, "유예가 끝났는데 계속 결제를 시도한다")
+    check(!afterGrace.due && afterGrace.reason === "grace_over", "유예 종료 사유가 다르다")
+
+    // M. 해지 예약은 대상이 아니다 — 다음 결제를 부르지 않는 것이 해지 실행이다.
+    const canceling = decideRenewal({ ...active, cancelAtPeriodEnd: true }, at(1))
+    check(!canceling.due && canceling.reason === "cancel_at_period_end", "해지 예약 구독을 결제했다")
+
+    // N. 수동 trialing(PoC)은 자동결제 대상이 아니다.
+    const poc = decideRenewal(
+      { ...active, subscriptionStatus: "trialing", currentPeriodEnd: "2026-12-31T14:59:59.000Z" },
+      at(1)
+    )
+    check(!poc.due && poc.reason === "status_not_renewable", "trialing 구독이 자동결제 대상이 됐다")
+
+    for (const status of ["canceled", "expired"]) {
+      check(
+        !decideRenewal({ ...active, subscriptionStatus: status }, at(1)).due,
+        `${status} 구독을 결제했다`
+      )
+    }
+    check(
+      !decideRenewal({ ...active, currentPeriodEnd: null }, at(1)).due,
+      "기간을 모르는데 결제했다"
+    )
+    passLine(before, "기간 종료 후 3일간 1일 간격 3회 · 해지예약/trialing/종료 제외")
+  }
+
+  // ───────────────────────────────────────────────────────────
+  console.log("\n[13] 갱신 대상 선정 (로컬 Supabase)")
+  {
+    const before = failures
+    const DUE = "b21e0000-0000-4000-8000-000000000021"
+    const POC = "b21e0000-0000-4000-8000-000000000022"
+    const OVERRIDE_ONLY = "b21e0000-0000-4000-8000-000000000023"
+    const NO_CARD = "b21e0000-0000-4000-8000-000000000024"
+    const CANCELING = "b21e0000-0000-4000-8000-000000000025"
+    const ORG_IDS = [DUE, POC, OVERRIDE_ONLY, NO_CARD, CANCELING]
+    const filter = `in.(${ORG_IDS.join(",")})`
+    const now = new Date()
+    const past = new Date(now.getTime() - 60 * 60 * 1000).toISOString()
+    const future = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString()
+
+    const cleanup = async () => {
+      await admin(`organization_billing_customers?organization_id=${filter}`, { method: "DELETE" })
+      await admin(`organization_entitlement_overrides?organization_id=${filter}`, { method: "DELETE" })
+      await admin(`organization_subscriptions?organization_id=${filter}`, { method: "DELETE" })
+      await admin(`organizations?id=${filter}`, { method: "DELETE" })
+    }
+
+    await cleanup()
+    await admin("organizations", {
+      method: "POST",
+      body: JSON.stringify(ORG_IDS.map((id, index) => ({ id, name: `갱신 검증 ${index}`, branch_name: "본원" })))
+    })
+    await admin("organization_subscriptions", {
+      method: "POST",
+      body: JSON.stringify([
+        { organization_id: DUE, plan_code: "standard", subscription_status: "active", current_period_end: past, cancel_at_period_end: false },
+        { organization_id: POC, plan_code: "standard", subscription_status: "trialing", current_period_end: future, cancel_at_period_end: false },
+        { organization_id: NO_CARD, plan_code: "standard", subscription_status: "active", current_period_end: past, cancel_at_period_end: false },
+        { organization_id: CANCELING, plan_code: "standard", subscription_status: "active", current_period_end: past, cancel_at_period_end: true }
+      ])
+    })
+    await admin("organization_billing_customers", {
+      method: "POST",
+      body: JSON.stringify([
+        {
+          organization_id: DUE,
+          provider: "toss",
+          provider_customer_key: "fs-00000000000000000000000000000021",
+          billing_key: "bk_due"
+        },
+        {
+          organization_id: CANCELING,
+          provider: "toss",
+          provider_customer_key: "fs-00000000000000000000000000000025",
+          billing_key: "bk_cancel"
+        }
+      ])
+    })
+    // O. 내부 전체 권한만 있고 구독은 없는 조직.
+    await admin("organization_entitlement_overrides", {
+      method: "POST",
+      body: JSON.stringify({
+        organization_id: OVERRIDE_ONLY,
+        full_access: true,
+        reason: "내부 검증"
+      })
+    })
+
+    // findRenewalCandidates 와 같은 조건.
+    const dueRows = (await admin(
+      `organization_subscriptions?organization_id=${filter}` +
+        `&subscription_status=in.(active,past_due)&cancel_at_period_end=is.false` +
+        `&current_period_end=lte.${encodeURIComponent(now.toISOString())}` +
+        `&select=organization_id`
+    )) as Array<{ organization_id: string }>
+    const cardRows = (await admin(
+      `organization_billing_customers?organization_id=${filter}` +
+        `&provider=eq.toss&billing_key_status=eq.active&select=organization_id`
+    )) as Array<{ organization_id: string }>
+    const cardOrgs = new Set(cardRows.map((row) => row.organization_id))
+    const selected = dueRows.map((row) => row.organization_id).filter((id) => cardOrgs.has(id))
+
+    check(JSON.stringify(selected) === JSON.stringify([DUE]), `선정 결과가 다르다: ${selected.join(",")}`)
+    check(!selected.includes(POC), "N. 수동 trialing PoC 가 자동결제 대상이 됐다")
+    check(!selected.includes(OVERRIDE_ONLY), "O. 내부 override 조직이 자동결제 대상이 됐다")
+    check(!selected.includes(NO_CARD), "빌링키 없는 조직이 자동결제 대상이 됐다")
+    check(!selected.includes(CANCELING), "M. 해지 예약 조직이 자동결제 대상이 됐다")
+
+    await cleanup()
+    passLine(before, "구독+빌링키만 대상 · PoC·override·해지예약 제외")
   }
 
   if (failures > 0) {
