@@ -108,7 +108,10 @@ export const BillingPage = ({ overview, notice }: BillingPageProps) => {
 
         {presentation.hasInternalFullAccess ? (
           <p className={styles.internalNote}>
-            내부 테스트 권한으로 전체 기능을 사용하고 있어요. 결제 상태와는 별개예요.
+            <span className={styles.internalNoteMark} aria-hidden="true">
+              ⓘ
+            </span>
+            <span>내부 테스트 권한으로 전체 기능을 이용 중이에요. 결제 상태와는 별개예요.</span>
           </p>
         ) : null}
       </section>
@@ -124,7 +127,9 @@ export const BillingPage = ({ overview, notice }: BillingPageProps) => {
           <table className={styles.comparisonTable}>
             <thead>
               <tr>
-                <th scope="col">기능</th>
+                <th scope="col" className={styles.featureLabel}>
+                  기능
+                </th>
                 <th scope="col">무료</th>
                 <th scope="col" className={styles.standardColumn}>
                   스탠다드
