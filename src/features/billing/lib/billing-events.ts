@@ -45,13 +45,10 @@ export type VerifiedBillingEvent = BillingEventBase &
         providerPaymentId: string | null
         planCode: OrganizationPaidPlanCode
         amount: number
-        /** 유예 종료 시각. 실패 시점 기준으로 정한다. */
-        gracePeriodEnd: string
         failureCode: string | null
       }
     | {
         type: "billing_method_invalid"
-        gracePeriodEnd: string
         failureCode: string | null
       }
     | { type: "cancel_scheduled" | "cancel_schedule_reverted" | "immediate_canceled" }
@@ -80,6 +77,6 @@ export const toBillingEventArgs = (event: VerifiedBillingEvent) => ({
   p_amount: "amount" in event ? event.amount : null,
   p_period_start: "periodStart" in event ? event.periodStart : null,
   p_period_end: "periodEnd" in event ? event.periodEnd : null,
-  p_grace_period_end: "gracePeriodEnd" in event ? event.gracePeriodEnd : null,
+  // 유예 종료 시각은 넘기지 않는다. 잠근 구독 행을 보고 DB 가 정한다.
   p_failure_code: "failureCode" in event ? event.failureCode : null
 })

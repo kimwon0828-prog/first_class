@@ -61,8 +61,38 @@ export const addBillingInterval = (from: Date, interval: BillingInterval = "mont
   return next
 }
 
-/** 갱신 실패 유예. 결제 실패 시각부터 3일이다. */
+/** 갱신 실패 유예. 이미 결제된 기간이 끝난 뒤부터 3일이다. */
 export const BILLING_GRACE_PERIOD_DAYS = 3
 
-export const addGracePeriod = (from: Date) =>
-  new Date(from.getTime() + BILLING_GRACE_PERIOD_DAYS * 24 * 60 * 60 * 1000)
+/**
+ * 갱신 실패 시 유예 종료 시각.
+ *
+ * 3일은 결제된 기간 "이후" 의 추가 유예다. 실패가 기간 종료 전에 일어나도
+ * 이미 결제된 기간을 잘라먹지 않도록 늦은 쪽을 기준으로 삼는다.
+ *
+ *   grace = max(current_period_end, failedAt) + 3일
+ *
+ * 기간을 모르면 유예를 주지 않는다(null). 그 구독은 이미 기간 판정으로 닫혀 있고,
+ * 실패 이벤트가 오히려 접근을 열어 주면 안 된다.
+ *
+ * ⚠️ 실제 저장은 DB(apply_billing_event)가 잠근 구독 행을 보고 계산한다.
+ *    이 함수는 같은 규칙을 화면·검증에서 재현하기 위한 것이며,
+ *    scripts/verify-billing-events.ts 가 둘의 일치를 고정한다.
+ */
+export const resolveGracePeriodEnd = (
+  currentPeriodEnd: string | Date | null,
+  failedAt: Date
+): Date | null => {
+  if (!currentPeriodEnd) {
+    return null
+  }
+
+  const periodEnd =
+    currentPeriodEnd instanceof Date ? currentPeriodEnd : new Date(currentPeriodEnd)
+  if (Number.isNaN(periodEnd.getTime())) {
+    return null
+  }
+
+  const anchor = periodEnd.getTime() > failedAt.getTime() ? periodEnd : failedAt
+  return new Date(anchor.getTime() + BILLING_GRACE_PERIOD_DAYS * 24 * 60 * 60 * 1000)
+}

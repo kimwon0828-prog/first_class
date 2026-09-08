@@ -10,14 +10,16 @@
 //   5. 늦게 도착한 과거 이벤트가 최신 상태를 덮지 않는다.
 //   6. 만료 정규화는 접근 판정을 바꾸지 않는다(이미 기간으로 닫혀 있다).
 //   7. 결제 금액은 서버 카탈로그 값이다.
+//   8. 유예는 이미 결제된 기간을 잘라먹지 않는다 — max(기간 종료, 실패) + 3일.
 //
 // 로컬 Supabase 전용이다.
 
+import { resolveStudioEntitlements } from "@/features/billing/lib/entitlements"
 import {
   BILLING_PLANS,
   addBillingInterval,
-  addGracePeriod,
-  getPurchasableBillingPlan
+  getPurchasableBillingPlan,
+  resolveGracePeriodEnd
 } from "@/features/billing/lib/plan-catalog"
 
 const REST_URL = process.env.SUPABASE_LOCAL_URL ?? "http://127.0.0.1:54321"
@@ -211,15 +213,17 @@ const run = async () => {
   console.log("\n[4] 갱신 실패 → past_due + 3일 유예")
   {
     const before = failures
+    const beforeFailure = await readSubscription(ORG_A)
+    const periodEnd = String(beforeFailure?.current_period_end)
     const failedAt = new Date()
-    const graceEnd = addGracePeriod(failedAt)
+    // 실패가 이용기간 종료보다 앞선다 — 유예 기준점은 기간 종료여야 한다.
+    const expectedGrace = resolveGracePeriodEnd(periodEnd, failedAt)!
     const result = await applyEvent({
       p_organization_id: ORG_A,
       p_event_type: "payment_failed",
       p_event_at: failedAt.toISOString(),
       p_idempotency_key: "renewal-a-fail-1",
       p_amount: plan.amount,
-      p_grace_period_end: graceEnd.toISOString(),
       p_failure_code: "CARD_LIMIT_EXCEEDED"
     })
 
@@ -227,14 +231,19 @@ const run = async () => {
     const subscription = await readSubscription(ORG_A)
     check(subscription?.subscription_status === "past_due", "past_due 가 아니다")
     check(Boolean(subscription?.grace_period_end), "유예 종료 시각이 없다")
+
+    const storedGrace = new Date(String(subscription?.grace_period_end))
     check(
-      Math.abs(
-        new Date(String(subscription?.grace_period_end)).getTime() - graceEnd.getTime()
-      ) < 1000,
-      "유예가 실패 시각 + 3일이 아니다"
+      Math.abs(storedGrace.getTime() - expectedGrace.getTime()) < 1000,
+      `유예가 TS 계산과 다르다: DB ${storedGrace.toISOString()} / TS ${expectedGrace.toISOString()}`
+    )
+    // 핵심: 이미 결제된 기간보다 먼저 닫히지 않는다.
+    check(
+      storedGrace.getTime() > new Date(periodEnd).getTime(),
+      "유예가 결제된 기간 종료보다 이르다(이미 결제한 기간 침해)"
     )
     check((await countPayments(ORG_A)) === 2, "실패 이력이 남지 않았다")
-    passLine(before, "past_due · 유예 = 실패 시각 + 3일 · 실패 이력 기록")
+    passLine(before, "past_due · 유예 = max(기간 종료, 실패) + 3일 · 실패 이력 기록")
   }
 
   // ───────────────────────────────────────────────────────────
@@ -293,8 +302,7 @@ const run = async () => {
       p_event_type: "payment_failed",
       p_event_at: iso(-30),
       p_idempotency_key: "renewal-a-stale",
-      p_amount: plan.amount,
-      p_grace_period_end: iso(-27)
+      p_amount: plan.amount
     })
 
     check(stale.ok && stale.body?.mode === "stale", `stale 로 무시되지 않았다: ${JSON.stringify(stale.body)}`)
@@ -347,6 +355,102 @@ const run = async () => {
     })
     check(!cancelWithout.ok, "구독 없이 해지 예약이 됐다")
     passLine(before, "구독 없으면 상태를 만들지 않는다")
+  }
+
+  // ───────────────────────────────────────────────────────────
+  console.log("\n[10] 유예 기준점 — 이미 결제된 기간 보호")
+  {
+    const before = failures
+    const ORG_C = "b21e0000-0000-4000-8000-000000000003"
+    await admin("organizations", {
+      method: "POST",
+      headers: { Prefer: "resolution=merge-duplicates,return=representation" },
+      body: JSON.stringify({ id: ORG_C, name: "결제 검증 C", branch_name: "본원" })
+    })
+
+    const cases = [
+      { label: "실패가 기간 종료 전", periodEnd: "2026-10-10T00:00:00.000Z", failedAt: "2026-10-05T00:00:00.000Z", expected: "2026-10-13T00:00:00.000Z" },
+      { label: "실패가 기간 종료 당일", periodEnd: "2026-10-10T00:00:00.000Z", failedAt: "2026-10-10T00:00:00.000Z", expected: "2026-10-13T00:00:00.000Z" },
+      { label: "실패가 기간 종료 후", periodEnd: "2026-10-10T00:00:00.000Z", failedAt: "2026-10-12T00:00:00.000Z", expected: "2026-10-15T00:00:00.000Z" }
+    ]
+
+    for (const [index, item] of cases.entries()) {
+      const caseBefore = failures
+      await admin(`organization_subscriptions?organization_id=eq.${ORG_C}`, { method: "DELETE" })
+      await admin(`organization_payments?organization_id=eq.${ORG_C}`, { method: "DELETE" })
+      await admin("organization_subscriptions", {
+        method: "POST",
+        body: JSON.stringify({
+          organization_id: ORG_C,
+          plan_code: "standard",
+          subscription_status: "active",
+          current_period_start: "2026-09-10T00:00:00.000Z",
+          current_period_end: item.periodEnd
+        })
+      })
+
+      const applied = await applyEvent({
+        p_organization_id: ORG_C,
+        p_event_type: "payment_failed",
+        p_event_at: item.failedAt,
+        p_idempotency_key: `grace-anchor-${index}`,
+        p_amount: plan.amount,
+        p_failure_code: "CARD_LIMIT_EXCEEDED"
+      })
+      check(applied.ok, `${item.label}: 반영 실패 ${JSON.stringify(applied.body)}`)
+
+      const subscription = await readSubscription(ORG_C)
+      const storedGrace = String(subscription?.grace_period_end)
+      check(
+        new Date(storedGrace).toISOString() === item.expected,
+        `${item.label}: 유예 기대 ${item.expected} / 실제 ${storedGrace}`
+      )
+      // TS 재현식도 같은 값을 낸다.
+      check(
+        resolveGracePeriodEnd(item.periodEnd, new Date(item.failedAt))?.toISOString() === item.expected,
+        `${item.label}: TS 계산이 DB 와 다르다`
+      )
+
+      // 유예 직전에는 열리고 직후에는 닫힌다.
+      const snapshot = {
+        subscription: {
+          organizationId: ORG_C,
+          planCode: "standard" as const,
+          status: "past_due" as const,
+          currentPeriodStart: "2026-09-10T00:00:00.000Z",
+          currentPeriodEnd: item.periodEnd,
+          cancelAtPeriodEnd: false,
+          gracePeriodEnd: storedGrace
+        },
+        override: null
+      }
+      const justBefore = resolveStudioEntitlements(
+        snapshot,
+        new Date(new Date(item.expected).getTime() - 60 * 1000)
+      )
+      const justAfter = resolveStudioEntitlements(
+        snapshot,
+        new Date(new Date(item.expected).getTime() + 60 * 1000)
+      )
+      check(justBefore.entitlements.canWriteConsultations, `${item.label}: 유예 직전에 닫혔다`)
+      check(!justAfter.entitlements.canWriteConsultations, `${item.label}: 유예 이후에도 열려 있다`)
+
+      // 결제된 기간이 끝나기 전에는 절대 닫히지 않는다.
+      const atPeriodEnd = resolveStudioEntitlements(
+        snapshot,
+        new Date(new Date(item.periodEnd).getTime() - 60 * 1000)
+      )
+      check(
+        atPeriodEnd.entitlements.canWriteConsultations,
+        `${item.label}: 이미 결제된 기간 안인데 닫혔다`
+      )
+
+      passLine(caseBefore, `${item.label.padEnd(18)} → 유예 ${item.expected.slice(0, 10)}`)
+    }
+
+    await admin(`organization_payments?organization_id=eq.${ORG_C}`, { method: "DELETE" })
+    await admin(`organization_subscriptions?organization_id=eq.${ORG_C}`, { method: "DELETE" })
+    await admin(`organizations?id=eq.${ORG_C}`, { method: "DELETE" })
   }
 
   await teardown()
