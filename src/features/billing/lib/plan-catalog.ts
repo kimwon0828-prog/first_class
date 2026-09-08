@@ -6,6 +6,10 @@
 //   플랜이 하나뿐이고, 복제하면 두 값이 갈릴 때 어느 쪽이 참인지 알 수 없다.
 //   (이미 결제된 건의 금액은 organization_payments 에 그대로 남는다.)
 
+import {
+  addBillingMonths,
+  resolveBillingAnchorDay
+} from "@/features/billing/lib/billing-period"
 import type { OrganizationPaidPlanCode } from "@/shared/lib/db/adapter"
 
 export type BillingInterval = "month"
@@ -46,19 +50,18 @@ export const getPurchasableBillingPlan = (planCode: string): BillingPlan | null 
   return plan && plan.purchasable ? plan : null
 }
 
-/** 한 결제 주기만큼 뒤. 결제 성공 시 이용 기간의 끝이 된다. */
+/**
+ * 한 결제 주기만큼 뒤. 결제 성공 시 이용 기간의 끝이 된다.
+ *
+ * 달력 계산의 주인은 billing-period.ts 하나다. 여기서 다시 구현하지 않는다 —
+ * 두 벌이 되면 월말 기준일 처리가 갈린다.
+ */
 export const addBillingInterval = (from: Date, interval: BillingInterval = "month") => {
-  const next = new Date(from.getTime())
-  if (interval === "month") {
-    const day = next.getUTCDate()
-    next.setUTCMonth(next.getUTCMonth() + 1)
-    // 1/31 → 2/31 같은 넘침은 그 달의 마지막 날로 잡는다.
-    if (next.getUTCDate() < day) {
-      next.setUTCDate(0)
-    }
+  if (interval !== "month") {
+    return new Date(from.getTime())
   }
 
-  return next
+  return addBillingMonths(from, resolveBillingAnchorDay(from))
 }
 
 /** 갱신 실패 유예. 이미 결제된 기간이 끝난 뒤부터 3일이다. */
