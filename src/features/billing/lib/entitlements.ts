@@ -109,23 +109,29 @@ const toTimestamp = (value: string | null) => {
 /**
  * 이 구독이 지금 유료 기능을 열어 주는가.
  *
- *   trialing / active   연다.
- *   canceled / past_due 결제 기간이 아직 남아 있으면 그 끝까지 연다(paid-through).
+ *   trialing / active   결제 기간 안에서만 연다.
+ *   past_due            갱신 실패 유예(grace_period_end)까지만 연다.
+ *   canceled            즉시 종료다. 해지 예약은 active + cancelAtPeriodEnd 로 표현한다.
  *   expired             열지 않는다.
  *
- * 기간을 알 수 없으면(둘 다 null) 열지 않는다 — 모르면 닫는다.
+ * 기간을 모르면(null) 열지 않는다 — 모르면 닫는다.
+ *
+ * ⚠️ 상태 갱신을 기다리지 않는다. lifecycle job 이나 webhook 이 늦거나 실패해도
+ *    기간이 지난 구독은 여기서 닫힌다. 같은 규칙이 SQL
+ *    organization_has_paid_access() 에도 있으며 verifier 가 둘의 일치를 고정한다.
  */
 const isSubscriptionEntitling = (
   subscription: NonNullable<OrganizationBillingSnapshot["subscription"]>,
   nowMs: number
 ) => {
   if (subscription.status === "trialing" || subscription.status === "active") {
-    return true
-  }
-
-  if (subscription.status === "canceled" || subscription.status === "past_due") {
     const periodEnd = toTimestamp(subscription.currentPeriodEnd)
     return periodEnd != null && periodEnd > nowMs
+  }
+
+  if (subscription.status === "past_due") {
+    const graceEnd = toTimestamp(subscription.gracePeriodEnd)
+    return graceEnd != null && graceEnd > nowMs
   }
 
   return false

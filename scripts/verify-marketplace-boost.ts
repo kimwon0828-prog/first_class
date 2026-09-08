@@ -72,6 +72,7 @@ type Fixture = {
   subscription: {
     status: OrganizationSubscriptionStatus
     currentPeriodEnd: string | null
+    gracePeriodEnd?: string | null
   } | null
   override: boolean
   expectBoost: boolean
@@ -95,29 +96,29 @@ const fixtures: Fixture[] = [
   },
   {
     index: 4,
-    label: "canceled · 기간 남음",
+    label: "canceled(즉시 종료)",
     subscription: { status: "canceled", currentPeriodEnd: iso(10) },
     override: false,
-    expectBoost: true
+    expectBoost: false
   },
   {
     index: 5,
-    label: "canceled · 기간 지남",
-    subscription: { status: "canceled", currentPeriodEnd: iso(-10) },
+    label: "trialing · 기간 지남",
+    subscription: { status: "trialing", currentPeriodEnd: iso(-10) },
     override: false,
     expectBoost: false
   },
   {
     index: 6,
-    label: "past_due · 기간 남음",
-    subscription: { status: "past_due", currentPeriodEnd: iso(10) },
+    label: "past_due · 유예 남음",
+    subscription: { status: "past_due", currentPeriodEnd: iso(-1), gracePeriodEnd: iso(2) },
     override: false,
     expectBoost: true
   },
   {
     index: 7,
-    label: "past_due · 기간 없음",
-    subscription: { status: "past_due", currentPeriodEnd: null },
+    label: "past_due · 유예 지남",
+    subscription: { status: "past_due", currentPeriodEnd: iso(-5), gracePeriodEnd: iso(-2) },
     override: false,
     expectBoost: false
   },
@@ -167,7 +168,8 @@ const run = async () => {
       plan_code: "standard",
       subscription_status: fixture.subscription!.status,
       current_period_start: iso(-30),
-      current_period_end: fixture.subscription!.currentPeriodEnd
+      current_period_end: fixture.subscription!.currentPeriodEnd,
+      grace_period_end: fixture.subscription!.gracePeriodEnd ?? null
     }))
   if (subscriptionRows.length > 0) {
     await admin("organization_subscriptions", {
@@ -219,7 +221,8 @@ const run = async () => {
             status: fixture.subscription.status,
             currentPeriodStart: iso(-30),
             currentPeriodEnd: fixture.subscription.currentPeriodEnd,
-            cancelAtPeriodEnd: false
+            cancelAtPeriodEnd: false,
+            gracePeriodEnd: fixture.subscription.gracePeriodEnd ?? null
           }
         : null,
       override: fixture.override

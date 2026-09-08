@@ -45,14 +45,16 @@ const standardSubscription = (
       ? S
       : never
     : never,
-  currentPeriodEnd: string | null = iso(20)
+  currentPeriodEnd: string | null = iso(20),
+  gracePeriodEnd: string | null = null
 ): OrganizationBillingSnapshot["subscription"] => ({
   organizationId: ORG,
   planCode: "standard",
   status,
   currentPeriodStart: iso(-10),
   currentPeriodEnd,
-  cancelAtPeriodEnd: false
+  cancelAtPeriodEnd: false,
+  gracePeriodEnd
 })
 
 const fullAccessOverride = (
@@ -197,26 +199,43 @@ const statusCases: Array<{
   input: OrganizationBillingSnapshot
   expectPaid: boolean
 }> = [
-  { label: "trialing", input: snapshot(standardSubscription("trialing")), expectPaid: true },
-  { label: "active", input: snapshot(standardSubscription("active")), expectPaid: true },
+  { label: "trialing · 기간 남음", input: snapshot(standardSubscription("trialing")), expectPaid: true },
   {
-    label: "canceled · 기간 남음",
-    input: snapshot(standardSubscription("canceled", iso(5))),
-    expectPaid: true
+    // 기간이 지나면 상태가 아직 trialing 이어도 닫힌다(lifecycle job 실패 대비).
+    label: "trialing · 기간 지남",
+    input: snapshot(standardSubscription("trialing", iso(-1))),
+    expectPaid: false
   },
+  { label: "active · 기간 남음", input: snapshot(standardSubscription("active")), expectPaid: true },
   {
-    label: "canceled · 기간 지남",
-    input: snapshot(standardSubscription("canceled", iso(-5))),
+    label: "active · 기간 지남",
+    input: snapshot(standardSubscription("active", iso(-1))),
     expectPaid: false
   },
   {
-    label: "past_due · 기간 남음",
-    input: snapshot(standardSubscription("past_due", iso(5))),
+    label: "active · 기간 없음",
+    input: snapshot(standardSubscription("active", null)),
+    expectPaid: false
+  },
+  {
+    // 해지 예약이 아니라 즉시 종료다. 기간이 남아 있어도 닫는다.
+    label: "canceled",
+    input: snapshot(standardSubscription("canceled", iso(5))),
+    expectPaid: false
+  },
+  {
+    label: "past_due · 유예 남음",
+    input: snapshot(standardSubscription("past_due", iso(-1), iso(2))),
     expectPaid: true
   },
   {
-    label: "past_due · 기간 없음",
-    input: snapshot(standardSubscription("past_due", null)),
+    label: "past_due · 유예 지남",
+    input: snapshot(standardSubscription("past_due", iso(-5), iso(-2))),
+    expectPaid: false
+  },
+  {
+    label: "past_due · 유예 없음",
+    input: snapshot(standardSubscription("past_due", iso(5), null)),
     expectPaid: false
   },
   { label: "expired", input: snapshot(standardSubscription("expired", iso(5))), expectPaid: false }

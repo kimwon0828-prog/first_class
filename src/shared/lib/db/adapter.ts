@@ -839,9 +839,12 @@ export type OrganizationSubscription = {
   planCode: OrganizationPaidPlanCode
   status: OrganizationSubscriptionStatus
   currentPeriodStart: string | null
-  /** canceled 여도 이 시각까지는 유료 기간이다. */
+  /** 이 시각이 지나면 유료 접근이 닫힌다. 상태 갱신이 늦어도 마찬가지다. */
   currentPeriodEnd: string | null
+  /** 해지 예약. active + true 면 기간 종료까지 유지하고 그 뒤 만료된다. */
   cancelAtPeriodEnd: boolean
+  /** 갱신 실패(past_due) 유예 종료 시각. 다른 상태에서는 null 이다. */
+  gracePeriodEnd: string | null
 }
 
 /**
