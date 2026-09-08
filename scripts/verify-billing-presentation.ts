@@ -10,11 +10,15 @@
 //   3. 내부 전체 권한을 "결제 중" 으로 표시하지 않는다.
 //   4. 유예는 기간("3일")이 아니라 실제 종료 시각으로 안내한다.
 //   5. 판매하지 않는 플랜은 화면 모델에 등장하지 않는다.
+//   6. 기능 비교표는 손으로 적지 않고 실제 entitlement 계약에서 파생한다.
 
-import { resolveStudioEntitlements } from "@/features/billing/lib/entitlements"
+import { getPlanEntitlements, resolveStudioEntitlements } from "@/features/billing/lib/entitlements"
 import { BILLING_PLANS } from "@/features/billing/lib/plan-catalog"
 import {
   TOSS_CARD_ISSUERS,
+  buildFeatureComparison,
+  buildNextBillingFact,
+  buildPricingCards,
   formatBillingAmount,
   formatBillingDate,
   formatBillingDateTime,
@@ -270,6 +274,162 @@ console.log("\n[8] 판매하지 않는 플랜")
   const free = present({ subscription: null, override: null }, false)
   check(!free.planLabel.includes("프로"), "무료 화면에 프로가 노출된다")
   passLine(before, "프로는 판매하지 않으며 화면 모델에 등장하지 않는다")
+}
+
+
+console.log("\n[9] 요금제 카드")
+{
+  const before = failures
+  const cards = (snapshot: OrganizationBillingSnapshot, billingAvailable: boolean, method = false) =>
+    buildPricingCards(present(snapshot, method), { billingAvailable, standardAmount: AMOUNT })
+
+  // 판매하는 플랜만 카드가 된다. 세 번째 자리도 만들지 않는다.
+  const free = cards({ subscription: null, override: null }, true)
+  check(free.length === 2, `카드 수가 다르다: ${free.length}`)
+  check(
+    free.map((card) => card.planCode).join(",") === "free,standard",
+    "카드 구성이 무료·스탠다드가 아니다"
+  )
+  check(!free.some((card) => card.planCode === ("pro" as never)), "프로 카드가 렌더된다")
+
+  // B. 무료 + 결제 가능 → 스탠다드가 강조되고 실제 진입 버튼이 붙는다.
+  const [freeCard, standardCard] = free
+  check(freeCard.cta.kind === "static" && freeCard.cta.label === "현재 이용 중", "무료 카드 CTA 가 다르다")
+  check(standardCard.featured, "무료 사용자에게 스탠다드가 강조되지 않는다")
+  check(!freeCard.featured, "무료 카드까지 강조됐다 — 강조는 하나만이다")
+  check(standardCard.cta.kind === "action", "결제 가능한데 진입 버튼이 없다")
+  check(standardCard.priceLabel === formatBillingAmount(AMOUNT), "가격이 서버 카탈로그 값이 아니다")
+  check(freeCard.priceLabel === "0원", `무료 가격 표기가 다르다: ${freeCard.priceLabel}`)
+
+  // A. 무료 + 결제 불가 → 버튼은 비활성이고 이유는 문구로 준다. 내부 사유는 담지 않는다.
+  const blocked = cards({ subscription: null, override: null }, false)[1]
+  check(blocked.cta.kind === "disabled", "결제 불가인데 버튼이 살아 있다")
+  check(blocked.cta.note === "결제 기능을 준비 중이에요.", `안내 문구가 다르다: ${blocked.cta.note}`)
+  check(
+    !JSON.stringify(blocked).includes("test_key") && !JSON.stringify(blocked).includes("live_billing"),
+    "내부 사유가 카드 모델에 담겼다"
+  )
+
+  // C. 스탠다드 이용 중 → 진입 버튼 대신 현재 상태를 말한다.
+  const active = cards({ subscription: subscription(), override: null }, true, true)[1]
+  check(active.cta.kind === "static" && active.cta.label === "이용 중", `이용 중 CTA 가 다르다: ${active.cta.label}`)
+  check(!active.featured, "이미 쓰는 플랜을 계속 강조한다")
+
+  // D/E/G. CTA 문구가 실제 상태와 같아야 한다.
+  const canceling = cards(
+    { subscription: subscription({ cancelAtPeriodEnd: true }), override: null },
+    true,
+    true
+  )[1]
+  check(canceling.cta.label === "해지 예정", `해지 예정 CTA 가 다르다: ${canceling.cta.label}`)
+  const poc = cards(
+    { subscription: subscription({ status: "trialing" }), override: null },
+    true
+  )[1]
+  check(poc.cta.label === "체험 이용 중", `PoC CTA 가 다르다: ${poc.cta.label}`)
+  const pastDue = cards(
+    {
+      subscription: subscription({ status: "past_due", gracePeriodEnd: "2026-09-12T00:00:00.000Z" }),
+      override: null
+    },
+    true,
+    true
+  )[1]
+  check(pastDue.cta.label === "결제 확인 필요", `past_due CTA 가 다르다: ${pastDue.cta.label}`)
+
+  // H. 내부 권한 조직도 결제 사실은 무료다.
+  const internal = cards(
+    {
+      subscription: null,
+      override: { organizationId: ORG, fullAccess: true, reason: "내부", expiresAt: null }
+    },
+    true
+  )
+  check(internal[0].cta.label === "현재 이용 중", "내부 권한 조직의 무료 카드가 다르게 표시된다")
+  check(internal[1].cta.kind !== "static", "내부 권한을 스탠다드 결제 중으로 표시한다")
+
+  // 근거 없는 마케팅 문구를 쓰지 않는다.
+  const text = JSON.stringify(free)
+  for (const banned of ["가장 인기", "최고", "베스트", "단 하나"]) {
+    check(!text.includes(banned), `근거 없는 마케팅 문구가 있다: ${banned}`)
+  }
+  passLine(before, "무료·스탠다드 2장 · 강조 1개 · CTA 가 실제 상태와 일치")
+}
+
+console.log("\n[10] 기능 비교표")
+{
+  const before = failures
+  const rows = buildFeatureComparison()
+  const freePlan = getPlanEntitlements("free")
+  const standardPlan = getPlanEntitlements("standard")
+
+  check(rows.length === 8, `비교 항목 수가 다르다: ${rows.length}`)
+  check(rows.every((row) => row.standard), "스탠다드에서 안 되는 항목이 비교표에 있다")
+
+  // 무료에서 실제로 되는 기능을 유료 전용처럼 적으면 안 된다.
+  const freeRows = rows.filter((row) => row.free).map((row) => row.label)
+  check(
+    JSON.stringify(freeRows) ===
+      JSON.stringify(["Marketplace 입점", "수업·체험 운영", "Excel 예약 가져오기"]),
+    `무료 지원 항목이 다르다: ${freeRows.join(", ")}`
+  )
+
+  // 표가 손으로 적힌 값이 아니라 실제 계약에서 나온 값인지 확인한다.
+  const byLabel = new Map(rows.map((row) => [row.label, row]))
+  check(byLabel.get("체험 결과 작성")?.free === freePlan.canWriteTrialResults, "체험 결과 항목이 계약과 다르다")
+  check(
+    byLabel.get("상담·등록 전환 관리")?.free === freePlan.canWriteConsultations,
+    "상담 항목이 계약과 다르다"
+  )
+  check(
+    byLabel.get("Marketplace 우선 노출")?.standard === standardPlan.hasMarketplaceRankingBoost,
+    "우선 노출 항목이 계약과 다르다"
+  )
+  check(byLabel.get("Marketplace 입점")?.free === freePlan.canListOnMarketplace, "입점 항목이 계약과 다르다")
+
+  // 아직 팔지 않는 기능은 비교표에 없다.
+  for (const banned of ["AI", "리포트", "고급 분석", "수요 분석", "프로"]) {
+    check(!rows.some((row) => row.label.includes(banned)), `판매하지 않는 기능이 노출됐다: ${banned}`)
+  }
+  passLine(before, "8개 항목 · 무료 3개 지원 · 값이 entitlement 계약에서 파생")
+}
+
+console.log("\n[11] 다음 결제 카드")
+{
+  const before = failures
+  const fact = (snapshot: OrganizationBillingSnapshot, method: boolean) =>
+    buildNextBillingFact(present(snapshot, method))
+
+  // C. 자동 결제가 예정된 경우에만 금액과 함께 다음 결제일을 말한다.
+  const active = fact({ subscription: subscription(), override: null }, true)
+  check(active.title === "다음 결제", `제목이 다르다: ${active.title}`)
+  check(active.value === "2026년 10월 8일", `날짜가 다르다: ${active.value}`)
+  check(active.caption === "49,000원", `금액이 다르다: ${active.caption}`)
+
+  // G. 수동 체험은 종료 예정일만. 금액을 적지 않는다.
+  const poc = fact(
+    {
+      subscription: subscription({ status: "trialing", currentPeriodEnd: "2026-12-31T14:59:59.000Z" }),
+      override: null
+    },
+    false
+  )
+  check(poc.title === "이용 종료 예정", `PoC 제목이 다르다: ${poc.title}`)
+  check(poc.value === "2026년 12월 31일", "PoC 종료일이 다르다")
+  check(poc.caption === null, "수동 체험에 금액이 표시된다")
+
+  // D. 해지 예정도 종료 예정일이다.
+  const canceling = fact(
+    { subscription: subscription({ cancelAtPeriodEnd: true }), override: null },
+    true
+  )
+  check(canceling.title === "이용 종료 예정", `해지 예정 제목이 다르다: ${canceling.title}`)
+  check(canceling.caption === null, "해지 예정에 다음 결제 금액이 표시된다")
+
+  // A/B/F. 무료는 예정된 결제가 없다.
+  const free = fact({ subscription: null, override: null }, false)
+  check(free.value === null && free.emptyText === "예정된 결제가 없어요.", "무료 빈 상태가 다르다")
+  passLine(before, "자동 결제일 + 금액 / 종료 예정일 / 예정 없음")
 }
 
 if (failures > 0) {

@@ -282,3 +282,179 @@ export const USER_VISIBLE_PAYMENT_STATUSES: PaymentHistoryStatus[] = [
 
 export const formatBillingAmount = (amount: number): string =>
   `${new Intl.NumberFormat("ko-KR").format(amount)}원`
+
+// ─────────────────────────────────────────────────────────────
+// 요금제 카드 · 기능 비교 · 결제 관리
+//
+// STUDIO_DESIGN_SYSTEM.md §3.10 Billing Page.
+// 화면은 여기서 나온 모델만 렌더한다 — UI 안에서 구독 상태나 권한을 다시 판정하지 않는다.
+// ─────────────────────────────────────────────────────────────
+
+import { getPlanEntitlements, type StudioEntitlements } from "@/features/billing/lib/entitlements"
+
+export type PricingCardCta = {
+  /** action 이면 실제 결제 진입 버튼을 렌더한다. static 은 현재 상태 표시다. */
+  kind: "action" | "static" | "disabled"
+  label: string
+  /** 버튼만으로 이유를 알 수 없을 때의 보조 문구. */
+  note: string | null
+}
+
+export type PricingCard = {
+  planCode: "free" | "standard"
+  name: string
+  /** 카드 상단 보조 표기. 브랜드 문구가 아니라 플랜 식별용이다. */
+  subName: string
+  priceLabel: string
+  priceUnit: string | null
+  description: string
+  benefits: string[]
+  /** 시선을 모으는 카드. 하나만 true 다. */
+  featured: boolean
+  cta: PricingCardCta
+}
+
+const FREE_BENEFITS = [
+  "학원·수업 등록",
+  "체험 신청 관리",
+  "일정·체험 운영",
+  "Excel 예약 가져오기"
+]
+
+const STANDARD_BENEFITS = [
+  "무료의 모든 기능",
+  "체험 결과 및 상담 기록",
+  "등록 전환 분석",
+  "등록 전환 인포그래픽",
+  "Marketplace 우선 노출"
+]
+
+/**
+ * 요금제 카드.
+ *
+ * 현재 쓰는 플랜은 카드의 CTA 자리에서 말한다. "현재 플랜" 전용 카드를 따로 두지 않는다.
+ * 결제를 시작할 수 없으면 버튼을 비활성으로 두고 이유를 문구로 준다 — 내부 사유는 담지 않는다.
+ */
+export const buildPricingCards = (
+  presentation: BillingPresentation,
+  options: { billingAvailable: boolean; standardAmount: number }
+): PricingCard[] => {
+  const isFree = presentation.billedPlanCode === "free"
+
+  const freeCta: PricingCardCta = isFree
+    ? { kind: "static", label: "현재 이용 중", note: null }
+    : { kind: "static", label: "무료 플랜", note: null }
+
+  const standardCta: PricingCardCta = isFree
+    ? options.billingAvailable
+      ? { kind: "action", label: "스탠다드 시작하기", note: null }
+      : { kind: "disabled", label: "스탠다드 시작하기", note: "결제 기능을 준비 중이에요." }
+    : { kind: "static", label: presentation.statusBadge.label, note: null }
+
+  return [
+    {
+      planCode: "free",
+      name: "무료",
+      subName: "Free",
+      priceLabel: formatBillingAmount(0),
+      priceUnit: "/ 월",
+      description: "체험수업 모집과 기본 운영을 부담 없이 시작하세요.",
+      benefits: FREE_BENEFITS,
+      featured: false,
+      cta: freeCta
+    },
+    {
+      planCode: "standard",
+      name: "스탠다드",
+      subName: "Standard",
+      priceLabel: formatBillingAmount(options.standardAmount),
+      priceUnit: "/ 월",
+      description: "상담부터 등록 전환까지 한 흐름으로 관리하고 분석하세요.",
+      benefits: STANDARD_BENEFITS,
+      featured: isFree,
+      cta: standardCta
+    }
+  ]
+}
+
+export type FeatureComparisonRow = {
+  label: string
+  free: boolean
+  standard: boolean
+}
+
+/**
+ * 기능 비교표.
+ *
+ * ⚠️ ✓/— 를 손으로 적지 않는다. 실제 entitlement 계약에서 읽는다 —
+ *    비교표는 광고가 아니라 사실표이고, 손으로 적으면 계약과 갈린다.
+ *
+ * entitlement flag 가 없는 기능(현재 아무 플랜에서도 막지 않는 기능)만 ungated 로 둔다.
+ */
+type ComparisonSource =
+  | { label: string; entitlementKey: keyof StudioEntitlements }
+  /** 지금 어떤 플랜에서도 잠기지 않는 기능. 예약 Excel 가져오기가 여기에 해당한다. */
+  | { label: string; ungated: true }
+
+const COMPARISON_SOURCES: ComparisonSource[] = [
+  { label: "Marketplace 입점", entitlementKey: "canListOnMarketplace" },
+  { label: "수업·체험 운영", entitlementKey: "canProcessTrial" },
+  { label: "Excel 예약 가져오기", ungated: true },
+  { label: "체험 결과 작성", entitlementKey: "canWriteTrialResults" },
+  { label: "상담·등록 전환 관리", entitlementKey: "canWriteConsultations" },
+  { label: "등록 전환 분석", entitlementKey: "canUseConversionAnalytics" },
+  { label: "등록 전환 인포그래픽", entitlementKey: "canUseConversionAnalytics" },
+  { label: "Marketplace 우선 노출", entitlementKey: "hasMarketplaceRankingBoost" }
+]
+
+export const buildFeatureComparison = (): FeatureComparisonRow[] => {
+  const free = getPlanEntitlements("free")
+  const standard = getPlanEntitlements("standard")
+
+  return COMPARISON_SOURCES.map((source) =>
+    "ungated" in source
+      ? { label: source.label, free: true, standard: true }
+      : {
+          label: source.label,
+          free: free[source.entitlementKey],
+          standard: standard[source.entitlementKey]
+        }
+  )
+}
+
+export type BillingFact = {
+  title: string
+  /** 없으면 빈 상태 문구를 쓴다. */
+  value: string | null
+  caption: string | null
+  emptyText: string | null
+}
+
+/**
+ * "다음 결제" 카드.
+ *
+ * 자동 결제가 예정된 경우에만 금액과 함께 다음 결제일을 말한다.
+ * 수동 체험·해지 예정은 이용 종료 예정일이고, 금액을 적지 않는다.
+ */
+export const buildNextBillingFact = (presentation: BillingPresentation): BillingFact => {
+  if (!presentation.dateRow) {
+    return {
+      title: "다음 결제",
+      value: null,
+      caption: null,
+      emptyText: "예정된 결제가 없어요."
+    }
+  }
+
+  const isCharge = presentation.dateRow.label === "다음 결제일"
+
+  return {
+    title: isCharge ? "다음 결제" : "이용 종료 예정",
+    value: presentation.dateRow.value,
+    caption:
+      isCharge && presentation.monthlyAmount !== null
+        ? formatBillingAmount(presentation.monthlyAmount)
+        : null,
+    emptyText: null
+  }
+}

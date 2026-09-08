@@ -5,11 +5,17 @@ import { cache } from "react"
 import { getStudioEntitlementsForDisplay } from "@/features/billing/queries/get-organization-entitlements"
 import { getPurchasableBillingPlan } from "@/features/billing/lib/plan-catalog"
 import {
+  buildFeatureComparison,
+  buildNextBillingFact,
+  buildPricingCards,
   resolveBillingPresentation,
   resolveCardIssuerName,
   USER_VISIBLE_PAYMENT_STATUSES,
+  type BillingFact,
   type BillingMethodDisplay,
-  type BillingPresentation
+  type BillingPresentation,
+  type FeatureComparisonRow,
+  type PricingCard
 } from "@/features/billing/lib/subscription-presentation"
 import { getTossRuntime } from "@/features/billing/lib/toss/server"
 import { getSupabaseServiceRoleClient } from "@/integrations/supabase/service-role"
@@ -39,6 +45,10 @@ export type StudioBillingOverview = {
   standardAmount: number
   billingMethod: BillingMethodDisplay | null
   payments: BillingPaymentHistoryItem[]
+  /** 무료 · 스탠다드 두 장. 판매하지 않는 플랜은 여기에 들어오지 않는다. */
+  pricingCards: PricingCard[]
+  featureComparison: FeatureComparisonRow[]
+  nextBilling: BillingFact
 }
 
 type BillingCustomerRow = {
@@ -127,18 +137,23 @@ const getStudioBillingOverviewCached = cache(
     ])
 
     const standardAmount = getPurchasableBillingPlan("standard")?.amount ?? 0
+    const presentation = resolveBillingPresentation({
+      resolved,
+      subscription: snapshot.subscription,
+      hasActiveBillingMethod: billingMethod.active,
+      standardAmount
+    })
+    const billingAvailable = getTossRuntime().status === "ready"
 
     return {
-      presentation: resolveBillingPresentation({
-        resolved,
-        subscription: snapshot.subscription,
-        hasActiveBillingMethod: billingMethod.active,
-        standardAmount
-      }),
-      billingAvailable: getTossRuntime().status === "ready",
+      presentation,
+      billingAvailable,
       standardAmount,
       billingMethod: billingMethod.display,
-      payments
+      payments,
+      pricingCards: buildPricingCards(presentation, { billingAvailable, standardAmount }),
+      featureComparison: buildFeatureComparison(),
+      nextBilling: buildNextBillingFact(presentation)
     }
   }
 )

@@ -1,6 +1,6 @@
 .page {
   display: grid;
-  gap: var(--s5);
+  gap: var(--s8);
   max-width: var(--studio-max);
 }
 
@@ -57,22 +57,11 @@
   line-height: 18px;
 }
 
-.card {
-  display: grid;
-  gap: var(--s3);
-  padding: var(--s6);
-  border: 1px solid var(--border);
-  border-radius: var(--r-lg);
-  background: var(--surface);
+.sectionHead {
+  margin-bottom: var(--s4);
 }
 
-.cardHead {
-  display: flex;
-  align-items: center;
-  gap: var(--s3);
-}
-
-.cardTitle {
+.sectionTitle {
   margin: 0;
   font-size: 16px;
   line-height: 24px;
@@ -81,7 +70,305 @@
   color: var(--text-1);
 }
 
+.sectionDescription {
+  margin: var(--s1) 0 0;
+  font-size: 13px;
+  line-height: 20px;
+  color: var(--text-2);
+}
+
+/* ── Pricing ─────────────────────────────────────────────── */
+
+.pricingGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--s5);
+  align-items: stretch;
+}
+
+.planCard {
+  display: grid;
+  grid-template-rows: auto auto auto 1fr auto;
+  gap: var(--s3);
+  padding: var(--s6);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+}
+
+.planCardFeatured {
+  border-color: var(--brand-500);
+  background: var(--brand-50);
+}
+
+.planHead {
+  display: flex;
+  align-items: baseline;
+  gap: var(--s2);
+}
+
+.planName {
+  margin: 0;
+  font-size: 16px;
+  line-height: 24px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--text-1);
+}
+
+.planSubName {
+  font-size: 12px;
+  line-height: 18px;
+  font-weight: 700;
+  color: var(--text-3);
+}
+
+.recommendBadge {
+  margin-left: auto;
+  padding: var(--s1) var(--s2);
+  border-radius: var(--r-full);
+  background: var(--brand-700);
+  color: #ffffff;
+  font-size: 11px;
+  line-height: 16px;
+  font-weight: 700;
+}
+
+.planPrice {
+  margin: 0;
+  font-size: 28px;
+  line-height: 36px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--text-1);
+  font-variant-numeric: tabular-nums;
+}
+
+.planPriceUnit {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-2);
+}
+
+.planDescription {
+  margin: 0;
+  font-size: 13px;
+  line-height: 20px;
+  color: var(--text-2);
+}
+
+.benefits {
+  display: grid;
+  gap: var(--s2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  align-content: start;
+}
+
+.benefit {
+  position: relative;
+  padding-left: var(--s4);
+  font-size: 13px;
+  line-height: 20px;
+  color: var(--text-1);
+}
+
+.benefit::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 8px;
+  width: 5px;
+  height: 5px;
+  border-radius: var(--r-full);
+  background: var(--brand-500);
+}
+
+.planCta {
+  display: grid;
+  gap: var(--s2);
+  padding-top: var(--s2);
+}
+
+.ctaDisabled {
+  width: 100%;
+  height: 40px;
+  padding: 0 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--surface-sub);
+  color: var(--text-3);
+  font-size: 14px;
+  font-weight: 700;
+  cursor: not-allowed;
+}
+
+.ctaNote,
+.ctaStatic {
+  margin: 0;
+  font-size: 13px;
+  line-height: 20px;
+  font-weight: 700;
+  color: var(--text-3);
+  text-align: center;
+}
+
+.ctaStatic {
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--surface-sub);
+  color: var(--text-2);
+}
+
+.internalNote {
+  margin: var(--s4) 0 0;
+  padding: var(--s3) var(--s4);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--surface-sub);
+  font-size: 13px;
+  line-height: 20px;
+  color: var(--text-2);
+}
+
+/* ── Comparison ──────────────────────────────────────────── */
+
+.tableWrap {
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+}
+
+.comparisonTable,
+.historyTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+
+.comparisonTable th,
+.comparisonTable td,
+.historyTable th,
+.historyTable td {
+  padding: var(--s3) var(--s4);
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  white-space: nowrap;
+}
+
+.comparisonTable thead th,
+.historyTable thead th {
+  font-size: 12px;
+  line-height: 18px;
+  font-weight: 700;
+  color: var(--text-2);
+}
+
+.comparisonTable tbody tr:last-child th,
+.comparisonTable tbody tr:last-child td,
+.historyTable tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.comparisonTable td,
+.historyTable td {
+  font-size: 13px;
+  line-height: 20px;
+  color: var(--text-1);
+}
+
+.featureLabel {
+  font-size: 13px;
+  line-height: 20px;
+  font-weight: 600;
+  color: var(--text-1);
+}
+
+.comparisonTable th:not(.featureLabel),
+.comparisonTable td:not(.featureLabel) {
+  width: 120px;
+  text-align: center;
+}
+
+.standardColumn {
+  background: var(--brand-50);
+}
+
+.included {
+  color: var(--brand-700);
+  font-weight: 800;
+}
+
+.excluded {
+  color: var(--text-3);
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ── Billing management ──────────────────────────────────── */
+
+.managementGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--s5);
+  margin-bottom: var(--s4);
+}
+
+.factCard {
+  display: grid;
+  gap: var(--s2);
+  align-content: start;
+  padding: var(--s5);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+}
+
+.factTitle {
+  margin: 0;
+  font-size: 12px;
+  line-height: 18px;
+  font-weight: 700;
+  color: var(--text-2);
+}
+
+.factValue {
+  margin: 0;
+  font-size: 18px;
+  line-height: 26px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--text-1);
+  font-variant-numeric: tabular-nums;
+}
+
+.factCaption {
+  margin: 0;
+  font-size: 13px;
+  line-height: 20px;
+  font-weight: 600;
+  color: var(--text-2);
+  font-variant-numeric: tabular-nums;
+}
+
 .badge {
+  justify-self: start;
   display: inline-flex;
   align-items: center;
   padding: var(--s1) var(--s2);
@@ -111,108 +398,6 @@
   color: var(--gray-fg);
 }
 
-.planName,
-.price {
-  margin: 0;
-  font-size: 20px;
-  line-height: 28px;
-  font-weight: 800;
-  letter-spacing: -0.02em;
-  color: var(--text-1);
-  font-variant-numeric: tabular-nums;
-}
-
-.priceUnit {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--text-2);
-}
-
-.factList {
-  display: grid;
-  gap: var(--s2);
-  margin: 0;
-}
-
-.fact {
-  display: flex;
-  gap: var(--s3);
-  align-items: baseline;
-}
-
-.factLabel {
-  min-width: 96px;
-  margin: 0;
-  font-size: 12px;
-  line-height: 20px;
-  font-weight: 700;
-  color: var(--text-2);
-}
-
-.factValue {
-  margin: 0;
-  font-size: 14px;
-  line-height: 20px;
-  font-weight: 600;
-  color: var(--text-1);
-  font-variant-numeric: tabular-nums;
-}
-
-.benefits {
-  display: grid;
-  gap: var(--s2);
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.benefit {
-  position: relative;
-  padding-left: var(--s4);
-  font-size: 14px;
-  line-height: 22px;
-  color: var(--text-2);
-}
-
-.benefit::before {
-  content: "";
-  position: absolute;
-  left: 0;
-  top: 9px;
-  width: 6px;
-  height: 6px;
-  border-radius: var(--r-full);
-  background: var(--brand-500);
-}
-
-.unavailable {
-  display: grid;
-  gap: var(--s2);
-  justify-items: start;
-}
-
-.primaryDisabled {
-  height: 40px;
-  padding: 0 16px;
-  border: 1px solid var(--border);
-  border-radius: var(--r-md);
-  background: var(--surface-sub);
-  color: var(--text-3);
-  font-size: 14px;
-  font-weight: 700;
-  cursor: not-allowed;
-}
-
-.methodValue {
-  margin: 0;
-  font-size: 14px;
-  line-height: 22px;
-  font-weight: 600;
-  color: var(--text-1);
-  font-variant-numeric: tabular-nums;
-}
-
-.hint,
 .empty {
   margin: 0;
   font-size: 13px;
@@ -220,55 +405,28 @@
   color: var(--text-3);
 }
 
-.tableWrap {
-  overflow-x: auto;
-}
-
-.table {
-  width: 100%;
-  border-collapse: collapse;
-  font-variant-numeric: tabular-nums;
-}
-
-.table th {
-  padding: var(--s2) var(--s4);
-  border-bottom: 1px solid var(--border);
-  font-size: 12px;
-  line-height: 18px;
-  font-weight: 700;
-  color: var(--text-2);
-  text-align: left;
-  white-space: nowrap;
-}
-
-.table td {
-  padding: var(--s3) var(--s4);
-  border-bottom: 1px solid var(--border);
+.emptyRow {
+  margin: 0;
+  padding: var(--s4);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  background: var(--surface);
   font-size: 13px;
   line-height: 20px;
-  color: var(--text-1);
-  white-space: nowrap;
-}
-
-.table tbody tr:last-child td {
-  border-bottom: 0;
+  color: var(--text-3);
 }
 
 .amountCell {
   font-weight: 700;
 }
 
-@media (max-width: 720px) {
-  .card {
+@media (max-width: 900px) {
+  .pricingGrid,
+  .managementGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .planCard {
     padding: var(--s5);
-  }
-
-  .fact {
-    flex-direction: column;
-    gap: var(--s1);
-  }
-
-  .factLabel {
-    min-width: 0;
   }
 }

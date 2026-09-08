@@ -10,33 +10,27 @@ import styles from "./billing-page.module.css"
 
 // 구독/결제 화면. STUDIO_DESIGN_SYSTEM.md §3.10 Billing Page 패턴.
 //
-//   Page Header → Status Alert(조건부) → Current Plan → Plan Offer(무료만)
-//   → Billing Method → Payment History
+//   Page Header → Status Alert(조건부)
+//   → Pricing Grid → Feature Comparison        (상품 이해)
+//   → Billing Management → Payment History     (계약 관리)
 //
-// 판매하지 않는 플랜(프로)은 이 화면에 존재하지 않는다.
+// 현재 쓰는 플랜은 요금제 카드의 CTA 자리에서 말한다. "현재 플랜" 전용 카드를 두지 않는다.
+// 판매하지 않는 플랜(프로)은 모델에도 DOM 에도 없다.
 
 type BillingPageProps = {
   overview: StudioBillingOverview
   notice: string | null
 }
 
-const STANDARD_BENEFITS = [
-  "체험 결과와 상담 기록 작성",
-  "등록 전환 분석",
-  "등록 전환 인포그래픽 내려받기",
-  "Marketplace 우선 노출"
-]
-
 export const BillingPage = ({ overview, notice }: BillingPageProps) => {
-  const { presentation, billingMethod, payments, billingAvailable, standardAmount } = overview
+  const { presentation, billingMethod, payments, pricingCards, featureComparison, nextBilling } =
+    overview
 
   return (
     <div className={styles.page}>
       <header className={styles.header}>
         <h1 className={styles.title}>구독 및 결제</h1>
-        <p className={styles.description}>
-          첫수업 스튜디오의 플랜과 결제 정보를 관리해요.
-        </p>
+        <p className={styles.description}>첫수업 스튜디오의 플랜과 결제 정보를 관리해요.</p>
       </header>
 
       {notice ? (
@@ -54,102 +48,167 @@ export const BillingPage = ({ overview, notice }: BillingPageProps) => {
         </section>
       ) : null}
 
-      <section className={styles.card} aria-labelledby="current-plan-title">
-        <div className={styles.cardHead}>
-          <h2 className={styles.cardTitle} id="current-plan-title">
-            현재 플랜
+      <section aria-labelledby="pricing-title">
+        <div className={styles.sectionHead}>
+          <h2 className={styles.sectionTitle} id="pricing-title">
+            나에게 맞는 플랜을 선택하세요
           </h2>
-          <span className={`${styles.badge} ${styles[presentation.statusBadge.tone]}`}>
-            {presentation.statusBadge.label}
-          </span>
+          <p className={styles.sectionDescription}>
+            체험 운영은 무료로 시작하고, 상담과 등록 전환 관리가 필요할 때 스탠다드로 확장하세요.
+          </p>
         </div>
 
-        <p className={styles.planName}>{presentation.planLabel}</p>
+        <div className={styles.pricingGrid}>
+          {pricingCards.map((card) => (
+            <article
+              key={card.planCode}
+              className={`${styles.planCard} ${card.featured ? styles.planCardFeatured : ""}`}
+              aria-labelledby={`plan-${card.planCode}`}
+            >
+              <div className={styles.planHead}>
+                <h3 className={styles.planName} id={`plan-${card.planCode}`}>
+                  {card.name}
+                </h3>
+                <span className={styles.planSubName}>{card.subName}</span>
+                {card.featured ? <span className={styles.recommendBadge}>추천</span> : null}
+              </div>
 
-        <dl className={styles.factList}>
-          {presentation.monthlyAmount !== null ? (
-            <div className={styles.fact}>
-              <dt className={styles.factLabel}>월 요금</dt>
-              <dd className={styles.factValue}>{formatBillingAmount(presentation.monthlyAmount)}</dd>
-            </div>
-          ) : null}
-          {presentation.dateRow ? (
-            <div className={styles.fact}>
-              <dt className={styles.factLabel}>{presentation.dateRow.label}</dt>
-              <dd className={styles.factValue}>{presentation.dateRow.value}</dd>
-            </div>
-          ) : null}
-        </dl>
+              <p className={styles.planPrice}>
+                {card.priceLabel}
+                {card.priceUnit ? <span className={styles.planPriceUnit}> {card.priceUnit}</span> : null}
+              </p>
+
+              <p className={styles.planDescription}>{card.description}</p>
+
+              <ul className={styles.benefits}>
+                {card.benefits.map((benefit) => (
+                  <li key={benefit} className={styles.benefit}>
+                    {benefit}
+                  </li>
+                ))}
+              </ul>
+
+              <div className={styles.planCta}>
+                {card.cta.kind === "action" ? (
+                  <StartStandardButton />
+                ) : card.cta.kind === "disabled" ? (
+                  <>
+                    <button type="button" className={styles.ctaDisabled} disabled>
+                      {card.cta.label}
+                    </button>
+                    {card.cta.note ? <p className={styles.ctaNote}>{card.cta.note}</p> : null}
+                  </>
+                ) : (
+                  <p className={styles.ctaStatic}>{card.cta.label}</p>
+                )}
+              </div>
+            </article>
+          ))}
+        </div>
+
+        {presentation.hasInternalFullAccess ? (
+          <p className={styles.internalNote}>
+            내부 테스트 권한으로 전체 기능을 사용하고 있어요. 결제 상태와는 별개예요.
+          </p>
+        ) : null}
+      </section>
+
+      <section aria-labelledby="comparison-title">
+        <div className={styles.sectionHead}>
+          <h2 className={styles.sectionTitle} id="comparison-title">
+            요금제별 기능 비교
+          </h2>
+        </div>
+
+        <div className={styles.tableWrap}>
+          <table className={styles.comparisonTable}>
+            <thead>
+              <tr>
+                <th scope="col">기능</th>
+                <th scope="col">무료</th>
+                <th scope="col" className={styles.standardColumn}>
+                  스탠다드
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {featureComparison.map((row) => (
+                <tr key={row.label}>
+                  <th scope="row" className={styles.featureLabel}>
+                    {row.label}
+                  </th>
+                  <td>
+                    <FeatureMark included={row.free} />
+                  </td>
+                  <td className={styles.standardColumn}>
+                    <FeatureMark included={row.standard} />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section aria-labelledby="management-title">
+        <div className={styles.sectionHead}>
+          <h2 className={styles.sectionTitle} id="management-title">
+            결제 관리
+          </h2>
+        </div>
+
+        <div className={styles.managementGrid}>
+          <article className={styles.factCard} aria-labelledby="billing-method-title">
+            <h3 className={styles.factTitle} id="billing-method-title">
+              결제수단
+            </h3>
+            {billingMethod ? (
+              <p className={styles.factValue}>
+                {billingMethod.issuerName ? `${billingMethod.issuerName} ` : ""}
+                {billingMethod.maskedNumber ?? "카드 정보 없음"}
+              </p>
+            ) : (
+              <p className={styles.empty}>등록된 결제수단이 없어요.</p>
+            )}
+          </article>
+
+          <article className={styles.factCard} aria-labelledby="next-billing-title">
+            <h3 className={styles.factTitle} id="next-billing-title">
+              {nextBilling.title}
+            </h3>
+            {nextBilling.value ? (
+              <>
+                <p className={styles.factValue}>{nextBilling.value}</p>
+                {nextBilling.caption ? (
+                  <p className={styles.factCaption}>{nextBilling.caption}</p>
+                ) : null}
+                <span className={`${styles.badge} ${styles[presentation.statusBadge.tone]}`}>
+                  {presentation.statusBadge.label}
+                </span>
+              </>
+            ) : (
+              <p className={styles.empty}>{nextBilling.emptyText}</p>
+            )}
+          </article>
+        </div>
 
         <SubscriptionActions
           canCancel={presentation.canCancel}
           canResume={presentation.canResume}
           endDate={presentation.dateRow?.value ?? null}
         />
-
-        {presentation.hasInternalFullAccess ? (
-          <p className={styles.hint}>
-            내부 테스트 권한으로 전체 기능을 사용하고 있어요. 결제와는 별개예요.
-          </p>
-        ) : null}
       </section>
 
-      {presentation.showStandardOffer ? (
-        <section className={styles.card} aria-labelledby="standard-title">
-          <div className={styles.cardHead}>
-            <h2 className={styles.cardTitle} id="standard-title">
-              스탠다드
-            </h2>
-          </div>
-          <p className={styles.price}>
-            {formatBillingAmount(standardAmount)}
-            <span className={styles.priceUnit}> / 월</span>
-          </p>
-          <ul className={styles.benefits}>
-            {STANDARD_BENEFITS.map((benefit) => (
-              <li key={benefit} className={styles.benefit}>
-                {benefit}
-              </li>
-            ))}
-          </ul>
-          {billingAvailable ? (
-            <StartStandardButton />
-          ) : (
-            <div className={styles.unavailable}>
-              <button type="button" className={styles.primaryDisabled} disabled>
-                스탠다드 시작하기
-              </button>
-              <p className={styles.hint}>결제 기능을 준비 중이에요.</p>
-            </div>
-          )}
-        </section>
-      ) : null}
-
-      <section className={styles.card} aria-labelledby="billing-method-title">
-        <div className={styles.cardHead}>
-          <h2 className={styles.cardTitle} id="billing-method-title">
-            결제수단
-          </h2>
-        </div>
-        {billingMethod ? (
-          <p className={styles.methodValue}>
-            {billingMethod.issuerName ? `${billingMethod.issuerName} ` : ""}
-            {billingMethod.maskedNumber ?? "카드 정보 없음"}
-          </p>
-        ) : (
-          <p className={styles.empty}>등록된 결제수단이 없어요.</p>
-        )}
-      </section>
-
-      <section className={styles.card} aria-labelledby="payment-history-title">
-        <div className={styles.cardHead}>
-          <h2 className={styles.cardTitle} id="payment-history-title">
+      <section aria-labelledby="payment-history-title">
+        <div className={styles.sectionHead}>
+          <h2 className={styles.sectionTitle} id="payment-history-title">
             결제 내역
           </h2>
         </div>
+
         {payments.length > 0 ? (
           <div className={styles.tableWrap}>
-            <table className={styles.table}>
+            <table className={styles.historyTable}>
               <thead>
                 <tr>
                   <th scope="col">결제일</th>
@@ -171,9 +230,23 @@ export const BillingPage = ({ overview, notice }: BillingPageProps) => {
             </table>
           </div>
         ) : (
-          <p className={styles.empty}>아직 결제 내역이 없어요.</p>
+          <p className={styles.emptyRow}>아직 결제 내역이 없어요.</p>
         )}
       </section>
     </div>
   )
 }
+
+/** 아이콘만으로 의미를 전달하지 않는다. 읽히는 텍스트를 함께 둔다. */
+const FeatureMark = ({ included }: { included: boolean }) =>
+  included ? (
+    <span className={styles.included}>
+      <span aria-hidden="true">✓</span>
+      <span className={styles.srOnly}>지원</span>
+    </span>
+  ) : (
+    <span className={styles.excluded}>
+      <span aria-hidden="true">—</span>
+      <span className={styles.srOnly}>미지원</span>
+    </span>
+  )

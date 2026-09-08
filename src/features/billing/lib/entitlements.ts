@@ -91,6 +91,13 @@ const ENTITLEMENTS_BY_PLAN: Record<OrganizationPlanCode, StudioEntitlements> = {
   pro: PRO_ENTITLEMENTS
 }
 
+/**
+ * 요금제별 기능표. 화면의 기능 비교표가 이 값을 그대로 읽는다 —
+ * 비교표를 손으로 적으면 계약과 광고가 갈린다.
+ */
+export const getPlanEntitlements = (plan: OrganizationPlanCode): StudioEntitlements =>
+  ENTITLEMENTS_BY_PLAN[plan]
+
 /** 내부 전체 권한. 향후 새 상업 entitlement 가 생겨도 자동으로 포함된다. */
 export const FULL_ACCESS_ENTITLEMENTS: StudioEntitlements = PRO_ENTITLEMENTS
 
