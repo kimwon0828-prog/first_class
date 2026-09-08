@@ -59,6 +59,11 @@ export function StudioMypagePage({ academyName }: StudioMypagePageProps) {
             description="등록된 학원 정보를 확인하고 수정을 요청합니다."
             href="/studio/settings"
           />
+          <LinkRow
+            title="구독 및 결제"
+            description="현재 플랜과 결제 정보를 확인합니다."
+            href="/studio/billing"
+          />
         </div>
       </section>
 

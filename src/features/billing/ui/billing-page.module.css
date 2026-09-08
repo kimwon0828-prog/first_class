@@ -5,59 +5,270 @@
 }
 
 .header {
-  display: grid;
-  gap: var(--s2);
+  padding-bottom: var(--s6);
+  border-bottom: 1px solid var(--border);
 }
 
 .title {
   margin: 0;
-  font-size: 24px;
-  line-height: 32px;
-  font-weight: 700;
+  font-size: 20px;
+  line-height: 28px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
   color: var(--text-1);
 }
 
-.description,
-.hint {
-  margin: 0;
-  font-size: 14px;
-  line-height: 22px;
+.description {
+  margin: var(--s1) 0 0;
+  font-size: 13px;
+  line-height: 20px;
   color: var(--text-2);
 }
 
 .notice {
   margin: 0;
   padding: var(--s3) var(--s4);
-  border: 1px solid var(--border);
+  border: 1px solid var(--brand-100);
   border-radius: var(--r-md);
-  background: var(--surface-sub);
-  color: var(--text-2);
-  font-size: 14px;
-  line-height: 22px;
+  background: var(--brand-50);
+  color: var(--brand-900);
+  font-size: 13px;
+  line-height: 20px;
+  font-weight: 600;
+}
+
+.alert {
+  padding: var(--s4);
+  border-radius: var(--r-sm);
+  background: var(--amber-bg);
+  color: var(--amber-fg);
+}
+
+.alertTitle {
+  margin: 0;
+  font-size: 13px;
+  line-height: 20px;
+  font-weight: 700;
+}
+
+.alertBody {
+  margin: var(--s1) 0 0;
+  font-size: 12px;
+  line-height: 18px;
 }
 
 .card {
   display: grid;
   gap: var(--s3);
-  padding: var(--s5);
+  padding: var(--s6);
   border: 1px solid var(--border);
   border-radius: var(--r-lg);
   background: var(--surface);
 }
 
+.cardHead {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+}
+
 .cardTitle {
   margin: 0;
-  font-size: 15px;
-  line-height: 22px;
+  font-size: 16px;
+  line-height: 24px;
   font-weight: 700;
+  letter-spacing: -0.02em;
   color: var(--text-1);
 }
 
-.planValue,
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: var(--s1) var(--s2);
+  border-radius: var(--r-full);
+  font-size: 11px;
+  line-height: 16px;
+  font-weight: 700;
+}
+
+.green {
+  background: var(--green-bg);
+  color: var(--green-fg);
+}
+
+.blue {
+  background: var(--blue-bg);
+  color: var(--blue-fg);
+}
+
+.amber {
+  background: var(--amber-bg);
+  color: var(--amber-fg);
+}
+
+.gray {
+  background: var(--gray-bg);
+  color: var(--gray-fg);
+}
+
+.planName,
 .price {
   margin: 0;
   font-size: 20px;
   line-height: 28px;
-  font-weight: 700;
+  font-weight: 800;
+  letter-spacing: -0.02em;
   color: var(--text-1);
+  font-variant-numeric: tabular-nums;
+}
+
+.priceUnit {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-2);
+}
+
+.factList {
+  display: grid;
+  gap: var(--s2);
+  margin: 0;
+}
+
+.fact {
+  display: flex;
+  gap: var(--s3);
+  align-items: baseline;
+}
+
+.factLabel {
+  min-width: 96px;
+  margin: 0;
+  font-size: 12px;
+  line-height: 20px;
+  font-weight: 700;
+  color: var(--text-2);
+}
+
+.factValue {
+  margin: 0;
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 600;
+  color: var(--text-1);
+  font-variant-numeric: tabular-nums;
+}
+
+.benefits {
+  display: grid;
+  gap: var(--s2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.benefit {
+  position: relative;
+  padding-left: var(--s4);
+  font-size: 14px;
+  line-height: 22px;
+  color: var(--text-2);
+}
+
+.benefit::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 9px;
+  width: 6px;
+  height: 6px;
+  border-radius: var(--r-full);
+  background: var(--brand-500);
+}
+
+.unavailable {
+  display: grid;
+  gap: var(--s2);
+  justify-items: start;
+}
+
+.primaryDisabled {
+  height: 40px;
+  padding: 0 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--surface-sub);
+  color: var(--text-3);
+  font-size: 14px;
+  font-weight: 700;
+  cursor: not-allowed;
+}
+
+.methodValue {
+  margin: 0;
+  font-size: 14px;
+  line-height: 22px;
+  font-weight: 600;
+  color: var(--text-1);
+  font-variant-numeric: tabular-nums;
+}
+
+.hint,
+.empty {
+  margin: 0;
+  font-size: 13px;
+  line-height: 20px;
+  color: var(--text-3);
+}
+
+.tableWrap {
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+
+.table th {
+  padding: var(--s2) var(--s4);
+  border-bottom: 1px solid var(--border);
+  font-size: 12px;
+  line-height: 18px;
+  font-weight: 700;
+  color: var(--text-2);
+  text-align: left;
+  white-space: nowrap;
+}
+
+.table td {
+  padding: var(--s3) var(--s4);
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+  line-height: 20px;
+  color: var(--text-1);
+  white-space: nowrap;
+}
+
+.table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.amountCell {
+  font-weight: 700;
+}
+
+@media (max-width: 720px) {
+  .card {
+    padding: var(--s5);
+  }
+
+  .fact {
+    flex-direction: column;
+    gap: var(--s1);
+  }
+
+  .factLabel {
+    min-width: 0;
+  }
 }
