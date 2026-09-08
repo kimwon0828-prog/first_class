@@ -13,6 +13,7 @@
 //   8. 유예는 이미 결제된 기간을 잘라먹지 않는다 — max(기간 종료, 실패) + 3일.
 //   9. 유예는 실패 episode 당 한 번이다. 재시도로 연장되지 않고, 끝난 유예가 다시 열리지 않는다.
 //  10. 새 주기가 시작되면 유예가 지워지고, 그 다음 실패에서만 새 유예가 생긴다.
+//  11. canceled · expired 는 실패 이벤트로 다시 열리지 않는다 — 구독 상태 mutation 0.
 //
 // 로컬 Supabase 전용이다.
 
@@ -695,6 +696,130 @@ const run = async () => {
       await admin(`organizations?id=eq.${ORG_E}`, { method: "DELETE" })
       passLine(before, `2번 transaction 이 ${waitedMs}ms 대기 후 기존 유예 유지(10-13)`)
     }
+  }
+
+
+  // ───────────────────────────────────────────────────────────
+  console.log("\n[13] 종료된 구독은 실패 이벤트로 다시 열리지 않는다")
+  {
+    const before = failures
+    const ORG_F = "b21e0000-0000-4000-8000-000000000006"
+    // Marketplace view 는 now() 로 판정한다. 고정 날짜를 쓰면 실제 시계에 따라
+    // 재오픈이 우연히 가려질 수 있어, 기준 시각을 지금에 맞춘다.
+    const PERIOD_START = iso(-35)
+    const PERIOD_END = iso(-5)
+    const FAILED_AT = iso(0)
+
+    await admin("organizations", {
+      method: "POST",
+      headers: { Prefer: "resolution=merge-duplicates,return=representation" },
+      body: JSON.stringify({ id: ORG_F, name: "결제 검증 F", branch_name: "본원" })
+    })
+
+    const terminalCases = [
+      { label: "expired · payment_failed", status: "expired", eventType: "payment_failed" },
+      { label: "expired · billing_method_invalid", status: "expired", eventType: "billing_method_invalid" },
+      { label: "canceled · payment_failed", status: "canceled", eventType: "payment_failed" },
+      { label: "canceled · billing_method_invalid", status: "canceled", eventType: "billing_method_invalid" }
+    ] as const
+
+    for (const [index, item] of terminalCases.entries()) {
+      const caseBefore = failures
+      await admin(`organization_payments?organization_id=eq.${ORG_F}`, { method: "DELETE" })
+      await admin(`organization_subscriptions?organization_id=eq.${ORG_F}`, { method: "DELETE" })
+      await admin("organization_subscriptions", {
+        method: "POST",
+        body: JSON.stringify({
+          organization_id: ORG_F,
+          plan_code: "standard",
+          subscription_status: item.status,
+          current_period_start: PERIOD_START,
+          current_period_end: PERIOD_END,
+          last_billing_event_at: PERIOD_END
+        })
+      })
+
+      const applied = await applyEvent({
+        p_organization_id: ORG_F,
+        p_event_type: item.eventType,
+        p_event_at: FAILED_AT,
+        p_idempotency_key: `terminal-f-${index}`,
+        p_amount: BILLING_PLANS.standard.amount,
+        p_failure_code: "CARD_LIMIT_EXCEEDED"
+      })
+
+      check(applied.ok, `${item.label}: RPC 실패 ${JSON.stringify(applied.body)}`)
+      check(
+        applied.body?.mode === "ignored" && applied.body?.reason === "subscription_terminal",
+        `${item.label}: ignored 가 아니다 — ${JSON.stringify(applied.body)}`
+      )
+
+      // 구독 상태 mutation 0.
+      const subscription = await readSubscription(ORG_F)
+      check(subscription?.subscription_status === item.status, `${item.label}: 상태가 바뀌었다`)
+      check(subscription?.grace_period_end === null, `${item.label}: 유예가 생겼다`)
+      check(
+        new Date(String(subscription?.current_period_end)).toISOString() === PERIOD_END,
+        `${item.label}: 이용기간이 바뀌었다`
+      )
+      check(
+        new Date(String(subscription?.last_billing_event_at)).toISOString() === PERIOD_END,
+        `${item.label}: last_billing_event_at 이 바뀌었다`
+      )
+
+      // Studio 유료 접근 0.
+      const entitlements = resolveStudioEntitlements(
+        {
+          subscription: {
+            organizationId: ORG_F,
+            planCode: "standard" as const,
+            // 기대값이 아니라 DB 에 실제로 남은 값으로 판정한다.
+            status: subscription?.subscription_status as typeof item.status,
+            currentPeriodStart: PERIOD_START,
+            currentPeriodEnd: String(subscription?.current_period_end),
+            cancelAtPeriodEnd: false,
+            gracePeriodEnd: (subscription?.grace_period_end as string | null) ?? null
+          },
+          override: null
+        },
+        new Date()
+      )
+      check(!entitlements.entitlements.canWriteConsultations, `${item.label}: Studio 유료 접근이 열렸다`)
+
+      // Marketplace 우선 노출 0.
+      const boosted = (await admin(
+        `marketplace_boosted_organizations?organization_id=eq.${ORG_F}&select=organization_id`
+      )) as Array<unknown>
+      check(boosted.length === 0, `${item.label}: Marketplace boost 가 열렸다`)
+
+      passLine(caseBefore, `${item.label.padEnd(32)} → ignored · 상태 유지 · 재오픈 0`)
+    }
+
+    // 구독이 없는 조직의 실패 이벤트도 상태를 만들지 않는다.
+    {
+      const caseBefore = failures
+      await admin(`organization_payments?organization_id=eq.${ORG_F}`, { method: "DELETE" })
+      await admin(`organization_subscriptions?organization_id=eq.${ORG_F}`, { method: "DELETE" })
+      const applied = await applyEvent({
+        p_organization_id: ORG_F,
+        p_event_type: "payment_failed",
+        p_event_at: FAILED_AT,
+        p_idempotency_key: "terminal-f-missing",
+        p_amount: BILLING_PLANS.standard.amount,
+        p_failure_code: "CARD_LIMIT_EXCEEDED"
+      })
+      check(
+        applied.ok && applied.body?.mode === "ignored" && applied.body?.reason === "subscription_missing",
+        `구독 없는 실패가 ignored 가 아니다 — ${JSON.stringify(applied.body)}`
+      )
+      check((await readSubscription(ORG_F)) === null, "구독이 없는데 행이 만들어졌다")
+      passLine(caseBefore, "구독 없는 실패 이벤트             → ignored · 구독 생성 0")
+    }
+
+    await admin(`organization_payments?organization_id=eq.${ORG_F}`, { method: "DELETE" })
+    await admin(`organization_subscriptions?organization_id=eq.${ORG_F}`, { method: "DELETE" })
+    await admin(`organizations?id=eq.${ORG_F}`, { method: "DELETE" })
+    passLine(before, "canceled · expired 는 실패 이벤트로 열리지 않는다")
   }
 
   await teardown()
