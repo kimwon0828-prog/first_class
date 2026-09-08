@@ -2,6 +2,10 @@ import type {
   BillingEventResult,
   VerifiedBillingEvent
 } from "@/features/billing/lib/billing-events"
+import type {
+  BillingPaymentAttempt,
+  BillingPaymentAttemptInput
+} from "@/features/billing/lib/charge/payment-attempt"
 import {
   chargeTossBillingKey,
   getTossPaymentByOrderId,
@@ -23,11 +27,8 @@ import { verifyTossPayment } from "@/features/billing/lib/toss/verify-payment"
 //      끝까지 모르면 pending 으로 남긴다 — 절대 payment_failed 로 넘기지 않는다.
 //   4. 구독 상태 변경은 applyVerifiedBillingEvent 하나로만 한다.
 //
-// pending 을 원장(organization_payments)에 미리 적지 않는 이유.
-//   원장 행을 만들면 그 멱등 키가 소비된다. 나중에 대사로 "사실은 성공" 을 알아내도
-//   apply_billing_event 가 duplicate 를 돌려주고 구독이 영원히 열리지 않는다.
-//   그래서 결과가 확정될 때까지 원장에 쓰지 않고, 미확정 상태는
-//   checkout session(authorized) / 기간이 지난 구독으로 대사가 찾아낸다.
+// provider POST보다 먼저 pending attempt를 저장한다. 응답을 잃어도 DB에 저장된
+// orderId/멱등키로 정확히 조회하며, 성공·실패 terminal attempt는 다시 POST하지 않는다.
 
 export type SubscriptionChargeInput = {
   organizationId: string
@@ -42,6 +43,11 @@ export type SubscriptionChargeInput = {
   idempotencyKey: string
   /** 원장 멱등 키. */
   attemptKey: string
+  attemptKind: "initial" | "renewal"
+  attemptNumber: number
+  checkoutSessionId: string | null
+  /** POST 전에 저장할 기간과 KST 월 기준일. 최초 결제는 성공 시 승인시각으로 보정한다. */
+  attemptPeriod: { periodStart: string; periodEnd: string; anchorDay: number | null }
   eventType: "initial_payment_succeeded" | "renewal_succeeded"
   /**
    * 이 결제가 여는 이용 기간. 승인 시각을 받아 계산한다.
@@ -49,13 +55,20 @@ export type SubscriptionChargeInput = {
    * 최초 결제는 승인 시각이 곧 기간 시작이라, 호출 전에 미리 정하면 실제 승인 시각과
    * 어긋난다. 갱신은 승인 시각과 무관하게 직전 기간에서 이어지므로 인자를 무시하면 된다.
    */
-  resolvePeriod: (approvedAt: string) => { periodStart: string; periodEnd: string }
+  resolvePeriod: (approvedAt: string) => {
+    periodStart: string
+    periodEnd: string
+    anchorDay?: number | null
+  }
   /** 구독 상태를 바꾸는 유일한 통로. */
   applyEvent: (event: VerifiedBillingEvent) => Promise<BillingEventResult>
+  ensureAttempt: (attempt: BillingPaymentAttemptInput) => Promise<BillingPaymentAttempt>
+  /** checkout 단계 표시용. 이 callback도 반드시 provider POST 전에 끝난다. */
+  onAttemptReady?: (attempt: BillingPaymentAttempt) => Promise<void>
 }
 
 export type SubscriptionChargeResult =
-  | { status: "succeeded"; payment: TossPayment; approvedAt: string }
+  | { status: "succeeded"; payment: TossPayment | null; approvedAt: string }
   /** Toss 가 실패로 확정했다. 원장에 실패를 남기고 구독은 계약대로 처리된다. */
   | { status: "declined"; code: string }
   /** 결과를 모른다. 대사가 확인할 때까지 원장·구독 모두 건드리지 않는다. */
@@ -65,7 +78,7 @@ export type SubscriptionChargeResult =
 
 const applySuccess = async (input: SubscriptionChargeInput, payment: TossPayment, approvedAt: string) => {
   const period = input.resolvePeriod(approvedAt)
-  await input.applyEvent({
+  const applied = await input.applyEvent({
     organizationId: input.organizationId,
     occurredAt: approvedAt,
     provider: "toss",
@@ -75,12 +88,21 @@ const applySuccess = async (input: SubscriptionChargeInput, payment: TossPayment
     planCode: input.planCode,
     amount: input.amount,
     periodStart: period.periodStart,
-    periodEnd: period.periodEnd
+    periodEnd: period.periodEnd,
+    attempt: {
+      providerOrderId: input.orderId,
+      providerIdempotencyKey: input.idempotencyKey,
+      attemptKind: input.attemptKind,
+      attemptNumber: input.attemptNumber,
+      checkoutSessionId: input.checkoutSessionId,
+      billingAnchorDay: period.anchorDay ?? input.attemptPeriod.anchorDay
+    }
   })
+  return applied
 }
 
 const applyDecline = async (input: SubscriptionChargeInput, code: string, failedAt: string) => {
-  await input.applyEvent({
+  return input.applyEvent({
     organizationId: input.organizationId,
     occurredAt: failedAt,
     provider: "toss",
@@ -89,7 +111,15 @@ const applyDecline = async (input: SubscriptionChargeInput, code: string, failed
     providerPaymentId: null,
     planCode: input.planCode,
     amount: input.amount,
-    failureCode: code
+    failureCode: code,
+    attempt: {
+      providerOrderId: input.orderId,
+      providerIdempotencyKey: input.idempotencyKey,
+      attemptKind: input.attemptKind,
+      attemptNumber: input.attemptNumber,
+      checkoutSessionId: input.checkoutSessionId,
+      billingAnchorDay: input.attemptPeriod.anchorDay
+    }
   })
 }
 
@@ -97,6 +127,35 @@ export const chargeSubscription = async (
   config: TossClientConfig,
   input: SubscriptionChargeInput
 ): Promise<SubscriptionChargeResult> => {
+  const attempt = await input.ensureAttempt({
+    organizationId: input.organizationId,
+    provider: "toss",
+    orderId: input.orderId,
+    providerIdempotencyKey: input.idempotencyKey,
+    attemptKey: input.attemptKey,
+    attemptKind: input.attemptKind,
+    attemptNumber: input.attemptNumber,
+    checkoutSessionId: input.checkoutSessionId,
+    planCode: input.planCode,
+    amount: input.amount,
+    periodStart: input.attemptPeriod.periodStart,
+    periodEnd: input.attemptPeriod.periodEnd,
+    anchorDay: input.attemptPeriod.anchorDay
+  })
+
+  if (attempt.status === "succeeded") {
+    return {
+      status: "succeeded",
+      payment: null,
+      approvedAt: attempt.paidAt ?? attempt.periodStart
+    }
+  }
+  if (attempt.status === "failed") {
+    return { status: "declined", code: attempt.failureCode ?? "PAYMENT_ALREADY_FAILED" }
+  }
+
+  await input.onAttemptReady?.(attempt)
+
   const charged = await chargeTossBillingKey(config, {
     billingKey: input.billingKey,
     customerKey: input.customerKey,
@@ -134,7 +193,10 @@ export const chargeSubscription = async (
   })
 
   if (verification.verdict === "verified") {
-    await applySuccess(input, verification.payment, verification.approvedAt)
+    const applied = await applySuccess(input, verification.payment, verification.approvedAt)
+    if (applied.mode === "terminal_conflict") {
+      return { status: "mismatch", code: `terminal_${applied.status}` }
+    }
     return { status: "succeeded", payment: verification.payment, approvedAt: verification.approvedAt }
   }
 

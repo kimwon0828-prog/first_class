@@ -26,6 +26,15 @@ type BillingEventBase = {
   provider: BillingProvider
 }
 
+type PaymentAttemptIdentity = {
+  providerOrderId: string
+  providerIdempotencyKey: string
+  attemptKind: "initial" | "renewal"
+  attemptNumber: number
+  checkoutSessionId: string | null
+  billingAnchorDay: number | null
+}
+
 export type VerifiedBillingEvent = BillingEventBase &
   (
     | {
@@ -38,6 +47,7 @@ export type VerifiedBillingEvent = BillingEventBase &
         amount: number
         periodStart: string
         periodEnd: string
+        attempt: PaymentAttemptIdentity
       }
     | {
         type: "payment_failed"
@@ -46,6 +56,7 @@ export type VerifiedBillingEvent = BillingEventBase &
         planCode: OrganizationPaidPlanCode
         amount: number
         failureCode: string | null
+        attempt: PaymentAttemptIdentity
       }
     | {
         type: "billing_method_invalid"
@@ -62,6 +73,8 @@ export type BillingEventResult =
   | { mode: "duplicate" }
   /** 더 최신 이벤트가 이미 반영돼 있어 무시했다. */
   | { mode: "stale" }
+  /** 검증 근거가 부족해 반대 terminal 결과를 자동으로 뒤집지 않았다. */
+  | { mode: "terminal_conflict"; status: string }
   /** 대상 구독이 없어 무시했다. */
   | { mode: "ignored"; reason: string }
 
@@ -78,5 +91,11 @@ export const toBillingEventArgs = (event: VerifiedBillingEvent) => ({
   p_period_start: "periodStart" in event ? event.periodStart : null,
   p_period_end: "periodEnd" in event ? event.periodEnd : null,
   // 유예 종료 시각은 넘기지 않는다. 잠근 구독 행을 보고 DB 가 정한다.
-  p_failure_code: "failureCode" in event ? event.failureCode : null
+  p_failure_code: "failureCode" in event ? event.failureCode : null,
+  p_provider_order_id: "attempt" in event ? event.attempt.providerOrderId : null,
+  p_provider_idempotency_key: "attempt" in event ? event.attempt.providerIdempotencyKey : null,
+  p_attempt_kind: "attempt" in event ? event.attempt.attemptKind : null,
+  p_attempt_number: "attempt" in event ? event.attempt.attemptNumber : null,
+  p_checkout_session_id: "attempt" in event ? event.attempt.checkoutSessionId : null,
+  p_billing_anchor_day: "attempt" in event ? event.attempt.billingAnchorDay : null
 })

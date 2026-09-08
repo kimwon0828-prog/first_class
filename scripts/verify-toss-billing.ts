@@ -397,6 +397,7 @@ const run = async () => {
       amount: 49000,
       orderId: "fsc-3f2b1a4400004000800000000000abc",
       paymentIdempotencyKey: "checkout:3f2b1a44-0000-4000-8000-000000000abc",
+      billingKeyIssueIdempotencyKey: "billing-key:3f2b1a44-0000-4000-8000-000000000abc",
       status: "pending",
       expiresAt: "2026-09-08T12:00:00.000Z"
     }
@@ -418,12 +419,12 @@ const run = async () => {
       "cross-org 응답이 존재 여부를 알려 준다"
     )
 
-    // C. 같은 callback 재생
+    // C. authorized callback은 crash recovery를 위해 다시 진입할 수 있다.
     const replay = checkCheckoutCallback({ ...session, status: "authorized" }, callback, now)
-    check(!replay.ok && replay.code === "already_processed", "이미 처리된 callback 이 통과했다")
+    check(replay.ok, "authorized callback 이 복구 경로에 진입하지 못했다")
     check(
-      !checkCheckoutCallback({ ...session, status: "completed" }, callback, now).ok,
-      "완료된 세션이 다시 통과했다"
+      checkCheckoutCallback({ ...session, status: "completed" }, callback, now).ok,
+      "완료된 세션의 no-op 재시도가 막혔다"
     )
 
     check(!checkCheckoutCallback(null, callback, now).ok, "세션 없는 callback 이 통과했다")
@@ -449,6 +450,11 @@ const run = async () => {
     /** apply_billing_event 를 흉내 낸다 — 같은 멱등 키는 두 번 반영되지 않는다. */
     const createLedger = () => {
       const applied: Array<{ type: string; key: string }> = []
+      const attempts = new Map<string, {
+        status: "pending" | "succeeded" | "failed"
+        paidAt: string | null
+        failureCode: string | null
+      }>()
       const apply = async (event: {
         type: string
         idempotencyKey?: string
@@ -459,9 +465,28 @@ const run = async () => {
           return { mode: "duplicate" } as const
         }
         applied.push({ type: event.type, key })
+        const attempt = attempts.get(key)
+        if (attempt) {
+          attempt.status = event.type === "payment_failed" ? "failed" : "succeeded"
+          attempt.paidAt = event.type === "payment_failed" ? null : String(event.occurredAt)
+          attempt.failureCode = event.type === "payment_failed" ? String(event.failureCode ?? "") : null
+        }
         return { mode: "applied", status: "active", currentPeriodEnd: null } as const
       }
-      return { applied, apply: apply as never }
+      const ensure = async (input: Record<string, unknown>) => {
+        const key = String(input.attemptKey)
+        const state = attempts.get(key) ?? { status: "pending" as const, paidAt: null, failureCode: null }
+        attempts.set(key, state)
+        return {
+          ...input,
+          id: `attempt-${key}`,
+          status: state.status,
+          providerPaymentId: null,
+          paidAt: state.paidAt,
+          failureCode: state.failureCode
+        }
+      }
+      return { applied, apply: apply as never, ensure: ensure as never }
     }
 
     const donePayment = {
@@ -490,12 +515,21 @@ const run = async () => {
           orderName: "첫수업 스탠다드 구독",
           idempotencyKey: ORDER_ID,
           attemptKey: ATTEMPT_KEY,
+          attemptKind: "renewal",
+          attemptNumber: 0,
+          checkoutSessionId: null,
+          attemptPeriod: {
+            periodStart: "2026-10-10T00:00:00.000Z",
+            periodEnd: "2026-11-10T00:00:00.000Z",
+            anchorDay: 10
+          },
           eventType: "renewal_succeeded",
           resolvePeriod: () => ({
             periodStart: "2026-10-10T00:00:00.000Z",
             periodEnd: "2026-11-10T00:00:00.000Z"
           }),
-          applyEvent: ledger.apply
+          applyEvent: ledger.apply,
+          ensureAttempt: ledger.ensure
         }
       )
       return { result, calls: mock.calls }
@@ -577,8 +611,8 @@ const run = async () => {
         .filter((call) => call.init.method === "POST")
         .map((call) => (call.init.headers as Record<string, string>)["Idempotency-Key"])
       check(
-        idempotencyHeaders.every((value) => value === ORDER_ID),
-        "재실행이 다른 멱등키를 보냈다 — Toss 에서 이중 결제가 된다"
+        idempotencyHeaders.length === 0,
+        "이미 성공한 시도가 provider POST를 다시 보냈다"
       )
     }
     passLine(before, "성공·거절·불명·불일치·재실행 분기가 계약대로 갈린다")
@@ -615,6 +649,7 @@ const run = async () => {
           amount: 49000,
           order_id: orderId,
           payment_idempotency_key: key,
+          billing_key_issue_idempotency_key: `billing-key:${id}`,
           expires_at: new Date(Date.now() + 30 * 60 * 1000).toISOString()
         })
       })
@@ -647,6 +682,7 @@ const run = async () => {
         amount: 49000,
         order_id: attempt.orderId,
         payment_idempotency_key: "checkout:other",
+        billing_key_issue_idempotency_key: "billing-key:b21e0000-0000-4000-8000-0000000000c2",
         expires_at: new Date().toISOString()
       })
     }).then(

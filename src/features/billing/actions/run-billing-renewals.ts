@@ -3,7 +3,7 @@ import "server-only"
 import { applyVerifiedBillingEvent } from "@/features/billing/actions/apply-billing-event"
 import { buildRenewalBillingPeriod } from "@/features/billing/lib/billing-period"
 import { chargeSubscription } from "@/features/billing/lib/charge/charge-subscription"
-import { findLatestCompletedAnchorDay } from "@/features/billing/lib/checkout/checkout-store"
+import { ensureBillingPaymentAttempt } from "@/features/billing/lib/charge/payment-attempt"
 import { markBillingKeyInvalid } from "@/features/billing/lib/checkout/billing-customer-store"
 import { BILLING_PLANS } from "@/features/billing/lib/plan-catalog"
 import { decideRenewal } from "@/features/billing/lib/renewal/renewal-schedule"
@@ -72,8 +72,7 @@ export const runBillingRenewals = async (now: Date = new Date()): Promise<Renewa
       periodEnd,
       decision.attemptNumber
     )
-    const anchorDay = await findLatestCompletedAnchorDay(candidate.organizationId)
-    const period = buildRenewalBillingPeriod(new Date(periodEnd), anchorDay)
+    const period = buildRenewalBillingPeriod(new Date(periodEnd), candidate.billingAnchorDay)
 
     const result = await chargeSubscription(runtime.config, {
       organizationId: candidate.organizationId,
@@ -85,10 +84,15 @@ export const runBillingRenewals = async (now: Date = new Date()): Promise<Renewa
       orderName: buildBillingOrderName(plan.name),
       idempotencyKey: attempt.idempotencyKey,
       attemptKey: attempt.attemptKey,
+      attemptKind: "renewal",
+      attemptNumber: decision.attemptNumber,
+      checkoutSessionId: null,
+      attemptPeriod: period,
       eventType: "renewal_succeeded",
       // 갱신 기간은 승인 시각이 아니라 직전 기간에서 이어진다. 결제일이 밀리지 않는다.
       resolvePeriod: () => ({ periodStart: period.periodStart, periodEnd: period.periodEnd }),
-      applyEvent: applyVerifiedBillingEvent
+      applyEvent: applyVerifiedBillingEvent,
+      ensureAttempt: ensureBillingPaymentAttempt
     })
 
     if (result.status === "succeeded") {

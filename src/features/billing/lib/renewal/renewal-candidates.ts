@@ -23,6 +23,7 @@ export type RenewalCandidate = RenewalSubject & {
   planCode: "standard" | "pro"
   billingKey: string
   customerKey: string
+  billingAnchorDay: number | null
 }
 
 type SubscriptionRow = {
@@ -32,6 +33,7 @@ type SubscriptionRow = {
   current_period_end: string | null
   grace_period_end: string | null
   cancel_at_period_end: boolean
+  billing_anchor_day: number | null
 }
 
 type CustomerRow = {
@@ -46,7 +48,7 @@ export const findRenewalCandidates = async (now: Date): Promise<RenewalCandidate
   const { data: subscriptions, error } = await client
     .from("organization_subscriptions")
     .select(
-      "organization_id, plan_code, subscription_status, current_period_end, grace_period_end, cancel_at_period_end"
+      "organization_id, plan_code, subscription_status, current_period_end, grace_period_end, cancel_at_period_end, billing_anchor_day"
     )
     .in("subscription_status", ["active", "past_due"])
     .eq("cancel_at_period_end", false)
@@ -97,7 +99,8 @@ export const findRenewalCandidates = async (now: Date): Promise<RenewalCandidate
         gracePeriodEnd: row.grace_period_end,
         cancelAtPeriodEnd: row.cancel_at_period_end,
         billingKey: customer.billing_key,
-        customerKey: customer.provider_customer_key
+        customerKey: customer.provider_customer_key,
+        billingAnchorDay: row.billing_anchor_day
       }
     ]
   })

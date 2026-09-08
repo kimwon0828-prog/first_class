@@ -9,7 +9,7 @@ import { getSupabaseServiceRoleClient } from "@/integrations/supabase/service-ro
 // 직접 만들거나 고칠 수 있으면 금액·조직을 위조할 수 있다.
 
 const SESSION_COLUMNS =
-  "id, organization_id, customer_key, plan_code, amount, order_id, payment_idempotency_key, status, expires_at, anchor_day"
+  "id, organization_id, customer_key, plan_code, amount, order_id, payment_idempotency_key, billing_key_issue_idempotency_key, status, expires_at, anchor_day"
 
 type SessionRow = {
   id: string
@@ -19,6 +19,7 @@ type SessionRow = {
   amount: number
   order_id: string
   payment_idempotency_key: string
+  billing_key_issue_idempotency_key: string
   status: string
   expires_at: string
 }
@@ -31,6 +32,7 @@ const toSnapshot = (row: SessionRow): CheckoutSessionSnapshot => ({
   amount: row.amount,
   orderId: row.order_id,
   paymentIdempotencyKey: row.payment_idempotency_key,
+  billingKeyIssueIdempotencyKey: row.billing_key_issue_idempotency_key,
   status: row.status,
   expiresAt: row.expires_at
 })
@@ -43,6 +45,7 @@ export const insertCheckoutSession = async (input: {
   amount: number
   orderId: string
   paymentIdempotencyKey: string
+  billingKeyIssueIdempotencyKey: string
   requestedBy: string
   expiresAt: string
 }) => {
@@ -56,6 +59,7 @@ export const insertCheckoutSession = async (input: {
     amount: input.amount,
     order_id: input.orderId,
     payment_idempotency_key: input.paymentIdempotencyKey,
+    billing_key_issue_idempotency_key: input.billingKeyIssueIdempotencyKey,
     status: "pending",
     requested_by: input.requestedBy,
     expires_at: input.expiresAt
@@ -85,60 +89,93 @@ export const findCheckoutSessionByCustomerKey = async (
 }
 
 /**
- * 재생(replay) 방어의 최종선.
- *
- * pending → authorized 로 옮길 수 있는 요청은 하나뿐이다. 같은 callback 이 동시에
- * 두 번 들어와도 두 번째는 0행을 받고 멈춘다.
+ * 동시 실행 방어의 최종선. pending/authorized를 재개할 수 있지만 활성 lease는 하나다.
+ * worker가 죽으면 lease 만료 뒤 같은 저장 identity로 다시 실행한다.
  */
-export const claimCheckoutSession = async (sessionId: string): Promise<boolean> => {
+export type CheckoutLease = { token: string }
+
+const CHECKOUT_LEASE_MS = 2 * 60 * 1000
+
+export const claimCheckoutSession = async (
+  sessionId: string,
+  now: Date = new Date()
+): Promise<CheckoutLease | null> => {
   const client = getSupabaseServiceRoleClient()
+  const token = crypto.randomUUID()
   const { data, error } = await client
     .from("billing_checkout_sessions")
-    .update({ status: "authorized", authorized_at: new Date().toISOString() })
+    .update({
+      status: "authorized",
+      authorized_at: now.toISOString(),
+      processing_token: token,
+      processing_started_at: now.toISOString()
+    })
     .eq("id", sessionId)
-    .eq("status", "pending")
+    .in("status", ["pending", "authorized"])
+    .or(
+      `processing_started_at.is.null,processing_started_at.lt.${new Date(now.getTime() - CHECKOUT_LEASE_MS).toISOString()}`
+    )
     .select("id")
 
   if (error) {
     throw new Error("failed_to_claim_checkout_session")
   }
 
-  return (data ?? []).length === 1
+  return (data ?? []).length === 1 ? { token } : null
 }
 
-export const markCheckoutSessionCompleted = async (sessionId: string, anchorDay: number) => {
+export const releaseCheckoutSession = async (sessionId: string, lease: CheckoutLease) => {
   const client = getSupabaseServiceRoleClient()
-  await client
+  const { error } = await client
     .from("billing_checkout_sessions")
-    .update({ status: "completed", completed_at: new Date().toISOString(), anchor_day: anchorDay })
+    .update({ processing_token: null, processing_started_at: null })
     .eq("id", sessionId)
+    .eq("processing_token", lease.token)
+  if (error) throw new Error("failed_to_release_checkout_session")
 }
 
-export const markCheckoutSessionFailed = async (sessionId: string, failureCode: string) => {
+export const markCheckoutSessionCompleted = async (
+  sessionId: string,
+  anchorDay: number,
+  lease?: CheckoutLease
+) => {
   const client = getSupabaseServiceRoleClient()
-  await client
+  let query = client
     .from("billing_checkout_sessions")
-    .update({ status: "failed", failed_at: new Date().toISOString(), failure_code: failureCode })
+    .update({
+      status: "completed",
+      completed_at: new Date().toISOString(),
+      anchor_day: anchorDay,
+      processing_token: null,
+      processing_started_at: null
+    })
     .eq("id", sessionId)
-}
-
-/** 갱신 기준일. checkout 으로 시작한 구독에만 있다. */
-export const findLatestCompletedAnchorDay = async (
-  organizationId: string
-): Promise<number | null> => {
-  const client = getSupabaseServiceRoleClient()
-  const { data, error } = await client
-    .from("billing_checkout_sessions")
-    .select("anchor_day")
-    .eq("organization_id", organizationId)
-    .eq("status", "completed")
-    .order("completed_at", { ascending: false })
-    .limit(1)
-    .maybeSingle()
-
-  if (error || !data) {
-    return null
+  if (lease) query = query.eq("processing_token", lease.token)
+  const { data, error } = await query.select("id")
+  if (error || (lease && (data ?? []).length !== 1)) {
+    throw new Error("failed_to_complete_checkout_session")
   }
+}
 
-  return (data as { anchor_day: number | null }).anchor_day
+export const markCheckoutSessionFailed = async (
+  sessionId: string,
+  failureCode: string,
+  lease?: CheckoutLease
+) => {
+  const client = getSupabaseServiceRoleClient()
+  let query = client
+    .from("billing_checkout_sessions")
+    .update({
+      status: "failed",
+      failed_at: new Date().toISOString(),
+      failure_code: failureCode,
+      processing_token: null,
+      processing_started_at: null
+    })
+    .eq("id", sessionId)
+  if (lease) query = query.eq("processing_token", lease.token)
+  const { data, error } = await query.select("id")
+  if (error || (lease && (data ?? []).length !== 1)) {
+    throw new Error("failed_to_fail_checkout_session")
+  }
 }

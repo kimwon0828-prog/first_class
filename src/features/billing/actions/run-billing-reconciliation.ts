@@ -1,11 +1,8 @@
 import "server-only"
 
-import { decideRenewal } from "@/features/billing/lib/renewal/renewal-schedule"
-import { findRenewalCandidates } from "@/features/billing/lib/renewal/renewal-candidates"
+import { findPendingBillingPaymentAttempts } from "@/features/billing/lib/charge/payment-attempt"
 import { settleOrder } from "@/features/billing/lib/settle/settle-payment"
-import { buildRenewalBillingAttempt } from "@/features/billing/lib/toss/identifiers"
 import { getTossRuntime } from "@/features/billing/lib/toss/server"
-import { getSupabaseServiceRoleClient } from "@/integrations/supabase/service-role"
 
 // 결제 대사(reconciliation).
 //
@@ -31,8 +28,6 @@ export type ReconciliationSummary = {
   stillPending: number
   ignored: number
 }
-
-type SessionRow = { id: string; order_id: string }
 
 export const runBillingReconciliation = async (
   now: Date = new Date()
@@ -63,42 +58,15 @@ export const runBillingReconciliation = async (
     }
   }
 
-  // 1. 결과를 모르는 checkout.
-  const client = getSupabaseServiceRoleClient()
-  const { data: sessions, error } = await client
-    .from("billing_checkout_sessions")
-    .select("id, order_id")
-    .eq("provider", "toss")
-    .eq("status", "authorized")
-    .lte("authorized_at", new Date(now.getTime() - STUCK_SESSION_AGE_MS).toISOString())
-    .limit(SESSION_LIMIT)
-
-  if (error) {
-    throw new Error("failed_to_read_pending_checkouts")
-  }
-
-  for (const row of (sessions ?? []) as SessionRow[]) {
-    summary.sessionsChecked += 1
-    count((await settleOrder(runtime.config, row.order_id)).status)
-  }
-
-  // 2. 아직 갱신되지 않은 구독의 시도들.
-  const candidates = await findRenewalCandidates(now)
-  for (const candidate of candidates) {
-    const decision = decideRenewal(candidate, now)
-    if (!decision.due || !candidate.currentPeriodEnd) {
-      continue
-    }
-
-    for (let attempt = 0; attempt <= decision.attemptNumber; attempt += 1) {
-      const order = buildRenewalBillingAttempt(
-        candidate.organizationId,
-        candidate.currentPeriodEnd,
-        attempt
-      )
-      summary.renewalsChecked += 1
-      count((await settleOrder(runtime.config, order.orderId)).status)
-    }
+  // DB에 실제로 저장된 pending attempt만 확인한다. orderId를 다시 만들지 않는다.
+  const attempts = await findPendingBillingPaymentAttempts(
+    new Date(now.getTime() - STUCK_SESSION_AGE_MS),
+    SESSION_LIMIT
+  )
+  for (const attempt of attempts) {
+    if (attempt.attemptKind === "initial") summary.sessionsChecked += 1
+    else summary.renewalsChecked += 1
+    count((await settleOrder(runtime.config, attempt.orderId)).status)
   }
 
   return summary

@@ -1,15 +1,23 @@
 import "server-only"
 
 import { applyVerifiedBillingEvent } from "@/features/billing/actions/apply-billing-event"
-import { upsertBillingCustomer } from "@/features/billing/lib/checkout/billing-customer-store"
-import { checkCheckoutCallback } from "@/features/billing/lib/checkout/checkout-guards"
+import {
+  findActiveBillingCustomer,
+  upsertBillingCustomer
+} from "@/features/billing/lib/checkout/billing-customer-store"
+import {
+  CHECKOUT_SESSION_TTL_MS,
+  checkCheckoutCallback
+} from "@/features/billing/lib/checkout/checkout-guards"
 import {
   claimCheckoutSession,
   findCheckoutSessionByCustomerKey,
   markCheckoutSessionCompleted,
-  markCheckoutSessionFailed
+  markCheckoutSessionFailed,
+  releaseCheckoutSession
 } from "@/features/billing/lib/checkout/checkout-store"
 import { chargeSubscription } from "@/features/billing/lib/charge/charge-subscription"
+import { ensureBillingPaymentAttempt } from "@/features/billing/lib/charge/payment-attempt"
 import { buildInitialBillingPeriod } from "@/features/billing/lib/billing-period"
 import { getPurchasableBillingPlan } from "@/features/billing/lib/plan-catalog"
 import { issueTossBillingKey } from "@/features/billing/lib/toss/client"
@@ -47,44 +55,67 @@ export const completeStandardCheckout = async (input: {
     return { status: "rejected", message: checked.message }
   }
 
-  // 재생 방어. 같은 callback 이 두 번 들어와도 여기를 통과하는 것은 하나뿐이다.
+  if (checked.session.status === "completed") {
+    return { status: "activated" }
+  }
+
+  // 활성 lease는 하나뿐이고, worker crash 뒤에는 같은 세션을 재개할 수 있다.
   const claimed = await claimCheckoutSession(checked.session.id)
   if (!claimed) {
-    return { status: "rejected", message: "이미 처리된 결제 요청입니다." }
+    return { status: "pending", message: PENDING_MESSAGE }
   }
 
   const plan = getPurchasableBillingPlan(checked.session.planCode)
   if (!plan || plan.amount !== checked.session.amount) {
     // 시작 시점과 카탈로그가 어긋났다. 결제를 만들지 않는다.
-    await markCheckoutSessionFailed(checked.session.id, "plan_changed")
+    await markCheckoutSessionFailed(checked.session.id, "plan_changed", claimed)
     return { status: "rejected", message: GENERIC_FAILURE }
   }
 
-  const issued = await issueTossBillingKey(runtime.config, {
-    authKey: input.authKey,
-    customerKey: checked.session.customerKey,
-    idempotencyKey: checked.session.orderId
-  })
+  let customer = await findActiveBillingCustomer(checked.session.organizationId)
+  if (!customer || customer.customerKey !== checked.session.customerKey) {
+    const issued = await issueTossBillingKey(runtime.config, {
+      authKey: input.authKey,
+      customerKey: checked.session.customerKey,
+      idempotencyKey: checked.session.billingKeyIssueIdempotencyKey
+    })
 
-  if (issued.outcome !== "succeeded" || !issued.data?.billingKey) {
-    await markCheckoutSessionFailed(
-      checked.session.id,
-      issued.outcome === "succeeded" ? "billing_key_missing" : issued.code
-    )
-    return { status: "rejected", message: GENERIC_FAILURE }
+    if (issued.outcome === "unknown") {
+      await releaseCheckoutSession(checked.session.id, claimed)
+      return { status: "pending", message: PENDING_MESSAGE }
+    }
+
+    if (issued.outcome !== "succeeded" || !issued.data?.billingKey) {
+      await markCheckoutSessionFailed(
+        checked.session.id,
+        issued.outcome === "succeeded" ? "billing_key_missing" : issued.code,
+        claimed
+      )
+      return { status: "rejected", message: GENERIC_FAILURE }
+    }
+
+    await upsertBillingCustomer({
+      organizationId: checked.session.organizationId,
+      customerKey: checked.session.customerKey,
+      billingKey: issued.data.billingKey,
+      cardCompany: issued.data.cardCompany ?? null,
+      cardNumberMasked: issued.data.cardNumber ?? null
+    })
+    customer = {
+      organizationId: checked.session.organizationId,
+      customerKey: checked.session.customerKey,
+      billingKey: issued.data.billingKey,
+      status: "active"
+    }
   }
 
-  await upsertBillingCustomer({
-    organizationId: checked.session.organizationId,
-    customerKey: checked.session.customerKey,
-    billingKey: issued.data.billingKey,
-    cardCompany: issued.data.cardCompany ?? null,
-    cardNumberMasked: issued.data.cardNumber ?? null
-  })
+  const provisionalPeriod = buildInitialBillingPeriod(
+    new Date(new Date(checked.session.expiresAt).getTime() - CHECKOUT_SESSION_TTL_MS)
+  )
 
   const charged = await chargeSubscription(runtime.config, {
     organizationId: checked.session.organizationId,
-    billingKey: issued.data.billingKey,
+    billingKey: customer.billingKey,
     customerKey: checked.session.customerKey,
     planCode: plan.planCode,
     amount: plan.amount,
@@ -92,8 +123,13 @@ export const completeStandardCheckout = async (input: {
     orderName: buildBillingOrderName(plan.name),
     idempotencyKey: checked.session.orderId,
     attemptKey: checked.session.paymentIdempotencyKey,
+    attemptKind: "initial",
+    attemptNumber: 0,
+    checkoutSessionId: checked.session.id,
+    attemptPeriod: provisionalPeriod,
     eventType: "initial_payment_succeeded",
     applyEvent: applyVerifiedBillingEvent,
+    ensureAttempt: ensureBillingPaymentAttempt,
     // 첫 기간은 실제 승인 시각에서 시작한다. 그 날짜가 이후 갱신의 기준일이 된다.
     resolvePeriod: (approvedAt) => buildInitialBillingPeriod(new Date(approvedAt))
   })
@@ -101,16 +137,22 @@ export const completeStandardCheckout = async (input: {
   if (charged.status === "succeeded") {
     await markCheckoutSessionCompleted(
       checked.session.id,
-      buildInitialBillingPeriod(new Date(charged.approvedAt)).anchorDay
+      buildInitialBillingPeriod(new Date(charged.approvedAt)).anchorDay,
+      claimed
     )
     return { status: "activated" }
   }
 
   if (charged.status === "pending") {
-    // 세션은 authorized 로 남겨 둔다. 대사가 이 세션을 찾아 마무리한다.
+    await releaseCheckoutSession(checked.session.id, claimed)
     return { status: "pending", message: PENDING_MESSAGE }
   }
 
-  await markCheckoutSessionFailed(checked.session.id, charged.code)
+  if (charged.status === "mismatch") {
+    await releaseCheckoutSession(checked.session.id, claimed)
+    return { status: "pending", message: PENDING_MESSAGE }
+  }
+
+  await markCheckoutSessionFailed(checked.session.id, charged.code, claimed)
   return { status: "rejected", message: GENERIC_FAILURE }
 }

@@ -92,6 +92,7 @@ export const startStandardCheckout = async (): Promise<ActionResult<StandardChec
       amount: plan.amount,
       orderId: attempt.orderId,
       paymentIdempotencyKey: attempt.attemptKey,
+      billingKeyIssueIdempotencyKey: `billing-key:${sessionId}`,
       requestedBy: access.id,
       expiresAt: new Date(Date.now() + CHECKOUT_SESSION_TTL_MS).toISOString()
     })

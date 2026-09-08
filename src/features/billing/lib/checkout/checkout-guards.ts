@@ -13,6 +13,7 @@ export type CheckoutSessionSnapshot = {
   amount: number
   orderId: string
   paymentIdempotencyKey: string
+  billingKeyIssueIdempotencyKey: string
   status: string
   expiresAt: string
 }
@@ -76,13 +77,14 @@ export const checkCheckoutCallback = (
     return { ok: false, code: "session_not_found", message: REJECT_MESSAGE.session_not_found }
   }
 
-  // 재생 방어의 1차선. 최종 방어는 DB 의 조건부 UPDATE 다.
-  if (session.status !== "pending") {
+  // pending/authorized는 crash 후 재개할 수 있다. 동시 실행은 DB lease가 막는다.
+  if (!new Set(["pending", "authorized", "completed"]).has(session.status)) {
     return { ok: false, code: "already_processed", message: REJECT_MESSAGE.already_processed }
   }
 
   const expiresAt = new Date(session.expiresAt).getTime()
-  if (!Number.isFinite(expiresAt) || expiresAt <= now.getTime()) {
+  // 인증 전에 만료된 pending만 거부한다. 이미 authorized인 작업은 만료 뒤에도 복구해야 한다.
+  if (session.status === "pending" && (!Number.isFinite(expiresAt) || expiresAt <= now.getTime())) {
     return { ok: false, code: "session_expired", message: REJECT_MESSAGE.session_expired }
   }
 
