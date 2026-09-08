@@ -11,8 +11,13 @@
 //   6. 만료 정규화는 접근 판정을 바꾸지 않는다(이미 기간으로 닫혀 있다).
 //   7. 결제 금액은 서버 카탈로그 값이다.
 //   8. 유예는 이미 결제된 기간을 잘라먹지 않는다 — max(기간 종료, 실패) + 3일.
+//   9. 유예는 실패 episode 당 한 번이다. 재시도로 연장되지 않고, 끝난 유예가 다시 열리지 않는다.
+//  10. 새 주기가 시작되면 유예가 지워지고, 그 다음 실패에서만 새 유예가 생긴다.
 //
 // 로컬 Supabase 전용이다.
+
+import { execFile } from "node:child_process"
+import { promisify } from "node:util"
 
 import { resolveStudioEntitlements } from "@/features/billing/lib/entitlements"
 import {
@@ -81,6 +86,44 @@ const applyEvent = async (args: Record<string, unknown>) => {
   const text = await response.text()
   return { ok: response.ok, body: text ? JSON.parse(text) : null }
 }
+
+const execFileAsync = promisify(execFile)
+
+/**
+ * 로컬 Supabase 의 Postgres 컨테이너.
+ *
+ * PostgREST 는 요청 하나가 곧 transaction 하나라 lock 을 잡은 채로 둘 수 없다.
+ * 동시성 검증([12])만 이 경로로 직접 transaction 을 연다.
+ */
+const findLocalDbContainer = async (): Promise<string | null> => {
+  try {
+    const { stdout } = await execFileAsync("docker", [
+      "ps",
+      "--filter",
+      "name=supabase_db",
+      "--format",
+      "{{.Names}}"
+    ])
+    return stdout.trim().split("\n").filter(Boolean)[0] ?? null
+  } catch {
+    return null
+  }
+}
+
+const psql = (container: string, sql: string) =>
+  execFileAsync("docker", [
+    "exec",
+    "-i",
+    container,
+    "psql",
+    "-U",
+    "postgres",
+    "-d",
+    "postgres",
+    "-At",
+    "-c",
+    sql
+  ])
 
 const iso = (offsetDays: number) =>
   new Date(Date.now() + offsetDays * 24 * 60 * 60 * 1000).toISOString()
@@ -451,6 +494,207 @@ const run = async () => {
     await admin(`organization_payments?organization_id=eq.${ORG_C}`, { method: "DELETE" })
     await admin(`organization_subscriptions?organization_id=eq.${ORG_C}`, { method: "DELETE" })
     await admin(`organizations?id=eq.${ORG_C}`, { method: "DELETE" })
+  }
+
+
+  // ───────────────────────────────────────────────────────────
+  console.log("\n[11] 유예는 실패 episode 당 한 번 — 재시도로 연장되지 않는다")
+  {
+    const before = failures
+    const ORG_D = "b21e0000-0000-4000-8000-000000000004"
+    const PERIOD_START = "2026-09-10T00:00:00.000Z"
+    const PERIOD_END = "2026-10-10T00:00:00.000Z"
+    const FIRST_GRACE = "2026-10-13T00:00:00.000Z"
+
+    await admin(`organization_payments?organization_id=eq.${ORG_D}`, { method: "DELETE" })
+    await admin(`organization_subscriptions?organization_id=eq.${ORG_D}`, { method: "DELETE" })
+    await admin("organizations", {
+      method: "POST",
+      headers: { Prefer: "resolution=merge-duplicates,return=representation" },
+      body: JSON.stringify({ id: ORG_D, name: "결제 검증 D", branch_name: "본원" })
+    })
+    await admin("organization_subscriptions", {
+      method: "POST",
+      body: JSON.stringify({
+        organization_id: ORG_D,
+        plan_code: "standard",
+        subscription_status: "active",
+        current_period_start: PERIOD_START,
+        current_period_end: PERIOD_END
+      })
+    })
+
+    /** 실패 이벤트를 넣고, DB 저장값과 TS 재현식이 같은지까지 확인한다. */
+    const failAt = async (label: string, key: string, failedAt: string, expected: string) => {
+      const stepBefore = failures
+      const previous = await readSubscription(ORG_D)
+      const previousGrace = (previous?.grace_period_end as string | null) ?? null
+      const periodEnd = (previous?.current_period_end as string | null) ?? null
+
+      const applied = await applyEvent({
+        p_organization_id: ORG_D,
+        p_event_type: "payment_failed",
+        p_event_at: failedAt,
+        p_idempotency_key: key,
+        p_amount: BILLING_PLANS.standard.amount,
+        p_failure_code: "CARD_LIMIT_EXCEEDED"
+      })
+      check(applied.ok && applied.body?.mode === "applied", `${label}: 반영 실패 ${JSON.stringify(applied.body)}`)
+
+      const subscription = await readSubscription(ORG_D)
+      check(subscription?.subscription_status === "past_due", `${label}: past_due 가 아니다`)
+      const storedGrace = new Date(String(subscription?.grace_period_end)).toISOString()
+      check(storedGrace === expected, `${label}: 유예 기대 ${expected} / 실제 ${storedGrace}`)
+      // 기존 유예를 넘긴 TS 재현식이 DB 저장값과 같은지 — 두 구현이 갈리지 않게 고정한다.
+      const reproduced = resolveGracePeriodEnd(periodEnd, new Date(failedAt), previousGrace)
+      check(
+        reproduced?.toISOString() === storedGrace,
+        `${label}: TS 계산이 DB 와 다르다 — TS ${reproduced?.toISOString()} / DB ${storedGrace}`
+      )
+      passLine(stepBefore, `${label.padEnd(26)} → 유예 ${storedGrace.slice(0, 10)}`)
+      return storedGrace
+    }
+
+    // A. 첫 실패 — 이미 결제된 기간이 끝난 뒤부터 3일.
+    await failAt("A 첫 실패 10-10", "episode-d-1", "2026-10-10T00:00:00.000Z", FIRST_GRACE)
+    // B·C. 재시도 — 유예를 다시 계산하지 않는다.
+    await failAt("B 재시도 10-11", "episode-d-2", "2026-10-11T00:00:00.000Z", FIRST_GRACE)
+    await failAt("C 재시도 10-12", "episode-d-3", "2026-10-12T00:00:00.000Z", FIRST_GRACE)
+
+    // D. 유예가 끝난 뒤 도착한 실패 — 유예를 되살리지 않는다.
+    {
+      const stepBefore = failures
+      const snapshotOf = (gracePeriodEnd: string) => ({
+        subscription: {
+          organizationId: ORG_D,
+          planCode: "standard" as const,
+          status: "past_due" as const,
+          currentPeriodStart: PERIOD_START,
+          currentPeriodEnd: PERIOD_END,
+          cancelAtPeriodEnd: false,
+          gracePeriodEnd
+        },
+        override: null
+      })
+      const lateAt = new Date("2026-10-14T00:00:00.000Z")
+      // 실패가 오기 전에 이미 닫혀 있다.
+      check(
+        !resolveStudioEntitlements(snapshotOf(FIRST_GRACE), lateAt).entitlements.canWriteConsultations,
+        "D: 유예가 끝났는데 열려 있다"
+      )
+
+      const grace = await failAt("D 늦은 실패 10-14", "episode-d-4", lateAt.toISOString(), FIRST_GRACE)
+      check(
+        !resolveStudioEntitlements(snapshotOf(grace), lateAt).entitlements.canWriteConsultations,
+        "D: 늦은 실패 이벤트로 유료 접근이 다시 열렸다"
+      )
+      passLine(stepBefore, "D 유예 종료 후 실패      → 재오픈 0")
+    }
+
+    // E. 갱신 성공 → 새 주기. 그 다음 실패는 새 유예를 만든다.
+    {
+      const stepBefore = failures
+      const NEXT_PERIOD_END = "2026-11-10T00:00:00.000Z"
+      const renewal = await applyEvent({
+        p_organization_id: ORG_D,
+        p_event_type: "renewal_succeeded",
+        p_event_at: "2026-10-15T00:00:00.000Z",
+        p_idempotency_key: "episode-d-renewal",
+        p_provider_payment_id: "toss-payment-d",
+        p_amount: BILLING_PLANS.standard.amount,
+        p_period_start: PERIOD_END,
+        p_period_end: NEXT_PERIOD_END
+      })
+      check(renewal.ok && renewal.body?.mode === "applied", "E: 갱신이 반영되지 않았다")
+
+      const renewed = await readSubscription(ORG_D)
+      check(renewed?.subscription_status === "active", "E: active 로 돌아오지 않았다")
+      check(renewed?.grace_period_end === null, "E: 새 주기인데 유예가 남아 있다")
+      check(
+        new Date(String(renewed?.current_period_end)).toISOString() === NEXT_PERIOD_END,
+        "E: 새 이용기간이 저장되지 않았다"
+      )
+      passLine(stepBefore, "E 갱신 성공 11-10        → 유예 해제")
+
+      await failAt("E 새 주기 실패 11-10", "episode-d-5", NEXT_PERIOD_END, "2026-11-13T00:00:00.000Z")
+    }
+
+    await admin(`organization_payments?organization_id=eq.${ORG_D}`, { method: "DELETE" })
+    await admin(`organization_subscriptions?organization_id=eq.${ORG_D}`, { method: "DELETE" })
+    await admin(`organizations?id=eq.${ORG_D}`, { method: "DELETE" })
+    passLine(before, "유예 = episode 당 1회 · 새 주기에서만 새 유예")
+  }
+
+  // ───────────────────────────────────────────────────────────
+  console.log("\n[12] 동시 실패 이벤트 — 뒤에 잠근 transaction 이 연장하지 않는다")
+  {
+    const before = failures
+    const ORG_E = "b21e0000-0000-4000-8000-000000000005"
+    const container = await findLocalDbContainer()
+
+    check(container !== null, "로컬 Supabase DB 컨테이너를 찾지 못했다 — 동시성 검증을 건너뛸 수 없다")
+    if (container) {
+      await admin(`organization_payments?organization_id=eq.${ORG_E}`, { method: "DELETE" })
+      await admin(`organization_subscriptions?organization_id=eq.${ORG_E}`, { method: "DELETE" })
+      await admin("organizations", {
+        method: "POST",
+        headers: { Prefer: "resolution=merge-duplicates,return=representation" },
+        body: JSON.stringify({ id: ORG_E, name: "결제 검증 E", branch_name: "본원" })
+      })
+      await admin("organization_subscriptions", {
+        method: "POST",
+        body: JSON.stringify({
+          organization_id: ORG_E,
+          plan_code: "standard",
+          subscription_status: "active",
+          current_period_start: "2026-09-10T00:00:00.000Z",
+          current_period_end: "2026-10-10T00:00:00.000Z"
+        })
+      })
+
+      // 1번 transaction 이 구독 행을 잠근 채로 2초 머문다.
+      const holding = psql(
+        container,
+        `select public.apply_billing_event(
+           '${ORG_E}'::uuid, 'payment_failed', '2026-10-10T00:00:00+00'::timestamptz,
+           'concurrent-e-1', 'toss', null, 'standard', 49000, null, null, 'CARD_LIMIT_EXCEEDED'
+         ); select pg_sleep(2);`
+      )
+
+      // 그 사이 2번 실패 이벤트가 들어온다. 실패 시각이 더 늦다 —
+      // 잠그기 전 snapshot 을 봤다면 유예가 10-17 로 밀린다.
+      await new Promise((resolve) => setTimeout(resolve, 500))
+      const startedAt = Date.now()
+      const second = await applyEvent({
+        p_organization_id: ORG_E,
+        p_event_type: "payment_failed",
+        p_event_at: "2026-10-14T00:00:00.000Z",
+        p_idempotency_key: "concurrent-e-2",
+        p_amount: BILLING_PLANS.standard.amount,
+        p_failure_code: "CARD_LIMIT_EXCEEDED"
+      })
+      const waitedMs = Date.now() - startedAt
+      await holding
+
+      // 실제로 lock 을 기다렸는지 확인한다. 안 기다렸다면 이 검증은 동시성을 보지 못한 것이다.
+      check(waitedMs > 800, `2번 이벤트가 lock 을 기다리지 않았다(${waitedMs}ms) — 동시성 검증이 성립하지 않는다`)
+      check(second.ok, `2번 이벤트 실패: ${JSON.stringify(second.body)}`)
+
+      const subscription = await readSubscription(ORG_E)
+      const storedGrace = new Date(String(subscription?.grace_period_end)).toISOString()
+      check(
+        storedGrace === "2026-10-13T00:00:00.000Z",
+        `동시 실패로 유예가 밀렸다: 기대 2026-10-13 / 실제 ${storedGrace}`
+      )
+      check(subscription?.subscription_status === "past_due", "past_due 가 아니다")
+      // 두 건 다 결제 이력에는 남는다 — 유예만 하나다.
+      check((await countPayments(ORG_E)) === 2, "실패 이력 2건이 남지 않았다")
+
+      await admin(`organization_payments?organization_id=eq.${ORG_E}`, { method: "DELETE" })
+      await admin(`organization_subscriptions?organization_id=eq.${ORG_E}`, { method: "DELETE" })
+      await admin(`organizations?id=eq.${ORG_E}`, { method: "DELETE" })
+      passLine(before, `2번 transaction 이 ${waitedMs}ms 대기 후 기존 유예 유지(10-13)`)
+    }
   }
 
   await teardown()

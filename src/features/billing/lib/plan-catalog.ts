@@ -67,10 +67,15 @@ export const BILLING_GRACE_PERIOD_DAYS = 3
 /**
  * 갱신 실패 시 유예 종료 시각.
  *
+ * 유예는 실패 episode 당 한 번만 만든다. 이미 유예 중이면(existingGracePeriodEnd 존재)
+ * 그 값을 그대로 돌려준다 — 갱신 결제는 여러 번 재시도되므로, 실패마다 다시 계산하면
+ * 유예가 밀리고(sliding grace) 끝난 유예가 늦은 실패 이벤트로 다시 열린다.
+ * 새 유예는 갱신이 성공해 새 주기가 시작된 뒤의 첫 실패에서만 생긴다.
+ *
  * 3일은 결제된 기간 "이후" 의 추가 유예다. 실패가 기간 종료 전에 일어나도
  * 이미 결제된 기간을 잘라먹지 않도록 늦은 쪽을 기준으로 삼는다.
  *
- *   grace = max(current_period_end, failedAt) + 3일
+ *   grace = existing ?? max(current_period_end, failedAt) + 3일
  *
  * 기간을 모르면 유예를 주지 않는다(null). 그 구독은 이미 기간 판정으로 닫혀 있고,
  * 실패 이벤트가 오히려 접근을 열어 주면 안 된다.
@@ -81,8 +86,19 @@ export const BILLING_GRACE_PERIOD_DAYS = 3
  */
 export const resolveGracePeriodEnd = (
   currentPeriodEnd: string | Date | null,
-  failedAt: Date
+  failedAt: Date,
+  existingGracePeriodEnd: string | Date | null = null
 ): Date | null => {
+  if (existingGracePeriodEnd) {
+    const existing =
+      existingGracePeriodEnd instanceof Date
+        ? existingGracePeriodEnd
+        : new Date(existingGracePeriodEnd)
+    if (!Number.isNaN(existing.getTime())) {
+      return existing
+    }
+  }
+
   if (!currentPeriodEnd) {
     return null
   }
