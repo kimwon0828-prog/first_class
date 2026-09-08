@@ -859,6 +859,54 @@ export type OrganizationEntitlementOverride = {
   expiresAt: string | null
 }
 
+export const BILLING_PROVIDERS = ["toss"] as const
+export type BillingProvider = (typeof BILLING_PROVIDERS)[number]
+
+export const ORGANIZATION_PAYMENT_STATUSES = [
+  "pending",
+  "succeeded",
+  "failed",
+  "canceled",
+  "refunded"
+] as const
+export type OrganizationPaymentStatus = (typeof ORGANIZATION_PAYMENT_STATUSES)[number]
+
+export type OrganizationPayment = {
+  id: string
+  organizationId: string
+  provider: BillingProvider
+  providerPaymentId: string | null
+  idempotencyKey: string
+  planCode: OrganizationPaidPlanCode
+  amount: number
+  currency: "KRW"
+  status: OrganizationPaymentStatus
+  periodStart: string | null
+  periodEnd: string | null
+  paidAt: string | null
+  failedAt: string | null
+  failureCode: string | null
+  createdAt: string
+}
+
+export const BILLING_KEY_STATUSES = ["active", "invalid", "removed"] as const
+export type BillingKeyStatus = (typeof BILLING_KEY_STATUSES)[number]
+
+/**
+ * 조직 결제수단.
+ *
+ * billingKey 는 결제를 일으킬 수 있는 credential 이다. 화면으로 내보내지 않는다.
+ * 카드 원번호 · CVC · 유효기간은 저장하지 않으며 표시용 마스킹만 둔다.
+ */
+export type OrganizationBillingCustomer = {
+  organizationId: string
+  provider: BillingProvider
+  providerCustomerKey: string
+  billingKeyStatus: BillingKeyStatus
+  cardCompany: string | null
+  cardNumberMasked: string | null
+}
+
 /** 요금제 사실과 override 를 그대로 담은 값. 해석은 resolver 가 한다. */
 export type OrganizationBillingSnapshot = {
   subscription: OrganizationSubscription | null
