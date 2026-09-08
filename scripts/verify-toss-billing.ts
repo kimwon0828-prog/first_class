@@ -1125,6 +1125,199 @@ const run = async () => {
     passLine(before, "applied · duplicate · stale · ignored 를 DB mode 그대로 보고")
   }
 
+
+  // ───────────────────────────────────────────────────────────
+  console.log("\n[19] checkout 세션 보존 계약 (로컬 Supabase)")
+  {
+    const before = failures
+    const ORG_KEEP = "cc111111-1111-4111-8111-111111111111"
+    const ORG_DROP = "cc111111-1111-4111-8111-111111111112"
+    const SESSION_LINKED = "dd111111-1111-4111-8111-111111111111"
+    const SESSION_FREE = "dd111111-1111-4111-8111-111111111112"
+    const SESSION_DROP = "dd111111-1111-4111-8111-111111111113"
+    const orgFilter = `in.(${ORG_KEEP},${ORG_DROP})`
+
+    const cleanup = async () => {
+      await admin(`organization_payments?organization_id=${orgFilter}`, { method: "DELETE" })
+      await admin(`billing_checkout_sessions?organization_id=${orgFilter}`, { method: "DELETE" })
+      await admin(`organizations?id=${orgFilter}`, { method: "DELETE" })
+    }
+    /** 거절 여부뿐 아니라 "무엇이 거절했는지" 까지 본다. */
+    const attempt = async (path: string, init: RequestInit) => {
+      try {
+        await admin(path, init)
+        return { ok: true, error: "" }
+      } catch (error) {
+        return { ok: false, error: error instanceof Error ? error.message : String(error) }
+      }
+    }
+
+    await cleanup()
+    await admin("organizations", {
+      method: "POST",
+      body: JSON.stringify([
+        { id: ORG_KEEP, name: "결제 보존 검증 A", branch_name: "본원" },
+        { id: ORG_DROP, name: "결제 보존 검증 B", branch_name: "본원" }
+      ])
+    })
+
+    const session = (id: string, organizationId: string, suffix: string, status: string) => ({
+      id,
+      organization_id: organizationId,
+      customer_key: `fs-cc1111111111111111111111111111${suffix}`,
+      plan_code: "standard",
+      amount: 49000,
+      order_id: `fsc-${id.replace(/-/g, "")}`,
+      payment_idempotency_key: `checkout:${id}`,
+      billing_key_issue_idempotency_key: `bk-${suffix}`,
+      status,
+      expires_at: new Date(Date.now() + 86400000).toISOString()
+    })
+    await admin("billing_checkout_sessions", {
+      method: "POST",
+      body: JSON.stringify([
+        session(SESSION_LINKED, ORG_KEEP, "1a", "completed"),
+        session(SESSION_FREE, ORG_KEEP, "1b", "pending"),
+        session(SESSION_DROP, ORG_DROP, "1c", "completed")
+      ])
+    })
+
+    const payment = (organizationId: string, sessionId: string | null, key: string, kind: string) => ({
+      organization_id: organizationId,
+      provider: "toss",
+      idempotency_key: key,
+      plan_code: "standard",
+      amount: 49000,
+      status: "succeeded",
+      period_start: new Date().toISOString(),
+      period_end: new Date(Date.now() + 30 * 86400000).toISOString(),
+      provider_order_id: `ord-${key}`,
+      provider_idempotency_key: `ord-${key}`,
+      attempt_kind: kind,
+      attempt_number: 0,
+      checkout_session_id: sessionId
+    })
+    await admin("organization_payments", {
+      method: "POST",
+      body: JSON.stringify([
+        payment(ORG_KEEP, SESSION_LINKED, "checkout:linked", "initial"),
+        payment(ORG_DROP, SESSION_DROP, "checkout:drop", "initial")
+      ])
+    })
+
+    // A. 아무도 참조하지 않는 세션은 정리할 수 있어야 한다.
+    check(
+      (await attempt(`billing_checkout_sessions?id=eq.${SESSION_FREE}`, { method: "DELETE" })).ok,
+      "A. 참조 없는 checkout 세션을 지울 수 없다"
+    )
+
+    // B. 최초 결제가 참조하는 세션은 단독으로 지울 수 없다(감사 연결 보존).
+    const linkedDelete = await attempt(`billing_checkout_sessions?id=eq.${SESSION_LINKED}`, {
+      method: "DELETE"
+    })
+    check(!linkedDelete.ok, "B. 결제가 참조하는 세션이 삭제됐다 — 최초 결제의 출처를 잃는다")
+    // 거절 주체가 FK 여야 한다.
+    //   구 계약(ON DELETE SET NULL)에서도 삭제는 실패하지만, 그건 FK 가 컬럼을 NULL 로
+    //   만든 뒤 attempt_link CHECK 가 터지는 "부수 효과" 다. CHECK 를 완화하는 순간
+    //   세션이 지워지고 최초 결제의 출처가 조용히 사라진다.
+    check(
+      linkedDelete.error.includes("organization_payments_checkout_session_id_fkey"),
+      `B. 삭제를 막은 주체가 FK 가 아니다 — 우연히 막힌 것이다: ${linkedDelete.error.slice(0, 160)}`
+    )
+    const linked = (await admin(
+      `organization_payments?checkout_session_id=eq.${SESSION_LINKED}&select=id`
+    )) as Array<unknown>
+    check(linked.length === 1, "B. 결제의 checkout 연결이 끊겼다")
+
+    // C. 조직 삭제는 결제·세션이 같은 transaction 에서 함께 사라지므로 통과해야 한다.
+    check(
+      (await attempt(`organizations?id=eq.${ORG_DROP}`, { method: "DELETE" })).ok,
+      "C. 조직 삭제가 checkout 세션 때문에 실패한다"
+    )
+    for (const path of [
+      `organizations?id=eq.${ORG_DROP}&select=id`,
+      `billing_checkout_sessions?organization_id=eq.${ORG_DROP}&select=id`,
+      `organization_payments?organization_id=eq.${ORG_DROP}&select=id`
+    ]) {
+      check(((await admin(path)) as Array<unknown>).length === 0, `C. 삭제되지 않고 남았다: ${path}`)
+    }
+
+    // D. 갱신 결제는 checkout 세션 없이 정상이다.
+    check(
+      (
+        await attempt("organization_payments", {
+          method: "POST",
+          body: JSON.stringify(payment(ORG_KEEP, null, "renewal:keep:a0", "renewal"))
+        })
+      ).ok,
+      "D. 갱신 결제가 세션 없이는 저장되지 않는다"
+    )
+
+    // E. 최초 결제는 checkout 세션 없이 만들 수 없다.
+    check(
+      !(
+        await attempt("organization_payments", {
+          method: "POST",
+          body: JSON.stringify(payment(ORG_KEEP, null, "checkout:orphan", "initial"))
+        })
+      ).ok,
+      "E. 출처 없는 최초 결제가 저장됐다"
+    )
+
+    await cleanup()
+    passLine(before, "참조 없는 세션 정리 가능 · 참조된 세션 보존 · 조직 삭제 통과")
+  }
+
+
+  // ───────────────────────────────────────────────────────────
+  console.log("\n[20] 갱신 불일치 감지 (자동 수정 없음)")
+  {
+    const before = failures
+    // apply_billing_event 는 결제 기록과 구독 갱신을 한 transaction 에서 처리하므로
+    // "성공한 갱신 결제가 있는데 구독 기간이 그 결제를 반영하지 않은" 상태는
+    // 정상 경로에서 나올 수 없다. 그래도 조용히 어긋나면 대사가 판단을 잘못하므로
+    // 모순을 찾아낼 수 있게 해 둔다. 발견해도 고치지는 않는다 — 운영이 판단할 일이다.
+    type Row = { organizationId: string; paymentPeriodEnd: string; subscriptionPeriodEnd: string | null }
+    const findInconsistent = (rows: Row[]) =>
+      rows.filter((row) => {
+        if (!row.subscriptionPeriodEnd) return true
+        return new Date(row.subscriptionPeriodEnd).getTime() < new Date(row.paymentPeriodEnd).getTime()
+      })
+
+    const consistent: Row[] = [
+      { organizationId: "a", paymentPeriodEnd: "2026-11-10T00:00:00.000Z", subscriptionPeriodEnd: "2026-11-10T00:00:00.000Z" },
+      // 다음 갱신이 이미 한 번 더 진행된 경우도 정상이다.
+      { organizationId: "b", paymentPeriodEnd: "2026-11-10T00:00:00.000Z", subscriptionPeriodEnd: "2026-12-10T00:00:00.000Z" }
+    ]
+    check(findInconsistent(consistent).length === 0, "정상 상태를 불일치로 잡았다")
+
+    const broken: Row[] = [
+      // 결제는 11-10 까지를 샀는데 구독은 10-10 에 멈춰 있다.
+      { organizationId: "c", paymentPeriodEnd: "2026-11-10T00:00:00.000Z", subscriptionPeriodEnd: "2026-10-10T00:00:00.000Z" },
+      // 결제는 성공했는데 구독이 없다.
+      { organizationId: "d", paymentPeriodEnd: "2026-11-10T00:00:00.000Z", subscriptionPeriodEnd: null }
+    ]
+    check(findInconsistent(broken).length === 2, "결제와 구독이 어긋난 상태를 놓쳤다")
+
+    // 실제 로컬 DB 에도 그런 행이 없어야 한다.
+    const rows = (await admin(
+      "organization_payments?status=eq.succeeded&attempt_kind=eq.renewal&select=organization_id,period_end"
+    )) as Array<{ organization_id: string; period_end: string }>
+    const subscriptions = (await admin(
+      "organization_subscriptions?select=organization_id,current_period_end"
+    )) as Array<{ organization_id: string; current_period_end: string | null }>
+    const byOrg = new Map(subscriptions.map((row) => [row.organization_id, row.current_period_end]))
+    const live = findInconsistent(
+      rows.map((row) => ({
+        organizationId: row.organization_id,
+        paymentPeriodEnd: row.period_end,
+        subscriptionPeriodEnd: byOrg.get(row.organization_id) ?? null
+      }))
+    )
+    check(live.length === 0, `결제와 구독이 어긋난 조직이 있다: ${live.map((r) => r.organizationId).join(",")}`)
+    passLine(before, "모순 감지 동작 · 현재 데이터에는 모순 없음(자동 수정 0)")
+  }
+
   if (failures > 0) {
     console.error(`\nFAIL: ${failures}건 실패`)
     process.exit(1)
