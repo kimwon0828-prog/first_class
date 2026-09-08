@@ -1,6 +1,6 @@
+/* canvas 는 StudioShell 이 칠한다. */
 .page {
   min-height: 100dvh;
-  background: #f7f7f7;
   padding: 28px 24px 56px;
 }
 

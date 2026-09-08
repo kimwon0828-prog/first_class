@@ -1,5 +1,5 @@
+/* canvas 는 StudioShell 이 칠한다. */
 .page {
-  background: var(--bg);
   min-height: 100dvh;
 }
 

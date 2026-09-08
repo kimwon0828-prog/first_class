@@ -6,10 +6,10 @@
  * 폼이 아니라 링크 목록이므로 본문 폭은 --studio-max 보다 좁게 잡아 가독성을 우선한다.
  */
 
+/* canvas 는 StudioShell 이 칠한다. */
 .page {
   min-height: 100dvh;
   padding: 32px 24px 56px;
-  background: var(--bg);
   color: var(--text-1);
 }
 

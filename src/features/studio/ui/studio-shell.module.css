@@ -1,6 +1,16 @@
+/*
+ * Studio workspace canvas 의 주인은 여기 한 곳이다(STUDIO_DESIGN_SYSTEM.md §2.7).
+ *
+ * 흰 작업 공간 위에서 정보의 구분은 넓은 회색 면이 아니라 border · spacing ·
+ * typography 로 만든다. 그래서 각 페이지 wrapper 는 캔버스를 다시 칠하지 않는다 —
+ * 페이지마다 background 를 반복하면 어느 값이 참인지 알 수 없게 된다.
+ *
+ * 사이드바도 --surface 라, 둘 사이의 경계는 .sidebar 의 border-right 하나다.
+ * 여기에 shadow 를 더하지 않는다(§2.5).
+ */
 .shell {
   min-height: 100dvh;
-  background: var(--bg);
+  background: var(--surface);
   display: flex;
 }
 

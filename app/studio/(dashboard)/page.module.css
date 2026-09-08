@@ -6,10 +6,10 @@
  * 행마다 카드를 만들지 않는다. 카드 섀도우는 쓰지 않는다(디자인 시스템 §2.5).
  */
 
+/* canvas 는 StudioShell 이 칠한다. 여기서 background 를 다시 쓰지 않는다. */
 .page {
   min-height: 100dvh;
   padding: 32px 24px 56px;
-  background: var(--bg);
   color: var(--text-1);
 }
 

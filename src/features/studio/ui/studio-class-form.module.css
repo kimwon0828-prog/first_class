@@ -1,10 +1,10 @@
+/* canvas 는 StudioShell 이 칠한다. */
 .page {
   max-width: var(--studio-max);
   margin: 0 auto;
   display: grid;
   gap: var(--s5);
   padding: 22px 26px 40px;
-  background: var(--bg);
 }
 
 .stickyChrome {
@@ -13,7 +13,8 @@
   z-index: 30;
   display: grid;
   gap: 0;
-  background: var(--bg);
+  /* 스크롤되는 본문이 비쳐 보이면 안 되므로 canvas 와 같은 불투명 색을 쓴다. */
+  background: var(--surface);
   padding-top: 6px;
 }
 
