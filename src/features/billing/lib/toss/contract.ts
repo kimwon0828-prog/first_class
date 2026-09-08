@@ -20,7 +20,9 @@
 
 export const TOSS_API_BASE_URL = "https://api.tosspayments.com"
 
-export const TOSS_BILLING_SDK_URL = "https://js.tosspayments.com/v2"
+// 문서 본문에는 .../v2 로 적혀 있으나 실제로 그 경로는 403 AccessDenied 다.
+// 전역 TossPayments 를 정의하는 실물은 .../v2/standard 하나뿐이다(2026-09 실측).
+export const TOSS_BILLING_SDK_URL = "https://js.tosspayments.com/v2/standard"
 
 export const TOSS_ENDPOINTS = {
   issueBillingKey: "/v1/billing/authorizations/issue",
