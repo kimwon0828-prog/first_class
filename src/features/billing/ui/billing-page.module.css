@@ -8,10 +8,21 @@
  * 카드 배경·표 컬럼 배경에는 쓰지 않는다 — 초록이 넓어지면 화면이 광고처럼 보인다.
  */
 
+/*
+ * 페이지 컨테이너. Studio 다른 화면(cases · dashboard · applications)과 같은
+ * 규격이다 — max-width: var(--studio-max) + margin: 0 auto + padding: 32px 24px.
+ * billing 전용 여백을 만들지 않는다.
+ *
+ * 사이드바와의 간격은 이 padding 하나에서 나온다. sidebar width 를 다시 쓰거나
+ * margin-left 로 보정하지 않는다. 24px 은 StudioWorkspaceFooter 의 좌우 padding 과
+ * 같은 값이라, 본문과 footer 가 같은 세로 축에서 시작한다.
+ */
 .page {
+  max-width: var(--studio-max);
+  margin: 0 auto;
+  padding: 32px 24px 48px;
   display: grid;
   gap: var(--s8);
-  max-width: var(--studio-max);
 }
 
 .header {
@@ -447,5 +458,12 @@
   .pricingGrid,
   .managementGrid {
     grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* 좁은 폭의 좌우 여백도 Studio 목록 화면과 같은 값을 쓴다(cases 와 동일). */
+@media (max-width: 860px) {
+  .page {
+    padding: 28px 20px 48px;
   }
 }
