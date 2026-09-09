@@ -271,6 +271,19 @@ select to_jsonb(block_row) as row_data
 from public.schedule_blocks block_row
 where block_row.id = '8dd628cf-9cc9-4629-a26f-6fdee3bf8a72';
 
+-- Fresh-database escape.
+--
+-- The legacy cohort is defined by _legacy_kst_application_signature: applications whose
+-- requested_slot_at was stored as if the KST wall clock were UTC. A database that never held
+-- that data (a fresh bootstrap, `supabase db reset`, or a staging/review project) has nothing
+-- for this backfill to correct, and the audited before-image below cannot apply to it.
+--
+-- Only a completely empty cohort is skipped. A partially matching cohort (1..18, 20+, or 19
+-- rows whose values differ) still runs every assertion below and still fails closed -- the
+-- expected-count, before-image, distribution, FK topology and history checks are unchanged.
+create temporary table _legacy_backfill_scope on commit drop as
+select (select count(*) from _application_before) = 0 as is_fresh_database;
+
 do $$
 declare
   affected_count integer;
@@ -279,6 +292,11 @@ declare
   referenced_application_count integer;
   reference_field_count integer;
 begin
+  if (select is_fresh_database from _legacy_backfill_scope) then
+    raise notice 'legacy KST backfill: no legacy cohort rows found; skipping on fresh database';
+    return;
+  end if;
+
   select count(*) into affected_count from _application_before;
   if affected_count <> 19 then
     raise exception 'legacy KST backfill aborted: expected 19 affected applications, found %', affected_count;
@@ -428,6 +446,11 @@ do $$
 declare
   changed_count integer;
 begin
+  if (select is_fresh_database from _legacy_backfill_scope) then
+    raise notice 'legacy KST backfill: no legacy cohort rows found; skipping on fresh database';
+    return;
+  end if;
+
   update public.trial_applications application
   set requested_schedule_block_id = case
         when application.requested_schedule_block_id = legacy.id then legacy.replacement_block_id
@@ -511,6 +534,11 @@ declare
   current_history record;
   expected_history record;
 begin
+  if (select is_fresh_database from _legacy_backfill_scope) then
+    raise notice 'legacy KST backfill: no legacy cohort rows found; skipping on fresh database';
+    return;
+  end if;
+
   select count(*) into affected_count from _legacy_kst_application_signature;
   if affected_count <> 0 then
     raise exception 'legacy KST backfill post-check failed: % legacy signatures remain', affected_count;
