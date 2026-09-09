@@ -237,7 +237,11 @@ export const StudioShell = ({ children, organizationName, logoImagePath, footer 
                   </span>
                 )}
               </span>
-              <span className={styles.accountName}>{accountLabel}</span>
+              {/* 이름이 길면 CSS 로 잘린다. 잘린 뒤에도 전체 이름을 볼 수 있게 title 을 둔다.
+                  스크린리더는 DOM 텍스트(전체 이름)를 그대로 읽으므로 accessible name 은 바뀌지 않는다. */}
+              <span className={styles.accountName} title={accountLabel}>
+                {accountLabel}
+              </span>
               <span className={styles.accountChevron} aria-hidden="true">
                 {">"}
               </span>
