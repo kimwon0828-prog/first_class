@@ -22,3 +22,14 @@
     gap: 32px;
   }
 }
+
+/*
+ * 모바일 좌우 여백. cases · billing 과 같은 860px 기준, 같은 20px 을 쓴다.
+ * StudioShell 의 모바일 .content inset 과 같은 값이라 Studio 전체가 하나의 축을 갖는다.
+ * 세로 리듬은 건드리지 않으므로 padding-inline 만 덮어쓴다.
+ */
+@media (max-width: 860px) {
+  .container {
+    padding-inline: 20px;
+  }
+}

@@ -543,7 +543,8 @@
 
 @media (max-width: 900px) {
   .page {
-    padding: 24px 16px 48px;
+    /* 좌우 20px 은 Studio 모바일 canonical gutter 다(StudioShell 의 .content inset 과 같은 값). */
+    padding: 24px 20px 48px;
   }
 
   .workspace {
