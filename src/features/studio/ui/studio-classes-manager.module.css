@@ -83,13 +83,12 @@
   color: var(--text-1);
 }
 
+/* 목록 surface 밖에 있는 page-level toolbar 다. 컨테이너 축을 그대로 쓴다. */
 .toolbar {
   display: flex;
   align-items: center;
   gap: var(--s2);
   flex-wrap: wrap;
-  /* 목록 본문과 같은 content axis. 값은 page.module.css 의 .container 가 정의한다. */
-  padding: 0 0 0 var(--classes-content-inset, 0px);
 }
 
 .searchWrap {

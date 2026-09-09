@@ -1,10 +1,9 @@
+/*
+ * Page-level 요소(제목·설명·페이지 액션·독립 Toolbar)는 Studio 컨테이너 축에 맞춘다.
+ * 목록·카드 내부 텍스트는 각 component 의 기존 inset 을 그대로 쓴다.
+ * 제목을 목록 본문 축에 맞추려고 surface 외곽선보다 안쪽으로 들여쓰지 않는다.
+ */
 .root {
-  /*
-   * 목록 surface 안쪽에서 텍스트가 시작하는 지점.
-   * .workspace border 1px + .row / .listHead 의 padding-inline 18px 이다.
-   * 제목·설명·검색 Toolbar 를 이 축에 맞춰 목록 본문과 한 줄로 읽히게 한다.
-   */
-  --teachers-content-inset: 19px;
   display: grid;
   gap: 24px;
 }
@@ -22,8 +21,6 @@
 .headerLeft {
   display: grid;
   gap: var(--s2);
-  /* CTA 는 오른쪽 정렬 그대로 두고 왼쪽 텍스트 블록만 본문 축으로 옮긴다. */
-  padding-left: var(--teachers-content-inset);
 }
 
 .headerRight {
@@ -122,13 +119,12 @@
 
 /* ── Toolbar ─────────────────────────────────────────────────────── */
 
+/* 목록 surface 밖에 있는 page-level toolbar 다. 컨테이너 축을 그대로 쓴다. */
 .toolbar {
   display: flex;
   align-items: center;
   gap: var(--s2);
   flex-wrap: wrap;
-  /* 목록 본문과 같은 content axis. */
-  padding: 0 0 0 var(--teachers-content-inset);
 }
 
 .searchWrap {

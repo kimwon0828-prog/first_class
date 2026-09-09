@@ -3,12 +3,16 @@
   gap: 32px;
 }
 
+/*
+ * Page-level 요소(제목·설명·페이지 액션·독립 Toolbar)는 Studio 컨테이너 축에 맞춘다.
+ * 목록·카드 내부 텍스트는 각 component 의 기존 inset 을 그대로 쓴다.
+ * 제목을 목록 본문 축에 맞추려고 surface 외곽선보다 안쪽으로 들여쓰지 않는다.
+ */
 .pageHeader {
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
   gap: var(--s4);
-  padding: 0 19px;
 }
 
 .pageHeading {
@@ -62,8 +66,9 @@
   color: var(--brand-700);
 }
 
+/* page-level alert 다. 헤더와 같은 축에서 시작한다. */
 .errorCard {
-  margin: 0 19px;
+  margin: 0;
   padding: 14px 16px;
   border: 1px solid var(--red-bg);
   border-radius: var(--r-lg);
