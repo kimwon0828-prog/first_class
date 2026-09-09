@@ -658,6 +658,9 @@ export default function PartnerLanding() {
               <b>해지는 언제든 신청할 수 있습니다.</b> 해지 후에도 현재 결제기간 종료일까지 이용할
               수 있으며, 다음 결제일부터 자동결제가 진행되지 않습니다.
             </p>
+            <Link href="/refund-policy" className={styles.pTermsLink}>
+              환불 및 해지 정책 보기
+            </Link>
           </div>
         </div>
       </section>
@@ -737,6 +740,16 @@ export default function PartnerLanding() {
                 <a href="#price">요금</a>
                 <br />
                 <a href={TALLY_URL}>도입 상담</a>
+              </p>
+            </div>
+            <div>
+              <h5>정책</h5>
+              <p>
+                <Link href="/terms">이용약관</Link>
+                <br />
+                <Link href="/privacy">개인정보처리방침</Link>
+                <br />
+                <Link href="/refund-policy">환불 및 해지 정책</Link>
               </p>
             </div>
             <div>

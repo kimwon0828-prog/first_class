@@ -17,6 +17,10 @@ type LegalPageLayoutProps = {
   description: string
   notice?: string
   sections: LegalSection[]
+  /** 문서마다 다르다. 넘기지 않으면 기존 약관·방침의 날짜를 그대로 쓴다. */
+  effectiveDate?: string
+  /** 개정 이력이 없는 문서는 넘기지 않는다. 그러면 최종 수정일 줄을 그리지 않는다. */
+  lastUpdatedDate?: string | null
 }
 
 export function LegalPageLayout({
@@ -24,7 +28,9 @@ export function LegalPageLayout({
   title,
   description,
   notice,
-  sections
+  sections,
+  effectiveDate = "2026년 06월 25일",
+  lastUpdatedDate = "2026년 07월 07일"
 }: LegalPageLayoutProps) {
   return (
     <main className={styles.page}>
@@ -60,8 +66,8 @@ export function LegalPageLayout({
 
           <footer className={styles.footer}>
             <div className={styles.dates}>
-              <p>시행일: 2026년 06월 25일</p>
-              <p>최종 수정일: 2026년 07월 07일</p>
+              <p>시행일: {effectiveDate}</p>
+              {lastUpdatedDate ? <p>최종 수정일: {lastUpdatedDate}</p> : null}
             </div>
 
             <div className={styles.businessBox}>

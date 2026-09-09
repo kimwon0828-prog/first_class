@@ -454,6 +454,21 @@
   font-weight: 700;
 }
 
+/* 요금제 카드 아래 한 줄. CTA 위계를 건드리지 않는 보조 안내다. */
+.policyNote {
+  margin: var(--s3) 0 0;
+  font-size: 12px;
+  line-height: 18px;
+  color: var(--text-3);
+}
+
+.policyLink {
+  color: var(--brand-700);
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
 @media (max-width: 900px) {
   .pricingGrid,
   .managementGrid {

@@ -1476,6 +1476,24 @@ section[id="faq"] > .wrap > .kick {
   color: var(--ink);
 }
 
+/*
+ * 환불·해지 정책 링크. 결제 조건을 읽은 자리에서 바로 이어지도록 고지 블록 안에 둔다.
+ * 보이지 않는 회색 각주로 만들지 않는다 — 본문과 같은 크기에 밑줄을 준다.
+ */
+/* .page a 의 `color: inherit; text-decoration: none` 을 이기려면 클래스 2개가 필요하다. */
+.pTerms .pTermsLink {
+  justify-self: start;
+  font-size: 14.5px;
+  font-weight: 700;
+  color: var(--g-dk);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.pTerms .pTermsLink:hover {
+  color: var(--ink);
+}
+
 .pList {
   margin: 24px 0 26px;
   padding: 22px 0 0;
@@ -1742,9 +1760,10 @@ section[id="faq"] > .wrap > .kick {
   color: var(--muted);
 }
 
+/* 소개 / 바로가기 / 정책 / 고객센터 4단. 좁은 폭에서는 아래 미디어쿼리가 1단으로 만든다. */
 .ftTop {
   display: grid;
-  grid-template-columns: 1.7fr 1fr 1fr;
+  grid-template-columns: 1.6fr 1fr 1fr 1fr;
   gap: 40px;
   padding-bottom: 36px;
   border-bottom: 1px solid var(--rule-2);

@@ -1,3 +1,5 @@
+import Link from "next/link"
+
 import { StartStandardButton } from "@/features/billing/ui/start-standard-button"
 import { SubscriptionActions } from "@/features/billing/ui/subscription-actions"
 import {
@@ -105,6 +107,15 @@ export const BillingPage = ({ overview, notice }: BillingPageProps) => {
             </article>
           ))}
         </div>
+
+        {/* 결제 조건의 canonical 문서. 공개 페이지와 같은 URL 을 쓴다. */}
+        <p className={styles.policyNote}>
+          스탠다드 결제 조건은{" "}
+          <Link href="/refund-policy" className={styles.policyLink}>
+            환불 및 해지 정책
+          </Link>
+          에서 확인할 수 있어요.
+        </p>
 
         {presentation.hasInternalFullAccess ? (
           <p className={styles.internalNote}>
