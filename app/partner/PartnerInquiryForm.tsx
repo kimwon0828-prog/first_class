@@ -155,7 +155,7 @@ export default function PartnerInquiryForm() {
         </p>
       ) : null}
 
-      <p className={styles.fnote}>개인정보는 파일럿 상담 목적으로만 사용하고, 종료 후 폐기합니다.</p>
+      <p className={styles.fnote}>개인정보는 도입 상담 목적으로만 사용하고, 상담 종료 후 폐기합니다.</p>
     </form>
   )
 }

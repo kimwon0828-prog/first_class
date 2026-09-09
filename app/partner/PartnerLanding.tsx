@@ -16,12 +16,12 @@ const navItems = [
   { href: "#link", label: "도입 방식" },
   { href: "#features", label: "핵심 기능" },
   { href: "#compare", label: "기존 방식과 비교" },
-  { href: "#price", label: "파일럿" }
+  { href: "#price", label: "요금" }
 ]
 
 const stripItems = [
-  "첫수업 초기 파일럿 파트너 모집 중",
-  "파일럿 기간 이용료 0원"
+  "체험 운영은 Free로 시작",
+  "상담·등록 관리는 Standard 월 49,000원"
 ]
 
 const flowCards = [
@@ -118,28 +118,42 @@ const compareRows = [
   }
 ]
 
-const pricingItems = [
-  "전용 신청 페이지 · QR",
-  "관리자 계정 1개",
-  "수업 등록 제한 없음",
-  "상담 이력 · 레벨테스트 기록",
-  "미등록 학생 명단 · 운영 리포트"
+// 공개 요금표의 기능 문구는 features/billing/lib/entitlements.ts 의 실제 권한과
+// 1:1 로 맞춘다. 여기에 구현되지 않은 기능을 적지 않는다.
+const freeFeatures = [
+  "학원 및 체험수업 등록",
+  "첫수업 플랫폼 노출",
+  "체험수업 신청 접수",
+  "예약 및 일정 관리",
+  "담당 교사 관리",
+  "체험수업 운영 및 완료 처리",
+  "Excel 예약 가져오기"
 ]
 
-const addOnItems = ["관리자 계정 추가", "지점 추가", "문자 발송 (건당 실비)"]
+const standardFeatures = [
+  "Free의 모든 기능",
+  "체험 결과 기록",
+  "상담 이력 관리",
+  "등록 전환 관리",
+  "후속 상담 관리",
+  "등록 전환 분석",
+  "미등록 사유 분석",
+  "등록 전환 리포트",
+  "첫수업 플랫폼 우선 노출"
+]
 
 const perks = [
   {
-    title: "파일럿 기간 이용료 0원",
-    description: "정식 출시 전까지 이용료를 받지 않습니다."
+    title: "무료로 먼저 시작",
+    description: "체험수업 모집과 운영은 Free로 시작할 수 있습니다."
   },
   {
-    title: "도입 전후 비교 리포트",
-    description: "도입 전후의 체험·노쇼·등록 데이터를 비교해드립니다."
+    title: "상담·등록 관리로 확장",
+    description: "필요할 때 Standard로 전환해 상담과 등록 전환을 관리합니다."
   },
   {
-    title: "온보딩 직접 지원",
-    description: "수업 등록과 신청 링크 설정까지 함께 진행합니다."
+    title: "도입 지원",
+    description: "현재 학원 운영 방식에 맞게 첫 설정과 사용 방법을 안내합니다."
   }
 ]
 
@@ -224,7 +238,7 @@ export default function PartnerLanding() {
             <div className={styles.heroMeta}>
               <span>설치 없이 브라우저에서</span>
               <span>기존 채널 그대로 사용</span>
-              <span>파일럿 기간 무료</span>
+              <span>Free 플랜으로 시작</span>
             </div>
           </div>
 
@@ -582,49 +596,80 @@ export default function PartnerLanding() {
       <section className={styles.sec} id="price">
         <div className={styles.wrap}>
           <p className={styles.kick}>요금</p>
-          <h2 className={styles.sectionHeading}>파일럿 기간에는 받지 않습니다</h2>
+          <h2 className={styles.sectionHeading}>
+            체험 운영은 무료로,
+            <br />
+            상담과 등록 관리는 필요할 때 확장하세요
+          </h2>
           <p className={styles.sub}>
-            정식 요금은 파일럿에서 실제 효과를 확인한 뒤 결정합니다.
+            첫수업은 Free로 시작할 수 있습니다. 체험 이후의 상담과 등록 전환 관리가 필요할 때
+            Standard로 확장하세요.
           </p>
 
           <div className={styles.price}>
-            <div className={`${styles.pc} ${styles.pcMain}`}>
-              <p className={styles.pK}>BASIC</p>
-              <p className={styles.pN}>학원 한 곳 기준</p>
+            <div className={styles.pc}>
+              <p className={styles.pK}>FREE</p>
+              <p className={styles.pN}>입점 · 모객 · 체험 운영</p>
               <div className={styles.pA}>
-                <span className={styles.pFree}>파일럿 무료</span>
-                <span className={styles.pSoon}>정식 요금 준비 중</span>
+                <span className={styles.pFree}>0원</span>
+                <span className={styles.pCycle}>별도 결제 없음</span>
               </div>
               <ul className={styles.pList}>
-                {pricingItems.map((item) => (
+                {freeFeatures.map((item) => (
                   <li key={item}>{item}</li>
                 ))}
               </ul>
+              <Link href="/studio/sign-up" className={`${styles.btn} ${styles.btnO} ${styles.pCta}`}>
+                무료로 시작하기
+              </Link>
             </div>
 
-            <div className={styles.pc}>
-              <p className={styles.pK}>ADD-ON</p>
-              <p className={styles.pN}>필요하실 때만</p>
-              <ul className={`${styles.pList} ${styles.pListAddOn}`}>
-                {addOnItems.map((item) => (
+            <div className={`${styles.pc} ${styles.pcMain}`}>
+              <div className={styles.pHead}>
+                <p className={styles.pK}>STANDARD</p>
+                <span className={styles.pTag}>추천</span>
+              </div>
+              <p className={styles.pN}>상담 · 등록 전환 관리</p>
+              <div className={styles.pA}>
+                <span className={styles.pFree}>월 49,000원</span>
+                <span className={styles.pCycle}>월 단위 정기결제</span>
+              </div>
+              <ul className={styles.pList}>
+                {standardFeatures.map((item) => (
                   <li key={item}>{item}</li>
                 ))}
               </ul>
-              <p className={styles.note}>부가 옵션 요금도 정식 요금과 함께 안내드리겠습니다.</p>
+              <Link href="/studio/billing" className={`${styles.btn} ${styles.btnG} ${styles.pCta}`}>
+                Standard 시작하기
+              </Link>
             </div>
           </div>
-          <p className={styles.note}>정식 전환 조건과 요금은 파일럿 종료 전에 파트너 학원에 먼저 안내드립니다.</p>
+
+          {/*
+            정기결제·해지 조건은 가격과 같은 위계로 보여야 한다.
+            작은 회색 각주로 숨기지 않는다(카드사 심사 요건).
+          */}
+          <div className={styles.pTerms}>
+            <p>
+              <b>Standard는 월 단위 정기결제 상품입니다.</b> 결제일을 기준으로 1개월 동안 이용할 수
+              있으며, 해지하기 전까지 매월 자동 결제됩니다.
+            </p>
+            <p>
+              <b>해지는 언제든 신청할 수 있습니다.</b> 해지 후에도 현재 결제기간 종료일까지 이용할
+              수 있으며, 다음 결제일부터 자동결제가 진행되지 않습니다.
+            </p>
+          </div>
         </div>
       </section>
 
       <section className={styles.cta} id="apply">
         <div className={styles.wrap}>
           <h2>
-            첫수업의 초기 파일럿을
+            첫수업을 우리 학원에
             <br />
-            함께 검증할 학원을 찾습니다
+            도입해보세요
           </h2>
-          <p>초기 파일럿 파트너와 함께 실제 운영 데이터를 검증하고 있습니다.</p>
+          <p>학원 운영 방식에 맞는 도입 방법과 Free · Standard 활용 방법을 안내해드립니다.</p>
 
           <div className={styles.ctaIn}>
             <div className={styles.perks}>
@@ -689,7 +734,9 @@ export default function PartnerLanding() {
                 <br />
                 <a href="#compare">기존 방식과 비교</a>
                 <br />
-                <a href={TALLY_URL}>파일럿 상담</a>
+                <a href="#price">요금</a>
+                <br />
+                <a href={TALLY_URL}>도입 상담</a>
               </p>
             </div>
             <div>
