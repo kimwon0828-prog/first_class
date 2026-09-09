@@ -38,7 +38,18 @@ export type StudioEntitlements = {
   canWriteConsultations: boolean
   canReopenConsultation: boolean
   canUseConversionAnalytics: boolean
-  /** 노출 자격만 뜻한다. 정렬 로직은 아직 없다(MARKET-1). */
+  /**
+   * Standard 의 Marketplace 우선 노출 자격.
+   *
+   * 이 flag 는 Studio 화면용이다. 실제 정렬은 공개 수업 목록이 수행한다 —
+   * marketplace_ranked_classes 를 `order by boost_eligible desc, created_at desc` 로
+   * 조회한다(features/classes/queries/public-class-safe-projection.ts).
+   *
+   * 공개 목록의 자격 판정은 이 resolver 가 아니라 marketplace_boosted_organizations 다.
+   * 결제 사실만 보고 내부 전체 권한은 제외한다 — 두 판정의 일치는
+   * scripts/verify-marketplace-boost.ts 가, 정렬 계약은
+   * scripts/verify-marketplace-ranking.ts 가 고정한다.
+   */
   hasMarketplaceRankingBoost: boolean
 
   // ── PRO: 현재 판매하지 않는다. 내부 전체 권한에서만 참이다. ──
