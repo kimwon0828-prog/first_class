@@ -38,6 +38,8 @@ import {
 import {
   getTrialResultUnregisteredReasonLabel,
   TRIAL_RESULT_OBSERVATION_OPTIONS,
+  getTrialResultObservationLabel,
+  normalizeTrialResultObservation,
   TRIAL_RESULT_REGISTRATION_OPTIONS,
   TRIAL_RESULT_UNREGISTERED_REASON_OPTIONS
 } from "@/features/studio/lib/trial-result-options"
@@ -54,6 +56,21 @@ import type {
 } from "@/shared/lib/db/adapter"
 
 import styles from "./application-trial-result-workflow.module.css"
+
+/**
+ * 저장된 관찰 값을 화면이 쓰는 code 로 맞춘다.
+ *
+ * migration 전후 어느 쪽이든 폼의 선택 상태가 유지되도록 legacy 문구도 받는다.
+ * 알 수 없는 값은 버린다 — 선택 칩은 7개뿐이라 그릴 자리가 없다.
+ */
+const normalizeStoredObservations = (values: string[] | undefined): string[] =>
+  Array.from(
+    new Set(
+      (values ?? [])
+        .map((value) => normalizeTrialResultObservation(value))
+        .filter((value): value is NonNullable<typeof value> => value !== null)
+    )
+  )
 
 const initialTrialResultState: UpsertTrialResultActionState = {
   status: "idle",
@@ -324,7 +341,7 @@ export const ApplicationTrialResultWorkflow = ({
   const [isSuccessOpen, setIsSuccessOpen] = useState(false)
   const [refreshOnEditorClose, setRefreshOnEditorClose] = useState(false)
   const [selectedObservations, setSelectedObservations] = useState<string[]>(
-    application.trialResult?.observations ?? []
+    normalizeStoredObservations(application.trialResult?.observations)
   )
   const [isConsultationEditorOpen, setIsConsultationEditorOpen] = useState(false)
   const [isConsultationHistoryOpen, setIsConsultationHistoryOpen] = useState(false)
@@ -384,7 +401,7 @@ export const ApplicationTrialResultWorkflow = ({
   // 체험 결과 form 은 관찰 기록만 다룬다. 등록 결정(등록 상태 / 미등록 사유)은
   // 등록 상담 form 의 몫이라 여기서 초기화할 상태가 없다.
   const resetTrialResultSelections = () => {
-    setSelectedObservations(application.trialResult?.observations ?? [])
+    setSelectedObservations(normalizeStoredObservations(application.trialResult?.observations))
   }
 
   const resetConsultationSelections = () => {
@@ -780,11 +797,15 @@ export const ApplicationTrialResultWorkflow = ({
         <div className={styles.resultCompact}>
           {application.trialResult?.observations.length ? (
             <div className={styles.chipWrap}>
-              {application.trialResult.observations.map((item) => (
-                <span key={item} className={styles.summaryChip}>
-                  {item}
-                </span>
-              ))}
+              {application.trialResult.observations.map((item) => {
+                // 저장된 code 를 문구로 바꾼다. 모르는 값은 화면에 흘리지 않는다.
+                const label = getTrialResultObservationLabel(item)
+                return label ? (
+                  <span key={item} className={styles.summaryChip}>
+                    {label}
+                  </span>
+                ) : null
+              })}
             </div>
           ) : null}
 
@@ -1006,18 +1027,18 @@ export const ApplicationTrialResultWorkflow = ({
                   <p className={styles.formDescription}>해당하는 내용을 모두 선택해 주세요.</p>
                 </div>
                 <div className={styles.selectionWrap}>
-                  {TRIAL_RESULT_OBSERVATION_OPTIONS.map((item) => {
-                    const selected = selectedObservations.includes(item)
+                  {TRIAL_RESULT_OBSERVATION_OPTIONS.map((option) => {
+                    const selected = selectedObservations.includes(option.value)
                     return (
                       <button
-                        key={item}
+                        key={option.value}
                         type="button"
                         className={`${styles.choiceChip} ${selected ? styles.choiceChipActive : ""}`}
                         aria-pressed={selected}
-                        onClick={() => toggleObservation(item)}
+                        onClick={() => toggleObservation(option.value)}
                         disabled={isSavingTrialResult}
                       >
-                        {item}
+                        {option.label}
                       </button>
                     )
                   })}

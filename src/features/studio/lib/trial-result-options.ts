@@ -5,15 +5,108 @@ import type {
   StudioTrialResultParentReaction
 } from "@/shared/lib/db/adapter"
 
+/**
+ * 수업 관찰 항목.
+ *
+ * ⚠️ 저장되는 값은 표시 문구가 아니라 code 다.
+ *
+ * 문구는 앞으로 바뀐다 — Report 공개, 다국어, 표현 개선. 표시 문구를 그대로
+ * 저장하면 문구를 고치는 순간 과거 데이터의 의미가 끊긴다. code 는 고정이고
+ * label 만 움직인다.
+ *
+ * 문구는 "무엇을 했는가" 로만 적는다. Observation over Judgment —
+ * "집중력이 높아요" 같은 성향·능력 판단은 관찰이 아니라 진단이다.
+ * 이 목록을 다시 trait label 로 축약하지 않는다.
+ */
 export const TRIAL_RESULT_OBSERVATION_OPTIONS = [
-  "집중을 잘했어요",
-  "적극적으로 참여했어요",
-  "발표를 잘했어요",
-  "이해가 빨랐어요",
-  "도움이 조금 필요했어요",
-  "난이도가 높아 보였어요",
-  "난이도가 쉬워 보였어요"
+  {
+    value: "sustained_engagement",
+    label: "활동이 진행되는 동안 과제에 계속 참여했어요."
+  },
+  {
+    value: "active_participation",
+    label: "질문이나 활동 제안에 스스로 참여했어요."
+  },
+  {
+    value: "verbal_explanation",
+    label: "자기 생각이나 과정을 말로 설명했어요."
+  },
+  {
+    value: "independent_after_instruction",
+    label: "설명을 들은 뒤 다음 단계를 스스로 진행했어요."
+  },
+  {
+    value: "needs_some_guidance",
+    label: "일부 단계에서 추가 설명이나 도움이 필요했어요."
+  },
+  {
+    value: "needs_repeated_guidance",
+    label: "여러 단계에서 반복 설명이나 도움이 필요했어요."
+  },
+  {
+    value: "ready_for_more_challenge",
+    label: "안내된 활동을 마친 뒤 추가 활동을 더 시도했어요."
+  }
 ] as const
+
+export type TrialResultObservationCode =
+  (typeof TRIAL_RESULT_OBSERVATION_OPTIONS)[number]["value"]
+
+/** 허용 code 집합. 별도 목록을 만들지 않고 위 하나에서만 파생한다. */
+export const TRIAL_RESULT_OBSERVATION_CODES: ReadonlySet<string> = new Set(
+  TRIAL_RESULT_OBSERVATION_OPTIONS.map((option) => option.value)
+)
+
+/**
+ * 문구를 저장하던 시절의 값 → code.
+ *
+ * 이 표는 "옛 값이 학부모 공개에 적합하다" 는 뜻이 아니다. 내부 source data 의
+ * 의미를 code 로 보존하기 위한 것뿐이다. 기존 체험 결과는 이 작업으로
+ * Report 가 되지 않는다.
+ */
+export const LEGACY_TRIAL_RESULT_OBSERVATION_LABELS: Readonly<
+  Record<string, TrialResultObservationCode>
+> = {
+  "집중을 잘했어요": "sustained_engagement",
+  "적극적으로 참여했어요": "active_participation",
+  "발표를 잘했어요": "verbal_explanation",
+  "이해가 빨랐어요": "independent_after_instruction",
+  "도움이 조금 필요했어요": "needs_some_guidance",
+  "난이도가 높아 보였어요": "needs_repeated_guidance",
+  "난이도가 쉬워 보였어요": "ready_for_more_challenge"
+}
+
+/**
+ * 저장/표시 전에 값을 code 로 정규화한다.
+ *
+ * 배포 순서가 어긋나 legacy 문구가 아직 남아 있어도 화면과 저장이 같은 값을
+ * 보게 하려고 양쪽을 모두 받는다. 알 수 없는 값은 null 이다 —
+ * 조용히 버리지 않고 호출자가 거절할 수 있게 남긴다.
+ */
+export const normalizeTrialResultObservation = (
+  value: unknown
+): TrialResultObservationCode | null => {
+  if (typeof value !== "string") {
+    return null
+  }
+
+  const trimmed = value.trim()
+  if (TRIAL_RESULT_OBSERVATION_CODES.has(trimmed)) {
+    return trimmed as TrialResultObservationCode
+  }
+
+  return LEGACY_TRIAL_RESULT_OBSERVATION_LABELS[trimmed] ?? null
+}
+
+/** code 를 화면 문구로. 모르는 값은 null 이라 화면이 원문을 흘리지 않는다. */
+export const getTrialResultObservationLabel = (value: unknown): string | null => {
+  const code = normalizeTrialResultObservation(value)
+  if (!code) {
+    return null
+  }
+
+  return TRIAL_RESULT_OBSERVATION_OPTIONS.find((option) => option.value === code)?.label ?? null
+}
 
 export const TRIAL_RESULT_PARENT_REACTION_OPTIONS: Array<{
   value: StudioTrialResultParentReaction

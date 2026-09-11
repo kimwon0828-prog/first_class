@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache"
 
 import { requireStudioEntitlement } from "@/features/billing/lib/require-entitlement"
 import { requireTeacherStudioAccess } from "@/features/studio/lib/require-teacher-studio-access"
+import { normalizeTrialResultObservation } from "@/features/studio/lib/trial-result-options"
 import { getStudioTrialResultSaveContext } from "@/features/studio/queries/get-studio-trial-result-save-context"
 import { dataAdapter } from "@/shared/lib/db"
 import type { StudioTrialResultSaveContext } from "@/shared/lib/db/adapter"
@@ -34,15 +35,33 @@ const normalizeOptionalText = (value: FormDataEntryValue | null) => {
   return normalized.length > 0 ? normalized : null
 }
 
-const normalizeObservationValues = (values: FormDataEntryValue[]) =>
-  Array.from(
-    new Set(
-      values
-        .filter((value): value is string => typeof value === "string")
-        .map((value) => value.trim())
-        .filter(Boolean)
-    )
-  )
+/**
+ * 폼이 보낸 관찰 값을 code 목록으로 바꾼다.
+ *
+ * ⚠️ 화면이 7개만 보여 준다는 사실에 기대지 않는다. 이 action 은 server action 이라
+ *    조작된 요청이 직접 닿을 수 있고, 여기를 통과한 값이 그대로 DB 에 들어간다.
+ *
+ * 알 수 없는 값은 조용히 버리지 않고 null 로 남긴다. 일부만 저장하면 입력 오류가
+ * 숨겨져, 원장은 저장됐다고 믿는데 실제로는 빠진 항목이 생긴다. 호출자가 거절한다.
+ */
+const normalizeObservationValues = (values: FormDataEntryValue[]): string[] | null => {
+  const normalized: string[] = []
+
+  for (const value of values) {
+    if (typeof value !== "string" || !value.trim()) {
+      continue
+    }
+
+    const code = normalizeTrialResultObservation(value)
+    if (!code) {
+      return null
+    }
+
+    normalized.push(code)
+  }
+
+  return Array.from(new Set(normalized))
+}
 
 const areObservationListsEqual = (left: string[], right: string[]) => {
   if (left.length !== right.length) {
@@ -155,8 +174,16 @@ export async function upsertTrialResultAction(
     }
   }
 
+  const observations = normalizeObservationValues(formData.getAll("observations"))
+  if (!observations) {
+    return {
+      status: "error",
+      message: "유효하지 않은 관찰 항목입니다. 화면을 새로고침한 뒤 다시 선택해 주세요."
+    }
+  }
+
   const nextValue = {
-    observations: normalizeObservationValues(formData.getAll("observations")),
+    observations,
     recommendedCourse: normalizeOptionalText(formData.get("recommendedCourse")),
     recommendedLevel: normalizeOptionalText(formData.get("recommendedLevel")),
     recommendedSchedule: normalizeOptionalText(formData.get("recommendedSchedule")),
