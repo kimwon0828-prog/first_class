@@ -34,6 +34,25 @@ export const EXPERIENCE_STAGE_LABELS: Record<ExperienceStage, string> = {
   canceled: "취소됨"
 }
 
+const LEVEL_TEST_STAGE_LABELS: Record<ExperienceStage, string> = {
+  reviewing: "학원 확인 중",
+  upcoming: "레벨테스트 예정",
+  today: "오늘 레벨테스트",
+  completed: "레벨테스트 완료",
+  canceled: "취소됨"
+}
+
+/**
+ * 경험 종류에 맞춘 상태 문구.
+ *
+ * 레벨테스트를 "체험 완료" 라고 부르지 않는다. 데이터가 구분되어 있으므로 말도 구분한다.
+ */
+export const getExperienceStageLabel = (
+  stage: ExperienceStage,
+  programType: ClassProgramType | null
+): string =>
+  programType === "level_test" ? LEVEL_TEST_STAGE_LABELS[stage] : EXPERIENCE_STAGE_LABELS[stage]
+
 const isSameLocalDay = (left: Date, right: Date) =>
   left.getFullYear() === right.getFullYear() &&
   left.getMonth() === right.getMonth() &&
@@ -106,4 +125,109 @@ export const buildExperienceTimeline = (
   return steps.sort(
     (left, right) => new Date(left.occurredAt).getTime() - new Date(right.occurredAt).getTime()
   )
+}
+
+/**
+ * 기록 timeline 에서 이 경험을 어느 날짜에 놓을 것인가.
+ *
+ * "실제로 교육이 일어난(또는 일어날) 날" 을 우선한다. 신청 시각이 아니다 —
+ * 8월에 신청해 9월에 체험했다면 그 경험은 9월의 기록이다.
+ *
+ * ⚠️ completedAt 보다 confirmedSlotAt 이 먼저다. completedAt 은 학원이 "체험 완료"
+ *    버튼을 누른 시각이라 실제 수업일과 며칠 어긋날 수 있다.
+ */
+export const resolveParentExperienceDate = (
+  experience: Pick<
+    ParentExperience,
+    "confirmedSlotAt" | "requestedSlotAt" | "completedAt" | "canceledAt" | "createdAt"
+  >
+): string => {
+  const candidates = [
+    experience.confirmedSlotAt,
+    experience.requestedSlotAt,
+    experience.completedAt,
+    experience.canceledAt,
+    experience.createdAt
+  ]
+
+  for (const value of candidates) {
+    if (value && !Number.isNaN(new Date(value).getTime())) {
+      return value
+    }
+  }
+
+  return experience.createdAt
+}
+
+export type ExperienceMonthGroup = {
+  /** "2026-09". key 전용이며 화면에는 label 을 쓴다. */
+  key: string
+  month: number
+  items: ParentExperience[]
+}
+
+export type ExperienceYearGroup = {
+  year: number
+  months: ExperienceMonthGroup[]
+}
+
+/**
+ * 연 → 월 → 경험. 최신이 위다.
+ *
+ * status 로 나누지 않는다. 기록의 축은 "지금 어떤 처리 단계인가" 가 아니라
+ * "언제 있었던 일인가" 다.
+ */
+export const groupExperiencesByPeriod = (
+  experiences: ParentExperience[]
+): ExperienceYearGroup[] => {
+  const byYear = new Map<number, Map<number, ParentExperience[]>>()
+
+  for (const experience of experiences) {
+    const date = new Date(resolveParentExperienceDate(experience))
+    if (Number.isNaN(date.getTime())) {
+      continue
+    }
+
+    const year = date.getFullYear()
+    const month = date.getMonth() + 1
+    const months = byYear.get(year) ?? new Map<number, ParentExperience[]>()
+    months.set(month, [...(months.get(month) ?? []), experience])
+    byYear.set(year, months)
+  }
+
+  const sortByDateDesc = (left: ParentExperience, right: ParentExperience) =>
+    new Date(resolveParentExperienceDate(right)).getTime() -
+    new Date(resolveParentExperienceDate(left)).getTime()
+
+  return [...byYear.entries()]
+    .sort(([left], [right]) => right - left)
+    .map(([year, months]) => ({
+      year,
+      months: [...months.entries()]
+        .sort(([left], [right]) => right - left)
+        .map(([month, items]) => ({
+          key: `${year}-${String(month).padStart(2, "0")}`,
+          month,
+          items: [...items].sort(sortByDateDesc)
+        }))
+    }))
+}
+
+/**
+ * 경험 종류에 맞춘 timeline 문구.
+ *
+ * 레벨테스트를 "체험했어요" 라고 부르지 않는다. 데이터가 구분되어 있으므로
+ * 말도 구분한다. 점수·영역별 평가는 데이터가 없어 만들지 않는다.
+ */
+export const buildExperienceTimelineLabels = (
+  programType: ClassProgramType | null
+): Record<ExperienceTimelineStep["key"], string> => {
+  const isLevelTest = programType === "level_test"
+
+  return {
+    applied: isLevelTest ? "레벨테스트를 신청했어요" : "체험을 신청했어요",
+    confirmed: isLevelTest ? "레벨테스트 일정이 확정됐어요" : "일정이 확정됐어요",
+    completed: isLevelTest ? "레벨테스트를 완료했어요" : "체험했어요",
+    canceled: "신청이 취소됐어요"
+  }
 }

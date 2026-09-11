@@ -181,3 +181,50 @@
     border-right: 1px solid var(--border);
   }
 }
+
+
+/* 자녀 전환. Global Child Context 가 생기면 이 자리를 그대로 대체한다. */
+.childBar {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  padding: var(--s3) var(--gutter);
+  overflow-x: auto;
+  scrollbar-width: none;
+  border-bottom: 1px solid var(--border);
+}
+
+.childBar::-webkit-scrollbar {
+  display: none;
+}
+
+.childChip {
+  flex: none;
+  padding: 6px var(--s3);
+  border: 1px solid var(--border);
+  border-radius: var(--r-full);
+  background: var(--surface);
+  color: var(--text-2);
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.childChipActive {
+  border-color: var(--brand-500);
+  background: var(--brand-50);
+  color: var(--brand-700);
+}
+
+/* 자녀가 한 명이면 전환할 것이 없다. 칩 대신 한 줄로 둔다. */
+.childSingle {
+  margin: 0;
+  padding: var(--s3) var(--gutter);
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+  line-height: 20px;
+  font-weight: 600;
+  color: var(--text-2);
+}
