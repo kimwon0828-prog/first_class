@@ -24,7 +24,10 @@
   top: 0;
   z-index: 5;
   display: flex;
-  align-items: center;
+  /* 제목 아래 subcopy 가 온다. row 로 두면 둘이 나란히 붙어 겹쳐 보인다. */
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-start;
   min-height: 64px;
   padding: calc(var(--s3) + env(safe-area-inset-top)) var(--gutter) var(--s3);
   background: var(--surface);
