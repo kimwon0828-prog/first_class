@@ -1,0 +1,18 @@
+/* 기록 화면의 취소는 주된 행동이 아니다. Primary 로 키우지 않는다. */
+.cancelButton {
+  width: 100%;
+  min-height: 44px;
+  padding: 0 var(--s4);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  color: var(--text-2);
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.cancelButton:disabled {
+  color: var(--text-3);
+  cursor: progress;
+}

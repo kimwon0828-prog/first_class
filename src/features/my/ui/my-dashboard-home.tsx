@@ -46,14 +46,14 @@ export const MyDashboardHome = ({
       </section>
 
       <section className={styles.statsGrid} aria-label="요약">
-        <a href="/record" className={styles.statCard} aria-label="진행 중인 경험 보기">
-          <p className={styles.statLabel}>신청 중</p>
+        <Link href="/record" className={styles.statCard} aria-label="진행 중인 경험 보기">
+          <p className={styles.statLabel}>진행 중</p>
           <strong className={styles.statValue}>{resolveActiveCount(dashboard)}</strong>
-        </a>
-        <a href="/my/children" className={styles.statCard} aria-label="등록 자녀 관리하기">
+        </Link>
+        <Link href="/my/children" className={styles.statCard} aria-label="등록 자녀 관리하기">
           <p className={styles.statLabel}>등록 자녀</p>
           <strong className={styles.statValue}>{dashboard.childrenCount}</strong>
-        </a>
+        </Link>
       </section>
 
       <section className={styles.sectionBlock}>

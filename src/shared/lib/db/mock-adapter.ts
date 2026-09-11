@@ -1589,6 +1589,7 @@ export const mockDataAdapter: DataAdapter = {
             .trim() || null,
         organizationAddress: mockOrganizationLocation.address ?? null,
         organizationAddressDetail: mockOrganizationLocation.addressDetail ?? null,
+        childId: item.childId ?? null,
         childName: item.childName,
         childGrade: item.childGrade,
         classScheduleId: item.classScheduleId ?? null,

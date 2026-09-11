@@ -1,0 +1,150 @@
+/*
+ * Experience Detail.
+ *
+ * 상품 상세가 아니다. 큰 이미지 hero 를 쓰지 않고 typography 와 정보로만 세운다.
+ * Parent Web 폭 정책(desktop 중앙 480px · mobile viewport)을 그대로 따른다.
+ */
+.page {
+  min-height: 100dvh;
+  width: 100%;
+  overflow-x: hidden;
+  background: var(--bg);
+}
+
+.shell {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: var(--col);
+  margin: 0 auto;
+  min-height: 100dvh;
+  background: var(--surface);
+  padding-bottom: var(--s10);
+}
+
+.shell * {
+  box-sizing: border-box;
+}
+
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  min-height: 56px;
+  padding: calc(var(--s2) + env(safe-area-inset-top)) var(--gutter) var(--s2);
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+
+.back {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-2);
+  text-decoration: none;
+}
+
+.hero {
+  padding: var(--s6) var(--gutter) var(--s5);
+  border-bottom: 1px solid var(--border);
+}
+
+.typeLabel {
+  margin: 0 0 var(--s2);
+  display: inline-block;
+  padding: 2px var(--s2);
+  border-radius: var(--r-full);
+  background: var(--brand-50);
+  color: var(--brand-700);
+  font-size: 11px;
+  line-height: 16px;
+  font-weight: 700;
+}
+
+.title {
+  margin: 0;
+  font-size: 22px;
+  line-height: 30px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: var(--text-1);
+  word-break: keep-all;
+}
+
+.academy {
+  margin: var(--s1) 0 0;
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--text-2);
+}
+
+.heroDate {
+  margin: var(--s3) 0 0;
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--text-1);
+  font-variant-numeric: tabular-nums;
+}
+
+.stage {
+  margin: var(--s2) 0 0;
+  font-size: 13px;
+  line-height: 20px;
+  font-weight: 700;
+  color: var(--brand-700);
+}
+
+.block {
+  padding: var(--s5) var(--gutter);
+  border-bottom: 1px solid var(--border);
+}
+
+.blockTitle {
+  margin: 0 0 var(--s2);
+  font-size: 12px;
+  line-height: 18px;
+  font-weight: 700;
+  color: var(--text-3);
+}
+
+.blockValue {
+  margin: 0;
+  font-size: 15px;
+  line-height: 22px;
+  font-weight: 600;
+  color: var(--text-1);
+  word-break: keep-all;
+}
+
+.blockSub {
+  margin: 2px 0 0;
+  font-size: 13px;
+  line-height: 20px;
+  color: var(--text-2);
+  font-variant-numeric: tabular-nums;
+}
+
+.actions {
+  display: grid;
+  gap: var(--s2);
+  padding: var(--s5) var(--gutter) 0;
+}
+
+/* 수업 판매 페이지는 부차적 행동이다. 기록의 주인공이 아니다. */
+.secondaryLink {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 0 var(--s4);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  color: var(--text-1);
+  font-size: 14px;
+  font-weight: 700;
+  text-decoration: none;
+}

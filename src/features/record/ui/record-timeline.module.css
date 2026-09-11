@@ -1,0 +1,123 @@
+/*
+ * 기록 홈 본문. 연 → 월 → 경험.
+ *
+ * Discovery 보다 사진 비중을 낮추고 typography 와 시간축을 앞세운다.
+ * 새 토큰을 만들지 않고 기존 Parent 토큰만 쓴다.
+ */
+.timeline {
+  padding: 0 var(--gutter) var(--s8);
+}
+
+.yearGroup {
+  padding-top: var(--s6);
+}
+
+.yearLabel {
+  margin: 0 0 var(--s2);
+  font-size: 20px;
+  line-height: 28px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: var(--text-1);
+  font-variant-numeric: tabular-nums;
+}
+
+.monthGroup {
+  padding-top: var(--s4);
+}
+
+.monthLabel {
+  margin: 0 0 var(--s2);
+  font-size: 13px;
+  line-height: 20px;
+  font-weight: 700;
+  color: var(--text-3);
+}
+
+.items {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--s2);
+}
+
+/*
+ * 경험 한 줄. 예약 카드가 아니라 기록 항목이라 이미지도 D-day 도 없다.
+ * 전체를 누르면 그 경험으로 들어간다.
+ */
+.item {
+  display: block;
+  padding: var(--s4);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  text-decoration: none;
+  color: inherit;
+}
+
+.itemHead {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  margin-bottom: var(--s1);
+}
+
+.typeBadge {
+  flex: none;
+  padding: 2px var(--s2);
+  border-radius: var(--r-full);
+  background: var(--brand-50);
+  color: var(--brand-700);
+  font-size: 11px;
+  line-height: 16px;
+  font-weight: 700;
+}
+
+.itemChild {
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-3);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.itemTitle {
+  margin: 0;
+  font-size: 15px;
+  line-height: 22px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--text-1);
+}
+
+.itemAcademy {
+  margin: 2px 0 0;
+  font-size: 13px;
+  line-height: 20px;
+  color: var(--text-2);
+}
+
+.itemMeta {
+  margin: var(--s2) 0 0;
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  font-size: 13px;
+  line-height: 20px;
+  color: var(--text-2);
+}
+
+.itemDate {
+  font-variant-numeric: tabular-nums;
+}
+
+.itemDot {
+  color: var(--text-3);
+}
+
+.itemStatusActive {
+  color: var(--brand-700);
+  font-weight: 700;
+}

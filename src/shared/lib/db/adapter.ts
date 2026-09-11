@@ -624,6 +624,8 @@ export type ParentApplicationSummary = {
   academyName: string | null
   organizationAddress: string | null
   organizationAddressDetail: string | null
+  /** 이 경험이 어느 아이의 것인가. 엑셀 이관분 등 legacy 신청은 null 이다. */
+  childId: string | null
   childName: string
   childGrade: string
   classScheduleId?: string | null

@@ -1,0 +1,63 @@
+/*
+ * Experience Timeline.
+ *
+ * 첫수업 기록의 시각 signature 가 될 자리다. 다만 지금은 사건이 최대 3개라
+ * 과하게 꾸미지 않는다 — 점 하나와 잇는 선 하나로 둔다.
+ * green accent · border · shadow 없음 · typography 중심을 유지한다.
+ */
+.timeline {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+}
+
+.item {
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr);
+  gap: var(--s3);
+}
+
+.rail {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-top: 6px;
+}
+
+.dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: var(--r-full);
+  background: var(--brand-500);
+}
+
+/* 마지막 사건 뒤에는 선을 긋지 않는다. 아직 오지 않은 일을 암시하지 않기 위해서다. */
+.line {
+  flex: 1;
+  width: 1px;
+  margin: 4px 0 0;
+  background: var(--border-strong);
+}
+
+.body {
+  display: grid;
+  gap: 2px;
+  padding-bottom: var(--s5);
+}
+
+.label {
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 600;
+  color: var(--text-1);
+}
+
+.date {
+  font-size: 12px;
+  line-height: 18px;
+  color: var(--text-3);
+  font-variant-numeric: tabular-nums;
+}

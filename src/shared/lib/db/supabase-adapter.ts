@@ -4097,7 +4097,7 @@ export const supabaseDataAdapter: DataAdapter = {
     const { data, error } = await supabase
       .from("trial_applications")
       .select(
-        "id, class_id, child_name, child_grade, class_schedule_id, requested_schedule_block_id, selected_schedule_label, requested_slot_at, confirmed_slot_at, completed_at, canceled_at, registration_status, status, created_at, updated_at, classes(title, program_type, organization_id)"
+        "id, class_id, child_id, child_name, child_grade, class_schedule_id, requested_schedule_block_id, selected_schedule_label, requested_slot_at, confirmed_slot_at, completed_at, canceled_at, registration_status, status, created_at, updated_at, classes(title, program_type, organization_id)"
       )
       .eq("parent_id", parentId)
       .order("created_at", { ascending: false })
@@ -4131,6 +4131,7 @@ export const supabaseDataAdapter: DataAdapter = {
           : null,
         organizationAddress: organization?.address ?? null,
         organizationAddressDetail: organization?.addressDetail ?? null,
+        childId: row.child_id ?? null,
         childName: row.child_name,
         childGrade: row.child_grade,
         classScheduleId: row.class_schedule_id ?? null,
