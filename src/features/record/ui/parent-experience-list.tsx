@@ -9,21 +9,28 @@ import {
 } from "@/features/applications/actions/cancel-my-application"
 import { resolveApplicationStatusDisplay } from "@/features/applications/lib/application-status-display"
 import { CancelConfirmDialog } from "@/features/applications/ui/cancel-confirm-dialog"
-import type { MyApplicationListItem } from "@/features/applications/ui/my-applications-client"
-import styles from "./my-application-list.module.css"
+import {
+  buildExperienceTimeline,
+  getExperienceTypeLabel,
+  isActiveExperience,
+  resolveExperienceStage,
+  EXPERIENCE_STAGE_LABELS,
+  type ParentExperience
+} from "@/features/record/lib/experience-view"
+import styles from "./parent-experience-list.module.css"
 
-type MyApplicationListProps = {
-  items: MyApplicationListItem[]
+type ParentExperienceListProps = {
+  items: ParentExperience[]
   onCanceled?: () => Promise<void> | void
 }
 
 // 취소 가능 여부는 서버가 판정해 canCancel 로 내려준다.
 // 화면은 그 근거가 된 학원 운영 상태를 알지 못하고, 알 필요도 없다.
 // (실제 취소는 cancel-my-application server action 이 다시 검증한다.)
-const canShowCancelButton = (item: MyApplicationListItem) => item.canCancel
+const canShowCancelButton = (item: ParentExperience) => item.canCancel
 
 // 선생님 이름은 학부모 화면에 노출하지 않는다. 학원명이 없으면 준비 중으로 둔다.
-const resolveAcademyLabel = (item: MyApplicationListItem) =>
+const resolveAcademyLabel = (item: ParentExperience) =>
   item.academyName?.trim() || "정보 준비 중"
 
 const formatDateTime = (value: string) => {
@@ -68,7 +75,7 @@ const formatCancelPromptDate = (value: string) => {
   return `${date.getMonth() + 1}월 ${date.getDate()}일 (${weekdays[date.getDay()]})`
 }
 
-const getComparableScheduleAt = (item: MyApplicationListItem) => {
+const getComparableScheduleAt = (item: ParentExperience) => {
   const value = item.confirmedSlotAt ?? item.requestedSlotAt ?? null
   if (!value) {
     return null
@@ -82,7 +89,7 @@ const getComparableScheduleAt = (item: MyApplicationListItem) => {
   return date.toISOString()
 }
 
-const getSortableTimestamp = (item: MyApplicationListItem) => {
+const getSortableTimestamp = (item: ParentExperience) => {
   const iso = getComparableScheduleAt(item)
   if (!iso) {
     return null
@@ -117,7 +124,7 @@ const getDdayLabel = (value: string | null) => {
   return `D-${diffDays}`
 }
 
-const compareAscending = (left: MyApplicationListItem, right: MyApplicationListItem) => {
+const compareAscending = (left: ParentExperience, right: ParentExperience) => {
   const leftTime = getSortableTimestamp(left)
   const rightTime = getSortableTimestamp(right)
 
@@ -136,7 +143,7 @@ const compareAscending = (left: MyApplicationListItem, right: MyApplicationListI
   return leftTime - rightTime
 }
 
-const compareDescending = (left: MyApplicationListItem, right: MyApplicationListItem) => {
+const compareDescending = (left: ParentExperience, right: ParentExperience) => {
   const leftTime = getSortableTimestamp(left)
   const rightTime = getSortableTimestamp(right)
 
@@ -155,7 +162,7 @@ const compareDescending = (left: MyApplicationListItem, right: MyApplicationList
   return rightTime - leftTime
 }
 
-const resolveScheduleLabel = (item: MyApplicationListItem) => {
+const resolveScheduleLabel = (item: ParentExperience) => {
   const confirmedAt = item.confirmedSlotAt ? formatDateTime(item.confirmedSlotAt) : null
   const requestedAt = item.requestedSlotAt ? formatDateTime(item.requestedSlotAt) : null
   const selectedLabel = item.selectedScheduleLabel?.trim() ? item.selectedScheduleLabel.trim() : null
@@ -188,16 +195,16 @@ const resolveScheduleLabel = (item: MyApplicationListItem) => {
   }
 }
 
-export const MyApplicationList = ({ items, onCanceled }: MyApplicationListProps) => {
+export const ParentExperienceList = ({ items, onCanceled }: ParentExperienceListProps) => {
   const [isPending, startTransition] = useTransition()
-  const [dialogItem, setDialogItem] = useState<MyApplicationListItem | null>(null)
+  const [dialogItem, setDialogItem] = useState<ParentExperience | null>(null)
   const [pendingApplicationId, setPendingApplicationId] = useState<string | null>(null)
 
   const groupedItems = useMemo(() => {
     const next = {
-      upcoming: [] as MyApplicationListItem[],
-      pending: [] as MyApplicationListItem[],
-      past: [] as MyApplicationListItem[]
+      upcoming: [] as ParentExperience[],
+      pending: [] as ParentExperience[],
+      past: [] as ParentExperience[]
     }
 
     for (const item of items) {
@@ -215,7 +222,7 @@ export const MyApplicationList = ({ items, onCanceled }: MyApplicationListProps)
     return next
   }, [items])
 
-  const handleCancel = (item: MyApplicationListItem) => {
+  const handleCancel = (item: ParentExperience) => {
     setPendingApplicationId(item.id)
     startTransition(async () => {
       const result: CancelMyApplicationActionResult = await cancelMyApplicationAction(item.id)
@@ -229,7 +236,7 @@ export const MyApplicationList = ({ items, onCanceled }: MyApplicationListProps)
     })
   }
 
-  const renderPrimaryCard = (item: MyApplicationListItem) => {
+  const renderPrimaryCard = (item: ParentExperience) => {
     const schedule = resolveScheduleLabel(item)
     const classTitle = item.classTitle ?? "수업 정보 없음"
     const statusDisplay = resolveApplicationStatusDisplay({
@@ -243,24 +250,49 @@ export const MyApplicationList = ({ items, onCanceled }: MyApplicationListProps)
     const showRequestedLabel = !item.confirmedSlotAt && Boolean(schedule.primaryValue)
     const isCanceling = isPending && pendingApplicationId === item.id
 
+    const timeline = buildExperienceTimeline(item)
+    // 배지는 경험 단계로 말한다. "확정됨" 보다 "체험 예정" 이 학부모가 읽는 말이다.
+    const stage = resolveExperienceStage(item)
+
     return (
       <article key={item.id} className={styles.card}>
+        {/*
+          상품 카드가 아니라 아이의 경험 기록이다. 그래서 수업 이미지 대신
+          누가(자녀) · 무엇을(경험 종류) 를 먼저 읽게 둔다.
+        */}
+        <header className={styles.experienceHead}>
+          <p className={styles.childMeta}>
+            {item.childName} · {item.childGrade}
+          </p>
+          <span className={styles.typeBadge}>{getExperienceTypeLabel(item.classProgramType)}</span>
+        </header>
+
         {ddayLabel ? <p className={styles.dday}>{ddayLabel}</p> : null}
         {showRequestedLabel ? <p className={styles.scheduleEyebrow}>{schedule.label}</p> : null}
         <p className={styles.scheduleText}>{schedule.primaryValue}</p>
         <h2 className={styles.classTitle}>{classTitle}</h2>
         <p className={styles.academyName}>{academyLabel}</p>
-        <p className={styles.childMeta}>
-          {item.childName} · {item.childGrade}
-        </p>
+
+        {/* 실제로 일어난 일만 그린다. 예정 단계를 미리 그려 넣지 않는다. */}
+        {timeline.length > 1 ? (
+          <ol className={styles.timeline}>
+            {timeline.map((step) => (
+              <li key={step.key} className={styles.timelineStep}>
+                <span className={styles.timelineDot} aria-hidden="true" />
+                <span className={styles.timelineLabel}>{step.label}</span>
+                <span className={styles.timelineDate}>{formatShortDate(step.occurredAt) ?? ""}</span>
+              </li>
+            ))}
+          </ol>
+        ) : null}
 
         <div className={styles.cardActions}>
           <span
             className={`${styles.statusBadge} ${
-              statusDisplay.tone === "active" ? styles.statusBadgeActive : styles.statusBadgeMuted
+              isActiveExperience(stage) ? styles.statusBadgeActive : styles.statusBadgeMuted
             }`}
           >
-            {statusDisplay.label}
+            {EXPERIENCE_STAGE_LABELS[stage]}
           </span>
           <div className={styles.actionButtons}>
             <Link href={`/classes/${item.classId}`} className={styles.ghostButton}>

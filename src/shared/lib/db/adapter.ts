@@ -631,6 +631,12 @@ export type ParentApplicationSummary = {
   selectedScheduleLabel?: string | null
   requestedSlotAt: string
   confirmedSlotAt: string | null
+  /**
+   * 체험이 실제로 끝난 시각. 학원이 "체험 완료" 로 넘길 때만 찍힌다.
+   * 학원의 판단(등록 여부)이 아니라 경험 자체의 사실이라 학부모에게 보여도 된다.
+   */
+  completedAt: string | null
+  canceledAt: string | null
   status: ApplicationStatus
   /**
    * 학부모가 지금 이 신청을 취소할 수 있는가.

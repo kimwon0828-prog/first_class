@@ -1,0 +1,183 @@
+.page {
+  min-height: 100dvh;
+  width: 100%;
+  overflow-x: hidden;
+  background: var(--bg);
+}
+
+.shell {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: var(--col);
+  margin: 0 auto;
+  min-height: 100dvh;
+  background: var(--surface);
+  padding-bottom: calc(var(--tabbar-h) + var(--s8) + env(safe-area-inset-bottom));
+}
+
+.shell * {
+  box-sizing: border-box;
+}
+
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  /* 제목 아래 subcopy 가 온다. row 로 두면 둘이 나란히 붙어 겹쳐 보인다. */
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-start;
+  min-height: 64px;
+  padding: calc(var(--s3) + env(safe-area-inset-top)) var(--gutter) var(--s3);
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+
+.title {
+  margin: 0;
+  font-size: 28px;
+  line-height: 1.25;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  color: var(--text-1);
+}
+
+.subcopy {
+  margin: var(--s1) 0 0;
+  font-size: 13px;
+  line-height: 20px;
+  color: var(--text-2);
+}
+
+.content {
+  display: grid;
+  gap: var(--s8);
+  padding: var(--s5) var(--gutter) var(--s8);
+}
+
+.card {
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  padding: var(--s5);
+}
+
+.dangerCard {
+  border-color: var(--danger);
+  background: var(--surface);
+}
+
+.dangerText {
+  margin: 0 0 var(--s3);
+  color: var(--danger);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 36px;
+  color: var(--brand-700);
+  font-size: 14px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.emptyState {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: calc(100dvh - 180px - var(--tabbar-h));
+  padding: var(--s10) 0;
+}
+
+.emptyInner {
+  display: grid;
+  justify-items: center;
+  gap: var(--s3);
+  width: 100%;
+  max-width: 280px;
+  text-align: center;
+}
+
+.emptyTitle {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.45;
+  font-weight: 700;
+  color: var(--text-1);
+}
+
+.emptyDesc {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--text-2);
+}
+
+.primaryButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 46px;
+  margin-top: var(--s2);
+  border-radius: var(--r-sm);
+  background: var(--brand-700);
+  color: var(--surface);
+  font-size: 15px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.bottomNav {
+  position: fixed;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  max-width: var(--col);
+  min-height: var(--tabbar-h);
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  padding: var(--s3) var(--gutter) calc(var(--s3) + env(safe-area-inset-bottom));
+}
+
+.navItem {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  text-decoration: none;
+  color: var(--text-3);
+  font-size: 11px;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.navItem svg {
+  width: 22px;
+  height: 22px;
+}
+
+.navItemActive {
+  color: var(--brand-700);
+}
+
+.navItemActive svg {
+  color: var(--brand-700);
+}
+
+@media (min-width: 520px) {
+  .shell {
+    border-left: 1px solid var(--border);
+    border-right: 1px solid var(--border);
+  }
+}

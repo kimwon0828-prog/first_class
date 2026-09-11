@@ -133,6 +133,8 @@ export async function cancelMyApplicationAction(
   }
 
   revalidatePath("/my")
+  revalidatePath("/record")
+  // 옛 경로는 /record 로 redirect 되지만, 캐시는 따로 잡혀 있어 함께 비운다.
   revalidatePath("/my/applications")
 
   if (embeddedClass?.organization_id) {
