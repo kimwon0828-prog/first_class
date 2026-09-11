@@ -2,14 +2,14 @@ import Link from "next/link"
 import { redirect } from "next/navigation"
 
 import { getMyProfile } from "@/features/auth/queries/get-my-profile"
-import { getSession } from "@/features/auth/lib/session"
+import { getVerifiedUserId } from "@/features/auth/lib/session"
 import { StudioHomeLogo } from "@/features/studio/ui/studio-home-logo"
 import { StudioSignUpForm } from "@/features/studio/ui/studio-sign-up-form"
 import styles from "./page.module.css"
 
 export default async function StudioSignUpPage() {
-  const session = await getSession()
-  if (session) {
+  const userId = await getVerifiedUserId()
+  if (userId) {
     const profile = await getMyProfile()
     if (profile?.role === "academy" || profile?.role === "admin") {
       redirect("/studio/applications")
@@ -20,7 +20,7 @@ export default async function StudioSignUpPage() {
     
     // Check if pending
     const { dataAdapter } = await import("@/shared/lib/db")
-    const pendingRequest = await dataAdapter.getPendingTeacherSignupRequest(session.user.id)
+    const pendingRequest = await dataAdapter.getPendingTeacherSignupRequest(userId)
     if (pendingRequest) {
       redirect("/studio/pending")
     }

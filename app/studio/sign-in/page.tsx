@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation"
 
 import { getMyProfile } from "@/features/auth/queries/get-my-profile"
-import { getSession } from "@/features/auth/lib/session"
+import { getVerifiedUserId } from "@/features/auth/lib/session"
 import { StudioHomeLogo } from "@/features/studio/ui/studio-home-logo"
 import { StudioSignInForm } from "@/features/studio/ui/studio-sign-in-form"
 import styles from "./page.module.css"
@@ -28,9 +28,9 @@ const resolveSafeReturnTo = (raw: string | undefined): string | null => {
 export default async function StudioSignInPage({ searchParams }: StudioSignInPageProps) {
   const resolvedSearchParams = searchParams ? await searchParams : undefined
   const returnTo = resolveSafeReturnTo(resolvedSearchParams?.returnTo)
-  const session = await getSession()
+  const userId = await getVerifiedUserId()
 
-  if (session) {
+  if (userId) {
     const profile = await getMyProfile()
 
     if (profile?.role === "academy" || profile?.role === "admin") {

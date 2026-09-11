@@ -1,7 +1,8 @@
 import { cache } from "react"
 
 import { getProfileForUser, type AuthProfile, type AuthUserIdentity } from "@/features/auth/lib/profile-sync"
-import { getSupabaseServerClient, getUserFromSupabaseAuthCookieFallback } from "@/integrations/supabase/server"
+import { getVerifiedClaims } from "@/features/auth/lib/verified-claims"
+import { getUserFromSupabaseAuthCookieFallback } from "@/integrations/supabase/server"
 
 type CurrentAuthBase = {
   authenticated: boolean
@@ -55,15 +56,14 @@ const isStudioProfile = (profile: AuthProfile) =>
   profile.dbRole === "admin"
 
 const resolveCurrentAuthCached = cache(async (context: string): Promise<CurrentAuthState> => {
-  const supabase = await getSupabaseServerClient()
-  const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
   // 검증된 identity 만 얻는 용도. asymmetric JWT 를 JWKS 로 로컬 검증하므로 Auth 서버 왕복이 없고,
-  // 만료가 임박하면 getUser() 와 동일하게 refresh 를 먼저 수행한다.
+  // 여기서는 refresh 도 하지 않는다 — 같은 요청의 middleware 와 refresh token 을 두고
+  // 경쟁하면 GoTrue 가 409 를 돌려주고 재시도가 쌓인다. refresh 주인은 middleware 하나다.
+  // (기존의 getSession() 호출은 debug 로그의 hasSession 출력에만 쓰였다.)
   // 권한 판정의 canonical source 는 아래 getProfileForUser 가 읽는 profiles 그대로다.
-  const { data: claimsData, error: userError } = await supabase.auth.getClaims()
-  const claims = claimsData?.claims
-  const subject = typeof claims?.sub === "string" ? claims.sub : null
-  const claimEmail = typeof claims?.email === "string" ? claims.email : undefined
+  const claims = await getVerifiedClaims()
+  const subject = claims?.userId ?? null
+  const claimEmail = claims?.email
 
   let user: AuthUserIdentity | null = subject ? { id: subject, email: claimEmail } : null
   let fallback: Awaited<ReturnType<typeof getUserFromSupabaseAuthCookieFallback>> | null = null
@@ -77,9 +77,7 @@ const resolveCurrentAuthCached = cache(async (context: string): Promise<CurrentA
   if (process.env.NEXT_PUBLIC_DEBUG_AUTH === "1") {
     console.log("[current auth resolver]", {
       context,
-      hasSession: Boolean(sessionData.session),
-      sessionError: sessionError?.message ?? null,
-      userError: userError?.message ?? null,
+      hasVerifiedClaims: Boolean(claims),
       usedCookieFallback: Boolean(fallback?.user),
       hasAuthCookie: fallback?.hasAuthCookie ?? null,
       hasAccessToken: fallback?.hasAccessToken ?? null,
@@ -95,7 +93,7 @@ const resolveCurrentAuthCached = cache(async (context: string): Promise<CurrentA
       profile: null,
       isParentUser: false,
       isStudioUser: false,
-      userError: userError?.message ?? sessionError?.message ?? null
+      userError: null
     }
   }
 

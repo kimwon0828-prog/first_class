@@ -5,6 +5,7 @@ import { headers } from "next/headers"
 import { redirect } from "next/navigation"
 
 import { normalizeProfileRole } from "@/features/auth/lib/profile-sync"
+import { getVerifiedClaims } from "@/features/auth/lib/verified-claims"
 import { getSupabaseServerClient } from "@/integrations/supabase/server"
 
 // Studio 접근 context 는 로그인 운영 멤버(profile)와 organization 만으로 구성한다.
@@ -104,7 +105,6 @@ const readStudioProfile = async (
 }
 
 const requireTeacherStudioAccessCached = cache(async (): Promise<TeacherStudioAccess> => {
-  const supabase = await getSupabaseServerClient()
   const requestHeaders = await headers()
   const requestPath =
     requestHeaders.get("next-url") ??
@@ -116,15 +116,19 @@ const requireTeacherStudioAccessCached = cache(async (): Promise<TeacherStudioAc
   // 인증된 user id 확인 전용. asymmetric JWT 를 JWKS 로 로컬 검증하므로 Auth 서버 왕복이 없다.
   // 권한(role/organization)의 canonical source 는 아래의 profiles/teachers 그대로다.
   // claims 의 role/user_metadata 는 authorization 근거로 쓰지 않는다.
-  const { data: claimsData, error: claimsError } = await supabase.auth.getClaims()
-  const userId = typeof claimsData?.claims?.sub === "string" ? claimsData.claims.sub : null
+  //
+  // ⚠️ supabase.auth.getClaims() 를 인자 없이 부르지 않는다. 그러면 내부에서 getSession()
+  //    을 타고 만료된 토큰을 refresh 해, middleware 와 동시에 같은 refresh token 을 써서
+  //    409 concurrent refresh 를 만든다. refresh 의 주인은 middleware 하나다.
+  const claims = await getVerifiedClaims()
+  const userId = claims?.userId ?? null
   const userIdPrefix = userId?.slice(0, 8) ?? null
   debugStudioAuth({
     pathname: requestPath,
     hasUser: Boolean(userId),
     userIdPrefix,
     profileLookup: null,
-    errorCode: claimsError?.code ?? null,
+    errorCode: null,
     rawRole: null,
     dbRole: null,
     hasOrganizationId: null,

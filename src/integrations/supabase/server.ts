@@ -94,6 +94,49 @@ const extractSupabaseAuthCookieValue = (rawCookieHeader: string, projectRef: str
   return baseChunk?.value ?? null
 }
 
+/**
+ * 요청 cookie 에 들어 있는 access token 원문.
+ *
+ * auth client 를 거치지 않는다 — getSession() 을 타면 만료된 토큰에서 refresh 가
+ * 발생하기 때문이다. 갱신 없이 "지금 브라우저가 들고 있는 토큰" 만 그대로 돌려준다.
+ * 검증은 호출자(features/auth/lib/verified-claims)가 getClaims(token) 으로 한다.
+ */
+export const getRequestAccessToken = async (): Promise<string | null> => {
+  const { supabaseUrl } = getPublicEnv()
+  const requestHeaders = await headers()
+  const projectRef = extractProjectRefFromSupabaseUrl(supabaseUrl)
+  if (!projectRef) {
+    return null
+  }
+
+  // middleware 가 이번 요청에서 토큰을 갱신했으면 그 값이 request cookie 에 실려 온다.
+  // cookieStore 를 먼저 보고, 없을 때만 raw header 로 내려간다.
+  const cookieStore = await cookies()
+  const rawCookieValue =
+    extractSupabaseAuthCookieValue(
+      cookieStore
+        .getAll()
+        .map((cookie) => `${cookie.name}=${encodeURIComponent(cookie.value)}`)
+        .join("; "),
+      projectRef
+    ) ?? extractSupabaseAuthCookieValue(requestHeaders.get("cookie") ?? "", projectRef)
+
+  if (!rawCookieValue) {
+    return null
+  }
+
+  const combined = rawCookieValue.startsWith("base64-")
+    ? rawCookieValue.slice("base64-".length)
+    : rawCookieValue
+
+  try {
+    const payload = JSON.parse(decodeBase64UrlToString(combined)) as { access_token?: unknown }
+    return typeof payload.access_token === "string" ? payload.access_token : null
+  } catch {
+    return null
+  }
+}
+
 export const getUserFromSupabaseAuthCookieFallback = async (): Promise<{
   user: { id: string; email?: string } | null
   hasAuthCookie: boolean

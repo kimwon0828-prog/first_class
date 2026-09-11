@@ -2,7 +2,7 @@ import Link from "next/link"
 import { redirect } from "next/navigation"
 
 import { getMyProfile } from "@/features/auth/queries/get-my-profile"
-import { getSession } from "@/features/auth/lib/session"
+import { getVerifiedUserId } from "@/features/auth/lib/session"
 import { StudioHomeLogo } from "@/features/studio/ui/studio-home-logo"
 import { StudioSignUpForm } from "@/features/studio/ui/studio-sign-up-form"
 import { getSupabaseServerClient } from "@/integrations/supabase/server"
@@ -30,9 +30,9 @@ type SignupRequestRow = {
 }
 
 export default async function StudioPendingPage() {
-  const session = await getSession()
-  
-  if (!session) {
+  const userId = await getVerifiedUserId()
+
+  if (!userId) {
     redirect("/studio/sign-in")
   }
 
@@ -66,7 +66,7 @@ export default async function StudioPendingPage() {
         "rejection_reason"
       ].join(", ")
     )
-    .eq("user_id", session.user.id)
+    .eq("user_id", userId)
     .in("status", ["pending", "rejected"])
     .order("updated_at", { ascending: false })
     .limit(1)
