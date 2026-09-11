@@ -1576,40 +1576,33 @@ export const mockDataAdapter: DataAdapter = {
   async listMyApplications(parentId) {
     return applications
       .filter((item) => item.parentId === parentId)
-      .map((item) => {
-        const classItem = classes.find((classRow) => classRow.id === item.classId) ?? null
-
-        return {
-          id: item.id,
-          classId: item.classId,
-          classTitle: item.classTitle,
-          classProgramType: item.classProgramType,
-          academyName:
-            [mockOrganizationLocation.name, mockOrganizationLocation.branchName]
-              .filter(Boolean)
-              .join(" ")
-              .trim() || null,
-          teacherDisplayName:
-            classItem?.teacherDisplayName ?? classItem?.teacherName ?? item.assignedTeacherName ?? null,
-          organizationAddress: mockOrganizationLocation.address ?? null,
-          organizationAddressDetail: mockOrganizationLocation.addressDetail ?? null,
-          parentId: item.parentId,
-          childName: item.childName,
-          childGrade: item.childGrade,
-          parentName: item.parentName,
-          parentPhone: item.parentPhone,
-          classScheduleId: item.classScheduleId ?? null,
-          requestedScheduleBlockId: item.requestedScheduleBlockId,
-          selectedScheduleLabel: item.selectedScheduleLabel ?? null,
-          requestedSlotAt: item.requestedSlotAt,
-          confirmedSlotAt: item.confirmedSlotAt,
-          registrationStatus: item.registrationStatus ?? null,
-          status: item.status,
-          goalType: item.goalType,
-          createdAt: item.createdAt,
-          updatedAt: item.updatedAt
-        }
-      })
+      // supabase-adapter 와 같은 whitelist 다. 학원 운영 필드는 담지 않는다.
+      .map((item) => ({
+        id: item.id,
+        classId: item.classId,
+        classTitle: item.classTitle,
+        classProgramType: item.classProgramType,
+        academyName:
+          [mockOrganizationLocation.name, mockOrganizationLocation.branchName]
+            .filter(Boolean)
+            .join(" ")
+            .trim() || null,
+        organizationAddress: mockOrganizationLocation.address ?? null,
+        organizationAddressDetail: mockOrganizationLocation.addressDetail ?? null,
+        childName: item.childName,
+        childGrade: item.childGrade,
+        classScheduleId: item.classScheduleId ?? null,
+        requestedScheduleBlockId: item.requestedScheduleBlockId,
+        selectedScheduleLabel: item.selectedScheduleLabel ?? null,
+        requestedSlotAt: item.requestedSlotAt,
+        confirmedSlotAt: item.confirmedSlotAt,
+        status: item.status,
+        canCancel:
+          item.registrationStatus !== "enrolled" &&
+          (item.status === "new" || item.status === "reviewing" || item.status === "confirmed"),
+        createdAt: item.createdAt,
+        updatedAt: item.updatedAt
+      }))
       .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))
   },
   async listStudioApplications(organizationId, options: StudioApplicationListOptions = {}) {

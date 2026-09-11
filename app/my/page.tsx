@@ -6,14 +6,14 @@ import { getMyApplications } from "@/features/applications/queries/get-my-applic
 import { requireParentAccess } from "@/features/my/lib/require-parent-access"
 import { getMyDashboard } from "@/features/my/queries/get-my-dashboard"
 import { MyDashboardHome } from "@/features/my/ui/my-dashboard-home"
-import type { TrialApplicationSummary } from "@/shared/lib/db/adapter"
+import type { ParentApplicationSummary } from "@/shared/lib/db/adapter"
 import styles from "./page.module.css"
 import { POC_DISCOVERY_HREF } from "@/shared/config/discovery"
 
 export const dynamic = "force-dynamic"
 export const revalidate = 0
 
-const resolveNextUpcomingApplication = (items: TrialApplicationSummary[]) => {
+const resolveNextUpcomingApplication = (items: ParentApplicationSummary[]) => {
   const now = new Date()
 
   return [...items]
@@ -31,7 +31,6 @@ const resolveNextUpcomingApplication = (items: TrialApplicationSummary[]) => {
         resolveApplicationStatusDisplay({
           status: item.status,
           scheduledAt: item.confirmedSlotAt,
-          registrationStatus: item.registrationStatus,
           now
         }).group === "upcoming"
       )

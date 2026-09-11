@@ -1,4 +1,8 @@
-import type { ApplicationRegistrationStatus } from "@/shared/lib/db/adapter"
+// 학부모가 보는 신청 상태.
+//
+// Application lifecycle(new · reviewing · confirmed · completed · canceled)만 쓴다.
+// 등록 여부(registration_status)는 학원의 운영 판단이라 여기에 들어오지 않는다 —
+// 학부모 화면은 "체험이 어디까지 왔는가" 만 말한다.
 
 export type ApplicationStatusDisplay = {
   label: string
@@ -9,7 +13,6 @@ export type ApplicationStatusDisplay = {
 type ResolveApplicationStatusDisplayInput = {
   status: string
   scheduledAt: string | null
-  registrationStatus: ApplicationRegistrationStatus | null
   now?: Date
 }
 
@@ -29,17 +32,8 @@ const isPastSchedule = (scheduledAt: string | null, now: Date) => {
 export const resolveApplicationStatusDisplay = ({
   status,
   scheduledAt,
-  registrationStatus,
   now = new Date()
 }: ResolveApplicationStatusDisplayInput): ApplicationStatusDisplay => {
-  if (registrationStatus === "enrolled") {
-    return {
-      label: "완료",
-      tone: "muted",
-      group: "past"
-    }
-  }
-
   if (status === "new" || status === "reviewing") {
     return {
       label: "학원 확인 중",
@@ -66,7 +60,8 @@ export const resolveApplicationStatusDisplay = ({
 
   if (status === "completed") {
     return {
-      label: "완료",
+      // "완료" 는 무엇의 완료인지 모호했다. 등록 완료와 구분해 체험 기준으로 적는다.
+      label: "체험 완료",
       tone: "muted",
       group: "past"
     }

@@ -5,12 +5,12 @@ import { useCallback, useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 
 import { MyApplicationList } from "@/features/applications/ui/my-application-list"
-import type { TrialApplicationSummary } from "@/shared/lib/db/adapter"
+import type { ParentApplicationSummary } from "@/shared/lib/db/adapter"
 import styles from "../../../../app/my/applications/page.module.css"
 
 type LoadState = "ready" | "error"
 
-export type MyApplicationListItem = TrialApplicationSummary
+export type MyApplicationListItem = ParentApplicationSummary
 
 type MyApplicationsClientProps = {
   initialItems: MyApplicationListItem[]

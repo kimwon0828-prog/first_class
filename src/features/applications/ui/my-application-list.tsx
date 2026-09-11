@@ -17,13 +17,10 @@ type MyApplicationListProps = {
   onCanceled?: () => Promise<void> | void
 }
 
-const canShowCancelButton = (item: MyApplicationListItem) => {
-  if (item.registrationStatus === "enrolled") {
-    return false
-  }
-
-  return item.status === "new" || item.status === "reviewing" || item.status === "confirmed"
-}
+// 취소 가능 여부는 서버가 판정해 canCancel 로 내려준다.
+// 화면은 그 근거가 된 학원 운영 상태를 알지 못하고, 알 필요도 없다.
+// (실제 취소는 cancel-my-application server action 이 다시 검증한다.)
+const canShowCancelButton = (item: MyApplicationListItem) => item.canCancel
 
 // 선생님 이름은 학부모 화면에 노출하지 않는다. 학원명이 없으면 준비 중으로 둔다.
 const resolveAcademyLabel = (item: MyApplicationListItem) =>
@@ -207,7 +204,6 @@ export const MyApplicationList = ({ items, onCanceled }: MyApplicationListProps)
       const statusDisplay = resolveApplicationStatusDisplay({
         status: item.status,
         scheduledAt: getComparableScheduleAt(item),
-        registrationStatus: item.registrationStatus
       })
       next[statusDisplay.group].push(item)
     }
@@ -239,7 +235,6 @@ export const MyApplicationList = ({ items, onCanceled }: MyApplicationListProps)
     const statusDisplay = resolveApplicationStatusDisplay({
       status: item.status,
       scheduledAt: getComparableScheduleAt(item),
-      registrationStatus: item.registrationStatus
     })
     const showCancelButton = canShowCancelButton(item)
     const academyLabel = resolveAcademyLabel(item)
@@ -291,9 +286,6 @@ export const MyApplicationList = ({ items, onCanceled }: MyApplicationListProps)
           </div>
         </div>
 
-        {item.registrationStatus === "enrolled" ? (
-          <p className={styles.enrolledText}>등록이 완료된 신청이에요</p>
-        ) : null}
       </article>
     )
   }
@@ -333,7 +325,6 @@ export const MyApplicationList = ({ items, onCanceled }: MyApplicationListProps)
                 const statusDisplay = resolveApplicationStatusDisplay({
                   status: item.status,
                   scheduledAt: getComparableScheduleAt(item),
-                  registrationStatus: item.registrationStatus
                 })
                 const dateText = (() => {
                   const scheduleAt = getComparableScheduleAt(item)

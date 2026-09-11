@@ -1,10 +1,10 @@
 import { getMyProfile } from "@/features/auth/lib/profile-sync"
 import { dataAdapter } from "@/shared/lib/db"
-import type { TrialApplicationSummary } from "@/shared/lib/db/adapter"
+import type { ParentApplicationSummary } from "@/shared/lib/db/adapter"
 import type { QueryResult } from "@/shared/queries"
 
 export const getMyApplications = async (): Promise<
-  QueryResult<TrialApplicationSummary[]>
+  QueryResult<ParentApplicationSummary[]>
 > => {
   const profile = await getMyProfile()
 
