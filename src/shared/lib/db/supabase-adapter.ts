@@ -41,6 +41,7 @@ import type {
   ActivateStudioTeacherInput,
   StudioTeacherReferenceCounts,
   ApplicationLogEntry,
+  ApplicationStatus,
   ClassAssignmentMode,
   ApplicationRegistrationStatus,
   ConsultationLogActivityType,
@@ -776,6 +777,26 @@ const getEmbeddedClassSchedule = (row: TrialApplicationRow): EmbeddedClassSchedu
   }
 
   return row.class_schedules.length === 1 ? row.class_schedules[0] : null
+}
+
+/**
+ * 학부모가 이 신청을 취소할 수 있는가.
+ *
+ * 학원이 이미 등록 처리한 건은 취소할 수 없다. 그 근거인 registration_status 는
+ * 학부모 화면에 내려보내지 않고, 판정 결과(boolean)만 준다.
+ *
+ * ⚠️ 이것은 화면용 신호다. 최종 판정은 cancel-my-application server action 이
+ *    같은 규칙으로 다시 한다(UI capability + server guard 이중).
+ */
+const resolveParentCanCancel = (
+  status: ApplicationStatus,
+  registrationStatus: string | null
+): boolean => {
+  if (registrationStatus === "enrolled") {
+    return false
+  }
+
+  return status === "new" || status === "reviewing" || status === "confirmed"
 }
 
 const mapApplication = (row: TrialApplicationRow): TrialApplicationSummary => {
@@ -4070,10 +4091,13 @@ export const supabaseDataAdapter: DataAdapter = {
   },
   async listMyApplications(parentId) {
     const supabase = await getSupabaseServerClient()
+    // 학부모 화면 전용 select 다. 학원 운영 컬럼은 애초에 가져오지 않는다 —
+    // 가져온 뒤 mapper 에서 빼는 방식은 컬럼이 늘어날 때마다 다시 새어 나간다.
+    // registration_status 는 아래 canCancel 판정에만 쓰고 밖으로 내보내지 않는다.
     const { data, error } = await supabase
       .from("trial_applications")
       .select(
-        "id, class_id, parent_id, child_name, child_grade, parent_name, parent_phone, class_schedule_id, requested_schedule_block_id, selected_schedule_label, requested_slot_at, confirmed_slot_at, registration_status, goal_type, status, created_at, updated_at, classes(title, program_type, organization_id, teacher_display_name)"
+        "id, class_id, child_name, child_grade, class_schedule_id, requested_schedule_block_id, selected_schedule_label, requested_slot_at, confirmed_slot_at, registration_status, status, created_at, updated_at, classes(title, program_type, organization_id)"
       )
       .eq("parent_id", parentId)
       .order("created_at", { ascending: false })
@@ -4091,7 +4115,6 @@ export const supabaseDataAdapter: DataAdapter = {
 
     return rows.map((row) => {
       const embeddedClass = getEmbeddedClass(row)
-      const base = mapApplication(row)
       const organizationRow =
         embeddedClass?.organization_id
           ? organizationLocationMap.get(embeddedClass.organization_id) ?? null
@@ -4099,12 +4122,26 @@ export const supabaseDataAdapter: DataAdapter = {
       const organization = organizationRow ? mapOrganizationLocation(organizationRow) : null
 
       return {
-        ...base,
+        id: row.id,
+        classId: row.class_id,
+        classTitle: embeddedClass?.title ?? null,
+        classProgramType: embeddedClass?.program_type ?? null,
         academyName: organization
           ? [organization.name, organization.branchName].filter(Boolean).join(" ").trim() || null
           : null,
         organizationAddress: organization?.address ?? null,
-        organizationAddressDetail: organization?.addressDetail ?? null
+        organizationAddressDetail: organization?.addressDetail ?? null,
+        childName: row.child_name,
+        childGrade: row.child_grade,
+        classScheduleId: row.class_schedule_id ?? null,
+        requestedScheduleBlockId: row.requested_schedule_block_id ?? null,
+        selectedScheduleLabel: row.selected_schedule_label ?? null,
+        requestedSlotAt: row.requested_slot_at,
+        confirmedSlotAt: row.confirmed_slot_at ?? null,
+        status: row.status,
+        canCancel: resolveParentCanCancel(row.status, row.registration_status ?? null),
+        createdAt: row.created_at,
+        updatedAt: row.updated_at
       }
     })
   },

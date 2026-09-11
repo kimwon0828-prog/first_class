@@ -601,6 +601,48 @@ export type TrialApplicationSummary = {
   updatedAt: string
 }
 
+/**
+ * 학부모 화면이 보는 신청. Studio 와 타입을 공유하지 않는다.
+ *
+ * ⚠️ whitelist 다. "일단 다 담고 화면에서 안 쓰기" 를 하지 않는다 —
+ *    client component 로 넘어가는 값은 UI 에 그리지 않아도 브라우저까지 간다.
+ *
+ * 학원 내부 운영 데이터는 여기에 들어오지 않는다.
+ *   registration_status · unregistered_reason · enrolled_at · lost_at
+ *   next_contact_at · consultation_note · follow_up_note · trial_feedback
+ *   teacher_display_name
+ *
+ * 취소 가능 여부는 registration_status 를 내려보내는 대신 서버가 판정해
+ * canCancel 하나로 준다. 학부모 화면은 "왜 못 하는지" 의 근거가 된 내부
+ * 필드를 알 필요가 없다.
+ */
+export type ParentApplicationSummary = {
+  id: string
+  classId: string
+  classTitle: string | null
+  classProgramType: ClassProgramType | null
+  academyName: string | null
+  organizationAddress: string | null
+  organizationAddressDetail: string | null
+  childName: string
+  childGrade: string
+  classScheduleId?: string | null
+  requestedScheduleBlockId: string | null
+  selectedScheduleLabel?: string | null
+  requestedSlotAt: string
+  confirmedSlotAt: string | null
+  status: ApplicationStatus
+  /**
+   * 학부모가 지금 이 신청을 취소할 수 있는가.
+   *
+   * 최종 판정은 여기서 하지 않는다 — cancel-my-application server action 이
+   * 다시 검증한다. 이 값은 버튼을 보여줄지 정하는 화면용 신호일 뿐이다.
+   */
+  canCancel: boolean
+  createdAt: string
+  updatedAt: string
+}
+
 export type ApplicationStatusActionType =
   | "move_to_reviewing"
   | "move_to_confirmed"
@@ -616,7 +658,7 @@ export type MyDashboardData = {
   confirmedApplicationCount: number
   completedApplicationCount: number
   canceledApplicationCount: number
-  recentApplications: TrialApplicationSummary[]
+  recentApplications: ParentApplicationSummary[]
 }
 
 export type ApplicationLogEntry = {
@@ -1132,7 +1174,7 @@ export interface DataAdapter {
   createChildProfile(input: ChildProfileInput): Promise<ChildProfile>
   updateChildProfile(input: UpdateChildProfileInput): Promise<ChildProfile>
   getMyDashboard(parentId: string): Promise<MyDashboardData>
-  listMyApplications(parentId: string): Promise<TrialApplicationSummary[]>
+  listMyApplications(parentId: string): Promise<ParentApplicationSummary[]>
   listStudioApplications(
     organizationId: string,
     options?: StudioApplicationListOptions

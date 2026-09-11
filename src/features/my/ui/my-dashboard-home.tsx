@@ -1,13 +1,13 @@
 import Link from "next/link"
 
-import type { MyDashboardData, TrialApplicationSummary } from "@/shared/lib/db/adapter"
+import type { MyDashboardData, ParentApplicationSummary } from "@/shared/lib/db/adapter"
 import styles from "./my-dashboard-home.module.css"
 
 type MyDashboardHomeProps = {
   profileName: string
   profilePhone: string | null
   dashboard: MyDashboardData
-  nextUpcomingApplication: TrialApplicationSummary | null
+  nextUpcomingApplication: ParentApplicationSummary | null
 }
 
 const formatDateTime = (value: string) => {
