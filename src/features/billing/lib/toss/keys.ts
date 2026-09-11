@@ -133,8 +133,47 @@ export const normalizeDeploymentEnvironment = (
 }
 
 export type TossBillingMode =
-  | { allowed: true; deployment: TossDeploymentEnvironment; keyEnvironment: TossKeyEnvironment }
+  | {
+      allowed: true
+      deployment: TossDeploymentEnvironment
+      keyEnvironment: TossKeyEnvironment
+      /**
+       * production 의 test-key 차단을 심사용 조직 하나에만 연 상태인가.
+       * 화면 안내 용도로만 쓴다. 권한 판정에 쓰지 않는다.
+       */
+      reviewMode: boolean
+    }
   | { allowed: false; code: TossBillingBlockCode }
+
+/**
+ * 카드사 심사용 예외의 입력.
+ *
+ * 두 값이 모두 있고 정확히 같을 때만 예외가 성립한다. 부분 일치·대소문자 무시·
+ * prefix 비교를 하지 않는다 — 조직 하나를 지목하는 것이지 규칙을 완화하는 게 아니다.
+ */
+export type TossReviewOrganizationInput = {
+  /** TOSS_REVIEW_ORGANIZATION_ID. 설정되지 않으면 null 이고 예외는 존재하지 않는다. */
+  reviewOrganizationId: string | null
+  /** 지금 결제를 시도하는 조직. 서버가 확인한 값만 넣는다. */
+  organizationId: string | null
+}
+
+/**
+ * 이 조직이 카드사 심사용으로 지정된 조직인가.
+ *
+ * 둘 중 하나라도 비어 있으면 false 다. env 미설정(null)과 "빈 문자열끼리 같다" 를
+ * 구분하지 못하면 env 를 지운 배포에서 조직 없는 호출이 통과해 버린다.
+ */
+export const isTossReviewOrganization = (input: TossReviewOrganizationInput): boolean => {
+  const configured = input.reviewOrganizationId?.trim() ?? ""
+  const current = input.organizationId?.trim() ?? ""
+
+  if (!configured || !current) {
+    return false
+  }
+
+  return configured === current
+}
 
 export type TossBillingBlockCode =
   /** production 인데 test 키가 꽂혀 있다. sandbox 결제로 유료가 열리면 안 된다. */
@@ -152,18 +191,40 @@ export const resolveTossBillingMode = (input: {
   deployment: TossDeploymentEnvironment
   keyEnvironment: TossKeyEnvironment
   allowLive: boolean
+  /**
+   * 카드사 심사용 조직 예외. 넘기지 않으면 예외가 없는 것과 같다 —
+   * 기존 호출부의 판정은 한 글자도 달라지지 않는다.
+   */
+  review?: TossReviewOrganizationInput
 }): TossBillingMode => {
+  // live 판정이 가장 먼저다. 심사 예외는 test 키 전용이므로 live 키를 든 조직은
+  // 심사용으로 지정돼 있어도 여기서 닫힌다(fail closed).
   if (input.keyEnvironment === "live" && !input.allowLive) {
     return { allowed: false, code: "live_billing_not_enabled" }
   }
 
+  const isReviewOrganization = input.review ? isTossReviewOrganization(input.review) : false
+
   if (input.deployment === "production" && input.keyEnvironment === "test") {
-    return { allowed: false, code: "test_key_in_production" }
+    // 카드사 심사 담당자가 firstsuup.com 에서 TEST 결제창을 확인해야 한다.
+    // 이 예외는 지목된 조직 하나에만 열린다. 나머지 production 조직은 그대로 막힌다.
+    // env 를 지우면 review 가 항상 false 가 되어 예외 자체가 사라진다.
+    if (!isReviewOrganization) {
+      return { allowed: false, code: "test_key_in_production" }
+    }
+
+    return {
+      allowed: true,
+      deployment: input.deployment,
+      keyEnvironment: input.keyEnvironment,
+      reviewMode: true
+    }
   }
 
   return {
     allowed: true,
     deployment: input.deployment,
-    keyEnvironment: input.keyEnvironment
+    keyEnvironment: input.keyEnvironment,
+    reviewMode: false
   }
 }

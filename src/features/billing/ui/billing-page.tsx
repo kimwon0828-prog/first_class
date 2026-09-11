@@ -35,6 +35,18 @@ export const BillingPage = ({ overview, notice }: BillingPageProps) => {
         <p className={styles.description}>첫수업 스튜디오의 플랜과 결제 정보를 관리해요.</p>
       </header>
 
+      {/*
+        카드사 심사용 조직에서만 뜬다. overview.reviewMode 는 서버가 조직 UUID 를
+        TOSS_REVIEW_ORGANIZATION_ID 와 대조해 정한 값이라, 일반 학원에서는 항상 false 다.
+        심사 담당자가 실제 청구로 오해하지 않도록 TEST 환경임을 밝혀 둔다.
+      */}
+      {overview.reviewMode ? (
+        <p className={styles.reviewNotice} role="note">
+          카드사 심사용 테스트 계정입니다. 이 계정의 결제는 Toss Payments 테스트 환경에서
+          처리되며 실제 청구가 발생하지 않습니다.
+        </p>
+      ) : null}
+
       {notice ? (
         <p className={styles.notice} role="status">
           {notice}

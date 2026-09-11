@@ -10,7 +10,7 @@ import { insertCheckoutSession } from "@/features/billing/lib/checkout/checkout-
 import { getPurchasableBillingPlan } from "@/features/billing/lib/plan-catalog"
 import { generateTossCustomerKey } from "@/features/billing/lib/toss/customer-key"
 import { buildInitialBillingAttempt } from "@/features/billing/lib/toss/identifiers"
-import { getTossRuntime } from "@/features/billing/lib/toss/server"
+import { getTossRuntimeForOrganization } from "@/features/billing/lib/toss/server"
 import { getOrganizationEntitlements } from "@/features/billing/queries/get-organization-entitlements"
 import { requireTeacherStudioAccess } from "@/features/studio/lib/require-teacher-studio-access"
 import type { ActionResult } from "@/shared/actions"
@@ -57,7 +57,8 @@ const resolveOrigin = async (): Promise<string> => {
 export const startStandardCheckout = async (): Promise<ActionResult<StandardCheckoutTicket>> => {
   const access = await requireTeacherStudioAccess()
 
-  const runtime = getTossRuntime()
+  // 조직은 requireTeacherStudioAccess 가 확인한 값이다. client 가 보낸 값이 아니다.
+  const runtime = getTossRuntimeForOrganization(access.organizationId)
   if (runtime.status !== "ready") {
     // missing · invalid · blocked 를 사용자에게 구분해 알리지 않는다.
     // 키 종류나 배포 환경 같은 내부 사정을 노출하지 않기 위해 문구를 하나로 둔다.

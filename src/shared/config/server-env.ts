@@ -84,6 +84,8 @@ export type TossBillingEnv = {
   secretKey: string
   environment: TossKeyEnvironment
   deployment: TossDeploymentEnvironment
+  /** production 의 test-key 차단이 심사용 조직 하나에만 열린 상태인가. 안내 표시 전용. */
+  reviewMode: boolean
 }
 
 export type TossBillingEnvResult =
@@ -104,7 +106,13 @@ export type TossBillingEnvResult =
  *
  * client key 는 NEXT_PUBLIC_ 으로 두지 않는다. 서버에서 읽어 필요한 화면에만 넘긴다.
  */
-export const getTossBillingEnv = (): TossBillingEnvResult => {
+export const getTossBillingEnv = (
+  /**
+   * 결제를 시도하는 조직. 서버가 확인한 값만 넘긴다 — 브라우저가 보낸 값을 그대로
+   * 넣으면 안 된다. 넘기지 않으면 심사 예외 없이 기존 정책 그대로 판정한다.
+   */
+  organizationId: string | null = null
+): TossBillingEnvResult => {
   const clientKey = process.env.TOSS_PAYMENTS_CLIENT_KEY?.trim() ?? ""
   const secretKey = process.env.TOSS_PAYMENTS_SECRET_KEY?.trim() ?? ""
 
@@ -123,7 +131,13 @@ export const getTossBillingEnv = (): TossBillingEnvResult => {
   const mode = resolveTossBillingMode({
     deployment,
     keyEnvironment: checked.environment,
-    allowLive
+    allowLive,
+    // 카드사 심사용 조직 하나만 production 의 test-key 차단에서 예외로 둔다.
+    // env 가 없으면 null 이 되어 예외가 성립하지 않는다(§29: env 제거 = 즉시 비활성).
+    review: {
+      reviewOrganizationId: process.env.TOSS_REVIEW_ORGANIZATION_ID?.trim() || null,
+      organizationId
+    }
   })
   if (!mode.allowed) {
     return { status: "blocked", code: mode.code }
@@ -131,6 +145,12 @@ export const getTossBillingEnv = (): TossBillingEnvResult => {
 
   return {
     status: "ready",
-    env: { clientKey, secretKey, environment: checked.environment, deployment }
+    env: {
+      clientKey,
+      secretKey,
+      environment: checked.environment,
+      deployment,
+      reviewMode: mode.reviewMode
+    }
   }
 }
