@@ -13,6 +13,11 @@ export type TossRuntime =
       clientKey: string
       environment: "test" | "live"
       deployment: "production" | "preview" | "development"
+      /**
+       * production 의 test-key 차단이 이 조직에만 열린 상태인가.
+       * 화면 안내에만 쓴다 — 권한이나 결제 판정에 쓰지 않는다.
+       */
+      reviewMode: boolean
     }
   | { status: "missing" }
   | { status: "invalid"; code: string; message: string }
@@ -24,8 +29,27 @@ export type TossRuntime =
    */
   | { status: "blocked"; code: string }
 
-export const getTossRuntime = (): TossRuntime => {
-  const result = getTossBillingEnv()
+/**
+ * 조직을 모르는 호출용. production 의 test-key 차단이 예외 없이 그대로 적용된다.
+ *
+ * webhook · 갱신 · 대사처럼 조직이 배치마다 달라지는 경로가 이걸 쓴다.
+ * 심사 예외는 checkout 진입과 그 callback 에만 열어 둔다.
+ */
+export const getTossRuntime = (): TossRuntime => toRuntime(getTossBillingEnv())
+
+/**
+ * 조직 단위 runtime.
+ *
+ * production + test 키에서 차단을 여는 것은 TOSS_REVIEW_ORGANIZATION_ID 와
+ * 정확히 일치하는 조직 하나뿐이다. 나머지 조직의 판정은 getTossRuntime 과 같다.
+ *
+ * ⚠️ organizationId 는 서버가 확인한 값만 넘긴다. checkout callback 처럼 브라우저가
+ *    개입할 수 있는 경로에서는 DB 의 checkout session 에서 읽은 조직을 쓴다.
+ */
+export const getTossRuntimeForOrganization = (organizationId: string | null): TossRuntime =>
+  toRuntime(getTossBillingEnv(organizationId))
+
+const toRuntime = (result: ReturnType<typeof getTossBillingEnv>): TossRuntime => {
   if (result.status !== "ready") {
     return result
   }
@@ -35,6 +59,7 @@ export const getTossRuntime = (): TossRuntime => {
     config: { secretKey: result.env.secretKey },
     clientKey: result.env.clientKey,
     environment: result.env.environment,
-    deployment: result.env.deployment
+    deployment: result.env.deployment,
+    reviewMode: result.env.reviewMode
   }
 }

@@ -17,7 +17,7 @@ import {
   type FeatureComparisonRow,
   type PricingCard
 } from "@/features/billing/lib/subscription-presentation"
-import { getTossRuntime } from "@/features/billing/lib/toss/server"
+import { getTossRuntimeForOrganization } from "@/features/billing/lib/toss/server"
 import { getSupabaseServiceRoleClient } from "@/integrations/supabase/service-role"
 import { dataAdapter } from "@/shared/lib/db"
 
@@ -42,6 +42,11 @@ export type StudioBillingOverview = {
   presentation: BillingPresentation
   /** 결제를 시작할 수 있는 배포인가. 이유는 담지 않는다. */
   billingAvailable: boolean
+  /**
+   * 카드사 심사용 조직인가. 이 조직의 billing 화면에만 TEST 결제 안내를 띄운다.
+   * 일반 조직에서는 항상 false 이고 안내도 렌더되지 않는다.
+   */
+  reviewMode: boolean
   standardAmount: number
   billingMethod: BillingMethodDisplay | null
   payments: BillingPaymentHistoryItem[]
@@ -143,11 +148,14 @@ const getStudioBillingOverviewCached = cache(
       hasActiveBillingMethod: billingMethod.active,
       standardAmount
     })
-    const billingAvailable = getTossRuntime().status === "ready"
+    const runtime = getTossRuntimeForOrganization(organizationId)
+    const billingAvailable = runtime.status === "ready"
 
     return {
       presentation,
       billingAvailable,
+      // 심사용 조직에서만 참이다. 일반 조직에는 항상 false 라 화면에 아무것도 뜨지 않는다.
+      reviewMode: runtime.status === "ready" && runtime.reviewMode,
       standardAmount,
       billingMethod: billingMethod.display,
       payments,

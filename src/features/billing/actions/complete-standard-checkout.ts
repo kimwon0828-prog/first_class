@@ -22,7 +22,7 @@ import { buildInitialBillingPeriod } from "@/features/billing/lib/billing-period
 import { getPurchasableBillingPlan } from "@/features/billing/lib/plan-catalog"
 import { issueTossBillingKey } from "@/features/billing/lib/toss/client"
 import { buildBillingOrderName } from "@/features/billing/lib/toss/identifiers"
-import { getTossRuntime } from "@/features/billing/lib/toss/server"
+import { getTossRuntimeForOrganization } from "@/features/billing/lib/toss/server"
 import { pickStorableCardDisplay } from "@/features/billing/lib/toss/verify-payment"
 
 // 카드 인증이 끝난 뒤의 서버 처리.
@@ -45,15 +45,18 @@ export const completeStandardCheckout = async (input: {
   customerKey: string
   authKey: string
 }): Promise<CheckoutCompletion> => {
-  const runtime = getTossRuntime()
-  if (runtime.status !== "ready") {
-    return { status: "rejected", message: GENERIC_FAILURE }
-  }
-
   const session = await findCheckoutSessionByCustomerKey(input.customerKey)
   const checked = checkCheckoutCallback(session, input)
   if (!checked.ok) {
     return { status: "rejected", message: checked.message }
+  }
+
+  // ⚠️ runtime 판정은 session 검증 뒤에 한다. 조직은 DB 의 checkout session 에서 읽은
+  //    값만 쓴다 — callback 은 브라우저가 돌아오는 경로라 넘어온 값을 신뢰하지 않는다.
+  //    (checkCheckoutCallback 이 actorOrganizationId 와의 일치도 이미 확인했다.)
+  const runtime = getTossRuntimeForOrganization(checked.session.organizationId)
+  if (runtime.status !== "ready") {
+    return { status: "rejected", message: GENERIC_FAILURE }
   }
 
   if (checked.session.status === "completed") {
