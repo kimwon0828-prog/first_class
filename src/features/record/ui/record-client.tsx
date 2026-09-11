@@ -4,25 +4,20 @@ import Link from "next/link"
 import { useCallback, useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 
-import { MyApplicationList } from "@/features/applications/ui/my-application-list"
-import type { ParentApplicationSummary } from "@/shared/lib/db/adapter"
-import styles from "../../../../app/my/applications/page.module.css"
+import { ParentExperienceList } from "@/features/record/ui/parent-experience-list"
+import type { ParentExperience } from "@/features/record/lib/experience-view"
+import styles from "../../../../app/record/page.module.css"
 
 type LoadState = "ready" | "error"
 
-export type MyApplicationListItem = ParentApplicationSummary
-
-type MyApplicationsClientProps = {
-  initialItems: MyApplicationListItem[]
+type RecordClientProps = {
+  initialItems: ParentExperience[]
   initialError: string | null
 }
 
-export const MyApplicationsClient = ({
-  initialItems,
-  initialError
-}: MyApplicationsClientProps) => {
+export const RecordClient = ({ initialItems, initialError }: RecordClientProps) => {
   const router = useRouter()
-  const [items, setItems] = useState<MyApplicationListItem[]>(initialItems)
+  const [items, setItems] = useState<ParentExperience[]>(initialItems)
   const [status, setStatus] = useState<LoadState>(initialError ? "error" : "ready")
   const [message, setMessage] = useState(initialError ?? "")
 
@@ -40,7 +35,8 @@ export const MyApplicationsClient = ({
     <main className={styles.page}>
       <div className={styles.shell}>
         <header className={styles.header}>
-          <h1 className={styles.title}>내 신청</h1>
+          <h1 className={styles.title}>기록</h1>
+          <p className={styles.subcopy}>아이의 첫수업 경험을 모아볼 수 있어요.</p>
         </header>
 
         <div className={styles.content}>
@@ -56,17 +52,19 @@ export const MyApplicationsClient = ({
           {status === "ready" && items.length === 0 ? (
             <section className={styles.emptyState}>
               <div className={styles.emptyInner}>
-                <h2 className={styles.emptyTitle}>아직 신청한 체험수업이 없어요</h2>
-                <p className={styles.emptyDesc}>우리 아이에게 맞는 수업을 찾아보세요</p>
+                <h2 className={styles.emptyTitle}>아직 첫수업 기록이 없어요.</h2>
+                <p className={styles.emptyDesc}>
+                  아이에게 맞는 수업을 찾아 첫 경험을 시작해보세요.
+                </p>
                 <Link href="/classes" className={styles.primaryButton}>
-                  수업 둘러보기
+                  수업 찾기
                 </Link>
               </div>
             </section>
           ) : null}
 
           {status === "ready" && items.length > 0 ? (
-            <MyApplicationList items={items} onCanceled={handleCanceled} />
+            <ParentExperienceList items={items} onCanceled={handleCanceled} />
           ) : null}
         </div>
       </div>
@@ -95,7 +93,7 @@ export const MyApplicationsClient = ({
           </svg>
           <span>관심수업</span>
         </Link>
-        <Link href="/my/applications" className={`${styles.navItem} ${styles.navItemActive}`}>
+        <Link href="/record" className={`${styles.navItem} ${styles.navItemActive}`}>
           <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
             <path
               d="M9 6h11M9 12h11M9 18h11M5 6h.01M5 12h.01M5 18h.01"
@@ -105,7 +103,7 @@ export const MyApplicationsClient = ({
               strokeLinejoin="round"
             />
           </svg>
-          <span>내 신청</span>
+          <span>기록</span>
         </Link>
       </nav>
     </main>

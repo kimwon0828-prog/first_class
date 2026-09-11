@@ -1596,6 +1596,8 @@ export const mockDataAdapter: DataAdapter = {
         selectedScheduleLabel: item.selectedScheduleLabel ?? null,
         requestedSlotAt: item.requestedSlotAt,
         confirmedSlotAt: item.confirmedSlotAt,
+        completedAt: item.completedAt ?? null,
+        canceledAt: item.canceledAt ?? null,
         status: item.status,
         canCancel:
           item.registrationStatus !== "enrolled" &&

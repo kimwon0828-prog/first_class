@@ -46,7 +46,7 @@ export const MyDashboardHome = ({
       </section>
 
       <section className={styles.statsGrid} aria-label="요약">
-        <a href="/my/applications" className={styles.statCard} aria-label="신청 중 내역 보기">
+        <a href="/record" className={styles.statCard} aria-label="진행 중인 경험 보기">
           <p className={styles.statLabel}>신청 중</p>
           <strong className={styles.statValue}>{resolveActiveCount(dashboard)}</strong>
         </a>
@@ -59,7 +59,7 @@ export const MyDashboardHome = ({
       <section className={styles.sectionBlock}>
         <header className={styles.sectionHeaderRow}>
           <h2 className={styles.sectionTitle}>다음 체험</h2>
-          <Link href="/my/applications" className={styles.moreLink} prefetch={false}>
+          <Link href="/record" className={styles.moreLink} prefetch={false}>
             전체 보기
           </Link>
         </header>
@@ -70,7 +70,7 @@ export const MyDashboardHome = ({
             <h3 className={styles.nextTitle}>{nextUpcomingApplication.classTitle ?? "수업 정보 없음"}</h3>
             <p className={styles.nextMeta}>{academyName ?? "학원 정보 준비 중"}</p>
             <div className={styles.nextActionRow}>
-              <Link href="/my/applications" className={styles.nextLink}>
+              <Link href="/record" className={styles.nextLink}>
                 자세히
               </Link>
             </div>
@@ -86,8 +86,8 @@ export const MyDashboardHome = ({
       </section>
 
       <section className={styles.menuGroup}>
-        <Link href="/my/applications" className={styles.menuItem}>
-          <span>내 신청</span>
+        <Link href="/record" className={styles.menuItem}>
+          <span>기록</span>
           <span className={styles.menuChevron} aria-hidden="true">
             &gt;
           </span>

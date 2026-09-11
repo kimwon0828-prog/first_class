@@ -241,3 +241,67 @@
     flex-basis: 68px;
   }
 }
+
+/*
+ * Experience Card 전용.
+ *
+ * Marketplace 수업 카드와 구분되어야 한다 — 저기는 상품이고 여기는 아이의 기록이다.
+ * 그래서 이미지를 쓰지 않고, 자녀와 진행 흐름을 먼저 읽히게 둔다.
+ * 새 색/여백 토큰을 만들지 않고 기존 Parent 토큰만 쓴다.
+ */
+.experienceHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s2);
+  margin-bottom: var(--s3);
+  padding-bottom: var(--s3);
+  border-bottom: 1px solid var(--border);
+}
+
+.typeBadge {
+  flex: none;
+  padding: 2px var(--s2);
+  border-radius: var(--r-full);
+  background: var(--brand-50);
+  color: var(--brand-700);
+  font-size: 11px;
+  line-height: 16px;
+  font-weight: 700;
+}
+
+/* 실제로 일어난 일만 들어온다(buildExperienceTimeline). 미래 단계는 그리지 않는다. */
+.timeline {
+  list-style: none;
+  margin: var(--s4) 0 0;
+  padding: var(--s3) 0 0;
+  border-top: 1px solid var(--border);
+  display: grid;
+  gap: var(--s2);
+}
+
+.timelineStep {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.timelineDot {
+  flex: none;
+  width: 5px;
+  height: 5px;
+  border-radius: var(--r-full);
+  background: var(--brand-500);
+}
+
+.timelineLabel {
+  color: var(--text-1);
+}
+
+.timelineDate {
+  margin-left: auto;
+  color: var(--text-3);
+  font-variant-numeric: tabular-nums;
+}
