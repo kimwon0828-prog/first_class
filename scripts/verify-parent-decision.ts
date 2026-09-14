@@ -10,6 +10,8 @@
 //   5. 과거 기록은 고칠 수 없다.
 //   6. 쓰기는 RPC 로만 들어온다.
 //   7. 학원은 읽기만 한다.
+//   8. 한 번 지나간 기록은 시각까지 고칠 수 없다.
+//   9. 기록의 주인은 그것을 쓴 사람이다 — 신청이 재연결돼도 바뀌지 않는다.
 //
 // 순수 함수와 소스 검사만 쓴다. DB · 네트워크를 건드리지 않는다.
 
@@ -114,9 +116,12 @@ check("immutability trigger 가 있다", migration.includes("parent_decisions_im
 for (const column of ["id", "application_id", "parent_id", "decision", "created_at"]) {
   check(`trigger 가 ${column} 변경을 막는다`, migration.includes(`new.${column} is distinct from old.${column}`))
 }
+// null 로 되돌리는 것도 다른 시각으로 옮기는 것도 같은 조건 하나로 막는다(§8-1).
 check(
   "지나간 기록을 현재로 되돌릴 수 없다",
-  migration.includes("old.superseded_at is not null and new.superseded_at is null")
+  migration.includes(
+    "old.superseded_at is not null and new.superseded_at is distinct from old.superseded_at"
+  )
 )
 check(
   "현재 기록은 한 신청에 하나다",
@@ -163,6 +168,42 @@ check(
   studioUi.includes("학원에서 수정할 수 없습니다")
 )
 check("선택이 없으면 조용히 알린다", studioUi.includes("아직 학부모가 선택을 남기지 않았습니다"))
+
+console.log("\n── 8-1. 지나간 기록은 시각까지 불변 ──")
+// 바꿀 수 있는 전이는 하나뿐이다: 지금의 선택이 과거가 되는 순간(null → 시각).
+check(
+  "과거 기록의 superseded_at 변경을 막는다",
+  migration.includes(
+    "old.superseded_at is not null and new.superseded_at is distinct from old.superseded_at"
+  )
+)
+check(
+  "null 로 되돌리는 것만 막는 낡은 검사가 남아 있지 않다",
+  !migration.includes("old.superseded_at is not null and new.superseded_at is null")
+)
+check("안내 문구가 있다", migration.includes("지난 선택의 기록은 고칠 수 없습니다"))
+
+console.log("\n── 8-2. 기록의 주인은 쓴 사람이다 ──")
+// 신청의 학부모 계정은 나중에 다시 연결될 수 있다. 그때 앞사람의 기록이
+// 새 사람에게 보이거나, 신청을 넘긴 앞사람이 계속 들여다보면 안 된다.
+const parentPolicy = migration.slice(
+  migration.indexOf("create policy parent_decisions_parent_read_own"),
+  migration.indexOf("create policy parent_decisions_teacher_read_org")
+)
+check("학부모 정책이 작성자를 확인한다", parentPolicy.includes("parent_decisions.parent_id = auth.uid()"))
+check("학부모 정책이 신청 소유도 확인한다", parentPolicy.includes("ta.parent_id = auth.uid()"))
+check(
+  "두 조건을 함께 건다",
+  /parent_decisions\.parent_id = auth\.uid\(\)[\s\S]{0,80}and exists/.test(parentPolicy)
+)
+check(
+  "학원 정책은 조직 scope 그대로다",
+  migration.includes("c.organization_id = app.current_org_id()")
+)
+check(
+  "같은 값이어도 작성자가 다르면 새 기록이다",
+  migration.includes("v_current.parent_id = v_actor and v_current.decision = p_decision")
+)
 
 console.log("\n── 8. 화면·action 계약 ──")
 check("action 이 학부모 인증을 요구한다", action.includes("requireParentAccess("))

@@ -73,10 +73,14 @@ begin
       using detail = '지난 선택은 고칠 수 없습니다. 새로 선택하면 기록이 이어집니다.';
   end if;
 
-  -- 한 번 지나간 것을 다시 현재로 되돌리지 않는다.
-  if old.superseded_at is not null and new.superseded_at is null then
+  -- 지나간 기록의 시각도 고칠 수 없다.
+  --
+  -- 바꿀 수 있는 전이는 하나뿐이다 — 지금의 선택이 과거가 되는 순간(null → 시각).
+  -- 이미 과거가 된 기록은 그 시각까지 그대로 둔다. null 로 되돌리는 것도,
+  -- 다른 시각으로 옮기는 것도 "언제 마음이 바뀌었는가" 를 다시 쓰는 일이다.
+  if old.superseded_at is not null and new.superseded_at is distinct from old.superseded_at then
     raise exception 'parent_decision_is_immutable'
-      using detail = '지난 선택을 현재 선택으로 되돌릴 수 없습니다.';
+      using detail = '지난 선택의 기록은 고칠 수 없습니다.';
   end if;
 
   return new;
@@ -96,13 +100,20 @@ create trigger parent_decisions_immutable
 -- ─────────────────────────────────────────────────────────────
 alter table public.parent_decisions enable row level security;
 
--- 학부모: 자기 신청에 달린 기록.
+-- 학부모: 자기가 남긴 기록이면서, 지금도 자기 신청인 것.
+--
+-- 두 조건을 모두 건다. 신청의 학부모 계정은 나중에 다시 연결될 수 있고
+-- (예약 import 로 들어온 신청이 뒤늦게 계정과 이어지는 경우), 그때
+--   · 앞사람이 남긴 생각을 새 사람이 읽거나
+--   · 신청을 넘긴 앞사람이 계속 들여다보거나
+-- 하는 일이 생기면 안 된다. 기록의 주인은 그것을 쓴 사람이다.
 create policy parent_decisions_parent_read_own
   on public.parent_decisions
   for select
   to authenticated
   using (
-    exists (
+    parent_decisions.parent_id = auth.uid()
+    and exists (
       select 1
       from public.trial_applications ta
       where ta.id = parent_decisions.application_id
@@ -181,9 +192,14 @@ begin
   for update;
 
   if found then
-    -- 같은 생각을 다시 고른 것은 바뀐 것이 아니다.
+    -- 같은 사람이 같은 생각을 다시 고른 것은 바뀐 것이 아니다.
     -- 기록을 늘리면 "여러 번 마음이 오갔다" 는 없던 이야기가 생긴다.
-    if v_current.decision = p_decision then
+    --
+    -- ⚠️ 작성자가 다르면 문자열이 같아도 같은 선택이 아니다.
+    --    앞사람이 "고민 중" 이라고 남긴 신청을 새 학부모가 이어받아 똑같이
+    --    "고민 중" 을 골랐다면, 그건 앞사람의 기록이 계속되는 것이 아니라
+    --    이 사람이 처음으로 남긴 생각이다. 기록도 그렇게 남아야 한다.
+    if v_current.parent_id = v_actor and v_current.decision = p_decision then
       return jsonb_build_object(
         'id', v_current.id,
         'decision', v_current.decision,
