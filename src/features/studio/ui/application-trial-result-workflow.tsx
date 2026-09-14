@@ -38,6 +38,8 @@ import {
 import {
   getTrialResultUnregisteredReasonLabel,
   TRIAL_RESULT_OBSERVATION_OPTIONS,
+  describeTrialResultObservation,
+  getTrialResultObservationLabel,
   TRIAL_RESULT_REGISTRATION_OPTIONS,
   TRIAL_RESULT_UNREGISTERED_REASON_OPTIONS
 } from "@/features/studio/lib/trial-result-options"
@@ -54,6 +56,37 @@ import type {
 } from "@/shared/lib/db/adapter"
 
 import styles from "./application-trial-result-workflow.module.css"
+
+/**
+ * 저장된 관찰 값을 "현재 기준 code" 와 "문구를 저장하던 시절의 원문" 으로 가른다.
+ *
+ * legacy 문구를 canonical 토글에 체크해 두지 않는다. 체크해 버리면 화면이
+ * "옛 기록과 새 항목이 같은 관찰" 이라고 주장하는 셈인데, 둘은 같은 사실이 아니다.
+ * legacy 는 원문 그대로 따로 보여 주고, 토글은 현재 기준으로만 쓴다.
+ *
+ * 알 수 없는 값은 버린다 — 어느 쪽으로도 읽을 수 없어 화면에 흘리지 않는다.
+ */
+const splitStoredObservations = (values: string[] | undefined) => {
+  const canonical: string[] = []
+  const legacy: string[] = []
+
+  for (const value of values ?? []) {
+    const described = describeTrialResultObservation(value)
+    if (!described) {
+      continue
+    }
+
+    const bucket = described.kind === "canonical" ? canonical : legacy
+    if (!bucket.includes(described.value)) {
+      bucket.push(described.value)
+    }
+  }
+
+  return { canonical, legacy }
+}
+
+const normalizeStoredObservations = (values: string[] | undefined): string[] =>
+  splitStoredObservations(values).canonical
 
 const initialTrialResultState: UpsertTrialResultActionState = {
   status: "idle",
@@ -324,8 +357,11 @@ export const ApplicationTrialResultWorkflow = ({
   const [isSuccessOpen, setIsSuccessOpen] = useState(false)
   const [refreshOnEditorClose, setRefreshOnEditorClose] = useState(false)
   const [selectedObservations, setSelectedObservations] = useState<string[]>(
-    application.trialResult?.observations ?? []
+    normalizeStoredObservations(application.trialResult?.observations)
   )
+  // 원장이 관찰 항목을 실제로 건드렸는지. 건드리지 않은 저장은 server 가 기존 값을
+  // 그대로 다시 쓴다 — 폼으로 표현할 수 없는 과거 기록이 조용히 지워지지 않게.
+  const [observationsTouched, setObservationsTouched] = useState(false)
   const [isConsultationEditorOpen, setIsConsultationEditorOpen] = useState(false)
   const [isConsultationHistoryOpen, setIsConsultationHistoryOpen] = useState(false)
   const [isConsultationSuccessOpen, setIsConsultationSuccessOpen] = useState(false)
@@ -381,10 +417,18 @@ export const ApplicationTrialResultWorkflow = ({
     application.trialResult?.recommendedSchedule
   ])
 
+  // 저장된 관찰 값을 현재 기준 code 와 과거 원문으로 갈라 둔다.
+  // 화면 두 곳(요약 · 편집 폼)이 같은 기준을 쓴다.
+  const storedObservations = useMemo(
+    () => splitStoredObservations(application.trialResult?.observations),
+    [application.trialResult?.observations]
+  )
+
   // 체험 결과 form 은 관찰 기록만 다룬다. 등록 결정(등록 상태 / 미등록 사유)은
   // 등록 상담 form 의 몫이라 여기서 초기화할 상태가 없다.
   const resetTrialResultSelections = () => {
-    setSelectedObservations(application.trialResult?.observations ?? [])
+    setSelectedObservations(normalizeStoredObservations(application.trialResult?.observations))
+    setObservationsTouched(false)
   }
 
   const resetConsultationSelections = () => {
@@ -456,6 +500,7 @@ export const ApplicationTrialResultWorkflow = ({
   }
 
   const toggleObservation = (value: string) => {
+    setObservationsTouched(true)
     setSelectedObservations((current) =>
       current.includes(value) ? current.filter((item) => item !== value) : [...current, value]
     )
@@ -778,13 +823,30 @@ export const ApplicationTrialResultWorkflow = ({
 
       {hasTrialResult && hasVisibleTrialResultContent ? (
         <div className={styles.resultCompact}>
-          {application.trialResult?.observations.length ? (
+          {storedObservations.canonical.length ? (
             <div className={styles.chipWrap}>
-              {application.trialResult.observations.map((item) => (
-                <span key={item} className={styles.summaryChip}>
-                  {item}
+              {storedObservations.canonical.map((code) => (
+                <span key={code} className={styles.summaryChip}>
+                  {getTrialResultObservationLabel(code)}
                 </span>
               ))}
+            </div>
+          ) : null}
+
+          {/*
+            문구를 저장하던 시절의 기록은 원문 그대로 보여 준다.
+            현재 문구로 바꿔 보여 주면 옛 기록이 지금 기준의 관찰인 것처럼 읽힌다.
+          */}
+          {storedObservations.legacy.length ? (
+            <div className={styles.legacyObservationBlock}>
+              <p className={styles.legacyObservationTitle}>기존 관찰 기록</p>
+              <div className={styles.chipWrap}>
+                {storedObservations.legacy.map((text) => (
+                  <span key={text} className={styles.legacyObservationChip}>
+                    {text}
+                  </span>
+                ))}
+              </div>
             </div>
           ) : null}
 
@@ -1005,25 +1067,56 @@ export const ApplicationTrialResultWorkflow = ({
                   <h4 className={styles.formTitle}>수업 관찰</h4>
                   <p className={styles.formDescription}>해당하는 내용을 모두 선택해 주세요.</p>
                 </div>
+
+                {/*
+                  문구를 저장하던 시절의 기록은 아래 선택 항목으로 옮겨 적을 수 없다.
+                  의미가 같지 않아 대신 체크해 주지 않는다. 원문만 보여 주고,
+                  다시 평가한다면 현재 기준으로 직접 고르게 한다.
+                */}
+                {storedObservations.legacy.length ? (
+                  <div className={styles.legacyObservationBlock}>
+                    <p className={styles.legacyObservationTitle}>기존 관찰 기록</p>
+                    <ul className={styles.legacyObservationList}>
+                      {storedObservations.legacy.map((text) => (
+                        <li key={text}>{text}</li>
+                      ))}
+                    </ul>
+                    <p className={styles.legacyObservationHint}>
+                      이전 기준으로 적힌 기록이라 아래 항목에 자동으로 반영하지 않았어요. 아래에서
+                      항목을 선택해 저장하면 기존 기록은 선택한 내용으로 대체됩니다. 선택하지 않고
+                      저장하면 기존 기록이 그대로 유지돼요.
+                    </p>
+                  </div>
+                ) : null}
+
                 <div className={styles.selectionWrap}>
-                  {TRIAL_RESULT_OBSERVATION_OPTIONS.map((item) => {
-                    const selected = selectedObservations.includes(item)
+                  {TRIAL_RESULT_OBSERVATION_OPTIONS.map((option) => {
+                    const selected = selectedObservations.includes(option.value)
                     return (
                       <button
-                        key={item}
+                        key={option.value}
                         type="button"
                         className={`${styles.choiceChip} ${selected ? styles.choiceChipActive : ""}`}
                         aria-pressed={selected}
-                        onClick={() => toggleObservation(item)}
+                        onClick={() => toggleObservation(option.value)}
                         disabled={isSavingTrialResult}
                       >
-                        {item}
+                        {option.label}
                       </button>
                     )
                   })}
                   {selectedObservations.map((item) => (
                     <input key={item} type="hidden" name="observations" value={item} />
                   ))}
+                  {/*
+                    선택을 건드리지 않은 저장은 server 가 기존 값을 그대로 다시 쓴다.
+                    추천 과정만 고치는 저장에서 과거 기록이 사라지지 않게 한다.
+                  */}
+                  <input
+                    type="hidden"
+                    name="observationsTouched"
+                    value={observationsTouched ? "true" : "false"}
+                  />
                 </div>
               </section>
 

@@ -4,6 +4,11 @@ import { revalidatePath } from "next/cache"
 
 import { requireStudioEntitlement } from "@/features/billing/lib/require-entitlement"
 import { requireTeacherStudioAccess } from "@/features/studio/lib/require-teacher-studio-access"
+import {
+  isConsistentObservationRepresentation,
+  isLegacyTrialResultObservation,
+  normalizeTrialResultObservation
+} from "@/features/studio/lib/trial-result-options"
 import { getStudioTrialResultSaveContext } from "@/features/studio/queries/get-studio-trial-result-save-context"
 import { dataAdapter } from "@/shared/lib/db"
 import type { StudioTrialResultSaveContext } from "@/shared/lib/db/adapter"
@@ -34,15 +39,45 @@ const normalizeOptionalText = (value: FormDataEntryValue | null) => {
   return normalized.length > 0 ? normalized : null
 }
 
-const normalizeObservationValues = (values: FormDataEntryValue[]) =>
-  Array.from(
-    new Set(
-      values
-        .filter((value): value is string => typeof value === "string")
-        .map((value) => value.trim())
-        .filter(Boolean)
-    )
-  )
+/**
+ * 폼이 보낸 관찰 값을 code 목록으로 바꾼다.
+ *
+ * ⚠️ 화면이 7개만 보여 준다는 사실에 기대지 않는다. 이 action 은 server action 이라
+ *    조작된 요청이 직접 닿을 수 있고, 여기를 통과한 값이 그대로 DB 에 들어간다.
+ *
+ * canonical code 만 받는다. 문구를 저장하던 시절의 값은 여기서 거절한다 —
+ * 의미가 같지 않아 code 로 바꿔 줄 수 없고, 그대로 통과시키면 신규 저장이
+ * legacy 값을 계속 새로 만들어 낸다. 기존 legacy 는 payload 가 아니라
+ * 아래 저장 경로에서 기존 row 를 그대로 다시 쓰는 방식으로 보존한다.
+ *
+ * 받을 수 없는 값은 조용히 버리지 않고 실패로 돌려준다. 일부만 저장하면 입력 오류가
+ * 숨겨져, 원장은 저장됐다고 믿는데 실제로는 빠진 항목이 생긴다.
+ */
+type ObservationPayload =
+  | { status: "ok"; values: string[] }
+  | { status: "legacy" }
+  | { status: "unknown" }
+
+const normalizeObservationValues = (values: FormDataEntryValue[]): ObservationPayload => {
+  const normalized: string[] = []
+
+  for (const value of values) {
+    if (typeof value !== "string" || !value.trim()) {
+      continue
+    }
+
+    const code = normalizeTrialResultObservation(value)
+    if (!code) {
+      // 구버전 화면이 보낸 문구인지, 아예 모르는 값인지 구분한다.
+      // 원장에게 보여 줄 안내가 달라진다.
+      return { status: isLegacyTrialResultObservation(value) ? "legacy" : "unknown" }
+    }
+
+    normalized.push(code)
+  }
+
+  return { status: "ok", values: Array.from(new Set(normalized)) }
+}
 
 const areObservationListsEqual = (left: string[], right: string[]) => {
   if (left.length !== right.length) {
@@ -155,8 +190,47 @@ export async function upsertTrialResultAction(
     }
   }
 
+  const submitted = normalizeObservationValues(formData.getAll("observations"))
+  if (submitted.status === "legacy") {
+    return {
+      status: "error",
+      message:
+        "이전 버전 화면에서 보낸 관찰 항목입니다. 화면을 새로고침한 뒤 현재 기준의 항목으로 다시 선택해 주세요."
+    }
+  }
+
+  if (submitted.status === "unknown") {
+    return {
+      status: "error",
+      message: "유효하지 않은 관찰 항목입니다. 화면을 새로고침한 뒤 다시 선택해 주세요."
+    }
+  }
+
+  // 관찰 항목을 건드리지 않은 저장은 기존 값을 그대로 다시 쓴다.
+  //
+  // 문구를 저장하던 시절의 값이 들어 있는 row 는 폼의 canonical 토글로 표현할 수
+  // 없다. 추천 과정만 고치는 저장에서 폼이 보낸 빈 목록으로 덮으면, 원장이 건드린
+  // 적도 없는 과거 관찰 기록이 조용히 사라진다.
+  //
+  // 반대로 원장이 관찰 항목을 실제로 선택했다면 그 선택이 기준이다. 이때 legacy
+  // 값은 대체된다 — 폼이 그렇게 안내한다.
+  const observationsTouched = formData.get("observationsTouched") === "true"
+  const preservedObservations = current.trialResult?.observations ?? []
+  const observations = observationsTouched ? submitted.values : preservedObservations
+
+  // 한 row 는 한 표기만 쓴다. 위 두 갈래는 각각 canonical 전용 · 기존 배열 그대로라
+  // 여기까지 섞인 배열이 오지 않는다. DB CHECK 도 같은 것을 막는다.
+  // 그래도 막아 두는 이유는, 뚫렸을 때 원장이 보는 문구가 "저장 실패" 뿐이기 때문이다.
+  if (!isConsistentObservationRepresentation(observations)) {
+    return {
+      status: "error",
+      message:
+        "기존 관찰 기록과 현재 기준 항목이 섞여 있습니다. 화면을 새로고침한 뒤 현재 기준의 항목으로 다시 선택해 주세요."
+    }
+  }
+
   const nextValue = {
-    observations: normalizeObservationValues(formData.getAll("observations")),
+    observations,
     recommendedCourse: normalizeOptionalText(formData.get("recommendedCourse")),
     recommendedLevel: normalizeOptionalText(formData.get("recommendedLevel")),
     recommendedSchedule: normalizeOptionalText(formData.get("recommendedSchedule")),

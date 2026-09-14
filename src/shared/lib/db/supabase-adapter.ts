@@ -5277,6 +5277,8 @@ export const supabaseDataAdapter: DataAdapter = {
       recommended_schedule: input.recommendedSchedule,
       next_action: input.nextAction,
       note: input.note,
+      // created_by 는 최초 저장자로 남긴다. 여기는 "마지막으로 고친 사람" 이다.
+      updated_by: input.actorId,
       updated_at: nowIso
     }
 
