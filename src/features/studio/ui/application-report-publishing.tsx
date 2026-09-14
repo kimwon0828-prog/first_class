@@ -28,6 +28,7 @@ export type ReportPublishBlocker =
   | { kind: "legacy_observations"; values: string[] }
   | { kind: "experience_date_missing" }
   | { kind: "no_assessment" }
+  | { kind: "report_content_missing" }
 
 type ApplicationReportPublishingProps = {
   applicationId: string
@@ -161,6 +162,10 @@ const BLOCKER_TEXT: Record<ReportPublishBlocker["kind"], { title: string; body: 
   no_assessment: {
     title: "체험 결과가 아직 기록되지 않았습니다.",
     body: "체험 결과를 먼저 기록하면 부모님께 보일 내용을 확인할 수 있어요."
+  },
+  report_content_missing: {
+    title: "부모님께 전달할 리포트 내용이 아직 없습니다.",
+    body: "관찰 내용이나 추천 정보를 확인한 뒤 발행해 주세요."
   }
 }
 

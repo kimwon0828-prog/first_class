@@ -31,7 +31,8 @@ import {
   EXPERIENCE_REPORT_STATUSES,
   buildExperienceReportSnapshotV1,
   checkObservationPublicationEligibility,
-  decodeExperienceReportSnapshot
+  decodeExperienceReportSnapshot,
+  hasPublishableReportContent
 } from "@/features/reports/lib/experience-report-snapshot"
 import { TRIAL_RESULT_OBSERVATION_OPTIONS } from "@/features/studio/lib/trial-result-options"
 
@@ -45,6 +46,8 @@ const WITHDRAW_ACTION_PATH = "src/features/studio/actions/withdraw-experience-re
 const REPORT_UI_PATH = "src/features/studio/ui/application-report-publishing.tsx"
 const ANON_MIGRATION_PATH =
   "supabase/migrations/20260914120000_restrict_experience_report_rpc_execute.sql"
+const CONTENT_MIGRATION_PATH =
+  "supabase/migrations/20260914150000_require_experience_report_content.sql"
 
 const read = (path: string) => readFileSync(resolve(process.cwd(), path), "utf8")
 const migration = read(MIGRATION_PATH)
@@ -516,6 +519,128 @@ check(
   "이미 적용된 migration 을 고치지 않았다",
   migration.includes("grant execute on function public.publish_experience_report(uuid, timestamptz) to authenticated;")
 )
+
+console.log("\n── 22. 빈 리포트는 발행하지 않는다 ──")
+const contentMigration = read(CONTENT_MIGRATION_PATH)
+
+const snapshotWith = (
+  observations: { code: string; label: string }[],
+  recommendation: { course: string | null; level: string | null; schedule: string | null }
+) =>
+  ({
+    experience: {
+      type: "trial_class",
+      date: "2026-09-10T07:00:00.000Z",
+      child: { displayName: "민준", grade: "초3" },
+      academy: { name: "학원" },
+      class: { title: "수업" }
+    },
+    observations,
+    recommendation
+  }) as never
+
+const EMPTY_REC = { course: null, level: null, schedule: null }
+const ONE_OBS = [{ code: "active_participation", label: "질문이나 활동 제안에 스스로 참여했어요." }]
+
+check(
+  "관찰 없음 + 추천 없음 → 발행 불가",
+  !hasPublishableReportContent(snapshotWith([], EMPTY_REC))
+)
+check(
+  "공백만 있는 추천은 내용이 아니다",
+  !hasPublishableReportContent(snapshotWith([], { course: "   ", level: "  ", schedule: "" }))
+)
+check(
+  "관찰 있음 + 추천 없음 → 발행 가능",
+  hasPublishableReportContent(snapshotWith(ONE_OBS, EMPTY_REC))
+)
+check(
+  "관찰 없음 + course 만 있음 → 발행 가능",
+  hasPublishableReportContent(snapshotWith([], { course: "Python Basic", level: null, schedule: null }))
+)
+check(
+  "관찰 없음 + schedule 만 있음 → 발행 가능",
+  hasPublishableReportContent(snapshotWith([], { course: null, level: null, schedule: "화·목 16:00" }))
+)
+check(
+  "관찰 있음 + 추천 있음 → 발행 가능",
+  hasPublishableReportContent(snapshotWith(ONE_OBS, { course: "A", level: null, schedule: null }))
+)
+
+// snapshot 생성과 발행 가능 판정을 섞지 않는다(§7).
+const emptyBuilt = buildExperienceReportSnapshotV1({ ...SOURCE, observations: [], recommendedCourse: null, recommendedLevel: null, recommendedSchedule: null })
+check("빈 관찰로도 snapshot 자체는 만들어진다", emptyBuilt.status === "ok")
+if (emptyBuilt.status === "ok") {
+  check("그 snapshot 은 발행 대상이 아니다", !hasPublishableReportContent(emptyBuilt.snapshot))
+}
+
+console.log("\n── 23. DB 가 마지막으로 막는다 ──")
+check("새 migration 이 report_content_missing 을 던진다", contentMigration.includes("report_content_missing"))
+check(
+  "공백 추천을 내용으로 세지 않는다",
+  contentMigration.includes("coalesce(btrim(v_result.recommended_course), '') = ''") &&
+    contentMigration.includes("coalesce(btrim(v_result.recommended_level), '') = ''") &&
+    contentMigration.includes("coalesce(btrim(v_result.recommended_schedule), '') = ''")
+)
+check(
+  "관찰이 하나라도 있으면 통과한다",
+  contentMigration.includes("coalesce(jsonb_array_length(v_observations), 0) = 0")
+)
+check(
+  "검사가 발행 직전에 있다",
+  contentMigration.indexOf("report_content_missing") <
+    contentMigration.indexOf("insert into public.experience_reports")
+)
+check(
+  "legacy 판정이 content 판정보다 먼저다",
+  contentMigration.indexOf("legacy_observations_require_review") <
+    contentMigration.indexOf("report_content_missing")
+)
+// R1.1 hardening 을 하나도 잃지 않았는지.
+for (const guard of [
+  "not_authenticated",
+  "application_not_found_or_forbidden",
+  "for update of ta",
+  "application_not_completed",
+  "parent_not_linked",
+  "assessment_changed_since_preview",
+  "legacy_observations_require_review",
+  "unknown_observations_cannot_publish",
+  "experience_date_missing",
+  "coalesce(max(er.version), 0) + 1",
+  "set status = 'superseded'",
+  "security definer",
+  "set search_path = public"
+]) {
+  check(`재정의가 ${guard} 를 유지한다`, contentMigration.includes(guard))
+}
+check(
+  "이미 적용된 migration 을 고치지 않았다",
+  !migration.includes("report_content_missing")
+)
+check(
+  "재정의 후 anon 권한을 다시 열지 않는다",
+  contentMigration.includes("revoke execute on function public.publish_experience_report(uuid, timestamptz) from anon")
+)
+check(
+  "공백 추천이 snapshot 에도 null 로 들어간다",
+  contentMigration.includes("nullif(btrim(v_result.recommended_course), '')")
+)
+
+console.log("\n── 24. 화면이 먼저 막는다 ──")
+check("blocker 종류에 추가됐다", reportUi.includes('kind: "report_content_missing"'))
+check(
+  "안내 문구가 있다",
+  reportUi.includes("부모님께 전달할 리포트 내용이 아직 없습니다") &&
+    reportUi.includes("관찰 내용이나 추천 정보를 확인한 뒤 발행해 주세요")
+)
+check("페이지가 판정 함수를 쓴다", detailPage.includes("hasPublishableReportContent(built.snapshot)"))
+check(
+  "앞선 blocker 가 있으면 덮어쓰지 않는다",
+  detailPage.includes("blockers.length === 0 &&")
+)
+check("action 이 별도 문구로 안내한다", publishAction.includes("report_content_missing"))
+check("mock 도 같은 판정을 한다", mock.includes('throw new Error("report_content_missing")'))
 
 console.log(`\n${failures === 0 ? "ALL PASS" : `${failures} FAILURE(S)`}`)
 process.exit(failures === 0 ? 0 : 1)

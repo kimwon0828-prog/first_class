@@ -14,7 +14,10 @@ import { ApplicationAssigneeForm } from "@/features/studio/ui/application-assign
 import { getStudioEntitlementsForDisplay } from "@/features/billing/queries/get-organization-entitlements"
 import { ApplicationReportPublishing, type ReportPublishBlocker } from "@/features/studio/ui/application-report-publishing"
 import { ApplicationTrialResultWorkflow } from "@/features/studio/ui/application-trial-result-workflow"
-import { buildExperienceReportSnapshotV1 } from "@/features/reports/lib/experience-report-snapshot"
+import {
+  buildExperienceReportSnapshotV1,
+  hasPublishableReportContent
+} from "@/features/reports/lib/experience-report-snapshot"
 import { getPublishedExperienceReport } from "@/features/reports/queries/get-published-experience-report"
 import { isLegacyTrialResultObservation } from "@/features/studio/lib/trial-result-options"
 import { StudioStatusBadge } from "@/features/studio/ui/studio-status-badge"
@@ -257,6 +260,10 @@ export default async function StudioApplicationDetailPage({ params }: StudioAppl
       blockers.push({ kind: "experience_date_missing" })
     }
 
+    // blocker 순서가 곧 원장이 보는 안내의 우선순위다.
+    // parent → no_assessment → legacy → date → content 순서를 유지한다.
+    // legacy 가 있는 row 는 "내용 없음" 보다 legacy 안내가 먼저다 —
+    // 옛 기록을 현재 기준으로 다시 확인하는 것이 먼저 할 일이기 때문이다.
     const built = trialResult
       ? buildExperienceReportSnapshotV1({
           programType: data.classProgramType ?? "trial_class",
@@ -280,6 +287,16 @@ export default async function StudioApplicationDetailPage({ params }: StudioAppl
     // 누르면 의도하지 않은 새 version 이 생기고 기존 발행본이 superseded 된다.
     // 모르는 것은 모른다고 말하고 손을 멈춘다.
     const publishedReportLoadError = publishedReportResult.error
+    // 발행할 만한 내용이 있는가. snapshot 을 만들 수 있는가와 다른 판정이다.
+    // 앞선 blocker 가 이미 잡은 Case 는 다시 세지 않는다.
+    if (
+      blockers.length === 0 &&
+      built?.status === "ok" &&
+      !hasPublishableReportContent(built.snapshot)
+    ) {
+      blockers.push({ kind: "report_content_missing" })
+    }
+
     const published = publishedReportLoadError ? null : publishedReportResult.data
 
     // 마지막 발행 이후 평가가 수정됐는가. 두 시각 모두 서버 값이다.

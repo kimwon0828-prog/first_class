@@ -1,6 +1,7 @@
 import {
   buildExperienceReportSnapshotV1,
-  checkObservationPublicationEligibility
+  checkObservationPublicationEligibility,
+  hasPublishableReportContent
 } from "@/features/reports/lib/experience-report-snapshot"
 import type {
   ActivateStudioTeacherInput,
@@ -2450,6 +2451,11 @@ export const mockDataAdapter: DataAdapter = {
             ? "unknown_observations_cannot_publish"
             : "legacy_observations_require_review"
       )
+    }
+
+    // 부모에게 보여 줄 것이 하나도 없으면 발행하지 않는다. supabase 함수와 같은 판정이다.
+    if (!hasPublishableReportContent(built.snapshot)) {
+      throw new Error("report_content_missing")
     }
 
     const nowIso = new Date().toISOString()

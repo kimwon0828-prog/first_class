@@ -247,6 +247,27 @@ export const buildExperienceReportSnapshotV1 = (
  * DTO 로 간다. 모양이 어긋나면 null 이다 — 반쪽짜리를 부모에게 보여 주느니
  * 아무것도 보여 주지 않는다.
  */
+/**
+ * 공식 발행본으로 남길 만한 내용이 있는가.
+ *
+ * ⚠️ "snapshot 을 만들 수 있는가" 와 다른 질문이다.
+ *
+ * 관찰이 빈 배열인 snapshot 은 R1 계약상 유효하다 — 그 자체로 잘못된 데이터가
+ * 아니다. 하지만 관찰도 추천도 없으면 부모가 받는 것은 이름과 날짜뿐이고,
+ * 그건 리포트가 아니라 "확인했다" 는 알림에 가깝다.
+ *
+ * 그래서 builder 의 책임은 그대로 두고 판정만 따로 둔다.
+ * 공백만 있는 추천은 내용으로 세지 않는다.
+ */
+export const hasPublishableReportContent = (snapshot: ExperienceReportSnapshotV1): boolean => {
+  if (snapshot.observations.length > 0) {
+    return true
+  }
+
+  const { course, level, schedule } = snapshot.recommendation
+  return [course, level, schedule].some((value) => (value ?? "").trim().length > 0)
+}
+
 export const decodeExperienceReportSnapshot = (
   contentVersion: number,
   content: unknown

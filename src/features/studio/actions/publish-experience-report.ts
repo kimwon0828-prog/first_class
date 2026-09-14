@@ -34,6 +34,8 @@ const PUBLISH_ERROR_MESSAGES: Record<string, string> = {
   assessment_changed_since_preview:
     "체험평가 내용이 변경되었습니다. 최신 내용을 다시 확인한 후 발행해 주세요.",
   experience_date_missing: "체험 날짜를 확인할 수 없어 리포트를 발행할 수 없습니다.",
+  report_content_missing:
+    "부모님께 전달할 리포트 내용이 아직 없습니다. 관찰 내용이나 추천 정보를 확인한 뒤 발행해 주세요.",
   application_not_completed: "체험 완료 후에 리포트를 발행할 수 있습니다.",
   trial_result_not_found: "체험 결과를 먼저 기록해 주세요.",
   unknown_observations_cannot_publish:
