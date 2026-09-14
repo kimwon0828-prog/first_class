@@ -48,6 +48,9 @@ const ANON_MIGRATION_PATH =
   "supabase/migrations/20260914120000_restrict_experience_report_rpc_execute.sql"
 const CONTENT_MIGRATION_PATH =
   "supabase/migrations/20260914150000_require_experience_report_content.sql"
+const PARENT_REPORT_QUERY_PATH = "src/features/record/queries/get-my-experience-report.ts"
+const PARENT_REPORT_PAGE_PATH = "app/record/[experienceId]/report/page.tsx"
+const PARENT_DETAIL_PAGE_PATH = "app/record/[experienceId]/page.tsx"
 
 const read = (path: string) => readFileSync(resolve(process.cwd(), path), "utf8")
 const migration = read(MIGRATION_PATH)
@@ -641,6 +644,88 @@ check(
 )
 check("action 이 별도 문구로 안내한다", publishAction.includes("report_content_missing"))
 check("mock 도 같은 판정을 한다", mock.includes('throw new Error("report_content_missing")'))
+
+console.log("\n── 25. 학부모 리포트 화면 계약 ──")
+const parentQuery = read(PARENT_REPORT_QUERY_PATH)
+const parentReportPage = read(PARENT_REPORT_PAGE_PATH)
+const parentDetailPage = read(PARENT_DETAIL_PAGE_PATH)
+
+// 금지 사항을 설명하는 주석 자체가 검사에 걸리면 안 된다.
+// 실제 코드에서 그 이름을 쓰는지만 본다.
+const stripComments = (source: string) =>
+  source.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\{\s*\/\*[\s\S]*?\*\/\s*\}/g, "").replace(/\/\/[^\n]*/g, "")
+const parentReportCode = stripComments(parentReportPage)
+const parentDetailCode = stripComments(parentDetailPage)
+
+check(
+  "소유 확인이 리포트 조회보다 먼저다",
+  parentQuery.indexOf("getMyExperienceDetail(experienceId)") <
+    parentQuery.indexOf("getPublishedExperienceReport(experienceId)")
+)
+check(
+  "남의 경험과 '리포트 없음' 을 구분한다",
+  parentQuery.includes('status: "not_found"') && parentQuery.includes('status: "unavailable"')
+)
+check(
+  "조회 실패를 '없음' 으로 접지 않는다",
+  parentQuery.includes('status: "error"')
+)
+check("남의 경험은 notFound 다", parentReportPage.includes('result.status === "not_found"') && parentReportPage.includes("notFound()"))
+check("학부모 인증을 요구한다", parentReportPage.includes("requireParentAccess("))
+
+console.log("\n── 26. 학부모 화면은 발행본만 본다 ──")
+check(
+  "화면이 snapshot 만 읽는다",
+  parentReportCode.includes("report.content") && !parentReportCode.includes("trialResult")
+)
+for (const forbidden of ["trial_results", "consultation_logs", "dataAdapter.getStudioTrialResultSaveContext"]) {
+  check(`학부모 route 가 ${forbidden} 를 읽지 않는다`, !parentReportCode.includes(forbidden))
+  check(`학부모 상세가 ${forbidden} 를 읽지 않는다`, !parentDetailCode.includes(forbidden))
+}
+for (const field of EXPERIENCE_REPORT_FORBIDDEN_FIELDS) {
+  check(`학부모 화면에 ${field} 가 없다`, !parentReportCode.includes(field))
+}
+check(
+  "관찰 문장을 다시 해석하지 않는다",
+  parentReportCode.includes("{item.label}") &&
+    !parentReportCode.includes("getTrialResultObservationLabel")
+)
+
+console.log("\n── 27. 성적표 어휘를 쓰지 않는다 ──")
+// 판정·등급으로 읽히는 말을 학부모 화면에 들이지 않는다.
+const JUDGMENT_WORDS = ["잘함", "부족함", "우수", "미흡", "상위", "하위", "점수", "등급", "적합도", "BEST", "강점", "약점"]
+for (const word of JUDGMENT_WORDS) {
+  check(`"${word}" 가 없다`, !parentReportCode.includes(word))
+}
+check(
+  "첫수업이 분석했다고 말하지 않는다",
+  !parentReportPage.includes("AI") && !parentReportPage.includes("첫수업이 평가")
+)
+check(
+  "출처를 학원으로 밝힌다",
+  parentReportPage.includes("체험 당시 학원에서 기록하고 발행한 내용")
+)
+check("version 을 학부모에게 보여 주지 않는다", !parentReportCode.includes("report.version"))
+
+console.log("\n── 28. 리포트가 없으면 안내를 만들지 않는다 ──")
+check(
+  "발행본이 있을 때만 CTA 를 보여 준다",
+  parentDetailPage.includes("hasPublishedReport") &&
+    parentDetailPage.includes('reportResult.status === "ok"')
+)
+check(
+  "상세도 조회 실패를 구분한다",
+  parentDetailPage.includes("reportLoadFailed") && parentDetailPage.includes('reportResult.status === "error"')
+)
+check(
+  "빈 placeholder 카드를 만들지 않는다",
+  !parentDetailCode.includes("아직 리포트가 없습니다")
+)
+check(
+  "관찰은 목록 markup 이다",
+  parentReportPage.includes("<ul") && parentReportPage.includes("<li")
+)
+check("추천은 정의 목록 markup 이다", parentReportPage.includes("<dl") && parentReportPage.includes("<dt"))
 
 console.log(`\n${failures === 0 ? "ALL PASS" : `${failures} FAILURE(S)`}`)
 process.exit(failures === 0 ? 0 : 1)
