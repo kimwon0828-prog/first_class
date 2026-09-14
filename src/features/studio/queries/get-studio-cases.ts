@@ -219,7 +219,9 @@ export const getStudioCases = async (
 
     // [Q2] 본문 + 총 개수. range 로 DB 레벨 pagination 을 한다.
     let query = supabase
-      .from("trial_applications")
+      // 학원 표면에서 읽는다. base table 은 authenticated 에게 닫혀 있다 —
+      // 조직 범위는 view 의 WHERE 가 정한다(기존 teacher RLS 와 같은 조건).
+      .from("studio_trial_applications")
       .select(CASE_SELECT_FIELDS, { count: "exact" })
       .eq("classes.organization_id", organizationId)
 

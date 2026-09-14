@@ -2736,7 +2736,20 @@ export const mockDataAdapter: DataAdapter = {
       createdAt: new Date().toISOString()
     })
 
-    return created
+    // 실제 adapter 와 같은 좁은 계약을 돌려준다 — 생성 직후에는
+    // registrationStatus 같은 학원 운영 값이 존재할 수 없다.
+    return {
+      id: created.id,
+      classId: created.classId,
+      parentId: created.parentId ?? null,
+      childName: created.childName,
+      parentName: created.parentName ?? null,
+      parentPhone: created.parentPhone ?? null,
+      classTitle: created.classTitle ?? null,
+      requestedSlotAt: created.requestedSlotAt,
+      confirmedSlotAt: created.confirmedSlotAt ?? null,
+      selectedScheduleLabel: created.selectedScheduleLabel ?? null
+    }
   },
   async getPendingTeacherSignupRequest(userId) {
     const found = teacherSignupRequests.find(

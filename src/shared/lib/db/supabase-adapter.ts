@@ -11,6 +11,8 @@ import {
   EXPERIENCE_REPORT_STATUSES,
   decodeExperienceReportSnapshot
 } from "@/features/reports/lib/experience-report-snapshot"
+import { randomUUID } from "node:crypto"
+
 import type { SupabaseClient } from "@supabase/supabase-js"
 
 import { getSupabaseServiceRoleClient } from "@/integrations/supabase/service-role"
@@ -49,6 +51,8 @@ import {
 import type { StudioClassScheduleSummaryInput } from "@/features/studio/lib/class-schedule-summary"
 import { isApplicationUnregisteredReason } from "@/shared/lib/db/adapter"
 import type {
+  CreatedTrialApplication,
+  ParentApplicationSummary,
   StudioConsultationTransactionResult,
   StudioTrialResultSaveContext,
   ActivateStudioTeacherInput,
@@ -208,6 +212,41 @@ type EmbeddedClassScheduleRow = Pick<ClassScheduleRow, "start_time" | "end_time"
 type EmbeddedConfirmedBlockRow = {
   start_at: string | null
   end_at: string | null
+}
+
+/**
+ * 학부모 표면(my_trial_applications)이 돌려주는 row.
+ *
+ * base table row 와 일부러 다른 타입이다. 여기에 없는 것은 학부모 경로가
+ * "안 쓰는" 값이 아니라 DB 에서 읽을 수 없는 값이다 — 타입이 그 사실을 말한다.
+ */
+type MyTrialApplicationRow = {
+  id: string
+  class_id: string
+  parent_id: string | null
+  child_id?: string | null
+  child_name: string
+  child_grade: string
+  parent_name?: string | null
+  parent_phone?: string | null
+  goal_type?: string | null
+  class_schedule_id?: string | null
+  requested_schedule_block_id?: string | null
+  selected_schedule_label?: string | null
+  requested_slot_at: string
+  confirmed_slot_at?: string | null
+  completed_at?: string | null
+  canceled_at?: string | null
+  status: ApplicationStatus
+  created_at: string
+  updated_at: string
+  class_title?: string | null
+  class_program_type?: ClassProgramType | null
+  class_organization_id?: string | null
+  /** 지금 확정된 등록 결과가 있는가. 결과값 자체는 이 표면에 없다. */
+  has_current_registration_result?: boolean | null
+  /** 취소할 수 있는가. registration_status 대신 view 가 접어서 준다. */
+  can_cancel: boolean
 }
 
 type TrialApplicationRow = {
@@ -585,7 +624,8 @@ const attachClassSchedulesToRows = async (
     const scheduleIdChunks = chunkArray(scheduleIds, 100)
 
     for (const scheduleIdChunk of scheduleIdChunks) {
-      const { data: applicationData, error: applicationError } = await supabase
+      // 신청 수는 전체 집계다(아래 count 전용). 호출자의 세션으로 세지 않는다.
+      const { data: applicationData, error: applicationError } = await getSupabaseServiceRoleClient()
         .from("trial_applications")
         .select("class_schedule_id")
         .in("class_schedule_id", scheduleIdChunk)
@@ -807,16 +847,55 @@ const getEmbeddedClassSchedule = (row: TrialApplicationRow): EmbeddedClassSchedu
  * ⚠️ 이것은 화면용 신호다. 최종 판정은 cancel-my-application server action 이
  *    같은 규칙으로 다시 한다(UI capability + server guard 이중).
  */
-const resolveParentCanCancel = (
-  status: ApplicationStatus,
-  registrationStatus: string | null
-): boolean => {
-  if (registrationStatus === "enrolled") {
-    return false
-  }
+/**
+ * 학부모 표면 row → 학부모 DTO.
+ *
+ * 학원 운영 값이 여기로 들어올 자리가 없다 — 입력 타입에 그 column 이 없다.
+ * 학원 이름·주소는 조직 정보라 호출부가 따로 붙인다.
+ */
+/** 생성 직후 학원 알림에 실을 값만 뽑는다. */
+const mapCreatedApplication = (row: MyTrialApplicationRow): CreatedTrialApplication => ({
+  id: row.id,
+  classId: row.class_id,
+  parentId: row.parent_id ?? null,
+  childName: row.child_name,
+  parentName: row.parent_name ?? null,
+  parentPhone: row.parent_phone ?? null,
+  classTitle: row.class_title ?? null,
+  requestedSlotAt: row.requested_slot_at,
+  confirmedSlotAt: row.confirmed_slot_at ?? null,
+  selectedScheduleLabel: row.selected_schedule_label ?? null
+})
 
-  return status === "new" || status === "reviewing" || status === "confirmed"
-}
+const mapMyApplication = (
+  row: MyTrialApplicationRow,
+  organization: OrganizationLocationInfo | null = null
+): ParentApplicationSummary => ({
+  id: row.id,
+  classId: row.class_id,
+  classTitle: row.class_title ?? null,
+  classProgramType: row.class_program_type ?? null,
+  academyName: organization
+    ? [organization.name, organization.branchName].filter(Boolean).join(" ").trim() || null
+    : null,
+  organizationAddress: organization?.address ?? null,
+  organizationAddressDetail: organization?.addressDetail ?? null,
+  childId: row.child_id ?? null,
+  childName: row.child_name,
+  childGrade: row.child_grade,
+  classScheduleId: row.class_schedule_id ?? null,
+  requestedScheduleBlockId: row.requested_schedule_block_id ?? null,
+  selectedScheduleLabel: row.selected_schedule_label ?? null,
+  requestedSlotAt: row.requested_slot_at,
+  confirmedSlotAt: row.confirmed_slot_at ?? null,
+  completedAt: row.completed_at ?? null,
+  canceledAt: row.canceled_at ?? null,
+  status: row.status,
+  canCollectParentDecision: canCollectParentDecision(row.has_current_registration_result),
+  canCancel: row.can_cancel,
+  createdAt: row.created_at,
+  updatedAt: row.updated_at
+})
 
 const mapApplication = (row: TrialApplicationRow): TrialApplicationSummary => {
   const embeddedClass = getEmbeddedClass(row)
@@ -1534,7 +1613,7 @@ const getAppliedCountByTeacherScheduleBlockIdWithClient = async (
     return new Map<string, number>()
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await getSupabaseServiceRoleClient()
     .from("trial_applications")
     .select("requested_schedule_block_id, requested_slot_at, classes!inner(teacher_id)")
     .eq("classes.teacher_id", teacherId)
@@ -1568,8 +1647,8 @@ const getAppliedCountByTeacherScheduleBlockId = async (
   teacherId: string,
   scheduleRows: ScheduleBlockRow[]
 ) => {
-  const supabase = await getSupabaseServerClient()
-  return getAppliedCountByTeacherScheduleBlockIdWithClient(supabase, teacherId, scheduleRows)
+  // client 는 helper 안에서 정한다(전체 집계).
+  return getAppliedCountByTeacherScheduleBlockIdWithClient(await getSupabaseServerClient(), teacherId, scheduleRows)
 }
 
 const getAppliedCountByClassScheduleBlockIdWithClient = async (
@@ -1581,7 +1660,7 @@ const getAppliedCountByClassScheduleBlockIdWithClient = async (
     return new Map<string, number>()
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await getSupabaseServiceRoleClient()
     .from("trial_applications")
     .select("requested_schedule_block_id, requested_slot_at")
     .eq("class_id", classId)
@@ -1615,8 +1694,8 @@ const getAppliedCountByClassScheduleBlockId = async (
   classId: string,
   scheduleRows: ScheduleBlockRow[]
 ) => {
-  const supabase = await getSupabaseServerClient()
-  return getAppliedCountByClassScheduleBlockIdWithClient(supabase, classId, scheduleRows)
+  // client 는 helper 안에서 정한다(전체 집계).
+  return getAppliedCountByClassScheduleBlockIdWithClient(await getSupabaseServerClient(), classId, scheduleRows)
 }
 
 const assertTeacherBelongsToOrganization = async (teacherId: string, organizationId: string) => {
@@ -1721,7 +1800,8 @@ const getActiveReservationCountByClassScheduleIds = async (classScheduleIds: str
     return counts
   }
 
-  const supabase = await getSupabaseServerClient()
+  // 예약 수는 전체 집계다. 호출자의 세션으로 세지 않는다 — 위 정원 집계와 같은 이유다.
+  const supabase = getSupabaseServiceRoleClient()
   const { data, error } = await supabase
     .from("trial_applications")
     .select("class_schedule_id, status")
@@ -1756,7 +1836,7 @@ const getActiveReservationCountByScheduleOccurrenceWithClient = async (
   }
 
   const targetScheduleIds = new Set(classScheduleIds)
-  const { data, error } = await supabase
+  const { data, error } = await getSupabaseServiceRoleClient()
     .from("trial_applications")
     .select("class_schedule_id, requested_slot_at, status")
     .eq("class_id", classId)
@@ -1788,8 +1868,11 @@ const getActiveReservationCountByScheduleOccurrence = async (
   classId: string,
   classScheduleIds: string[]
 ) => {
-  const supabase = await getSupabaseServerClient()
-  return getActiveReservationCountByScheduleOccurrenceWithClient(supabase, classId, classScheduleIds)
+  return getActiveReservationCountByScheduleOccurrenceWithClient(
+    await getSupabaseServerClient(),
+    classId,
+    classScheduleIds
+  )
 }
 
 const buildCalendarItemStatus = (
@@ -3294,7 +3377,7 @@ export const supabaseDataAdapter: DataAdapter = {
     const [classesResult, applicationsResult, scheduleBlocksResult, smsLogsResult] = await Promise.all([
       supabase.from("classes").select("id", { count: "exact", head: true }).eq("teacher_id", input.teacherId),
       supabase
-        .from("trial_applications")
+        .from("studio_trial_applications")
         .select("id", { count: "exact", head: true })
         .eq("assigned_teacher_id", input.teacherId),
       supabase
@@ -3588,7 +3671,7 @@ export const supabaseDataAdapter: DataAdapter = {
 
     if (existingScheduleIds.length > 0) {
       const { data: protectedScheduleData, error: protectedScheduleError } = await supabase
-        .from("trial_applications")
+        .from("studio_trial_applications")
         .select("class_schedule_id")
         .in("class_schedule_id", existingScheduleIds)
 
@@ -4146,18 +4229,28 @@ export const supabaseDataAdapter: DataAdapter = {
     return summary
   },
   async listAvailableScheduleSlotsByClassId(classId) {
-    const supabase = await getSupabaseServerClient()
+    // 남은 자리 수는 "이 수업에 몇 명이 신청했는가" 라는 전체 집계다.
+    // 특정 학부모의 데이터가 아니고, 학부모 세션으로 세면 자기 신청만 세어져
+    // 실제보다 적게 나온다. 공개 조회 경로(get-public-class-available-slots)가
+    // 이미 같은 이유로 service role 로 센다 — 로그인 여부로 답이 달라지지 않게
+    // 여기서도 같은 client 를 쓴다.
+    const supabase = getSupabaseServiceRoleClient()
     return listAvailableScheduleSlotsByClassIdWithClient({ classId, supabase })
   },
   async listMyApplications(parentId) {
     const supabase = await getSupabaseServerClient()
-    // 학부모 화면 전용 select 다. 학원 운영 컬럼은 애초에 가져오지 않는다 —
-    // 가져온 뒤 mapper 에서 빼는 방식은 컬럼이 늘어날 때마다 다시 새어 나간다.
-    // registration_status 는 아래 canCancel 판정에만 쓰고 밖으로 내보내지 않는다.
+    // 학부모 표면에서 읽는다. base table 이 아니다.
+    //
+    // 학원 운영 컬럼은 view 에 아예 없다 — 여기서 고르는 문제가 아니라
+    // 학부모 credential 로는 DB 에서 읽을 수 없는 값이다. 컬럼이 늘어나도
+    // view 에 적지 않는 한 새어 나가지 않는다.
+    //
+    // 판단이 필요한 값은 view 가 boolean 으로 접어서 준다 —
+    // registration_status 는 이 경로에 들어오지 않는다.
     const { data, error } = await supabase
-      .from("trial_applications")
+      .from("my_trial_applications")
       .select(
-        "id, class_id, child_id, child_name, child_grade, class_schedule_id, requested_schedule_block_id, selected_schedule_label, requested_slot_at, confirmed_slot_at, completed_at, canceled_at, registration_status, has_current_registration_result, status, created_at, updated_at, classes(title, program_type, organization_id)"
+        "id, class_id, child_id, child_name, child_grade, class_schedule_id, requested_schedule_block_id, selected_schedule_label, requested_slot_at, confirmed_slot_at, completed_at, canceled_at, status, created_at, updated_at, class_title, class_program_type, class_organization_id, has_current_registration_result, can_cancel"
       )
       .eq("parent_id", parentId)
       .order("created_at", { ascending: false })
@@ -4166,50 +4259,20 @@ export const supabaseDataAdapter: DataAdapter = {
       throw new Error("failed_to_fetch_my_trial_applications")
     }
 
-    const rows = (data ?? []) as TrialApplicationRow[]
+    const rows = (data ?? []) as MyTrialApplicationRow[]
     const organizationLocationMap = await getOrganizationLocationMap(
       rows
-        .map((row) => getEmbeddedClass(row)?.organization_id ?? null)
+        .map((row) => row.class_organization_id ?? null)
         .filter((organizationId): organizationId is string => Boolean(organizationId))
     )
 
     return rows.map((row) => {
-      const embeddedClass = getEmbeddedClass(row)
       const organizationRow =
-        embeddedClass?.organization_id
-          ? organizationLocationMap.get(embeddedClass.organization_id) ?? null
+        row.class_organization_id
+          ? organizationLocationMap.get(row.class_organization_id) ?? null
           : null
-      const organization = organizationRow ? mapOrganizationLocation(organizationRow) : null
 
-      return {
-        id: row.id,
-        classId: row.class_id,
-        classTitle: embeddedClass?.title ?? null,
-        classProgramType: embeddedClass?.program_type ?? null,
-        academyName: organization
-          ? [organization.name, organization.branchName].filter(Boolean).join(" ").trim() || null
-          : null,
-        organizationAddress: organization?.address ?? null,
-        organizationAddressDetail: organization?.addressDetail ?? null,
-        childId: row.child_id ?? null,
-        childName: row.child_name,
-        childGrade: row.child_grade,
-        classScheduleId: row.class_schedule_id ?? null,
-        requestedScheduleBlockId: row.requested_schedule_block_id ?? null,
-        selectedScheduleLabel: row.selected_schedule_label ?? null,
-        requestedSlotAt: row.requested_slot_at,
-        confirmedSlotAt: row.confirmed_slot_at ?? null,
-        completedAt: row.completed_at ?? null,
-        canceledAt: row.canceled_at ?? null,
-        status: row.status,
-        // 확정된 결과가 있는가만 본다. registration_status 원문이 아니라
-        // registration_results 를 source 로 쓰는 computed column 이다 —
-        // 학부모 DTO 로 나가는 값은 끝까지 boolean 하나뿐이다.
-        canCollectParentDecision: canCollectParentDecision(row.has_current_registration_result),
-        canCancel: resolveParentCanCancel(row.status, row.registration_status ?? null),
-        createdAt: row.created_at,
-        updatedAt: row.updated_at
-      }
+      return mapMyApplication(row, mapOrganizationLocation(organizationRow))
     })
   },
   async listStudioApplications(organizationId, options: StudioApplicationListOptions = {}) {
@@ -4219,7 +4282,7 @@ export const supabaseDataAdapter: DataAdapter = {
     // 이전 range 가 남으므로 페이지마다 새로 빌드해야 한다.
     const buildQuery = () => {
       let query = supabase
-        .from("trial_applications")
+        .from("studio_trial_applications")
         .select(
           "id, class_id, parent_id, child_name, child_grade, parent_name, parent_phone, class_schedule_id, requested_schedule_block_id, selected_schedule_label, requested_slot_at, confirmed_slot_at, assigned_teacher_id, contacted_at, scheduled_at, completed_at, enrolled_at, canceled_at, no_show_at, goal_type, registration_status, unregistered_reason, status, created_at, updated_at, classes!inner(title, subject, organization_id, program_type, organizations(sido, sigungu, bname)), class_schedules(start_time, end_time), confirmed_block:schedule_blocks!trial_applications_confirmed_schedule_block_id_fkey(start_at, end_at)",
           // 총 개수를 알아야 서버가 page 를 잘라도 끝을 정확히 안다.
@@ -4298,7 +4361,7 @@ export const supabaseDataAdapter: DataAdapter = {
   ) {
     const supabase = await getSupabaseServerClient()
     let query = supabase
-      .from("trial_applications")
+      .from("studio_trial_applications")
       .select(
         "id, child_name, child_grade, parent_name, parent_phone, assigned_teacher_id, completed_at, consultation_note, follow_up_note, registration_status, updated_at, classes!inner(title, subject, organization_id)"
       )
@@ -4385,7 +4448,7 @@ export const supabaseDataAdapter: DataAdapter = {
   async getStudioUnregisteredActionRequiredCount(organizationId) {
     const supabase = await getSupabaseServerClient()
     const { count, error } = await supabase
-      .from("trial_applications")
+      .from("studio_trial_applications")
       .select("id, classes!inner(id)", { count: "exact", head: true })
       .eq("classes.organization_id", organizationId)
       .eq("status", "completed")
@@ -4400,7 +4463,7 @@ export const supabaseDataAdapter: DataAdapter = {
   async listStudioConsultationPipelineApplications(organizationId) {
     const supabase = await getSupabaseServerClient()
     const { data, error } = await supabase
-      .from("trial_applications")
+      .from("studio_trial_applications")
       .select(
         "id, child_name, child_grade, parent_name, parent_phone, assigned_teacher_id, completed_at, next_contact_at, last_activity_at, enrolled_at, lost_at, registration_status, unregistered_reason, unregistered_reason_note, updated_at, classes!inner(title, subject, organization_id)"
       )
@@ -4555,7 +4618,7 @@ export const supabaseDataAdapter: DataAdapter = {
   async getStudioConsultationPipelineActiveCount(organizationId) {
     const supabase = await getSupabaseServerClient()
     const { count, error } = await supabase
-      .from("trial_applications")
+      .from("studio_trial_applications")
       .select("id, classes!inner(id)", { count: "exact", head: true })
       .eq("classes.organization_id", organizationId)
       .eq("status", "completed")
@@ -4570,7 +4633,7 @@ export const supabaseDataAdapter: DataAdapter = {
   async getStudioApplicationDetail(applicationId, organizationId) {
     const supabase = await getSupabaseServerClient()
     const { data, error } = await supabase
-      .from("trial_applications")
+      .from("studio_trial_applications")
       .select(
         "id, class_id, parent_id, child_name, child_grade, parent_name, parent_phone, child_school, child_notes, subject_experience_yn, subject_experience_duration, current_level, preferred_regular_schedule, goal_type, goal_note, class_schedule_id, requested_slot_at, requested_schedule_block_id, selected_schedule_label, confirmed_slot_at, confirmed_schedule_block_id, assigned_teacher_id, contacted_at, scheduled_at, completed_at, enrolled_at, canceled_at, no_show_at, consultation_note, trial_feedback, final_level, final_schedule, registration_status, registered_course, unregistered_reason, unregistered_reason_note, lost_at, follow_up_note, next_contact_at, last_activity_at, regular_schedule_preference, regular_schedule_preference_note, regular_schedule_preference_updated_at, memo, status, created_at, updated_at, class_schedules(start_time, end_time), confirmed_block:schedule_blocks!trial_applications_confirmed_schedule_block_id_fkey(start_at, end_at), classes!inner(title, subject, organization_id, program_type, assignment_mode, organizations(name, sido, sigungu, bname))"
       )
@@ -4677,7 +4740,7 @@ export const supabaseDataAdapter: DataAdapter = {
     const supabase = await getSupabaseServerClient()
 
     const { data: applicationData, error: applicationError } = await supabase
-      .from("trial_applications")
+      .from("studio_trial_applications")
       .select("id, classes!inner(organization_id)")
       .eq("id", input.applicationId)
       .eq("classes.organization_id", input.organizationId)
@@ -4711,7 +4774,7 @@ export const supabaseDataAdapter: DataAdapter = {
     }
 
     const { data: updatedData, error: updateError } = await supabase
-      .from("trial_applications")
+      .from("studio_trial_applications")
       .update({
         assigned_teacher_id: input.assignedTeacherId,
         updated_at: new Date().toISOString()
@@ -4758,7 +4821,7 @@ export const supabaseDataAdapter: DataAdapter = {
         updatePayload.contacted_at = nowIso
       }
       const { data: currentRow, error: currentError } = await supabase
-        .from("trial_applications")
+        .from("studio_trial_applications")
         .select("class_id, requested_slot_at, requested_schedule_block_id, class_schedule_id, assigned_teacher_id")
         .eq("id", input.applicationId)
         .maybeSingle()
@@ -4926,7 +4989,7 @@ export const supabaseDataAdapter: DataAdapter = {
     }
 
     const { data, error } = await supabase
-      .from("trial_applications")
+      .from("studio_trial_applications")
       .update(updatePayload)
       .eq("id", input.applicationId)
       .eq("status", input.currentStatus)
@@ -5007,7 +5070,7 @@ export const supabaseDataAdapter: DataAdapter = {
             updated_at: nowIso
           }
     const { data, error } = await supabase
-      .from("trial_applications")
+      .from("studio_trial_applications")
       .update(nextValues)
       .eq("id", input.applicationId)
       .eq("status", input.currentStatus)
@@ -5052,7 +5115,7 @@ export const supabaseDataAdapter: DataAdapter = {
     // 희망 일정은 next_contact_at 과 같은 UPDATE 문에 실어 보낸다.
     // 별도 호출을 만들면 부분 저장 지점이 하나 더 생긴다.
     const { data, error } = await supabase
-      .from("trial_applications")
+      .from("studio_trial_applications")
       .update({
         next_contact_at: input.nextContactAt,
         last_activity_at: input.lastActivityAt,
@@ -5077,7 +5140,7 @@ export const supabaseDataAdapter: DataAdapter = {
   ) {
     const supabase = await getSupabaseServerClient()
     const { data, error } = await supabase
-      .from("trial_applications")
+      .from("studio_trial_applications")
       .update({
         next_contact_at: input.nextContactAt,
         ...buildRegularSchedulePreferenceUpdate(input.regularSchedulePreferenceWrite)
@@ -5289,7 +5352,7 @@ export const supabaseDataAdapter: DataAdapter = {
     // organization scope 는 trial_applications 에 컬럼이 없으므로
     // 다른 Studio 조회와 같이 classes!inner 로 건다.
     const { data, error } = await supabase
-      .from("trial_applications")
+      .from("studio_trial_applications")
       .select(
         "status, classes!inner(organization_id), trial_results(observations, parent_reaction, recommended_course, recommended_level, recommended_schedule, next_action, note)"
       )
@@ -5688,27 +5751,34 @@ export const supabaseDataAdapter: DataAdapter = {
       throw new Error("slot_capacity_reached")
     }
 
-    const { data: existing, error: existingError } = await supabase
-      .from("trial_applications")
-      .select("id")
-      .eq("parent_id", input.parentId)
-      .eq("class_id", input.classId)
-      .eq("child_name", input.childName)
-      .eq("requested_slot_at", requestedSlotAt)
-      .in("status", ACTIVE_APPLICATION_STATUSES)
-      .maybeSingle()
+    // 중복 확인은 RPC 로 한다. 이것 하나 때문에 학부모에게 base table SELECT 를
+    // 열어 두면 column 경계가 다시 없어진다. 함수는 있는지 여부만 답하고,
+    // 소유권은 안에서 auth.uid() 로 확인한다.
+    const { data: hasActive, error: existingError } = await supabase.rpc(
+      "has_active_trial_application",
+      {
+        p_class_id: input.classId,
+        p_child_name: input.childName,
+        p_requested_slot_at: requestedSlotAt
+      }
+    )
 
     if (existingError) {
       throw new Error("failed_to_validate_trial_application")
     }
 
-    if (existing) {
+    if (hasActive) {
       throw new Error("duplicate_trial_application")
     }
 
-    const { data, error } = await supabase
+    // id 를 여기서 만든다. INSERT 는 RETURNING 을 쓰지 않으면 SELECT 권한이
+    // 필요 없고, 학부모에게 남은 base table 권한은 INSERT 하나뿐이다.
+    // 만든 뒤에는 학부모 표면에서 다시 읽는다.
+    const applicationId = randomUUID()
+    const { error } = await supabase
       .from("trial_applications")
       .insert({
+        id: applicationId,
         parent_id: input.parentId,
         class_id: input.classId,
         assigned_teacher_id:
@@ -5733,16 +5803,24 @@ export const supabaseDataAdapter: DataAdapter = {
         memo: input.memo,
         status: "new"
       })
-      .select(
-        "id, class_id, parent_id, child_name, child_grade, parent_name, parent_phone, class_schedule_id, requested_schedule_block_id, selected_schedule_label, requested_slot_at, confirmed_slot_at, goal_type, status, created_at, updated_at, classes(title, program_type)"
-      )
-      .single()
 
-    if (error || !data) {
+    if (error) {
       throw new Error("failed_to_create_trial_application")
     }
 
-    const insertedApplication = data as TrialApplicationRow
+    const { data: createdRow, error: createdError } = await supabase
+      .from("my_trial_applications")
+      .select(
+        "id, class_id, parent_id, child_id, child_name, child_grade, parent_name, parent_phone, class_schedule_id, requested_schedule_block_id, selected_schedule_label, requested_slot_at, confirmed_slot_at, completed_at, canceled_at, goal_type, status, created_at, updated_at, class_title, class_program_type, class_organization_id, has_current_registration_result, can_cancel"
+      )
+      .eq("id", applicationId)
+      .maybeSingle()
+
+    if (createdError || !createdRow) {
+      throw new Error("failed_to_create_trial_application")
+    }
+
+    const insertedApplication = createdRow as MyTrialApplicationRow
 
     const { error: logError } = await supabase.from("application_logs").insert({
       application_id: insertedApplication.id,
@@ -5761,7 +5839,7 @@ export const supabaseDataAdapter: DataAdapter = {
       )
     }
 
-    return mapApplication(insertedApplication)
+    return mapCreatedApplication(insertedApplication)
   },
   async getPendingTeacherSignupRequest(userId) {
     const supabase = await getSupabaseServerClient()
