@@ -37,7 +37,14 @@ export type ExperienceReportObservationSnapshot = {
 export type ExperienceReportSnapshotV1 = {
   experience: {
     type: string
-    date: string | null
+    /**
+     * 체험 날짜. 필수다.
+     *
+     * 날짜 없는 리포트는 부모에게 "언제 있었던 일인지" 를 말해 주지 못한다.
+     * 발행 단계에서 막고, 여기서도 optional 로 두지 않는다 — type 이 nullable 이면
+     * 화면마다 빈 칸 처리를 다시 고민하게 되고 언젠가 하나가 새어 나간다.
+     */
+    date: string
     child: { displayName: string; grade: string }
     academy: { name: string }
     class: { title: string }
@@ -155,6 +162,12 @@ export const checkObservationPublicationEligibility = (
   return { status: "eligible", codes }
 }
 
+/** 스냅샷을 만들 수 없는 이유. 발행 거절 사유와 1:1 이다. */
+export type ExperienceReportSnapshotRejection =
+  | { status: "legacy_requires_review"; legacyValues: string[] }
+  | { status: "unknown_values"; unknownValues: string[] }
+  | { status: "experience_date_missing" }
+
 export const EXPERIENCE_REPORT_LEGACY_REVIEW_MESSAGE =
   "기존 기준의 관찰 기록은 현재 공개 기준으로 다시 확인한 뒤 발행할 수 있습니다."
 
@@ -185,7 +198,7 @@ export type ExperienceReportSnapshotSource = {
 
 export type BuildExperienceReportSnapshotResult =
   | { status: "ok"; snapshot: ExperienceReportSnapshotV1 }
-  | { status: "ineligible"; reason: ObservationPublicationEligibility }
+  | { status: "ineligible"; reason: ExperienceReportSnapshotRejection }
 
 export const buildExperienceReportSnapshotV1 = (
   source: ExperienceReportSnapshotSource
@@ -193,6 +206,12 @@ export const buildExperienceReportSnapshotV1 = (
   const eligibility = checkObservationPublicationEligibility(source.observations)
   if (eligibility.status !== "eligible") {
     return { status: "ineligible", reason: eligibility }
+  }
+
+  // 날짜가 없으면 스냅샷을 만들지 않는다. 빈 날짜로 발행하느니 발행하지 않는다.
+  const experienceDate = source.confirmedSlotAt ?? source.completedAt ?? null
+  if (!experienceDate) {
+    return { status: "ineligible", reason: { status: "experience_date_missing" } }
   }
 
   const observations = eligibility.codes.map((code) => ({
@@ -206,9 +225,7 @@ export const buildExperienceReportSnapshotV1 = (
     snapshot: {
       experience: {
         type: source.programType,
-        // 확정 시각이 원칙이고, 비어 있으면 완료 처리 시각으로 대신한다.
-        // 날짜 없는 리포트를 내보내지 않는다.
-        date: source.confirmedSlotAt ?? source.completedAt ?? null,
+        date: experienceDate,
         child: { displayName: source.childName, grade: source.childGrade },
         academy: { name: source.academyName },
         class: { title: source.classTitle }
@@ -275,6 +292,11 @@ export const decodeExperienceReportSnapshot = (
     return null
   }
 
+  // 날짜가 비어 있는 스냅샷은 통째로 거절한다. 계약이 필수이므로 읽는 쪽도 필수다.
+  if (typeof experience.date !== "string" || experience.date.trim().length === 0) {
+    return null
+  }
+
   const decodedObservations: ExperienceReportObservationSnapshot[] = []
   for (const item of observations) {
     if (!isPlainObject(item)) {
@@ -293,7 +315,7 @@ export const decodeExperienceReportSnapshot = (
   return {
     experience: {
       type: experience.type,
-      date: typeof experience.date === "string" ? experience.date : null,
+      date: experience.date,
       child: {
         displayName: child.displayName,
         grade: typeof child.grade === "string" ? child.grade : ""

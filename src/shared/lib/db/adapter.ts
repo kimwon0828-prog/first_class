@@ -1263,8 +1263,17 @@ export interface DataAdapter {
   getPublishedExperienceReport(applicationId: string): Promise<ExperienceReportSummary | null>
   /** 학원용 발행 이력 전체. 최신 version 이 앞이다. */
   listExperienceReportVersions(applicationId: string): Promise<ExperienceReportSummary[]>
-  /** 발행 / 재발행. 이전 발행본 supersede 까지 한 transaction 으로 처리된다. */
-  publishExperienceReport(applicationId: string): Promise<PublishExperienceReportResult>
+  /**
+   * 발행 / 재발행. 이전 발행본 supersede 까지 한 transaction 으로 처리된다.
+   *
+   * expectedAssessmentUpdatedAt 은 원장이 확인한 Assessment 의 시각이다.
+   * 확인 이후 다른 Studio 계정이 평가를 고쳤다면 발행하지 않는다 —
+   * 본 적 없는 내용을 부모에게 보내지 않기 위해서다.
+   */
+  publishExperienceReport(
+    applicationId: string,
+    expectedAssessmentUpdatedAt: string
+  ): Promise<PublishExperienceReportResult>
   /** 철회. 삭제가 아니다 — content 는 남고 부모만 읽지 못한다. */
   withdrawExperienceReport(applicationId: string): Promise<WithdrawExperienceReportResult>
   createTrialApplication(

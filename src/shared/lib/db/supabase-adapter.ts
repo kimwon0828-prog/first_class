@@ -5407,12 +5407,16 @@ export const supabaseDataAdapter: DataAdapter = {
       .map((row) => mapExperienceReport(row as ExperienceReportRow))
       .filter((item): item is ExperienceReportSummary => item !== null)
   },
-  async publishExperienceReport(applicationId: string) {
+  async publishExperienceReport(applicationId: string, expectedAssessmentUpdatedAt: string) {
     const supabase = await getSupabaseServerClient()
     // 스냅샷을 만들어 넘기지 않는다. 함수가 source 를 직접 읽어 조립한다 —
     // content 를 파라미터로 받으면 무엇이든 부모에게 보여 줄 수 있게 된다.
+    //
+    // 넘기는 것은 "원장이 확인한 시점" 뿐이다. 그 사이 평가가 바뀌었는지는
+    // 함수가 source row 를 잠근 채 판단한다.
     const { data, error } = await supabase.rpc("publish_experience_report", {
-      p_application_id: applicationId
+      p_application_id: applicationId,
+      p_expected_assessment_updated_at: expectedAssessmentUpdatedAt
     })
 
     if (error) {

@@ -115,6 +115,22 @@ language plpgsql
 set search_path = public
 as $$
 begin
+  -- 끝난 것은 끝난 것이다.
+  --
+  -- superseded 와 withdrawn 은 종료 상태다. 여기서 되살아나면 "이미 지나간
+  -- 리포트" 가 다시 부모에게 보이고, 살아 있는 발행본이 두 개가 된다.
+  -- 종료된 row 는 lifecycle metadata 까지 통째로 잠근다.
+  if old.status in ('superseded', 'withdrawn') then
+    raise exception 'experience_report_lifecycle_is_terminal'
+      using detail = '이미 종료된 리포트는 되돌릴 수 없습니다. 새 version 을 발행하세요.';
+  end if;
+
+  -- published 에서 갈 수 있는 곳은 두 군데뿐이다.
+  if new.status not in ('published', 'superseded', 'withdrawn') then
+    raise exception 'experience_report_invalid_transition'
+      using detail = format('허용되지 않는 상태 전이입니다: %s → %s', old.status, new.status);
+  end if;
+
   if new.content is distinct from old.content
      or new.content_version is distinct from old.content_version
      or new.version is distinct from old.version
@@ -214,7 +230,15 @@ create policy experience_reports_teacher_read_org
 -- snapshot 도 파라미터로 받지 않는다. 호출자가 content 를 만들어 넘기면
 -- 무엇이든 부모에게 보여 줄 수 있게 된다. 여기서 source 를 직접 읽어 조립한다.
 -- ─────────────────────────────────────────────────────────────
-create or replace function public.publish_experience_report(p_application_id uuid)
+create or replace function public.publish_experience_report(
+  p_application_id uuid,
+  -- 원장이 Preview 에서 확인한 Assessment 의 시각.
+  --
+  -- 이 값을 받지 않으면 "확인한 내용" 과 "발행되는 내용" 이 달라질 수 있다.
+  -- Preview 를 열어 둔 사이 다른 Studio 계정이 관찰을 고치면, 원장은 본 적 없는
+  -- 내용을 부모에게 보내게 된다. 본 것과 보내는 것이 같은지 여기서 확인한다.
+  p_expected_assessment_updated_at timestamptz
+)
 returns jsonb
 language plpgsql
 security definer
@@ -226,6 +250,7 @@ declare
   v_role text;
   v_app public.trial_applications%rowtype;
   v_result public.trial_results%rowtype;
+  v_experience_date timestamptz;
   v_class public.classes%rowtype;
   v_org_name text;
   v_now timestamptz := now();
@@ -270,12 +295,32 @@ begin
     raise exception 'application_not_completed';
   end if;
 
+  -- 학부모 계정이 연결되지 않은 신청은 발행하지 않는다.
+  --
+  -- parent_id 는 nullable 이다(예약 import 경로). 그 상태로 발행하면 읽을 사람이
+  -- 없는 artifact 가 생긴다. 이 표는 "실제로 부모에게 발행된 것" 만 담는다 —
+  -- 읽을 수 없는 발행은 발행이 아니다. UI 가 아니라 여기서 막는다.
+  if v_app.parent_id is null then
+    raise exception 'parent_not_linked'
+      using detail = '학부모 계정이 연결된 뒤 리포트를 발행할 수 있습니다.';
+  end if;
+
+  -- source 도 같은 transaction 안에서 잠근다.
+  -- revision 을 확인한 뒤 스냅샷을 뜨는 사이에 source 가 바뀌면 확인이 무의미하다.
   select tr.* into v_result
   from public.trial_results tr
-  where tr.application_id = p_application_id;
+  where tr.application_id = p_application_id
+  for update;
 
   if not found then
     raise exception 'trial_result_not_found';
+  end if;
+
+  -- 원장이 본 revision 과 지금 저장된 revision 이 같은가.
+  if p_expected_assessment_updated_at is null
+     or v_result.updated_at is distinct from p_expected_assessment_updated_at then
+    raise exception 'assessment_changed_since_preview'
+      using detail = '평가 내용이 확인 이후 변경되었습니다. 최신 내용을 다시 확인한 뒤 발행해 주세요.';
   end if;
 
   -- 옛 기준으로 적힌 관찰은 자동으로 발행하지 않는다.
@@ -302,6 +347,16 @@ begin
     raise exception 'unknown_observations_cannot_publish';
   end if;
 
+  -- 날짜 없는 리포트는 내보내지 않는다.
+  -- confirmed_state_check 는 completed 라도 confirmed_slot_at 이 비어 있는 것을
+  -- 허용하므로(예약 import), 완료 처리 시각으로 대신한다. 둘 다 없으면 발행하지 않는다.
+  v_experience_date := coalesce(v_app.confirmed_slot_at, v_app.completed_at);
+
+  if v_experience_date is null then
+    raise exception 'experience_date_missing'
+      using detail = '체험 날짜가 없어 리포트를 발행할 수 없습니다.';
+  end if;
+
   select c.* into v_class from public.classes c where c.id = v_app.class_id;
   select o.name into v_org_name from public.organizations o where o.id = v_class.organization_id;
 
@@ -322,10 +377,7 @@ begin
   v_content := jsonb_build_object(
     'experience', jsonb_build_object(
       'type', v_class.program_type,
-      -- 확정 시각이 원칙이다. 다만 confirmed_state_check 는 completed 라도
-      -- confirmed_slot_at 이 비어 있는 것을 허용한다(예약 import 경로).
-      -- 그때는 완료 처리 시각으로 대신한다 — 날짜 없는 리포트를 내보내지 않는다.
-      'date', coalesce(v_app.confirmed_slot_at, v_app.completed_at),
+      'date', v_experience_date,
       'child', jsonb_build_object(
         'displayName', v_app.child_name,
         'grade', v_app.child_grade
@@ -449,10 +501,10 @@ $$;
 -- definer 함수라 기본 PUBLIC 실행 권한을 남겨 두면 안 된다.
 -- 로그인한 사용자만 부르고, 권한 판정은 함수 안에서 한다.
 -- ─────────────────────────────────────────────────────────────
-revoke all on function public.publish_experience_report(uuid) from public;
+revoke all on function public.publish_experience_report(uuid, timestamptz) from public;
 revoke all on function public.withdraw_experience_report(uuid) from public;
 revoke all on function public.experience_report_observation_label(text) from public;
 
-grant execute on function public.publish_experience_report(uuid) to authenticated;
+grant execute on function public.publish_experience_report(uuid, timestamptz) to authenticated;
 grant execute on function public.withdraw_experience_report(uuid) to authenticated;
 grant execute on function public.experience_report_observation_label(text) to authenticated;

@@ -14,6 +14,10 @@
 //   9.  부모는 여전히 trial_results 를 읽지 못한다.
 //   10. 발행/재발행이 한 transaction 안에서 직렬화된다.
 //   11. DB 의 label 표와 TS 의 label 이 같다.
+//   12. 학부모 계정이 없는 신청은 발행하지 않는다.
+//   13. 확인한 Assessment revision 이 아니면 발행하지 않는다.
+//   14. 체험 날짜가 없으면 발행하지 않는다.
+//   15. 종료된 리포트는 되살아나지 않는다.
 //
 // 순수 함수와 소스 검사만 쓴다. DB · 네트워크를 건드리지 않는다.
 // 실제 DB 동작 검증은 local disposable DB 에서 따로 한다.
@@ -140,7 +144,7 @@ if (built.status === "ok") {
 const frozen = decodeExperienceReportSnapshot(1, {
   experience: {
     type: "trial_class",
-    date: null,
+    date: "2026-09-10T07:00:00.000Z",
     child: { displayName: "민준", grade: "초3" },
     academy: { name: "첫수업 학원" },
     class: { title: "수업" }
@@ -230,7 +234,97 @@ for (const option of TRIAL_RESULT_OBSERVATION_OPTIONS) {
   )
 }
 
-console.log("\n── 12. adapter 양쪽이 같은 표면을 갖는다 ──")
+console.log("\n── 12. 학부모 계정이 없으면 발행하지 않는다 ──")
+check("migration 이 parent_id null 을 거절한다", migration.includes("parent_not_linked"))
+check(
+  "거절이 lock 이후에 일어난다",
+  migration.indexOf("for update of ta") < migration.indexOf("parent_not_linked")
+)
+check("mock 도 같은 판정을 한다", read(MOCK_PATH).includes('throw new Error("parent_not_linked")'))
+check(
+  "안내 문구가 있다",
+  migration.includes("학부모 계정이 연결된 뒤 리포트를 발행할 수 있습니다.")
+)
+
+console.log("\n── 13. 확인한 revision 이 아니면 발행하지 않는다 ──")
+check(
+  "publish 가 expected revision 을 받는다",
+  migration.includes("p_expected_assessment_updated_at timestamptz")
+)
+check("source row 도 잠근다", /from public\.trial_results tr[\s\S]*?for update;/.test(migration))
+check(
+  "revision 확인이 스냅샷 조립보다 먼저다",
+  migration.indexOf("assessment_changed_since_preview") < migration.indexOf("v_content := jsonb_build_object")
+)
+check(
+  "null revision 도 거절한다",
+  migration.includes("p_expected_assessment_updated_at is null")
+)
+check(
+  "grant 가 새 signature 를 가리킨다",
+  migration.includes("grant execute on function public.publish_experience_report(uuid, timestamptz)")
+)
+check(
+  "adapter 가 revision 을 넘긴다",
+  read(ADAPTER_PATH).includes("p_expected_assessment_updated_at: expectedAssessmentUpdatedAt")
+)
+check(
+  "mock 도 revision 을 확인한다",
+  read(MOCK_PATH).includes('throw new Error("assessment_changed_since_preview")')
+)
+
+console.log("\n── 14. 체험 날짜는 필수다 ──")
+check("migration 이 날짜 없음을 거절한다", migration.includes("experience_date_missing"))
+check(
+  "TS type 의 date 가 nullable 이 아니다",
+  /experience: \{[\s\S]*?date: string\n/.test(snapshotCode)
+)
+check(
+  "builder 가 날짜 없으면 스냅샷을 만들지 않는다",
+  buildExperienceReportSnapshotV1({
+    ...SOURCE,
+    confirmedSlotAt: null,
+    completedAt: null
+  }).status === "ineligible"
+)
+const dateFallback = buildExperienceReportSnapshotV1({ ...SOURCE, confirmedSlotAt: null })
+check("completed_at 으로 대신한다", dateFallback.status === "ok")
+if (dateFallback.status === "ok") {
+  check("fallback 날짜가 들어간다", dateFallback.snapshot.experience.date === SOURCE.completedAt)
+}
+check(
+  "decoder 가 빈 날짜 스냅샷을 거절한다",
+  decodeExperienceReportSnapshot(1, {
+    experience: {
+      type: "trial_class",
+      date: null,
+      child: { displayName: "민준", grade: "초3" },
+      academy: { name: "학원" },
+      class: { title: "수업" }
+    },
+    observations: [],
+    recommendation: { course: null, level: null, schedule: null }
+  }) === null
+)
+
+console.log("\n── 15. 종료된 리포트는 되살아나지 않는다 ──")
+check(
+  "terminal 상태의 UPDATE 를 막는다",
+  migration.includes("old.status in ('superseded', 'withdrawn')") &&
+    migration.includes("experience_report_lifecycle_is_terminal")
+)
+check(
+  "published 에서 갈 수 있는 곳이 제한된다",
+  migration.includes("new.status not in ('published', 'superseded', 'withdrawn')")
+)
+check("허용되지 않는 전이에 이름이 있다", migration.includes("experience_report_invalid_transition"))
+check(
+  "terminal 검사가 content 검사보다 먼저다",
+  migration.indexOf("experience_report_lifecycle_is_terminal") <
+    migration.indexOf("experience_report_is_immutable")
+)
+
+console.log("\n── 16. adapter 양쪽이 같은 표면을 갖는다 ──")
 const adapter = read(ADAPTER_PATH)
 const mock = read(MOCK_PATH)
 for (const method of [

@@ -2394,7 +2394,7 @@ export const mockDataAdapter: DataAdapter = {
       .filter((item) => item.applicationId === applicationId)
       .sort((left, right) => right.version - left.version)
   },
-  async publishExperienceReport(applicationId: string) {
+  async publishExperienceReport(applicationId: string, expectedAssessmentUpdatedAt: string) {
     const application = applications.find((item) => item.id === applicationId)
     if (!application) {
       throw new Error("application_not_found_or_forbidden")
@@ -2404,9 +2404,19 @@ export const mockDataAdapter: DataAdapter = {
       throw new Error("application_not_completed")
     }
 
+    // 읽을 부모가 없는 발행은 발행이 아니다. supabase 쪽 함수와 같은 판정이다.
+    if (!application.parentId) {
+      throw new Error("parent_not_linked")
+    }
+
     const trialResult = trialResults.find((item) => item.applicationId === applicationId)
     if (!trialResult) {
       throw new Error("trial_result_not_found")
+    }
+
+    // 원장이 확인한 revision 과 지금 저장된 revision 이 같은가.
+    if (trialResult.updatedAt !== expectedAssessmentUpdatedAt) {
+      throw new Error("assessment_changed_since_preview")
     }
 
     // 옛 문구는 자동 발행하지 않는다. supabase 쪽 함수와 같은 판정이다.
@@ -2433,7 +2443,13 @@ export const mockDataAdapter: DataAdapter = {
     })
 
     if (built.status !== "ok") {
-      throw new Error("legacy_observations_require_review")
+      throw new Error(
+        built.reason.status === "experience_date_missing"
+          ? "experience_date_missing"
+          : built.reason.status === "unknown_values"
+            ? "unknown_observations_cannot_publish"
+            : "legacy_observations_require_review"
+      )
     }
 
     const nowIso = new Date().toISOString()
