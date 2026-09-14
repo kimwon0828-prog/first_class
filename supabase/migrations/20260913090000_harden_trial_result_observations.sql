@@ -63,9 +63,10 @@ $$;
 do $$
 declare
   mixed_count integer;
-  sample uuid;
+  -- uuid 에는 min() 이 없다. 예시 하나만 보여 주면 되므로 text 로 받는다.
+  sample text;
 begin
-  select count(*), min(id)
+  select count(*), min(tr.id::text)
   into mixed_count, sample
   from public.trial_results tr
   where exists (
