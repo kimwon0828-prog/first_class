@@ -96,11 +96,12 @@ check(
 check("adapter 가 변환 표를 두지 않는다", !read(ADAPTER_PATH).includes("pending: \"considering\""))
 
 console.log("\n── 4. 표시 판정이 학부모에게 값을 흘리지 않는다 ──")
-check("enrolled 면 묻지 않는다", canCollectParentDecision("enrolled") === false)
-check("not_enrolled 면 묻지 않는다", canCollectParentDecision("not_enrolled") === false)
-check("pending 이면 묻는다", canCollectParentDecision("pending") === true)
-check("undecided 면 묻는다", canCollectParentDecision("undecided") === true)
+// R5 부터 판정 근거는 RegistrationResult 존재 여부다. 등록/미등록 중 무엇으로
+// 확정됐는지는 이 판정에 들어오지 않는다 — 학부모 경로가 그 값을 볼 일이 없다.
+check("확정된 결과가 있으면 묻지 않는다", canCollectParentDecision(true) === false)
+check("확정된 결과가 없으면 묻는다", canCollectParentDecision(false) === true)
 check("값이 없어도 묻는다", canCollectParentDecision(null) === true)
+check("undefined 여도 묻는다", canCollectParentDecision(undefined) === true)
 check(
   "학부모 화면이 boolean 만 본다",
   detailPage.includes("experience.canCollectParentDecision") &&

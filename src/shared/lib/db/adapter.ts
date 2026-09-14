@@ -3,6 +3,7 @@ import type {
   ExperienceReportStatus
 } from "@/features/reports/lib/experience-report-snapshot"
 import type { ParentDecision, ParentDecisionSummary } from "@/features/decisions/lib/parent-decision"
+import type { RegistrationResultSummary } from "@/features/registration/lib/registration-result"
 
 import type { RegularSchedulePreference } from "@/features/studio/lib/regular-schedule-preference"
 import type { ClassSubjectReadModel } from "@/shared/lib/subject-master"
@@ -1277,6 +1278,14 @@ export interface DataAdapter {
   upsertStudioTrialResult(input: UpsertStudioTrialResultInput): Promise<"created" | "updated">
   /** 지금의 생각. 지나간 기록은 돌려주지 않는다. */
   getCurrentParentDecision(applicationId: string): Promise<ParentDecisionSummary | null>
+  /**
+   * 지금 확정된 등록 결과. 지나간 결과는 돌려주지 않는다.
+   *
+   * ⚠️ 쓰기 짝이 없다. 결과는 registration_status 가 바뀌는 transaction 안에서
+   *    DB 가 직접 기록한다 — adapter 에서 따로 써 넣는 경로를 만들면 legacy 상태와
+   *    어긋날 수 있는 자리가 생긴다.
+   */
+  getCurrentRegistrationResult(applicationId: string): Promise<RegistrationResultSummary | null>
   /** 학부모가 선택을 남긴다. 값이 바뀐 경우에만 기록이 이어진다. */
   setParentDecision(applicationId: string, decision: ParentDecision): Promise<SetParentDecisionResult>
   /** 지금 살아 있는 발행본. superseded / withdrawn 은 돌려주지 않는다. */
