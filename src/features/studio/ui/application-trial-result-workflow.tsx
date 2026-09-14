@@ -116,6 +116,14 @@ type ApplicationTrialResultWorkflowProps = {
    * 참조 정보가 그보다 먼저 오면 안 된다(디자인 시스템 §4.2).
    */
   referenceSections?: ReactNode
+  /**
+   * 부모 리포트 발행 Section.
+   *
+   * 체험 결과 바로 다음에 온다 — 원장이 평가를 확인한 흐름 그대로
+   * 발행으로 이어지게 한다(디자인 시스템 §4.2 Section 순서).
+   * 서버에서 공개 snapshot 을 만들어 넘기므로 slot 으로 받는다.
+   */
+  reportSection?: ReactNode
   sidebarContent?: ReactNode
   /** 서버가 정한 기준 시각. 체험 종료 판정이 hydration 전후로 갈리지 않게 한다. */
   nowIso: string
@@ -348,6 +356,7 @@ export const ApplicationTrialResultWorkflow = ({
   application,
   sidebarContent = null,
   referenceSections = null,
+  reportSection = null,
   nowIso,
   paidWriteAccess
 }: ApplicationTrialResultWorkflowProps) => {
@@ -976,6 +985,7 @@ export const ApplicationTrialResultWorkflow = ({
       {referenceSections}
       {activitySection}
       {trialResultSection}
+      {isCompletedView ? reportSection : null}
       {registrationConsultationSection}
 
       {sidebarContent ? <div className={styles.prioritySidebar}>{sidebarContent}</div> : null}
