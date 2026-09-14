@@ -26,7 +26,7 @@ import {
   isParentDecision
 } from "@/features/decisions/lib/parent-decision"
 
-const MIGRATION_PATH = "supabase/migrations/20260915090000_create_parent_decisions.sql"
+const MIGRATION_PATH = "supabase/migrations/20260914220000_create_parent_decisions.sql"
 const ADAPTER_PATH = "src/shared/lib/db/supabase-adapter.ts"
 const MOCK_PATH = "src/shared/lib/db/mock-adapter.ts"
 const ACTION_PATH = "src/features/decisions/actions/set-parent-decision.ts"
