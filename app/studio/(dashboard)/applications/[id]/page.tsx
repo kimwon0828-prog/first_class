@@ -12,7 +12,11 @@ import { getStudioApplicationAssigneeOptions } from "@/features/studio/queries/g
 import { getStudioApplicationDetail } from "@/features/studio/queries/get-studio-application-detail"
 import { ApplicationAssigneeForm } from "@/features/studio/ui/application-assignee-form"
 import { getStudioEntitlementsForDisplay } from "@/features/billing/queries/get-organization-entitlements"
+import { ApplicationReportPublishing, type ReportPublishBlocker } from "@/features/studio/ui/application-report-publishing"
 import { ApplicationTrialResultWorkflow } from "@/features/studio/ui/application-trial-result-workflow"
+import { buildExperienceReportSnapshotV1 } from "@/features/reports/lib/experience-report-snapshot"
+import { getPublishedExperienceReport } from "@/features/reports/queries/get-published-experience-report"
+import { isLegacyTrialResultObservation } from "@/features/studio/lib/trial-result-options"
 import { StudioStatusBadge } from "@/features/studio/ui/studio-status-badge"
 import { getSubjectLabel } from "@/shared/constants/education-taxonomy"
 import { getSeoulDateTimeParts, SEOUL_TIME_ZONE } from "@/shared/lib/seoul-datetime"
@@ -209,6 +213,92 @@ export default async function StudioApplicationDetailPage({ params }: StudioAppl
   // 서버가 정한 한 시각을 이 화면 전체가 공유한다(단계 표시와 다음 할 일이 같은 시각을 본다).
   const nowIso = new Date().toISOString()
   const { entitlements } = await getStudioEntitlementsForDisplay(teacher.organizationId)
+
+  // 지금 부모에게 공개돼 있는 발행본. 체험을 마친 Case 에서만 의미가 있다.
+  const publishedReportResult =
+    data && data.status === "completed"
+      ? await getPublishedExperienceReport(data.id)
+      : { data: null, error: null }
+
+  /*
+   * 발행 영역이 쓸 값을 서버에서 만든다.
+   *
+   * ⚠️ 미리보기를 화면에서 다시 조립하지 않는다. 공개 가능한 field 를 정하는 곳은
+   *    buildExperienceReportSnapshotV1 하나다 — 화면이 따로 만들면 그 whitelist 를
+   *    비켜 가는 경로가 생긴다.
+   */
+  const reportView = (() => {
+    if (!data || data.status !== "completed") {
+      return null
+    }
+
+    const trialResult = data.trialResult
+    const blockers: ReportPublishBlocker[] = []
+
+    if (!data.parentId) {
+      blockers.push({ kind: "parent_not_linked" })
+    }
+
+    if (!trialResult) {
+      blockers.push({ kind: "no_assessment" })
+    }
+
+    // 옛 기준 문구는 자동으로 발행하지 않는다. 원문을 그대로 보여 주고
+    // 원장이 현재 기준 항목을 다시 고르게 한다(R0.1 계약).
+    const legacyValues = (trialResult?.observations ?? []).filter((value) =>
+      isLegacyTrialResultObservation(value)
+    )
+    if (legacyValues.length > 0) {
+      blockers.push({ kind: "legacy_observations", values: legacyValues })
+    }
+
+    const experienceDate = data.confirmedSlotAt ?? data.completedAt ?? null
+    if (!experienceDate) {
+      blockers.push({ kind: "experience_date_missing" })
+    }
+
+    const built = trialResult
+      ? buildExperienceReportSnapshotV1({
+          programType: data.classProgramType ?? "trial_class",
+          confirmedSlotAt: data.confirmedSlotAt,
+          completedAt: data.completedAt,
+          childName: data.childName,
+          childGrade: data.childGrade,
+          academyName: data.academyName ?? "",
+          classTitle: data.classTitle ?? "",
+          observations: trialResult.observations,
+          recommendedCourse: trialResult.recommendedCourse,
+          recommendedLevel: trialResult.recommendedLevel,
+          recommendedSchedule: trialResult.recommendedSchedule
+        })
+      : null
+
+    // ⚠️ 조회 실패를 "발행본 없음" 으로 접지 않는다.
+    //
+    // 둘을 같은 null 로 다루면, 이미 발행된 리포트가 있는데도 화면이
+    // "공개 중인 리포트가 없습니다" 라고 말한다. 원장이 그 말을 믿고 발행을
+    // 누르면 의도하지 않은 새 version 이 생기고 기존 발행본이 superseded 된다.
+    // 모르는 것은 모른다고 말하고 손을 멈춘다.
+    const publishedReportLoadError = publishedReportResult.error
+    const published = publishedReportLoadError ? null : publishedReportResult.data
+
+    // 마지막 발행 이후 평가가 수정됐는가. 두 시각 모두 서버 값이다.
+    // 발행본을 모르는 상태에서는 판단하지 않는다.
+    const assessmentChangedSincePublish = Boolean(
+      published &&
+        trialResult &&
+        new Date(trialResult.updatedAt).getTime() > new Date(published.publishedAt).getTime()
+    )
+
+    return {
+      preview: built?.status === "ok" ? built.snapshot : null,
+      published,
+      publishedReportLoadError,
+      blockers,
+      assessmentChangedSincePublish,
+      assessmentUpdatedAt: trialResult?.updatedAt ?? null
+    }
+  })()
   const detailView = data
     ? (() => {
         const requestedSchedule =
@@ -452,6 +542,26 @@ export default async function StudioApplicationDetailPage({ params }: StudioAppl
               canWriteConsultations: entitlements.canWriteConsultations,
               canReopenConsultation: entitlements.canReopenConsultation
             }}
+            reportSection={
+              reportView &&
+              (reportView.preview ||
+                reportView.published ||
+                reportView.publishedReportLoadError ||
+                reportView.blockers.length > 0) ? (
+                <ApplicationReportPublishing
+                  applicationId={data.id}
+                  preview={reportView.preview}
+                  publishedSnapshot={reportView.published?.content ?? null}
+                  publishedVersion={reportView.published?.version ?? null}
+                  publishedAt={reportView.published?.publishedAt ?? null}
+                  publishedReportLoadError={reportView.publishedReportLoadError}
+                  assessmentUpdatedAt={reportView.assessmentUpdatedAt}
+                  assessmentChangedSincePublish={reportView.assessmentChangedSincePublish}
+                  blockers={reportView.blockers}
+                  canWrite={entitlements.canWriteTrialResults}
+                />
+              ) : null
+            }
             referenceSections={
         <section className={styles.applicationInfoSection} aria-labelledby="application-info-title">
             <div className={styles.applicationInfoHeader}>

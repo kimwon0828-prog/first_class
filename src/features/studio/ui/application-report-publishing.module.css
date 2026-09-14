@@ -1,0 +1,395 @@
+/*
+ * 부모 리포트 발행 영역.
+ *
+ * 체험 결과 Section 과 같은 카드 문법을 쓴다. 리포트라고 해서 별도의 화려한
+ * 레이아웃을 만들지 않는다 — 원장 입장에서는 Case 상세의 한 Section 이다.
+ * card inside card 를 만들지 않기 위해 미리보기는 테두리 없는 블록이다.
+ */
+.card {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  border-radius: var(--r-md);
+  padding: var(--s5);
+}
+
+.sectionCard {
+  display: grid;
+  gap: var(--s3);
+  padding: 18px 20px;
+}
+
+.sectionHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--s3);
+  flex-wrap: wrap;
+}
+
+.sectionTitle {
+  margin: 0;
+  font-size: 20px;
+  line-height: 26px;
+  font-weight: 900;
+  color: var(--text-1);
+}
+
+.sectionDescription {
+  margin: 0;
+  font-size: 14px;
+  line-height: 22px;
+  color: var(--text-2);
+}
+
+/* 상태는 색만으로 말하지 않는다. 배지에 글자가 들어간다. */
+.statusLine {
+  margin: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s2);
+  flex-wrap: wrap;
+}
+
+.statusBadge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 26px;
+  padding: 0 10px;
+  border-radius: var(--r-full);
+  background: var(--green-bg);
+  color: var(--green-fg);
+  font-size: 12px;
+  line-height: 18px;
+  font-weight: 800;
+}
+
+.statusMeta {
+  font-size: 13px;
+  line-height: 20px;
+  color: var(--text-2);
+  font-weight: 700;
+}
+
+.statusMuted {
+  font-size: 13px;
+  line-height: 20px;
+  color: var(--text-3);
+  font-weight: 700;
+}
+
+.block {
+  display: grid;
+  gap: var(--s2);
+}
+
+.blockLabel {
+  margin: 0;
+  font-size: 12px;
+  line-height: 18px;
+  font-weight: 800;
+  color: var(--text-3);
+}
+
+/* 부모가 보게 될 내용. 흰 배경, 넉넉한 여백, 장식 없음. */
+.report {
+  display: grid;
+  gap: var(--s5);
+  padding: var(--s5);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--surface);
+}
+
+.reportHead {
+  display: grid;
+  gap: 2px;
+}
+
+.reportChild {
+  margin: 0;
+  font-size: 20px;
+  line-height: 28px;
+  font-weight: 900;
+  color: var(--text-1);
+}
+
+.reportChildGrade {
+  margin-left: 6px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-2);
+}
+
+.reportDate {
+  margin: 0;
+  font-size: 14px;
+  line-height: 22px;
+  color: var(--text-2);
+  font-weight: 700;
+}
+
+.reportAcademy {
+  margin: 10px 0 0;
+  font-size: 14px;
+  line-height: 22px;
+  color: var(--text-1);
+  font-weight: 800;
+}
+
+.reportClass {
+  margin: 0;
+  font-size: 14px;
+  line-height: 22px;
+  color: var(--text-2);
+}
+
+.reportSection {
+  display: grid;
+  gap: var(--s2);
+}
+
+.reportSectionTitle {
+  margin: 0;
+  font-size: 13px;
+  line-height: 20px;
+  font-weight: 800;
+  color: var(--text-3);
+}
+
+.reportList {
+  margin: 0;
+  padding-left: 18px;
+  display: grid;
+  gap: 6px;
+}
+
+.reportListItem {
+  font-size: 15px;
+  line-height: 24px;
+  color: var(--text-1);
+}
+
+.reportEmpty {
+  margin: 0;
+  font-size: 14px;
+  line-height: 22px;
+  color: var(--text-3);
+}
+
+.reportGrid {
+  margin: 0;
+  display: grid;
+  gap: var(--s2);
+}
+
+.reportGridRow {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr);
+  gap: var(--s3);
+  align-items: baseline;
+}
+
+.reportGridLabel {
+  margin: 0;
+  font-size: 13px;
+  line-height: 22px;
+  color: var(--text-3);
+  font-weight: 700;
+}
+
+.reportGridValue {
+  margin: 0;
+  font-size: 15px;
+  line-height: 22px;
+  color: var(--text-1);
+  font-weight: 700;
+}
+
+/* 발행을 막는 이유. 색이 아니라 글자가 이유를 말한다. */
+.notice {
+  display: grid;
+  gap: 4px;
+  padding: 12px 14px;
+  border: 1px solid #f5e0c8;
+  border-radius: var(--r-md);
+  background: var(--amber-bg);
+}
+
+.noticeTitle {
+  margin: 0;
+  font-size: 14px;
+  line-height: 21px;
+  font-weight: 800;
+  color: var(--text-1);
+}
+
+.noticeBody {
+  margin: 0;
+  font-size: 13px;
+  line-height: 20px;
+  color: var(--text-2);
+}
+
+.noticeList {
+  margin: 4px 0 0;
+  padding-left: 18px;
+  display: grid;
+  gap: 2px;
+  font-size: 13px;
+  line-height: 20px;
+  color: var(--text-2);
+}
+
+.message {
+  border-radius: var(--r-md);
+  padding: 12px 14px;
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 700;
+  border: 1px solid var(--border);
+}
+
+.messageError {
+  background: var(--red-bg);
+  border-color: #f3c3c3;
+  color: var(--red-fg);
+}
+
+.messageSuccess {
+  background: var(--green-bg);
+  border-color: #d6e9dc;
+  color: var(--green-fg);
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  flex-wrap: wrap;
+}
+
+.publishForm {
+  display: contents;
+}
+
+.footnote {
+  margin: 0;
+  font-size: 12px;
+  line-height: 19px;
+  color: var(--text-3);
+}
+
+.primaryButton,
+.secondaryButton,
+.dangerButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 42px;
+  padding: 0 14px;
+  border-radius: var(--r-md);
+  font-size: 14px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.primaryButton {
+  border: 0;
+  background: var(--brand-700);
+  color: #ffffff;
+}
+
+.primaryButton:hover:not(:disabled) {
+  background: var(--brand-900);
+}
+
+.secondaryButton {
+  border: 1px solid var(--border);
+  background: var(--surface-sub);
+  color: var(--text-2);
+}
+
+/* 철회는 되돌리기 어려운 동작이라 Primary 보다 약하게 둔다. */
+.dangerButton {
+  border: 1px solid #f3c3c3;
+  background: var(--red-bg);
+  color: var(--red-fg);
+}
+
+.textButton {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: var(--text-2);
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.textButton:hover:not(:disabled) {
+  color: var(--text-1);
+}
+
+.primaryButton:disabled,
+.secondaryButton:disabled,
+.dangerButton:disabled,
+.textButton:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.dialogOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--s5);
+  background: rgba(15, 23, 15, 0.44);
+}
+
+.dialogCard {
+  position: relative;
+  width: min(100%, 460px);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  box-shadow: 0 20px 44px rgba(17, 24, 17, 0.16);
+  padding: var(--s6);
+}
+
+.dialogBody {
+  display: grid;
+  gap: 10px;
+}
+
+.dialogTitle {
+  margin: 0;
+  font-size: 22px;
+  line-height: 28px;
+  font-weight: 900;
+  color: var(--text-1);
+}
+
+.dialogDescription {
+  margin: 0;
+  font-size: 14px;
+  line-height: 22px;
+  color: var(--text-2);
+}
+
+.dialogActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 18px;
+}
+
+@media (max-width: 720px) {
+  .reportGridRow {
+    grid-template-columns: 64px minmax(0, 1fr);
+  }
+}
