@@ -3,6 +3,7 @@ import {
   isParentDecision,
   type ParentDecision
 } from "@/features/decisions/lib/parent-decision"
+import { isRegistrationResult } from "@/features/registration/lib/registration-result"
 import {
   buildExperienceReportSnapshotV1,
   checkObservationPublicationEligibility,
@@ -1630,7 +1631,11 @@ export const mockDataAdapter: DataAdapter = {
         completedAt: item.completedAt ?? null,
         canceledAt: item.canceledAt ?? null,
         status: item.status,
-        canCollectParentDecision: canCollectParentDecision(item.registrationStatus ?? null),
+        // mock 에는 registration_results 가 없다. 동기화 계약이 보장하는 것과 같은
+        // 값을 만든다 — 확정 상태면 현재 결과가 있고, 아니면 없다.
+        canCollectParentDecision: canCollectParentDecision(
+          isRegistrationResult(item.registrationStatus ?? null)
+        ),
         canCancel:
           item.registrationStatus !== "enrolled" &&
           (item.status === "new" || item.status === "reviewing" || item.status === "confirmed"),
@@ -2409,6 +2414,24 @@ export const mockDataAdapter: DataAdapter = {
     )
 
     return current ? { decision: current.decision, createdAt: current.createdAt } : null
+  },
+  async getCurrentRegistrationResult(applicationId: string) {
+    // mock 에는 결과 이력 table 이 없다. 동기화 계약이 보장하는 현재 상태만 만든다 —
+    // 확정 상태면 현재 결과가 하나 있고, pending / undecided 면 없다.
+    const application = applications.find((item) => item.id === applicationId)
+    const result = application?.registrationStatus ?? null
+
+    if (!isRegistrationResult(result)) {
+      return null
+    }
+
+    return {
+      result,
+      origin: "studio" as const,
+      resolvedAt:
+        result === "enrolled" ? application?.enrolledAt ?? null : application?.lostAt ?? null,
+      createdAt: application?.updatedAt ?? new Date().toISOString()
+    }
   },
   async setParentDecision(applicationId: string, decision: ParentDecision) {
     const application = applications.find((item) => item.id === applicationId)

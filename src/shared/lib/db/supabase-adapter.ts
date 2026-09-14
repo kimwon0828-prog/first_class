@@ -4,6 +4,10 @@ import {
   type ParentDecision
 } from "@/features/decisions/lib/parent-decision"
 import {
+  isRegistrationResult,
+  isRegistrationResultOrigin
+} from "@/features/registration/lib/registration-result"
+import {
   EXPERIENCE_REPORT_STATUSES,
   decodeExperienceReportSnapshot
 } from "@/features/reports/lib/experience-report-snapshot"
@@ -242,6 +246,11 @@ type TrialApplicationRow = {
   final_level?: string | null
   final_schedule?: string | null
   registration_status?: ApplicationRegistrationStatus
+  /**
+   * registration_results 를 읽는 computed column 이다(직접 저장하는 값이 아니다).
+   * 지금 확정된 등록 결과가 있는지만 알려 준다 — 학부모 경로가 raw 결과값 대신 쓴다.
+   */
+  has_current_registration_result?: boolean | null
   registered_course?: string | null
   unregistered_reason?: ApplicationUnregisteredReason | null
   unregistered_reason_note?: string | null
@@ -4148,7 +4157,7 @@ export const supabaseDataAdapter: DataAdapter = {
     const { data, error } = await supabase
       .from("trial_applications")
       .select(
-        "id, class_id, child_id, child_name, child_grade, class_schedule_id, requested_schedule_block_id, selected_schedule_label, requested_slot_at, confirmed_slot_at, completed_at, canceled_at, registration_status, status, created_at, updated_at, classes(title, program_type, organization_id)"
+        "id, class_id, child_id, child_name, child_grade, class_schedule_id, requested_schedule_block_id, selected_schedule_label, requested_slot_at, confirmed_slot_at, completed_at, canceled_at, registration_status, has_current_registration_result, status, created_at, updated_at, classes(title, program_type, organization_id)"
       )
       .eq("parent_id", parentId)
       .order("created_at", { ascending: false })
@@ -4193,7 +4202,10 @@ export const supabaseDataAdapter: DataAdapter = {
         completedAt: row.completed_at ?? null,
         canceledAt: row.canceled_at ?? null,
         status: row.status,
-        canCollectParentDecision: canCollectParentDecision(row.registration_status ?? null),
+        // 확정된 결과가 있는가만 본다. registration_status 원문이 아니라
+        // registration_results 를 source 로 쓰는 computed column 이다 —
+        // 학부모 DTO 로 나가는 값은 끝까지 boolean 하나뿐이다.
+        canCollectParentDecision: canCollectParentDecision(row.has_current_registration_result),
         canCancel: resolveParentCanCancel(row.status, row.registration_status ?? null),
         createdAt: row.created_at,
         updatedAt: row.updated_at
@@ -5399,6 +5411,32 @@ export const supabaseDataAdapter: DataAdapter = {
     }
 
     return { decision: data.decision, createdAt: data.created_at as string }
+  },
+  async getCurrentRegistrationResult(applicationId: string) {
+    const supabase = await getSupabaseServerClient()
+    // RLS 가 자기 조직 신청만 준다. 학부모에게는 SELECT 정책 자체가 없어서
+    // 이 호출은 학원 화면에서만 의미가 있다.
+    const { data, error } = await supabase
+      .from("registration_results")
+      .select("result, origin, resolved_at, created_at")
+      .eq("application_id", applicationId)
+      .is("superseded_at", null)
+      .maybeSingle()
+
+    if (error) {
+      throw new Error("failed_to_fetch_registration_result")
+    }
+
+    if (!data || !isRegistrationResult(data.result) || !isRegistrationResultOrigin(data.origin)) {
+      return null
+    }
+
+    return {
+      result: data.result,
+      origin: data.origin,
+      resolvedAt: (data.resolved_at as string | null) ?? null,
+      createdAt: data.created_at as string
+    }
   },
   async setParentDecision(applicationId: string, decision: ParentDecision) {
     const supabase = await getSupabaseServerClient()

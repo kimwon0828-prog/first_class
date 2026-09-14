@@ -39,13 +39,15 @@ export const getParentDecisionLabel = (value: ParentDecision): string =>
  * "등록할 생각인가요" 를 묻는 것은 무의미하고, 학부모에게는 학원이 무엇을
  * 적어 뒀는지 모르는 채 답하라는 말이 된다.
  *
- * ⚠️ 이 판정은 registration_status 를 학부모 화면으로 내보내기 위한 것이 아니다.
- *    서버에서 boolean 하나로 접어서 넘긴다 — 원래 값은 학부모 DTO 에 들어가지 않는다.
- *    그리고 이 판정이 ParentDecision 을 만들지도 않는다. 표시 여부만 정한다.
+ * 판정 근거는 RegistrationResult 다 — registration_status 원문이 아니다.
+ * "확정된 결과가 있는가" 하나만 받는다. 무엇으로 확정됐는지(enrolled 인지
+ * not_enrolled 인지)는 이 판정에 필요 없고, 학부모 화면이 알 필요도 없다.
+ *
+ * ⚠️ 이 판정이 ParentDecision 을 만들지 않는다. 표시 여부만 정한다.
  */
 export const canCollectParentDecision = (
-  registrationStatus: string | null | undefined
-): boolean => registrationStatus !== "enrolled" && registrationStatus !== "not_enrolled"
+  hasCurrentRegistrationResult: boolean | null | undefined
+): boolean => hasCurrentRegistrationResult !== true
 
 /** 학부모/학원 화면이 받는 현재 선택. raw row 를 그대로 넘기지 않는다. */
 export type ParentDecisionSummary = {

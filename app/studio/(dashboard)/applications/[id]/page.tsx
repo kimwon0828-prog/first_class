@@ -20,6 +20,7 @@ import {
 } from "@/features/reports/lib/experience-report-snapshot"
 import { getPublishedExperienceReport } from "@/features/reports/queries/get-published-experience-report"
 import { getStudioParentDecision } from "@/features/decisions/queries/get-studio-parent-decision"
+import { getStudioRegistrationResult } from "@/features/registration/queries/get-studio-registration-result"
 import { StudioParentDecision } from "@/features/decisions/ui/studio-parent-decision"
 import { isLegacyTrialResultObservation } from "@/features/studio/lib/trial-result-options"
 import { StudioStatusBadge } from "@/features/studio/ui/studio-status-badge"
@@ -231,6 +232,12 @@ export default async function StudioApplicationDetailPage({ params }: StudioAppl
       ? await getStudioParentDecision(data.id)
       : { data: null, error: null }
 
+  // 지금 확정된 등록 결과. 학부모가 남긴 생각과 다른 값이며 서로 섞지 않는다.
+  const registrationResult =
+    data && data.status === "completed"
+      ? await getStudioRegistrationResult(data.id)
+      : { data: null, error: null }
+
   /*
    * 발행 영역이 쓸 값을 서버에서 만든다.
    *
@@ -411,11 +418,15 @@ export default async function StudioApplicationDetailPage({ params }: StudioAppl
           scheduleStartTime: data.scheduleStartTime,
           scheduleEndTime: data.scheduleEndTime
         }, new Date(nowIso))
+        // 확정 시각의 source of truth 는 RegistrationResult 다.
+        // 조회에 실패했거나(에러) 아직 결과가 기록되지 않은 legacy Case 에서만
+        // 기존 timestamp 로 돌아간다 — 화면이 빈칸이 되지 않게.
+        const resolvedAtFromResult = registrationResult.data?.resolvedAt ?? null
         const closedStep =
           caseStage === "enrolled"
-            ? { label: "등록", at: data.enrolledAt }
+            ? { label: "등록", at: resolvedAtFromResult ?? data.enrolledAt }
             : caseStage === "not_enrolled"
-              ? { label: "미등록", at: data.lostAt }
+              ? { label: "미등록", at: resolvedAtFromResult ?? data.lostAt }
               : caseStage === "no_show"
                 ? { label: "노쇼", at: data.noShowAt }
                 : caseStage === "canceled"
