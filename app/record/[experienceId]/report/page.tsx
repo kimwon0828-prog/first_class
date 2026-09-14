@@ -4,6 +4,7 @@ import { unstable_noStore as noStore } from "next/cache"
 
 import { requireParentAccess } from "@/features/my/lib/require-parent-access"
 import { getMyExperienceReport } from "@/features/record/queries/get-my-experience-report"
+import { getSeoulDateTimeParts } from "@/shared/lib/seoul-datetime"
 
 import styles from "./page.module.css"
 
@@ -20,29 +21,39 @@ import styles from "./page.module.css"
 export const dynamic = "force-dynamic"
 export const revalidate = 0
 
+/*
+ * 날짜는 서버가 어디서 도는지와 무관하게 한국 시간으로 읽는다.
+ *
+ * getFullYear() 류는 실행 환경의 timezone 을 따른다. Vercel 은 UTC 라서,
+ * 한국 시간 자정 직후에 있었던 체험이 학부모 화면에서 하루 전으로 보인다.
+ * "9월 15일 오전에 다녀온 체험" 이 "9월 14일" 로 적히면 그건 다른 기록이다.
+ *
+ * 기존 helper 를 그대로 쓴다. timezone 계산을 또 만들지 않는다.
+ */
+const SEOUL_WEEKDAY_SHORT = ["일", "월", "화", "수", "목", "금", "토"]
+
 const formatReportDate = (value: string | null) => {
   if (!value) {
     return null
   }
 
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) {
+  const parts = getSeoulDateTimeParts(value)
+  if (!parts) {
     return null
   }
 
-  const weekdays = ["일", "월", "화", "수", "목", "금", "토"]
-  return `${date.getFullYear()}년 ${date.getMonth() + 1}월 ${date.getDate()}일 (${weekdays[date.getDay()]})`
+  return `${parts.year}년 ${parts.month}월 ${parts.day}일 (${SEOUL_WEEKDAY_SHORT[parts.weekday]})`
 }
 
 const formatPublishedDate = (value: string) => {
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) {
+  const parts = getSeoulDateTimeParts(value)
+  if (!parts) {
     return null
   }
 
-  const month = `${date.getMonth() + 1}`.padStart(2, "0")
-  const day = `${date.getDate()}`.padStart(2, "0")
-  return `${date.getFullYear()}.${month}.${day}`
+  const month = `${parts.month}`.padStart(2, "0")
+  const day = `${parts.day}`.padStart(2, "0")
+  return `${parts.year}.${month}.${day}`
 }
 
 export default async function ExperienceReportPage({
