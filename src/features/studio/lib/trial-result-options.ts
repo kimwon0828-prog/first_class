@@ -150,6 +150,25 @@ export const describeTrialResultObservation = (
   return null
 }
 
+/**
+ * 한 배열이 한 가지 표기만 쓰는가.
+ *
+ * 옛 문구와 새 code 를 한 row 에 섞으면 "이 관찰은 어느 기준으로 적힌 것인가" 에
+ * 답할 수 없다. Report 는 canonical 만 공개 후보로 삼기 때문에, 섞인 row 는
+ * 절반만 발행되고 학부모는 그것이 일부라는 사실을 알 수 없다.
+ *
+ * DB CHECK 도 같은 것을 막는다. 여기 두는 이유는 DB 가 거절할 때 원장이 보는
+ * 문구가 "저장 실패" 뿐이기 때문이다. 저장 전에 같은 기준으로 먼저 판단한다.
+ *
+ * 빈 배열은 일관된 것으로 본다.
+ */
+export const isConsistentObservationRepresentation = (values: readonly string[]): boolean => {
+  const hasCanonical = values.some((value) => normalizeTrialResultObservation(value) !== null)
+  const hasLegacy = values.some((value) => isLegacyTrialResultObservation(value))
+
+  return !(hasCanonical && hasLegacy)
+}
+
 export const TRIAL_RESULT_PARENT_REACTION_OPTIONS: Array<{
   value: StudioTrialResultParentReaction
   label: string

@@ -13,6 +13,7 @@
 //   8.  updated_by 가 배선돼 있다.
 //   9.  학부모 노출이 0 이다.
 //   10. DB 허용 집합 = canonical 7 + legacy 7.
+//   11. 한 row 는 한 표기만 쓴다 — legacy 와 canonical 을 섞을 수 없다.
 //
 // 1–7 은 순수 함수로, 8–10 은 소스 검사로 본다. DB · 네트워크를 건드리지 않는다.
 // 실데이터 점검은 배포 전 READ ONLY 조회로 따로 한다(아래 §11 참고).
@@ -28,6 +29,7 @@ import {
   TRIAL_RESULT_OBSERVATION_OPTIONS,
   describeTrialResultObservation,
   getTrialResultObservationLabel,
+  isConsistentObservationRepresentation,
   isLegacyTrialResultObservation,
   normalizeTrialResultObservation
 } from "@/features/studio/lib/trial-result-options"
@@ -223,12 +225,16 @@ const parentHits = PARENT_SURFACES.filter((dir) => existsSync(resolve(process.cw
 check("학부모 경로에 observations 참조가 없다", parentHits.length === 0, parentHits.join(", "))
 
 console.log("\n── 10. DB 허용 집합 = canonical 7 + legacy 7 ──")
-const allowedBlock = migrationSource.slice(
-  migrationSource.indexOf("observations <@ array["),
-  migrationSource.indexOf("]::text[]")
+// constraint 본문만 잘라 본다. 뒤따르는 comment on constraint 의 문자열까지
+// 세면 허용 값이 아닌 것을 허용 값으로 잘못 읽는다.
+const allowedConstraintBody = migrationSource.slice(
+  migrationSource.indexOf("add constraint trial_results_observations_allowed_check"),
+  migrationSource.indexOf("comment on constraint trial_results_observations_allowed_check")
 )
-const allowedValues = Array.from(allowedBlock.matchAll(/'([^']+)'/g)).map((match) => match[1])
-check("CHECK 허용 값이 14개다", allowedValues.length === 14, `actual ${allowedValues.length}`)
+const allowedValues = Array.from(allowedConstraintBody.matchAll(/'([^']+)'/g)).map(
+  (match) => match[1]
+)
+check("CHECK 가 다루는 값이 14개다", allowedValues.length === 14, `actual ${allowedValues.length}`)
 check("canonical 7개가 모두 들어 있다", CANONICAL.every((code) => allowedValues.includes(code)))
 check("legacy 7개가 모두 들어 있다", LEGACY.every((label) => allowedValues.includes(label)))
 check(
@@ -238,7 +244,82 @@ check(
 check("transitional 임이 명시돼 있다", migrationSource.includes("transitional"))
 check("cardinality 상한이 7 이다", /cardinality\(observations\)\s*<=\s*7/.test(migrationSource))
 
-console.log("\n── 11. 배포 전 READ ONLY 실데이터 점검(수동) ──")
+console.log("\n── 11. 표현 일관성: 한 row 는 한 표기만 ──")
+// 섞인 배열은 "어느 기준으로 적힌 관찰인가" 에 답할 수 없다.
+// Report 가 canonical 만 공개 후보로 삼기 때문에 절반만 발행되는 결과가 된다.
+const REPRESENTATION_CASES: Array<{ label: string; values: string[]; allowed: boolean }> = [
+  { label: "empty", values: [], allowed: true },
+  { label: "legacy-only", values: ["집중을 잘했어요", "발표를 잘했어요"], allowed: true },
+  { label: "legacy-only (1개)", values: ["난이도가 쉬워 보였어요"], allowed: true },
+  {
+    label: "canonical-only",
+    values: ["sustained_engagement", "needs_some_guidance"],
+    allowed: true
+  },
+  { label: "canonical-only (7개 전체)", values: CANONICAL, allowed: true },
+  { label: "mixed legacy + canonical", values: ["집중을 잘했어요", "sustained_engagement"], allowed: false },
+  {
+    label: "mixed (legacy 다수 + canonical 1)",
+    values: ["난이도가 높아 보였어요", "발표를 잘했어요", "verbal_explanation"],
+    allowed: false
+  }
+]
+for (const testCase of REPRESENTATION_CASES) {
+  check(
+    `${testCase.label} → ${testCase.allowed ? "PASS" : "REJECT"}`,
+    isConsistentObservationRepresentation(testCase.values) === testCase.allowed
+  )
+}
+// unknown 은 이 함수가 아니라 normalize 단계에서 걸린다. 두 관문이 모두 살아 있어야 한다.
+check(
+  "unknown 은 normalize 단계에서 거절된다",
+  ["made_up_code", "집중력이 높아요"].every((value) => normalizeTrialResultObservation(value) === null)
+)
+check(
+  "action 이 저장 직전 표현 일관성을 확인한다",
+  actionSource.includes("isConsistentObservationRepresentation(observations)")
+)
+
+console.log("\n── 12. DB 가 mixed 를 거절한다 ──")
+check(
+  "CHECK 가 합집합이 아니라 두 부분집합의 OR 다",
+  /observations <@ array\[[\s\S]*?\]::text\[\][\s\S]{0,80}?\bor\b[\s\S]*?observations <@ array\[/.test(
+    migrationSource
+  )
+)
+const allowedBranches = allowedConstraintBody.split("observations <@ array[").slice(1)
+check("허용 가지가 정확히 2개다", allowedBranches.length === 2, `actual ${allowedBranches.length}`)
+const branchValues = allowedBranches.map((branch) =>
+  Array.from(branch.slice(0, branch.indexOf("]::text[]")).matchAll(/'([^']+)'/g)).map((m) => m[1])
+)
+check(
+  "한 가지는 canonical 7개 전용이다",
+  branchValues.some(
+    (values) => values.length === 7 && values.every((value) => CANONICAL.includes(value))
+  )
+)
+check(
+  "다른 가지는 legacy 7개 전용이다",
+  branchValues.some((values) => values.length === 7 && values.every((value) => LEGACY.includes(value)))
+)
+check(
+  "두 가지가 섞이지 않는다",
+  branchValues.every(
+    (values) =>
+      values.every((value) => CANONICAL.includes(value)) ||
+      values.every((value) => LEGACY.includes(value))
+  )
+)
+check(
+  "migration 이 mixed row 를 사전 검사한다",
+  /옛 문구와 새 code 가 섞인 row/.test(migrationSource)
+)
+check(
+  "mixed 금지가 영문으로도 명시돼 있다",
+  migrationSource.includes("mixed representation is prohibited")
+)
+
+console.log("\n── 13. 배포 전 READ ONLY 실데이터 점검(수동) ──")
 console.log(`        migration 적용 전후로 아래를 실행해 같은 결과가 나오는지 확인한다.
 
         select id, observations from public.trial_results

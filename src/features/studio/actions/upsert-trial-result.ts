@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache"
 import { requireStudioEntitlement } from "@/features/billing/lib/require-entitlement"
 import { requireTeacherStudioAccess } from "@/features/studio/lib/require-teacher-studio-access"
 import {
+  isConsistentObservationRepresentation,
   isLegacyTrialResultObservation,
   normalizeTrialResultObservation
 } from "@/features/studio/lib/trial-result-options"
@@ -216,6 +217,17 @@ export async function upsertTrialResultAction(
   const observationsTouched = formData.get("observationsTouched") === "true"
   const preservedObservations = current.trialResult?.observations ?? []
   const observations = observationsTouched ? submitted.values : preservedObservations
+
+  // 한 row 는 한 표기만 쓴다. 위 두 갈래는 각각 canonical 전용 · 기존 배열 그대로라
+  // 여기까지 섞인 배열이 오지 않는다. DB CHECK 도 같은 것을 막는다.
+  // 그래도 막아 두는 이유는, 뚫렸을 때 원장이 보는 문구가 "저장 실패" 뿐이기 때문이다.
+  if (!isConsistentObservationRepresentation(observations)) {
+    return {
+      status: "error",
+      message:
+        "기존 관찰 기록과 현재 기준 항목이 섞여 있습니다. 화면을 새로고침한 뒤 현재 기준의 항목으로 다시 선택해 주세요."
+    }
+  }
 
   const nextValue = {
     observations,

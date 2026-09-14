@@ -51,6 +51,48 @@ end
 $$;
 
 -- ─────────────────────────────────────────────────────────────
+-- 1-2. 한 row 안에 두 표기가 섞여 있으면 멈춘다
+--
+-- 아래 CHECK 가 섞인 배열을 거절하므로, 그런 row 가 남아 있으면 constraint 를
+-- 거는 순간 읽기 어려운 메시지로 실패한다. 먼저 사람이 읽을 수 있는 말로 멈춘다.
+--
+-- 섞인 row 는 "옛 기록 일부만 새 기준으로 옮겨 적은" 상태다. 기계가 나머지를
+-- 짐작해 채울 수 없다 — 옛 문구와 새 code 는 의미가 같지 않기 때문이다.
+-- Production 사전 조회 결과 0 건이다.
+-- ─────────────────────────────────────────────────────────────
+do $$
+declare
+  mixed_count integer;
+  sample uuid;
+begin
+  select count(*), min(id)
+  into mixed_count, sample
+  from public.trial_results tr
+  where exists (
+    select 1 from unnest(tr.observations) as value
+    where value in (
+      'sustained_engagement', 'active_participation', 'verbal_explanation',
+      'independent_after_instruction', 'needs_some_guidance',
+      'needs_repeated_guidance', 'ready_for_more_challenge'
+    )
+  )
+  and exists (
+    select 1 from unnest(tr.observations) as value
+    where value in (
+      '집중을 잘했어요', '적극적으로 참여했어요', '발표를 잘했어요', '이해가 빨랐어요',
+      '도움이 조금 필요했어요', '난이도가 높아 보였어요', '난이도가 쉬워 보였어요'
+    )
+  );
+
+  if mixed_count <> 0 then
+    raise exception
+      'trial_results.observations 에 옛 문구와 새 code 가 섞인 row 가 % 건 있습니다 (예: %). 한 row 는 한 표기만 쓸 수 있습니다. 사람이 현재 기준으로 다시 확인한 뒤 실행하세요.',
+      mixed_count, sample;
+  end if;
+end
+$$;
+
+-- ─────────────────────────────────────────────────────────────
 -- 2. DB 도 같은 목록만 받는다
 --
 -- server validation 과 이중 방어다. 애플리케이션을 우회한 write 나
@@ -64,25 +106,42 @@ $$;
 --    기존 row 가 valid 로 남아야 하고, 관찰 항목을 건드리지 않은 수정 저장이
 --    기존 배열을 그대로 다시 쓰기 때문이다.
 --
---    남은 legacy row 를 사람이 현재 기준으로 다시 확인한 뒤에는, 옛 문구 7개를
---    빼고 새 code 7개만 남기는 migration 을 따로 추가한다.
+--    ⚠️ 두 목록의 합집합이 아니다. 한 row 는 둘 중 한쪽에만 속해야 한다.
+--       transitional storage permits legacy-only or canonical-only arrays;
+--       mixed representation is prohibited.
+--
+--       섞인 배열을 허용하면 "이 관찰은 어느 기준으로 적힌 것인가" 에 답할 수
+--       없는 row 가 생긴다. Report 는 canonical 만 공개 후보로 삼는데, 섞인
+--       row 에서는 공개 가능한 절반만 발행되어 학부모가 본 기록이 실제 관찰의
+--       일부라는 사실이 드러나지 않는다. 같은 이유로 화면도 한쪽을 골라
+--       보여 주지 않고 두 영역을 나눠 보여 준다.
+--
+--       허용:  {} · {legacy, legacy} · {canonical, canonical}
+--       금지:  {legacy, canonical}
+--
+--    남은 legacy row 를 사람이 현재 기준으로 다시 확인한 뒤에는, 옛 문구 쪽
+--    가지를 통째로 빼는 migration 을 따로 추가한다.
 -- ─────────────────────────────────────────────────────────────
 alter table public.trial_results
   add constraint trial_results_observations_allowed_check
   check (
+    -- 새 code 전용 — 신규 write 가 쓰는 값
     observations <@ array[
-      -- 새 code — 신규 write 가 쓰는 값
       'sustained_engagement', 'active_participation', 'verbal_explanation',
       'independent_after_instruction', 'needs_some_guidance',
-      'needs_repeated_guidance', 'ready_for_more_challenge',
-      -- 문구를 저장하던 시절의 값 — 기존 row 보존 전용(transitional)
+      'needs_repeated_guidance', 'ready_for_more_challenge'
+    ]::text[]
+    or
+    -- 옛 문구 전용 — 기존 row 보존 전용(transitional)
+    observations <@ array[
       '집중을 잘했어요', '적극적으로 참여했어요', '발표를 잘했어요', '이해가 빨랐어요',
       '도움이 조금 필요했어요', '난이도가 높아 보였어요', '난이도가 쉬워 보였어요'
     ]::text[]
+    -- 빈 배열은 양쪽 모두에 대해 참이라 그대로 허용된다.
   );
 
 comment on constraint trial_results_observations_allowed_check on public.trial_results is
-  'transitional. 새 code 7개 + 문구를 저장하던 시절의 값 7개. 옛 문구는 기존 row 보존 전용이며 신규 write 는 server 에서 거절한다.';
+  'transitional. legacy-only 또는 canonical-only 배열만 허용하고 두 표기를 섞은 배열은 금지한다. 옛 문구는 기존 row 보존 전용이며 신규 write 는 server 에서 거절한다.';
 
 -- 한 row 가 고를 수 있는 관찰은 7개뿐이다. 옛 문구와 새 code 는 같은 축의
 -- 서로 다른 표기라 함께 세지 않는다 — 그보다 긴 배열은 중복이거나 조작이다.
