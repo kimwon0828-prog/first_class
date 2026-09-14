@@ -609,6 +609,26 @@ export type TrialApplicationSummary = {
 }
 
 /**
+ * 신청 생성 직후 돌려주는 값.
+ *
+ * TrialApplicationSummary 를 쓰지 않는다 — 거기엔 registrationStatus 가 있고,
+ * 학부모가 방금 만든 신청에 그 값이 있을 리 없다. 생성 직후 필요한 것은
+ * 학원 알림에 실을 사실 몇 개뿐이라 그것만 담는다.
+ */
+export type CreatedTrialApplication = {
+  id: string
+  classId: string
+  parentId: string | null
+  childName: string
+  parentName: string | null
+  parentPhone: string | null
+  classTitle: string | null
+  requestedSlotAt: string
+  confirmedSlotAt: string | null
+  selectedScheduleLabel: string | null
+}
+
+/**
  * 학부모 화면이 보는 신청. Studio 와 타입을 공유하지 않는다.
  *
  * ⚠️ whitelist 다. "일단 다 담고 화면에서 안 쓰기" 를 하지 않는다 —
@@ -1307,7 +1327,7 @@ export interface DataAdapter {
   withdrawExperienceReport(applicationId: string): Promise<WithdrawExperienceReportResult>
   createTrialApplication(
     input: TrialApplicationInput
-  ): Promise<TrialApplicationSummary>
+  ): Promise<CreatedTrialApplication>
   getPendingTeacherSignupRequest(userId: string): Promise<TeacherSignupRequest | null>
   createTeacherSignupRequest(input: CreateTeacherSignupRequestInput): Promise<TeacherSignupRequest>
 }
