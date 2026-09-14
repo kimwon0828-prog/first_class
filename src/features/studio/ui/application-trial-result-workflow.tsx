@@ -124,6 +124,13 @@ type ApplicationTrialResultWorkflowProps = {
    * 서버에서 공개 snapshot 을 만들어 넘기므로 slot 으로 받는다.
    */
   reportSection?: ReactNode
+  /**
+   * 학부모가 남긴 현재 생각(읽기 전용).
+   *
+   * 등록 상담 바로 앞에 둔다 — 원장이 상담을 적기 전에 학부모가 지금 무슨
+   * 생각인지 먼저 보는 순서다. 학원은 이 값을 고칠 수 없다.
+   */
+  parentDecisionSection?: ReactNode
   sidebarContent?: ReactNode
   /** 서버가 정한 기준 시각. 체험 종료 판정이 hydration 전후로 갈리지 않게 한다. */
   nowIso: string
@@ -357,6 +364,7 @@ export const ApplicationTrialResultWorkflow = ({
   sidebarContent = null,
   referenceSections = null,
   reportSection = null,
+  parentDecisionSection = null,
   nowIso,
   paidWriteAccess
 }: ApplicationTrialResultWorkflowProps) => {
@@ -986,6 +994,7 @@ export const ApplicationTrialResultWorkflow = ({
       {activitySection}
       {trialResultSection}
       {isCompletedView ? reportSection : null}
+      {isCompletedView ? parentDecisionSection : null}
       {registrationConsultationSection}
 
       {sidebarContent ? <div className={styles.prioritySidebar}>{sidebarContent}</div> : null}

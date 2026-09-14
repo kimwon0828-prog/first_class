@@ -10,7 +10,9 @@ import {
   getExperienceStageLabel
 } from "@/features/record/lib/experience-view"
 import { getMyExperienceDetail } from "@/features/record/queries/get-my-experience-detail"
+import { getMyCurrentParentDecision } from "@/features/decisions/queries/get-my-current-parent-decision"
 import { getMyExperienceReport } from "@/features/record/queries/get-my-experience-report"
+import { ParentDecisionForm } from "@/features/decisions/ui/parent-decision-form"
 import { ExperienceCancelButton } from "@/features/record/ui/experience-cancel-button"
 import { ExperienceTimeline } from "@/features/record/ui/experience-timeline"
 import { getSeoulDateTimeParts } from "@/shared/lib/seoul-datetime"
@@ -80,6 +82,17 @@ export default async function ExperienceDetailPage({
   // ⚠️ 조회 실패를 "리포트 없음" 으로 접지 않는다. CTA 는 숨기되 왜인지 한 줄 말한다.
   const reportLoadFailed = reportResult.status === "error"
 
+  /*
+   * 체험을 마친 뒤에만, 그리고 등록 여부가 아직 확정되지 않았을 때만 묻는다.
+   *
+   * canCollectParentDecision 은 서버에서 접은 boolean 이다 —
+   * 학원이 등록 여부를 무엇으로 적어 뒀는지는 학부모 화면으로 넘어오지 않는다.
+   *
+   * 리포트 유무와는 무관하다. 리포트가 없어도 부모는 자기 생각을 남길 수 있다.
+   */
+  const showDecision = experience.status === "completed" && experience.canCollectParentDecision
+  const decisionResult = showDecision ? await getMyCurrentParentDecision(experienceId) : null
+
   const stage = resolveExperienceStage(experience)
   const typeLabel = getExperienceTypeLabel(experience.classProgramType)
   const primaryDate = resolveParentExperienceDate(experience)
@@ -130,6 +143,21 @@ export default async function ExperienceDetailPage({
           </h2>
           <ExperienceTimeline experience={experience} />
         </section>
+
+        {showDecision && decisionResult && decisionResult.status !== "not_found" ? (
+          <section className={styles.block} aria-labelledby="decision-title">
+            <h2 id="decision-title" className={styles.blockTitle}>
+              현재 생각
+            </h2>
+            <ParentDecisionForm
+              experienceId={experience.id}
+              currentDecision={
+                decisionResult.status === "ok" ? (decisionResult.decision?.decision ?? null) : null
+              }
+              loadError={decisionResult.status === "error" ? decisionResult.message : null}
+            />
+          </section>
+        ) : null}
 
         {hasPublishedReport || reportLoadFailed ? (
           <section className={styles.block} aria-labelledby="report-title">
