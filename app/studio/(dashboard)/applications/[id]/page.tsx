@@ -273,8 +273,17 @@ export default async function StudioApplicationDetailPage({ params }: StudioAppl
         })
       : null
 
-    const published = publishedReportResult.data
+    // ⚠️ 조회 실패를 "발행본 없음" 으로 접지 않는다.
+    //
+    // 둘을 같은 null 로 다루면, 이미 발행된 리포트가 있는데도 화면이
+    // "공개 중인 리포트가 없습니다" 라고 말한다. 원장이 그 말을 믿고 발행을
+    // 누르면 의도하지 않은 새 version 이 생기고 기존 발행본이 superseded 된다.
+    // 모르는 것은 모른다고 말하고 손을 멈춘다.
+    const publishedReportLoadError = publishedReportResult.error
+    const published = publishedReportLoadError ? null : publishedReportResult.data
+
     // 마지막 발행 이후 평가가 수정됐는가. 두 시각 모두 서버 값이다.
+    // 발행본을 모르는 상태에서는 판단하지 않는다.
     const assessmentChangedSincePublish = Boolean(
       published &&
         trialResult &&
@@ -284,6 +293,7 @@ export default async function StudioApplicationDetailPage({ params }: StudioAppl
     return {
       preview: built?.status === "ok" ? built.snapshot : null,
       published,
+      publishedReportLoadError,
       blockers,
       assessmentChangedSincePublish,
       assessmentUpdatedAt: trialResult?.updatedAt ?? null
@@ -533,13 +543,18 @@ export default async function StudioApplicationDetailPage({ params }: StudioAppl
               canReopenConsultation: entitlements.canReopenConsultation
             }}
             reportSection={
-              reportView && (reportView.preview || reportView.published || reportView.blockers.length > 0) ? (
+              reportView &&
+              (reportView.preview ||
+                reportView.published ||
+                reportView.publishedReportLoadError ||
+                reportView.blockers.length > 0) ? (
                 <ApplicationReportPublishing
                   applicationId={data.id}
                   preview={reportView.preview}
                   publishedSnapshot={reportView.published?.content ?? null}
                   publishedVersion={reportView.published?.version ?? null}
                   publishedAt={reportView.published?.publishedAt ?? null}
+                  publishedReportLoadError={reportView.publishedReportLoadError}
                   assessmentUpdatedAt={reportView.assessmentUpdatedAt}
                   assessmentChangedSincePublish={reportView.assessmentChangedSincePublish}
                   blockers={reportView.blockers}

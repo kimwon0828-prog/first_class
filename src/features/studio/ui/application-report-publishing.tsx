@@ -37,6 +37,14 @@ type ApplicationReportPublishingProps = {
   publishedSnapshot: ExperienceReportSnapshotV1 | null
   publishedVersion: number | null
   publishedAt: string | null
+  /**
+   * 지금 공개된 발행본을 읽지 못했을 때의 사유.
+   *
+   * ⚠️ null 과 구분해야 한다. "발행본이 없다" 와 "발행본을 모른다" 는 다른 상태다.
+   *    모르는 상태를 없음으로 표시하면, 이미 발행된 리포트가 있는데도 원장이
+   *    새로 발행하게 되고 기존 발행본이 조용히 superseded 된다.
+   */
+  publishedReportLoadError: string | null
   /** 원장이 지금 보고 있는 평가의 revision. 발행할 때 그대로 넘긴다. */
   assessmentUpdatedAt: string | null
   /** 마지막 발행 이후 평가가 수정됐는가. */
@@ -162,6 +170,7 @@ export const ApplicationReportPublishing = ({
   publishedSnapshot,
   publishedVersion,
   publishedAt,
+  publishedReportLoadError,
   assessmentUpdatedAt,
   assessmentChangedSincePublish,
   blockers,
@@ -221,7 +230,15 @@ export const ApplicationReportPublishing = ({
   }, [isStaleFailure, router])
 
   const activeBlocker = blockers[0] ?? null
-  const canPublish = canWrite && !activeBlocker && Boolean(preview) && Boolean(assessmentUpdatedAt)
+  // 현재 발행 상태를 모르면 어떤 발행 동작도 하지 않는다.
+  // 미리보기는 그대로 보여 준다 — 그건 평가에서 만든 것이라 발행본과 무관하다.
+  const canPublish =
+    canWrite &&
+    !publishedReportLoadError &&
+    !activeBlocker &&
+    Boolean(preview) &&
+    Boolean(assessmentUpdatedAt)
+  const canWithdraw = canWrite && !publishedReportLoadError && Boolean(publishedVersion)
   const publishedDateText = publishedAt ? formatSeoulDateTime(publishedAt) : null
 
   return (
@@ -230,7 +247,12 @@ export const ApplicationReportPublishing = ({
         <h2 id="report-publishing-title" className={styles.sectionTitle}>
           부모 리포트
         </h2>
-        {publishedVersion ? (
+        {publishedReportLoadError ? (
+          // 모르는 상태다. "없음" 이라고 말하지 않는다.
+          <p className={styles.statusLine}>
+            <span className={styles.statusMuted}>발행 상태를 확인하지 못했습니다.</span>
+          </p>
+        ) : publishedVersion ? (
           <p className={styles.statusLine}>
             <span className={styles.statusBadge}>리포트 발행 완료</span>
             <span className={styles.statusMeta}>
@@ -257,6 +279,16 @@ export const ApplicationReportPublishing = ({
         <div className={styles.block}>
           <p className={styles.blockLabel}>현재 부모님께 공개된 내용</p>
           <ReportBody snapshot={publishedSnapshot} />
+        </div>
+      ) : null}
+
+      {publishedReportLoadError ? (
+        <div className={styles.notice} role="alert">
+          <p className={styles.noticeTitle}>현재 발행된 리포트 정보를 불러오지 못했습니다.</p>
+          <p className={styles.noticeBody}>
+            화면을 새로고침한 뒤 다시 확인해 주세요. 발행 상태를 확인하기 전까지는 발행과 철회를 할
+            수 없습니다.
+          </p>
         </div>
       ) : null}
 
@@ -336,7 +368,7 @@ export const ApplicationReportPublishing = ({
               type="button"
               className={styles.textButton}
               onClick={() => setIsWithdrawOpen(true)}
-              disabled={isPublishing || isWithdrawing}
+              disabled={!canWithdraw || isPublishing || isWithdrawing}
             >
               리포트 발행 철회
             </button>
@@ -344,7 +376,7 @@ export const ApplicationReportPublishing = ({
         </div>
       ) : null}
 
-      {canWrite ? (
+      {canWrite && !publishedReportLoadError ? (
         <p className={styles.footnote}>
           {publishedVersion
             ? "기존 리포트는 과거 발행 기록으로 보존됩니다."

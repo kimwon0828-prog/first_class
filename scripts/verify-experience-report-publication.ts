@@ -448,6 +448,55 @@ check(
 )
 check("Parent 화면 링크를 만들지 않는다", !reportUi.includes("/record"))
 
+console.log("\n── 20-1. 발행본 조회 실패를 '없음' 으로 접지 않는다 ──")
+check(
+  "서버가 조회 오류를 버리지 않는다",
+  detailPage.includes("const publishedReportLoadError = publishedReportResult.error")
+)
+check(
+  "오류가 있으면 발행본을 없는 것으로 다루지 않는다",
+  detailPage.includes("publishedReportLoadError ? null : publishedReportResult.data")
+)
+check(
+  "오류를 화면까지 넘긴다",
+  detailPage.includes("publishedReportLoadError={reportView.publishedReportLoadError}")
+)
+check(
+  "오류만 있어도 Section 을 렌더한다",
+  detailPage.includes("reportView.publishedReportLoadError ||")
+)
+check(
+  "발행본을 모르면 평가 변경 여부를 단정하지 않는다",
+  /const assessmentChangedSincePublish = Boolean\(\s*\n\s*published &&/.test(detailPage)
+)
+check("화면이 오류 상태를 받는다", reportUi.includes("publishedReportLoadError: string | null"))
+check(
+  "오류일 때 '없음' 이라고 말하지 않는다",
+  reportUi.includes("발행 상태를 확인하지 못했습니다")
+)
+check(
+  "오류 안내를 표시한다",
+  reportUi.includes("현재 발행된 리포트 정보를 불러오지 못했습니다") &&
+    reportUi.includes("화면을 새로고침한 뒤 다시 확인해 주세요")
+)
+check(
+  "오류일 때 발행이 막힌다",
+  /const canPublish =[\s\S]{0,160}!publishedReportLoadError/.test(reportUi)
+)
+check(
+  "오류일 때 철회가 막힌다",
+  /const canWithdraw =[\s\S]{0,80}!publishedReportLoadError/.test(reportUi) &&
+    reportUi.includes("disabled={!canWithdraw || isPublishing || isWithdrawing}")
+)
+check(
+  "오류일 때 발행 안내 문구를 띄우지 않는다",
+  reportUi.includes("canWrite && !publishedReportLoadError ? (")
+)
+check(
+  "미리보기는 계속 보여 준다",
+  !/publishedReportLoadError[\s\S]{0,40}preview \? null/.test(reportUi)
+)
+
 console.log("\n── 21. anon 실행 권한 정리 ──")
 const anonMigration = read(ANON_MIGRATION_PATH)
 check(
