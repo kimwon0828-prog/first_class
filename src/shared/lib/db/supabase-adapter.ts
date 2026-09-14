@@ -1,3 +1,7 @@
+import {
+  EXPERIENCE_REPORT_STATUSES,
+  decodeExperienceReportSnapshot
+} from "@/features/reports/lib/experience-report-snapshot"
 import type { SupabaseClient } from "@supabase/supabase-js"
 
 import { getSupabaseServiceRoleClient } from "@/integrations/supabase/service-role"
@@ -93,6 +97,7 @@ import type {
   TeacherSignupRequestStatus,
   TrialApplicationInput,
   UpsertStudioTrialResultInput,
+  ExperienceReportSummary,
   TrialApplicationSummary,
   StudioTrialResult,
   UpdateChildProfileInput,
@@ -2511,6 +2516,47 @@ export const listAvailableScheduleSlotsByClassIdWithClient = async ({
       isClosed: remainingCount <= 0
     }
   })
+}
+
+type ExperienceReportRow = {
+  id: string
+  application_id: string
+  version: number
+  status: string
+  content_version: number
+  content: unknown
+  published_at: string
+  superseded_at: string | null
+  withdrawn_at: string | null
+}
+
+/**
+ * DB row 를 도메인 타입으로.
+ *
+ * content 는 decode 를 통과한 것만 넘긴다. raw jsonb 를 그대로 올려보내면
+ * 스냅샷 계약이 여기서 끊긴다.
+ */
+const mapExperienceReport = (row: ExperienceReportRow): ExperienceReportSummary | null => {
+  const content = decodeExperienceReportSnapshot(row.content_version, row.content)
+  if (!content) {
+    return null
+  }
+
+  if (!EXPERIENCE_REPORT_STATUSES.includes(row.status as never)) {
+    return null
+  }
+
+  return {
+    id: row.id,
+    applicationId: row.application_id,
+    version: row.version,
+    status: row.status as ExperienceReportSummary["status"],
+    contentVersion: row.content_version,
+    content,
+    publishedAt: row.published_at,
+    supersededAt: row.superseded_at,
+    withdrawnAt: row.withdrawn_at
+  }
 }
 
 export const supabaseDataAdapter: DataAdapter = {
@@ -5326,6 +5372,79 @@ export const supabaseDataAdapter: DataAdapter = {
     }
 
     return "created"
+  },
+  async getPublishedExperienceReport(applicationId: string) {
+    const supabase = await getSupabaseServerClient()
+    // RLS 가 학부모에게는 자기 신청의 published 만, 학원에는 자기 조직만 준다.
+    // 여기서 조직/부모 조건을 다시 적지 않는다 — 두 곳에 적으면 어긋난다.
+    const { data, error } = await supabase
+      .from("experience_reports")
+      .select("id, application_id, version, status, content_version, content, published_at, superseded_at, withdrawn_at")
+      .eq("application_id", applicationId)
+      .eq("status", "published")
+      .maybeSingle()
+
+    if (error) {
+      throw new Error("failed_to_fetch_experience_report")
+    }
+
+    return data ? mapExperienceReport(data as ExperienceReportRow) : null
+  },
+  async listExperienceReportVersions(applicationId: string) {
+    const supabase = await getSupabaseServerClient()
+    const { data, error } = await supabase
+      .from("experience_reports")
+      .select("id, application_id, version, status, content_version, content, published_at, superseded_at, withdrawn_at")
+      .eq("application_id", applicationId)
+      .order("version", { ascending: false })
+
+    if (error) {
+      throw new Error("failed_to_list_experience_reports")
+    }
+
+    // 모양이 어긋난 row 는 버린다. 반쪽짜리 스냅샷을 화면으로 올려보내지 않는다.
+    return (data ?? [])
+      .map((row) => mapExperienceReport(row as ExperienceReportRow))
+      .filter((item): item is ExperienceReportSummary => item !== null)
+  },
+  async publishExperienceReport(applicationId: string) {
+    const supabase = await getSupabaseServerClient()
+    // 스냅샷을 만들어 넘기지 않는다. 함수가 source 를 직접 읽어 조립한다 —
+    // content 를 파라미터로 받으면 무엇이든 부모에게 보여 줄 수 있게 된다.
+    const { data, error } = await supabase.rpc("publish_experience_report", {
+      p_application_id: applicationId
+    })
+
+    if (error) {
+      throw new Error(error.message)
+    }
+
+    const result = data as {
+      id: string
+      version: number
+      supersededVersion: number | null
+      publishedAt: string
+    }
+
+    return {
+      id: result.id,
+      version: result.version,
+      supersededVersion: result.supersededVersion ?? null,
+      publishedAt: result.publishedAt
+    }
+  },
+  async withdrawExperienceReport(applicationId: string) {
+    const supabase = await getSupabaseServerClient()
+    const { data, error } = await supabase.rpc("withdraw_experience_report", {
+      p_application_id: applicationId
+    })
+
+    if (error) {
+      throw new Error(error.message)
+    }
+
+    const result = data as { id: string; version: number; withdrawnAt: string }
+    return { id: result.id, version: result.version, withdrawnAt: result.withdrawnAt }
   },
   async createTrialApplication(input: TrialApplicationInput) {
     const supabase = await getSupabaseServerClient()
