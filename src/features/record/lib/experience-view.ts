@@ -1,4 +1,5 @@
 import type { ClassProgramType, ParentApplicationSummary } from "@/shared/lib/db/adapter"
+import { getSeoulDateTimeParts } from "@/shared/lib/seoul-datetime"
 
 // 학부모가 보는 "교육 경험" 의 파생 규칙.
 //
@@ -53,10 +54,25 @@ export const getExperienceStageLabel = (
 ): string =>
   programType === "level_test" ? LEVEL_TEST_STAGE_LABELS[stage] : EXPERIENCE_STAGE_LABELS[stage]
 
-const isSameLocalDay = (left: Date, right: Date) =>
-  left.getFullYear() === right.getFullYear() &&
-  left.getMonth() === right.getMonth() &&
-  left.getDate() === right.getDate()
+/*
+ * "오늘" 은 한국 기준이다.
+ *
+ * 실행 환경 timezone 으로 비교하면 UTC 서버에서 한국 시간 오전 일정이
+ * 전날로 취급되어, 오늘 있는 체험이 "예정" 으로 보인다.
+ */
+const isSameSeoulDay = (left: Date, right: Date) => {
+  const leftParts = getSeoulDateTimeParts(left)
+  const rightParts = getSeoulDateTimeParts(right)
+  if (!leftParts || !rightParts) {
+    return false
+  }
+
+  return (
+    leftParts.year === rightParts.year &&
+    leftParts.month === rightParts.month &&
+    leftParts.day === rightParts.day
+  )
+}
 
 export const resolveExperienceStage = (
   experience: Pick<ParentExperience, "status" | "confirmedSlotAt">,
@@ -78,7 +94,7 @@ export const resolveExperienceStage = (
 
     // 확정된 날짜가 오늘이면 "오늘 체험" 이다. 시작 시각이 지났는지까지는 따지지 않는다 —
     // 학부모 화면에서 분 단위로 상태가 바뀌면 오히려 혼란스럽다.
-    return isSameLocalDay(confirmedAt, now) ? "today" : "upcoming"
+    return isSameSeoulDay(confirmedAt, now) ? "today" : "upcoming"
   }
 
   // new · reviewing

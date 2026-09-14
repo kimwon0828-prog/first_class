@@ -13,6 +13,7 @@ import { getMyExperienceDetail } from "@/features/record/queries/get-my-experien
 import { getMyExperienceReport } from "@/features/record/queries/get-my-experience-report"
 import { ExperienceCancelButton } from "@/features/record/ui/experience-cancel-button"
 import { ExperienceTimeline } from "@/features/record/ui/experience-timeline"
+import { getSeoulDateTimeParts } from "@/shared/lib/seoul-datetime"
 import styles from "./page.module.css"
 
 // 한 번의 교육 경험에서 실제로 무슨 일이 있었는지 보는 화면.
@@ -25,25 +26,34 @@ import styles from "./page.module.css"
 export const dynamic = "force-dynamic"
 export const revalidate = 0
 
+/*
+ * 날짜·시각은 한국 시간으로 읽는다.
+ *
+ * getFullYear() / getHours() 는 실행 환경의 timezone 을 따른다. Vercel 은 UTC 라서
+ * 한국 시간 자정 전후의 일정이 하루 전으로 적힌다. 리포트 화면은 이미 KST 인데
+ * 여기만 서버 시간이면 같은 체험이 두 화면에서 다른 날짜로 보인다.
+ *
+ * 기존 helper 를 쓴다. timezone 계산을 또 만들지 않는다.
+ */
+const SEOUL_WEEKDAY_SHORT = ["일", "월", "화", "수", "목", "금", "토"]
+
 const formatFullDate = (value: string) => {
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) {
+  const parts = getSeoulDateTimeParts(value)
+  if (!parts) {
     return null
   }
 
-  const weekdays = ["일", "월", "화", "수", "목", "금", "토"]
-  return `${date.getFullYear()}년 ${date.getMonth() + 1}월 ${date.getDate()}일 (${weekdays[date.getDay()]})`
+  return `${parts.year}년 ${parts.month}월 ${parts.day}일 (${SEOUL_WEEKDAY_SHORT[parts.weekday]})`
 }
 
 const formatTime = (value: string) => {
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) {
+  const parts = getSeoulDateTimeParts(value)
+  if (!parts) {
     return null
   }
 
-  const hours = date.getHours()
-  const minutes = `${date.getMinutes()}`.padStart(2, "0")
-  return `${hours < 12 ? "오전" : "오후"} ${hours % 12 || 12}:${minutes}`
+  const minutes = `${parts.minute}`.padStart(2, "0")
+  return `${parts.hour < 12 ? "오전" : "오후"} ${parts.hour % 12 || 12}:${minutes}`
 }
 
 export default async function ExperienceDetailPage({
