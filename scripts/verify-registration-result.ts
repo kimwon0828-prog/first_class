@@ -276,10 +276,67 @@ check(
   "computed column 이 boolean 만 돌려준다",
   /create or replace function public\.has_current_registration_result\(public\.trial_applications\)\s*\nreturns boolean/.test(migrationSql)
 )
+
+// ── computed column 의 소유권 경계 ──
+//
+// security definer 함수는 정의한 사람의 권한으로 돈다. 호출 맥락(여기서는
+// trial_applications 의 RLS 가 먼저 걸러 주는 computed column 경로)에 기대면,
+// 그 함수를 직접 부를 수 있게 되는 순간 남의 신청에 대한 답을 내주게 된다.
+// 그래서 소유권을 함수 안에서 최종 보장하는지 본다.
+const computedColumnFn = extractFunctionBody(
+  migrationSql,
+  /create or replace function public\.has_current_registration_result\(public\.trial_applications\)/
+)
+check("computed column 함수를 찾는다", computedColumnFn !== null)
 check(
-  "computed column 이 anon 에 열려 있지 않다",
-  /revoke all on function public\.has_current_registration_result[\s\S]*?from public;/.test(migrationSql) &&
+  "security definer 다",
+  computedColumnFn !== null && /security definer/.test(computedColumnFn)
+)
+check(
+  "search_path 를 고정한다",
+  computedColumnFn !== null && computedColumnFn.includes("set search_path = public")
+)
+check(
+  "저장된 trial_applications 를 다시 조회한다",
+  computedColumnFn !== null && /from public\.trial_applications ta\s*\n\s*where ta\.id = \$1\.id/.test(computedColumnFn)
+)
+check(
+  "소유자를 auth.uid() 로 확인한다",
+  computedColumnFn !== null && computedColumnFn.includes("ta.parent_id = auth.uid()")
+)
+check(
+  // composite 인자는 호출자가 만들어 넣을 수 있다. 그 안의 parent_id 를 판정
+  // 근거로 쓰면 자기 id 를 적어 넣는 것만으로 남의 결과를 알 수 있다.
+  "인자로 받은 $1.parent_id 를 믿지 않는다",
+  computedColumnFn !== null && !computedColumnFn.includes("$1.parent_id")
+)
+check(
+  "결과 존재 확인이 그 신청으로 한정된다",
+  computedColumnFn !== null && computedColumnFn.includes("rr.application_id = ta.id")
+)
+check(
+  // auth.uid() 가 null 이면 위 비교가 성립하지 않아 false 다. 별도 분기를 두지
+  // 않는 것이 맞다 — 분기가 늘면 빠뜨릴 자리도 는다.
+  "미인증이면 조건이 성립하지 않는다",
+  computedColumnFn !== null &&
+    !/coalesce\(auth\.uid\(\)/.test(computedColumnFn) &&
+    computedColumnFn.includes("auth.uid()")
+)
+check(
+  "computed column 이 anon 에서 명시적으로 거둬진다",
+  /revoke all on function public\.has_current_registration_result[^;]*from public;/.test(migrationSql) &&
+    /revoke all on function public\.has_current_registration_result[^;]*from anon;/.test(migrationSql) &&
     !/grant execute on function public\.has_current_registration_result[^;]*to anon/.test(migrationSql)
+)
+check(
+  "동기화 함수도 anon / authenticated 에 열려 있지 않다",
+  /revoke all on function public\.sync_registration_result\(\) from anon;/.test(migrationSql) &&
+    /revoke all on function public\.sync_registration_result\(\) from authenticated;/.test(migrationSql) &&
+    !/grant execute on function public\.sync_registration_result/.test(migrationSql)
+)
+check(
+  "학부모 registration_results SELECT 정책이 0개다",
+  policyStatements.filter((policy) => policy.includes("auth.uid()")).length === 0
 )
 const parentDtoBlock = (() => {
   const start = read(ADAPTER_PATH).indexOf("export type ParentApplicationSummary = {")

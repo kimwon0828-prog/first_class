@@ -224,8 +224,22 @@ create trigger trial_applications_sync_registration_result
 -- ─────────────────────────────────────────────────────────────
 -- 학부모 경계 — boolean 하나만 넘긴다
 --
--- PostgREST computed column 이다. 이미 RLS 를 통과해 읽을 수 있는 신청에 대해
--- "지금 확정된 결과가 있는가" 만 답한다. 결과값도, 시각도 나가지 않는다.
+-- PostgREST computed column 이다. "지금 확정된 결과가 있는가" 만 답한다.
+-- 결과값도, 확정 시각도 나가지 않는다.
+--
+-- ⚠️ 소유권을 함수 안에서 다시 확인한다.
+--
+-- computed column 으로 불릴 때는 trial_applications 의 RLS 가 먼저 걸러 주지만,
+-- 그 호출 맥락에만 기대지 않는다. security definer 함수는 정의한 사람의 권한으로
+-- 돌기 때문에, 어떤 경로로든 직접 호출될 수 있게 되는 순간 남의 신청에 대해서도
+-- "결과가 있는가" 라는 답을 내주게 된다. boolean 하나여도 그건 남의 등록 여부다.
+--
+-- ⚠️ 인자로 받은 $1.parent_id 를 믿지 않는다.
+--
+-- composite 인자는 호출자가 만들어 넣을 수 있는 값이다. 소유자 판정의 근거는
+-- 저장된 row 여야 하므로 public.trial_applications 를 id 로 다시 조회한다.
+--
+-- auth.uid() 가 null 이면(로그인하지 않았으면) 아래 조건이 성립하지 않아 false 다.
 -- ─────────────────────────────────────────────────────────────
 create or replace function public.has_current_registration_result(public.trial_applications)
 returns boolean
@@ -236,14 +250,41 @@ set search_path = public
 as $$
   select exists (
     select 1
-    from public.registration_results rr
-    where rr.application_id = $1.id
-      and rr.superseded_at is null
+    from public.trial_applications ta
+    where ta.id = $1.id
+      and ta.parent_id = auth.uid()
+      and exists (
+        select 1
+        from public.registration_results rr
+        where rr.application_id = ta.id
+          and rr.superseded_at is null
+      )
   );
 $$;
 
+-- ⚠️ anon 에서 명시적으로 거둔다.
+--
+-- `revoke ... from public` 만으로는 부족하다. Supabase 는 public schema 에 새로
+-- 만들어지는 함수에 anon / authenticated EXECUTE 를 default privilege 로 붙여 둔다.
+-- 그건 PUBLIC 권한이 아니라 anon 에게 직접 적힌 권한이라 위 revoke 가 건드리지
+-- 않는다(R2 에서 발행 RPC 로 같은 것을 겪었다 —
+-- 20260914120000_restrict_experience_report_rpc_execute.sql).
+--
+-- 지금은 함수 안에서 auth.uid() 로 소유자를 확인하므로 anon 이 불러도 false 지만,
+-- 로그인하지 않은 호출자에게 실행 자체를 열어 둘 이유가 없다.
 revoke all on function public.has_current_registration_result(public.trial_applications) from public;
+revoke all on function public.has_current_registration_result(public.trial_applications) from anon;
 grant execute on function public.has_current_registration_result(public.trial_applications) to authenticated;
+
+-- 동기화 함수도 같이 닫는다.
+--
+-- security definer 인데 default privilege 때문에 PUBLIC · anon 까지 EXECUTE 가
+-- 열려 있다. trigger 함수라 직접 부르면 "trigger 로만 호출할 수 있다" 로 막히긴
+-- 하지만, 소유자 권한으로 도는 함수의 실행 권한을 필요 없는 역할에 남겨 두지 않는다.
+-- trigger 는 EXECUTE 권한을 보지 않으므로 이 revoke 로 동기화가 멈추지 않는다.
+revoke all on function public.sync_registration_result() from public;
+revoke all on function public.sync_registration_result() from anon;
+revoke all on function public.sync_registration_result() from authenticated;
 
 -- ─────────────────────────────────────────────────────────────
 -- legacy 이관
