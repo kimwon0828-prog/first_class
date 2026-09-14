@@ -821,3 +821,57 @@
   font-size: 12px;
   line-height: 18px;
 }
+
+/*
+  문구를 저장하던 시절의 관찰 기록.
+
+  현재 기준 선택지와 같은 칩으로 그리지 않는다. 나란히 두면 옛 기록이
+  지금 고른 항목처럼 읽혀, 없던 관찰을 주장하게 된다.
+*/
+.legacyObservationBlock {
+  display: grid;
+  gap: var(--s2);
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--surface-sub);
+}
+
+.legacyObservationTitle {
+  margin: 0;
+  font-size: 13px;
+  line-height: 20px;
+  font-weight: 800;
+  color: var(--text-2);
+}
+
+.legacyObservationList {
+  margin: 0;
+  padding-left: 18px;
+  display: grid;
+  gap: var(--s1);
+  font-size: 14px;
+  line-height: 21px;
+  color: var(--text-1);
+}
+
+.legacyObservationChip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  padding: 0 var(--s3);
+  border-radius: var(--r-full);
+  border: 1px dashed var(--border);
+  background: var(--surface);
+  color: var(--text-2);
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 700;
+}
+
+.legacyObservationHint {
+  margin: 0;
+  font-size: 12px;
+  line-height: 19px;
+  color: var(--text-3);
+}

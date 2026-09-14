@@ -58,30 +58,48 @@ export const TRIAL_RESULT_OBSERVATION_CODES: ReadonlySet<string> = new Set(
 )
 
 /**
- * 문구를 저장하던 시절의 값 → code.
+ * 문구를 저장하던 시절의 값.
  *
- * 이 표는 "옛 값이 학부모 공개에 적합하다" 는 뜻이 아니다. 내부 source data 의
- * 의미를 code 로 보존하기 위한 것뿐이다. 기존 체험 결과는 이 작업으로
- * Report 가 되지 않는다.
+ * ⚠️ 이 목록은 canonical code 로 가는 매핑이 아니다. 매핑표였던 적이 있으나
+ *    의미가 같지 않아 걷어냈다 — "난이도가 높아 보였어요" 는 관찰자의 인상이고
+ *    needs_repeated_guidance 는 아이가 실제로 한 일이다. 둘은 같은 사실이 아니다.
+ *    과거에 없던 행동을 지금 와서 주장하지 않는다.
+ *
+ * 여기에 남은 값은 오직 두 가지 용도다.
+ *   1. 기존 row 를 화면에서 원문 그대로 보여 주기.
+ *   2. DB 에 남아 있어도 "알 수 없는 값" 으로 취급하지 않기.
+ *
+ * 신규 write 에서는 받지 않는다.
  */
-export const LEGACY_TRIAL_RESULT_OBSERVATION_LABELS: Readonly<
-  Record<string, TrialResultObservationCode>
-> = {
-  "집중을 잘했어요": "sustained_engagement",
-  "적극적으로 참여했어요": "active_participation",
-  "발표를 잘했어요": "verbal_explanation",
-  "이해가 빨랐어요": "independent_after_instruction",
-  "도움이 조금 필요했어요": "needs_some_guidance",
-  "난이도가 높아 보였어요": "needs_repeated_guidance",
-  "난이도가 쉬워 보였어요": "ready_for_more_challenge"
-}
+export const LEGACY_TRIAL_RESULT_OBSERVATION_LABELS = [
+  "집중을 잘했어요",
+  "적극적으로 참여했어요",
+  "발표를 잘했어요",
+  "이해가 빨랐어요",
+  "도움이 조금 필요했어요",
+  "난이도가 높아 보였어요",
+  "난이도가 쉬워 보였어요"
+] as const
+
+export type LegacyTrialResultObservationLabel =
+  (typeof LEGACY_TRIAL_RESULT_OBSERVATION_LABELS)[number]
+
+/** legacy 문구 집합. 위 하나에서만 파생한다. */
+export const LEGACY_TRIAL_RESULT_OBSERVATION_LABEL_SET: ReadonlySet<string> = new Set(
+  LEGACY_TRIAL_RESULT_OBSERVATION_LABELS
+)
+
+/** 문구를 저장하던 시절의 값인가. 신규 입력으로는 거절하되 기존 row 는 보존한다. */
+export const isLegacyTrialResultObservation = (
+  value: unknown
+): value is LegacyTrialResultObservationLabel =>
+  typeof value === "string" && LEGACY_TRIAL_RESULT_OBSERVATION_LABEL_SET.has(value.trim())
 
 /**
- * 저장/표시 전에 값을 code 로 정규화한다.
+ * 신규 입력 값을 code 로 정규화한다.
  *
- * 배포 순서가 어긋나 legacy 문구가 아직 남아 있어도 화면과 저장이 같은 값을
- * 보게 하려고 양쪽을 모두 받는다. 알 수 없는 값은 null 이다 —
- * 조용히 버리지 않고 호출자가 거절할 수 있게 남긴다.
+ * canonical code 만 통과한다. legacy 문구도, 알 수 없는 값도 null 이다 —
+ * 조용히 버리거나 짐작해서 바꾸지 않고 호출자가 거절할 수 있게 남긴다.
  */
 export const normalizeTrialResultObservation = (
   value: unknown
@@ -91,14 +109,12 @@ export const normalizeTrialResultObservation = (
   }
 
   const trimmed = value.trim()
-  if (TRIAL_RESULT_OBSERVATION_CODES.has(trimmed)) {
-    return trimmed as TrialResultObservationCode
-  }
-
-  return LEGACY_TRIAL_RESULT_OBSERVATION_LABELS[trimmed] ?? null
+  return TRIAL_RESULT_OBSERVATION_CODES.has(trimmed)
+    ? (trimmed as TrialResultObservationCode)
+    : null
 }
 
-/** code 를 화면 문구로. 모르는 값은 null 이라 화면이 원문을 흘리지 않는다. */
+/** canonical code 를 화면 문구로. 모르는 값은 null 이라 화면이 원문을 흘리지 않는다. */
 export const getTrialResultObservationLabel = (value: unknown): string | null => {
   const code = normalizeTrialResultObservation(value)
   if (!code) {
@@ -106,6 +122,32 @@ export const getTrialResultObservationLabel = (value: unknown): string | null =>
   }
 
   return TRIAL_RESULT_OBSERVATION_OPTIONS.find((option) => option.value === code)?.label ?? null
+}
+
+/**
+ * 저장된 값 하나를 화면에 어떻게 보여 줄지 판정한다.
+ *
+ * canonical 은 현재 문구로, legacy 는 작성 당시 원문 그대로 보여 준다.
+ * legacy 를 현재 문구로 바꿔 보여 주면 "같은 관찰" 이라고 주장하는 셈이다.
+ */
+export type TrialResultObservationDisplay =
+  | { kind: "canonical"; value: TrialResultObservationCode; text: string }
+  | { kind: "legacy"; value: string; text: string }
+
+export const describeTrialResultObservation = (
+  value: unknown
+): TrialResultObservationDisplay | null => {
+  const code = normalizeTrialResultObservation(value)
+  if (code) {
+    return { kind: "canonical", value: code, text: getTrialResultObservationLabel(code) ?? code }
+  }
+
+  if (isLegacyTrialResultObservation(value)) {
+    const text = value.trim()
+    return { kind: "legacy", value: text, text }
+  }
+
+  return null
 }
 
 export const TRIAL_RESULT_PARENT_REACTION_OPTIONS: Array<{
