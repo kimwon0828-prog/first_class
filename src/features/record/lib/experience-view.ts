@@ -199,18 +199,22 @@ export const groupExperiencesByPeriod = (
   const byYear = new Map<number, Map<number, ParentExperience[]>>()
 
   for (const experience of experiences) {
-    const date = new Date(resolveParentExperienceDate(experience))
-    if (Number.isNaN(date.getTime())) {
+    // 연·월 묶음도 한국 시간으로 가른다.
+    // UTC 로 가르면 한국 시간 10월 1일 새벽 체험이 9월 묶음에 들어가고,
+    // 같은 체험이 상세에서는 10월 1일로 보인다.
+    const parts = getSeoulDateTimeParts(resolveParentExperienceDate(experience))
+    if (!parts) {
       continue
     }
 
-    const year = date.getFullYear()
-    const month = date.getMonth() + 1
+    const year = parts.year
+    const month = parts.month
     const months = byYear.get(year) ?? new Map<number, ParentExperience[]>()
     months.set(month, [...(months.get(month) ?? []), experience])
     byYear.set(year, months)
   }
 
+  // 정렬은 절대 시각 비교라 timezone 과 무관하다. 그대로 둔다.
   const sortByDateDesc = (left: ParentExperience, right: ParentExperience) =>
     new Date(resolveParentExperienceDate(right)).getTime() -
     new Date(resolveParentExperienceDate(left)).getTime()

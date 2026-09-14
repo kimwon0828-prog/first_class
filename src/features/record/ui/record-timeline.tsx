@@ -10,6 +10,7 @@ import {
   type ParentExperience
 } from "@/features/record/lib/experience-view"
 import styles from "./record-timeline.module.css"
+import { getSeoulDateTimeParts } from "@/shared/lib/seoul-datetime"
 
 // 기록 홈의 본문. 연 → 월 → 경험 순으로 시간축을 따라 내려간다.
 //
@@ -22,14 +23,18 @@ type RecordTimelineProps = {
   showChildName: boolean
 }
 
+// 목록과 상세가 같은 날짜를 말해야 한다. 기준은 언제나 한국 시간이다.
+// 실행 환경 timezone 을 따르면 UTC 서버에서 월말 자정 직후 체험이
+// 목록에는 9월, 상세에는 10월 1일로 적힌다.
+const SEOUL_WEEKDAY_SHORT = ["일", "월", "화", "수", "목", "금", "토"]
+
 const formatDay = (value: string) => {
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) {
+  const parts = getSeoulDateTimeParts(value)
+  if (!parts) {
     return null
   }
 
-  const weekdays = ["일", "월", "화", "수", "목", "금", "토"]
-  return `${date.getMonth() + 1}월 ${date.getDate()}일 (${weekdays[date.getDay()]})`
+  return `${parts.month}월 ${parts.day}일 (${SEOUL_WEEKDAY_SHORT[parts.weekday]})`
 }
 
 export const RecordTimeline = ({ experiences, showChildName }: RecordTimelineProps) => {
