@@ -1,3 +1,7 @@
+import {
+  buildExperienceReportSnapshotV1,
+  checkObservationPublicationEligibility
+} from "@/features/reports/lib/experience-report-snapshot"
 import type {
   ActivateStudioTeacherInput,
   DeleteStudioTeacherInput,
@@ -47,6 +51,7 @@ import type {
   TrialApplicationInput,
   TrialApplicationSummary,
   UpsertStudioTrialResultInput,
+  ExperienceReportSummary,
   UpdateStudioApplicationAssigneeInput,
   UpdateStudioApplicationConsultationSnapshotInput,
   UpdateStudioApplicationLatestConsultationSnapshotInput,
@@ -683,6 +688,11 @@ const getProfileDisplayNameById = (profileId: string | null | undefined) => {
   const teacher = teacherSummaries.find((item) => item.profileId === profileId) ?? null
   return teacher?.displayName ?? null
 }
+
+// 발행 이력. mock 에서도 supabase 와 같은 lifecycle 을 지킨다 —
+// 한 application 에 published 는 최대 1개, version 은 재사용하지 않는다.
+const experienceReports: ExperienceReportSummary[] = []
+
 
 export const mockDataAdapter: DataAdapter = {
   async listClasses(options) {
@@ -2371,6 +2381,128 @@ export const mockDataAdapter: DataAdapter = {
     })
 
     return "created"
+  },
+  async getPublishedExperienceReport(applicationId: string) {
+    return (
+      experienceReports.find(
+        (item) => item.applicationId === applicationId && item.status === "published"
+      ) ?? null
+    )
+  },
+  async listExperienceReportVersions(applicationId: string) {
+    return experienceReports
+      .filter((item) => item.applicationId === applicationId)
+      .sort((left, right) => right.version - left.version)
+  },
+  async publishExperienceReport(applicationId: string, expectedAssessmentUpdatedAt: string) {
+    const application = applications.find((item) => item.id === applicationId)
+    if (!application) {
+      throw new Error("application_not_found_or_forbidden")
+    }
+
+    if (application.status !== "completed") {
+      throw new Error("application_not_completed")
+    }
+
+    // 읽을 부모가 없는 발행은 발행이 아니다. supabase 쪽 함수와 같은 판정이다.
+    if (!application.parentId) {
+      throw new Error("parent_not_linked")
+    }
+
+    const trialResult = trialResults.find((item) => item.applicationId === applicationId)
+    if (!trialResult) {
+      throw new Error("trial_result_not_found")
+    }
+
+    // 원장이 확인한 revision 과 지금 저장된 revision 이 같은가.
+    if (trialResult.updatedAt !== expectedAssessmentUpdatedAt) {
+      throw new Error("assessment_changed_since_preview")
+    }
+
+    // 옛 문구는 자동 발행하지 않는다. supabase 쪽 함수와 같은 판정이다.
+    const eligibility = checkObservationPublicationEligibility(trialResult.observations)
+    if (eligibility.status === "legacy_requires_review") {
+      throw new Error("legacy_observations_require_review")
+    }
+    if (eligibility.status === "unknown_values") {
+      throw new Error("unknown_observations_cannot_publish")
+    }
+
+    const built = buildExperienceReportSnapshotV1({
+      programType: "trial_class",
+      confirmedSlotAt: application.confirmedSlotAt ?? null,
+      completedAt: application.completedAt ?? null,
+      childName: application.childName,
+      childGrade: application.childGrade,
+      academyName: application.academyName ?? "",
+      classTitle: application.classTitle ?? "",
+      observations: trialResult.observations,
+      recommendedCourse: trialResult.recommendedCourse,
+      recommendedLevel: trialResult.recommendedLevel,
+      recommendedSchedule: trialResult.recommendedSchedule
+    })
+
+    if (built.status !== "ok") {
+      throw new Error(
+        built.reason.status === "experience_date_missing"
+          ? "experience_date_missing"
+          : built.reason.status === "unknown_values"
+            ? "unknown_observations_cannot_publish"
+            : "legacy_observations_require_review"
+      )
+    }
+
+    const nowIso = new Date().toISOString()
+    const current = experienceReports.find(
+      (item) => item.applicationId === applicationId && item.status === "published"
+    )
+
+    if (current) {
+      current.status = "superseded"
+      current.supersededAt = nowIso
+    }
+
+    // version 은 철회분까지 포함한 최대값 다음이다. 번호를 재사용하지 않는다.
+    const nextVersion =
+      experienceReports
+        .filter((item) => item.applicationId === applicationId)
+        .reduce((max, item) => Math.max(max, item.version), 0) + 1
+
+    const record: ExperienceReportSummary = {
+      id: `experience-report-${experienceReports.length + 1}`,
+      applicationId,
+      version: nextVersion,
+      status: "published",
+      contentVersion: 1,
+      content: built.snapshot,
+      publishedAt: nowIso,
+      supersededAt: null,
+      withdrawnAt: null
+    }
+
+    experienceReports.push(record)
+
+    return {
+      id: record.id,
+      version: nextVersion,
+      supersededVersion: current?.version ?? null,
+      publishedAt: nowIso
+    }
+  },
+  async withdrawExperienceReport(applicationId: string) {
+    const current = experienceReports.find(
+      (item) => item.applicationId === applicationId && item.status === "published"
+    )
+
+    if (!current) {
+      throw new Error("published_report_not_found")
+    }
+
+    const nowIso = new Date().toISOString()
+    current.status = "withdrawn"
+    current.withdrawnAt = nowIso
+
+    return { id: current.id, version: current.version, withdrawnAt: nowIso }
   },
   async createTrialApplication(input: TrialApplicationInput) {
     const parsedScheduleOption = parseSelectedScheduleOptionId(

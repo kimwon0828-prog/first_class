@@ -1,3 +1,8 @@
+import type {
+  ExperienceReportSnapshotV1,
+  ExperienceReportStatus
+} from "@/features/reports/lib/experience-report-snapshot"
+
 import type { RegularSchedulePreference } from "@/features/studio/lib/regular-schedule-preference"
 import type { ClassSubjectReadModel } from "@/shared/lib/subject-master"
 
@@ -1136,6 +1141,38 @@ export type ListClassesOptions = {
   subjectId?: string
 }
 
+
+/**
+ * 발행된 체험 리포트 한 건.
+ *
+ * content 는 여기서 raw 로 두지 않는다 — decodeExperienceReportSnapshot 을 통과한
+ * 것만 담긴다. 모양이 어긋난 row 는 adapter 가 버린다.
+ */
+export type ExperienceReportSummary = {
+  id: string
+  applicationId: string
+  version: number
+  status: ExperienceReportStatus
+  contentVersion: number
+  content: ExperienceReportSnapshotV1
+  publishedAt: string
+  supersededAt: string | null
+  withdrawnAt: string | null
+}
+
+export type PublishExperienceReportResult = {
+  id: string
+  version: number
+  supersededVersion: number | null
+  publishedAt: string
+}
+
+export type WithdrawExperienceReportResult = {
+  id: string
+  version: number
+  withdrawnAt: string
+}
+
 export interface DataAdapter {
   listClasses(options?: ListClassesOptions): Promise<ClassSummary[]>
   getClassById(classId: string): Promise<ClassDetail | null>
@@ -1222,6 +1259,23 @@ export interface DataAdapter {
     organizationId: string
   ): Promise<StudioTrialResultSaveContext | null>
   upsertStudioTrialResult(input: UpsertStudioTrialResultInput): Promise<"created" | "updated">
+  /** 지금 살아 있는 발행본. superseded / withdrawn 은 돌려주지 않는다. */
+  getPublishedExperienceReport(applicationId: string): Promise<ExperienceReportSummary | null>
+  /** 학원용 발행 이력 전체. 최신 version 이 앞이다. */
+  listExperienceReportVersions(applicationId: string): Promise<ExperienceReportSummary[]>
+  /**
+   * 발행 / 재발행. 이전 발행본 supersede 까지 한 transaction 으로 처리된다.
+   *
+   * expectedAssessmentUpdatedAt 은 원장이 확인한 Assessment 의 시각이다.
+   * 확인 이후 다른 Studio 계정이 평가를 고쳤다면 발행하지 않는다 —
+   * 본 적 없는 내용을 부모에게 보내지 않기 위해서다.
+   */
+  publishExperienceReport(
+    applicationId: string,
+    expectedAssessmentUpdatedAt: string
+  ): Promise<PublishExperienceReportResult>
+  /** 철회. 삭제가 아니다 — content 는 남고 부모만 읽지 못한다. */
+  withdrawExperienceReport(applicationId: string): Promise<WithdrawExperienceReportResult>
   createTrialApplication(
     input: TrialApplicationInput
   ): Promise<TrialApplicationSummary>
