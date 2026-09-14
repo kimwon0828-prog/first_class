@@ -1,0 +1,97 @@
+/*
+ * 학부모의 현재 생각.
+ *
+ * 설문지처럼 보이지 않게 한다. 카드 안에 카드를 만들지 않고, 선택지는 한 줄씩
+ * 조용히 놓는다. 색만으로 선택 상태를 말하지 않고 ● / ○ 와 aria-pressed 를 함께 쓴다.
+ */
+.wrap {
+  display: grid;
+  gap: var(--s3);
+}
+
+.question {
+  margin: 0;
+  font-size: 15px;
+  line-height: 22px;
+  font-weight: 700;
+  color: var(--text-1);
+  word-break: keep-all;
+}
+
+.options {
+  display: grid;
+  gap: var(--s2);
+}
+
+.option {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  width: 100%;
+  min-height: 48px;
+  padding: 0 var(--s4);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  color: var(--text-1);
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+
+.optionSelected {
+  border-color: var(--brand-500);
+  background: var(--brand-50);
+  color: var(--brand-700);
+  font-weight: 700;
+}
+
+.option:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.optionMark {
+  flex: none;
+  font-size: 12px;
+  line-height: 20px;
+}
+
+.optionLabel {
+  min-width: 0;
+  word-break: keep-all;
+}
+
+.hint {
+  margin: 0;
+  font-size: 12px;
+  line-height: 19px;
+  color: var(--text-3);
+}
+
+.status {
+  margin: 0;
+  font-size: 13px;
+  line-height: 20px;
+  color: var(--text-2);
+}
+
+.statusError {
+  color: var(--red-fg);
+}
+
+.notice {
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--surface-sub);
+}
+
+.noticeText {
+  margin: 0;
+  font-size: 13px;
+  line-height: 20px;
+  color: var(--text-2);
+}

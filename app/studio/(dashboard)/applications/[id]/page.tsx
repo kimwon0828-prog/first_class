@@ -19,6 +19,8 @@ import {
   hasPublishableReportContent
 } from "@/features/reports/lib/experience-report-snapshot"
 import { getPublishedExperienceReport } from "@/features/reports/queries/get-published-experience-report"
+import { getStudioParentDecision } from "@/features/decisions/queries/get-studio-parent-decision"
+import { StudioParentDecision } from "@/features/decisions/ui/studio-parent-decision"
 import { isLegacyTrialResultObservation } from "@/features/studio/lib/trial-result-options"
 import { StudioStatusBadge } from "@/features/studio/ui/studio-status-badge"
 import { getSubjectLabel } from "@/shared/constants/education-taxonomy"
@@ -221,6 +223,12 @@ export default async function StudioApplicationDetailPage({ params }: StudioAppl
   const publishedReportResult =
     data && data.status === "completed"
       ? await getPublishedExperienceReport(data.id)
+      : { data: null, error: null }
+
+  // 학부모가 남긴 현재 생각. 읽기 전용이며 등록 결과와 별개다.
+  const parentDecisionResult =
+    data && data.status === "completed"
+      ? await getStudioParentDecision(data.id)
       : { data: null, error: null }
 
   /*
@@ -559,6 +567,12 @@ export default async function StudioApplicationDetailPage({ params }: StudioAppl
               canWriteConsultations: entitlements.canWriteConsultations,
               canReopenConsultation: entitlements.canReopenConsultation
             }}
+            parentDecisionSection={
+              <StudioParentDecision
+                decision={parentDecisionResult.data}
+                loadError={parentDecisionResult.error}
+              />
+            }
             reportSection={
               reportView &&
               (reportView.preview ||

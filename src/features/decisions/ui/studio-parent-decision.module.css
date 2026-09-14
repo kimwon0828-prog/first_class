@@ -1,0 +1,61 @@
+/* 등록 상담과 같은 Section 문법을 쓴다. 새 카드 패턴을 만들지 않는다. */
+.card {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  border-radius: var(--r-md);
+  padding: var(--s5);
+}
+
+.sectionCard {
+  display: grid;
+  gap: var(--s2);
+  padding: 18px 20px;
+}
+
+.sectionHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--s3);
+  flex-wrap: wrap;
+}
+
+.sectionTitle {
+  margin: 0;
+  font-size: 20px;
+  line-height: 26px;
+  font-weight: 900;
+  color: var(--text-1);
+}
+
+.value {
+  margin: 0;
+  font-size: 16px;
+  line-height: 24px;
+  font-weight: 700;
+  color: var(--text-1);
+  word-break: keep-all;
+}
+
+.meta {
+  margin: 0;
+  font-size: 13px;
+  line-height: 20px;
+  color: var(--text-2);
+  font-variant-numeric: tabular-nums;
+}
+
+.muted {
+  margin: 0;
+  font-size: 14px;
+  line-height: 21px;
+  color: var(--text-3);
+}
+
+.footnote {
+  margin: 0;
+  font-size: 12px;
+  line-height: 19px;
+  color: var(--text-3);
+  word-break: keep-all;
+}

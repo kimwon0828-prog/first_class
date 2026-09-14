@@ -1,4 +1,9 @@
 import {
+  canCollectParentDecision,
+  isParentDecision,
+  type ParentDecision
+} from "@/features/decisions/lib/parent-decision"
+import {
   EXPERIENCE_REPORT_STATUSES,
   decodeExperienceReportSnapshot
 } from "@/features/reports/lib/experience-report-snapshot"
@@ -4188,6 +4193,7 @@ export const supabaseDataAdapter: DataAdapter = {
         completedAt: row.completed_at ?? null,
         canceledAt: row.canceled_at ?? null,
         status: row.status,
+        canCollectParentDecision: canCollectParentDecision(row.registration_status ?? null),
         canCancel: resolveParentCanCancel(row.status, row.registration_status ?? null),
         createdAt: row.created_at,
         updatedAt: row.updated_at
@@ -5372,6 +5378,43 @@ export const supabaseDataAdapter: DataAdapter = {
     }
 
     return "created"
+  },
+  async getCurrentParentDecision(applicationId: string) {
+    const supabase = await getSupabaseServerClient()
+    // RLS 가 학부모에게는 자기 신청, 학원에는 자기 조직만 준다.
+    // 지금의 생각만 읽는다 — 지나간 기록은 R4 화면이 쓰지 않는다.
+    const { data, error } = await supabase
+      .from("parent_decisions")
+      .select("decision, created_at")
+      .eq("application_id", applicationId)
+      .is("superseded_at", null)
+      .maybeSingle()
+
+    if (error) {
+      throw new Error("failed_to_fetch_parent_decision")
+    }
+
+    if (!data || !isParentDecision(data.decision)) {
+      return null
+    }
+
+    return { decision: data.decision, createdAt: data.created_at as string }
+  },
+  async setParentDecision(applicationId: string, decision: ParentDecision) {
+    const supabase = await getSupabaseServerClient()
+    // parent_id 를 넘기지 않는다. 함수가 auth.uid() 로 채운다 —
+    // 호출자가 남의 이름으로 선택을 남길 방법이 없다.
+    const { data, error } = await supabase.rpc("set_parent_decision", {
+      p_application_id: applicationId,
+      p_decision: decision
+    })
+
+    if (error) {
+      throw new Error(error.message)
+    }
+
+    const result = data as { decision: ParentDecision; createdAt: string; changed: boolean }
+    return { decision: result.decision, createdAt: result.createdAt, changed: result.changed }
   },
   async getPublishedExperienceReport(applicationId: string) {
     const supabase = await getSupabaseServerClient()

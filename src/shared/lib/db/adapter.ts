@@ -2,6 +2,7 @@ import type {
   ExperienceReportSnapshotV1,
   ExperienceReportStatus
 } from "@/features/reports/lib/experience-report-snapshot"
+import type { ParentDecision, ParentDecisionSummary } from "@/features/decisions/lib/parent-decision"
 
 import type { RegularSchedulePreference } from "@/features/studio/lib/regular-schedule-preference"
 import type { ClassSubjectReadModel } from "@/shared/lib/subject-master"
@@ -646,6 +647,14 @@ export type ParentApplicationSummary = {
   canceledAt: string | null
   status: ApplicationStatus
   /**
+   * 지금 생각을 물어도 되는 상태인가.
+   *
+   * ⚠️ registration_status 를 대신 내보내는 값이 아니다. 서버에서 boolean 하나로
+   *    접는다 — 학원이 등록 여부를 무엇으로 적어 뒀는지는 학부모 화면이 알 필요가 없고
+   *    알아서도 안 된다. 여기서 필요한 답은 "물어볼까 말까" 하나뿐이다.
+   */
+  canCollectParentDecision: boolean
+  /**
    * 학부모가 지금 이 신청을 취소할 수 있는가.
    *
    * 최종 판정은 여기서 하지 않는다 — cancel-my-application server action 이
@@ -1160,6 +1169,13 @@ export type ExperienceReportSummary = {
   withdrawnAt: string | null
 }
 
+export type SetParentDecisionResult = {
+  decision: ParentDecision
+  createdAt: string
+  /** 같은 선택을 다시 고른 경우 false. 기록을 늘리지 않았다는 뜻이다. */
+  changed: boolean
+}
+
 export type PublishExperienceReportResult = {
   id: string
   version: number
@@ -1259,6 +1275,10 @@ export interface DataAdapter {
     organizationId: string
   ): Promise<StudioTrialResultSaveContext | null>
   upsertStudioTrialResult(input: UpsertStudioTrialResultInput): Promise<"created" | "updated">
+  /** 지금의 생각. 지나간 기록은 돌려주지 않는다. */
+  getCurrentParentDecision(applicationId: string): Promise<ParentDecisionSummary | null>
+  /** 학부모가 선택을 남긴다. 값이 바뀐 경우에만 기록이 이어진다. */
+  setParentDecision(applicationId: string, decision: ParentDecision): Promise<SetParentDecisionResult>
   /** 지금 살아 있는 발행본. superseded / withdrawn 은 돌려주지 않는다. */
   getPublishedExperienceReport(applicationId: string): Promise<ExperienceReportSummary | null>
   /** 학원용 발행 이력 전체. 최신 version 이 앞이다. */

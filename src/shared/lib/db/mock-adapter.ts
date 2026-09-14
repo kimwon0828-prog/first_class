@@ -1,4 +1,9 @@
 import {
+  canCollectParentDecision,
+  isParentDecision,
+  type ParentDecision
+} from "@/features/decisions/lib/parent-decision"
+import {
   buildExperienceReportSnapshotV1,
   checkObservationPublicationEligibility,
   hasPublishableReportContent
@@ -693,6 +698,20 @@ const getProfileDisplayNameById = (profileId: string | null | undefined) => {
 // 발행 이력. mock 에서도 supabase 와 같은 lifecycle 을 지킨다 —
 // 한 application 에 published 는 최대 1개, version 은 재사용하지 않는다.
 const experienceReports: ExperienceReportSummary[] = []
+
+
+// 학부모 선택 기록. supabase 와 같은 규칙을 지킨다 —
+// 지금의 생각은 한 신청에 하나, 값이 바뀔 때만 기록이 이어진다.
+type MockParentDecision = {
+  id: string
+  applicationId: string
+  parentId: string
+  decision: ParentDecision
+  createdAt: string
+  supersededAt: string | null
+}
+
+const parentDecisions: MockParentDecision[] = []
 
 
 export const mockDataAdapter: DataAdapter = {
@@ -1611,6 +1630,7 @@ export const mockDataAdapter: DataAdapter = {
         completedAt: item.completedAt ?? null,
         canceledAt: item.canceledAt ?? null,
         status: item.status,
+        canCollectParentDecision: canCollectParentDecision(item.registrationStatus ?? null),
         canCancel:
           item.registrationStatus !== "enrolled" &&
           (item.status === "new" || item.status === "reviewing" || item.status === "confirmed"),
@@ -2382,6 +2402,52 @@ export const mockDataAdapter: DataAdapter = {
     })
 
     return "created"
+  },
+  async getCurrentParentDecision(applicationId: string) {
+    const current = parentDecisions.find(
+      (item) => item.applicationId === applicationId && item.supersededAt === null
+    )
+
+    return current ? { decision: current.decision, createdAt: current.createdAt } : null
+  },
+  async setParentDecision(applicationId: string, decision: ParentDecision) {
+    const application = applications.find((item) => item.id === applicationId)
+    if (!application) {
+      throw new Error("application_not_found_or_forbidden")
+    }
+
+    if (application.status !== "completed") {
+      throw new Error("application_not_completed")
+    }
+
+    if (!isParentDecision(decision)) {
+      throw new Error("invalid_parent_decision")
+    }
+
+    const nowIso = new Date().toISOString()
+    const current = parentDecisions.find(
+      (item) => item.applicationId === applicationId && item.supersededAt === null
+    )
+
+    // 같은 생각을 다시 고른 것은 바뀐 것이 아니다. 기록을 늘리지 않는다.
+    if (current && current.decision === decision) {
+      return { decision: current.decision, createdAt: current.createdAt, changed: false }
+    }
+
+    if (current) {
+      current.supersededAt = nowIso
+    }
+
+    parentDecisions.push({
+      id: `parent-decision-${parentDecisions.length + 1}`,
+      applicationId,
+      parentId: application.parentId ?? "mock-parent",
+      decision,
+      createdAt: nowIso,
+      supersededAt: null
+    })
+
+    return { decision, createdAt: nowIso, changed: true }
   },
   async getPublishedExperienceReport(applicationId: string) {
     return (
