@@ -10,8 +10,10 @@ import {
   getExperienceStageLabel
 } from "@/features/record/lib/experience-view"
 import { getMyExperienceDetail } from "@/features/record/queries/get-my-experience-detail"
+import { getMyExperienceReport } from "@/features/record/queries/get-my-experience-report"
 import { ExperienceCancelButton } from "@/features/record/ui/experience-cancel-button"
 import { ExperienceTimeline } from "@/features/record/ui/experience-timeline"
+import { getSeoulDateTimeParts } from "@/shared/lib/seoul-datetime"
 import styles from "./page.module.css"
 
 // 한 번의 교육 경험에서 실제로 무슨 일이 있었는지 보는 화면.
@@ -24,25 +26,34 @@ import styles from "./page.module.css"
 export const dynamic = "force-dynamic"
 export const revalidate = 0
 
+/*
+ * 날짜·시각은 한국 시간으로 읽는다.
+ *
+ * getFullYear() / getHours() 는 실행 환경의 timezone 을 따른다. Vercel 은 UTC 라서
+ * 한국 시간 자정 전후의 일정이 하루 전으로 적힌다. 리포트 화면은 이미 KST 인데
+ * 여기만 서버 시간이면 같은 체험이 두 화면에서 다른 날짜로 보인다.
+ *
+ * 기존 helper 를 쓴다. timezone 계산을 또 만들지 않는다.
+ */
+const SEOUL_WEEKDAY_SHORT = ["일", "월", "화", "수", "목", "금", "토"]
+
 const formatFullDate = (value: string) => {
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) {
+  const parts = getSeoulDateTimeParts(value)
+  if (!parts) {
     return null
   }
 
-  const weekdays = ["일", "월", "화", "수", "목", "금", "토"]
-  return `${date.getFullYear()}년 ${date.getMonth() + 1}월 ${date.getDate()}일 (${weekdays[date.getDay()]})`
+  return `${parts.year}년 ${parts.month}월 ${parts.day}일 (${SEOUL_WEEKDAY_SHORT[parts.weekday]})`
 }
 
 const formatTime = (value: string) => {
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) {
+  const parts = getSeoulDateTimeParts(value)
+  if (!parts) {
     return null
   }
 
-  const hours = date.getHours()
-  const minutes = `${date.getMinutes()}`.padStart(2, "0")
-  return `${hours < 12 ? "오전" : "오후"} ${hours % 12 || 12}:${minutes}`
+  const minutes = `${parts.minute}`.padStart(2, "0")
+  return `${parts.hour < 12 ? "오전" : "오후"} ${parts.hour % 12 || 12}:${minutes}`
 }
 
 export default async function ExperienceDetailPage({
@@ -58,6 +69,16 @@ export default async function ExperienceDetailPage({
   if (!experience) {
     notFound()
   }
+
+  // 발행된 리포트가 있을 때만 안내한다.
+  //
+  // 모든 체험에 리포트가 있는 것은 아니다. "아직 리포트가 없습니다" 카드를 만들어 두면
+  // 학원이 발행할 의무가 있는 것처럼 읽히고, 없는 약속을 화면이 대신 하게 된다.
+  // 철회된 리포트도 여기서 자동으로 사라진다(현재 published 만 조회한다).
+  const reportResult = await getMyExperienceReport(experienceId)
+  const hasPublishedReport = reportResult.status === "ok"
+  // ⚠️ 조회 실패를 "리포트 없음" 으로 접지 않는다. CTA 는 숨기되 왜인지 한 줄 말한다.
+  const reportLoadFailed = reportResult.status === "error"
 
   const stage = resolveExperienceStage(experience)
   const typeLabel = getExperienceTypeLabel(experience.classProgramType)
@@ -109,6 +130,24 @@ export default async function ExperienceDetailPage({
           </h2>
           <ExperienceTimeline experience={experience} />
         </section>
+
+        {hasPublishedReport || reportLoadFailed ? (
+          <section className={styles.block} aria-labelledby="report-title">
+            <h2 id="report-title" className={styles.blockTitle}>
+              체험 리포트
+            </h2>
+            {hasPublishedReport ? (
+              <>
+                <p className={styles.blockValue}>학원에서 전달한 체험 내용을 확인해 보세요.</p>
+                <Link href={`/record/${experience.id}/report`} className={styles.reportLink}>
+                  체험 리포트 보기
+                </Link>
+              </>
+            ) : (
+              <p className={styles.blockSub}>리포트 정보를 불러오지 못했습니다.</p>
+            )}
+          </section>
+        ) : null}
 
         <div className={styles.actions}>
           <Link href={`/classes/${experience.classId}`} className={styles.secondaryLink}>

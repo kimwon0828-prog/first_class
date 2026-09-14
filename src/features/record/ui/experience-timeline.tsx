@@ -4,6 +4,7 @@ import {
   type ParentExperience
 } from "@/features/record/lib/experience-view"
 import styles from "./experience-timeline.module.css"
+import { getSeoulDateTimeParts } from "@/shared/lib/seoul-datetime"
 
 // 한 경험에서 실제로 일어난 일.
 //
@@ -17,14 +18,17 @@ type ExperienceTimelineProps = {
   experience: ParentExperience
 }
 
+// 상세 화면의 다른 날짜와 같은 기준(Asia/Seoul)으로 읽는다.
+// 한 화면 안에서 날짜 기준이 갈리면 어느 쪽이 맞는지 알 수 없다.
+const SEOUL_WEEKDAY_SHORT = ["일", "월", "화", "수", "목", "금", "토"]
+
 const formatDay = (value: string) => {
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) {
+  const parts = getSeoulDateTimeParts(value)
+  if (!parts) {
     return null
   }
 
-  const weekdays = ["일", "월", "화", "수", "목", "금", "토"]
-  return `${date.getFullYear()}년 ${date.getMonth() + 1}월 ${date.getDate()}일 (${weekdays[date.getDay()]})`
+  return `${parts.year}년 ${parts.month}월 ${parts.day}일 (${SEOUL_WEEKDAY_SHORT[parts.weekday]})`
 }
 
 export const ExperienceTimeline = ({ experience }: ExperienceTimelineProps) => {

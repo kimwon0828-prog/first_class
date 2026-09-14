@@ -1,4 +1,5 @@
 import type { ClassProgramType, ParentApplicationSummary } from "@/shared/lib/db/adapter"
+import { getSeoulDateTimeParts } from "@/shared/lib/seoul-datetime"
 
 // 학부모가 보는 "교육 경험" 의 파생 규칙.
 //
@@ -53,10 +54,25 @@ export const getExperienceStageLabel = (
 ): string =>
   programType === "level_test" ? LEVEL_TEST_STAGE_LABELS[stage] : EXPERIENCE_STAGE_LABELS[stage]
 
-const isSameLocalDay = (left: Date, right: Date) =>
-  left.getFullYear() === right.getFullYear() &&
-  left.getMonth() === right.getMonth() &&
-  left.getDate() === right.getDate()
+/*
+ * "오늘" 은 한국 기준이다.
+ *
+ * 실행 환경 timezone 으로 비교하면 UTC 서버에서 한국 시간 오전 일정이
+ * 전날로 취급되어, 오늘 있는 체험이 "예정" 으로 보인다.
+ */
+const isSameSeoulDay = (left: Date, right: Date) => {
+  const leftParts = getSeoulDateTimeParts(left)
+  const rightParts = getSeoulDateTimeParts(right)
+  if (!leftParts || !rightParts) {
+    return false
+  }
+
+  return (
+    leftParts.year === rightParts.year &&
+    leftParts.month === rightParts.month &&
+    leftParts.day === rightParts.day
+  )
+}
 
 export const resolveExperienceStage = (
   experience: Pick<ParentExperience, "status" | "confirmedSlotAt">,
@@ -78,7 +94,7 @@ export const resolveExperienceStage = (
 
     // 확정된 날짜가 오늘이면 "오늘 체험" 이다. 시작 시각이 지났는지까지는 따지지 않는다 —
     // 학부모 화면에서 분 단위로 상태가 바뀌면 오히려 혼란스럽다.
-    return isSameLocalDay(confirmedAt, now) ? "today" : "upcoming"
+    return isSameSeoulDay(confirmedAt, now) ? "today" : "upcoming"
   }
 
   // new · reviewing
@@ -183,18 +199,22 @@ export const groupExperiencesByPeriod = (
   const byYear = new Map<number, Map<number, ParentExperience[]>>()
 
   for (const experience of experiences) {
-    const date = new Date(resolveParentExperienceDate(experience))
-    if (Number.isNaN(date.getTime())) {
+    // 연·월 묶음도 한국 시간으로 가른다.
+    // UTC 로 가르면 한국 시간 10월 1일 새벽 체험이 9월 묶음에 들어가고,
+    // 같은 체험이 상세에서는 10월 1일로 보인다.
+    const parts = getSeoulDateTimeParts(resolveParentExperienceDate(experience))
+    if (!parts) {
       continue
     }
 
-    const year = date.getFullYear()
-    const month = date.getMonth() + 1
+    const year = parts.year
+    const month = parts.month
     const months = byYear.get(year) ?? new Map<number, ParentExperience[]>()
     months.set(month, [...(months.get(month) ?? []), experience])
     byYear.set(year, months)
   }
 
+  // 정렬은 절대 시각 비교라 timezone 과 무관하다. 그대로 둔다.
   const sortByDateDesc = (left: ParentExperience, right: ParentExperience) =>
     new Date(resolveParentExperienceDate(right)).getTime() -
     new Date(resolveParentExperienceDate(left)).getTime()

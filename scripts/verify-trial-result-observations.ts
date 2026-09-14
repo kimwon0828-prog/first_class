@@ -201,8 +201,14 @@ check("기존 row 를 채우지 않는다(backfill 없음)", !/set\s+updated_by/
 check("adapter 가 저장할 때 actor 를 넣는다", readSource(ADAPTER_PATH).includes("updated_by: input.actorId"))
 
 console.log("\n── 9. 학부모 노출 0 ──")
-// observations 는 Studio 전용이다. 학부모 화면·public projection 어디에도
-// 나가지 않는다. Report 는 아직 없다.
+// trial_results 는 Studio 전용이다. 학부모 화면 어디에서도 읽지 않는다.
+//
+// ⚠️ 규칙이 "observations 라는 낱말 금지" 는 아니다. R1 이 발행 도메인을 만든 뒤로
+//    학부모는 experience_reports 의 발행본 snapshot 을 통해 관찰 문장을 본다 —
+//    그게 발행 기능의 목적이다. 막아야 하는 것은 mutable source 인 trial_results 를
+//    학부모 경로가 직접 읽는 것이고, 그것만 정확히 막는다.
+//
+//    낱말로 막으면 둘을 구분하지 못해, 정당한 화면을 막거나 규칙을 통째로 풀게 된다.
 const PARENT_SURFACES = [
   "app/classes",
   "app/my",
@@ -218,11 +224,73 @@ const PARENT_SURFACES = [
 const missingSurfaces = PARENT_SURFACES.filter((dir) => !existsSync(resolve(process.cwd(), dir)))
 check("검사 대상 학부모 경로가 모두 존재한다", missingSurfaces.length === 0, missingSurfaces.join(", "))
 
-const parentHits = PARENT_SURFACES.filter((dir) => existsSync(resolve(process.cwd(), dir))).flatMap(
-  (dir) =>
-    execSync(`grep -rln observations '${dir}' || true`, { encoding: "utf8" }).split("\n").filter(Boolean)
+const existingSurfaces = PARENT_SURFACES.filter((dir) => existsSync(resolve(process.cwd(), dir)))
+
+// 주석과 CSS 클래스명은 검사 대상이 아니다.
+//   · 금지 사항을 설명하는 주석이 그 자체로 위반이 되면 규칙을 적어 둘 수 없다.
+//   · styles.nextActionRow 같은 클래스명은 CRM field 와 이름만 같다.
+// 실제 코드에서 그 이름을 쓰는지만 본다.
+const parentSourceFiles = existingSurfaces.flatMap((dir) =>
+  execSync(`find '${dir}' -type f \\( -name '*.ts' -o -name '*.tsx' \\) || true`, {
+    encoding: "utf8"
+  })
+    .split("\n")
+    .filter(Boolean)
 )
-check("학부모 경로에 observations 참조가 없다", parentHits.length === 0, parentHits.join(", "))
+
+const stripComments = (source: string) =>
+  source.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/[^\n]*/g, "")
+
+const parentCode = parentSourceFiles.map((file) => ({
+  file,
+  code: stripComments(readFileSync(resolve(process.cwd(), file), "utf8"))
+}))
+
+const filesUsing = (needle: string) =>
+  parentCode.filter((item) => item.code.includes(needle)).map((item) => item.file)
+
+// mutable source 를 학부모 경로가 직접 읽지 못한다.
+const trialResultHits = filesUsing("trial_results")
+check("학부모 경로가 trial_results 를 읽지 않는다", trialResultHits.length === 0, trialResultHits.join(", "))
+
+// Studio 전용 표시 헬퍼도 학부모 경로로 넘어오지 않는다.
+// 발행본의 label 은 발행 시점에 얼어붙은 문자열이라 다시 해석할 필요가 없다.
+const studioHelperHits = filesUsing("trial-result-options")
+check(
+  "학부모 경로가 Studio 관찰 헬퍼를 쓰지 않는다",
+  studioHelperHits.length === 0,
+  studioHelperHits.join(", ")
+)
+
+// 학원 내부 판단 field 는 학부모 코드에 이름조차 없어야 한다.
+// CRM field 접근 형태(.field 또는 "field")로만 본다 — CSS 클래스명과 구분하기 위해서다.
+for (const field of [
+  "parentReaction",
+  "parent_reaction",
+  "registrationStatus",
+  "registration_status",
+  "unregisteredReason",
+  "assignedTeacherId"
+]) {
+  const hits = filesUsing(field)
+  check(`학부모 경로에 ${field} 가 없다`, hits.length === 0, hits.join(", "))
+}
+
+// nextAction 은 styles.nextActionRow 같은 클래스명과 이름이 겹친다.
+// CRM 값 접근 형태일 때만 위반으로 본다.
+const nextActionHits = parentCode
+  .filter((item) => /(?:\.|")nextAction(?!Row)\b/.test(item.code) || item.code.includes("next_action"))
+  .map((item) => item.file)
+check("학부모 경로가 nextAction 값을 읽지 않는다", nextActionHits.length === 0, nextActionHits.join(", "))
+
+// observations 를 쓰는 학부모 파일은 발행본 snapshot 에서 온 것이어야 한다.
+for (const file of filesUsing("observations")) {
+  const source = readFileSync(resolve(process.cwd(), file), "utf8")
+  check(
+    `${file} 의 observations 는 발행본 snapshot 에서 온다`,
+    source.includes("snapshot.observations") || source.includes("report.content")
+  )
+}
 
 console.log("\n── 10. DB 허용 집합 = canonical 7 + legacy 7 ──")
 // constraint 본문만 잘라 본다. 뒤따르는 comment on constraint 의 문자열까지
