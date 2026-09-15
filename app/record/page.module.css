@@ -228,3 +228,32 @@
   font-weight: 600;
   color: var(--text-2);
 }
+
+/*
+ * 교육 프로필 진입점.
+ *
+ * 카드가 아니라 한 줄이다. 기록 목록보다 앞에 큰 카드를 두면 그게 이 화면의
+ * 주인공이 되는데, 기록 화면의 주인공은 아이가 실제로 다녀온 경험이다.
+ */
+.profileCta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0 var(--gutter) var(--s2);
+  padding: var(--s3) var(--s4);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  text-decoration: none;
+}
+
+.profileCtaLabel {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.profileCtaHint {
+  font-size: 12px;
+  color: var(--text-muted);
+}

@@ -45,6 +45,9 @@ export default async function RecordPage({
   const selectedChild = children.data.find((child) => child.id === selectedChildId) ?? null
   const hasMultipleChildren = children.data.length > 1
   const onlyChild = children.data.length === 1 ? children.data[0] : null
+  // 프로필은 아이 하나를 가리켜야 열 수 있다. 고른 아이가 있으면 그 아이,
+  // 아이가 하나뿐이면 그 아이다.
+  const profileChild = selectedChild ?? onlyChild
 
   const emptyTitle = selectedChild
     ? `${selectedChild.name}의 첫수업 기록이 아직 없어요.`
@@ -84,6 +87,25 @@ export default async function RecordPage({
           <p className={styles.childSingle}>
             {onlyChild.name} · {onlyChild.grade}
           </p>
+        ) : null}
+
+        {/*
+          교육 프로필 진입점.
+
+          아이가 정해졌을 때만 보인다 — "전체" 로 보고 있을 때는 어느 아이의
+          프로필인지 정할 수 없고, 이름만 같은 아이들의 경험을 합쳐 보여 주는
+          것은 이 제품이 하지 않는 일이다.
+
+          요약 수치를 여기 미리 그리지 않는다. 근거 없이 숫자만 먼저 보이면
+          그게 점수처럼 읽힌다.
+        */}
+        {profileChild ? (
+          <Link href={`/record/profile?child=${profileChild.id}`} className={styles.profileCta}>
+            <span className={styles.profileCtaLabel}>{profileChild.name} 교육 프로필</span>
+            <span className={styles.profileCtaHint}>
+              발행된 리포트에 적힌 관찰을 모아서 봐요
+            </span>
+          </Link>
         ) : null}
 
         <div className={styles.content}>

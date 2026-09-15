@@ -52,6 +52,7 @@ import type { StudioClassScheduleSummaryInput } from "@/features/studio/lib/clas
 import { isApplicationUnregisteredReason } from "@/shared/lib/db/adapter"
 import type {
   CreatedTrialApplication,
+  ParentChildPublishedReport,
   ParentApplicationSummary,
   StudioConsultationTransactionResult,
   StudioTrialResultSaveContext,
@@ -5533,6 +5534,79 @@ export const supabaseDataAdapter: DataAdapter = {
     }
 
     return data ? mapExperienceReport(data as ExperienceReportRow) : null
+  },
+  async listMyPublishedReportsByChild(childId: string) {
+    const supabase = await getSupabaseServerClient()
+
+    // 1) 이 아이의 체험을 학부모 표면에서 고른다.
+    //    base table 이 아니다 — view 가 parent_id = auth.uid() 로 이미 좁혀 준다.
+    //    호출자가 넘긴 childId 로 남의 아이를 가리켜도 그 행은 여기 없다.
+    const { data: experienceRows, error: experienceError } = await supabase
+      .from("my_trial_applications")
+      .select("id, confirmed_slot_at, requested_slot_at, completed_at, canceled_at, created_at")
+      .eq("child_id", childId)
+
+    if (experienceError) {
+      throw new Error("failed_to_fetch_child_experiences")
+    }
+
+    const experiences = (experienceRows ?? []) as Array<{
+      id: string
+      confirmed_slot_at: string | null
+      requested_slot_at: string
+      completed_at: string | null
+      canceled_at: string | null
+      created_at: string
+    }>
+
+    if (experiences.length === 0) {
+      return []
+    }
+
+    // 2) 그 체험들의 살아 있는 발행본만 읽는다.
+    //    status 를 조건으로 적지만, 그것 없이도 RLS 가 published 만 준다 —
+    //    두 겹이다.
+    const { data: reportRows, error: reportError } = await supabase
+      .from("experience_reports")
+      .select("id, application_id, version, status, content_version, content, published_at, superseded_at, withdrawn_at")
+      .in(
+        "application_id",
+        experiences.map((experience) => experience.id)
+      )
+      .eq("status", "published")
+
+    if (reportError) {
+      throw new Error("failed_to_fetch_child_published_reports")
+    }
+
+    const experienceById = new Map(experiences.map((experience) => [experience.id, experience]))
+
+    return (reportRows ?? [])
+      .map((row) => {
+        const report = mapExperienceReport(row as ExperienceReportRow)
+        if (!report) {
+          // 모양이 어긋난 스냅샷은 버린다. 반쪽짜리 근거를 프로필에 올리지 않는다.
+          return null
+        }
+
+        const experience = experienceById.get(report.applicationId)
+        if (!experience) {
+          return null
+        }
+
+        return {
+          experienceId: report.applicationId,
+          reportId: report.id,
+          reportVersion: report.version,
+          content: report.content,
+          confirmedSlotAt: experience.confirmed_slot_at ?? null,
+          requestedSlotAt: experience.requested_slot_at,
+          completedAt: experience.completed_at ?? null,
+          canceledAt: experience.canceled_at ?? null,
+          createdAt: experience.created_at
+        }
+      })
+      .filter((item): item is ParentChildPublishedReport => item !== null)
   },
   async listExperienceReportVersions(applicationId: string) {
     const supabase = await getSupabaseServerClient()

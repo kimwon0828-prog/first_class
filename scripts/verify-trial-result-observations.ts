@@ -284,11 +284,40 @@ const nextActionHits = parentCode
 check("학부모 경로가 nextAction 값을 읽지 않는다", nextActionHits.length === 0, nextActionHits.join(", "))
 
 // observations 를 쓰는 학부모 파일은 발행본 snapshot 에서 온 것이어야 한다.
+//
+// 스냅샷을 직접 읽는 화면도 있고(리포트), 스냅샷에서 집계한 값을 받는 화면도
+// 있다(교육 프로필). 뒤쪽을 그냥 통과시키면 규칙이 한 단계 앞에서 멈춘다 —
+// 그래서 집계를 만든 모듈까지 따라가서 거기서도 스냅샷이 근거인지 본다.
+const EDUCATION_PROFILE_LIB = "src/features/profile/lib/education-profile.ts"
+const readsPublishedSnapshot = (source: string): boolean =>
+  source.includes("snapshot.observations") || source.includes("report.content")
+
 for (const file of filesUsing("observations")) {
   const source = readFileSync(resolve(process.cwd(), file), "utf8")
+
+  if (readsPublishedSnapshot(source)) {
+    check(`${file} 의 observations 는 발행본 snapshot 에서 온다`, true)
+    continue
+  }
+
+  // 집계된 DTO 를 받는 화면이면, 그 집계가 스냅샷에서 나왔는지 끝까지 따라간다.
+  const usesProfileAggregate = /profile\.observations|observation\.sources/.test(source)
+  const aggregateSource = usesProfileAggregate
+    ? readFileSync(resolve(process.cwd(), EDUCATION_PROFILE_LIB), "utf8")
+    : ""
+
   check(
     `${file} 의 observations 는 발행본 snapshot 에서 온다`,
-    source.includes("snapshot.observations") || source.includes("report.content")
+    usesProfileAggregate &&
+      readsPublishedSnapshot(aggregateSource) &&
+      // 집계가 Studio 내부 평가를 직접 읽지 않는지도 같이 본다.
+      // 주석은 걷어내고 본다 — "trial_results 를 읽지 않는다" 고 적어 둔
+      // 설명문이 그 자체로 위반처럼 잡히지 않도록.
+      !aggregateSource
+        .replace(/\/\*[\s\S]*?\*\//g, "")
+        .replace(/\/\/[^\n]*/g, "")
+        .includes("trial_results"),
+    usesProfileAggregate ? `집계 출처: ${EDUCATION_PROFILE_LIB}` : ""
   )
 }
 
