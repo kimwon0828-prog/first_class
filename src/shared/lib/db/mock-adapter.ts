@@ -10,6 +10,7 @@ import {
   hasPublishableReportContent
 } from "@/features/reports/lib/experience-report-snapshot"
 import type {
+  ParentChildPublishedReport,
   ActivateStudioTeacherInput,
   DeleteStudioTeacherInput,
   ApplicationLogEntry,
@@ -2478,6 +2479,33 @@ export const mockDataAdapter: DataAdapter = {
         (item) => item.applicationId === applicationId && item.status === "published"
       ) ?? null
     )
+  },
+  async listMyPublishedReportsByChild(childId: string) {
+    // mock 도 같은 계약을 지킨다 — 이 아이의 신청이면서 지금 살아 있는 발행본만.
+    const childApplications = applications.filter((item) => item.childId === childId)
+    const applicationIds = new Set(childApplications.map((item) => item.id))
+
+    return experienceReports
+      .filter((report) => report.status === "published" && applicationIds.has(report.applicationId))
+      .map((report) => {
+        const application = childApplications.find((item) => item.id === report.applicationId)
+        if (!application) {
+          return null
+        }
+
+        return {
+          experienceId: report.applicationId,
+          reportId: report.id,
+          reportVersion: report.version,
+          content: report.content,
+          confirmedSlotAt: application.confirmedSlotAt ?? null,
+          requestedSlotAt: application.requestedSlotAt,
+          completedAt: application.completedAt ?? null,
+          canceledAt: application.canceledAt ?? null,
+          createdAt: application.createdAt
+        }
+      })
+      .filter((item): item is ParentChildPublishedReport => item !== null)
   },
   async listExperienceReportVersions(applicationId: string) {
     return experienceReports

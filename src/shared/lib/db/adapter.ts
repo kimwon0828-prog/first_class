@@ -1190,6 +1190,26 @@ export type ExperienceReportSummary = {
   withdrawnAt: string | null
 }
 
+/**
+ * 교육 프로필이 읽는 한 건.
+ *
+ * 리포트 스냅샷에 체험 날짜가 이미 들어 있지만, 신청 쪽 날짜도 같이 준다 —
+ * 프로필이 Record 화면과 같은 날짜를 말하게 하기 위해서다(날짜 규칙을 새로
+ * 만들지 않는다).
+ */
+export type ParentChildPublishedReport = {
+  experienceId: string
+  reportId: string
+  reportVersion: number
+  content: ExperienceReportSnapshotV1
+  /** Record 의 canonical date resolver 가 쓰는 후보들. */
+  confirmedSlotAt: string | null
+  requestedSlotAt: string
+  completedAt: string | null
+  canceledAt: string | null
+  createdAt: string
+}
+
 export type SetParentDecisionResult = {
   decision: ParentDecision
   createdAt: string
@@ -1310,6 +1330,16 @@ export interface DataAdapter {
   setParentDecision(applicationId: string, decision: ParentDecision): Promise<SetParentDecisionResult>
   /** 지금 살아 있는 발행본. superseded / withdrawn 은 돌려주지 않는다. */
   getPublishedExperienceReport(applicationId: string): Promise<ExperienceReportSummary | null>
+  /**
+   * 한 아이의 살아 있는 발행본 전부. 교육 프로필의 유일한 근거다.
+   *
+   * ⚠️ trial_results 를 읽지 않는다. 부모에게 공개된 적 없는 평가는 프로필에
+   *    들어가지 않는다. superseded / withdrawn 도 제외된다.
+   *
+   * 소유권은 호출부가 아니라 DB 가 판정한다 — 학부모 표면과 RLS 가 이미
+   * 자기 아이, 자기 신청, 자기 발행본으로 좁혀 준다.
+   */
+  listMyPublishedReportsByChild(childId: string): Promise<ParentChildPublishedReport[]>
   /** 학원용 발행 이력 전체. 최신 version 이 앞이다. */
   listExperienceReportVersions(applicationId: string): Promise<ExperienceReportSummary[]>
   /**
