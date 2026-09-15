@@ -5737,6 +5737,7 @@ export const supabaseDataAdapter: DataAdapter = {
       id: string
       version: number
       supersededVersion: number | null
+      isFirstPublication: boolean
       publishedAt: string
     }
 
@@ -5744,6 +5745,8 @@ export const supabaseDataAdapter: DataAdapter = {
       id: result.id,
       version: result.version,
       supersededVersion: result.supersededVersion ?? null,
+      // DB 가 발행 이력으로 판정한 값이다. 여기서 다시 추론하지 않는다.
+      isFirstPublication: result.isFirstPublication === true,
       publishedAt: result.publishedAt
     }
   },

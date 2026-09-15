@@ -107,6 +107,8 @@ export const sendAlimtalk = async (
       to: normalizedPhone,
       templateCode: renderedTemplate.template.templateCode,
       content: renderedTemplate.template.content,
+      // 버튼이 정의된 template 만 실어 보낸다.
+      buttons: renderedTemplate.template.buttons,
       recipientPhoneMasked: recipientPhoneMasked ?? normalizedPhone
     })
   } catch {

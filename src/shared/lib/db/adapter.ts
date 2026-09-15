@@ -1262,7 +1262,16 @@ export type SetParentDecisionResult = {
 export type PublishExperienceReportResult = {
   id: string
   version: number
+  /** 이번 발행으로 내려간 발행본의 version. 없었으면 null. */
   supersededVersion: number | null
+  /**
+   * 이 Experience 의 생애 최초 발행인가.
+   *
+   * ⚠️ supersededVersion === null 로 추론하지 않는다.
+   *    발행 → 철회 → 다시 발행 이면 current 가 비어 있어 null 이 되지만
+   *    처음이 아니다. 자동 알림은 이 값만 본다.
+   */
+  isFirstPublication: boolean
   publishedAt: string
 }
 

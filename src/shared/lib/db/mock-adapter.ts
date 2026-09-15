@@ -2686,6 +2686,8 @@ export const mockDataAdapter: DataAdapter = {
       id: record.id,
       version: nextVersion,
       supersededVersion: current?.version ?? null,
+      // 이력이 없었던 경우에만 최초다. 철회 뒤 재발행은 최초가 아니다.
+      isFirstPublication: nextVersion === 1,
       publishedAt: nowIso
     }
   },

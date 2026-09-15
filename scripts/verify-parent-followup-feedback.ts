@@ -116,6 +116,20 @@ check(
   migration.includes("raise exception 'decline_reason_required'")
 )
 check(
+  // migration 이 먼저 적용되고 코드가 뒤따르는 사이, 구 화면은 이유를 물을
+  // 방법이 없다. 그때 저장이 막히면 기능을 더하다가 있던 기능을 끄게 된다.
+  "구 2-arg 는 전환 동안 declined 도 받는다",
+  migration.includes("public.set_parent_decision(p_application_id, p_decision, null, null, null, true)") &&
+    !/set_parent_decision\(\s*\n\s*p_application_id uuid,\s*\n\s*p_decision text\s*\n\)[\s\S]{0,400}raise exception 'decline_reason_required'/.test(
+      migration
+    )
+)
+check(
+  "그 문은 구 함수만 연다",
+  migration.includes("p_allow_missing_reason boolean default false") &&
+    migration.includes("p_allow_missing_reason is not true")
+)
+check(
   "희망 일정은 시간대가 이유일 때만 있다",
   migration.includes("parent_decisions_preferred_schedule_scope_check")
 )
@@ -230,9 +244,29 @@ check(
 
 console.log("\n── 7. 알림 ──")
 check(
-  "첫 발행에만 보낸다",
-  publishAction.includes("const isFirstPublish = result.supersededVersion === null") &&
+  // ⚠️ supersededVersion 으로 추론하면 안 된다.
+  //    발행 → 철회 → 다시 발행 이면 current 가 없어 null 이 되지만 최초가 아니다.
+  "최초 발행 판정을 supersededVersion 으로 추론하지 않는다",
+  !publishAction.includes("isFirstPublish = result.supersededVersion === null")
+)
+check(
+  "DB 가 발행 이력으로 낸 값을 쓴다",
+  publishAction.includes("const isFirstPublish = result.isFirstPublication") &&
     publishAction.includes("if (isFirstPublish) {")
+)
+check(
+  "RPC 가 isFirstPublication 을 돌려준다",
+  migration.includes("'isFirstPublication', v_is_first_publication")
+)
+check(
+  "판정은 발행 이력 존재 여부다",
+  migration.includes("v_is_first_publication := v_next_version = 1;")
+)
+check(
+  "adapter 가 그 값을 그대로 전달한다",
+  clean(read("src/shared/lib/db/supabase-adapter.ts")).includes(
+    "isFirstPublication: result.isFirstPublication === true"
+  )
 )
 check(
   "재발행 분기에 발송이 없다",
@@ -255,8 +289,48 @@ check(
 )
 check(
   "링크가 없으면 보내지 않는다",
-  clean(read(ALIMTALK_TEMPLATE_PATH)).includes("if (!reportUrl) {")
+  clean(read(ALIMTALK_TEMPLATE_PATH)).includes("if (!resolveTemplateValue(context.reportUrl ?? null))")
 )
+
+console.log("\n── 7-b. 실제 CTA 버튼 ──")
+{
+  const templates = clean(read(ALIMTALK_TEMPLATE_PATH))
+  const client = clean(read("src/features/notifications/alimtalk/ncloud-alimtalk-client.ts"))
+  const sender = clean(read("src/features/notifications/alimtalk/send-alimtalk.ts"))
+  const types = clean(read("src/features/notifications/alimtalk/types.ts"))
+
+  check("버튼 타입이 정의돼 있다", types.includes("export type AlimtalkButton"))
+  check(
+    "payload 가 버튼을 담을 수 있다",
+    types.includes("buttons?: AlimtalkButton[]")
+  )
+  check(
+    "버튼 이름이 계약대로다",
+    templates.includes('name: "체험 리포트 확인하기"')
+  )
+  check(
+    "모바일 · PC 링크가 리포트 주소다",
+    templates.includes("linkMobile: reportUrl") && templates.includes("linkPc: reportUrl")
+  )
+  check("웹 링크 타입이다", templates.includes('type: "WL"'))
+  check(
+    "리포트 알림에만 버튼을 붙인다",
+    templates.includes('if (context.eventType !== "trial_report_published") {') &&
+      templates.includes("return undefined")
+  )
+  check(
+    // 본문 링크는 기기에 따라 잘리거나 눌리지 않는다. 버튼이 그 일을 한다.
+    "본문에 URL 을 적지 않는다",
+    !templates.includes("▶ 체험 리포트 확인하기") && !/^\s*reportUrl\s*$/m.test(templates)
+  )
+  check("발송 경로가 버튼을 전달한다", sender.includes("buttons: renderedTemplate.template.buttons"))
+  check("client 가 버튼을 payload 에 싣는다", client.includes("? { buttons } : {}"))
+  check(
+    // 버튼 없는 기존 4개 template 에 빈 배열을 보내면 template 과 어긋난다.
+    "버튼이 없으면 key 자체를 싣지 않는다",
+    client.includes("buttons && buttons.length > 0")
+  )
+}
 check(
   "기존 발송 인프라를 재사용한다",
   publishAction.includes("@/features/notifications/alimtalk/send-parent-notification")

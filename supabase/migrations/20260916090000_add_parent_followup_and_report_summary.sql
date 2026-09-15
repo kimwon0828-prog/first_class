@@ -128,7 +128,17 @@ create or replace function public.set_parent_decision(
   p_decision text,
   p_decline_reason text,
   p_preferred_date date,
-  p_preferred_time_note text
+  p_preferred_time_note text,
+  -- ⚠️ 배포 전환 동안만 쓰는 문이다.
+  --
+  --    migration 이 먼저 적용되고 코드가 뒤따르는 사이, 구 화면은 이유를 물을
+  --    방법이 없는 채로 declined 를 보낸다. 그때 저장이 실패하면 학부모는
+  --    "등록하지 않겠다" 를 남길 수 없게 된다 — 기능을 더하다가 있던 기능을
+  --    끄는 셈이다. 그래서 구 2-arg 함수만 이 문을 열고 들어온다.
+  --
+  --    새 화면은 5-arg 를 직접 부르고, 그 경로에는 이 값이 오지 않아
+  --    이유가 여전히 필수다.
+  p_allow_missing_reason boolean default false
 )
 returns jsonb
 language plpgsql
@@ -156,7 +166,7 @@ begin
   -- 값 정리는 여기서 한 번만 한다. 화면이 비운 것과 안 보낸 것을 구분하지 않게.
   if p_decision = 'declined' then
     v_reason := nullif(btrim(p_decline_reason), '');
-    if v_reason is null then
+    if v_reason is null and p_allow_missing_reason is not true then
       raise exception 'decline_reason_required'
         using detail = '등록하지 않는 이유를 선택해 주세요.';
     end if;
@@ -247,9 +257,9 @@ begin
 end;
 $$;
 
-revoke all on function public.set_parent_decision(uuid, text, text, date, text) from public;
-revoke all on function public.set_parent_decision(uuid, text, text, date, text) from anon;
-grant execute on function public.set_parent_decision(uuid, text, text, date, text) to authenticated;
+revoke all on function public.set_parent_decision(uuid, text, text, date, text, boolean) from public;
+revoke all on function public.set_parent_decision(uuid, text, text, date, text, boolean) from anon;
+grant execute on function public.set_parent_decision(uuid, text, text, date, text, boolean) to authenticated;
 
 -- 구 2-인자 함수는 이유를 받을 수 없다. declined 는 여기서 받지 않는다.
 create or replace function public.set_parent_decision(
@@ -262,12 +272,10 @@ security definer
 set search_path = public
 as $$
 begin
-  if p_decision = 'declined' then
-    raise exception 'decline_reason_required'
-      using detail = '등록하지 않는 이유를 선택해 주세요.';
-  end if;
-
-  return public.set_parent_decision(p_application_id, p_decision, null, null, null);
+  -- declined 도 그대로 받는다. 이유는 null 로 남는다 —
+  -- 이 기능이 생기기 전 기록과 같은 모양이고, 그건 사실이지 결함이 아니다.
+  -- 없는 이유를 지어내 채우지 않는다.
+  return public.set_parent_decision(p_application_id, p_decision, null, null, null, true);
 end;
 $$;
 
@@ -332,6 +340,7 @@ declare
   v_legacy_count integer;
   v_unknown_count integer;
   v_report_id uuid;
+  v_is_first_publication boolean;
 begin
   if v_actor is null then
     raise exception 'not_authenticated';
@@ -507,6 +516,13 @@ begin
   from public.experience_reports er
   where er.application_id = p_application_id;
 
+  -- ⚠️ "지금 살아 있는 발행본이 없다" 와 "한 번도 발행한 적이 없다" 는 다르다.
+  --
+  --    발행 → 철회 → 다시 발행 이면 current 는 비어 있지만 처음이 아니다.
+  --    supersededVersion 으로 최초 발행을 추론하면 그 경우에 알림이 또 나간다.
+  --    발행 이력 자체가 있었는지로 판정한다 — insert 하기 전에 본다.
+  v_is_first_publication := v_next_version = 1;
+
   insert into public.experience_reports (
     application_id, version, status, content_version, content, published_at, published_by
   )
@@ -521,6 +537,8 @@ begin
     'id', v_report_id,
     'version', v_next_version,
     'supersededVersion', case when v_current.id is null then null else v_current.version end,
+    -- 이 Experience 의 생애 최초 발행인가. 알림 발송 판정은 이 값만 본다.
+    'isFirstPublication', v_is_first_publication,
     'publishedAt', v_now
   );
 end;

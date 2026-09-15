@@ -2,7 +2,11 @@ import "server-only"
 
 import { createHmac } from "node:crypto"
 
-import type { AlimtalkSendResult, ParentAlimtalkEventType } from "@/features/notifications/alimtalk/types"
+import type {
+  AlimtalkButton,
+  AlimtalkSendResult,
+  ParentAlimtalkEventType
+} from "@/features/notifications/alimtalk/types"
 
 export type NcloudAlimtalkConfig = {
   accessKey: string
@@ -18,6 +22,7 @@ type SendNcloudAlimtalkInput = {
   templateCode: string
   content: string
   recipientPhoneMasked: string
+  buttons?: AlimtalkButton[]
 }
 
 type NcloudAlimtalkResponse = {
@@ -79,7 +84,8 @@ export const sendNcloudAlimtalk = async ({
   to,
   templateCode,
   content,
-  recipientPhoneMasked
+  recipientPhoneMasked,
+  buttons
 }: SendNcloudAlimtalkInput): Promise<AlimtalkSendResult> => {
   const requestPath = `/alimtalk/v2/services/${config.serviceId}/messages`
   const timestamp = Date.now().toString()
@@ -104,7 +110,10 @@ export const sendNcloudAlimtalk = async ({
       messages: [
         {
           to,
-          content
+          content,
+          // 버튼이 없는 기존 template 에는 key 자체를 싣지 않는다.
+          // 빈 배열은 "버튼 없는 template 에 버튼을 보냈다" 로 읽힐 수 있다.
+          ...(buttons && buttons.length > 0 ? { buttons } : {})
         }
       ]
     }),

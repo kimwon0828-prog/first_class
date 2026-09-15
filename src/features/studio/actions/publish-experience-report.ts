@@ -118,7 +118,13 @@ export async function publishExperienceReportAction(
     revalidatePath("/studio/applications")
     revalidatePath(`/studio/applications/${applicationId}`)
 
-    const isFirstPublish = result.supersededVersion === null
+    // ⚠️ supersededVersion 으로 추론하지 않는다.
+    //
+    //    발행 → 철회 → 다시 발행 이면 지금 살아 있는 발행본이 없어서
+    //    supersededVersion 이 null 이 된다. 그걸 최초로 읽으면 이미 리포트를
+    //    받아 본 부모에게 "도착했어요" 가 또 간다.
+    //    DB 가 발행 이력으로 판정한 값을 그대로 쓴다.
+    const isFirstPublish = result.isFirstPublication
 
     // ⚠️ 발행 성공과 알림 성공을 하나로 묶지 않는다.
     //
@@ -159,7 +165,7 @@ export async function publishExperienceReportAction(
       status: "success",
       message: notificationFailed
         ? "리포트를 발행했어요. 다만 학부모 알림 발송에는 실패했어요."
-        : isFirstPublish
+        : result.supersededVersion === null
           ? "리포트를 발행했어요."
           : "새 버전의 리포트를 발행했어요.",
       version: result.version,
