@@ -27,17 +27,19 @@ const toNullableText = (value: string | null | undefined) => {
   return trimmed && trimmed.length > 0 ? trimmed : null
 }
 
-const toText = (value: string | null | undefined, fallback = "미등록") => toNullableText(value) ?? fallback
+// 학생의 "미등록"(등록하지 않음)과 다른 뜻이다. 같은 단어를 쓰면
+// 대시보드의 미등록 수와 같은 개념처럼 읽힌다.
+const toText = (value: string | null | undefined, fallback = "미입력") => toNullableText(value) ?? fallback
 
 const formatAddress = (organization: StudioSettingsOrganization) => {
   const line1 = toNullableText(organization.addressLine1 ?? organization.address ?? null)
   const line2 = toNullableText(organization.addressLine2 ?? organization.addressDetail ?? null)
   const combined = [line1, line2].filter((value): value is string => Boolean(value)).join(" ")
-  return combined.length > 0 ? combined : "미등록"
+  return combined.length > 0 ? combined : "미입력"
 }
 
 const formatPhone = (organization: StudioSettingsOrganization) =>
-  toNullableText(organization.academyPhone) ?? toNullableText(organization.organizationPhone) ?? "미등록"
+  toNullableText(organization.academyPhone) ?? toNullableText(organization.organizationPhone) ?? "미입력"
 
 type PublicProfileField = {
   key: keyof PublicProfileFormValues

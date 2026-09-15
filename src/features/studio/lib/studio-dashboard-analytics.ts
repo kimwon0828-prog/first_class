@@ -91,7 +91,8 @@ export const buildStudioDashboardAnalytics = (
   const segmentInput: Array<{ key: StudioDashboardDonutSegment["key"]; label: string; count: number }> = [
     { key: "enrolled", label: "등록", count: metrics.enrolledCount },
     { key: "not_enrolled", label: "미등록", count: metrics.notEnrolledCount },
-    { key: "pending", label: "결정 대기", count: metrics.pendingDecisionCount }
+    // R7 과 같은 말을 쓴다. 같은 화면에서 같은 뜻에 다른 이름을 붙이지 않는다.
+    { key: "pending", label: "결과 미확정", count: metrics.pendingDecisionCount }
   ]
   const donutTotal = segmentInput.reduce((sum, segment) => sum + segment.count, 0)
 
