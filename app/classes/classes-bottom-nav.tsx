@@ -8,7 +8,9 @@ import styles from "./page.module.css"
 
 type ClassesBottomNavProps = {
   classesHomeHref: string
-  myApplicationsEntryHref: string
+  favoritesHref: string
+  recordEntryHref: string
+  myPageEntryHref: string
 }
 
 const navPendingTextStyle = {
@@ -20,7 +22,9 @@ const navPendingTextStyle = {
 
 export const ClassesBottomNav = ({
   classesHomeHref,
-  myApplicationsEntryHref
+  favoritesHref,
+  recordEntryHref,
+  myPageEntryHref
 }: ClassesBottomNavProps) => {
   const pathname = usePathname() ?? ""
   const [pendingHref, setPendingHref] = useState<string | null>(null)
@@ -32,7 +36,7 @@ export const ClassesBottomNav = ({
   const navItems = [
     {
       href: classesHomeHref,
-      active: pathname === "/classes",
+      active: pathname === "/classes" || pathname === "/",
       label: "홈",
       icon: (
         <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
@@ -47,7 +51,7 @@ export const ClassesBottomNav = ({
       )
     },
     {
-      href: "/favorites",
+      href: favoritesHref,
       active: pathname === "/favorites",
       label: "관심수업",
       icon: (
@@ -62,13 +66,36 @@ export const ClassesBottomNav = ({
       )
     },
     {
-      href: myApplicationsEntryHref,
-      active: pathname === "/my/applications" || pathname === "/my" || pathname === "/studio",
-      label: "내 신청",
+      href: recordEntryHref,
+      active: pathname === "/record" || pathname.startsWith("/record/"),
+      label: "기록",
       icon: (
         <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
           <path
-            d="M9 6h11M9 12h11M9 18h11M5 6h.01M5 12h.01M5 18h.01"
+            d="M16.5 3.5a2.12 2.12 0 0 1 3 3L8 18l-4 1 1-4 11.5-11.5Z"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+      )
+    },
+    {
+      href: myPageEntryHref,
+      active: pathname === "/my" || pathname.startsWith("/my/") || pathname === "/studio",
+      label: "마이페이지",
+      icon: (
+        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <path
+            d="M20 21a8 8 0 1 0-16 0"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+          <path
+            d="M12 13a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z"
             stroke="currentColor"
             strokeWidth="2"
             strokeLinecap="round"
@@ -83,7 +110,7 @@ export const ClassesBottomNav = ({
     <nav className={styles.bottomNav} aria-label="하단 탭">
       {navItems.map((item) => (
         <Link
-          key={item.href}
+          key={item.label}
           href={item.href}
           className={`${styles.navItem} ${item.active ? styles.navItemActive : ""}`}
           aria-current={item.active ? "page" : undefined}

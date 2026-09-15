@@ -16,7 +16,8 @@ import { POC_DISCOVERY_HREF } from "@/shared/config/discovery"
 export function FavoritesClient(props: {
   allClasses: ClassSummary[]
   favoritesEnabled: boolean
-  myApplicationsEntryHref: string
+  recordEntryHref: string
+  myPageEntryHref: string
 }) {
   const [favoriteIds, setFavoriteIds] = useState<string[]>([])
 
@@ -155,17 +156,36 @@ export function FavoritesClient(props: {
           </svg>
           <span>관심수업</span>
         </Link>
-        <Link href={props.myApplicationsEntryHref} className={styles.navItem}>
+        <Link href={props.recordEntryHref} className={styles.navItem}>
           <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
             <path
-              d="M9 6h11M9 12h11M9 18h11M5 6h.01M5 12h.01M5 18h.01"
+              d="M16.5 3.5a2.12 2.12 0 0 1 3 3L8 18l-4 1 1-4 11.5-11.5Z"
               stroke="currentColor"
               strokeWidth="2"
               strokeLinecap="round"
               strokeLinejoin="round"
             />
           </svg>
-          <span>내 신청</span>
+          <span>기록</span>
+        </Link>
+        <Link href={props.myPageEntryHref} className={styles.navItem}>
+          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <path
+              d="M20 21a8 8 0 1 0-16 0"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+            <path
+              d="M12 13a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+          <span>마이페이지</span>
         </Link>
       </nav>
     </main>

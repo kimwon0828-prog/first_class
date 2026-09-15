@@ -2,8 +2,8 @@ import Link from "next/link"
 
 import styles from "../../../../app/record/page.module.css"
 
-// 기록 화면의 하단 탭. Global Navigation 은 아직 만들지 않는다 —
-// Contextual Home 과 Child Context 가 생기는 다음 단계에서 함께 정리한다.
+// 기록 화면의 하단 탭. Parent Home 과 같은 4개 탭을 쓴다 —
+// 화면마다 탭 구성이 달라지면 같은 앱이 아니게 된다.
 export const RecordBottomNav = () => {
   return (
     <nav className={styles.bottomNav} aria-label="하단 탭">
@@ -30,10 +30,10 @@ export const RecordBottomNav = () => {
           </svg>
           <span>관심수업</span>
         </Link>
-        <Link href="/record" className={`${styles.navItem} ${styles.navItemActive}`}>
+        <Link href="/record" className={`${styles.navItem} ${styles.navItemActive}`} aria-current="page">
           <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
             <path
-              d="M9 6h11M9 12h11M9 18h11M5 6h.01M5 12h.01M5 18h.01"
+              d="M16.5 3.5a2.12 2.12 0 0 1 3 3L8 18l-4 1 1-4 11.5-11.5Z"
               stroke="currentColor"
               strokeWidth="2"
               strokeLinecap="round"
@@ -41,6 +41,25 @@ export const RecordBottomNav = () => {
             />
           </svg>
           <span>기록</span>
+        </Link>
+        <Link href="/my" className={styles.navItem}>
+          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <path
+              d="M20 21a8 8 0 1 0-16 0"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+            <path
+              d="M12 13a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+          <span>마이페이지</span>
         </Link>
       </nav>
   )

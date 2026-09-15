@@ -15,19 +15,35 @@
 }
 
 .content {
+  position: relative;
+  z-index: 1;
   display: block;
-  padding: var(--s4) 0 var(--s8);
+  margin-top: -22px;
+  border-radius: 22px 22px 0 0;
+  background: var(--surface);
+  padding: 20px 0 var(--s8);
 }
 
+/*
+ * Parent Home 헤더.
+ *
+ * 브랜드 그린 블록 위에 로고 · 현재 맥락(지역/아이) · 검색이 차례로 앉고,
+ * 아래 흰 시트(.content)가 둥근 모서리로 그 위에 겹친다.
+ */
 .header {
-  position: sticky;
-  top: 0;
-  z-index: 40;
+  position: relative;
+  z-index: 0;
+  display: grid;
+  gap: 14px;
+  padding: var(--s4) var(--gutter) 34px;
+  background: var(--brand-500);
+}
+
+.headerTop {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: var(--s3);
-  padding: var(--s4) var(--gutter) var(--s3);
-  background: rgba(255, 255, 255, 0.96);
 }
 
 .brand {
@@ -35,6 +51,86 @@
   align-items: center;
   text-decoration: none;
   white-space: nowrap;
+}
+
+/* 로고 자산은 초록 단색이다. 초록 배경 위에서는 흰색으로 뒤집어 쓴다. */
+.brandLogo {
+  filter: brightness(0) invert(1);
+}
+
+.headerAction {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 32px;
+  padding: 0 12px;
+  border-radius: var(--r-full);
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  background: transparent;
+  color: #ffffff;
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.headerIconButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: var(--r-full);
+  color: #ffffff;
+  text-decoration: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.headerContext {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.childChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+  color: #ffffff;
+  text-decoration: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.childChipLabel {
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.childChip svg {
+  flex: 0 0 auto;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.visuallyHidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
 }
 
 .searchForm {
@@ -46,11 +142,22 @@
   display: flex;
   align-items: center;
   gap: var(--s2);
-  min-height: 40px;
+  min-height: 46px;
   border-radius: var(--r-full);
-  background: var(--surface-sub);
-  padding: 0 14px;
+  background: #ffffff;
+  padding: 0 18px;
   color: var(--text-3);
+}
+
+/* 검색 아이콘은 입력 오른쪽에 둔다(컴포넌트는 그대로 두고 배치만 바꾼다). */
+.searchPill svg {
+  order: 2;
+  flex: 0 0 auto;
+  color: var(--text-1);
+}
+
+.searchPill input {
+  order: 1;
 }
 
 .searchInput {
@@ -129,7 +236,9 @@
   padding: 0;
   font-size: 14px;
   line-height: 1.4;
-  color: #171717;
+  font-weight: 600;
+  color: #ffffff;
+  cursor: pointer;
 }
 
 .filterInlineIcon {
@@ -139,16 +248,13 @@
   width: 15px;
   height: 15px;
   flex: 0 0 auto;
-  color: #737373;
+  color: rgba(255, 255, 255, 0.9);
 }
 
 .filterInlineLabel {
   font-size: 14px;
-  color: #171717;
-}
-
-.filterSection > .filterPanel > .filterInlineItem > .filterInlineTrigger > .filterInlineLabel {
   font-weight: 600;
+  color: #ffffff;
 }
 
 .filterInlineChevron {
@@ -158,7 +264,7 @@
   width: 14px;
   height: 14px;
   flex: 0 0 auto;
-  color: #a3a3a3;
+  color: rgba(255, 255, 255, 0.85);
   transition: transform 0.2s ease;
 }
 
@@ -347,11 +453,12 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  gap: 6px;
   flex: 0 0 auto;
-  min-height: 38px;
+  min-height: 42px;
   padding: 0 14px;
   border: 1px solid var(--border);
-  border-radius: var(--r-full);
+  border-radius: 14px;
   background: var(--surface);
   color: var(--text-2);
   font-size: 14px;
@@ -359,7 +466,30 @@
   font-weight: 600;
   text-decoration: none;
   white-space: nowrap;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
   -webkit-tap-highlight-color: transparent;
+}
+
+.subjectChipIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  flex: 0 0 auto;
+  border-radius: 7px;
+  background: var(--brand-50);
+  color: var(--brand-700);
+}
+
+.subjectChipIcon svg {
+  width: 14px;
+  height: 14px;
+}
+
+.subjectChipActive .subjectChipIcon {
+  background: var(--brand-500);
+  color: #ffffff;
 }
 
 .subjectChipActive {
@@ -375,6 +505,8 @@
 .subjectDetailChip {
   min-height: 34px;
   padding: 0 12px;
+  border-radius: var(--r-full);
+  box-shadow: none;
   background: var(--surface-sub);
   font-size: 13px;
   font-weight: 500;
@@ -641,17 +773,157 @@
   height: 30px;
   padding: 0 12px;
   border-radius: 999px;
-  border: 1px solid var(--border);
-  background: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  background: transparent;
   font-size: 13px;
   font-weight: 600;
   line-height: 1;
-  color: var(--text-2);
+  color: #ffffff;
   cursor: pointer;
 }
 
 .radiusChipActive {
-  border-color: var(--brand-700, #2aad38);
-  background: var(--brand-700, #2aad38);
+  border-color: #ffffff;
+  background: #ffffff;
+  color: var(--brand-700);
+}
+
+/* 시트 안의 첫 섹션은 시트 자체의 여백을 쓴다. */
+.content > *:first-child {
+  margin-top: 0;
+}
+
+.categorySection + .heroSection {
+  margin-top: 22px;
+}
+
+/*
+ * "지금 확인할 것".
+ *
+ * 한 줄에 한 가지 일만 담는다. 카드에 숫자나 배지를 더 붙이지 않는다 —
+ * 여기 오는 것은 모두 학부모가 실제로 열어 볼 수 있는 것 하나뿐이다.
+ */
+.highlightList {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0 var(--gutter);
+  list-style: none;
+}
+
+.highlightCard {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 64px;
+  padding: 12px 12px 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--surface);
+  text-decoration: none;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.highlightIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  flex: 0 0 auto;
+  border-radius: 10px;
+  background: var(--brand-50);
+  color: var(--brand-700);
+}
+
+.highlightIcon svg {
+  width: 20px;
+  height: 20px;
+}
+
+.highlightTitle {
+  flex: 1;
+  min-width: 0;
+  font-size: 15px;
+  line-height: 1.35;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--text-1);
+}
+
+.highlightAction {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  min-width: 56px;
+  min-height: 34px;
+  padding: 0 14px;
+  border-radius: var(--r-full);
+  background: var(--brand-500);
   color: #ffffff;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+/* "다가오는 수업 일정" — 확정된 일정만 온다. */
+.upcomingList {
+  display: grid;
+  gap: 16px;
+  margin: 0;
+  padding: 0 var(--gutter);
+  list-style: none;
+}
+
+.upcomingCard {
+  display: grid;
+  gap: 10px;
+  text-decoration: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.upcomingThumb {
+  position: relative;
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  overflow: hidden;
+  border-radius: 14px;
+  background: var(--surface-sub);
+}
+
+.upcomingThumbEmpty {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, var(--brand-50), var(--surface-sub));
+}
+
+.upcomingBody {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.upcomingTitle {
+  font-size: 15px;
+  line-height: 1.4;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--text-1);
+}
+
+.upcomingAcademy {
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--text-2);
+}
+
+.upcomingSchedule {
+  font-size: 15px;
+  line-height: 1.4;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--brand-500);
 }
