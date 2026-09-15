@@ -115,7 +115,7 @@ const ReportBody = ({ snapshot }: { snapshot: ExperienceReportSnapshotV1 }) => {
       </div>
 
       <section className={styles.reportSection} aria-label="관찰된 모습">
-        <h4 className={styles.reportSectionTitle}>관찰된 모습</h4>
+        <h3 className={styles.reportSectionTitle}>관찰된 모습</h3>
         {snapshot.observations.length > 0 ? (
           <ul className={styles.reportList}>
             {snapshot.observations.map((item) => (
@@ -131,7 +131,7 @@ const ReportBody = ({ snapshot }: { snapshot: ExperienceReportSnapshotV1 }) => {
 
       {recommendations.length > 0 ? (
         <section className={styles.reportSection} aria-label="추천">
-          <h4 className={styles.reportSectionTitle}>추천</h4>
+          <h3 className={styles.reportSectionTitle}>추천</h3>
           <dl className={styles.reportGrid}>
             {recommendations.map((item) => (
               <div key={item.label} className={styles.reportGridRow}>

@@ -151,7 +151,7 @@ export const buildConversionInfographicModel = ({
 
   const decisionInput = [
     { key: "enrolled" as const, label: "등록", count: metrics.enrolledCount },
-    { key: "pending" as const, label: "결정 대기", count: metrics.pendingDecisionCount },
+    { key: "pending" as const, label: "결과 미확정", count: metrics.pendingDecisionCount },
     { key: "not_enrolled" as const, label: "미등록", count: metrics.notEnrolledCount }
   ]
   const decisionTotal = decisionInput.reduce((sum, item) => sum + item.count, 0)
