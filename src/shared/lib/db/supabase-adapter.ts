@@ -5,7 +5,8 @@ import {
 } from "@/features/decisions/lib/parent-decision"
 import {
   isRegistrationResult,
-  isRegistrationResultOrigin
+  isRegistrationResultOrigin,
+  type RegistrationResult
 } from "@/features/registration/lib/registration-result"
 import {
   EXPERIENCE_REPORT_STATUSES,
@@ -5454,6 +5455,60 @@ export const supabaseDataAdapter: DataAdapter = {
     }
 
     return "created"
+  },
+  async listStudioConversionSources(applicationIds: string[]) {
+    if (applicationIds.length === 0) {
+      return { publishedReportApplicationIds: [], parentDecisions: [], registrationResults: [] }
+    }
+
+    const supabase = await getSupabaseServerClient()
+
+    // 표마다 한 번씩, 총 세 번이다. Experience 마다 질의하면 cohort 가 커질수록
+    // 질의 수가 같이 늘어난다.
+    //
+    // 조직 범위를 여기서 다시 적지 않는다 — 세 표 모두 teacher RLS 가
+    // 자기 조직 신청으로 이미 좁혀 준다(적는 곳이 둘이면 어긋난다).
+    const [reportsResult, decisionsResult, resultsResult] = await Promise.all([
+      supabase
+        .from("experience_reports")
+        .select("application_id")
+        .in("application_id", applicationIds)
+        .eq("status", "published"),
+      supabase
+        .from("parent_decisions")
+        .select("application_id, decision")
+        .in("application_id", applicationIds)
+        .is("superseded_at", null),
+      supabase
+        .from("registration_results")
+        .select("application_id, result")
+        .in("application_id", applicationIds)
+        .is("superseded_at", null)
+    ])
+
+    if (reportsResult.error || decisionsResult.error || resultsResult.error) {
+      throw new Error("failed_to_fetch_conversion_sources")
+    }
+
+    return {
+      publishedReportApplicationIds: (reportsResult.data ?? []).map(
+        (row) => (row as { application_id: string }).application_id
+      ),
+      parentDecisions: (decisionsResult.data ?? [])
+        .map((row) => row as { application_id: string; decision: string })
+        .filter((row) => isParentDecision(row.decision))
+        .map((row) => ({
+          applicationId: row.application_id,
+          decision: row.decision as ParentDecision
+        })),
+      registrationResults: (resultsResult.data ?? [])
+        .map((row) => row as { application_id: string; result: string })
+        .filter((row) => isRegistrationResult(row.result))
+        .map((row) => ({
+          applicationId: row.application_id,
+          result: row.result as RegistrationResult
+        }))
+    }
   },
   async getCurrentParentDecision(applicationId: string) {
     const supabase = await getSupabaseServerClient()

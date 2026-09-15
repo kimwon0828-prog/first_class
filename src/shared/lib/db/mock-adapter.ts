@@ -3,7 +3,10 @@ import {
   isParentDecision,
   type ParentDecision
 } from "@/features/decisions/lib/parent-decision"
-import { isRegistrationResult } from "@/features/registration/lib/registration-result"
+import {
+  isRegistrationResult,
+  type RegistrationResult
+} from "@/features/registration/lib/registration-result"
 import {
   buildExperienceReportSnapshotV1,
   checkObservationPublicationEligibility,
@@ -2408,6 +2411,26 @@ export const mockDataAdapter: DataAdapter = {
     })
 
     return "created"
+  },
+  async listStudioConversionSources(applicationIds: string[]) {
+    const ids = new Set(applicationIds)
+
+    return {
+      publishedReportApplicationIds: experienceReports
+        .filter((report) => report.status === "published" && ids.has(report.applicationId))
+        .map((report) => report.applicationId),
+      parentDecisions: parentDecisions
+        .filter((item) => item.supersededAt === null && ids.has(item.applicationId))
+        .map((item) => ({ applicationId: item.applicationId, decision: item.decision })),
+      // mock 에는 registration_results 가 없다. 동기화 계약이 보장하는 것과 같은
+      // 값을 만든다 — 확정 상태면 현재 결과가 그 값이고, 아니면 없다.
+      registrationResults: applications
+        .filter((item) => ids.has(item.id) && isRegistrationResult(item.registrationStatus ?? null))
+        .map((item) => ({
+          applicationId: item.id,
+          result: item.registrationStatus as RegistrationResult
+        }))
+    }
   },
   async getCurrentParentDecision(applicationId: string) {
     const current = parentDecisions.find(

@@ -15,6 +15,13 @@ import {
   buildStudioDashboardAnalytics
 } from "@/features/studio/lib/studio-dashboard-analytics"
 import { buildStudioDashboardMetrics } from "@/features/studio/lib/studio-dashboard-metrics"
+import {
+  CONVERSION_MATRIX_COLUMN_LABELS,
+  PARENT_DECISION_MATRIX_LABELS,
+  formatConversionRate,
+  formatRateFraction
+} from "@/features/studio/lib/studio-conversion-analytics"
+import { getStudioConversionAnalytics } from "@/features/studio/queries/get-studio-conversion-analytics"
 import { requireTeacherStudioAccess } from "@/features/studio/lib/require-teacher-studio-access"
 import {
   buildStudioDashboardView,
@@ -57,6 +64,11 @@ export default async function StudioIndexPage({ searchParams }: StudioIndexPageP
     ? buildStudioDashboardMetrics(applications, selectedDateRange)
     : null
   const analytics = metrics ? buildStudioDashboardAnalytics(metrics) : null
+  // 전환 현황도 같은 유료 권한이다. 권한이 없으면 조회 자체를 하지 않는다 —
+  // 계산해 두고 렌더만 감추면 숫자가 서버 payload 로 그대로 나간다.
+  const conversion = entitlements.canUseConversionAnalytics
+    ? await getStudioConversionAnalytics(applications, selectedDateRange)
+    : null
   const donutCenter = STUDIO_DONUT_VIEWBOX / 2
 
   // 공유용 리포트는 위에서 만든 지표를 그대로 다시 그린다. 숫자를 새로 세지 않는다.
@@ -258,6 +270,150 @@ export default async function StudioIndexPage({ searchParams }: StudioIndexPageP
                     <span className={styles.conversionMeta}>{analytics.conversionMeta}</span>
                   </footer>
                 </article>
+
+                {/*
+                  체험 이후 전환 현황.
+
+                  위 막대와 다른 것을 센다. 위는 신청일 cohort 의 진행 단계고,
+                  여기는 "체험을 마친 학생" cohort 의 이후 사실이다. 그래서
+                  숫자가 서로 다를 수 있고, 분모를 화면에 항상 같이 적는다.
+
+                  깔때기로 그리지 않는다 — 리포트 없이 등록되기도 하고 부모가
+                  아무것도 남기지 않은 채 등록되기도 해서, 각 단계가 앞 단계의
+                  부분집합이 아니다.
+                */}
+                {conversion?.data ? (
+                  <article className={styles.chartCard} aria-labelledby="dashboard-conversion-title">
+                    <div className={styles.chartHead}>
+                      <h3 className={styles.chartTitle} id="dashboard-conversion-title">
+                        체험 이후 전환 현황
+                      </h3>
+                      <p className={styles.chartDescription}>
+                        {conversion.data.periodLabel}에 체험을 마친 학생을 기준으로, 이후 기록된
+                        사실만 모았습니다.
+                      </p>
+                    </div>
+
+                    {conversion.data.hasCohort ? (
+                      <>
+                        <ul className={styles.journeyRail}>
+                          <li className={styles.journeyCard}>
+                            <span className={styles.journeyLabel}>체험 완료</span>
+                            <strong className={styles.journeyValue}>
+                              {conversion.data.cohort.completedExperienceCount}건
+                            </strong>
+                            <span className={styles.journeyMeta}>기준이 되는 학생 수</span>
+                          </li>
+                          <li className={styles.journeyCard}>
+                            <span className={styles.journeyLabel}>리포트 발행</span>
+                            <strong className={styles.journeyValue}>
+                              {conversion.data.reports.publishedExperienceCount}건
+                            </strong>
+                            <span className={styles.journeyMeta}>
+                              체험 완료 중 {formatConversionRate(conversion.data.reports.coverageRate)}
+                            </span>
+                          </li>
+                          <li className={styles.journeyCard}>
+                            <span className={styles.journeyLabel}>부모 의향 확인</span>
+                            <strong className={styles.journeyValue}>
+                              {conversion.data.parentDecisions.total}건
+                            </strong>
+                            <span className={styles.journeyMeta}>
+                              미확인 {conversion.data.parentDecisions.notCollected}건
+                            </span>
+                          </li>
+                          <li className={styles.journeyCard}>
+                            <span className={styles.journeyLabel}>등록 결과 확인</span>
+                            <strong className={styles.journeyValue}>
+                              {conversion.data.registrationResults.total}건
+                            </strong>
+                            <span className={styles.journeyMeta}>
+                              미확정 {conversion.data.registrationResults.unresolved}건
+                            </span>
+                          </li>
+                        </ul>
+
+                        {/*
+                          두 비율은 분모가 다르다. 한 줄로 합치면 어느 쪽 이야기인지
+                          알 수 없게 되므로 분모를 각각 적는다.
+                        */}
+                        <div className={styles.rateRow}>
+                          <div className={styles.rateBlock}>
+                            <span className={styles.rateLabel}>체험 완료 대비 등록</span>
+                            <strong className={styles.rateValue}>
+                              {formatConversionRate(conversion.data.rates.overallEnrollmentRate)}
+                            </strong>
+                            <span className={styles.rateMeta}>
+                              {formatRateFraction(
+                                conversion.data.rates.overallNumerator,
+                                conversion.data.rates.overallDenominator
+                              )}
+                            </span>
+                          </div>
+                          <div className={styles.rateBlock}>
+                            <span className={styles.rateLabel}>등록 결과가 확인된 학생 중 등록</span>
+                            <strong className={styles.rateValue}>
+                              {formatConversionRate(conversion.data.rates.resolvedEnrollmentRate)}
+                            </strong>
+                            <span className={styles.rateMeta}>
+                              {formatRateFraction(
+                                conversion.data.rates.resolvedNumerator,
+                                conversion.data.rates.resolvedDenominator
+                              )}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className={styles.matrixWrap}>
+                          <h4 className={styles.matrixTitle}>부모 의향과 실제 결과</h4>
+                          {conversion.data.decisionResultMatrixTotal > 0 ? (
+                            <table className={styles.matrix}>
+                              <thead>
+                                <tr>
+                                  <th scope="col">부모가 남긴 생각</th>
+                                  <th scope="col">{CONVERSION_MATRIX_COLUMN_LABELS.enrolled}</th>
+                                  <th scope="col">{CONVERSION_MATRIX_COLUMN_LABELS.not_enrolled}</th>
+                                  <th scope="col">
+                                    {CONVERSION_MATRIX_COLUMN_LABELS.result_pending}
+                                  </th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {conversion.data.decisionResultMatrix.map((row) => (
+                                  <tr key={row.decision}>
+                                    <th scope="row">
+                                      {PARENT_DECISION_MATRIX_LABELS[row.decision]}
+                                    </th>
+                                    <td>{row.enrolled}</td>
+                                    <td>{row.notEnrolled}</td>
+                                    <td>{row.resultPending}</td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          ) : (
+                            <p className={styles.chartEmpty}>
+                              아직 부모가 남긴 생각이 없습니다.
+                            </p>
+                          )}
+                          <p className={styles.matrixNote}>
+                            부모가 생각을 남긴 {conversion.data.decisionResultMatrixTotal}건만
+                            포함했습니다. 남기지 않은 {conversion.data.parentDecisions.notCollected}건은
+                            표에 넣지 않았습니다.
+                          </p>
+                        </div>
+                      </>
+                    ) : (
+                      <p className={styles.chartEmpty}>
+                        이 기간에 체험을 마친 학생이 없습니다.
+                      </p>
+                    )}
+                  </article>
+                ) : conversion?.error ? (
+                  <article className={styles.chartCard}>
+                    <p className={styles.chartEmpty}>{conversion.error}</p>
+                  </article>
+                ) : null}
               </div>
             ) : (
               // 잠긴 것은 이 분석 하나다. 아래 운영 영역은 그대로 동작한다.
