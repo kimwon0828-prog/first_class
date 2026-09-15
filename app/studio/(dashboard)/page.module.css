@@ -608,3 +608,128 @@
     white-space: normal;
   }
 }
+
+/*
+ * 체험 이후 전환 현황.
+ *
+ * 기존 chartCard 토큰 위에 올린다 — 새 디자인 시스템을 들이지 않는다.
+ * 깔때기 모양(위가 넓고 아래가 좁은 도형)을 쓰지 않는다. 각 단계가 앞 단계의
+ * 부분집합이 아니라서, 그 모양 자체가 사실이 아닌 관계를 말하게 된다.
+ */
+.journeyRail {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: var(--s2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.journeyCard {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--s3);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--surface);
+}
+
+.journeyLabel {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.journeyValue {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: -0.01em;
+}
+
+.journeyMeta {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.rateRow {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: var(--s2);
+}
+
+/* 비율 옆에 분모를 항상 같이 둔다. 비율만 있으면 무엇에 대한 비율인지 사라진다. */
+.rateBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--s3);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--surface);
+}
+
+.rateLabel {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.rateValue {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: -0.01em;
+}
+
+.rateMeta {
+  font-size: 12px;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.matrixWrap {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+}
+
+.matrixTitle {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.matrix {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.matrix th,
+.matrix td {
+  padding: var(--s2);
+  border-bottom: 1px solid var(--border);
+  text-align: right;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+.matrix thead th {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.matrix th[scope="row"],
+.matrix thead th:first-child {
+  text-align: left;
+  font-weight: 500;
+}
+
+.matrixNote {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--text-muted);
+}

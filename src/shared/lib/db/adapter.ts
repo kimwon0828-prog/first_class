@@ -3,7 +3,10 @@ import type {
   ExperienceReportStatus
 } from "@/features/reports/lib/experience-report-snapshot"
 import type { ParentDecision, ParentDecisionSummary } from "@/features/decisions/lib/parent-decision"
-import type { RegistrationResultSummary } from "@/features/registration/lib/registration-result"
+import type {
+  RegistrationResult,
+  RegistrationResultSummary
+} from "@/features/registration/lib/registration-result"
 
 import type { RegularSchedulePreference } from "@/features/studio/lib/regular-schedule-preference"
 import type { ClassSubjectReadModel } from "@/shared/lib/subject-master"
@@ -1210,6 +1213,19 @@ export type ParentChildPublishedReport = {
   createdAt: string
 }
 
+/**
+ * 전환 분석이 읽는 현재 사실들.
+ *
+ * 세 표를 한 번씩만 조회한 결과다 — Experience 마다 질의하지 않는다.
+ * 전부 "지금" 의 row 다: superseded / withdrawn 은 애초에 들어오지 않는다.
+ */
+export type StudioConversionSourceRows = {
+  /** 지금 살아 있는 발행본이 있는 체험의 id. */
+  publishedReportApplicationIds: string[]
+  parentDecisions: Array<{ applicationId: string; decision: ParentDecision }>
+  registrationResults: Array<{ applicationId: string; result: RegistrationResult }>
+}
+
 export type SetParentDecisionResult = {
   decision: ParentDecision
   createdAt: string
@@ -1318,6 +1334,15 @@ export interface DataAdapter {
   upsertStudioTrialResult(input: UpsertStudioTrialResultInput): Promise<"created" | "updated">
   /** 지금의 생각. 지나간 기록은 돌려주지 않는다. */
   getCurrentParentDecision(applicationId: string): Promise<ParentDecisionSummary | null>
+  /**
+   * 전환 분석용 일괄 조회.
+   *
+   * ⚠️ 집계를 여기서 하지 않는다. 현재 row 만 모아서 돌려주고, 세는 규칙은
+   *    studio-conversion-analytics 한 곳에 있다.
+   *
+   * 조직 범위는 RLS 가 판정한다 — 다른 조직 신청 id 를 넣어도 빈 결과다.
+   */
+  listStudioConversionSources(applicationIds: string[]): Promise<StudioConversionSourceRows>
   /**
    * 지금 확정된 등록 결과. 지나간 결과는 돌려주지 않는다.
    *
