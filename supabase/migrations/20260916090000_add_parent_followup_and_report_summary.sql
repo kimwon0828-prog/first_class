@@ -117,28 +117,30 @@ end;
 $$;
 
 -- ─────────────────────────────────────────────────────────────
--- 3. 선택을 남기는 RPC 에 이유를 받는다
+-- 3. 선택을 남기는 RPC
 --
--- 인자가 늘어난 새 함수다. 기존 2-인자 함수는 그대로 둔다 — 배포 순서상
--- 구 코드가 잠시 그것을 부를 수 있고, 그때 실패하면 안 된다.
--- 구 함수는 이유 없이 부르는 것과 같으므로 declined 는 거절한다.
+-- 공개 함수는 둘이다.
+--   set_parent_decision(uuid, text, text, date, text)   새 코드용. 이유 필수.
+--   set_parent_decision(uuid, text)                      구 코드용. 이유 없이 허용.
+--
+-- 구현은 아래 internal 하나에 있고, 두 공개 함수가 각각 다른 값으로 부른다.
+--
+-- ⚠️ 왜 나눴는가.
+--
+--    "이유 없이 허용" 을 공개 함수의 인자로 두면, 학부모가 그 함수를 직접
+--    불러 그 값을 true 로 넘길 수 있다. 화면이 무엇을 쓰는지는 경계가 아니다 —
+--    PostgREST 는 grant 된 함수를 누구에게나 그대로 열어 준다.
+--    그래서 그 인자를 가진 함수는 authenticated 에게 주지 않는다.
 -- ─────────────────────────────────────────────────────────────
-create or replace function public.set_parent_decision(
+create or replace function public.set_parent_decision_internal(
   p_application_id uuid,
   p_decision text,
   p_decline_reason text,
   p_preferred_date date,
   p_preferred_time_note text,
-  -- ⚠️ 배포 전환 동안만 쓰는 문이다.
-  --
-  --    migration 이 먼저 적용되고 코드가 뒤따르는 사이, 구 화면은 이유를 물을
-  --    방법이 없는 채로 declined 를 보낸다. 그때 저장이 실패하면 학부모는
-  --    "등록하지 않겠다" 를 남길 수 없게 된다 — 기능을 더하다가 있던 기능을
-  --    끄는 셈이다. 그래서 구 2-arg 함수만 이 문을 열고 들어온다.
-  --
-  --    새 화면은 5-arg 를 직접 부르고, 그 경로에는 이 값이 오지 않아
-  --    이유가 여전히 필수다.
-  p_allow_missing_reason boolean default false
+  -- 구 2-arg 경로에서만 true 다. 호출자가 정할 수 없다 —
+  -- 이 함수 자체가 authenticated 에게 열려 있지 않다.
+  p_allow_missing_reason boolean
 )
 returns jsonb
 language plpgsql
@@ -257,11 +259,52 @@ begin
 end;
 $$;
 
-revoke all on function public.set_parent_decision(uuid, text, text, date, text, boolean) from public;
-revoke all on function public.set_parent_decision(uuid, text, text, date, text, boolean) from anon;
-grant execute on function public.set_parent_decision(uuid, text, text, date, text, boolean) to authenticated;
+-- internal 은 아무에게도 주지 않는다.
+--
+-- 아래 두 wrapper 는 security definer 라 소유자(postgres) 권한으로 돌고,
+-- 소유자는 이 함수를 부를 수 있다. 학부모 · 학원 · 미인증 어느 쪽도
+-- 직접 부를 수 없으므로 bypass flag 를 밖에서 정할 방법이 없다.
+revoke all on function public.set_parent_decision_internal(uuid, text, text, date, text, boolean) from public;
+revoke all on function public.set_parent_decision_internal(uuid, text, text, date, text, boolean) from anon;
+revoke all on function public.set_parent_decision_internal(uuid, text, text, date, text, boolean) from authenticated;
 
--- 구 2-인자 함수는 이유를 받을 수 없다. declined 는 여기서 받지 않는다.
+-- ─── 공개 함수 A: 새 코드용. 이유는 항상 필수다. ───
+--
+-- allow_missing_reason 을 인자로 받지 않는다. 받으면 호출자가 정할 수 있게 된다.
+create or replace function public.set_parent_decision(
+  p_application_id uuid,
+  p_decision text,
+  p_decline_reason text,
+  p_preferred_date date,
+  p_preferred_time_note text
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  return public.set_parent_decision_internal(
+    p_application_id, p_decision, p_decline_reason, p_preferred_date, p_preferred_time_note, false
+  );
+end;
+$$;
+
+revoke all on function public.set_parent_decision(uuid, text, text, date, text) from public;
+revoke all on function public.set_parent_decision(uuid, text, text, date, text) from anon;
+grant execute on function public.set_parent_decision(uuid, text, text, date, text) to authenticated;
+
+-- ─── 공개 함수 B: 구 코드용. ───
+--
+-- migration 이 먼저 적용되고 코드가 뒤따르는 사이, 구 화면은 이유를 물을
+-- 방법이 없는 채로 declined 를 보낸다. 그때 저장이 실패하면 학부모는
+-- "등록하지 않겠다" 를 남길 수 없게 된다 — 기능을 더하다가 있던 기능을 끄는 셈이다.
+--
+-- 이유는 null 로 남는다. 이 기능이 생기기 전 기록과 같은 모양이고,
+-- 그건 사실이지 결함이 아니다. 없는 이유를 지어내 채우지 않는다.
+--
+-- ⚠️ 이 함수는 이유를 인자로 받지 못한다. 그래서 여기로 들어온 declined 에만
+--    null 이 허용되고, 새 코드가 쓰는 위 함수는 영향을 받지 않는다.
 create or replace function public.set_parent_decision(
   p_application_id uuid,
   p_decision text
@@ -272,12 +315,15 @@ security definer
 set search_path = public
 as $$
 begin
-  -- declined 도 그대로 받는다. 이유는 null 로 남는다 —
-  -- 이 기능이 생기기 전 기록과 같은 모양이고, 그건 사실이지 결함이 아니다.
-  -- 없는 이유를 지어내 채우지 않는다.
-  return public.set_parent_decision(p_application_id, p_decision, null, null, null, true);
+  return public.set_parent_decision_internal(
+    p_application_id, p_decision, null, null, null, true
+  );
 end;
 $$;
+
+revoke all on function public.set_parent_decision(uuid, text) from public;
+revoke all on function public.set_parent_decision(uuid, text) from anon;
+grant execute on function public.set_parent_decision(uuid, text) to authenticated;
 
 -- ─────────────────────────────────────────────────────────────
 -- 4. 공개용 총평

@@ -119,15 +119,87 @@ check(
   // migration 이 먼저 적용되고 코드가 뒤따르는 사이, 구 화면은 이유를 물을
   // 방법이 없다. 그때 저장이 막히면 기능을 더하다가 있던 기능을 끄게 된다.
   "구 2-arg 는 전환 동안 declined 도 받는다",
-  migration.includes("public.set_parent_decision(p_application_id, p_decision, null, null, null, true)") &&
+  /public\.set_parent_decision_internal\(\s*\n\s*p_application_id, p_decision, null, null, null, true\s*\n\s*\)/.test(
+    migration
+  ) &&
     !/set_parent_decision\(\s*\n\s*p_application_id uuid,\s*\n\s*p_decision text\s*\n\)[\s\S]{0,400}raise exception 'decline_reason_required'/.test(
       migration
     )
 )
+console.log("\n── 2-b. bypass 를 호출자가 정할 수 없다 ──")
+{
+  // 화면이 무엇을 쓰는지는 경계가 아니다. PostgREST 는 grant 된 함수를
+  // 누구에게나 그대로 열어 준다 — bypass 인자를 가진 함수가 authenticated 에게
+  // 열려 있으면 학부모가 직접 true 로 넘길 수 있다.
+  const signature = (args: string) =>
+    new RegExp(`set_parent_decision\\(${args.replace(/[()]/g, "\\$&")}\\)`)
+
+  check(
+    "구현은 internal 로 분리돼 있다",
+    migration.includes("create or replace function public.set_parent_decision_internal(")
+  )
+  check(
+    "공개 5-arg 시그니처에 bypass 인자가 없다",
+    (() => {
+      const start = migration.indexOf(
+        "create or replace function public.set_parent_decision(\n  p_application_id uuid,\n  p_decision text,\n  p_decline_reason text,"
+      )
+      if (start === -1) return false
+      const head = migration.slice(start, migration.indexOf(")", start))
+      return !head.includes("p_allow_missing_reason")
+    })()
+  )
+  check(
+    "공개 5-arg 는 항상 false 로 부른다",
+    /p_preferred_time_note, false\s*\n\s*\);/.test(migration)
+  )
+  check(
+    "구 2-arg 만 true 로 부른다",
+    /p_application_id, p_decision, null, null, null, true\s*\n\s*\);/.test(migration) &&
+      (migration.match(/, true\s*\n\s*\);/g) ?? []).length === 1
+  )
+  check(
+    "internal 이 authenticated 에게 닫혀 있다",
+    /revoke all on function public\.set_parent_decision_internal\(uuid, text, text, date, text, boolean\) from authenticated;/.test(
+      migration
+    )
+  )
+  check(
+    "internal 이 anon · PUBLIC 에게도 닫혀 있다",
+    /revoke all on function public\.set_parent_decision_internal\([^)]*\) from anon;/.test(migration) &&
+      /revoke all on function public\.set_parent_decision_internal\([^)]*\) from public;/.test(migration)
+  )
+  check(
+    "internal 에 grant 가 없다",
+    !/grant execute on function public\.set_parent_decision_internal/.test(migration)
+  )
+  check(
+    "공개 함수 둘만 authenticated 에 열린다",
+    /grant execute on function public\.set_parent_decision\(uuid, text, text, date, text\) to authenticated;/.test(
+      migration
+    ) &&
+      /grant execute on function public\.set_parent_decision\(uuid, text\) to authenticated;/.test(
+        migration
+      ) &&
+      (migration.match(/grant execute on function public\.set_parent_decision/g) ?? []).length === 2
+  )
+  check(
+    "공개 함수도 anon 에게는 닫혀 있다",
+    /revoke all on function public\.set_parent_decision\(uuid, text, text, date, text\) from anon;/.test(
+      migration
+    ) && /revoke all on function public\.set_parent_decision\(uuid, text\) from anon;/.test(migration)
+  )
+  check(
+    "wrapper 가 소유자 권한으로 internal 을 부른다",
+    /create or replace function public\.set_parent_decision\(\s*\n\s*p_application_id uuid,\s*\n\s*p_decision text\s*\n\)[\s\S]{0,200}security definer/.test(
+      migration
+    )
+  )
+  void signature
+}
 check(
-  "그 문은 구 함수만 연다",
-  migration.includes("p_allow_missing_reason boolean default false") &&
-    migration.includes("p_allow_missing_reason is not true")
+  "판정 자체는 그대로다",
+  migration.includes("p_allow_missing_reason is not true")
 )
 check(
   "희망 일정은 시간대가 이유일 때만 있다",
