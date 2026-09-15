@@ -95,13 +95,152 @@ export const requiresPreferredSchedule = (
   reason: ParentDeclineReason | null | undefined
 ): boolean => reason === "schedule_mismatch"
 
+/**
+ * 가능한 요일.
+ *
+ * ⚠️ 특정 날짜가 아니다.
+ *
+ * 학부모가 아는 것은 "9월 22일" 이 아니라 "화·목 오후 4시 이후" 다.
+ * 날짜 하나를 받으면 학원은 그날만 제안할 수 있고, 그날이 안 되면
+ * 대화가 거기서 끝난다.
+ */
+export type PreferredDay = "mon" | "tue" | "wed" | "thu" | "fri" | "sat" | "sun"
+
+export const PREFERRED_DAY_OPTIONS: ReadonlyArray<{ value: PreferredDay; label: string }> = [
+  { value: "mon", label: "월" },
+  { value: "tue", label: "화" },
+  { value: "wed", label: "수" },
+  { value: "thu", label: "목" },
+  { value: "fri", label: "금" },
+  { value: "sat", label: "토" },
+  { value: "sun", label: "일" }
+]
+
+const PREFERRED_DAY_ORDER = PREFERRED_DAY_OPTIONS.map((option) => option.value)
+
+export const isPreferredDay = (value: unknown): value is PreferredDay =>
+  typeof value === "string" && PREFERRED_DAY_ORDER.includes(value as PreferredDay)
+
+/**
+ * 시간 조건.
+ *
+ *   after  이 시간 이후면 괜찮아요
+ *   exact  그 시간에 괜찮아요
+ *   range  이 사이라면 괜찮아요
+ */
+export type PreferredTimeMode = "after" | "exact" | "range"
+
+export const PREFERRED_TIME_MODE_OPTIONS: ReadonlyArray<{
+  value: PreferredTimeMode
+  label: string
+}> = [
+  { value: "after", label: "이 시간 이후면 괜찮아요" },
+  { value: "exact", label: "이 시간에 괜찮아요" },
+  { value: "range", label: "이 사이라면 괜찮아요" }
+]
+
+export const isPreferredTimeMode = (value: unknown): value is PreferredTimeMode =>
+  value === "after" || value === "exact" || value === "range"
+
+/** 끝 시각은 range 에만 있다. */
+export const requiresPreferredEndTime = (
+  mode: PreferredTimeMode | null | undefined
+): boolean => mode === "range"
+
+/** 요일 순으로 정렬한다. 화면과 DB 가 같은 순서를 쓴다. */
+export const sortPreferredDays = (days: readonly PreferredDay[]): PreferredDay[] =>
+  [...days].sort(
+    (a, b) => PREFERRED_DAY_ORDER.indexOf(a) - PREFERRED_DAY_ORDER.indexOf(b)
+  )
+
+/** "화·목" */
+export const formatPreferredDays = (days: readonly PreferredDay[]): string =>
+  sortPreferredDays(days)
+    .map((day) => PREFERRED_DAY_OPTIONS.find((option) => option.value === day)?.label ?? day)
+    .join("·")
+
+/** "16:00:00" · "16:00" → "오후 4시" / "오후 4시 30분" */
+export const formatPreferredTime = (value: string): string => {
+  const match = /^(\d{2}):(\d{2})/.exec(value)
+  if (!match) {
+    return value
+  }
+
+  const hour = Number(match[1])
+  const minute = Number(match[2])
+  const meridiem = hour < 12 ? "오전" : "오후"
+  const displayHour = hour % 12 === 0 ? 12 : hour % 12
+  const base = `${meridiem} ${displayHour}시`
+  return minute === 0 ? base : `${base} ${minute}분`
+}
+
+/**
+ * "화·목 / 오후 4시 이후" · "토 / 오전 10시~오후 1시"
+ *
+ * ⚠️ 년·월·일을 쓰지 않는다. 특정 하루가 아니라 평소 패턴이다.
+ */
+export const formatPreferredSchedule = (input: {
+  days: readonly PreferredDay[] | null
+  startTime: string | null
+  endTime: string | null
+  mode: PreferredTimeMode | null
+}): string | null => {
+  if (!input.days || input.days.length === 0 || !input.startTime || !input.mode) {
+    return null
+  }
+
+  const days = formatPreferredDays(input.days)
+  const start = formatPreferredTime(input.startTime)
+
+  if (input.mode === "range") {
+    if (!input.endTime) {
+      return null
+    }
+    return `${days} / ${start}~${formatPreferredTime(input.endTime)}`
+  }
+
+  return input.mode === "after" ? `${days} / ${start} 이후` : `${days} / ${start}`
+}
+
+/**
+ * 옛 방식으로 받은 희망 날짜.
+ *
+ * ⚠️ 요일 패턴으로 바꾸지 않는다.
+ *
+ * "9월 22일" 에서 요일을 뽑아 "월요일마다 가능" 이라고 적는 건 학부모가 한 적
+ * 없는 말이다. 그때 적은 것은 그날 하루였고, 그 사실 그대로 보여 준다.
+ */
+export const formatLegacyPreferredDate = (
+  value: string,
+  note: string | null
+): string | null => {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value)
+  if (!match) {
+    return null
+  }
+
+  const base = `${Number(match[2])}월 ${Number(match[3])}일`
+  return note ? `${base} · ${note}` : base
+}
+
 /** 학부모/학원 화면이 받는 현재 선택. raw row 를 그대로 넘기지 않는다. */
 export type ParentDecisionSummary = {
   decision: ParentDecision
   createdAt: string
   /** declined 일 때만 값이 있다. */
   declineReason: ParentDeclineReason | null
-  /** 시간대가 이유일 때만 값이 있다. "2026-09-22" 형태. */
+  /**
+   * 시간대가 이유일 때만 값이 있다.
+   *
+   * ⚠️ 날짜가 아니다. 평소 가능한 요일과 시간이다.
+   */
+  preferredDays: PreferredDay[] | null
+  /** "16:00:00" */
+  preferredStartTime: string | null
+  /** range 일 때만 값이 있다. */
+  preferredEndTime: string | null
+  preferredTimeMode: PreferredTimeMode | null
+  /** 옛 방식으로 받은 날짜. 새 화면은 이 값을 만들지 않는다. */
   preferredDate: string | null
   preferredTimeNote: string | null
 }

@@ -154,12 +154,22 @@ export default async function ExperienceDetailPage({
               currentDeclineReason={
                 decisionResult.status === "ok" ? (decisionResult.decision?.declineReason ?? null) : null
               }
-              currentPreferredDate={
-                decisionResult.status === "ok" ? (decisionResult.decision?.preferredDate ?? null) : null
+              currentPreferredDays={
+                decisionResult.status === "ok" ? (decisionResult.decision?.preferredDays ?? null) : null
               }
-              currentPreferredTimeNote={
+              currentPreferredStartTime={
                 decisionResult.status === "ok"
-                  ? (decisionResult.decision?.preferredTimeNote ?? null)
+                  ? (decisionResult.decision?.preferredStartTime ?? null)
+                  : null
+              }
+              currentPreferredEndTime={
+                decisionResult.status === "ok"
+                  ? (decisionResult.decision?.preferredEndTime ?? null)
+                  : null
+              }
+              currentPreferredTimeMode={
+                decisionResult.status === "ok"
+                  ? (decisionResult.decision?.preferredTimeMode ?? null)
                   : null
               }
               currentDecision={

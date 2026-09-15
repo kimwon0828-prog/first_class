@@ -1,4 +1,6 @@
 import {
+  formatLegacyPreferredDate,
+  formatPreferredSchedule,
   getParentDeclineReasonLabel,
   getParentDecisionLabel,
   type ParentDecisionSummary
@@ -30,17 +32,22 @@ const formatDecisionDate = (value: string) => {
   return `${parts.year}.${month}.${day}`
 }
 
-/** "9월 22일". 희망 날짜는 date 라 시각이 없다. */
-const formatPreferredDate = (value: string) => {
-  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value)
-  if (!match) {
-    return value
-  }
-  return `${Number(match[2])}월 ${Number(match[3])}일`
-}
-
 export const StudioParentDecision = ({ decision, loadError }: StudioParentDecisionProps) => {
   const writtenAt = decision ? formatDecisionDate(decision.createdAt) : null
+  const preferredSchedule = decision
+    ? formatPreferredSchedule({
+        days: decision.preferredDays,
+        startTime: decision.preferredStartTime,
+        endTime: decision.preferredEndTime,
+        mode: decision.preferredTimeMode
+      })
+    : null
+  // 옛 방식으로 받은 기록. 새 화면은 날짜를 받지 않지만, 이미 남은 것을
+  // 숨기지 않는다 — 학부모가 그때 실제로 적은 날짜다.
+  const legacyPreferredDate =
+    decision && !preferredSchedule && decision.preferredDate
+      ? formatLegacyPreferredDate(decision.preferredDate, decision.preferredTimeNote)
+      : null
 
   return (
     <section className={`${styles.card} ${styles.sectionCard}`} aria-labelledby="parent-decision-title">
@@ -68,13 +75,19 @@ export const StudioParentDecision = ({ decision, loadError }: StudioParentDecisi
                   {getParentDeclineReasonLabel(decision.declineReason)}
                 </dd>
               </div>
-              {decision.preferredDate ? (
+              {/*
+                ⚠️ 년·월·일을 쓰지 않는다. 특정 하루가 아니라 평소 가능한
+                   패턴이라, 날짜로 적으면 학원이 그날만 제안하게 된다.
+              */}
+              {preferredSchedule ? (
                 <div className={styles.detailRow}>
                   <dt className={styles.detailLabel}>희망 일정</dt>
-                  <dd className={styles.detailValue}>
-                    {formatPreferredDate(decision.preferredDate)}
-                    {decision.preferredTimeNote ? ` · ${decision.preferredTimeNote}` : ""}
-                  </dd>
+                  <dd className={styles.detailValue}>{preferredSchedule}</dd>
+                </div>
+              ) : legacyPreferredDate ? (
+                <div className={styles.detailRow}>
+                  <dt className={styles.detailLabel}>희망 날짜</dt>
+                  <dd className={styles.detailValue}>{legacyPreferredDate}</dd>
                 </div>
               ) : null}
             </dl>
