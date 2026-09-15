@@ -23,6 +23,8 @@ const ADAPTER_PATH = "src/shared/lib/db/adapter.ts"
 const SUPABASE_ADAPTER_PATH = "src/shared/lib/db/supabase-adapter.ts"
 const CANCEL_ACTION_PATH = "src/features/applications/actions/cancel-my-application.ts"
 const STUDIO_CASES_PATH = "src/features/studio/queries/get-studio-cases.ts"
+const CONSULTATION_GRANT_MIGRATION_PATH =
+  "supabase/migrations/20260915100000_restrict_create_studio_consultation_execute.sql"
 
 const read = (path: string) => readFileSync(resolve(process.cwd(), path), "utf8")
 const stripSqlComments = (sql: string) => sql.replace(/^\s*--[^\n]*$/gm, "")
@@ -327,6 +329,45 @@ check(
 check(
   "상담 transaction 이 호출자 권한에 기대지 않는다",
   /alter function public\.create_studio_consultation\([\s\S]*?\) security definer;/.test(migrationSql)
+)
+check(
+  // security definer 로 바뀐 함수에 미인증 호출자의 실행 권한이 남아 있을
+  // 이유가 없다. 지금도 auth.uid() 검사에 걸리지만, 막히는 것과 부를 수
+  // 없는 것은 다른 보장이다.
+  //
+  // anon 권한은 `revoke ... from public` 으로 사라지지 않는다 — Supabase 가
+  // 그 role 에 직접 붙여 두기 때문이다(R2 에서 발행 RPC 로 같은 것을 겪었다).
+  "상담 transaction 이 anon 에게 열려 있지 않다",
+  (() => {
+    const grantMigration = stripCommentOn(stripSqlComments(read(CONSULTATION_GRANT_MIGRATION_PATH)))
+    return (
+      /revoke all on function public\.create_studio_consultation\([\s\S]*?\) from anon;/.test(
+        grantMigration
+      ) &&
+      /revoke all on function public\.create_studio_consultation\([\s\S]*?\) from public;/.test(
+        grantMigration
+      ) &&
+      !/grant execute on function public\.create_studio_consultation\([\s\S]*?\) to anon/.test(
+        grantMigration
+      ) &&
+      /grant execute on function public\.create_studio_consultation\([\s\S]*?\) to authenticated;/.test(
+        grantMigration
+      )
+    )
+  })()
+)
+check(
+  // 권한만 다루는 migration 이다. 본문 · security 속성 · RLS · 데이터는 그대로.
+  "권한 migration 이 함수 본문을 바꾸지 않는다",
+  (() => {
+    const grantMigration = stripCommentOn(stripSqlComments(read(CONSULTATION_GRANT_MIGRATION_PATH)))
+    return (
+      !/create or replace function/i.test(grantMigration) &&
+      !/alter function/i.test(grantMigration) &&
+      !/create policy|drop policy|alter table/i.test(grantMigration) &&
+      !/\binsert into\b|\bupdate\b|\bdelete from\b/i.test(grantMigration)
+    )
+  })()
 )
 check(
   "데이터를 바꾸지 않는다",
