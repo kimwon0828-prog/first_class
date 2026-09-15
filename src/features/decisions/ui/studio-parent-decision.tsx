@@ -1,4 +1,5 @@
 import {
+  getParentDeclineReasonLabel,
   getParentDecisionLabel,
   type ParentDecisionSummary
 } from "@/features/decisions/lib/parent-decision"
@@ -29,6 +30,15 @@ const formatDecisionDate = (value: string) => {
   return `${parts.year}.${month}.${day}`
 }
 
+/** "9월 22일". 희망 날짜는 date 라 시각이 없다. */
+const formatPreferredDate = (value: string) => {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value)
+  if (!match) {
+    return value
+  }
+  return `${Number(match[2])}월 ${Number(match[3])}일`
+}
+
 export const StudioParentDecision = ({ decision, loadError }: StudioParentDecisionProps) => {
   const writtenAt = decision ? formatDecisionDate(decision.createdAt) : null
 
@@ -45,6 +55,31 @@ export const StudioParentDecision = ({ decision, loadError }: StudioParentDecisi
       ) : decision ? (
         <>
           <p className={styles.value}>&ldquo;{getParentDecisionLabel(decision.decision)}&rdquo;</p>
+
+          {/*
+            ⚠️ 학원이 적는 미등록 사유가 아니다. 학부모가 직접 고른 말이라
+               같은 화면에 있어도 다른 값으로 읽혀야 한다.
+          */}
+          {decision.declineReason ? (
+            <dl className={styles.detailList}>
+              <div className={styles.detailRow}>
+                <dt className={styles.detailLabel}>이유</dt>
+                <dd className={styles.detailValue}>
+                  {getParentDeclineReasonLabel(decision.declineReason)}
+                </dd>
+              </div>
+              {decision.preferredDate ? (
+                <div className={styles.detailRow}>
+                  <dt className={styles.detailLabel}>희망 일정</dt>
+                  <dd className={styles.detailValue}>
+                    {formatPreferredDate(decision.preferredDate)}
+                    {decision.preferredTimeNote ? ` · ${decision.preferredTimeNote}` : ""}
+                  </dd>
+                </div>
+              ) : null}
+            </dl>
+          ) : null}
+
           {writtenAt ? <p className={styles.meta}>{writtenAt} 작성</p> : null}
         </>
       ) : (

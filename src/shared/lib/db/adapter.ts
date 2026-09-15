@@ -2,7 +2,11 @@ import type {
   ExperienceReportSnapshotV1,
   ExperienceReportStatus
 } from "@/features/reports/lib/experience-report-snapshot"
-import type { ParentDecision, ParentDecisionSummary } from "@/features/decisions/lib/parent-decision"
+import type {
+  ParentDecision,
+  ParentDecisionSummary,
+  ParentDeclineReason
+} from "@/features/decisions/lib/parent-decision"
 import type {
   RegistrationResult,
   RegistrationResultSummary
@@ -860,7 +864,10 @@ export type StudioTrialResult = {
   recommendedLevel: string | null
   recommendedSchedule: string | null
   nextAction: StudioTrialResultNextAction | null
+  /** 학원 내부 메모. 부모에게 나가지 않는다. */
   note: string | null
+  /** 부모에게 공개하려고 적는 총평. note 와 다른 칸이며 서로 옮기지 않는다. */
+  publicSummary: string | null
   createdBy: string | null
   createdAt: string
   updatedAt: string
@@ -888,6 +895,7 @@ export type StudioTrialResultSaveContext = {
     | "recommendedSchedule"
     | "nextAction"
     | "note"
+    | "publicSummary"
   > | null
 }
 
@@ -1029,7 +1037,10 @@ export type UpsertStudioTrialResultInput = {
   recommendedLevel: string | null
   recommendedSchedule: string | null
   nextAction: StudioTrialResultNextAction | null
+  /** 학원 내부 메모. 부모에게 나가지 않는다. */
   note: string | null
+  /** 부모에게 공개하려고 적는 총평. note 와 다른 칸이며 서로 옮기지 않는다. */
+  publicSummary: string | null
 }
 
 /**
@@ -1226,17 +1237,41 @@ export type StudioConversionSourceRows = {
   registrationResults: Array<{ applicationId: string; result: RegistrationResult }>
 }
 
+/**
+ * 선택에 딸리는 부가 정보.
+ *
+ * declined 가 아니면 값이 있어도 DB 함수가 버린다 — 규칙을 한 곳에 둔다.
+ */
+export type ParentDecisionMetadataInput = {
+  declineReason?: ParentDeclineReason | null
+  /** "2026-09-22" */
+  preferredDate?: string | null
+  preferredTimeNote?: string | null
+}
+
 export type SetParentDecisionResult = {
   decision: ParentDecision
   createdAt: string
-  /** 같은 선택을 다시 고른 경우 false. 기록을 늘리지 않았다는 뜻이다. */
+  /** 같은 선택을 같은 말로 다시 고른 경우 false. 기록을 늘리지 않았다는 뜻이다. */
   changed: boolean
+  declineReason: ParentDeclineReason | null
+  preferredDate: string | null
+  preferredTimeNote: string | null
 }
 
 export type PublishExperienceReportResult = {
   id: string
   version: number
+  /** 이번 발행으로 내려간 발행본의 version. 없었으면 null. */
   supersededVersion: number | null
+  /**
+   * 이 Experience 의 생애 최초 발행인가.
+   *
+   * ⚠️ supersededVersion === null 로 추론하지 않는다.
+   *    발행 → 철회 → 다시 발행 이면 current 가 비어 있어 null 이 되지만
+   *    처음이 아니다. 자동 알림은 이 값만 본다.
+   */
+  isFirstPublication: boolean
   publishedAt: string
 }
 
@@ -1352,7 +1387,11 @@ export interface DataAdapter {
    */
   getCurrentRegistrationResult(applicationId: string): Promise<RegistrationResultSummary | null>
   /** 학부모가 선택을 남긴다. 값이 바뀐 경우에만 기록이 이어진다. */
-  setParentDecision(applicationId: string, decision: ParentDecision): Promise<SetParentDecisionResult>
+  setParentDecision(
+    applicationId: string,
+    decision: ParentDecision,
+    input?: ParentDecisionMetadataInput
+  ): Promise<SetParentDecisionResult>
   /** 지금 살아 있는 발행본. superseded / withdrawn 은 돌려주지 않는다. */
   getPublishedExperienceReport(applicationId: string): Promise<ExperienceReportSummary | null>
   /**

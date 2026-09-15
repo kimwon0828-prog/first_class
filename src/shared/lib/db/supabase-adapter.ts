@@ -1,6 +1,7 @@
 import {
   canCollectParentDecision,
   isParentDecision,
+  isParentDeclineReason,
   type ParentDecision
 } from "@/features/decisions/lib/parent-decision"
 import {
@@ -53,6 +54,7 @@ import type { StudioClassScheduleSummaryInput } from "@/features/studio/lib/clas
 import { isApplicationUnregisteredReason } from "@/shared/lib/db/adapter"
 import type {
   CreatedTrialApplication,
+  ParentDecisionMetadataInput,
   ParentChildPublishedReport,
   ParentApplicationSummary,
   StudioConsultationTransactionResult,
@@ -337,6 +339,7 @@ type ApplicationLogRow = {
 
 /** 체험 결과의 "내용" 컬럼만. 저장 컨텍스트는 이 만큼만 읽는다. */
 type TrialResultFieldsRow = {
+  public_summary?: string | null
   observations: string[] | null
   parent_reaction: string | null
   recommended_course: string | null
@@ -1011,7 +1014,8 @@ const mapStudioTrialResultFields = (
     row.next_action === "undecided"
       ? row.next_action
       : null,
-  note: row.note?.trim() ? row.note.trim() : null
+  note: row.note?.trim() ? row.note.trim() : null,
+  publicSummary: row.public_summary?.trim() ? row.public_summary.trim() : null
 })
 
 const mapStudioTrialResult = (row: TrialResultRow): StudioTrialResult => ({
@@ -4674,7 +4678,7 @@ export const supabaseDataAdapter: DataAdapter = {
     const { data: trialResultData, error: trialResultError } = await supabase
       .from("trial_results")
       .select(
-        "id, application_id, observations, parent_reaction, recommended_course, recommended_level, recommended_schedule, next_action, note, created_by, created_at, updated_at"
+        "id, application_id, observations, parent_reaction, recommended_course, recommended_level, recommended_schedule, next_action, note, public_summary, created_by, created_at, updated_at"
       )
       .eq("application_id", applicationId)
       .maybeSingle()
@@ -5356,7 +5360,7 @@ export const supabaseDataAdapter: DataAdapter = {
     const { data, error } = await supabase
       .from("studio_trial_applications")
       .select(
-        "status, classes!inner(organization_id), trial_results(observations, parent_reaction, recommended_course, recommended_level, recommended_schedule, next_action, note)"
+        "status, classes!inner(organization_id), trial_results(observations, parent_reaction, recommended_course, recommended_level, recommended_schedule, next_action, note, public_summary)"
       )
       .eq("id", applicationId)
       .eq("classes.organization_id", organizationId)
@@ -5406,6 +5410,8 @@ export const supabaseDataAdapter: DataAdapter = {
       recommended_schedule: input.recommendedSchedule,
       next_action: input.nextAction,
       note: input.note,
+      // 총평은 note 와 다른 칸이다. 같은 값을 복사하지 않는다.
+      public_summary: input.publicSummary,
       // created_by 는 최초 저장자로 남긴다. 여기는 "마지막으로 고친 사람" 이다.
       updated_by: input.actorId,
       updated_at: nowIso
@@ -5516,7 +5522,7 @@ export const supabaseDataAdapter: DataAdapter = {
     // 지금의 생각만 읽는다 — 지나간 기록은 R4 화면이 쓰지 않는다.
     const { data, error } = await supabase
       .from("parent_decisions")
-      .select("decision, created_at")
+      .select("decision, created_at, decline_reason, preferred_date, preferred_time_note")
       .eq("application_id", applicationId)
       .is("superseded_at", null)
       .maybeSingle()
@@ -5529,7 +5535,15 @@ export const supabaseDataAdapter: DataAdapter = {
       return null
     }
 
-    return { decision: data.decision, createdAt: data.created_at as string }
+    const declineReason = data.decline_reason
+    return {
+      decision: data.decision,
+      createdAt: data.created_at as string,
+      // 모양이 어긋난 값은 null 로 둔다. 뜻을 모르는 코드를 화면에서 추측해 설명하지 않는다.
+      declineReason: isParentDeclineReason(declineReason) ? declineReason : null,
+      preferredDate: (data.preferred_date as string | null) ?? null,
+      preferredTimeNote: (data.preferred_time_note as string | null) ?? null
+    }
   },
   async getCurrentRegistrationResult(applicationId: string) {
     const supabase = await getSupabaseServerClient()
@@ -5557,21 +5571,44 @@ export const supabaseDataAdapter: DataAdapter = {
       createdAt: data.created_at as string
     }
   },
-  async setParentDecision(applicationId: string, decision: ParentDecision) {
+  async setParentDecision(
+    applicationId: string,
+    decision: ParentDecision,
+    input?: ParentDecisionMetadataInput
+  ) {
     const supabase = await getSupabaseServerClient()
     // parent_id 를 넘기지 않는다. 함수가 auth.uid() 로 채운다 —
     // 호출자가 남의 이름으로 선택을 남길 방법이 없다.
     const { data, error } = await supabase.rpc("set_parent_decision", {
       p_application_id: applicationId,
-      p_decision: decision
+      p_decision: decision,
+      // 이유와 희망 일정도 함수가 정리한다. 화면이 비운 것과 안 보낸 것을
+      // 여기서 구분하지 않는다 — 규칙이 두 곳에 생기지 않게.
+      p_decline_reason: input?.declineReason ?? null,
+      p_preferred_date: input?.preferredDate ?? null,
+      p_preferred_time_note: input?.preferredTimeNote ?? null
     })
 
     if (error) {
       throw new Error(error.message)
     }
 
-    const result = data as { decision: ParentDecision; createdAt: string; changed: boolean }
-    return { decision: result.decision, createdAt: result.createdAt, changed: result.changed }
+    const result = data as {
+      decision: ParentDecision
+      createdAt: string
+      changed: boolean
+      declineReason: string | null
+      preferredDate: string | null
+      preferredTimeNote: string | null
+    }
+    return {
+      decision: result.decision,
+      createdAt: result.createdAt,
+      changed: result.changed,
+      declineReason: isParentDeclineReason(result.declineReason) ? result.declineReason : null,
+      preferredDate: result.preferredDate ?? null,
+      preferredTimeNote: result.preferredTimeNote ?? null
+    }
   },
   async getPublishedExperienceReport(applicationId: string) {
     const supabase = await getSupabaseServerClient()
@@ -5700,6 +5737,7 @@ export const supabaseDataAdapter: DataAdapter = {
       id: string
       version: number
       supersededVersion: number | null
+      isFirstPublication: boolean
       publishedAt: string
     }
 
@@ -5707,6 +5745,8 @@ export const supabaseDataAdapter: DataAdapter = {
       id: result.id,
       version: result.version,
       supersededVersion: result.supersededVersion ?? null,
+      // DB 가 발행 이력으로 판정한 값이다. 여기서 다시 추론하지 않는다.
+      isFirstPublication: result.isFirstPublication === true,
       publishedAt: result.publishedAt
     }
   },

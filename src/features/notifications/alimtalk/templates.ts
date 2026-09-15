@@ -1,4 +1,8 @@
-import type { ParentNotificationContext, AlimtalkTemplatePayload } from "@/features/notifications/alimtalk/types"
+import type {
+  AlimtalkButton,
+  AlimtalkTemplatePayload,
+  ParentNotificationContext
+} from "@/features/notifications/alimtalk/types"
 
 type AlimtalkTemplateRenderResult =
   | {
@@ -20,6 +24,8 @@ const resolveTemplateCode = (eventType: ParentNotificationContext["eventType"]) 
       return process.env.ALIMTALK_TEMPLATE_TRIAL_COMPLETED?.trim() ?? ""
     case "trial_reminder":
       return process.env.ALIMTALK_TEMPLATE_TRIAL_REMINDER?.trim() ?? ""
+    case "trial_report_published":
+      return process.env.ALIMTALK_TEMPLATE_TRIAL_REPORT_PUBLISHED?.trim() ?? ""
   }
 }
 
@@ -134,7 +140,60 @@ export const renderAlimtalkContent = (context: ParentNotificationContext): strin
         "변경이 필요하신 경우 학원으로 문의해 주세요."
       ].join("\n")
     }
+    case "trial_report_published": {
+      // 링크가 없으면 보내지 않는다. 확인하라고 해 놓고 갈 곳이 없으면
+      // 부모는 앱을 뒤지게 되고, 그게 알림이 하는 일이 되면 안 된다.
+      // (본문에는 쓰지 않지만, 버튼을 만들 수 없다는 뜻이라 여기서 막는다.)
+      if (!resolveTemplateValue(context.reportUrl ?? null)) {
+        return null
+      }
+
+      // 본문에 URL 을 적지 않는다. 링크는 버튼이 맡는다 —
+      // 본문 링크는 기기에 따라 잘리거나 눌리지 않아서, 부모가 "확인하기" 를
+      // 보고도 못 가는 일이 생긴다.
+      return [
+        `[첫수업] 체험 리포트가 도착했어요`,
+        ``,
+        `${studentName}님의 체험수업 리포트가`,
+        `${academyName}에서 발행되었습니다.`,
+        ``,
+        `수업에서 관찰된 모습과`,
+        `선생님의 총평을 확인해 보세요.`
+      ].join("\n")
+    }
   }
+}
+
+/**
+ * template 에 붙는 버튼.
+ *
+ * 리포트 알림에만 있다. 나머지 넷은 버튼 없는 template 으로 승인돼 있어서
+ * 여기서 붙이면 template 과 어긋난다.
+ *
+ * ⚠️ 승인받을 알림톡 template 에도 같은 이름·같은 링크의 버튼이 정의돼 있어야
+ *    한다. payload 의 버튼과 template 의 버튼이 다르면 발송이 거절된다.
+ */
+const resolveTemplateButtons = (
+  context: ParentNotificationContext
+): AlimtalkButton[] | undefined => {
+  if (context.eventType !== "trial_report_published") {
+    return undefined
+  }
+
+  const reportUrl = resolveTemplateValue(context.reportUrl ?? null)
+  if (!reportUrl) {
+    return undefined
+  }
+
+  return [
+    {
+      type: "WL",
+      name: "체험 리포트 확인하기",
+      // 반응형 한 화면이라 모바일과 PC 가 같은 주소다.
+      linkMobile: reportUrl,
+      linkPc: reportUrl
+    }
+  ]
 }
 
 export const renderAlimtalkTemplate = (
@@ -156,10 +215,13 @@ export const renderAlimtalkTemplate = (
     }
   }
 
+  const buttons = resolveTemplateButtons(context)
+
   return {
     template: {
       templateCode,
-      content
+      content,
+      ...(buttons ? { buttons } : {})
     },
     errorMessage: null
   }

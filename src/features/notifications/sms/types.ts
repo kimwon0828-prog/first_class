@@ -7,7 +7,9 @@ export const PARENT_SMS_EVENT_TYPES = [
   "trial_schedule_confirmed",
   "trial_completed",
   "trial_enrolled",
-  "trial_reminder"
+  "trial_reminder",
+  // 체험 리포트가 발행돼 부모가 읽을 수 있게 된 순간.
+  "trial_report_published"
 ] as const
 export type ParentSmsEventType = (typeof PARENT_SMS_EVENT_TYPES)[number]
 

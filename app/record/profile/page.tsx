@@ -111,9 +111,12 @@ export default async function EducationProfilePage({
                   {result.profile.observations.map((observation) => (
                     <li key={observation.code} className={styles.observation}>
                       <p className={styles.observationLabel}>{observation.label}</p>
-                      <p className={styles.evidenceCount}>
-                        {describeEvidenceCount(observation.evidenceCount)}
-                      </p>
+                      {/* 한 번뿐이면 횟수를 말하지 않는다. 근거 목록은 그대로 남는다. */}
+                      {describeEvidenceCount(observation.evidenceCount) ? (
+                        <p className={styles.evidenceCount}>
+                          {describeEvidenceCount(observation.evidenceCount)}
+                        </p>
+                      ) : null}
 
                       <ul className={styles.sourceList}>
                         {observation.sources.map((source) => {

@@ -1167,6 +1167,26 @@ export const ApplicationTrialResultWorkflow = ({
                 />
               </Field>
 
+              {/*
+                총평과 메모는 다른 칸이다.
+
+                총평은 부모가 읽는다. 메모는 학원만 본다. 한 칸으로 합치면
+                부모에게 보일 것을 전제로 쓰지 않은 말이 그대로 나가게 된다 —
+                그래서 두 칸을 나란히 두고, 각각 누가 읽는지 적어 둔다.
+              */}
+              <Field label="총평">
+                <textarea
+                  name="publicSummary"
+                  defaultValue={application.trialResult?.publicSummary ?? ""}
+                  rows={4}
+                  className={styles.textarea}
+                  placeholder="학부모님께 전할 한 문단을 적어 주세요. 리포트에 그대로 실립니다."
+                  maxLength={1000}
+                  disabled={isSavingTrialResult}
+                />
+                <p className={styles.fieldHint}>학부모가 리포트에서 읽습니다.</p>
+              </Field>
+
               <Field label="체험 메모">
                 <textarea
                   name="note"
@@ -1176,6 +1196,7 @@ export const ApplicationTrialResultWorkflow = ({
                   placeholder="아이 반응이나 상담에 도움이 될 핵심 메모를 남겨 주세요."
                   disabled={isSavingTrialResult}
                 />
+                <p className={styles.fieldHint}>학원 내부에만 보입니다.</p>
               </Field>
 
               <div className={styles.dialogActions}>

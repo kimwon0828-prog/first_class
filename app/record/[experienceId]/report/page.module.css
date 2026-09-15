@@ -212,3 +212,12 @@
   font-weight: 700;
   text-decoration: none;
 }
+
+/* 선생님 총평. 문장을 읽는 자리라 본문과 같은 크기로 둔다. */
+.summaryText {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.75;
+  color: var(--text);
+  white-space: pre-wrap;
+}

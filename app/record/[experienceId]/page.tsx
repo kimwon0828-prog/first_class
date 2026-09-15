@@ -151,6 +151,17 @@ export default async function ExperienceDetailPage({
             </h2>
             <ParentDecisionForm
               experienceId={experience.id}
+              currentDeclineReason={
+                decisionResult.status === "ok" ? (decisionResult.decision?.declineReason ?? null) : null
+              }
+              currentPreferredDate={
+                decisionResult.status === "ok" ? (decisionResult.decision?.preferredDate ?? null) : null
+              }
+              currentPreferredTimeNote={
+                decisionResult.status === "ok"
+                  ? (decisionResult.decision?.preferredTimeNote ?? null)
+                  : null
+              }
               currentDecision={
                 decisionResult.status === "ok" ? (decisionResult.decision?.decision ?? null) : null
               }

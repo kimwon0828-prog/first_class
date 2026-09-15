@@ -59,3 +59,28 @@
   color: var(--text-3);
   word-break: keep-all;
 }
+
+/* 학부모가 남긴 이유와 희망 일정. 학원이 적는 미등록 사유와 다른 값이다. */
+.detailList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s1);
+  margin: var(--s2) 0 0;
+}
+
+.detailRow {
+  display: flex;
+  gap: var(--s2);
+  font-size: 13px;
+}
+
+.detailLabel {
+  flex: 0 0 56px;
+  margin: 0;
+  color: var(--text-muted);
+}
+
+.detailValue {
+  margin: 0;
+  color: var(--text);
+}

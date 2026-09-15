@@ -4,6 +4,7 @@ import { unstable_noStore as noStore } from "next/cache"
 
 import { requireParentAccess } from "@/features/my/lib/require-parent-access"
 import { getMyExperienceReport } from "@/features/record/queries/get-my-experience-report"
+import { getExperienceReportSummary } from "@/features/reports/lib/experience-report-snapshot"
 import { getSeoulDateTimeParts } from "@/shared/lib/seoul-datetime"
 
 import styles from "./page.module.css"
@@ -110,6 +111,8 @@ export default async function ExperienceReportPage({
 
   const { report } = result
   const snapshot = report.content
+  // V1 발행본에는 총평이라는 개념 자체가 없다. 없는 것을 빈 값으로 읽지 않는다.
+  const summary = getExperienceReportSummary(snapshot)
   const experienceDate = formatReportDate(snapshot.experience.date)
   const publishedDate = formatPublishedDate(report.publishedAt)
   const recommendations = [
@@ -155,8 +158,24 @@ export default async function ExperienceReportPage({
           </section>
         ) : null}
 
+        {/*
+          선생님 총평.
+
+          ⚠️ 내부 메모(note)가 아니다. 학원이 부모에게 보이려고 따로 적은 글만
+             여기 온다. 비어 있으면 빈 카드를 만들지 않는다 —
+             "총평 없음" 이라는 말은 부모에게 아무 도움이 되지 않는다.
+        */}
+        {summary ? (
+          <section className={styles.block} aria-labelledby="report-summary-title">
+            <h2 id="report-summary-title" className={styles.blockTitle}>
+              선생님 총평
+            </h2>
+            <p className={styles.summaryText}>{summary}</p>
+          </section>
+        ) : null}
+
         {recommendations.length > 0 ? (
-          <section className={styles.block} aria-labelledby="recommendation-title">
+<section className={styles.block} aria-labelledby="recommendation-title">
             <h2 id="recommendation-title" className={styles.blockTitle}>
               추천받은 다음 과정
             </h2>

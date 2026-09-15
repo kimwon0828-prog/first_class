@@ -97,6 +97,7 @@ const getChangedFieldLabels = (
     recommendedCourse: string | null
     recommendedLevel: string | null
     recommendedSchedule: string | null
+    publicSummary: string | null
     note: string | null
   }
 ) => {
@@ -118,6 +119,10 @@ const getChangedFieldLabels = (
 
     if (nextValue.recommendedSchedule) {
       initialFields.push("추천 일정")
+    }
+
+    if (nextValue.publicSummary) {
+      initialFields.push("총평")
     }
 
     if (nextValue.note) {
@@ -143,6 +148,10 @@ const getChangedFieldLabels = (
 
   if (currentResult.recommendedSchedule !== nextValue.recommendedSchedule) {
     changes.push("추천 일정")
+  }
+
+  if (currentResult.publicSummary !== nextValue.publicSummary) {
+    changes.push("총평")
   }
 
   if (currentResult.note !== nextValue.note) {
@@ -235,6 +244,8 @@ export async function upsertTrialResultAction(
     recommendedLevel: normalizeOptionalText(formData.get("recommendedLevel")),
     recommendedSchedule: normalizeOptionalText(formData.get("recommendedSchedule")),
     note: normalizeOptionalText(formData.get("note")),
+    // 총평은 note 와 다른 칸이다. 같은 값을 복사하지 않는다.
+    publicSummary: normalizeOptionalText(formData.get("publicSummary")),
     parentReaction: current.trialResult?.parentReaction ?? null,
     nextAction: current.trialResult?.nextAction ?? null
   }
@@ -251,6 +262,7 @@ export async function upsertTrialResultAction(
       recommendedLevel: nextValue.recommendedLevel,
       recommendedSchedule: nextValue.recommendedSchedule,
       note: nextValue.note,
+      publicSummary: nextValue.publicSummary,
       nextAction: nextValue.nextAction
     })
 
