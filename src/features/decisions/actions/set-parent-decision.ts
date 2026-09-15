@@ -2,7 +2,10 @@
 
 import { revalidatePath } from "next/cache"
 
-import { isParentDecision } from "@/features/decisions/lib/parent-decision"
+import {
+  isParentDecision,
+  isParentDeclineReason
+} from "@/features/decisions/lib/parent-decision"
 import { requireParentAccess } from "@/features/my/lib/require-parent-access"
 import { dataAdapter } from "@/shared/lib/db"
 
@@ -35,7 +38,23 @@ const resolveErrorMessage = (caught: unknown) => {
     return "선택한 값을 확인하지 못했습니다. 화면을 새로고침한 뒤 다시 시도해 주세요."
   }
 
+  if (raw.includes("decline_reason_required")) {
+    return "등록하지 않는 이유를 선택해 주세요."
+  }
+
+  if (raw.includes("preferred_date_required")) {
+    return "가능한 날짜를 알려 주시면 학원이 다음 일정을 제안할 수 있어요."
+  }
+
   return "선택을 저장하지 못했습니다. 잠시 후 다시 시도해 주세요."
+}
+
+const toOptionalText = (value: FormDataEntryValue | null): string | null => {
+  if (typeof value !== "string") {
+    return null
+  }
+  const trimmed = value.trim()
+  return trimmed.length > 0 ? trimmed : null
 }
 
 export async function setParentDecisionAction(
@@ -58,7 +77,14 @@ export async function setParentDecisionAction(
   try {
     // 소유 확인은 DB 함수가 한다 — parent_id 를 넘기지 않고 auth.uid() 로 잠근다.
     // 남의 신청 id 를 넣어도 존재 여부가 드러나지 않는다.
-    await dataAdapter.setParentDecision(experienceId, decision)
+    // 이유와 희망 일정은 그대로 넘긴다. 정리 규칙(어떤 선택에 무엇이 붙는지)은
+    // DB 함수 한 곳에 있다 — 여기서 또 판단하면 두 곳이 어긋난다.
+    const declineReasonRaw = formData.get("declineReason")
+    await dataAdapter.setParentDecision(experienceId, decision, {
+      declineReason: isParentDeclineReason(declineReasonRaw) ? declineReasonRaw : null,
+      preferredDate: toOptionalText(formData.get("preferredDate")),
+      preferredTimeNote: toOptionalText(formData.get("preferredTimeNote"))
+    })
 
     revalidatePath(`/record/${experienceId}`)
     revalidatePath("/record")

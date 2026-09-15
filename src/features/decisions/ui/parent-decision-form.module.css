@@ -95,3 +95,100 @@
   line-height: 20px;
   color: var(--text-2);
 }
+
+/*
+ * 등록하지 않는 이유.
+ *
+ * 선택지 아래에 조용히 펼쳐진다. 모달로 막지 않는다 — 이유를 말하지 않고
+ * 닫을 자유도 부모에게 있고, 그걸 막으면 아예 아무것도 안 고르게 된다.
+ */
+.declinePanel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s3);
+  margin-top: var(--s3);
+  padding: var(--s4);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+}
+
+.fieldset {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.legend {
+  padding: 0;
+  margin-bottom: var(--s2);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.reasonList {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.reasonItem {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  /* 손가락으로 누르는 화면이다. 줄 전체가 눌리게 둔다. */
+  min-height: 44px;
+  padding: var(--s1) 0;
+  font-size: 14px;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.reasonLabel {
+  line-height: 1.5;
+}
+
+.scheduleFields {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.fieldLabel {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.input {
+  width: 100%;
+  min-height: 44px;
+  padding: 0 var(--s3);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 15px;
+}
+
+.declineSubmit {
+  min-height: 48px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--text);
+  color: var(--surface);
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.declineSubmit:disabled {
+  opacity: 0.6;
+  cursor: default;
+}

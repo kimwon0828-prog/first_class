@@ -15,7 +15,7 @@ import { getStudioEntitlementsForDisplay } from "@/features/billing/queries/get-
 import { ApplicationReportPublishing, type ReportPublishBlocker } from "@/features/studio/ui/application-report-publishing"
 import { ApplicationTrialResultWorkflow } from "@/features/studio/ui/application-trial-result-workflow"
 import {
-  buildExperienceReportSnapshotV1,
+  buildExperienceReportSnapshotV2,
   hasPublishableReportContent
 } from "@/features/reports/lib/experience-report-snapshot"
 import { getPublishedExperienceReport } from "@/features/reports/queries/get-published-experience-report"
@@ -242,7 +242,7 @@ export default async function StudioApplicationDetailPage({ params }: StudioAppl
    * 발행 영역이 쓸 값을 서버에서 만든다.
    *
    * ⚠️ 미리보기를 화면에서 다시 조립하지 않는다. 공개 가능한 field 를 정하는 곳은
-   *    buildExperienceReportSnapshotV1 하나다 — 화면이 따로 만들면 그 whitelist 를
+   *    buildExperienceReportSnapshotV2 하나다 — 화면이 따로 만들면 그 whitelist 를
    *    비켜 가는 경로가 생긴다.
    */
   const reportView = (() => {
@@ -280,7 +280,7 @@ export default async function StudioApplicationDetailPage({ params }: StudioAppl
     // legacy 가 있는 row 는 "내용 없음" 보다 legacy 안내가 먼저다 —
     // 옛 기록을 현재 기준으로 다시 확인하는 것이 먼저 할 일이기 때문이다.
     const built = trialResult
-      ? buildExperienceReportSnapshotV1({
+      ? buildExperienceReportSnapshotV2({
           programType: data.classProgramType ?? "trial_class",
           confirmedSlotAt: data.confirmedSlotAt,
           completedAt: data.completedAt,
@@ -291,7 +291,8 @@ export default async function StudioApplicationDetailPage({ params }: StudioAppl
           observations: trialResult.observations,
           recommendedCourse: trialResult.recommendedCourse,
           recommendedLevel: trialResult.recommendedLevel,
-          recommendedSchedule: trialResult.recommendedSchedule
+          recommendedSchedule: trialResult.recommendedSchedule,
+          publicSummary: data.trialResult?.publicSummary ?? null
         })
       : null
 

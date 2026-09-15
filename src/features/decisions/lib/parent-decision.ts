@@ -49,8 +49,59 @@ export const canCollectParentDecision = (
   hasCurrentRegistrationResult: boolean | null | undefined
 ): boolean => hasCurrentRegistrationResult !== true
 
+/**
+ * 등록하지 않겠다고 할 때 부모가 직접 고르는 이유.
+ *
+ * ⚠️ 학원이 적는 unregistered_reason 과 다른 값이다.
+ *
+ * 코드가 비슷해 보여도(둘 다 "일정" 이 있다) 같은 사실이 아니다. 하나는 부모가
+ * 자기 입으로 말한 것이고 하나는 학원이 상담 뒤 분류한 것이다. 서로 변환하거나
+ * 한쪽으로 채우지 않는다 — 그러면 누가 한 말인지 알 수 없게 된다.
+ */
+export type ParentDeclineReason =
+  | "schedule_mismatch"
+  | "price"
+  | "distance"
+  | "child_preference"
+  | "class_mismatch"
+  | "chose_another"
+  | "other"
+
+export const PARENT_DECLINE_REASON_OPTIONS: ReadonlyArray<{
+  value: ParentDeclineReason
+  label: string
+}> = [
+  { value: "schedule_mismatch", label: "시간대가 맞지 않아요" },
+  { value: "price", label: "비용이 고민돼요" },
+  { value: "distance", label: "위치나 거리가 부담돼요" },
+  { value: "child_preference", label: "아이가 원하지 않아요" },
+  { value: "class_mismatch", label: "수업이 생각과 달랐어요" },
+  { value: "chose_another", label: "다른 학원을 선택했어요" },
+  { value: "other", label: "기타" }
+]
+
+const PARENT_DECLINE_REASON_VALUES: ReadonlySet<string> = new Set(
+  PARENT_DECLINE_REASON_OPTIONS.map((option) => option.value)
+)
+
+export const isParentDeclineReason = (value: unknown): value is ParentDeclineReason =>
+  typeof value === "string" && PARENT_DECLINE_REASON_VALUES.has(value)
+
+export const getParentDeclineReasonLabel = (value: ParentDeclineReason): string =>
+  PARENT_DECLINE_REASON_OPTIONS.find((option) => option.value === value)?.label ?? value
+
+/** 시간대가 이유일 때만 언제가 좋은지 묻는다. 그 외에는 물을 이유가 없다. */
+export const requiresPreferredSchedule = (
+  reason: ParentDeclineReason | null | undefined
+): boolean => reason === "schedule_mismatch"
+
 /** 학부모/학원 화면이 받는 현재 선택. raw row 를 그대로 넘기지 않는다. */
 export type ParentDecisionSummary = {
   decision: ParentDecision
   createdAt: string
+  /** declined 일 때만 값이 있다. */
+  declineReason: ParentDeclineReason | null
+  /** 시간대가 이유일 때만 값이 있다. "2026-09-22" 형태. */
+  preferredDate: string | null
+  preferredTimeNote: string | null
 }

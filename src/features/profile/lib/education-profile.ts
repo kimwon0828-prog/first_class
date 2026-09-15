@@ -199,6 +199,14 @@ export const buildEducationProfile = (input: {
   }
 }
 
-/** "2번의 체험에서 관찰됐어요". 숫자를 점수처럼 읽히게 두지 않는다. */
-export const describeEvidenceCount = (count: number): string =>
-  `${count}번의 체험에서 관찰됐어요`
+/**
+ * "2개의 체험에서 관찰됐어요".
+ *
+ * ⚠️ 한 번뿐이면 아무 말도 하지 않는다.
+ *
+ *    "1번의 체험에서 관찰됐어요" 는 사실이지만, 옆의 2·3과 나란히 놓이는 순간
+ *    가장 낮은 값이 된다. 한 번 본 것을 적게 본 것으로 읽히게 만들 이유가 없다.
+ *    횟수는 여러 번 관찰됐을 때만 말할 가치가 있는 정보다.
+ */
+export const describeEvidenceCount = (count: number): string | null =>
+  count >= 2 ? `${count}개의 체험에서 관찰됐어요` : null

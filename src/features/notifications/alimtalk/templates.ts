@@ -20,6 +20,8 @@ const resolveTemplateCode = (eventType: ParentNotificationContext["eventType"]) 
       return process.env.ALIMTALK_TEMPLATE_TRIAL_COMPLETED?.trim() ?? ""
     case "trial_reminder":
       return process.env.ALIMTALK_TEMPLATE_TRIAL_REMINDER?.trim() ?? ""
+    case "trial_report_published":
+      return process.env.ALIMTALK_TEMPLATE_TRIAL_REPORT_PUBLISHED?.trim() ?? ""
   }
 }
 
@@ -132,6 +134,27 @@ export const renderAlimtalkContent = (context: ParentNotificationContext): strin
         `일정: ${scheduledAt}`,
         "",
         "변경이 필요하신 경우 학원으로 문의해 주세요."
+      ].join("\n")
+    }
+    case "trial_report_published": {
+      // 링크가 없으면 보내지 않는다. 확인하라고 해 놓고 갈 곳이 없으면
+      // 부모는 앱을 뒤지게 되고, 그게 알림이 하는 일이 되면 안 된다.
+      const reportUrl = resolveTemplateValue(context.reportUrl ?? null)
+      if (!reportUrl) {
+        return null
+      }
+
+      return [
+        `[첫수업] 체험 리포트가 도착했어요`,
+        ``,
+        `${studentName}님의 체험수업 리포트가`,
+        `${academyName}에서 발행되었습니다.`,
+        ``,
+        `수업에서 관찰된 모습과`,
+        `선생님의 총평을 확인해 보세요.`,
+        ``,
+        `▶ 체험 리포트 확인하기`,
+        reportUrl
       ].join("\n")
     }
   }

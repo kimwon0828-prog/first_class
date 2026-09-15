@@ -304,9 +304,13 @@ console.log("\n── 5. 점수 · 순위 · 성향으로 바꾸지 않는다 �
     !/\/\s*(total|count|length)\b/.test(libCode) && !libCode.includes("weight")
   )
   check(
+    // F1 §17 부터 한 번뿐인 관찰에는 횟수를 말하지 않는다.
+    // "1번" 은 사실이지만 2·3 옆에 놓이면 가장 낮은 값으로 읽힌다.
     "횟수를 문장으로만 말한다",
-    describeEvidenceCount(3) === "3번의 체험에서 관찰됐어요"
+    describeEvidenceCount(3) === "3개의 체험에서 관찰됐어요"
   )
+  check("한 번뿐이면 횟수를 말하지 않는다", describeEvidenceCount(1) === null)
+  check("두 번부터 말한다", describeEvidenceCount(2) === "2개의 체험에서 관찰됐어요")
   check(
     "화면이 횟수를 그 문장으로 그린다",
     pageCode.includes("describeEvidenceCount(observation.evidenceCount)")

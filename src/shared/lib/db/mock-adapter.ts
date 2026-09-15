@@ -1,19 +1,22 @@
 import {
   canCollectParentDecision,
+  isParentDeclineReason,
   isParentDecision,
-  type ParentDecision
+  type ParentDecision,
+  type ParentDeclineReason
 } from "@/features/decisions/lib/parent-decision"
 import {
   isRegistrationResult,
   type RegistrationResult
 } from "@/features/registration/lib/registration-result"
 import {
-  buildExperienceReportSnapshotV1,
+  buildExperienceReportSnapshotV2,
   checkObservationPublicationEligibility,
   hasPublishableReportContent
 } from "@/features/reports/lib/experience-report-snapshot"
 import type {
   ParentChildPublishedReport,
+  ParentDecisionMetadataInput,
   ActivateStudioTeacherInput,
   DeleteStudioTeacherInput,
   ApplicationLogEntry,
@@ -714,6 +717,9 @@ type MockParentDecision = {
   decision: ParentDecision
   createdAt: string
   supersededAt: string | null
+  declineReason: ParentDeclineReason | null
+  preferredDate: string | null
+  preferredTimeNote: string | null
 }
 
 const parentDecisions: MockParentDecision[] = []
@@ -2373,7 +2379,8 @@ export const mockDataAdapter: DataAdapter = {
             recommendedLevel: trialResult.recommendedLevel,
             recommendedSchedule: trialResult.recommendedSchedule,
             nextAction: trialResult.nextAction,
-            note: trialResult.note
+            note: trialResult.note,
+            publicSummary: trialResult.publicSummary
           }
         : null
     }
@@ -2386,6 +2393,7 @@ export const mockDataAdapter: DataAdapter = {
     if (existing) {
       existing.observations = normalizedObservations
       existing.parentReaction = input.parentReaction
+      existing.publicSummary = input.publicSummary
       existing.recommendedCourse = input.recommendedCourse
       existing.recommendedLevel = input.recommendedLevel
       existing.recommendedSchedule = input.recommendedSchedule
@@ -2405,6 +2413,7 @@ export const mockDataAdapter: DataAdapter = {
       recommendedSchedule: input.recommendedSchedule,
       nextAction: input.nextAction,
       note: input.note,
+      publicSummary: input.publicSummary,
       createdBy: input.actorId,
       createdAt: nowIso,
       updatedAt: nowIso
@@ -2437,7 +2446,15 @@ export const mockDataAdapter: DataAdapter = {
       (item) => item.applicationId === applicationId && item.supersededAt === null
     )
 
-    return current ? { decision: current.decision, createdAt: current.createdAt } : null
+    return current
+      ? {
+          decision: current.decision,
+          createdAt: current.createdAt,
+          declineReason: current.declineReason,
+          preferredDate: current.preferredDate,
+          preferredTimeNote: current.preferredTimeNote
+        }
+      : null
   },
   async getCurrentRegistrationResult(applicationId: string) {
     // mock 에는 결과 이력 table 이 없다. 동기화 계약이 보장하는 현재 상태만 만든다 —
@@ -2457,7 +2474,11 @@ export const mockDataAdapter: DataAdapter = {
       createdAt: application?.updatedAt ?? new Date().toISOString()
     }
   },
-  async setParentDecision(applicationId: string, decision: ParentDecision) {
+  async setParentDecision(
+    applicationId: string,
+    decision: ParentDecision,
+    input?: ParentDecisionMetadataInput
+  ) {
     const application = applications.find((item) => item.id === applicationId)
     if (!application) {
       throw new Error("application_not_found_or_forbidden")
@@ -2471,14 +2492,43 @@ export const mockDataAdapter: DataAdapter = {
       throw new Error("invalid_parent_decision")
     }
 
+    // DB 함수와 같은 정리 규칙이다. declined 가 아니면 이유를 붙이지 않는다.
+    const declineReason =
+      decision === "declined" && isParentDeclineReason(input?.declineReason)
+        ? input.declineReason
+        : null
+    if (decision === "declined" && !declineReason) {
+      throw new Error("decline_reason_required")
+    }
+    const preferredDate =
+      declineReason === "schedule_mismatch" ? input?.preferredDate?.trim() || null : null
+    const preferredTimeNote =
+      declineReason === "schedule_mismatch" ? input?.preferredTimeNote?.trim() || null : null
+    if (declineReason === "schedule_mismatch" && !preferredDate) {
+      throw new Error("preferred_date_required")
+    }
+
     const nowIso = new Date().toISOString()
     const current = parentDecisions.find(
       (item) => item.applicationId === applicationId && item.supersededAt === null
     )
 
-    // 같은 생각을 다시 고른 것은 바뀐 것이 아니다. 기록을 늘리지 않는다.
-    if (current && current.decision === decision) {
-      return { decision: current.decision, createdAt: current.createdAt, changed: false }
+    // 같은 생각을 같은 말로 다시 고른 것은 바뀐 것이 아니다. 기록을 늘리지 않는다.
+    if (
+      current &&
+      current.decision === decision &&
+      current.declineReason === declineReason &&
+      current.preferredDate === preferredDate &&
+      current.preferredTimeNote === preferredTimeNote
+    ) {
+      return {
+        decision: current.decision,
+        createdAt: current.createdAt,
+        changed: false,
+        declineReason: current.declineReason,
+        preferredDate: current.preferredDate,
+        preferredTimeNote: current.preferredTimeNote
+      }
     }
 
     if (current) {
@@ -2491,10 +2541,13 @@ export const mockDataAdapter: DataAdapter = {
       parentId: application.parentId ?? "mock-parent",
       decision,
       createdAt: nowIso,
-      supersededAt: null
+      supersededAt: null,
+      declineReason,
+      preferredDate,
+      preferredTimeNote
     })
 
-    return { decision, createdAt: nowIso, changed: true }
+    return { decision, createdAt: nowIso, changed: true, declineReason, preferredDate, preferredTimeNote }
   },
   async getPublishedExperienceReport(applicationId: string) {
     return (
@@ -2569,7 +2622,7 @@ export const mockDataAdapter: DataAdapter = {
       throw new Error("unknown_observations_cannot_publish")
     }
 
-    const built = buildExperienceReportSnapshotV1({
+    const built = buildExperienceReportSnapshotV2({
       programType: "trial_class",
       confirmedSlotAt: application.confirmedSlotAt ?? null,
       completedAt: application.completedAt ?? null,
@@ -2580,7 +2633,8 @@ export const mockDataAdapter: DataAdapter = {
       observations: trialResult.observations,
       recommendedCourse: trialResult.recommendedCourse,
       recommendedLevel: trialResult.recommendedLevel,
-      recommendedSchedule: trialResult.recommendedSchedule
+      recommendedSchedule: trialResult.recommendedSchedule,
+      publicSummary: trialResult.publicSummary
     })
 
     if (built.status !== "ok") {

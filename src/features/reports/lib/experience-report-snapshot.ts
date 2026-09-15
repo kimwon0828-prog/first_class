@@ -34,6 +34,28 @@ export type ExperienceReportObservationSnapshot = {
   label: string
 }
 
+/**
+ * 발행본의 현재 모양.
+ *
+ * V1 과 다른 점은 summary 하나다. 그래도 타입을 나눈다 — 과거 발행본에
+ * 없던 칸을 optional 로 끼워 넣으면, 읽는 쪽이 "없는 것" 과 "V1 이라 애초에
+ * 개념이 없던 것" 을 구분하지 못한다.
+ */
+export type ExperienceReportSnapshotV2 = ExperienceReportSnapshotV1 & {
+  /** 선생님 총평. 공백만 있으면 발행 단계에서 null 로 눕는다. */
+  summary: string | null
+}
+
+/** 화면이 받는 모양. V1 은 summary 가 없는 것으로 읽힌다. */
+export type ExperienceReportSnapshot = ExperienceReportSnapshotV1 | ExperienceReportSnapshotV2
+
+/** 지금 발행하면 찍히는 version. */
+export const EXPERIENCE_REPORT_CONTENT_VERSION = 2
+
+export const getExperienceReportSummary = (
+  snapshot: ExperienceReportSnapshot
+): string | null => ("summary" in snapshot ? snapshot.summary : null)
+
 export type ExperienceReportSnapshotV1 = {
   experience: {
     type: string
@@ -78,7 +100,9 @@ export type ExperienceReportRecord = {
 export const EXPERIENCE_REPORT_SNAPSHOT_TOP_LEVEL_KEYS = [
   "experience",
   "observations",
-  "recommendation"
+  "recommendation",
+  // V2 에서 추가됐다. V1 스냅샷에는 이 key 가 아예 없다.
+  "summary"
 ] as const
 
 /**
@@ -194,13 +218,14 @@ export type ExperienceReportSnapshotSource = {
   recommendedCourse: string | null
   recommendedLevel: string | null
   recommendedSchedule: string | null
+  publicSummary: string | null
 }
 
 export type BuildExperienceReportSnapshotResult =
-  | { status: "ok"; snapshot: ExperienceReportSnapshotV1 }
+  | { status: "ok"; snapshot: ExperienceReportSnapshotV2 }
   | { status: "ineligible"; reason: ExperienceReportSnapshotRejection }
 
-export const buildExperienceReportSnapshotV1 = (
+export const buildExperienceReportSnapshotV2 = (
   source: ExperienceReportSnapshotSource
 ): BuildExperienceReportSnapshotResult => {
   const eligibility = checkObservationPublicationEligibility(source.observations)
@@ -231,6 +256,8 @@ export const buildExperienceReportSnapshotV1 = (
         class: { title: source.classTitle }
       },
       observations,
+      // 공백만 있으면 null 이다. 부모 화면에 빈 카드를 만들지 않는다.
+      summary: asOptionalText(source.publicSummary),
       recommendation: {
         course: asOptionalText(source.recommendedCourse),
         level: asOptionalText(source.recommendedLevel),
@@ -271,9 +298,10 @@ export const hasPublishableReportContent = (snapshot: ExperienceReportSnapshotV1
 export const decodeExperienceReportSnapshot = (
   contentVersion: number,
   content: unknown
-): ExperienceReportSnapshotV1 | null => {
-  // content_version 으로 분기한다. 앞으로 V2 가 생겨도 과거 row 를 변환하지 않는다.
-  if (contentVersion !== 1) {
+): ExperienceReportSnapshot | null => {
+  // content_version 으로 분기한다. 과거 row 를 새 모양으로 변환하지 않는다 —
+  // V1 은 V1 로 읽고, summary 가 없는 문서로 그대로 남는다.
+  if (contentVersion !== 1 && contentVersion !== 2) {
     return null
   }
 
@@ -349,6 +377,11 @@ export const decodeExperienceReportSnapshot = (
       course: asOptionalText(recommendation.course),
       level: asOptionalText(recommendation.level),
       schedule: asOptionalText(recommendation.schedule)
-    }
+    },
+    // V1 에는 이 개념이 없다. 없던 문서를 "총평이 비었다" 로 읽지 않도록
+    // V2 일 때만 값을 담는다.
+    ...(contentVersion === 2
+      ? { summary: typeof content.summary === "string" && content.summary.trim() ? content.summary : null }
+      : {})
   }
 }

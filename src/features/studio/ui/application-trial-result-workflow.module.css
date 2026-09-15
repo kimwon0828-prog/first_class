@@ -875,3 +875,10 @@
   line-height: 19px;
   color: var(--text-3);
 }
+
+/* 누가 읽는 칸인지 적어 둔다. 총평과 메모를 헷갈리면 안 되는 말이 밖으로 나간다. */
+.fieldHint {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: var(--text-muted);
+}

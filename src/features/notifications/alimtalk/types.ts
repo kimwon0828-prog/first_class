@@ -4,7 +4,8 @@ export const PARENT_ALIMTALK_EVENT_TYPES = [
   "trial_schedule_confirmed",
   "trial_rejected",
   "trial_completed",
-  "trial_reminder"
+  "trial_reminder",
+  "trial_report_published"
 ] as const
 
 export type ParentAlimtalkEventType = (typeof PARENT_ALIMTALK_EVENT_TYPES)[number]
@@ -29,6 +30,8 @@ export type ParentNotificationContext = {
   requestedSlotAt: string | null
   confirmedSlotAt: string | null
   selectedScheduleLabel: string | null
+  /** 리포트 알림에서 쓰는 절대 URL. 다른 event 에서는 null 이다. */
+  reportUrl?: string | null
 }
 
 export type AlimtalkTemplatePayload = {

@@ -216,7 +216,20 @@ check(
   "조회 실패를 '선택 없음' 으로 접지 않는다",
   query.includes('status: "error"') && query.includes('status: "not_found"')
 )
-check("강제 선택이 아니다", !parentUi.includes("required"))
+// 세 선택지는 강제되지 않는다. 아무것도 고르지 않고 화면을 떠날 수 있다.
+//
+// F1 에서 "등록하지 않을게요" 를 고른 뒤에만 열리는 이유 패널이 생겼고,
+// 그 안의 radio 는 required 다. 그건 강제가 아니라 "이 패널을 제출하려면
+// 이유가 필요하다" 는 뜻이라, 선택지 자체에 required 가 붙었는지로 본다.
+const decisionOptionsForm = parentUi.slice(
+  parentUi.indexOf("<form action={submit} className={styles.options}>"),
+  parentUi.indexOf("</form>")
+)
+check("선택지가 강제되지 않는다", !decisionOptionsForm.includes("required"))
+check(
+  "이유 패널은 고른 뒤에만 열린다",
+  parentUi.includes("{declineOpen ? (") && parentUi.includes("setDeclineOpen(true)")
+)
 check("modal 이 아니다", !parentUi.includes('role="dialog"'))
 check("나중에 바꿀 수 있다고 말한다", parentUi.includes("현재 생각은 나중에 바꿀 수 있어요"))
 check("색만으로 선택을 말하지 않는다", parentUi.includes("aria-pressed") && parentUi.includes("optionMark"))

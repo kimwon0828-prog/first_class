@@ -5,6 +5,8 @@ import { revalidatePath } from "next/cache"
 import { requireStudioEntitlement } from "@/features/billing/lib/require-entitlement"
 import { requireTeacherStudioAccess } from "@/features/studio/lib/require-teacher-studio-access"
 import { getStudioTrialResultSaveContext } from "@/features/studio/queries/get-studio-trial-result-save-context"
+import { sendParentNotificationSafely } from "@/features/notifications/alimtalk/send-parent-notification"
+import { getStudioApplicationDetail } from "@/features/studio/queries/get-studio-application-detail"
 import { dataAdapter } from "@/shared/lib/db"
 
 export type PublishExperienceReportActionState = {
@@ -56,6 +58,16 @@ const resolveErrorMessage = (caught: unknown) => {
   return "리포트 발행에 실패했습니다. 잠시 후 다시 시도해 주세요."
 }
 
+/**
+ * 리포트를 읽을 수 있는 공개 주소.
+ *
+ * 알림에 "확인하기" 를 적어 놓고 갈 곳이 없으면 부모는 앱을 뒤지게 된다.
+ * 링크를 만들 수 없으면 알림 자체를 보내지 않는다(템플릿이 null 을 돌려준다).
+ */
+const SITE_ORIGIN = "https://firstsuup.com"
+const buildReportUrl = (applicationId: string) =>
+  `${SITE_ORIGIN}/record/${applicationId}/report`
+
 export async function publishExperienceReportAction(
   applicationId: string,
   previousState: PublishExperienceReportActionState = defaultState,
@@ -106,10 +118,48 @@ export async function publishExperienceReportAction(
     revalidatePath("/studio/applications")
     revalidatePath(`/studio/applications/${applicationId}`)
 
+    const isFirstPublish = result.supersededVersion === null
+
+    // ⚠️ 발행 성공과 알림 성공을 하나로 묶지 않는다.
+    //
+    //    여기까지 왔으면 리포트는 이미 발행됐다. 알림이 실패했다고 되돌리면
+    //    부모가 읽을 수 있는 문서를 문자 한 통 때문에 없애는 일이 된다.
+    //    그래서 실패해도 throw 하지 않는 …Safely 를 쓰고, 결과만 따로 말한다.
+    //
+    // 재발행에는 보내지 않는다. 오타 하나 고칠 때마다 알림이 가면
+    // 부모는 곧 알림을 무시하게 되고, 정작 첫 리포트도 묻힌다.
+    let notificationFailed = false
+    if (isFirstPublish) {
+      const { data: detail } = await getStudioApplicationDetail(applicationId, teacher.organizationId)
+
+      if (detail) {
+        const sent = await sendParentNotificationSafely({
+          eventType: "trial_report_published",
+          organizationId: teacher.organizationId,
+          trialApplicationId: applicationId,
+          createdBy: teacher.id,
+          parentId: detail.parentId,
+          parentPhone: detail.parentPhone,
+          parentName: detail.parentName,
+          studentName: detail.childName,
+          academyName: detail.academyName ?? null,
+          classId: detail.classId,
+          classTitle: detail.classTitle ?? null,
+          requestedSlotAt: detail.requestedSlotAt,
+          confirmedSlotAt: detail.confirmedSlotAt,
+          selectedScheduleLabel: detail.selectedScheduleLabel ?? null,
+          reportUrl: buildReportUrl(applicationId)
+        })
+
+        notificationFailed = sent?.alimtalk.status === "failed"
+      }
+    }
+
     return {
       status: "success",
-      message:
-        result.supersededVersion === null
+      message: notificationFailed
+        ? "리포트를 발행했어요. 다만 학부모 알림 발송에는 실패했어요."
+        : isFirstPublish
           ? "리포트를 발행했어요."
           : "새 버전의 리포트를 발행했어요.",
       version: result.version,

@@ -29,7 +29,7 @@ import {
   EXPERIENCE_REPORT_FORBIDDEN_FIELDS,
   EXPERIENCE_REPORT_SNAPSHOT_TOP_LEVEL_KEYS,
   EXPERIENCE_REPORT_STATUSES,
-  buildExperienceReportSnapshotV1,
+  buildExperienceReportSnapshotV2,
   checkObservationPublicationEligibility,
   decodeExperienceReportSnapshot,
   hasPublishableReportContent
@@ -72,7 +72,8 @@ const SOURCE = {
   observations: ["active_participation", "verbal_explanation"],
   recommendedCourse: "초등 미술 정규반",
   recommendedLevel: "A2",
-  recommendedSchedule: "화·목 16:00"
+  recommendedSchedule: "화·목 16:00",
+  publicSummary: null
 }
 
 console.log("── 1. draft 상태가 없다 ──")
@@ -105,11 +106,12 @@ check("UNIQUE(application_id, version) 가 있다", migration.includes("unique (
 check("version > 0 CHECK 가 있다", /check \(version > 0\)/.test(migration))
 
 console.log("\n── 4. 스냅샷 whitelist ──")
-const built = buildExperienceReportSnapshotV1(SOURCE)
+const built = buildExperienceReportSnapshotV2(SOURCE)
 check("정상 source 로 스냅샷이 만들어진다", built.status === "ok")
 if (built.status === "ok") {
   const keys = Object.keys(built.snapshot)
-  check("최상위 key 가 3개다", keys.length === 3, keys.join(", "))
+  // V2 부터 summary 가 더해져 4개다. V1 스냅샷은 여전히 3개로 남는다.
+  check("최상위 key 가 4개다", keys.length === 4, keys.join(", "))
   check(
     "최상위 key 가 계약과 같다",
     keys.every((key) => EXPERIENCE_REPORT_SNAPSHOT_TOP_LEVEL_KEYS.includes(key as never))
@@ -176,7 +178,7 @@ check("unknown → 거절", unknownCase.status === "unknown_values")
 check("빈 배열 → 발행 가능", checkObservationPublicationEligibility([]).status === "eligible")
 check(
   "builder 가 legacy source 로 스냅샷을 만들지 않는다",
-  buildExperienceReportSnapshotV1({ ...SOURCE, observations: ["이해가 빨랐어요"] }).status === "ineligible"
+  buildExperienceReportSnapshotV2({ ...SOURCE, observations: ["이해가 빨랐어요"] }).status === "ineligible"
 )
 check("migration 이 legacy 를 거절한다", migration.includes("legacy_observations_require_review"))
 check(
@@ -293,13 +295,13 @@ check(
 )
 check(
   "builder 가 날짜 없으면 스냅샷을 만들지 않는다",
-  buildExperienceReportSnapshotV1({
+  buildExperienceReportSnapshotV2({
     ...SOURCE,
     confirmedSlotAt: null,
     completedAt: null
   }).status === "ineligible"
 )
-const dateFallback = buildExperienceReportSnapshotV1({ ...SOURCE, confirmedSlotAt: null })
+const dateFallback = buildExperienceReportSnapshotV2({ ...SOURCE, confirmedSlotAt: null })
 check("completed_at 으로 대신한다", dateFallback.status === "ok")
 if (dateFallback.status === "ok") {
   check("fallback 날짜가 들어간다", dateFallback.snapshot.experience.date === SOURCE.completedAt)
@@ -362,11 +364,11 @@ const reportUi = read(REPORT_UI_PATH)
 
 check(
   "미리보기를 공용 builder 로만 만든다",
-  detailPage.includes("buildExperienceReportSnapshotV1")
+  detailPage.includes("buildExperienceReportSnapshotV2")
 )
 check(
   "화면이 공개 내용을 따로 조립하지 않는다",
-  !reportUi.includes("buildExperienceReportSnapshotV1") &&
+  !reportUi.includes("buildExperienceReportSnapshotV2") &&
     !reportUi.includes("trialResult.observations")
 )
 check(
@@ -571,7 +573,7 @@ check(
 )
 
 // snapshot 생성과 발행 가능 판정을 섞지 않는다(§7).
-const emptyBuilt = buildExperienceReportSnapshotV1({ ...SOURCE, observations: [], recommendedCourse: null, recommendedLevel: null, recommendedSchedule: null })
+const emptyBuilt = buildExperienceReportSnapshotV2({ ...SOURCE, observations: [], recommendedCourse: null, recommendedLevel: null, recommendedSchedule: null })
 check("빈 관찰로도 snapshot 자체는 만들어진다", emptyBuilt.status === "ok")
 if (emptyBuilt.status === "ok") {
   check("그 snapshot 은 발행 대상이 아니다", !hasPublishableReportContent(emptyBuilt.snapshot))
