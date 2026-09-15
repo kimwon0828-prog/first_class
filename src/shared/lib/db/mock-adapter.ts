@@ -2461,7 +2461,9 @@ export const mockDataAdapter: DataAdapter = {
           preferredDays: current.preferredDays,
           preferredStartTime: current.preferredStartTime,
           preferredEndTime: current.preferredEndTime,
-          preferredTimeMode: current.preferredTimeMode
+          preferredTimeMode: current.preferredTimeMode,
+          preferredDate: null,
+          preferredTimeNote: null
         }
       : null
   },

@@ -202,6 +202,27 @@ export const formatPreferredSchedule = (input: {
   return input.mode === "after" ? `${days} / ${start} 이후` : `${days} / ${start}`
 }
 
+/**
+ * 옛 방식으로 받은 희망 날짜.
+ *
+ * ⚠️ 요일 패턴으로 바꾸지 않는다.
+ *
+ * "9월 22일" 에서 요일을 뽑아 "월요일마다 가능" 이라고 적는 건 학부모가 한 적
+ * 없는 말이다. 그때 적은 것은 그날 하루였고, 그 사실 그대로 보여 준다.
+ */
+export const formatLegacyPreferredDate = (
+  value: string,
+  note: string | null
+): string | null => {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value)
+  if (!match) {
+    return null
+  }
+
+  const base = `${Number(match[2])}월 ${Number(match[3])}일`
+  return note ? `${base} · ${note}` : base
+}
+
 /** 학부모/학원 화면이 받는 현재 선택. raw row 를 그대로 넘기지 않는다. */
 export type ParentDecisionSummary = {
   decision: ParentDecision
@@ -219,4 +240,7 @@ export type ParentDecisionSummary = {
   /** range 일 때만 값이 있다. */
   preferredEndTime: string | null
   preferredTimeMode: PreferredTimeMode | null
+  /** 옛 방식으로 받은 날짜. 새 화면은 이 값을 만들지 않는다. */
+  preferredDate: string | null
+  preferredTimeNote: string | null
 }

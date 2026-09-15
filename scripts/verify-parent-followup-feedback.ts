@@ -21,6 +21,8 @@ import { resolve } from "node:path"
 import {
   PARENT_DECISION_OPTIONS,
   PARENT_DECLINE_REASON_OPTIONS,
+  formatLegacyPreferredDate,
+  formatPreferredDays,
   isParentDeclineReason,
   requiresPreferredSchedule
 } from "@/features/decisions/lib/parent-decision"
@@ -536,7 +538,7 @@ console.log("\n── 8-b. 희망 일정은 날짜가 아니라 요일·시간�
   check(
     // bypass 인자를 가진 함수는 여전히 아무에게도 열려 있지 않다(F1 최종 계약).
     "internal 이 authenticated 에게 닫혀 있다",
-    /revoke all on function public\.set_parent_decision_internal\(uuid, text, text, text\[\], time, time, text, boolean\) from authenticated;/.test(
+    /revoke all on function public\.set_parent_decision_internal\(uuid, text, text, date, text, text\[\], time, time, text, boolean\) from authenticated;/.test(
       scheduleMigration
     ) && !/grant execute on function public\.set_parent_decision_internal/.test(scheduleMigration)
   )
@@ -553,11 +555,61 @@ console.log("\n── 8-b. 희망 일정은 날짜가 아니라 요일·시간�
     )
   )
 
-  console.log("\n── 8-c. 표시 문구 ──")
+  console.log("\n── 8-c. legacy date 는 legacy 로 남는다 ──")
   check(
-    "Studio 가 년·월·일을 쓰지 않는다",
-    !studio.includes("formatPreferredDate") && !studio.includes("월 ") &&
-      studio.includes("formatPreferredSchedule")
+    // 학부모가 직접 고른 날짜다. 잘못된 데이터가 아니라 그때의 사실이고,
+    // 저장을 막으면 전환 구간에 "등록하지 않겠다" 를 남길 수 없게 된다.
+    "구 5-arg 가 날짜를 그대로 저장한다",
+    /p_preferred_date, p_preferred_time_note,\s*\n\s*null, null, null, null,\s*\n\s*false/.test(
+      scheduleMigration
+    )
+  )
+  check(
+    "그 날짜를 요일 패턴으로 변환하지 않는다",
+    scheduleMigration.includes("v_legacy_date := p_preferred_date;") &&
+      !/extract\(\s*dow/i.test(scheduleMigration) &&
+      !/to_char\([^)]*preferred_date[^)]*'dy'/i.test(scheduleMigration)
+  )
+  check(
+    "새 7-arg 는 날짜 자리를 항상 null 로 보낸다",
+    /p_decline_reason,\s*\n\s*null, null,\s*\n\s*p_preferred_days/.test(scheduleMigration)
+  )
+  check(
+    "date 와 pattern 은 상호 배타다 (RPC)",
+    scheduleMigration.includes("raise exception 'preferred_schedule_form_conflict'")
+  )
+  check(
+    "date 와 pattern 은 상호 배타다 (DB 제약)",
+    scheduleMigration.includes("parent_decisions_preferred_form_exclusive_check")
+  )
+  check(
+    "새 화면은 preferred_date 를 만들지 않는다",
+    !form.includes("preferredDate") && !action.includes("preferredDate")
+  )
+  check(
+    "Studio 가 옛 날짜를 숨기지 않는다",
+    studio.includes("formatLegacyPreferredDate") && studio.includes("희망 날짜")
+  )
+  check(
+    "새 패턴이 있으면 그것을 먼저 보여 준다",
+    studio.includes("preferredSchedule ? (") && studio.includes(": legacyPreferredDate ? (")
+  )
+
+  console.log("\n── 8-d. 표시 문구 ──")
+  check(
+    "새 패턴 표시에 년·월·일이 없다",
+    !studio.includes("formatPreferredDate(") && studio.includes("formatPreferredSchedule")
+  )
+  check(
+    "요일 입력이 그대로 저장된다",
+    // ["tue","thu"] 를 넣으면 그 둘만 남는다. 정렬만 하고 더하지 않는다.
+    formatPreferredDays(["tue", "thu"]) === "화·목" &&
+      formatPreferredDays(["thu", "tue", "mon"]) === "월·화·목"
+  )
+  check(
+    "legacy 날짜 표시가 날짜 그대로다",
+    formatLegacyPreferredDate("2026-09-22", "오후") === "9월 22일 · 오후" &&
+      formatLegacyPreferredDate("2026-09-22", null) === "9월 22일"
   )
 }
 

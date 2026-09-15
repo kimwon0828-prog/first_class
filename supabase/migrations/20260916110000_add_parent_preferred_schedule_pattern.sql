@@ -73,14 +73,33 @@ alter table public.parent_decisions
   drop constraint if exists parent_decisions_preferred_schedule_scope_check;
 
 -- 희망 일정은 시간대가 이유일 때만 의미가 있다.
--- preferred_date 도 같은 범위에 둔다 — 과거 기록은 이미 그 조건을 만족한다.
 alter table public.parent_decisions
   add constraint parent_decisions_preferred_schedule_scope_check
   check (
     decline_reason = 'schedule_mismatch'
     or (
       preferred_date is null
+      and preferred_time_note is null
       and preferred_days is null
+      and preferred_start_time is null
+      and preferred_end_time is null
+      and preferred_time_mode is null
+    )
+  );
+
+-- ⚠️ 두 형태를 한 row 에 함께 담지 않는다.
+--
+--    A. legacy date form   — 구 화면이 받은 날짜 하나
+--    B. recurring pattern  — 새 화면이 받는 요일·시간대
+--
+--    둘 다 있으면 학원이 어느 쪽을 믿어야 할지 알 수 없고, 나중에 읽는 쪽이
+--    둘을 합치려다 없는 사실을 만들게 된다. 한 기록은 한 형태만 말한다.
+alter table public.parent_decisions
+  add constraint parent_decisions_preferred_form_exclusive_check
+  check (
+    preferred_date is null
+    or (
+      preferred_days is null
       and preferred_start_time is null
       and preferred_end_time is null
       and preferred_time_mode is null
@@ -149,6 +168,9 @@ create or replace function public.set_parent_decision_internal(
   p_application_id uuid,
   p_decision text,
   p_decline_reason text,
+  -- 구 화면이 받은 날짜. 새 화면은 null 로 보낸다.
+  p_preferred_date date,
+  p_preferred_time_note text,
   p_preferred_days text[],
   p_preferred_start_time time,
   p_preferred_end_time time,
@@ -166,6 +188,8 @@ declare
   v_current public.parent_decisions%rowtype;
   v_now timestamptz := now();
   v_reason text;
+  v_legacy_date date;
+  v_legacy_note text;
   v_days text[];
   v_start time;
   v_end time;
@@ -206,35 +230,66 @@ begin
       v_start := p_preferred_start_time;
       v_end := p_preferred_end_time;
 
-      if v_days is null or array_length(v_days, 1) is null then
-        raise exception 'preferred_days_required'
-          using detail = '가능한 요일을 하나 이상 골라 주세요.';
+      -- ⚠️ 두 형태를 한 기록에 함께 담지 않는다.
+      --
+      --    날짜와 요일이 둘 다 있으면 학원이 어느 쪽을 믿어야 할지 알 수 없고,
+      --    나중에 읽는 쪽이 둘을 합치려다 없는 사실을 만들게 된다.
+      if p_preferred_date is not null
+         and (v_days is not null or v_start is not null or v_mode is not null)
+      then
+        raise exception 'preferred_schedule_form_conflict'
+          using detail = '희망 날짜와 희망 요일을 함께 저장할 수 없습니다.';
       end if;
 
-      if v_start is null then
-        raise exception 'preferred_time_required'
-          using detail = '가능한 시간을 알려 주세요.';
-      end if;
-
-      if v_mode is null or v_mode not in ('after', 'exact', 'range') then
-        raise exception 'preferred_time_mode_required'
-          using detail = '가능한 시간 조건을 골라 주세요.';
-      end if;
-
-      if v_mode = 'range' then
-        if v_end is null then
-          raise exception 'preferred_end_time_required'
-            using detail = '가능한 시간의 끝 시각을 알려 주세요.';
-        end if;
-        if v_end <= v_start then
-          raise exception 'preferred_end_time_invalid'
-            using detail = '끝 시각은 시작 시각보다 뒤여야 해요.';
-        end if;
-      else
-        -- after · exact 에는 끝 시각이 없다. 보내와도 버린다.
+      if p_preferred_date is not null then
+        -- 구 화면이 보낸 날짜는 그대로 남긴다.
+        --
+        -- 학부모가 직접 고른 날짜다. 잘못된 데이터가 아니라 그때의 사실이고,
+        -- 저장을 막으면 전환 구간에 "등록하지 않겠다" 를 남길 수 없게 된다.
+        -- 요일 패턴으로 바꾸지도 않는다 — "9월 22일" 에서 요일을 뽑아
+        -- "월요일마다 가능" 이라고 적는 건 학부모가 한 적 없는 말이다.
+        v_legacy_date := p_preferred_date;
+        v_legacy_note := nullif(btrim(p_preferred_time_note), '');
+        v_days := null;
+        v_start := null;
         v_end := null;
+        v_mode := null;
+      else
+        v_legacy_date := null;
+        v_legacy_note := null;
+
+        if v_days is null or array_length(v_days, 1) is null then
+          raise exception 'preferred_days_required'
+            using detail = '가능한 요일을 하나 이상 골라 주세요.';
+        end if;
+
+        if v_start is null then
+          raise exception 'preferred_time_required'
+            using detail = '가능한 시간을 알려 주세요.';
+        end if;
+
+        if v_mode is null or v_mode not in ('after', 'exact', 'range') then
+          raise exception 'preferred_time_mode_required'
+            using detail = '가능한 시간 조건을 골라 주세요.';
+        end if;
+
+        if v_mode = 'range' then
+          if v_end is null then
+            raise exception 'preferred_end_time_required'
+              using detail = '가능한 시간의 끝 시각을 알려 주세요.';
+          end if;
+          if v_end <= v_start then
+            raise exception 'preferred_end_time_invalid'
+              using detail = '끝 시각은 시작 시각보다 뒤여야 해요.';
+          end if;
+        else
+          -- after · exact 에는 끝 시각이 없다. 보내와도 버린다.
+          v_end := null;
+        end if;
       end if;
     else
+      v_legacy_date := null;
+      v_legacy_note := null;
       v_days := null;
       v_start := null;
       v_end := null;
@@ -242,6 +297,8 @@ begin
     end if;
   else
     v_reason := null;
+    v_legacy_date := null;
+    v_legacy_note := null;
     v_days := null;
     v_start := null;
     v_end := null;
@@ -273,6 +330,8 @@ begin
      and v_current.parent_id = v_actor
      and v_current.decision = p_decision
      and v_current.decline_reason is not distinct from v_reason
+     and v_current.preferred_date is not distinct from v_legacy_date
+     and v_current.preferred_time_note is not distinct from v_legacy_note
      and v_current.preferred_days is not distinct from v_days
      and v_current.preferred_start_time is not distinct from v_start
      and v_current.preferred_end_time is not distinct from v_end
@@ -283,6 +342,8 @@ begin
       'changed', false,
       'decision', v_current.decision,
       'declineReason', v_current.decline_reason,
+      'preferredDate', v_current.preferred_date,
+      'preferredTimeNote', v_current.preferred_time_note,
       'preferredDays', v_current.preferred_days,
       'preferredStartTime', v_current.preferred_start_time,
       'preferredEndTime', v_current.preferred_end_time,
@@ -299,11 +360,13 @@ begin
 
   insert into public.parent_decisions (
     application_id, parent_id, decision, created_at,
-    decline_reason, preferred_days, preferred_start_time, preferred_end_time, preferred_time_mode
+    decline_reason, preferred_date, preferred_time_note,
+    preferred_days, preferred_start_time, preferred_end_time, preferred_time_mode
   )
   values (
     p_application_id, v_actor, p_decision, v_now,
-    v_reason, v_days, v_start, v_end, v_mode
+    v_reason, v_legacy_date, v_legacy_note,
+    v_days, v_start, v_end, v_mode
   )
   returning * into v_inserted;
 
@@ -312,6 +375,8 @@ begin
     'changed', true,
     'decision', v_inserted.decision,
     'declineReason', v_inserted.decline_reason,
+    'preferredDate', v_inserted.preferred_date,
+    'preferredTimeNote', v_inserted.preferred_time_note,
     'preferredDays', v_inserted.preferred_days,
     'preferredStartTime', v_inserted.preferred_start_time,
     'preferredEndTime', v_inserted.preferred_end_time,
@@ -321,9 +386,9 @@ begin
 end;
 $$;
 
-revoke all on function public.set_parent_decision_internal(uuid, text, text, text[], time, time, text, boolean) from public;
-revoke all on function public.set_parent_decision_internal(uuid, text, text, text[], time, time, text, boolean) from anon;
-revoke all on function public.set_parent_decision_internal(uuid, text, text, text[], time, time, text, boolean) from authenticated;
+revoke all on function public.set_parent_decision_internal(uuid, text, text, date, text, text[], time, time, text, boolean) from public;
+revoke all on function public.set_parent_decision_internal(uuid, text, text, date, text, text[], time, time, text, boolean) from anon;
+revoke all on function public.set_parent_decision_internal(uuid, text, text, date, text, text[], time, time, text, boolean) from authenticated;
 
 -- ─── 공개 함수 A: 새 코드용 ───
 create or replace function public.set_parent_decision(
@@ -341,8 +406,10 @@ security definer
 set search_path = public
 as $$
 begin
+  -- 새 화면은 날짜를 받지 않는다. legacy 자리는 항상 null 이다.
   return public.set_parent_decision_internal(
     p_application_id, p_decision, p_decline_reason,
+    null, null,
     p_preferred_days, p_preferred_start_time, p_preferred_end_time, p_preferred_time_mode,
     false
   );
@@ -353,15 +420,13 @@ revoke all on function public.set_parent_decision(uuid, text, text, text[], time
 revoke all on function public.set_parent_decision(uuid, text, text, text[], time, time, text) from anon;
 grant execute on function public.set_parent_decision(uuid, text, text, text[], time, time, text) to authenticated;
 
--- ─── 옛 5-arg(date 기반) 은 새 구현으로 넘긴다 ───
+-- ─── 옛 5-arg(date 기반) ───
 --
--- 배포 전환 동안 구 코드가 이 시그니처를 부른다. 날짜는 더 이상 저장하지
--- 않는다 — 요일 패턴으로 추측 변환하지 않기 위해서다. 그래서 그 호출은
--- 시간대 이유를 완성하지 못하고 preferred_days_required 로 되돌아간다.
+-- 배포 전환 동안 구 코드가 이 시그니처를 부른다. 그때 학부모가 고른 날짜는
+-- 그대로 저장한다 — 잘못된 데이터가 아니라 그때의 사실이다.
 --
--- ⚠️ 구 UI 에서 "시간대가 맞지 않아요" 만 저장되지 않는다. 나머지 이유와
---    planned · considering · declined 는 그대로 동작한다. 전환 구간이 짧고,
---    잘못된 날짜를 남기는 것보다 저장되지 않는 편이 낫다.
+-- 요일 패턴으로 변환하지 않는다. 날짜 하나에서 "매주 그 요일" 을 만들어 내는
+-- 것은 학부모가 한 적 없는 말을 적는 일이다. legacy 는 legacy 로 남는다.
 create or replace function public.set_parent_decision(
   p_application_id uuid,
   p_decision text,
@@ -376,7 +441,10 @@ set search_path = public
 as $$
 begin
   return public.set_parent_decision_internal(
-    p_application_id, p_decision, p_decline_reason, null, null, null, null, false
+    p_application_id, p_decision, p_decline_reason,
+    p_preferred_date, p_preferred_time_note,
+    null, null, null, null,
+    false
   );
 end;
 $$;
@@ -393,7 +461,7 @@ set search_path = public
 as $$
 begin
   return public.set_parent_decision_internal(
-    p_application_id, p_decision, null, null, null, null, null, true
+    p_application_id, p_decision, null, null, null, null, null, null, null, true
   );
 end;
 $$;

@@ -1,4 +1,5 @@
 import {
+  formatLegacyPreferredDate,
   formatPreferredSchedule,
   getParentDeclineReasonLabel,
   getParentDecisionLabel,
@@ -41,6 +42,12 @@ export const StudioParentDecision = ({ decision, loadError }: StudioParentDecisi
         mode: decision.preferredTimeMode
       })
     : null
+  // 옛 방식으로 받은 기록. 새 화면은 날짜를 받지 않지만, 이미 남은 것을
+  // 숨기지 않는다 — 학부모가 그때 실제로 적은 날짜다.
+  const legacyPreferredDate =
+    decision && !preferredSchedule && decision.preferredDate
+      ? formatLegacyPreferredDate(decision.preferredDate, decision.preferredTimeNote)
+      : null
 
   return (
     <section className={`${styles.card} ${styles.sectionCard}`} aria-labelledby="parent-decision-title">
@@ -76,6 +83,11 @@ export const StudioParentDecision = ({ decision, loadError }: StudioParentDecisi
                 <div className={styles.detailRow}>
                   <dt className={styles.detailLabel}>희망 일정</dt>
                   <dd className={styles.detailValue}>{preferredSchedule}</dd>
+                </div>
+              ) : legacyPreferredDate ? (
+                <div className={styles.detailRow}>
+                  <dt className={styles.detailLabel}>희망 날짜</dt>
+                  <dd className={styles.detailValue}>{legacyPreferredDate}</dd>
                 </div>
               ) : null}
             </dl>

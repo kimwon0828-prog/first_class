@@ -5524,7 +5524,7 @@ export const supabaseDataAdapter: DataAdapter = {
     // 지금의 생각만 읽는다 — 지나간 기록은 R4 화면이 쓰지 않는다.
     const { data, error } = await supabase
       .from("parent_decisions")
-      .select("decision, created_at, decline_reason, preferred_days, preferred_start_time, preferred_end_time, preferred_time_mode")
+      .select("decision, created_at, decline_reason, preferred_date, preferred_time_note, preferred_days, preferred_start_time, preferred_end_time, preferred_time_mode")
       .eq("application_id", applicationId)
       .is("superseded_at", null)
       .maybeSingle()
@@ -5551,7 +5551,10 @@ export const supabaseDataAdapter: DataAdapter = {
       preferredEndTime: (data.preferred_end_time as string | null) ?? null,
       preferredTimeMode: isPreferredTimeMode(data.preferred_time_mode)
         ? data.preferred_time_mode
-        : null
+        : null,
+      // 옛 방식 기록은 그대로 읽는다. 요일 패턴으로 바꾸지 않는다.
+      preferredDate: (data.preferred_date as string | null) ?? null,
+      preferredTimeNote: (data.preferred_time_note as string | null) ?? null
     }
   },
   async getCurrentRegistrationResult(applicationId: string) {
