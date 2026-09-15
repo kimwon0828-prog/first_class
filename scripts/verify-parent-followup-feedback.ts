@@ -36,6 +36,8 @@ import {
 
 const MIGRATION_PATH =
   "supabase/migrations/20260916090000_add_parent_followup_and_report_summary.sql"
+const SCHEDULE_MIGRATION_PATH =
+  "supabase/migrations/20260916110000_add_parent_preferred_schedule_pattern.sql"
 const PARENT_FORM_PATH = "src/features/decisions/ui/parent-decision-form.tsx"
 const STUDIO_DECISION_PATH = "src/features/decisions/ui/studio-parent-decision.tsx"
 const PARENT_REPORT_PATH = "app/record/[experienceId]/report/page.tsx"
@@ -57,6 +59,7 @@ const stripJsx = (source: string) => source.replace(/\{\/\*[\s\S]*?\*\/\}/g, "")
 const clean = (source: string) => stripJsx(stripTs(source))
 
 const migration = stripSql(read(MIGRATION_PATH))
+const scheduleMigration = stripSql(read(SCHEDULE_MIGRATION_PATH))
 const publishAction = clean(read(PUBLISH_ACTION_PATH))
 const parentReport = clean(read(PARENT_REPORT_PATH))
 
@@ -437,6 +440,125 @@ check(
     ] as never
   })
   check("근거 row 는 그대로 남는다", profile.observations[0]?.sources.length === 2)
+}
+
+console.log("\n── 8-b. 희망 일정은 날짜가 아니라 요일·시간대 ──")
+{
+  const form = clean(read(PARENT_FORM_PATH))
+  const studio = clean(read(STUDIO_DECISION_PATH))
+  const action = clean(read("src/features/decisions/actions/set-parent-decision.ts"))
+  const domain = clean(read("src/features/decisions/lib/parent-decision.ts"))
+
+  check(
+    // 학부모가 아는 것은 "9월 22일" 이 아니라 "화·목 오후 4시 이후" 다.
+    "학부모 화면에 달력 picker 가 없다",
+    !form.includes('type="date"') && !form.includes('name="preferredDate"')
+  )
+  check(
+    "요일을 복수로 고른다",
+    form.includes('name="preferredDays"') && form.includes('type="checkbox"')
+  )
+  check("요일이 7개다", domain.includes("PREFERRED_DAY_OPTIONS") && (domain.match(/value: "(mon|tue|wed|thu|fri|sat|sun)"/g) ?? []).length === 7)
+  check(
+    "시간 조건이 셋이다",
+    ["after", "exact", "range"].every((mode) => domain.includes(`value: "${mode}"`))
+  )
+  check(
+    "끝 시각은 range 에만 묻는다",
+    form.includes("requiresPreferredEndTime(timeMode)") &&
+      domain.includes('mode === "range"')
+  )
+  check(
+    "action 이 새 field 를 넘긴다",
+    action.includes('formData.getAll("preferredDays")') &&
+      action.includes('formData.get("preferredStartTime")') &&
+      action.includes('formData.get("preferredTimeMode")') &&
+      !action.includes("preferredDate")
+  )
+
+  check("새 column 을 더한다", scheduleMigration.includes("add column if not exists preferred_days text[]"))
+  check(
+    // 이미 Production 에 있는 column 이다. 값이 들어간 기록이 생기면 그건
+    // 그때 학부모가 실제로 적은 날짜다.
+    "기존 preferred_date 를 지우지 않는다",
+    !/drop column[^;]*preferred_date/i.test(scheduleMigration)
+  )
+  check(
+    "기존 값을 새 구조로 추측 변환하지 않는다",
+    !/update public\.parent_decisions[\s\S]*?set preferred_days/i.test(scheduleMigration)
+  )
+  check(
+    "요일 값을 제약으로 고정한다",
+    scheduleMigration.includes("parent_decisions_preferred_days_check") &&
+      scheduleMigration.includes("'mon','tue','wed','thu','fri','sat','sun'")
+  )
+  check(
+    "시간 조건 값을 제약으로 고정한다",
+    /preferred_time_mode in \('after', 'exact', 'range'\)/.test(scheduleMigration)
+  )
+  check(
+    "요일·시각·조건은 함께 있거나 함께 없다",
+    scheduleMigration.includes("parent_decisions_preferred_pattern_completeness_check")
+  )
+  check(
+    "끝 시각은 range 에만, 시작보다 뒤",
+    /preferred_time_mode = 'range' and preferred_end_time is not null and preferred_end_time > preferred_start_time/.test(
+      scheduleMigration
+    )
+  )
+  check(
+    "시간대가 아닌 이유면 전부 null",
+    /decline_reason = 'schedule_mismatch'\s*\n\s*or \(\s*\n\s*preferred_date is null/.test(scheduleMigration)
+  )
+  check(
+    "과거 기록은 새 column 도 고칠 수 없다",
+    ["preferred_days", "preferred_start_time", "preferred_end_time", "preferred_time_mode"].every(
+      (column) => scheduleMigration.includes(`new.${column} is distinct from old.${column}`)
+    )
+  )
+  check(
+    "RPC 가 요일 미선택을 막는다",
+    scheduleMigration.includes("raise exception 'preferred_days_required'")
+  )
+  check(
+    "RPC 가 시간 미선택을 막는다",
+    scheduleMigration.includes("raise exception 'preferred_time_required'")
+  )
+  check(
+    "RPC 가 range 의 끝 시각을 요구한다",
+    scheduleMigration.includes("raise exception 'preferred_end_time_required'") &&
+      scheduleMigration.includes("raise exception 'preferred_end_time_invalid'")
+  )
+  check(
+    "요일을 요일 순으로 정렬한다",
+    scheduleMigration.includes("array_position(") && domain.includes("sortPreferredDays")
+  )
+  check(
+    // bypass 인자를 가진 함수는 여전히 아무에게도 열려 있지 않다(F1 최종 계약).
+    "internal 이 authenticated 에게 닫혀 있다",
+    /revoke all on function public\.set_parent_decision_internal\(uuid, text, text, text\[\], time, time, text, boolean\) from authenticated;/.test(
+      scheduleMigration
+    ) && !/grant execute on function public\.set_parent_decision_internal/.test(scheduleMigration)
+  )
+  check(
+    "새 공개 함수만 authenticated 에 열린다",
+    /grant execute on function public\.set_parent_decision\(uuid, text, text, text\[\], time, time, text\) to authenticated;/.test(
+      scheduleMigration
+    )
+  )
+  check(
+    "옛 6-arg internal 을 남겨 두지 않는다",
+    scheduleMigration.includes(
+      "drop function if exists public.set_parent_decision_internal(uuid, text, text, date, text, boolean);"
+    )
+  )
+
+  console.log("\n── 8-c. 표시 문구 ──")
+  check(
+    "Studio 가 년·월·일을 쓰지 않는다",
+    !studio.includes("formatPreferredDate") && !studio.includes("월 ") &&
+      studio.includes("formatPreferredSchedule")
+  )
 }
 
 console.log("\n── 9. 데이터를 옮기지 않는다 ──")

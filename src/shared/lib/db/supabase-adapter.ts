@@ -2,6 +2,8 @@ import {
   canCollectParentDecision,
   isParentDecision,
   isParentDeclineReason,
+  isPreferredDay,
+  isPreferredTimeMode,
   type ParentDecision
 } from "@/features/decisions/lib/parent-decision"
 import {
@@ -5522,7 +5524,7 @@ export const supabaseDataAdapter: DataAdapter = {
     // 지금의 생각만 읽는다 — 지나간 기록은 R4 화면이 쓰지 않는다.
     const { data, error } = await supabase
       .from("parent_decisions")
-      .select("decision, created_at, decline_reason, preferred_date, preferred_time_note")
+      .select("decision, created_at, decline_reason, preferred_days, preferred_start_time, preferred_end_time, preferred_time_mode")
       .eq("application_id", applicationId)
       .is("superseded_at", null)
       .maybeSingle()
@@ -5541,8 +5543,15 @@ export const supabaseDataAdapter: DataAdapter = {
       createdAt: data.created_at as string,
       // 모양이 어긋난 값은 null 로 둔다. 뜻을 모르는 코드를 화면에서 추측해 설명하지 않는다.
       declineReason: isParentDeclineReason(declineReason) ? declineReason : null,
-      preferredDate: (data.preferred_date as string | null) ?? null,
-      preferredTimeNote: (data.preferred_time_note as string | null) ?? null
+      // 모양이 어긋난 값은 버린다. 뜻을 모르는 코드를 화면에서 추측해 설명하지 않는다.
+      preferredDays: Array.isArray(data.preferred_days)
+        ? data.preferred_days.filter(isPreferredDay)
+        : null,
+      preferredStartTime: (data.preferred_start_time as string | null) ?? null,
+      preferredEndTime: (data.preferred_end_time as string | null) ?? null,
+      preferredTimeMode: isPreferredTimeMode(data.preferred_time_mode)
+        ? data.preferred_time_mode
+        : null
     }
   },
   async getCurrentRegistrationResult(applicationId: string) {
@@ -5585,8 +5594,10 @@ export const supabaseDataAdapter: DataAdapter = {
       // 이유와 희망 일정도 함수가 정리한다. 화면이 비운 것과 안 보낸 것을
       // 여기서 구분하지 않는다 — 규칙이 두 곳에 생기지 않게.
       p_decline_reason: input?.declineReason ?? null,
-      p_preferred_date: input?.preferredDate ?? null,
-      p_preferred_time_note: input?.preferredTimeNote ?? null
+      p_preferred_days: input?.preferredDays ?? null,
+      p_preferred_start_time: input?.preferredStartTime ?? null,
+      p_preferred_end_time: input?.preferredEndTime ?? null,
+      p_preferred_time_mode: input?.preferredTimeMode ?? null
     })
 
     if (error) {
@@ -5598,16 +5609,24 @@ export const supabaseDataAdapter: DataAdapter = {
       createdAt: string
       changed: boolean
       declineReason: string | null
-      preferredDate: string | null
-      preferredTimeNote: string | null
+      preferredDays: string[] | null
+      preferredStartTime: string | null
+      preferredEndTime: string | null
+      preferredTimeMode: string | null
     }
     return {
       decision: result.decision,
       createdAt: result.createdAt,
       changed: result.changed,
       declineReason: isParentDeclineReason(result.declineReason) ? result.declineReason : null,
-      preferredDate: result.preferredDate ?? null,
-      preferredTimeNote: result.preferredTimeNote ?? null
+      preferredDays: Array.isArray(result.preferredDays)
+        ? result.preferredDays.filter(isPreferredDay)
+        : null,
+      preferredStartTime: result.preferredStartTime ?? null,
+      preferredEndTime: result.preferredEndTime ?? null,
+      preferredTimeMode: isPreferredTimeMode(result.preferredTimeMode)
+        ? result.preferredTimeMode
+        : null
     }
   },
   async getPublishedExperienceReport(applicationId: string) {

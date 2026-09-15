@@ -4,7 +4,9 @@ import { revalidatePath } from "next/cache"
 
 import {
   isParentDecision,
-  isParentDeclineReason
+  isParentDeclineReason,
+  isPreferredDay,
+  isPreferredTimeMode
 } from "@/features/decisions/lib/parent-decision"
 import { requireParentAccess } from "@/features/my/lib/require-parent-access"
 import { dataAdapter } from "@/shared/lib/db"
@@ -42,8 +44,24 @@ const resolveErrorMessage = (caught: unknown) => {
     return "등록하지 않는 이유를 선택해 주세요."
   }
 
-  if (raw.includes("preferred_date_required")) {
-    return "가능한 날짜를 알려 주시면 학원이 다음 일정을 제안할 수 있어요."
+  if (raw.includes("preferred_days_required")) {
+    return "가능한 요일을 하나 이상 골라 주세요."
+  }
+
+  if (raw.includes("preferred_time_mode_required")) {
+    return "가능한 시간 조건을 골라 주세요."
+  }
+
+  if (raw.includes("preferred_end_time_invalid")) {
+    return "끝 시각은 시작 시각보다 뒤여야 해요."
+  }
+
+  if (raw.includes("preferred_end_time_required")) {
+    return "가능한 시간의 끝 시각을 알려 주세요."
+  }
+
+  if (raw.includes("preferred_time_required")) {
+    return "가능한 시간을 알려 주세요."
   }
 
   return "선택을 저장하지 못했습니다. 잠시 후 다시 시도해 주세요."
@@ -80,10 +98,14 @@ export async function setParentDecisionAction(
     // 이유와 희망 일정은 그대로 넘긴다. 정리 규칙(어떤 선택에 무엇이 붙는지)은
     // DB 함수 한 곳에 있다 — 여기서 또 판단하면 두 곳이 어긋난다.
     const declineReasonRaw = formData.get("declineReason")
+    const timeModeRaw = formData.get("preferredTimeMode")
     await dataAdapter.setParentDecision(experienceId, decision, {
       declineReason: isParentDeclineReason(declineReasonRaw) ? declineReasonRaw : null,
-      preferredDate: toOptionalText(formData.get("preferredDate")),
-      preferredTimeNote: toOptionalText(formData.get("preferredTimeNote"))
+      // 체크박스는 같은 이름으로 여러 개가 온다. 모양이 어긋난 값은 버린다.
+      preferredDays: formData.getAll("preferredDays").filter(isPreferredDay),
+      preferredStartTime: toOptionalText(formData.get("preferredStartTime")),
+      preferredEndTime: toOptionalText(formData.get("preferredEndTime")),
+      preferredTimeMode: isPreferredTimeMode(timeModeRaw) ? timeModeRaw : null
     })
 
     revalidatePath(`/record/${experienceId}`)

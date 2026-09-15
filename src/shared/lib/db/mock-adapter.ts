@@ -1,9 +1,14 @@
 import {
   canCollectParentDecision,
   isParentDeclineReason,
+  isPreferredDay,
+  isPreferredTimeMode,
+  sortPreferredDays,
   isParentDecision,
   type ParentDecision,
-  type ParentDeclineReason
+  type ParentDeclineReason,
+  type PreferredDay,
+  type PreferredTimeMode
 } from "@/features/decisions/lib/parent-decision"
 import {
   isRegistrationResult,
@@ -718,8 +723,10 @@ type MockParentDecision = {
   createdAt: string
   supersededAt: string | null
   declineReason: ParentDeclineReason | null
-  preferredDate: string | null
-  preferredTimeNote: string | null
+  preferredDays: PreferredDay[] | null
+  preferredStartTime: string | null
+  preferredEndTime: string | null
+  preferredTimeMode: PreferredTimeMode | null
 }
 
 const parentDecisions: MockParentDecision[] = []
@@ -2451,8 +2458,10 @@ export const mockDataAdapter: DataAdapter = {
           decision: current.decision,
           createdAt: current.createdAt,
           declineReason: current.declineReason,
-          preferredDate: current.preferredDate,
-          preferredTimeNote: current.preferredTimeNote
+          preferredDays: current.preferredDays,
+          preferredStartTime: current.preferredStartTime,
+          preferredEndTime: current.preferredEndTime,
+          preferredTimeMode: current.preferredTimeMode
         }
       : null
   },
@@ -2500,12 +2509,32 @@ export const mockDataAdapter: DataAdapter = {
     if (decision === "declined" && !declineReason) {
       throw new Error("decline_reason_required")
     }
-    const preferredDate =
-      declineReason === "schedule_mismatch" ? input?.preferredDate?.trim() || null : null
-    const preferredTimeNote =
-      declineReason === "schedule_mismatch" ? input?.preferredTimeNote?.trim() || null : null
-    if (declineReason === "schedule_mismatch" && !preferredDate) {
-      throw new Error("preferred_date_required")
+    // DB 함수와 같은 규칙이다. 시간대가 이유일 때만 요일·시각이 붙는다.
+    const isScheduleReason = declineReason === "schedule_mismatch"
+    const preferredDays = isScheduleReason
+      ? sortPreferredDays((input?.preferredDays ?? []).filter(isPreferredDay))
+      : []
+    const preferredStartTime = isScheduleReason ? input?.preferredStartTime?.trim() || null : null
+    const preferredTimeMode =
+      isScheduleReason && isPreferredTimeMode(input?.preferredTimeMode)
+        ? input.preferredTimeMode
+        : null
+    const preferredEndTime =
+      preferredTimeMode === "range" ? input?.preferredEndTime?.trim() || null : null
+
+    if (isScheduleReason) {
+      if (preferredDays.length === 0) {
+        throw new Error("preferred_days_required")
+      }
+      if (!preferredStartTime) {
+        throw new Error("preferred_time_required")
+      }
+      if (!preferredTimeMode) {
+        throw new Error("preferred_time_mode_required")
+      }
+      if (preferredTimeMode === "range" && !preferredEndTime) {
+        throw new Error("preferred_end_time_required")
+      }
     }
 
     const nowIso = new Date().toISOString()
@@ -2518,16 +2547,20 @@ export const mockDataAdapter: DataAdapter = {
       current &&
       current.decision === decision &&
       current.declineReason === declineReason &&
-      current.preferredDate === preferredDate &&
-      current.preferredTimeNote === preferredTimeNote
+      String(current.preferredDays ?? "") === String(isScheduleReason ? preferredDays : "") &&
+      current.preferredStartTime === preferredStartTime &&
+      current.preferredEndTime === preferredEndTime &&
+      current.preferredTimeMode === preferredTimeMode
     ) {
       return {
         decision: current.decision,
         createdAt: current.createdAt,
         changed: false,
         declineReason: current.declineReason,
-        preferredDate: current.preferredDate,
-        preferredTimeNote: current.preferredTimeNote
+        preferredDays: current.preferredDays,
+        preferredStartTime: current.preferredStartTime,
+        preferredEndTime: current.preferredEndTime,
+        preferredTimeMode: current.preferredTimeMode
       }
     }
 
@@ -2543,11 +2576,22 @@ export const mockDataAdapter: DataAdapter = {
       createdAt: nowIso,
       supersededAt: null,
       declineReason,
-      preferredDate,
-      preferredTimeNote
+      preferredDays: isScheduleReason ? preferredDays : null,
+      preferredStartTime,
+      preferredEndTime,
+      preferredTimeMode
     })
 
-    return { decision, createdAt: nowIso, changed: true, declineReason, preferredDate, preferredTimeNote }
+    return {
+      decision,
+      createdAt: nowIso,
+      changed: true,
+      declineReason,
+      preferredDays: isScheduleReason ? preferredDays : null,
+      preferredStartTime,
+      preferredEndTime,
+      preferredTimeMode
+    }
   },
   async getPublishedExperienceReport(applicationId: string) {
     return (

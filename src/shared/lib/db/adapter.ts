@@ -5,7 +5,9 @@ import type {
 import type {
   ParentDecision,
   ParentDecisionSummary,
-  ParentDeclineReason
+  ParentDeclineReason,
+  PreferredDay,
+  PreferredTimeMode
 } from "@/features/decisions/lib/parent-decision"
 import type {
   RegistrationResult,
@@ -1244,9 +1246,13 @@ export type StudioConversionSourceRows = {
  */
 export type ParentDecisionMetadataInput = {
   declineReason?: ParentDeclineReason | null
-  /** "2026-09-22" */
-  preferredDate?: string | null
-  preferredTimeNote?: string | null
+  /** 가능한 요일. 특정 날짜가 아니다. */
+  preferredDays?: PreferredDay[] | null
+  /** "16:00" */
+  preferredStartTime?: string | null
+  /** range 일 때만 보낸다. */
+  preferredEndTime?: string | null
+  preferredTimeMode?: PreferredTimeMode | null
 }
 
 export type SetParentDecisionResult = {
@@ -1255,8 +1261,10 @@ export type SetParentDecisionResult = {
   /** 같은 선택을 같은 말로 다시 고른 경우 false. 기록을 늘리지 않았다는 뜻이다. */
   changed: boolean
   declineReason: ParentDeclineReason | null
-  preferredDate: string | null
-  preferredTimeNote: string | null
+  preferredDays: PreferredDay[] | null
+  preferredStartTime: string | null
+  preferredEndTime: string | null
+  preferredTimeMode: PreferredTimeMode | null
 }
 
 export type PublishExperienceReportResult = {

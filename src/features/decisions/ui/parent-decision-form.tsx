@@ -10,9 +10,14 @@ import {
 import {
   PARENT_DECISION_OPTIONS,
   PARENT_DECLINE_REASON_OPTIONS,
+  PREFERRED_DAY_OPTIONS,
+  PREFERRED_TIME_MODE_OPTIONS,
+  requiresPreferredEndTime,
   requiresPreferredSchedule,
   type ParentDecision,
-  type ParentDeclineReason
+  type ParentDeclineReason,
+  type PreferredDay,
+  type PreferredTimeMode
 } from "@/features/decisions/lib/parent-decision"
 
 import styles from "./parent-decision-form.module.css"
@@ -23,8 +28,11 @@ type ParentDecisionFormProps = {
   currentDecision: ParentDecision | null
   /** declined 일 때만 값이 있다. */
   currentDeclineReason: ParentDeclineReason | null
-  currentPreferredDate: string | null
-  currentPreferredTimeNote: string | null
+  /** 시간대가 이유일 때만 값이 있다. 날짜가 아니라 평소 가능한 패턴이다. */
+  currentPreferredDays: PreferredDay[] | null
+  currentPreferredStartTime: string | null
+  currentPreferredEndTime: string | null
+  currentPreferredTimeMode: PreferredTimeMode | null
   /** 선택을 불러오지 못했을 때의 사유. null 과 구분해야 한다. */
   loadError: string | null
 }
@@ -39,8 +47,10 @@ export const ParentDecisionForm = ({
   experienceId,
   currentDecision,
   currentDeclineReason,
-  currentPreferredDate,
-  currentPreferredTimeNote,
+  currentPreferredDays,
+  currentPreferredStartTime,
+  currentPreferredEndTime,
+  currentPreferredTimeMode,
   loadError
 }: ParentDecisionFormProps) => {
   const router = useRouter()
@@ -50,6 +60,8 @@ export const ParentDecisionForm = ({
   // "등록하지 않을게요" 는 바로 저장하지 않는다. 이유를 물어야 하기 때문이다.
   const [declineOpen, setDeclineOpen] = useState(currentDecision === "declined")
   const [reason, setReason] = useState<ParentDeclineReason | null>(currentDeclineReason)
+  const [days, setDays] = useState<PreferredDay[]>(currentPreferredDays ?? [])
+  const [timeMode, setTimeMode] = useState<PreferredTimeMode>(currentPreferredTimeMode ?? "after")
   const handledTokenRef = useRef<string | null>(null)
 
   // 저장되면 서버 값을 다시 읽는다. 화면이 스스로 현재 선택을 지어내지 않는다.
@@ -148,29 +160,99 @@ export const ParentDecisionForm = ({
           */}
           {requiresPreferredSchedule(reason) ? (
             <div className={styles.scheduleFields}>
+              {/*
+                ⚠️ 달력을 쓰지 않는다.
+
+                   학부모가 아는 것은 "9월 22일" 이 아니라 "화·목 오후 4시 이후" 다.
+                   날짜 하나를 받으면 학원은 그날만 제안할 수 있고, 그날이 안 되면
+                   대화가 거기서 끝난다.
+              */}
+              <p className={styles.scheduleIntro}>
+                언제가 괜찮으세요?
+                <span className={styles.scheduleHint}>
+                  가능한 요일과 시간을 알려주시면 학원에서 맞는 시간을 제안해드려요.
+                </span>
+              </p>
+
+              <fieldset className={styles.fieldset}>
+                <legend className={styles.legend}>가능한 요일</legend>
+                <div className={styles.dayChips}>
+                  {PREFERRED_DAY_OPTIONS.map((option) => {
+                    const selected = days.includes(option.value)
+                    return (
+                      <label
+                        key={option.value}
+                        className={`${styles.dayChip} ${selected ? styles.dayChipSelected : ""}`}
+                      >
+                        <input
+                          type="checkbox"
+                          name="preferredDays"
+                          value={option.value}
+                          checked={selected}
+                          onChange={() =>
+                            setDays((previous) =>
+                              previous.includes(option.value)
+                                ? previous.filter((day) => day !== option.value)
+                                : [...previous, option.value]
+                            )
+                          }
+                          disabled={isPending}
+                          className={styles.visuallyHidden}
+                        />
+                        <span aria-hidden="true">{option.label}</span>
+                        <span className={styles.visuallyHidden}>{option.label}요일</span>
+                      </label>
+                    )
+                  })}
+                </div>
+              </fieldset>
+
               <label className={styles.field}>
-                <span className={styles.fieldLabel}>언제가 괜찮으세요?</span>
+                <span className={styles.fieldLabel}>몇 시쯤 괜찮으세요?</span>
                 <input
-                  type="date"
-                  name="preferredDate"
+                  type="time"
+                  name="preferredStartTime"
                   className={styles.input}
-                  defaultValue={currentPreferredDate ?? ""}
+                  defaultValue={currentPreferredStartTime?.slice(0, 5) ?? ""}
+                  step={600}
                   disabled={isPending}
                   required
                 />
               </label>
-              <label className={styles.field}>
-                <span className={styles.fieldLabel}>희망 시간대 (선택)</span>
-                <input
-                  type="text"
-                  name="preferredTimeNote"
-                  className={styles.input}
-                  placeholder="예: 오후 4시~6시"
-                  defaultValue={currentPreferredTimeNote ?? ""}
-                  maxLength={60}
-                  disabled={isPending}
-                />
-              </label>
+
+              <fieldset className={styles.fieldset}>
+                <legend className={styles.legend}>그 시간은</legend>
+                <div className={styles.reasonList}>
+                  {PREFERRED_TIME_MODE_OPTIONS.map((option) => (
+                    <label key={option.value} className={styles.reasonItem}>
+                      <input
+                        type="radio"
+                        name="preferredTimeMode"
+                        value={option.value}
+                        checked={timeMode === option.value}
+                        onChange={() => setTimeMode(option.value)}
+                        disabled={isPending}
+                      />
+                      <span className={styles.reasonLabel}>{option.label}</span>
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
+
+              {requiresPreferredEndTime(timeMode) ? (
+                <label className={styles.field}>
+                  <span className={styles.fieldLabel}>언제까지 괜찮으세요?</span>
+                  <input
+                    type="time"
+                    name="preferredEndTime"
+                    className={styles.input}
+                    defaultValue={currentPreferredEndTime?.slice(0, 5) ?? ""}
+                    step={600}
+                    disabled={isPending}
+                    required
+                  />
+                </label>
+              ) : null}
             </div>
           ) : null}
 
