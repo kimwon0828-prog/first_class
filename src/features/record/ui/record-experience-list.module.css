@@ -1,0 +1,138 @@
+.list {
+  display: grid;
+  gap: 22px;
+}
+
+.monthGroup {
+  display: grid;
+  gap: 10px;
+}
+
+.monthLabel {
+  margin: 0;
+  padding: 0 var(--gutter);
+  font-size: 14px;
+  line-height: 1.4;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--text-2);
+}
+
+.cards {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0 var(--gutter);
+  list-style: none;
+}
+
+.card {
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--surface);
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
+  overflow: hidden;
+}
+
+.cardMain {
+  display: grid;
+  gap: 3px;
+  padding: 14px;
+  text-decoration: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.cardTopRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 3px;
+}
+
+.cardDate {
+  font-size: 13px;
+  line-height: 1.4;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--brand-700);
+}
+
+.typeBadge {
+  display: inline-flex;
+  align-items: center;
+  height: 21px;
+  padding: 0 8px;
+  border-radius: 7px;
+  background: var(--surface-sub);
+  color: var(--text-2);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.cardChild {
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--text-3);
+}
+
+.cardTitle {
+  font-size: 15px;
+  line-height: 1.4;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--text-1);
+}
+
+.cardAcademy {
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--text-2);
+}
+
+.signalRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.signal,
+.signalMuted {
+  display: inline-flex;
+  align-items: center;
+  height: 21px;
+  padding: 0 8px;
+  border-radius: 7px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.signal {
+  background: var(--brand-50);
+  color: var(--brand-700);
+}
+
+.signalMuted {
+  background: var(--surface-sub);
+  color: var(--text-2);
+}
+
+/* 발행본이 있을 때만 붙는 줄. 손가락으로 누르는 자리라 44px 아래로 내리지 않는다. */
+.reportCta {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 2px;
+  min-height: 44px;
+  padding: 0 14px;
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--brand-700);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  text-decoration: none;
+  -webkit-tap-highlight-color: transparent;
+}

@@ -22,10 +22,10 @@ export default function MyApplicationsLoading() {
               color: "#111111"
             }}
           >
-            내 신청
+            신청 현황
           </h1>
           <p style={{ margin: 0, fontSize: 14, lineHeight: 1.6, color: "#8a8a8a" }}>
-            신청한 첫수업 진행 상태를 확인할 수 있어요.
+            신청한 수업이 지금 어디까지 왔는지 확인할 수 있어요.
           </p>
         </header>
 
@@ -38,7 +38,7 @@ export default function MyApplicationsLoading() {
           }}
         >
           <p style={{ margin: 0, fontSize: 14, lineHeight: 1.6, color: "#666666" }}>
-            신청 내역을 불러오는 중입니다...
+            신청 현황을 불러오는 중입니다...
           </p>
         </section>
       </div>

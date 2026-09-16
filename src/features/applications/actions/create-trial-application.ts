@@ -294,9 +294,15 @@ export async function createTrialApplicationAction(
     }
   }
 
+  /*
+   * 방금 접수된 신청은 아직 new 다.
+   *
+   * /record 는 실제로 다녀온 경험만 담으므로 거기로 보내면 방금 낸 신청이
+   * 아무 데도 보이지 않는다. 진행 상태가 보이는 자리는 신청 현황이다.
+   */
   return {
     status: "success",
-    message: "신청이 접수되었습니다. 내 신청에서 진행 상태를 확인할 수 있어요.",
-    redirectTo: "/record"
+    message: "신청이 접수되었습니다. 신청 현황에서 진행 상태를 확인할 수 있어요.",
+    redirectTo: "/my/applications"
   }
 }
