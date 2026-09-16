@@ -12,7 +12,7 @@
   margin: 0 auto;
   min-height: 100dvh;
   background: var(--surface);
-  padding-bottom: calc(var(--tabbar-h) + var(--s8) + env(safe-area-inset-bottom));
+  padding-bottom: var(--parent-nav-space);
 }
 
 .shell * {
@@ -51,52 +51,8 @@
   text-decoration: none;
 }
 
-.bottomNav {
-  position: fixed;
-  left: 50%;
-  bottom: 0;
-  transform: translateX(-50%);
-  z-index: 50;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  width: 100%;
-  max-width: var(--col);
-  min-height: var(--tabbar-h);
-  background: var(--surface);
-  border-top: 1px solid var(--border);
-  padding: var(--s3) var(--gutter) calc(var(--s3) + env(safe-area-inset-bottom));
-}
-
-.navItem {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  font-size: 11px;
-  color: var(--text-3);
-  text-decoration: none;
-  -webkit-tap-highlight-color: transparent;
-}
-
-.navItem svg {
-  width: 22px;
-  height: 22px;
-}
-
-.navItemActive {
-  color: var(--brand-700);
-}
-
-.navItemActive svg {
-  color: var(--brand-700);
-}
-
 @media (min-width: 520px) {
   .shell {
     border-left: 1px solid var(--border);
     border-right: 1px solid var(--border);
-  }
-}
+  }}

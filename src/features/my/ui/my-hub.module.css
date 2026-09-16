@@ -1,0 +1,84 @@
+.stack {
+  display: grid;
+  gap: 12px;
+}
+
+.profileCard {
+  padding: 20px var(--gutter);
+  border-bottom: 1px solid var(--border);
+}
+
+.profileName {
+  margin: 0;
+  font-size: 22px;
+  line-height: 1.35;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: var(--text-1);
+}
+
+.profileContact {
+  margin: 4px 0 0;
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--text-2);
+}
+
+.menuGroup {
+  margin: 0 var(--gutter);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--surface);
+  overflow: hidden;
+}
+
+.menuItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  /* 손가락으로 누르는 줄이다. */
+  min-height: 52px;
+  padding: 0 16px;
+  color: var(--text-1);
+  text-decoration: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.menuItem + .menuItem {
+  border-top: 1px solid var(--border);
+}
+
+.menuLabel {
+  flex: 1;
+  min-width: 0;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.menuValue {
+  flex: 0 0 auto;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-3);
+}
+
+.menuItem svg {
+  flex: 0 0 auto;
+  color: var(--text-3);
+}
+
+.menuButton {
+  width: 100%;
+  min-height: 52px;
+  padding: 0 16px;
+  border: 0;
+  background: transparent;
+  color: var(--text-2);
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  text-align: left;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}

@@ -12,6 +12,12 @@ export default async function FavoritesPage() {
   const isParent = role === "parent"
   const isStudioUser = role === "academy" || role === "admin"
   const favoritesEnabled = !session || profile?.role === "parent"
+  const scheduleHref = "/my/schedule"
+  const scheduleEntryHref = session
+    ? isStudioUser
+      ? "/studio"
+      : scheduleHref
+    : `/auth/sign-in?${new URLSearchParams({ returnTo: scheduleHref }).toString()}`
   const recordHref = "/record"
   const recordEntryHref = session
     ? isStudioUser
@@ -30,6 +36,7 @@ export default async function FavoritesPage() {
     <FavoritesClient
       allClasses={data}
       favoritesEnabled={favoritesEnabled}
+      scheduleEntryHref={scheduleEntryHref}
       recordEntryHref={recordEntryHref}
       myPageEntryHref={myPageEntryHref}
     />

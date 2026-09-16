@@ -1,6 +1,7 @@
 import Link from "next/link"
 import { unstable_noStore as noStore } from "next/cache"
 
+import { ParentBottomNav } from "@/features/classes/ui/parent-bottom-nav"
 import { requireParentAccess } from "@/features/my/lib/require-parent-access"
 import { getMyParentProfileDetail } from "@/features/my/queries/get-my-parent-profile-detail"
 import { ParentProfileForm } from "@/features/my/ui/parent-profile-form"
@@ -25,9 +26,24 @@ export default async function MyProfilePage() {
       <div className={styles.shell}>
         <header className={styles.header}>
           <Link href="/my" className={styles.backButton} aria-label="뒤로가기">
-            ←
+            <svg
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+              aria-hidden="true"
+            >
+              <path
+                d="M15 18l-6-6 6-6"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
           </Link>
-          <h1 className={styles.title}>내 정보 수정</h1>
+          <h1 className={styles.title}>내 정보</h1>
           <span aria-hidden="true" />
         </header>
 
@@ -41,6 +57,8 @@ export default async function MyProfilePage() {
           />
         </div>
       </div>
+
+      <ParentBottomNav />
     </main>
   )
 }

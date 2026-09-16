@@ -11,11 +11,13 @@ import type { ClassSummary } from "@/shared/lib/db/adapter"
 import { formatClassSubjectDisplayLabel } from "@/shared/lib/subject-master"
 
 import styles from "../classes/page.module.css"
-import { POC_DISCOVERY_HREF } from "@/shared/config/discovery"
+import headerStyles from "./favorites.module.css"
+import { ParentBottomNav } from "@/features/classes/ui/parent-bottom-nav"
 
 export function FavoritesClient(props: {
   allClasses: ClassSummary[]
   favoritesEnabled: boolean
+  scheduleEntryHref: string
   recordEntryHref: string
   myPageEntryHref: string
 }) {
@@ -52,10 +54,29 @@ export function FavoritesClient(props: {
 
   return (
     <main className={styles.page}>
-      <div className={styles.shell} style={{ paddingBottom: 120 }}>
-        <section style={{ padding: "18px 24px 0" }}>
-          <h1 style={{ margin: 0, fontSize: 24, color: "#111111" }}>관심수업</h1>
-        </section>
+      <div className={styles.shell}>
+        <header className={headerStyles.header}>
+          <Link href="/my" className={headerStyles.backButton} aria-label="뒤로가기">
+            <svg
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+              aria-hidden="true"
+            >
+              <path
+                d="M15 18l-6-6 6-6"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </Link>
+          <h1 className={headerStyles.title}>관심수업</h1>
+          <span aria-hidden="true" />
+        </header>
 
         {!props.favoritesEnabled ? (
           <section className={styles.stateCard}>
@@ -68,15 +89,13 @@ export function FavoritesClient(props: {
         ) : favoriteIds.length === 0 || favoriteClasses.length === 0 ? (
           <section className={styles.stateCard}>
             <p className={styles.stateTitle}>아직 관심수업이 없어요.</p>
-            <p className={styles.stateDesc}>
-              마음에 드는 수업을 저장해두고 나중에 다시 확인해보세요.
-            </p>
-            <Link href={POC_DISCOVERY_HREF} className={styles.retryLink}>
-              수업 둘러보기
+            <p className={styles.stateDesc}>마음에 드는 수업을 저장해 두고 다시 확인해 보세요.</p>
+            <Link href="/" className={styles.retryLink}>
+              수업 찾아보기
             </Link>
           </section>
         ) : (
-          <section aria-label="관심수업 목록" style={{ marginTop: 10 }}>
+          <section aria-label="관심수업 목록" className={headerStyles.list}>
             <ul className={styles.grid}>
               {favoriteClasses.map((item) => (
                 <li key={item.id}>
@@ -118,7 +137,6 @@ export function FavoritesClient(props: {
                       <h3 className={styles.cardTitle}>{item.title}</h3>
                       <p className={styles.cardPrice}>{formatPrice(item.trialPrice)}</p>
                       <div className={styles.cardMeta}>
-                        <span className={styles.star}>★</span>
                         <span>{formatClassSubjectDisplayLabel(item) || "과목 정보 준비 중"}</span>
                         <span>·</span>
                         <span>{formatStoredTargetGrades(item.targetAge)}</span>
@@ -132,62 +150,12 @@ export function FavoritesClient(props: {
         )}
       </div>
 
-      <nav className={styles.bottomNav} aria-label="하단 탭">
-        <Link href={POC_DISCOVERY_HREF} className={styles.navItem}>
-          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-            <path
-              d="M3 10.5L12 3l9 7.5V21a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1V10.5Z"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
-          <span>홈</span>
-        </Link>
-        <Link href="/favorites" className={`${styles.navItem} ${styles.navItemActive}`}>
-          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-            <path
-              d="M7 4h10a1 1 0 0 1 1 1v17l-6-3.6L6 22V5a1 1 0 0 1 1-1Z"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinejoin="round"
-            />
-          </svg>
-          <span>관심수업</span>
-        </Link>
-        <Link href={props.recordEntryHref} className={styles.navItem}>
-          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-            <path
-              d="M16.5 3.5a2.12 2.12 0 0 1 3 3L8 18l-4 1 1-4 11.5-11.5Z"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
-          <span>기록</span>
-        </Link>
-        <Link href={props.myPageEntryHref} className={styles.navItem}>
-          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-            <path
-              d="M20 21a8 8 0 1 0-16 0"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-            <path
-              d="M12 13a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
-          <span>마이페이지</span>
-        </Link>
-      </nav>
+      {/* 관심수업은 탭이 아니라 마이페이지 하위 화면이다. 그래서 마이페이지 탭이 켜진다. */}
+      <ParentBottomNav
+        scheduleHref={props.scheduleEntryHref}
+        recordHref={props.recordEntryHref}
+        myPageHref={props.myPageEntryHref}
+      />
     </main>
   )
 }
