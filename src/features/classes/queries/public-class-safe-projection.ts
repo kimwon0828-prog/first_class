@@ -218,6 +218,8 @@ const toOrganizationLocation = (
   }
 
   return {
+    // 이미 select 하고 있던 값이다. 링크를 만들 수 있도록 DTO 로만 올린다.
+    id: row.id,
     name: row.name,
     branchName: row.branch_name ?? null,
     address: row.address ?? null,
@@ -370,9 +372,19 @@ export const listPublicClassesWithSafeProjection = async (
         ...(distanceKm === undefined ? {} : { distanceKm })
       }
       const subjectLabel = formatClassSubjectDisplayLabel(summary)
+      const organizationName = organization?.name ?? null
+      const branchName = organization?.branch_name ?? null
 
       return {
         summary,
+        /*
+         * 검색 대상.
+         *
+         * ⚠️ 지점명이 빠져 있으면 "중계센터" 같은 지점 이름으로는 아무것도
+         *    찾을 수 없고, "씨큐브코딩 중계센터" 처럼 학원명과 지점명을 붙여
+         *    치는 가장 흔한 검색도 실패한다. 이름과 지점을 각각, 그리고
+         *    붙여 쓴 형태까지 넣는다(검색어는 통째로 부분 일치한다).
+         */
         haystacks: [
           row.title,
           row.description,
@@ -380,7 +392,9 @@ export const listPublicClassesWithSafeProjection = async (
           subjectLabel,
           summary.subjectCategoryName,
           summary.subjectName,
-          organization?.name ?? null
+          organizationName,
+          branchName,
+          organizationName && branchName ? `${organizationName} ${branchName}` : null
         ]
       }
     })

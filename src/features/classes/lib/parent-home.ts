@@ -1,4 +1,5 @@
 import type { ChildProfile, ParentApplicationSummary } from "@/shared/lib/db/adapter"
+import { selectUpcomingConfirmedExperiences } from "@/features/schedule/lib/parent-schedule"
 import { getSeoulDateTimeParts } from "@/shared/lib/seoul-datetime"
 
 /**
@@ -8,16 +9,6 @@ import { getSeoulDateTimeParts } from "@/shared/lib/seoul-datetime"
  *    (신청 상태 · 확정 시각 · 발행본 존재 여부 · 자녀 프로필)만 다시 배열한다.
  *    일치율 · 추천 점수 · 랭킹처럼 근거 없는 지표는 이 파일이 만들지 않는다.
  */
-
-/** 홈 상단 "지금 확인할 것" 한 줄. */
-export type ParentHomeHighlight = {
-  /** 이 줄이 가리키는 경험(=신청) id. */
-  experienceId: string
-  kind: "report_ready" | "decision_requested"
-  title: string
-  href: string
-  actionLabel: string
-}
 
 /** 홈 "다가오는 수업 일정" 한 장. */
 export type ParentHomeUpcoming = {
@@ -31,10 +22,7 @@ export type ParentHomeUpcoming = {
   coverImageUrl: string | null
 }
 
-export const PARENT_HOME_HIGHLIGHT_LIMIT = 3
 export const PARENT_HOME_UPCOMING_LIMIT = 2
-/** 발행본 조회는 최근 완료 경험 몇 건까지만 확인한다. 홈에서 전 이력을 훑지 않는다. */
-export const PARENT_HOME_REPORT_LOOKUP_LIMIT = 3
 
 const HOUR_LABELS = ["오전", "오후"] as const
 
@@ -77,91 +65,15 @@ export const formatChildChipLabel = (children: readonly ChildProfile[]): string 
   return `우리 아이 ${children.length}명`
 }
 
-const toTime = (value: string | null): number => {
-  if (!value) {
-    return Number.POSITIVE_INFINITY
-  }
-
-  const parsed = Date.parse(value)
-  return Number.isNaN(parsed) ? Number.POSITIVE_INFINITY : parsed
-}
-
 /**
- * 확정된 앞으로의 일정만 고른다.
+ * Home 이 보여 줄 앞으로의 확정 일정.
  *
- * requestedSlotAt 은 학부모가 희망한 시각이지 학원이 확정한 일정이 아니다.
- * 그걸 "다가오는 수업 일정" 에 섞으면 확정되지 않은 약속을 확정처럼 보여주게 된다.
+ * ⚠️ 판정 규칙을 여기서 다시 쓰지 않는다. /my/schedule 과 같은 함수를 쓴다 —
+ *    두 화면이 서로 다른 일정을 말하면 어느 쪽도 믿을 수 없다.
+ *    Home 은 몇 건만 보여 주므로 개수만 다르다.
  */
 export const selectUpcomingExperiences = (
   applications: readonly ParentApplicationSummary[],
   now: number
 ): ParentApplicationSummary[] =>
-  applications
-    .filter((item) => {
-      if (item.status !== "confirmed" || item.canceledAt || item.completedAt) {
-        return false
-      }
-
-      const startAt = toTime(item.confirmedSlotAt)
-      return Number.isFinite(startAt) && startAt >= now
-    })
-    .sort(
-      (left, right) =>
-        toTime(left.confirmedSlotAt) - toTime(right.confirmedSlotAt) || left.id.localeCompare(right.id)
-    )
-    .slice(0, PARENT_HOME_UPCOMING_LIMIT)
-
-/** 발행본 존재 여부를 확인해 볼 후보. 완료된 경험만, 최근 순으로 몇 건. */
-export const selectReportLookupCandidates = (
-  applications: readonly ParentApplicationSummary[]
-): ParentApplicationSummary[] =>
-  applications
-    .filter((item) => item.status === "completed" && Boolean(item.completedAt) && !item.canceledAt)
-    .sort(
-      (left, right) =>
-        toTime(right.completedAt) - toTime(left.completedAt) || right.id.localeCompare(left.id)
-    )
-    .slice(0, PARENT_HOME_REPORT_LOOKUP_LIMIT)
-
-/**
- * "지금 확인할 것" 목록.
- *
- * 리포트가 도착한 경험이 먼저다 — 학부모가 읽을 것이 이미 와 있는 쪽이
- * 우리가 무언가를 물어보는 쪽보다 앞선다.
- */
-export const buildParentHomeHighlights = (
-  applications: readonly ParentApplicationSummary[],
-  reportReadyExperienceIds: ReadonlySet<string>
-): ParentHomeHighlight[] => {
-  const reportReady: ParentHomeHighlight[] = []
-  const decisionRequested: ParentHomeHighlight[] = []
-
-  for (const item of applications) {
-    if (item.canceledAt) {
-      continue
-    }
-
-    if (reportReadyExperienceIds.has(item.id)) {
-      reportReady.push({
-        experienceId: item.id,
-        kind: "report_ready",
-        title: "수업 리포트가 도착했어요!",
-        href: `/record/${item.id}/report`,
-        actionLabel: "보기"
-      })
-      continue
-    }
-
-    if (item.canCollectParentDecision) {
-      decisionRequested.push({
-        experienceId: item.id,
-        kind: "decision_requested",
-        title: "체험은 어떠셨나요?",
-        href: `/record/${item.id}`,
-        actionLabel: "알려주기"
-      })
-    }
-  }
-
-  return [...reportReady, ...decisionRequested].slice(0, PARENT_HOME_HIGHLIGHT_LIMIT)
-}
+  selectUpcomingConfirmedExperiences(applications, now, PARENT_HOME_UPCOMING_LIMIT)

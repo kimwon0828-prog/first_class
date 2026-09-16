@@ -80,25 +80,45 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 34px;
-  height: 34px;
+  /* 손가락으로 누르는 버튼이다. 44px 아래로 내리지 않는다. */
+  width: 44px;
+  height: 44px;
   border-radius: var(--r-full);
   color: #ffffff;
   text-decoration: none;
   -webkit-tap-highlight-color: transparent;
 }
 
-.visuallyHidden {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  margin: -1px;
-  padding: 0;
+.headerContext {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.childChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+  color: #ffffff;
+  text-decoration: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.childChipLabel {
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
   overflow: hidden;
-  clip: rect(0 0 0 0);
-  clip-path: inset(50%);
+  text-overflow: ellipsis;
   white-space: nowrap;
-  border: 0;
+}
+
+.childChip svg {
+  flex: 0 0 auto;
+  color: rgba(255, 255, 255, 0.85);
 }
 
 .searchForm {
@@ -171,6 +191,10 @@
   color: var(--text-3);
 }
 
+.heroSection {
+  padding: 0 var(--gutter);
+}
+
 .filterInlineItem {
   min-width: 0;
 }
@@ -225,6 +249,14 @@
   transform: rotate(180deg);
 }
 
+.heroSection {
+  margin-top: 0;
+}
+
+.heroSection + .categorySection {
+  margin-top: 22px;
+}
+
 .heroCard {
   position: relative;
   min-height: 220px;
@@ -275,17 +307,59 @@
   font-weight: 800;
 }
 
+.categorySection,
 .sectionBlock {
   display: grid;
   gap: var(--s4);
 }
 
+.categorySection,
 .sectionBlock {
   margin-top: 28px;
 }
 
-.subjectChipRail,
-.subjectDetailChipRail {
+.sectionHeading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 var(--gutter);
+}
+
+.sectionHeadingMain {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.sectionHeadingTitle {
+  margin: 0;
+  font-size: 18px;
+  line-height: 1.4;
+  font-weight: 500;
+  letter-spacing: -0.3px;
+  color: #171717;
+}
+
+.sectionHeadingLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  font-size: 13px;
+  font-weight: 500;
+  color: #a3a3a3;
+  text-decoration: none;
+}
+
+.sectionHeadingLink svg {
+  width: 16px;
+  height: 16px;
+  color: #a3a3a3;
+}
+
+.subjectChipRail {
   display: flex;
   gap: 8px;
   overflow-x: auto;
@@ -295,13 +369,11 @@
   -webkit-overflow-scrolling: touch;
 }
 
-.subjectChipRail::-webkit-scrollbar,
-.subjectDetailChipRail::-webkit-scrollbar {
+.subjectChipRail::-webkit-scrollbar {
   display: none;
 }
 
-.subjectChip,
-.subjectDetailChip {
+.subjectChip {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -337,60 +409,6 @@
 .subjectChipIcon svg {
   width: 14px;
   height: 14px;
-}
-
-.subjectChipActive .subjectChipIcon {
-  background: var(--brand-500);
-  color: #ffffff;
-}
-
-.subjectChipActive {
-  border-color: var(--brand-500);
-  background: var(--brand-50);
-  color: var(--brand-700);
-}
-
-.subjectDetailChipRail {
-  padding-top: 2px;
-}
-
-.subjectDetailChip {
-  min-height: 34px;
-  padding: 0 12px;
-  border-radius: var(--r-full);
-  box-shadow: none;
-  background: var(--surface-sub);
-  font-size: 13px;
-  font-weight: 500;
-}
-
-.subjectDetailChipActive {
-  border-color: var(--brand-500);
-  background: var(--brand-50);
-  color: var(--brand-700);
-  font-weight: 700;
-}
-
-.grid,
-.resultGrid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
-  padding: 0 var(--gutter);
-  margin: 0;
-  list-style: none;
-}
-
-.resultGridItem {
-  min-width: 0;
-}
-
-.stateCard {
-  margin: 0 var(--gutter);
-  border-radius: var(--r-lg);
-  border: 1px solid var(--border);
-  background: var(--surface-sub);
-  padding: var(--s5);
 }
 
 .pageEmptyState {
@@ -439,32 +457,8 @@
   text-decoration: none;
 }
 
-.stateTitle {
-  margin: 0 0 6px;
-  font-size: 15px;
-  font-weight: 700;
-  color: var(--text-1);
-}
-
-.stateDesc {
-  margin: 0;
-  font-size: 13px;
-  line-height: 1.6;
-  color: var(--text-3);
-}
-
-.retryLink {
-  display: inline-flex;
-  margin-top: var(--s3);
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--brand-700);
-  text-decoration: none;
-}
-
 @media (hover: hover) {
-  .subjectChip:hover,
-  .subjectDetailChip:hover {
+  .subjectChip:hover {
     border-color: var(--brand-500);
     background: var(--brand-50);
   }}
@@ -507,127 +501,169 @@
   margin-top: 0;
 }
 
-/* Browse 의 헤더는 맥락 줄이 없다. 브랜드 · 검색만 남는다. */
-.headerCompact {
-  padding-bottom: 30px;
+.categorySection + .heroSection {
+  margin-top: 22px;
 }
 
 /*
- * Browse 의 필터 줄.
+ * "지금 확인할 것".
  *
- * 흰 시트 위에 놓이므로 초록 헤더용으로 잡아 둔 흰색 글자를 여기서 되돌린다.
+ * 한 줄에 한 가지 일만 담는다. 카드에 숫자나 배지를 더 붙이지 않는다 —
+ * 여기 오는 것은 모두 학부모가 실제로 열어 볼 수 있는 것 하나뿐이다.
  */
-.browseFilterSection {
+.highlightList {
   display: grid;
   gap: 10px;
-  margin-top: 18px;
-}
-
-.browseFilterRow {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 0 var(--gutter);
-}
-
-.browseFilterRow .filterInlineTrigger,
-.browseFilterRow .filterInlineLabel {
-  color: var(--text-1);
-}
-
-.browseFilterRow .filterInlineIcon,
-.browseFilterRow .filterInlineChevron {
-  color: var(--text-3);
-}
-
-.browseFilterRow .radiusChip {
-  border-color: var(--border);
-  background: var(--surface);
-  color: var(--text-2);
-}
-
-.browseFilterRow .radiusChipActive {
-  border-color: var(--brand-500);
-  background: var(--brand-500);
-  color: #ffffff;
-}
-
-/* 수업찾기 제목. Search 는 Home 과 달리 자기 이름을 말한다. */
-.searchTitle {
   margin: 0;
-  font-size: 20px;
-  line-height: 1.35;
-  font-weight: 800;
-  letter-spacing: -0.03em;
-  color: #ffffff;
-}
-
-/*
- * 지금 걸려 있는 조건.
- *
- * 저장된 위치에서 온 반경까지 여기 보여 준다 — 화면에 보이지 않는 필터를
- * 남겨 두면 학부모가 좁혀진 목록을 전체 목록으로 읽는다.
- */
-.activeFilterSection {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  margin-top: 14px;
   padding: 0 var(--gutter);
-}
-
-.activeFilterList {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  flex: 1;
-  min-width: 0;
-  margin: 0;
-  padding: 0;
   list-style: none;
 }
 
-.activeFilterChip {
+.highlightCard {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 64px;
+  padding: 12px 12px 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--surface);
+  text-decoration: none;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.highlightIcon {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  min-height: 30px;
-  padding: 0 10px;
-  border: 1px solid var(--brand-500);
-  border-radius: var(--r-full);
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  flex: 0 0 auto;
+  border-radius: 10px;
   background: var(--brand-50);
   color: var(--brand-700);
-  font-size: 13px;
+}
+
+.highlightIcon svg {
+  width: 20px;
+  height: 20px;
+}
+
+.highlightBody {
+  display: grid;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+/* 누구의 어떤 체험인지. 화면이 "무엇에 대한 확인" 인지 먼저 말한다. */
+.highlightSubject {
+  font-size: 12px;
+  line-height: 1.4;
   font-weight: 600;
   letter-spacing: -0.02em;
-  text-decoration: none;
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
+  color: var(--brand-700);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.resetFilterButton {
-  flex: 0 0 auto;
-  display: inline-flex;
-  align-items: center;
-  min-height: 30px;
-  padding: 0 10px;
-  border: 1px solid var(--border);
-  border-radius: var(--r-full);
-  background: var(--surface);
-  color: var(--text-2);
-  font-size: 13px;
-  font-weight: 600;
-  text-decoration: none;
-  -webkit-tap-highlight-color: transparent;
-}
-
-/* 결과 개수. 실제 개수만 적는다. */
-.resultMeta {
-  margin: 0;
-  padding: 0 var(--gutter);
-  font-size: 14px;
-  line-height: 1.4;
+.highlightTitle {
+  min-width: 0;
+  font-size: 15px;
+  line-height: 1.35;
   font-weight: 700;
   letter-spacing: -0.02em;
   color: var(--text-1);
+}
+
+.highlightAction {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  min-width: 56px;
+  min-height: 34px;
+  padding: 0 14px;
+  border-radius: var(--r-full);
+  background: var(--brand-500);
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+/* "다가오는 수업 일정" — 확정된 일정만 온다. */
+.upcomingList {
+  display: grid;
+  gap: 16px;
+  margin: 0;
+  padding: 0 var(--gutter);
+  list-style: none;
+}
+
+.upcomingCard {
+  display: grid;
+  gap: 10px;
+  text-decoration: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.upcomingThumb {
+  position: relative;
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  overflow: hidden;
+  border-radius: 14px;
+  background: var(--surface-sub);
+}
+
+.upcomingThumbEmpty {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, var(--brand-50), var(--surface-sub));
+}
+
+.upcomingBody {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.upcomingTitle {
+  font-size: 15px;
+  line-height: 1.4;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--text-1);
+}
+
+.upcomingAcademy {
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--text-2);
+}
+
+.upcomingSchedule {
+  font-size: 15px;
+  line-height: 1.4;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--brand-500);
+}
+
+/* Home 큐레이션 그리드. 카탈로그가 아니라 몇 장만 놓는 자리다. */
+.homeCardGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px 12px;
+  margin: 0;
+  padding: 0 var(--gutter);
+  list-style: none;
+}
+
+.homeCardGridItem {
+  min-width: 0;
 }

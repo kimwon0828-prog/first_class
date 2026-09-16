@@ -83,18 +83,19 @@ export const getPublicClassCardScheduleSummaries = async (
     rowsByClassId.set(row.class_id, current)
   }
 
+  /*
+   * ⚠️ 일정이 하나도 없는 수업에는 아무것도 돌려주지 않는다.
+   *
+   *    예전에는 "예약 가능 일정 확인" 이라는 문구를 만들어 넣었다. 화면이 이 값을
+   *    그리지 않던 동안에는 드러나지 않았지만, 카드가 일정 줄을 그리기 시작하면
+   *    일정이 없는 수업에도 일정이 있는 것처럼 보인다. 없는 것은 없다고 둔다.
+   */
   return new Map(
-    uniqueClassIds.map((classId) => {
+    uniqueClassIds.flatMap((classId) => {
       const schedules = rowsByClassId.get(classId) ?? []
 
       if (schedules.length === 0) {
-        return [
-          classId,
-          {
-            classId,
-            summaryLabel: "예약 가능 일정 확인"
-          }
-        ]
+        return []
       }
 
       const datedSchedules = schedules
@@ -108,13 +109,8 @@ export const getPublicClassCardScheduleSummaries = async (
       const preferredSchedule = datedSchedules[0] ?? schedules[0]
       const summaryLabel = formatScheduleSummaryLabel(preferredSchedule)
 
-      return [
-        classId,
-        {
-          classId,
-          summaryLabel
-        }
-      ]
+      // flatMap 은 한 겹을 편다. tuple 이 풀리지 않게 한 번 더 감싼다.
+      return [[classId, { classId, summaryLabel }] as const]
     })
   )
 }
