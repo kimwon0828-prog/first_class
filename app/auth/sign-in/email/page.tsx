@@ -36,7 +36,7 @@ export default async function EmailSignInPage({ searchParams }: EmailSignInPageP
     if (profile) {
       redirect(returnTo ?? resolvePostAuthRedirect(profile.role))
     }
-    redirect(returnTo ?? "/classes")
+    redirect(returnTo ?? "/")
   }
 
   const welcomeHref = returnTo ? `/auth/sign-in?returnTo=${encodeURIComponent(returnTo)}` : "/auth/sign-in"
