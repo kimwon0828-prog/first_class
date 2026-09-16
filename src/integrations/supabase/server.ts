@@ -1,6 +1,7 @@
 import { createServerClient } from "@supabase/ssr"
 import { createClient, type SupabaseClient } from "@supabase/supabase-js"
 import { cookies, headers } from "next/headers"
+import { cache } from "react"
 
 import { getPublicEnv } from "@/shared/config/env"
 
@@ -161,7 +162,30 @@ export const getUserFromSupabaseAuthCookieFallback = async (): Promise<{
   }
 }
 
-export const getSupabaseServerClient = async (): Promise<SupabaseClient> => {
+/**
+ * 이 요청의 Supabase server client.
+ *
+ * ⚠️ 요청 하나에 client 도 하나다. React cache() 로 요청 범위에서만 기억한다 —
+ *    module-level 변수에 담지 않는다. 그건 프로세스 수명 동안 살아남아
+ *    다른 사용자의 세션을 물려주게 된다.
+ *
+ * ⚠️ 왜 하나여야 하는가.
+ *    예전에는 부르는 곳마다 새 client 를 만들었다. Home 한 번 그리는 데
+ *    auth · profile · 신청 · 자녀 · 할 일 조회가 각자 client 를 만들어 동시에 떴고,
+ *    access token 이 만료에 가까우면 그것들이 같은 refresh token 으로
+ *    제각각 refresh 를 시도했다. Supabase 는 refresh 할 때 token 을 rotate 하므로
+ *    하나가 이기면 나머지는 이미 폐기된 token 을 들고 세션을 잃었다.
+ *    세션을 잃은 client 의 질의는 RLS 에서 auth.uid() 가 풀리지 않아
+ *    - children  : 에러 없이 0 rows
+ *    - profiles  : 에러 없이 0 rows
+ *    - 신청 · 할 일: 에러
+ *    로 돌아왔다. 같은 요청인데 어떤 조회는 되고 어떤 조회는 비는 현상이
+ *    여기서 나왔다(홈의 자녀 선택이 사라지던 버그).
+ *
+ * ⚠️ cookie 계약은 바꾸지 않는다. 이 수정이 하는 일은 하나뿐이다 —
+ *    한 요청 안에서 client 를 여러 번 만들지 않는다.
+ */
+export const getSupabaseServerClient = cache(async (): Promise<SupabaseClient> => {
   const cookieStore = await cookies()
   const { supabaseUrl, supabasePublishableKey } = getPublicEnv()
   const requestHeaders = await headers()
@@ -220,4 +244,4 @@ export const getSupabaseServerClient = async (): Promise<SupabaseClient> => {
       }
     }
   })
-}
+})
