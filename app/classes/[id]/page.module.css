@@ -163,27 +163,6 @@
   overflow-wrap: anywhere;
 }
 
-.teacherProfileStack {
-  display: grid;
-  gap: var(--s3);
-}
-
-.teacherProfileName {
-  margin: 0;
-  font-size: 16px;
-  line-height: 1.5;
-  font-weight: 700;
-  color: var(--text-1);
-}
-
-.teacherProfileSummary {
-  margin: 0;
-  font-size: 14px;
-  line-height: 1.7;
-  color: var(--text-2);
-  font-weight: 600;
-}
-
 .mutedText {
   margin: 0;
   font-size: 14px;
@@ -311,12 +290,67 @@
   .shell {
     border-left: 1px solid var(--border);
     border-right: 1px solid var(--border);
-  }
-}
+  }}
 
 @media (max-width: 360px) {
   .infoRow {
     grid-template-columns: 1fr;
     gap: var(--s2);
-  }
+  }}
+
+/* 체험 가능 일정. 실제로 고를 수 있는 것만 온다. */
+.slotList {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.slotItem {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--text-1);
+}
+
+/* 학원 정보 진입점. id 는 주소에만 쓰고 화면에 노출하지 않는다. */
+.academyBlock {
+  display: grid;
+  gap: 4px;
+}
+
+.academyName {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.4;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--text-1);
+}
+
+.academyLink {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  align-self: flex-start;
+  min-height: 44px;
+  margin-top: 6px;
+  padding: 0 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-full);
+  background: var(--surface);
+  color: var(--text-1);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  text-decoration: none;
 }

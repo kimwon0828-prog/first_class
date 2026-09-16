@@ -5,6 +5,7 @@ import { formatStoredTargetGrades } from "@/shared/constants/grade-options"
 import { getMyProfile } from "@/features/auth/lib/profile-sync"
 import { getSession } from "@/features/auth/lib/session"
 import { formatAdministrativeRegionLabel } from "@/features/location/lib/region-selection"
+import { buildPublicSlotLines } from "@/features/applications/lib/public-class-slots"
 import { getPublicClassAvailableSlots } from "@/features/applications/queries/get-public-class-available-slots"
 import { ClassDetailApplicationSheet } from "@/features/applications/ui/class-detail-application-sheet"
 import { getPublicClassDetail } from "@/features/classes/queries/get-public-class-detail"
@@ -103,8 +104,26 @@ export default async function ClassDetailPage({ params, searchParams }: ClassDet
   const classSubjectLabel = classItem
     ? formatClassSubjectDisplayLabel(classItem) || "과목 정보 준비 중"
     : null
+  /*
+   * 학원 상세로 가는 길.
+   *
+   * ⚠️ 식별자가 있을 때만 링크를 만든다. 없으면 링크 자체를 그리지 않는다 —
+   *    깨진 주소를 그리는 것보다 링크가 없는 편이 낫다.
+   * ⚠️ id 는 주소에만 쓰고 화면 텍스트로는 보여주지 않는다.
+   */
+  const academyHref = organization?.id ? `/academy/${organization.id}` : null
   const recommendedItems = splitMultilineItems(classItem?.recommendedFor)
   const experienceItems = splitMultilineItems(classItem?.experiencePoints)
+  /*
+   * 체험 가능 일정.
+   *
+   * ⚠️ 신청 sheet 와 같은 판정(숨김 · 마감 · 잔여 0 · 지난 것 제외)을 쓴다.
+   *    화면에는 일정이 있는데 눌러 보면 없는 상태를 만들지 않기 위해서다.
+   *
+   * ⚠️ 0건이면 0건이라고 적는다. "예약 가능 일정 확인" 처럼 있지도 않은 일정을
+   *    암시하는 문구를 만들지 않는다.
+   */
+  const bookableSlotLabels = buildPublicSlotLines(slots, Date.now(), 6)
   return (
     <main className={styles.page}>
       <div className={styles.shell}>
@@ -279,6 +298,23 @@ export default async function ClassDetailPage({ params, searchParams }: ClassDet
               </section>
 
               <section className={styles.section}>
+                <h2 className={styles.sectionTitle}>체험 가능 일정</h2>
+                {slotsError ? (
+                  <p className={styles.mutedText}>{slotsError}</p>
+                ) : bookableSlotLabels.length === 0 ? (
+                  <p className={styles.mutedText}>현재 예약 가능한 일정이 없어요.</p>
+                ) : (
+                  <ul className={styles.slotList}>
+                    {bookableSlotLabels.map((slot) => (
+                      <li key={slot.id} className={styles.slotItem}>
+                        {slot.label}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </section>
+
+              <section className={styles.section}>
                 <h2 className={styles.sectionTitle}>수업 소개</h2>
                 {classItem.description?.trim() ? (
                   <p className={styles.bodyText}>{classItem.description}</p>
@@ -325,6 +361,37 @@ export default async function ClassDetailPage({ params, searchParams }: ClassDet
                   <p className={styles.mutedText}>커리큘럼 정보가 준비 중입니다.</p>
                 )}
               </section>
+
+              {academyHref ? (
+                <section className={styles.section}>
+                  <h2 className={styles.sectionTitle}>학원 정보</h2>
+                  <div className={styles.academyBlock}>
+                    <p className={styles.academyName}>{organizationLabel || "학원 정보 준비 중"}</p>
+                    {administrativeRegionLabel ? (
+                      <p className={styles.mutedText}>{administrativeRegionLabel}</p>
+                    ) : null}
+                    <Link href={academyHref} className={styles.academyLink}>
+                      학원 정보 보기
+                      <svg
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        xmlns="http://www.w3.org/2000/svg"
+                        aria-hidden="true"
+                      >
+                        <path
+                          d="M9 18l6-6-6-6"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      </svg>
+                    </Link>
+                  </div>
+                </section>
+              ) : null}
 
               {hasLocation ? (
                 <section className={styles.section}>

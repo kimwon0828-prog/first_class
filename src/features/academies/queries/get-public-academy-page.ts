@@ -68,16 +68,33 @@ const buildPublicUrl = (path: string | null) => {
   return publicUrl || null
 }
 
+/*
+ * 주소 + 상세주소를 잇는다.
+ *
+ * ⚠️ 데이터에 따라 address 가 이미 상세주소를 끝에 달고 들어온다
+ *    ("... 중계로 225 청구상가 4층" + "청구상가 4층"). 그대로 이으면 같은 말이 두 번 나온다.
+ *    공백만 고른 뒤 "정확히 같은 꼬리" 일 때만 재부착을 생략한다 —
+ *    부분 문자열 추측이나 주소 parsing 은 하지 않는다. 그건 다른 주소를 망가뜨린다.
+ * ⚠️ Production 데이터는 고치지 않는다. 표시 단계에서만 겹침을 없앤다.
+ */
+const collapseSpaces = (value: string) => value.replace(/\s+/g, " ").trim()
+
+const joinAddressParts = (base: string | null, detail: string | null) => {
+  if (!base) return detail
+  if (!detail) return base
+  return collapseSpaces(base).endsWith(collapseSpaces(detail)) ? base : `${base} ${detail}`
+}
+
 const formatOrganizationAddress = (organization: OrganizationRow) => {
   const primaryAddress = toNullableText(organization.address)
   const primaryDetail = toNullableText(organization.address_detail)
   if (primaryAddress || primaryDetail) {
-    return [primaryAddress, primaryDetail].filter((value): value is string => Boolean(value)).join(" ")
+    return joinAddressParts(primaryAddress, primaryDetail)
   }
 
   const line1 = toNullableText(organization.address_line1)
   const line2 = toNullableText(organization.address_line2)
-  return [line1, line2].filter((value): value is string => Boolean(value)).join(" ") || null
+  return joinAddressParts(line1, line2)
 }
 
 const fetchAcademyPublicProfileBySlug = async (slug: string) => {
