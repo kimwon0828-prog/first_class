@@ -18,6 +18,8 @@ export type ParentAction = {
   id: string
   kind: ParentActionKind
   experienceId: string
+  /** 어느 아이의 경험인가. 엑셀 이관분 등 legacy 신청은 null 이다. */
+  childId: string | null
   childName: string
   childGrade: string
   classTitle: string | null
@@ -81,6 +83,7 @@ export const selectParentActions = (input: {
       id: `report_review:${item.id}`,
       kind: "report_review" as const,
       experienceId: item.id,
+      childId: item.childId,
       childName: item.childName,
       childGrade: item.childGrade,
       classTitle: item.classTitle,

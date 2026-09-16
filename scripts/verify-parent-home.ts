@@ -251,10 +251,15 @@ check(
 )
 check("데이터 없는 Home 은 '첫수업 둘러보기' 라고 부른다", homeCode.includes('"첫수업 둘러보기"'))
 check("Search 에는 개인화 문구가 없다", !searchCode.includes("우리 아이에게 맞는"))
+/*
+ * 인자는 바뀔 수 있다(지금은 선택된 아이 id 를 받는다). 고정할 것은 조건이다 —
+ * 학부모로 로그인했을 때만 개인화 조회가 나가고, Search 는 아예 부르지 않는다.
+ */
 check(
   "개인화 조회는 Home 에서 학부모로 로그인했을 때만 나간다",
-  homeCode.includes("authenticated && isParentUser ? await getParentHomeSummary()") &&
-    !searchCode.includes("getParentHomeSummary")
+  /authenticated && isParentUser \? await getParentHomeSummary\(/.test(
+    homeCode.replace(/\s+/g, " ")
+  ) && !searchCode.includes("getParentHomeSummary")
 )
 check("조회 실패를 '없음' 으로 접지 않는다", queryCode.includes("applications.error") && queryCode.includes("EMPTY_SUMMARY"))
 

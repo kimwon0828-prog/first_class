@@ -209,7 +209,14 @@ check(
     home.includes("{homeHighlightSection}")
 )
 check("Home 의 각 줄은 그 Action 의 목적지로 간다", home.includes("<Link href={action.href}"))
-check("Home 도 조회 실패를 '없음' 으로 접지 않는다", homeQuery.includes("actionsResult.error ? [] : actionsResult.actions"))
+/*
+ * 실패했으면 빈 목록을 그리는 게 아니라 Action 영역 자체를 접는다.
+ * 뒤에 아이 필터가 붙어도 "실패 → []" 라는 분기 자체는 그대로여야 한다.
+ */
+check(
+  "Home 도 조회 실패를 '없음' 으로 접지 않는다",
+  /actionsResult\.error\s*\?\s*\[\]/.test(homeQuery) && homeQuery.includes("actionsResult.actions")
+)
 
 console.log("\n[6] 화면 계약")
 

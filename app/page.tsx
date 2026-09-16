@@ -6,6 +6,8 @@ import { redirect } from "next/navigation"
 import { resolveCurrentAuth } from "@/features/auth/lib/current-auth"
 import { buildClassesHref, decodeQueryValue } from "@/features/classes/lib/classes-href"
 import { formatParentActionSubject } from "@/features/actions/lib/parent-actions"
+import { CHILD_QUERY_KEY } from "@/features/children/lib/child-selection"
+import { HomeChildSelector } from "@/features/children/ui/home-child-selector"
 import { getParentHomeSummary } from "@/features/classes/queries/get-parent-home-summary"
 import {
   resolveClassDiscoveryContext,
@@ -183,7 +185,19 @@ export default async function ParentHomePage({ searchParams }: HomePageProps) {
    * 개인화 영역은 학부모로 로그인했을 때만 읽는다.
    * 비로그인 방문자와 Studio 계정에는 추가 조회가 한 건도 나가지 않는다.
    */
-  const parentHome = authenticated && isParentUser ? await getParentHomeSummary() : null
+  /*
+   * 지금 보고 있는 아이.
+   *
+   * ⚠️ /record 가 이미 쓰는 ?child= 를 그대로 쓴다. 저장 방식을 새로 만들지 않는다.
+   *    주소에 적힌 id 가 내 아이가 아니면 조회 쪽에서 전체로 떨어뜨린다.
+   */
+  const requestedChildId =
+    typeof (resolvedSearchParams as Record<string, unknown> | undefined)?.[CHILD_QUERY_KEY] ===
+    "string"
+      ? ((resolvedSearchParams as Record<string, string>)[CHILD_QUERY_KEY] ?? null)
+      : null
+  const parentHome =
+    authenticated && isParentUser ? await getParentHomeSummary(requestedChildId) : null
   const hasHighlightSection = Boolean(parentHome && parentHome.actions.length > 0)
   const hasUpcomingSection = Boolean(parentHome && parentHome.upcoming.length > 0)
   /**
@@ -460,64 +474,40 @@ export default async function ParentHomePage({ searchParams }: HomePageProps) {
                   스튜디오
                 </Link>
               ) : (
-                <>
-                  {/*
-                    알림함 진입점.
-
-                    ⚠️ 빨간 점 · 숫자 배지를 붙이지 않는다. 읽음/안읽음을 적어 두는
-                       자리가 schema 에 없어서 "안 읽은 N개" 는 화면이 지어낸 값이 된다.
-                  */}
-                  <Link href="/notifications" className={styles.headerIconButton} aria-label="알림">
-                    <svg
-                      width="22"
-                      height="22"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      xmlns="http://www.w3.org/2000/svg"
-                      aria-hidden="true"
-                    >
-                      <path
-                        d="M18 8a6 6 0 1 0-12 0c0 5-2 6-2 6h16s-2-1-2-6Z"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-                      <path
-                        d="M13.7 18a2 2 0 0 1-3.4 0"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-                    </svg>
-                  </Link>
-                  <Link href={myPageEntryHref} className={styles.headerIconButton} aria-label="마이페이지">
-                    <svg
-                      width="22"
-                      height="22"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      xmlns="http://www.w3.org/2000/svg"
-                      aria-hidden="true"
-                    >
-                      <path
-                        d="M20 21a8 8 0 1 0-16 0"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-                      <path
-                        d="M12 13a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-                    </svg>
-                  </Link>
-                </>
+                /*
+                 * 헤더 오른쪽 끝은 알림함 하나다.
+                 *
+                 * ⚠️ 마이페이지 아이콘을 여기 다시 만들지 않는다. 계정 진입은
+                 *    하단 탭의 "마이페이지" 가 맡는다 — 같은 곳으로 가는 문을
+                 *    두 개 두면 어느 쪽이 정식인지 알 수 없게 된다.
+                 * ⚠️ 빨간 점 · 숫자 배지를 붙이지 않는다. 읽음/안읽음을 적어 두는
+                 *    자리가 schema 에 없어서 "안 읽은 N개" 는 화면이 지어낸 값이 된다.
+                 */
+                <Link href="/notifications" className={styles.headerIconButton} aria-label="알림">
+                  <svg
+                    width="22"
+                    height="22"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                    aria-hidden="true"
+                  >
+                    <path
+                      d="M18 8a6 6 0 1 0-12 0c0 5-2 6-2 6h16s-2-1-2-6Z"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                    <path
+                      d="M13.7 18a2 2 0 0 1-3.4 0"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                </Link>
               )
             ) : (
               <Link href={myPageEntryHref} className={styles.headerAction} aria-label="로그인">
@@ -544,20 +534,17 @@ export default async function ParentHomePage({ searchParams }: HomePageProps) {
               radiusChipActiveClassName={styles.radiusChipActive}
             />
 
-            {parentHome?.childChipLabel ? (
-              <Link href="/my/children" className={styles.childChip}>
-                <span className={styles.childChipLabel}>{parentHome.childChipLabel}</span>
-                <svg
-                  width="16"
-                  height="16"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  xmlns="http://www.w3.org/2000/svg"
-                  aria-hidden="true"
-                >
-                  <path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-              </Link>
+            {parentHome && parentHome.childOptions.length > 0 ? (
+              /*
+                등록된 자녀가 있을 때만 띄운다. 0명이면 selector 자체가 없고,
+                Home 에서 자녀 등록을 새로 권하지 않는다 - 그 자리는 /my/children 이다.
+              */
+              <HomeChildSelector
+                options={parentHome.childOptions}
+                selectedChildId={parentHome.selectedChildId}
+                className={styles.childChip}
+                labelClassName={styles.childChipLabel}
+              />
             ) : null}
           </div>
 

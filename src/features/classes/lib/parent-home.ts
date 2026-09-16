@@ -13,6 +13,8 @@ import { getSeoulDateTimeParts } from "@/shared/lib/seoul-datetime"
 /** 홈 "다가오는 수업 일정" 한 장. */
 export type ParentHomeUpcoming = {
   experienceId: string
+  /** 어느 아이의 일정인가. 엑셀 이관분 등 legacy 신청은 null 이다. */
+  childId: string | null
   classTitle: string
   academyName: string | null
   /** 한국 시간으로 읽은 확정 일정. 확정되지 않은 신청은 여기 오지 않는다. */
