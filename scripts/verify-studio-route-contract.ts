@@ -7,15 +7,15 @@
 //   B. external → internal 역변환이 맞다.
 //   C. root: "/studio" ↔ "/" 이고, 중복 slash 를 만들지 않는다.
 //   D. Parent route 코드가 바뀌지 않았다.
-//   E. middleware 가 바뀌지 않았다 — rewrite 가 없다.
+//   E. middleware 가 Parent 범위를 넓히지 않았다.
 //   F. cookie 계약이 바뀌지 않았다.
 //   G. revalidatePath("/studio/...") 가 그대로 남아 있다.
 //   H. Toss billing callback 코드가 바뀌지 않았다.
 //   I. S1 site origins 계약이 유지된다.
 //   J. S2 auth entry separation 이 유지된다.
 //
-// S3A 는 "동작 변화 0" 이어야 한다. contract 는 순수 함수로만 존재하고
-// 아무도 아직 부르지 않는다. runtime rewrite 는 다음 Phase 다.
+// contract 는 순수 함수다. S3B 에서 host rewrite 가 이 모듈을 쓰기 시작했고,
+// 소비처는 studio-host-rewrite 한 곳으로만 둔다.
 // 소스 검사와 순수 함수 호출만 쓴다. DB · 네트워크 · 세션을 건드리지 않는다.
 
 import { existsSync, readFileSync, readdirSync } from "node:fs"
@@ -40,6 +40,7 @@ const MIDDLEWARE = "middleware.ts"
 const SUPABASE_SERVER = "src/integrations/supabase/server.ts"
 const SUPABASE_MIDDLEWARE = "src/integrations/supabase/middleware.ts"
 const STUDIO_ROUTES = "src/shared/config/studio-routes.ts"
+const HOST_REWRITE = "src/shared/config/studio-host-rewrite.ts"
 const TOSS_CHECKOUT = "src/features/billing/actions/start-standard-checkout.ts"
 const PARENT_SIGN_IN_PAGE = "app/auth/sign-in/page.tsx"
 const STUDIO_SIGN_IN_FORM = "src/features/studio/ui/studio-sign-in-form.tsx"
@@ -237,36 +238,40 @@ for (const host of ["localhost", "studio.localhost", "localhost:3000", "evil.com
   check(`C) ${JSON.stringify(host)} 는 Parent host 가 아니다`, !isParentHost(host))
 }
 
-console.log("\n[동작 변화 0] contract 를 아직 아무도 부르지 않는다")
+console.log("\n[소비처] contract 를 쓰는 곳은 한 곳뿐이다")
 
-/* 부르는 곳이 생기는 순간 "동작 변화 0" 이 깨진다. 그건 S3B 다. */
-const callers = Array.from(
-  new Set(
-    ["app", "src", "middleware.ts"].flatMap((target) => {
-      const walk = (path: string): string[] => {
-        const full = resolve(process.cwd(), path)
-        if (!existsSync(full)) return []
-        const entries = readdirSync(full, { withFileTypes: true })
-        if (entries.length === 0 && !path.includes(".")) return []
-        return entries.flatMap((entry) =>
-          entry.isDirectory() ? walk(join(path, entry.name)) : [join(path, entry.name)]
-        )
-      }
-      const files = target.endsWith(".ts") ? [target] : walk(target)
-      return files.filter(
-        (file) => /\.(ts|tsx)$/.test(file) && file !== STUDIO_ROUTES && read(file).includes("shared/config/studio-routes")
-      )
-    })
+/*
+ * S3A 때는 아무도 이 모듈을 부르지 않았다. S3B 에서 host rewrite 가 붙으면서
+ * 소비처가 생겼다.
+ *
+ * ⚠️ 소비처를 studio-host-rewrite 하나로 묶어 둔다. 여기저기서 직접 부르기
+ *    시작하면 경로 규칙이 다시 흩어진다.
+ */
+const walk = (path: string): string[] => {
+  const full = resolve(process.cwd(), path)
+  if (!existsSync(full)) return []
+  return readdirSync(full, { withFileTypes: true }).flatMap((entry) =>
+    entry.isDirectory() ? walk(join(path, entry.name)) : [join(path, entry.name)]
   )
+}
+const sourceFiles = ["app", "src"].flatMap(walk).concat("middleware.ts").filter((file) => /\.(ts|tsx)$/.test(file))
+const callers = sourceFiles.filter(
+  (file) => file !== STUDIO_ROUTES && /from "(@\/shared\/config\/studio-routes|\.\/studio-routes)"/.test(read(file))
 )
-check("동작 변화 0) studio-routes 를 import 하는 app/src 코드가 없다", callers.length === 0, callers.join(", "))
-check("동작 변화 0) studio-routes 는 rewrite/redirect 를 하지 않는다", (() => {
+
+check("소비처) studio-routes 를 부르는 곳은 studio-host-rewrite 뿐이다", callers.length === 1 && callers[0] === HOST_REWRITE, callers.join(", "))
+check("소비처) middleware 는 contract 를 직접 부르지 않는다", !read(MIDDLEWARE).includes("studio-routes"))
+check("소비처) studio-routes 는 rewrite/redirect 를 하지 않는다", (() => {
   const code = codeOf(STUDIO_ROUTES)
   return !code.includes("NextResponse") && !code.includes("redirect") && !code.includes("rewrite")
 })())
-check("동작 변화 0) studio-routes 는 순수 모듈이다", (() => {
+check("소비처) studio-routes 는 순수 모듈이다", (() => {
   const code = codeOf(STUDIO_ROUTES)
-  return !code.includes("process.env") && !code.includes("next/") && !code.includes("server-only")
+  return !code.includes("process.env") && !/from "next/.test(code) && !code.includes("server-only")
+})())
+check("소비처) studio-host-rewrite 도 순수 모듈이다", (() => {
+  const code = codeOf(HOST_REWRITE)
+  return !code.includes("process.env") && !/from "next/.test(code) && !code.includes("server-only")
 })())
 
 console.log("\n[D] Parent route 코드 무변경")
@@ -285,17 +290,31 @@ for (const route of PARENT_ROUTES) {
 }
 check("D) Parent /classes route 는 Studio 로 넘어가지 않았다", !exists("app/studio/(dashboard)/classes/[id]/page.tsx"))
 
-console.log("\n[E] middleware 무변경 — rewrite 가 없다")
+console.log("\n[E] middleware 는 Parent 범위를 넓히지 않는다")
 
 const middleware = codeOf(MIDDLEWARE)
-check(
-  "E) matcher 가 그대로다",
-  middleware.includes('matcher: ["/my/:path*", "/applications/:path*", "/studio/:path*", "/classes/:id/apply"]')
-)
+/* S3B: middleware 는 이제 Studio host 를 rewrite 한다. rewrite 계약 자체는
+   verify-studio-host-rewrite 가 본다. 여기서는 Parent 범위가 넓어지지 않았는지만 본다. */
+const parentMatcherIsIntact = (code: string) => {
+  const block = code.slice(code.indexOf("matcher: ["))
+  return (
+    ["/my/:path*", "/applications/:path*", "/studio/:path*", "/classes/:id/apply"].every((source) =>
+      block.split("\n").some((row) => row.trim() === `"${source}",`)
+    ) &&
+    !block.includes('"/:path*"') &&
+    !block.includes('"/(.*)"')
+  )
+}
+check("E) Parent matcher 범위가 그대로다", parentMatcherIsIntact(middleware))
 check("E) 세션 갱신만 한다", middleware.includes("await supabase.auth.getClaims()"))
-for (const term of ["NextResponse.rewrite", "rewrite(", "NextResponse.redirect", "nextUrl.host", 'get("host")', "studio-routes", "isStudioHost"]) {
+for (const term of ["NextResponse.redirect", "nextUrl.host"]) {
   check(`E) middleware 에 ${term} 가 없다`, !middleware.includes(term))
 }
+/* 경로 규칙은 S3A contract 한 곳에만 있다. middleware 본문에 다시 적지 않는다. */
+check(
+  "E) middleware 본문에 /studio 경로를 하드코딩하지 않았다",
+  !/"\/studio\//.test(middleware.slice(0, middleware.indexOf("matcher: [")))
+)
 
 console.log("\n[F] cookie 계약 무변경")
 
@@ -305,9 +324,12 @@ for (const [label, code] of [
 ] as const) {
   check(`F) ${label} 이 cookie domain 을 지정하지 않는다`, !/\bdomain\s*:/.test(code))
   check(`F) ${label} 이 sameSite 를 새로 지정하지 않는다`, !/\bsameSite\s*:/.test(code))
-  check(`F) ${label} 이 cookie options 를 그대로 넘긴다`, code.includes("cookie.options"))
   check(`F) ${label} 이 studio-routes 를 쓰지 않는다`, !code.includes("studio-routes"))
 }
+check("F) 서버 client 가 cookie options 를 그대로 넘긴다", codeOf(SUPABASE_SERVER).includes("cookie.options"))
+/* S3B: middleware client 는 cookie 를 객체째 모아 두고, middleware 가 options 채로 적는다. */
+check("F) middleware client 가 cookie 를 객체째 모아 둔다", codeOf(SUPABASE_MIDDLEWARE).includes("pendingCookies.push(cookie)"))
+check("F) 모은 cookie 가 options 채로 적힌다", middleware.includes("response.cookies.set(cookie.name, cookie.value, cookie.options)"))
 
 console.log("\n[G] revalidatePath(\"/studio/...\") 유지")
 

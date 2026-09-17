@@ -8,12 +8,12 @@
 //   C. Studio sign-in form 에 Parent 로그인 CTA 가 없다.
 //   D. Studio sign-in route(/studio/sign-in) 자체는 그대로 살아 있다.
 //   E. KakaoAuthButton 계약이 바뀌지 않았다.
-//   F. middleware 가 바뀌지 않았다 — host rewrite 가 없다.
+//   F. middleware 가 Parent 범위를 넓히지 않았다.
 //   G. cookie 계약이 바뀌지 않았다 — domain 을 심지 않는다.
 //   H. OAuth callback 이 바뀌지 않았다 — 여전히 같은 origin 안에서만 돈다.
 //   I. shared auth recovery route 와 ?type=academy 구조는 아직 그대로다.
 //
-// S2 는 "진입점 UI 분리"까지만 한다. host 분리 · cookie · callback 은 다음 Phase 다.
+// S2 는 "진입점 UI 분리"까지만 했다. host rewrite 계약은 verify-studio-host-rewrite 가 본다.
 // 소스 검사만 쓴다. DB · 네트워크 · 세션을 건드리지 않는다.
 
 import { existsSync, readFileSync } from "node:fs"
@@ -158,14 +158,23 @@ check(
 check("E) Parent sign-in 의 primary CTA 는 카카오 하나다", (parentSignInPage.match(/<KakaoAuthButton/g) ?? []).length === 1)
 check("E) returnTo 를 덮어쓰지 않는다", parentSignInPage.includes('next={returnTo ?? "/"}'))
 
-console.log("\n[F] middleware 무변경 — host rewrite 가 없다")
+console.log("\n[F] middleware 는 Parent 범위를 넓히지 않는다")
 
-check(
-  "F) matcher 가 그대로다",
-  middleware.includes('matcher: ["/my/:path*", "/applications/:path*", "/studio/:path*", "/classes/:id/apply"]')
-)
+/* S3B: middleware 는 이제 Studio host 를 rewrite 한다. rewrite 계약 자체는
+   verify-studio-host-rewrite 가 본다. 여기서는 Parent 범위가 넓어지지 않았는지만 본다. */
+const parentMatcherIsIntact = (code: string) => {
+  const block = code.slice(code.indexOf("matcher: ["))
+  return (
+    ["/my/:path*", "/applications/:path*", "/studio/:path*", "/classes/:id/apply"].every((source) =>
+      block.split("\n").some((row) => row.trim() === `"${source}",`)
+    ) &&
+    !block.includes('"/:path*"') &&
+    !block.includes('"/(.*)"')
+  )
+}
+check("F) Parent matcher 범위가 그대로다", parentMatcherIsIntact(middleware))
 check("F) 세션 갱신만 한다", middleware.includes("await supabase.auth.getClaims()"))
-for (const term of ["NextResponse.rewrite", "rewrite(", "nextUrl.host", 'get("host")', "STUDIO_ORIGIN", "PARENT_ORIGIN"]) {
+for (const term of ["nextUrl.host", "STUDIO_ORIGIN", "PARENT_ORIGIN"]) {
   check(`F) middleware 에 ${term} 가 없다`, !middleware.includes(term))
 }
 check("F) middleware 는 authz 판단을 하지 않는다", !middleware.includes("redirect"))
@@ -179,13 +188,18 @@ for (const [label, code] of [
   /* subdomain 공유 cookie 는 S2 범위가 아니다. domain 을 심는 순간 계약이 바뀐다. */
   check(`G) ${label} 이 cookie domain 을 지정하지 않는다`, !/\bdomain\s*:/.test(code))
   check(`G) ${label} 이 sameSite 를 새로 지정하지 않는다`, !/\bsameSite\s*:/.test(code))
-  check(`G) ${label} 이 cookie options 를 그대로 넘긴다`, code.includes("cookie.options"))
 }
 check("G) 서버 client 는 cookieStore 로 읽고 쓴다", supabaseServer.includes("cookieStore.set(cookie.name, cookie.value, cookie.options)"))
+check("G) 서버 client 가 cookie options 를 그대로 넘긴다", supabaseServer.includes("cookie.options"))
+/* S3B: middleware 는 cookie 를 모아 두고, 최종 response 에 한 번 적는다. */
 check(
-  "G) middleware client 는 request/response cookie 를 동기화한다",
+  "G) middleware client 는 request cookie 를 갱신하고 쓸 cookie 를 모은다",
   supabaseMiddleware.includes("request.cookies.set(cookie.name, cookie.value)") &&
-    supabaseMiddleware.includes("response.cookies.set(cookie.name, cookie.value, cookie.options)")
+    supabaseMiddleware.includes("pendingCookies.push(cookie)")
+)
+check(
+  "G) 모은 cookie 는 options 채로 최종 response 에 적힌다",
+  middleware.includes("response.cookies.set(cookie.name, cookie.value, cookie.options)")
 )
 
 console.log("\n[H] OAuth callback 무변경")
