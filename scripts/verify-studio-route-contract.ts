@@ -41,6 +41,7 @@ const SUPABASE_SERVER = "src/integrations/supabase/server.ts"
 const SUPABASE_MIDDLEWARE = "src/integrations/supabase/middleware.ts"
 const STUDIO_ROUTES = "src/shared/config/studio-routes.ts"
 const HOST_REWRITE = "src/shared/config/studio-host-rewrite.ts"
+const NAVIGATION = "src/shared/config/studio-navigation.ts"
 const TOSS_CHECKOUT = "src/features/billing/actions/start-standard-checkout.ts"
 const PARENT_SIGN_IN_PAGE = "app/auth/sign-in/page.tsx"
 const STUDIO_SIGN_IN_FORM = "src/features/studio/ui/studio-sign-in-form.tsx"
@@ -241,11 +242,11 @@ for (const host of ["localhost", "studio.localhost", "localhost:3000", "evil.com
 console.log("\n[소비처] contract 를 쓰는 곳은 한 곳뿐이다")
 
 /*
- * S3A 때는 아무도 이 모듈을 부르지 않았다. S3B 에서 host rewrite 가 붙으면서
- * 소비처가 생겼다.
+ * S3A 때는 아무도 이 모듈을 부르지 않았다. S3B 의 host rewrite, S3D 의
+ * navigation helper 가 소비처다.
  *
- * ⚠️ 소비처를 studio-host-rewrite 하나로 묶어 둔다. 여기저기서 직접 부르기
- *    시작하면 경로 규칙이 다시 흩어진다.
+ * ⚠️ 소비처를 shared/config 의 routing 모듈 두 곳으로만 묶어 둔다. feature
+ *    코드가 직접 부르기 시작하면 경로 규칙이 다시 흩어진다.
  */
 const walk = (path: string): string[] => {
   const full = resolve(process.cwd(), path)
@@ -259,7 +260,13 @@ const callers = sourceFiles.filter(
   (file) => file !== STUDIO_ROUTES && /from "(@\/shared\/config\/studio-routes|\.\/studio-routes)"/.test(read(file))
 )
 
-check("소비처) studio-routes 를 부르는 곳은 studio-host-rewrite 뿐이다", callers.length === 1 && callers[0] === HOST_REWRITE, callers.join(", "))
+const ALLOWED_CONSUMERS = [HOST_REWRITE, NAVIGATION]
+check(
+  "소비처) studio-routes 는 shared/config routing 모듈만 부른다",
+  callers.every((file) => ALLOWED_CONSUMERS.includes(file)),
+  callers.join(", ")
+)
+check("소비처) 두 소비처가 모두 살아 있다", ALLOWED_CONSUMERS.every((file) => callers.includes(file)), callers.join(", "))
 check("소비처) middleware 는 contract 를 직접 부르지 않는다", !read(MIDDLEWARE).includes("studio-routes"))
 check("소비처) studio-routes 는 rewrite/redirect 를 하지 않는다", (() => {
   const code = codeOf(STUDIO_ROUTES)
@@ -269,10 +276,12 @@ check("소비처) studio-routes 는 순수 모듈이다", (() => {
   const code = codeOf(STUDIO_ROUTES)
   return !code.includes("process.env") && !/from "next/.test(code) && !code.includes("server-only")
 })())
-check("소비처) studio-host-rewrite 도 순수 모듈이다", (() => {
-  const code = codeOf(HOST_REWRITE)
-  return !code.includes("process.env") && !/from "next/.test(code) && !code.includes("server-only")
-})())
+for (const file of [HOST_REWRITE, NAVIGATION]) {
+  check(`소비처) ${file} 도 순수 모듈이다`, (() => {
+    const code = codeOf(file)
+    return !code.includes("process.env") && !/from "next/.test(code) && !code.includes("server-only")
+  })())
+}
 
 console.log("\n[D] Parent route 코드 무변경")
 
