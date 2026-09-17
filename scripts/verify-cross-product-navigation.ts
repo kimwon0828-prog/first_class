@@ -297,7 +297,10 @@ console.log("\n[K] Toss callback 무변경")
 
 const tossCheckout = codeOf(TOSS_CHECKOUT)
 check('K) CALLBACK_PATH 가 "/studio/billing/callback" 이다', tossCheckout.includes('const CALLBACK_PATH = "/studio/billing/callback"'))
-check("K) successUrl 은 origin + CALLBACK_PATH 다", tossCheckout.includes("successUrl: `${origin}${CALLBACK_PATH}`"))
+/* S4C: 결제 복귀 주소는 이제 host 에 맞춰 만들어진다. 내부 경로 상수와
+   실패 query 는 그대로다. 자세한 계약은 verify-studio-billing-callback-routing. */
+check("K) successUrl 은 요청 origin 과 callback 경로로 만들어진다", tossCheckout.includes("successUrl: toCallbackUrl(CALLBACK_PATH)"))
+check("K) 실패 query 가 그대로다", tossCheckout.includes("?billing=failed"))
 check("K) Toss checkout 이 cross-product helper 를 쓰지 않는다", !tossCheckout.includes("cross-product-navigation"))
 check("K) Supabase OAuth callback 이 그대로다", (() => {
   const callback = codeOf("app/auth/callback/route.ts")

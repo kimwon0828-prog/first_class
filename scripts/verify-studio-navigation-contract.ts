@@ -166,7 +166,9 @@ check("runtime) navigation helper 는 provider 와 server resolver 를 통해서
   const ENTRY_POINTS = [
     "src/features/studio/ui/studio-navigation-provider.tsx",
     "src/shared/lib/studio-navigation-server.ts",
-    "src/features/studio/ui/studio-dashboard-period-control.tsx"
+    "src/features/studio/ui/studio-dashboard-period-control.tsx",
+    /* S4C: 결제 복귀 주소는 절대 주소여야 해서 pure helper 를 직접 조합한다. */
+    "src/features/billing/lib/callback-url.ts"
   ]
   return callers.every((file) => ENTRY_POINTS.includes(file))
 })(), callers.join(", "))
@@ -251,8 +253,10 @@ console.log("\n[H] Toss callback 무변경")
 
 const tossCheckout = codeOf(TOSS_CHECKOUT)
 check('H) CALLBACK_PATH 가 "/studio/billing/callback" 이다', tossCheckout.includes('const CALLBACK_PATH = "/studio/billing/callback"'))
-check("H) successUrl 은 origin + CALLBACK_PATH 다", tossCheckout.includes("successUrl: `${origin}${CALLBACK_PATH}`"))
-check("H) failUrl 도 그대로다", tossCheckout.includes("failUrl: `${origin}${FAIL_PATH}?billing=failed`"))
+/* S4C: 결제 복귀 주소는 이제 host 에 맞춰 만들어진다. 내부 경로 상수와
+   실패 query 는 그대로다. 자세한 계약은 verify-studio-billing-callback-routing. */
+check("H) successUrl 은 요청 origin 과 callback 경로로 만들어진다", tossCheckout.includes("successUrl: toCallbackUrl(CALLBACK_PATH)"))
+check("H) failUrl 도 같은 방식이고 실패 query 가 그대로다", tossCheckout.includes("failUrl: `${toCallbackUrl(FAIL_PATH)}?billing=failed`"))
 check("H) Toss checkout 이 navigation helper 를 쓰지 않는다", !tossCheckout.includes("studio-navigation"))
 check("H) billing callback route 가 그대로 있다", exists("app/studio/(dashboard)/billing/callback/page.tsx"))
 check("H) Supabase OAuth callback 이 그대로다", read("app/auth/callback/route.ts").includes("supabase.auth.exchangeCodeForSession(code)") && !read("app/auth/callback/route.ts").includes("studio-navigation"))
