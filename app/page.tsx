@@ -1,3 +1,5 @@
+import { toParentUrl } from "@/shared/config/site-origins"
+
 import type { Metadata } from "next"
 import Image from "next/image"
 import Link from "next/link"
@@ -42,7 +44,7 @@ export const metadata: Metadata = {
   },
   openGraph: {
     type: "website",
-    url: "https://firstsuup.com/",
+    url: toParentUrl("/"),
     siteName: "첫수업",
     title: "첫수업 | 학원 체험수업 비교·예약",
     description:

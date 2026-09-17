@@ -1,8 +1,8 @@
+import { toParentUrl } from "@/shared/config/site-origins"
+
 import type { MetadataRoute } from "next"
 
 import { getAllPublicClasses } from "@/features/classes/queries/get-public-classes"
-
-const SITE_URL = "https://firstsuup.com"
 
 const STATIC_PUBLIC_PATHS: Array<{
   path: string
@@ -22,7 +22,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   const staticUrls: MetadataRoute.Sitemap = STATIC_PUBLIC_PATHS.map(
     ({ path, changeFrequency, priority }) => ({
-      url: `${SITE_URL}${path}`,
+      url: toParentUrl(path),
       lastModified: now,
       changeFrequency,
       priority
@@ -34,7 +34,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     const classDetailUrls: MetadataRoute.Sitemap = Array.from(
       new Set(classes.filter((item) => item.isActive).map((item) => item.id))
     ).map((classId) => ({
-      url: `${SITE_URL}/classes/${classId}`,
+      url: toParentUrl(`/classes/${classId}`),
       lastModified: now,
       changeFrequency: "daily",
       priority: 0.8

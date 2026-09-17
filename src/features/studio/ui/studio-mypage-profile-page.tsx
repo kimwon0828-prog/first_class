@@ -1,5 +1,7 @@
 "use client"
 
+import { toParentUrl } from "@/shared/config/site-origins"
+
 import { useActionState, useEffect, useMemo, useRef, useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
@@ -119,7 +121,6 @@ const initialActionState: SaveAcademyPublicProfileActionState = {
   completedAt: null
 }
 
-const SITE_ORIGIN = "https://firstsuup.com"
 const PROFILE_ASSET_BUCKET = "academy-profile-assets"
 const ASSET_FILENAME_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.(jpg|jpeg|png|webp)$/
@@ -155,7 +156,7 @@ const buildAcademyPublicPageHandle = (slug: string | null | undefined, organizat
   toNullableText(slug) ?? organizationId
 
 const buildAcademyPublicPageUrl = (slug: string | null | undefined, organizationId: string) =>
-  `${SITE_ORIGIN}/academy/${buildAcademyPublicPageHandle(slug, organizationId)}`
+  toParentUrl(`/academy/${buildAcademyPublicPageHandle(slug, organizationId)}`)
 
 const createInitialFormValues = (
   publicProfile: StudioAcademyPublicProfile | null,

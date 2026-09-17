@@ -1,10 +1,12 @@
+import { PARENT_ORIGIN } from "@/shared/config/site-origins"
+
 import type { Metadata } from "next"
 import type { ReactNode } from "react"
 
 import "./globals.css"
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://firstsuup.com"),
+  metadataBase: new URL(PARENT_ORIGIN),
   title: {
     default: "첫수업",
     template: "%s | 첫수업"

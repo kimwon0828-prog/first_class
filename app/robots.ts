@@ -1,6 +1,6 @@
-import type { MetadataRoute } from "next"
+import { toParentUrl } from "@/shared/config/site-origins"
 
-const SITE_URL = "https://firstsuup.com"
+import type { MetadataRoute } from "next"
 
 export default function robots(): MetadataRoute.Robots {
   return {
@@ -11,6 +11,6 @@ export default function robots(): MetadataRoute.Robots {
         disallow: ["/auth/", "/studio/", "/admin/", "/my/"]
       }
     ],
-    sitemap: `${SITE_URL}/sitemap.xml`
+    sitemap: toParentUrl("/sitemap.xml")
   }
 }

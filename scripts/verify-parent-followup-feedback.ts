@@ -361,7 +361,8 @@ check(
 )
 check(
   "링크가 절대 주소다",
-  publishAction.includes("https://firstsuup.com") &&
+  publishAction.includes('import { toParentUrl } from "@/shared/config/site-origins"') &&
+    publishAction.includes("toParentUrl(`/record/${applicationId}/report`)") &&
     publishAction.includes("/record/${applicationId}/report")
 )
 check(

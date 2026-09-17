@@ -1,3 +1,5 @@
+import { PARENT_ORIGIN } from "@/shared/config/site-origins"
+
 import type { Metadata } from "next"
 import Link from "next/link"
 import { notFound } from "next/navigation"
@@ -6,8 +8,6 @@ import { getPublicAcademyClasses } from "@/features/academies/queries/get-public
 import { getPublicAcademyPageByHandle } from "@/features/academies/queries/get-public-academy-page"
 
 import styles from "./page.module.css"
-
-const SITE_ORIGIN = "https://firstsuup.com"
 
 type AcademyPageProps = {
   params: Promise<{
@@ -44,7 +44,7 @@ const getDescriptionPreview = (shortDescription: string | null, description: str
 }
 
 const resolveOpenGraphImage = (coverImageUrl: string | null, logoImageUrl: string | null) =>
-  coverImageUrl ?? logoImageUrl ?? new URL("/images/first-class-logo.png", SITE_ORIGIN).toString()
+  coverImageUrl ?? logoImageUrl ?? new URL("/images/first-class-logo.png", PARENT_ORIGIN).toString()
 
 export async function generateMetadata({ params }: AcademyPageProps): Promise<Metadata> {
   const resolvedParams = await params

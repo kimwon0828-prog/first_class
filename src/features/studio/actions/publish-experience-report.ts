@@ -1,5 +1,7 @@
 "use server"
 
+import { toParentUrl } from "@/shared/config/site-origins"
+
 import { revalidatePath } from "next/cache"
 
 import { requireStudioEntitlement } from "@/features/billing/lib/require-entitlement"
@@ -64,9 +66,8 @@ const resolveErrorMessage = (caught: unknown) => {
  * 알림에 "확인하기" 를 적어 놓고 갈 곳이 없으면 부모는 앱을 뒤지게 된다.
  * 링크를 만들 수 없으면 알림 자체를 보내지 않는다(템플릿이 null 을 돌려준다).
  */
-const SITE_ORIGIN = "https://firstsuup.com"
 const buildReportUrl = (applicationId: string) =>
-  `${SITE_ORIGIN}/record/${applicationId}/report`
+  toParentUrl(`/record/${applicationId}/report`)
 
 export async function publishExperienceReportAction(
   applicationId: string,
