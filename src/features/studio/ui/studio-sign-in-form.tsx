@@ -79,12 +79,6 @@ export const StudioSignInForm = ({ returnTo }: StudioSignInFormProps) => {
             학원 계정 신청
           </Link>
         </p>
-        <p className={styles.footerText}>
-          학부모이신가요?{" "}
-          <Link href="/auth/sign-in" className={styles.footerLink}>
-            학부모 로그인
-          </Link>
-        </p>
       </div>
 
     </form>

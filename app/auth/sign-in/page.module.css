@@ -136,27 +136,6 @@
   font-weight: 600;
 }
 
-.divider {
-  margin-top: 14px;
-  width: 100%;
-  height: 1px;
-  background: #ebebeb;
-}
-
-.studioNotice {
-  margin: 0;
-  text-align: center;
-  font-size: 13px;
-  line-height: 20px;
-  color: #7d7d7d;
-}
-
-.studioLink {
-  color: #111111;
-  font-weight: 700;
-  text-decoration: none;
-}
-
 @media (max-width: 420px) {
   .copyGroup {
     margin-top: 32px;
