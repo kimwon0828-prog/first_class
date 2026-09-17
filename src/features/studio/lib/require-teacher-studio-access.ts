@@ -8,6 +8,7 @@ import { normalizeProfileRole } from "@/features/auth/lib/profile-sync"
 import { getSupabaseServerClient } from "@/integrations/supabase/server"
 import { getParentCrossProductHref } from "@/shared/config/cross-product-navigation"
 import { getRequestHostname } from "@/shared/lib/request-host"
+import { getStudioNavigationPathResolver } from "@/shared/lib/studio-navigation-server"
 
 // Studio 접근 context 는 로그인 운영 멤버(profile)와 organization 만으로 구성한다.
 // 수업 담당 선생님은 classes.teacher_id(teachers.id) 가 canonical source 이며,
@@ -108,6 +109,10 @@ const readStudioProfile = async (
 const requireTeacherStudioAccessCached = cache(async (): Promise<TeacherStudioAccess> => {
   const supabase = await getSupabaseServerClient()
   const requestHeaders = await headers()
+  const studioPath = await getStudioNavigationPathResolver()
+  /* query 는 path helper 에 넣지 않는다. 경로만 옮기고 reason 은 따로 붙인다. */
+  const studioAccessPath = (reason: string) =>
+    `${studioPath("/studio/access")}?${new URLSearchParams({ reason }).toString()}`
   const requestPath =
     requestHeaders.get("next-url") ??
     requestHeaders.get("x-invoke-path") ??
@@ -136,7 +141,7 @@ const requireTeacherStudioAccessCached = cache(async (): Promise<TeacherStudioAc
   })
 
   if (!userId) {
-    redirect("/studio/sign-in")
+    redirect(studioPath("/studio/sign-in"))
   }
 
   const profileLookup = await readStudioProfile(userId)
@@ -154,7 +159,7 @@ const requireTeacherStudioAccessCached = cache(async (): Promise<TeacherStudioAc
       hasPurposePrefetchHeader,
       redirectReason: "profile_lookup_failed"
     })
-    redirect("/studio/access?reason=profile_lookup_failed")
+    redirect(studioAccessPath("profile_lookup_failed"))
   }
 
   if (profileLookup.kind === "missing") {
@@ -173,7 +178,7 @@ const requireTeacherStudioAccessCached = cache(async (): Promise<TeacherStudioAc
         hasPurposePrefetchHeader,
         redirectReason: "pending_or_rejected_teacher_request"
       })
-      redirect("/studio/pending")
+      redirect(studioPath("/studio/pending"))
     }
 
     debugStudioAuth({
@@ -189,7 +194,7 @@ const requireTeacherStudioAccessCached = cache(async (): Promise<TeacherStudioAc
       hasPurposePrefetchHeader,
       redirectReason: "missing_profile"
     })
-    redirect("/studio/access?reason=missing_profile")
+    redirect(studioAccessPath("missing_profile"))
   }
 
   const { data } = profileLookup
@@ -208,7 +213,7 @@ const requireTeacherStudioAccessCached = cache(async (): Promise<TeacherStudioAc
       hasPurposePrefetchHeader,
       redirectReason: "invalid_role"
     })
-    redirect("/studio/access?reason=invalid_role")
+    redirect(studioAccessPath("invalid_role"))
   }
 
   const organizationId = data.organization_id ?? null
@@ -250,7 +255,7 @@ const requireTeacherStudioAccessCached = cache(async (): Promise<TeacherStudioAc
       hasPurposePrefetchHeader,
       redirectReason: "invalid_role"
     })
-    redirect("/studio/access?reason=invalid_role")
+    redirect(studioAccessPath("invalid_role"))
   }
 
   if (!organizationId) {
@@ -267,7 +272,7 @@ const requireTeacherStudioAccessCached = cache(async (): Promise<TeacherStudioAc
       hasPurposePrefetchHeader,
       redirectReason: "missing_org"
     })
-    redirect("/studio/access?reason=missing_org")
+    redirect(studioAccessPath("missing_org"))
   }
 
   debugStudioAuth({

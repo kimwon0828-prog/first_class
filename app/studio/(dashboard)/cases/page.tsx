@@ -21,6 +21,7 @@ import {
 import { requireTeacherStudioAccess } from "@/features/studio/lib/require-teacher-studio-access"
 import { getStudioCases } from "@/features/studio/queries/get-studio-cases"
 import { getSubjectLabel } from "@/shared/constants/education-taxonomy"
+import { getStudioNavigationPathResolver } from "@/shared/lib/studio-navigation-server"
 import { SEOUL_TIME_ZONE } from "@/shared/lib/seoul-datetime"
 
 import styles from "./page.module.css"
@@ -152,6 +153,7 @@ const STAGE_TONE_CLASS: Record<StudioStatusTone, string> = {
 }
 
 export default async function StudioCasesPage({ searchParams }: StudioCasesPageProps) {
+  const studioPath = await getStudioNavigationPathResolver()
   const teacher = await requireTeacherStudioAccess()
   const resolvedSearchParams = searchParams ? await searchParams : undefined
 
@@ -182,7 +184,7 @@ export default async function StudioCasesPage({ searchParams }: StudioCasesPageP
             <p className={styles.subtitle}>신청부터 등록 결정까지 한 곳에서 관리하세요.</p>
           </div>
           {/* 가져온 예약이 이 목록으로 들어오므로 진입점을 여기에 둔다(사이드바 항목 추가 없음). */}
-          <Link href="/studio/cases/import" className={styles.headerAction}>
+          <Link href={studioPath("/studio/cases/import")} className={styles.headerAction}>
             기존 예약 가져오기
           </Link>
         </div>
@@ -303,7 +305,7 @@ export default async function StudioCasesPage({ searchParams }: StudioCasesPageP
                   <li key={item.id} className={styles.row}>
                     <Link
                       className={`${styles.rowLink} ${closed ? styles.rowLinkClosed : ""}`}
-                      href={`/studio/applications/${item.id}`}
+                      href={studioPath(`/studio/applications/${item.id}`)}
                     >
                       <span className={styles.cellStudent}>
                         <strong className={styles.studentName}>{item.student.name}</strong>

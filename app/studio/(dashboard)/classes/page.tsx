@@ -3,9 +3,11 @@ import Link from "next/link"
 import { requireTeacherStudioAccess } from "@/features/studio/lib/require-teacher-studio-access"
 import { getStudioClassListItems } from "@/features/studio/queries/get-studio-classes"
 import { StudioClassesManager } from "@/features/studio/ui/studio-classes-manager"
+import { getStudioNavigationPathResolver } from "@/shared/lib/studio-navigation-server"
 import styles from "./page.module.css"
 
 export default async function StudioClassesPage() {
+  const studioPath = await getStudioNavigationPathResolver()
   const teacher = await requireTeacherStudioAccess()
   const { data: classes, error } = await getStudioClassListItems(teacher.organizationId)
 
@@ -18,7 +20,7 @@ export default async function StudioClassesPage() {
             <p className={styles.description}>학부모에게 노출되는 첫수업 정보를 등록하고 관리해요.</p>
           </div>
           <div className={styles.headerRight}>
-            <Link href="/studio/classes/new" className={styles.primaryButton}>
+            <Link href={studioPath("/studio/classes/new")} className={styles.primaryButton}>
               수업 등록
             </Link>
           </div>

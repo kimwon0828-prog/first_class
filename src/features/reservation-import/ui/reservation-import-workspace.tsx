@@ -45,11 +45,14 @@ type ReservationImportWorkspaceProps = {
   contextError: string | null
 }
 
+import { useStudioNavigationPathFactory } from "@/features/studio/ui/studio-navigation-provider"
+
 export const ReservationImportWorkspace = ({
   classCount,
   teacherCount,
   contextError
 }: ReservationImportWorkspaceProps) => {
+  const studioPath = useStudioNavigationPathFactory()
   const router = useRouter()
   const [previewState, previewFormAction, isPreviewing] = useActionState(
     previewReservationImportAction,
@@ -97,7 +100,7 @@ export const ReservationImportWorkspace = ({
   return (
     <div className={styles.page}>
       <header className={styles.header}>
-        <Link href="/studio/cases" className={styles.backLink}>
+        <Link href={studioPath("/studio/cases")} className={styles.backLink}>
           ← 상담·등록으로 돌아가기
         </Link>
         <h1 className={styles.title}>기존 예약 가져오기</h1>
@@ -118,7 +121,7 @@ export const ReservationImportWorkspace = ({
           한 번에 최대 {RESERVATION_IMPORT_MAX_ROWS}행까지 가져올 수 있습니다.
         </p>
         <div className={styles.actionRow}>
-          <a href="/studio/cases/import/template" className={styles.secondaryButton} download>
+          <a href={studioPath("/studio/cases/import/template")} className={styles.secondaryButton} download>
             Excel 양식 다운로드
           </a>
         </div>
@@ -257,7 +260,7 @@ export const ReservationImportWorkspace = ({
       {isCompleted ? (
         <section className={styles.resultCard}>
           <div className={styles.actionRow}>
-            <Link href="/studio/cases" className={styles.primaryButton}>
+            <Link href={studioPath("/studio/cases")} className={styles.primaryButton}>
               상담·등록 목록에서 확인
             </Link>
           </div>

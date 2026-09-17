@@ -262,6 +262,7 @@ const callers = sourceFiles.filter(
 )
 
 const ALLOWED_CONSUMERS = [HOST_REWRITE, NAVIGATION, CROSS_PRODUCT]
+/* 화면 코드는 studio-routes 를 직접 부르지 않는다. 언제나 이 세 모듈을 거친다. */
 check(
   "소비처) studio-routes 는 shared/config routing 모듈만 부른다",
   callers.every((file) => ALLOWED_CONSUMERS.includes(file)),
@@ -389,7 +390,7 @@ check("J) Parent sign-in 에 /studio 가 없다", !codeOf(PARENT_SIGN_IN_PAGE).i
 check("J) Studio sign-in form 에 Parent 로그인 CTA 가 없다", !codeOf(STUDIO_SIGN_IN_FORM).includes("학부모 로그인"))
 check("J) Studio sign-in route 가 그대로 있다", exists("app/studio/sign-in/page.tsx"))
 /* S3A 는 internal href 를 옮기지 않는다. */
-check("J) Studio 내부 href 가 그대로 /studio/sign-up 이다", codeOf(STUDIO_SIGN_IN_FORM).includes('href="/studio/sign-up"'))
+check("J) Studio 내부 href 는 S3F helper 를 거친다", codeOf(STUDIO_SIGN_IN_FORM).includes('useStudioNavigationPath("/studio/sign-up")'))
 
 console.log(failures === 0 ? "\nALL PASS" : `\nFAIL: ${failures}건 실패`)
 process.exit(failures === 0 ? 0 : 1)

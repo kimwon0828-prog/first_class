@@ -27,7 +27,10 @@ const PROGRAM_TYPE_LABELS: Record<StudioClassListItem["programType"], string> = 
   level_test: "레벨테스트"
 }
 
+import { useStudioNavigationPathFactory } from "@/features/studio/ui/studio-navigation-provider"
+
 export const StudioClassesManager = ({ items }: StudioClassesManagerProps) => {
+  const studioPath = useStudioNavigationPathFactory()
   const searchParams = useSearchParams()
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive">("all")
   const [query, setQuery] = useState("")
@@ -198,7 +201,7 @@ export const StudioClassesManager = ({ items }: StudioClassesManagerProps) => {
               첫 수업을 등록하면 학부모가 수업을 확인하고 신청할 수 있어요.
             </p>
             <Link
-              href="/studio/classes/new"
+              href={studioPath("/studio/classes/new")}
               className={styles.primaryButton}
               aria-busy={pendingHref === "/studio/classes/new"}
               onClick={() => setPendingHref("/studio/classes/new")}
@@ -227,7 +230,7 @@ export const StudioClassesManager = ({ items }: StudioClassesManagerProps) => {
                 <li key={item.id} className={styles.row}>
                   <div className={styles.cellClass}>
                     <Link
-                      href={`/studio/classes/${item.id}/edit`}
+                      href={studioPath(`/studio/classes/${item.id}/edit`)}
                       className={styles.classTitle}
                       aria-busy={pendingHref === `/studio/classes/${item.id}/edit`}
                       onClick={() => setPendingHref(`/studio/classes/${item.id}/edit`)}
@@ -275,7 +278,7 @@ export const StudioClassesManager = ({ items }: StudioClassesManagerProps) => {
 
                   <div className={styles.cellActions}>
                     <Link
-                      href={`/studio/classes/${item.id}/edit`}
+                      href={studioPath(`/studio/classes/${item.id}/edit`)}
                       className={styles.rowActionStrong}
                       aria-busy={pendingHref === `/studio/classes/${item.id}/edit`}
                       onClick={() => setPendingHref(`/studio/classes/${item.id}/edit`)}

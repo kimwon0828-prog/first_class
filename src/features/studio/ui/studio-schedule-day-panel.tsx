@@ -22,6 +22,7 @@ import {
 import type { StudioScheduleCalendarDay } from "@/shared/lib/db/adapter"
 
 import styles from "./studio-schedule-day-panel.module.css"
+import { useStudioNavigationPath } from "@/features/studio/ui/studio-navigation-provider"
 
 type StudioScheduleDayPanelProps = {
   classId: string
@@ -34,8 +35,9 @@ export const StudioScheduleDayPanel = ({
   classId,
   selectedDate,
   day,
-  classManagementHref = "/studio/classes"
+  classManagementHref: internalClassManagementHref = "/studio/classes"
 }: StudioScheduleDayPanelProps) => {
+  const classManagementHref = useStudioNavigationPath(internalClassManagementHref)
   const router = useRouter()
   const [extraStartTime, setExtraStartTime] = useState("")
   const [extraLessonMinutes, setExtraLessonMinutes] = useState("60")

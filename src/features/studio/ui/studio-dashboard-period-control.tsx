@@ -8,6 +8,8 @@ import {
 } from "@/features/studio/lib/studio-date-range"
 
 import styles from "./studio-dashboard-period-control.module.css"
+import { getStudioNavigationPath } from "@/shared/config/studio-navigation"
+import { getRequestHostname } from "@/shared/lib/request-host"
 
 type StudioDashboardPeriodControlProps = {
   selectedRange: StudioResolvedDateRange
@@ -45,10 +47,12 @@ const buildPresetHref = (
  * 자체 제목/설명을 두지 않는다. 어떤 영역에 적용되는지는 header 의 제목이 말해 준다.
  * href / searchParams 규칙은 그대로다.
  */
-export const StudioDashboardPeriodControl = ({
+export const StudioDashboardPeriodControl = async ({
   selectedRange,
-  basePath = "/studio"
+  basePath: internalBasePath = "/studio"
 }: StudioDashboardPeriodControlProps) => {
+  /* preset 링크와 form action 이 모두 이 자리를 가리킨다. host 에 맞춰 한 번만 옮긴다. */
+  const basePath = getStudioNavigationPath({ internalPath: internalBasePath, hostname: await getRequestHostname() })
   const today = buildStudioDateRangeFromPreset("today")?.endDate ?? ""
 
   return (

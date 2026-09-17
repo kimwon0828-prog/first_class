@@ -120,13 +120,14 @@ check("D) Studio 는 자기 sign-in form 을 쓴다", studioSignInPage.includes(
 check("D) parent SignInForm 을 Studio 에서 쓰지 않는다", !studioSignInPage.includes("<SignInForm"))
 /* S2 에서는 아직 studio.firstsuup.com/auth/sign-in 으로 옮기지 않는다. */
 check("D) Studio auth route 를 아직 옮기지 않았다", !exists("app/studio/auth/sign-in/page.tsx"))
-check("D) Studio 계정 신청 링크는 남는다", hrefsOf(studioSignInForm).includes("/studio/sign-up"))
+/* S3F 이후 href 는 host 에 맞춰 계산된다. 링크 자체는 그대로 있어야 한다. */
+check("D) Studio 계정 신청 링크는 남는다", studioSignInForm.includes('useStudioNavigationPath("/studio/sign-up")') && studioSignInForm.includes("href={signUpHref}"))
 
 /* Studio 로 보내던 나머지 진입점은 이번 단계에서 건드리지 않는다. */
 check("D) account-conflict 는 여전히 Studio 로 보낸다", hrefsOf(accountConflictPage).includes("/studio/sign-in"))
 check(
-  "D) studio access 가드는 여전히 /studio/sign-in 으로 보낸다",
-  codeOf("src/features/studio/lib/require-teacher-studio-access.ts").includes('redirect("/studio/sign-in")')
+  "D) studio access 가드는 여전히 Studio 로그인으로 보낸다",
+  codeOf("src/features/studio/lib/require-teacher-studio-access.ts").includes('redirect(studioPath("/studio/sign-in"))')
 )
 
 console.log("\n[E] KakaoAuthButton 계약 무변경")

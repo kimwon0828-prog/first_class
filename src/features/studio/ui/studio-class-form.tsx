@@ -159,6 +159,8 @@ const createScheduleSlotDraftFromItem = (schedule: StudioClassScheduleItem): Sch
   isReferencedByApplications: Boolean(schedule.isReferencedByApplications)
 })
 
+import { useStudioNavigationPath } from "@/features/studio/ui/studio-navigation-provider"
+
 export const StudioClassForm = ({
   organizationId,
   teacherOptions,
@@ -176,6 +178,7 @@ export const StudioClassForm = ({
   scheduleCalendarDays = [],
   scheduleCalendarError
 }: StudioClassFormProps) => {
+  const classesHref = useStudioNavigationPath("/studio/classes")
   const router = useRouter()
   const resolvedFormId = formId ?? "studio-class-form"
   const formRef = useRef<HTMLFormElement | null>(null)
@@ -697,7 +700,7 @@ export const StudioClassForm = ({
       <div className={styles.stickyChrome}>
         <header className={styles.headerCard}>
           <div className={styles.headerLeft}>
-            <Link href="/studio/classes" className={styles.backButton} aria-label="수업 목록으로 돌아가기">
+            <Link href={classesHref} className={styles.backButton} aria-label="수업 목록으로 돌아가기">
               ←
             </Link>
             <div className={styles.titleGroup}>

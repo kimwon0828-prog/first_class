@@ -6,6 +6,7 @@ import { redirect } from "next/navigation"
 import { getSupabaseServiceRoleClient } from "@/integrations/supabase/service-role"
 import { getSupabaseServerClient } from "@/integrations/supabase/server"
 import { getPublicEnv } from "@/shared/config/env"
+import { resolveStudioNavigationPath } from "@/shared/lib/studio-navigation-server"
 
 export type StudioSignInActionState = {
   status: "idle" | "error" | "success"
@@ -190,7 +191,7 @@ export async function studioSignInAction(
     }
 
     if (pendingRequest) {
-      redirect("/studio/pending")
+      redirect(await resolveStudioNavigationPath("/studio/pending"))
     }
 
     await supabase.auth.signOut()
@@ -221,5 +222,6 @@ export async function studioSignInAction(
   // teachers 매핑 존재 여부는 검사하지 않는다. 강사 명부는 로그인 계정과 별개 개념이고,
   // 신규 승인 학원은 명부가 비어 있는 상태로 시작한다.
   // 이후 화면별 권한은 requireTeacherStudioAccess 가 같은 기준으로 다시 판단한다.
-  redirect(returnTo)
+  /* returnTo 가 이미 clean path 면 contract 가 거절하고 그대로 통과시킨다. */
+  redirect(await resolveStudioNavigationPath(returnTo))
 }

@@ -111,10 +111,15 @@ const FieldLabel = ({
   )
 }
 
+import { useStudioNavigationPath, useStudioNavigationPathFactory } from "@/features/studio/ui/studio-navigation-provider"
+
 export const StudioSignUpForm = ({
   mode = "signup",
   initialValues
 }: StudioSignUpFormProps) => {
+  const signInHref = useStudioNavigationPath("/studio/sign-in")
+  /* action 이 돌려주는 링크도 내부 경로다. 그리는 자리에서 host 에 맞춘다. */
+  const studioPath = useStudioNavigationPathFactory()
   const action = mode === "resubmit" ? studioResubmitSignUpAction : studioSignUpAction
   const [state, formAction, isPending] = useActionState(action, initialState)
   const [businessRegistrationNumber, setBusinessRegistrationNumber] = useState("")
@@ -745,7 +750,7 @@ export const StudioSignUpForm = ({
           <div className={state.status === "error" ? styles.errorMessage : styles.infoMessage} role="status">
             <p className={styles.messageText}>{state.message}</p>
             {"actionLinkHref" in state && state.actionLinkHref && state.actionLinkLabel ? (
-              <Link href={state.actionLinkHref} className={styles.messageLink}>
+              <Link href={studioPath(state.actionLinkHref)} className={styles.messageLink}>
                 {state.actionLinkLabel}
               </Link>
             ) : null}
@@ -797,7 +802,7 @@ export const StudioSignUpForm = ({
             </p>
             <Link
               ref={successActionButtonRef}
-              href="/studio/sign-in"
+              href={signInHref}
               className={styles.modalActionButton}
             >
               {isResubmitMode ? "운영보드 로그인으로 이동" : "운영보드 로그인으로 이동"}

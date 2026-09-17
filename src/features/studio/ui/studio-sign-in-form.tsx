@@ -18,7 +18,10 @@ type StudioSignInFormProps = {
   returnTo?: string
 }
 
+import { useStudioNavigationPath } from "@/features/studio/ui/studio-navigation-provider"
+
 export const StudioSignInForm = ({ returnTo }: StudioSignInFormProps) => {
+  const signUpHref = useStudioNavigationPath("/studio/sign-up")
   const [state, formAction, isPending] = useActionState(studioSignInAction, initialState)
 
   return (
@@ -75,7 +78,7 @@ export const StudioSignInForm = ({ returnTo }: StudioSignInFormProps) => {
       <div className={styles.footer}>
         <p className={styles.footerText}>
           아직 계정이 없으신가요?{" "}
-          <Link href="/studio/sign-up" className={styles.footerLink}>
+          <Link href={signUpHref} className={styles.footerLink}>
             학원 계정 신청
           </Link>
         </p>

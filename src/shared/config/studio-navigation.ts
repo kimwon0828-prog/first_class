@@ -28,7 +28,7 @@
  */
 
 import { isStudioHost } from "./site-origins"
-import { toStudioExternalPath } from "./studio-routes"
+import { isStudioInternalPath, toStudioExternalPath, toStudioInternalPath } from "./studio-routes"
 
 type StudioNavigationInput = {
   /** The internal path as it exists in the app today, e.g. `/studio/classes`. */
@@ -56,5 +56,26 @@ export const getStudioNavigationPath = ({ internalPath, hostname }: StudioNaviga
     return toStudioExternalPath(internalPath)
   } catch {
     return internalPath
+  }
+}
+
+/**
+ * 지금 보고 있는 주소 → 내부 경로 공간.
+ *
+ * Studio host 에서는 주소창이 `/cases` 이고 내부 route 는 `/studio/cases` 다.
+ * 현재 위치를 메뉴 항목과 견주려면 한쪽 공간으로 모아야 한다. 어느 host 에서
+ * 불러도 같은 답이 나오므로, 서버 render 와 hydration 이 갈리지 않는다.
+ *
+ * ⚠️ 절대 던지지 않는다. 읽을 수 없는 주소는 그대로 돌려준다.
+ */
+export const toStudioInternalNavigationPath = (pathname: string): string => {
+  if (isStudioInternalPath(pathname)) {
+    return pathname
+  }
+
+  try {
+    return toStudioInternalPath(pathname)
+  } catch {
+    return pathname
   }
 }

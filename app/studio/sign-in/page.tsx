@@ -6,6 +6,7 @@ import { StudioHomeLogo } from "@/features/studio/ui/studio-home-logo"
 import { StudioSignInForm } from "@/features/studio/ui/studio-sign-in-form"
 import { getParentCrossProductHref } from "@/shared/config/cross-product-navigation"
 import { getRequestHostname } from "@/shared/lib/request-host"
+import { getStudioNavigationPathResolver } from "@/shared/lib/studio-navigation-server"
 import styles from "./page.module.css"
 
 type StudioSignInPageProps = {
@@ -28,6 +29,7 @@ const resolveSafeReturnTo = (raw: string | undefined): string | null => {
 }
 
 export default async function StudioSignInPage({ searchParams }: StudioSignInPageProps) {
+  const studioPath = await getStudioNavigationPathResolver()
   const resolvedSearchParams = searchParams ? await searchParams : undefined
   const returnTo = resolveSafeReturnTo(resolvedSearchParams?.returnTo)
   const session = await getSession()
@@ -36,7 +38,7 @@ export default async function StudioSignInPage({ searchParams }: StudioSignInPag
     const profile = await getMyProfile()
 
     if (profile?.role === "academy" || profile?.role === "admin") {
-      redirect(returnTo ?? "/studio")
+      redirect(studioPath(returnTo ?? "/studio"))
     }
 
     /* 학부모 세션은 Parent origin 으로 내보낸다. 같은 host 로 보내면 되돌아온다. */

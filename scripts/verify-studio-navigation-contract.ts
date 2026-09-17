@@ -161,7 +161,15 @@ console.log("\n[runtime 변화 0] 아직 아무도 helper 를 쓰지 않는다")
 const callers = sourceFiles.filter(
   (file) => file !== NAVIGATION && /from "(@\/shared\/config\/studio-navigation|\.\/studio-navigation)"/.test(read(file))
 )
-check("runtime) navigation helper 를 import 하는 코드가 없다", callers.length === 0, callers.join(", "))
+/* S3D 때는 아무도 안 썼다. S3F 에서 Studio navigation 이 이 helper 로 옮겨왔다. */
+check("runtime) navigation helper 는 provider 와 server resolver 를 통해서만 쓰인다", (() => {
+  const ENTRY_POINTS = [
+    "src/features/studio/ui/studio-navigation-provider.tsx",
+    "src/shared/lib/studio-navigation-server.ts",
+    "src/features/studio/ui/studio-dashboard-period-control.tsx"
+  ]
+  return callers.every((file) => ENTRY_POINTS.includes(file))
+})(), callers.join(", "))
 
 console.log("\n[inventory] 기존 navigation 은 하나도 바뀌지 않았다")
 
@@ -174,11 +182,12 @@ const templateHrefs = countMatches(/href=\{`\/studio\//g)
 const routerMoves = countMatches(/router\.(?:push|replace)\(`?\/studio/g)
 const serverRedirects = countMatches(/redirect\(`?"?\/studio/g)
 
-check("inventory) 정적 href 가 그대로 남아 있다", staticHrefs >= 38, `${staticHrefs}개`)
-check("inventory) 동적 href 가 그대로 남아 있다", templateHrefs >= 4, `${templateHrefs}개`)
-check("inventory) router 이동이 그대로 남아 있다", routerMoves >= 1, `${routerMoves}개`)
+/* 남은 하드코딩은 전부 Parent→Studio CTA 다 — 이건 다음 단계 몫이다. */
+check("inventory) 남은 정적 href 는 Parent→Studio CTA 뿐이다", staticHrefs === 9, `${staticHrefs}개`)
+check("inventory) 동적 href 는 전부 옮겨졌다", templateHrefs === 0, `${templateHrefs}개`)
+check("inventory) router 이동은 전부 옮겨졌다", routerMoves === 0, `${routerMoves}개`)
 /* S3E 에서 require-parent-access 의 redirect("/studio") 하나가 cross-product helper 로 옮겨갔다. */
-check("inventory) Studio 내부 server redirect 가 그대로 남아 있다", serverRedirects >= 15, `${serverRedirects}개`)
+check("inventory) server redirect 는 전부 옮겨졌다", serverRedirects === 0, `${serverRedirects}개`)
 
 console.log("\n[cross-product] Studio→Parent 는 relative path 로 표현할 수 없다")
 
@@ -229,7 +238,13 @@ for (const target of ["/studio", "/studio/applications", "/studio/classes", "/st
   check(`G) ${target} 가 그대로다`, revalidateTargets.includes(target))
 }
 /* 내부 route key 다. navigation helper 를 여기에 끼우면 캐시가 엉뚱한 자리를 턴다. */
-check("G) revalidatePath 가 navigation helper 를 쓰지 않는다", !walk("src/features").some((file) => /\.ts$/.test(file) && read(file).includes("getStudioNavigationPath")))
+/* helper 를 쓰는 파일이 있는 건 괜찮다. revalidatePath 인자에 끼우는 것이 안 된다. */
+check(
+  "G) revalidatePath 인자에 navigation helper 를 끼우지 않는다",
+  !walk("src/features").some(
+    (file) => /\.ts$/.test(file) && /revalidatePath\(\s*(studioPath|await|getStudioNavigationPath|resolveStudioNavigationPath)/.test(read(file))
+  )
+)
 
 console.log("\n[H] Toss callback 무변경")
 
@@ -264,8 +279,14 @@ const AUTH_FILES = [
 ]
 for (const file of AUTH_FILES) {
   check(`J) ${file} 가 그대로 있다`, exists(file))
-  check(`J) ${file} 가 navigation helper 를 쓰지 않는다`, !read(file).includes("studio-navigation"))
+  /*
+   * S3F 이후 guard 는 목적지를 host 에 맞춰 고른다. 그래도 "누구인가" 는 여전히
+   * profile 로 판단한다 — host 가 역할 판정에 끼어들지 않았는지만 본다.
+   */
+  check(`J) ${file} 가 host 로 권한을 판단하지 않는다`, !read(file).includes("isStudioHost") && !read(file).includes("isParentHost"))
 }
+check("J) studio guard 는 여전히 DB role 로 판단한다", read(STUDIO_ACCESS_GUARD).includes("normalizeProfileRole") && read(STUDIO_ACCESS_GUARD).includes('normalized.dbRole === "parent"'))
+check("J) auth 계약 파일은 navigation helper 를 쓰지 않는다", ["src/features/auth/lib/profile-sync.ts", "src/features/auth/lib/session.ts", "src/features/auth/lib/redirect.ts", "app/auth/callback/route.ts"].every((file) => !read(file).includes("studio-navigation")))
 check("J) resolvePostAuthRedirect 계약이 그대로다", codeOf("src/features/auth/lib/redirect.ts").includes('return "/studio"'))
 check("J) navigation helper 는 role 을 보지 않는다", ["role", "profiles", "organization_id", "teachers", "session"].every((term) => !navigation.includes(term)))
 for (const [label, code] of [

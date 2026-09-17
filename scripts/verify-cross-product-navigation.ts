@@ -192,12 +192,17 @@ const remainingParentRelative = sourceFiles.filter(
 check("범위) Parent 쪽 /classes 링크는 건드리지 않았다", remainingParentRelative.length > 0, `${remainingParentRelative.length}개 파일 그대로`)
 check("범위) 손댄 파일은 6곳뿐이다", [...STUDIO_TO_PARENT_SITES, PARENT_GUARD].every(exists))
 /* S3F 대상 — Studio 내부 same-product navigation 은 그대로다. */
-const studioInternalHrefs = sourceFiles.reduce(
+/* Studio 가 소유한 화면만 본다. Parent→Studio CTA 는 다음 단계 몫이라 리터럴로 남는다. */
+const studioInternalHrefs = sourceFiles
+  .filter((file) => file.startsWith("app/studio/") || file.startsWith("src/features/studio/"))
+  .reduce(
   (total, file) => total + (read(file).match(/href="\/studio(?:\/[^"]*)?"/g) ?? []).length,
   0
 )
-check("범위) Studio 내부 href 는 그대로다", studioInternalHrefs >= 37, `${studioInternalHrefs}개`)
-check("범위) Studio 내부 redirect 는 그대로다", studioGuard.includes('redirect("/studio/sign-in")') && studioGuard.includes('redirect("/studio/pending")'))
+/* S3F 에서 Studio 내부 navigation 이 host-aware helper 로 옮겨갔다.
+   자세한 계약은 verify-studio-navigation-migration 이 본다. */
+check("범위) Studio 내부 href 는 helper 를 거친다", studioInternalHrefs === 0, `하드코딩 ${studioInternalHrefs}개`)
+check("범위) Studio 내부 redirect 도 helper 를 거친다", studioGuard.includes('studioPath("/studio/sign-in")') && studioGuard.includes('studioPath("/studio/pending")'))
 check("범위) cross-product helper 를 쓰는 곳은 6곳뿐이다", (() => {
   const callers = sourceFiles.filter((file) => read(file).includes("cross-product-navigation"))
   return callers.length === 6 && [...STUDIO_TO_PARENT_SITES, PARENT_GUARD].every((file) => callers.includes(file))

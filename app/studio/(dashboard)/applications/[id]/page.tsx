@@ -26,6 +26,7 @@ import { isLegacyTrialResultObservation } from "@/features/studio/lib/trial-resu
 import { StudioStatusBadge } from "@/features/studio/ui/studio-status-badge"
 import { getSubjectLabel } from "@/shared/constants/education-taxonomy"
 import { getSeoulDateTimeParts, SEOUL_TIME_ZONE } from "@/shared/lib/seoul-datetime"
+import { getStudioNavigationPathResolver } from "@/shared/lib/studio-navigation-server"
 
 import styles from "./page.module.css"
 
@@ -205,6 +206,7 @@ const formatProgressDate = (value: string | null | undefined) => {
 }
 
 export default async function StudioApplicationDetailPage({ params }: StudioApplicationDetailPageProps) {
+  const studioPath = await getStudioNavigationPathResolver()
   const teacher = await requireTeacherStudioAccess()
   const resolvedParams = await params
   const { data, error } = await getStudioApplicationDetail(resolvedParams.id, teacher.organizationId)
@@ -483,7 +485,7 @@ export default async function StudioApplicationDetailPage({ params }: StudioAppl
     <div className={styles.page}>
       <header className={styles.header}>
         <div className={styles.headerTopRow}>
-          <Link href="/studio/cases" className={styles.backLink}>
+          <Link href={studioPath("/studio/cases")} className={styles.backLink}>
             상담·등록으로 돌아가기
           </Link>
         </div>
@@ -647,7 +649,7 @@ export default async function StudioApplicationDetailPage({ params }: StudioAppl
                   <dt className={styles.summaryLabel}>체험 희망 일시</dt>
                   <dd className={styles.summaryValue}>
                     {detailView.requestedSchedule}
-                    <Link href="/studio/schedule" className={styles.caseInlineLink}>
+                    <Link href={studioPath("/studio/schedule")} className={styles.caseInlineLink}>
                       일정 관리
                     </Link>
                   </dd>

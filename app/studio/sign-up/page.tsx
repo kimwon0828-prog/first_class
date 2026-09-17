@@ -7,14 +7,16 @@ import { StudioHomeLogo } from "@/features/studio/ui/studio-home-logo"
 import { StudioSignUpForm } from "@/features/studio/ui/studio-sign-up-form"
 import { getParentCrossProductHref } from "@/shared/config/cross-product-navigation"
 import { getRequestHostname } from "@/shared/lib/request-host"
+import { getStudioNavigationPathResolver } from "@/shared/lib/studio-navigation-server"
 import styles from "./page.module.css"
 
 export default async function StudioSignUpPage() {
+  const studioPath = await getStudioNavigationPathResolver()
   const session = await getSession()
   if (session) {
     const profile = await getMyProfile()
     if (profile?.role === "academy" || profile?.role === "admin") {
-      redirect("/studio/applications")
+      redirect(studioPath("/studio/applications"))
     }
     if (profile?.role === "parent") {
       /* 학부모 세션은 Parent origin 으로 내보낸다. 같은 host 로 보내면 되돌아온다. */
@@ -25,7 +27,7 @@ export default async function StudioSignUpPage() {
     const { dataAdapter } = await import("@/shared/lib/db")
     const pendingRequest = await dataAdapter.getPendingTeacherSignupRequest(session.user.id)
     if (pendingRequest) {
-      redirect("/studio/pending")
+      redirect(studioPath("/studio/pending"))
     }
   }
 
@@ -95,7 +97,7 @@ export default async function StudioSignUpPage() {
         <footer className={styles.footer}>
           <p className={styles.footerText}>
             이미 계정이 있으신가요?{" "}
-            <Link href="/studio/sign-in" className={styles.footerLink}>
+            <Link href={studioPath("/studio/sign-in")} className={styles.footerLink}>
               운영보드 로그인
             </Link>
           </p>

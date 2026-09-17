@@ -261,7 +261,12 @@ for (const file of AUTH_FILES) {
   check(`범위) ${file} 가 host 를 보지 않는다`, !read(file).includes("isStudioHost") && !read(file).includes("studio-host-rewrite"))
 }
 /* S3C 범위 — 내부 href 는 아직 그대로다. */
-check("범위) Studio 내부 href 가 아직 /studio/... 다", read("src/features/studio/ui/studio-sign-in-form.tsx").includes('href="/studio/sign-up"'))
+/* S3F 에서 Studio 내부 navigation 이 host-aware helper 로 옮겨갔다.
+   자세한 계약은 verify-studio-navigation-migration 이 본다. */
+check("범위) Studio 내부 href 는 helper 를 거친다", (() => {
+  const form = read("src/features/studio/ui/studio-sign-in-form.tsx")
+  return form.includes('useStudioNavigationPath("/studio/sign-up")') && !form.includes('href="/studio/sign-up"')
+})())
 check("범위) Toss CALLBACK_PATH 가 그대로다", read("src/features/billing/actions/start-standard-checkout.ts").includes('const CALLBACK_PATH = "/studio/billing/callback"'))
 
 console.log("\n[host helper] Studio/Parent 판별")

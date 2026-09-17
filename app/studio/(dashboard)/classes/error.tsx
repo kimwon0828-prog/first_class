@@ -2,6 +2,8 @@
 
 import Link from "next/link"
 
+import { useStudioNavigationPath } from "@/features/studio/ui/studio-navigation-provider"
+
 export default function StudioClassesError({
   error,
   reset
@@ -9,6 +11,8 @@ export default function StudioClassesError({
   error: Error & { digest?: string }
   reset: () => void
 }) {
+  const studioHomeHref = useStudioNavigationPath("/studio")
+  const studioAccessHref = useStudioNavigationPath("/studio/access")
   void error
 
   return (
@@ -55,7 +59,7 @@ export default function StudioClassesError({
             다시 시도
           </button>
           <Link
-            href="/studio"
+            href={studioHomeHref}
             style={{
               display: "inline-flex",
               alignItems: "center",
@@ -74,7 +78,7 @@ export default function StudioClassesError({
             Studio로 이동
           </Link>
           <Link
-            href="/studio/access"
+            href={studioAccessHref}
             style={{
               display: "inline-flex",
               alignItems: "center",
