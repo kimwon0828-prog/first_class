@@ -2,6 +2,7 @@ import Link from "next/link"
 
 import { resolveOAuthConflictMessage } from "@/features/auth/lib/oauth-account-conflict"
 import styles from "./page.module.css"
+import { resolveStudioCrossProductHref } from "@/shared/lib/cross-product-navigation-server"
 
 type AccountConflictPageProps = {
   searchParams?: Promise<{
@@ -32,7 +33,7 @@ export default async function AccountConflictPage({ searchParams }: AccountConfl
 
         <div className={styles.actions}>
           {isStudioReason ? (
-            <Link href="/studio/sign-in" className={styles.primaryButton}>
+            <Link href={await resolveStudioCrossProductHref("/studio/sign-in")} className={styles.primaryButton}>
               스튜디오 로그인
             </Link>
           ) : (

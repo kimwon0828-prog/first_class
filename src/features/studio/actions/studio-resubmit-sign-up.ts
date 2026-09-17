@@ -4,6 +4,7 @@ import { redirect } from "next/navigation"
 
 import { getSupabaseServiceRoleClient } from "@/integrations/supabase/service-role"
 import { getSupabaseServerClient } from "@/integrations/supabase/server"
+import { resolveStudioNavigationPath } from "@/shared/lib/studio-navigation-server"
 import {
   buildOrganizationAddressWritePayload,
   buildSignupRequestRegionWritePayload
@@ -247,5 +248,5 @@ export async function studioResubmitSignUpAction(
     return { status: "error", message: "재신청 정보를 저장하지 못했습니다. 다시 시도해 주세요." }
   }
 
-  redirect("/studio/pending")
+  redirect(await resolveStudioNavigationPath("/studio/pending"))
 }

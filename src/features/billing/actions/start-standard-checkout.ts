@@ -10,10 +10,12 @@ import { insertCheckoutSession } from "@/features/billing/lib/checkout/checkout-
 import { getPurchasableBillingPlan } from "@/features/billing/lib/plan-catalog"
 import { generateTossCustomerKey } from "@/features/billing/lib/toss/customer-key"
 import { buildInitialBillingAttempt } from "@/features/billing/lib/toss/identifiers"
+import { resolveStudioBillingCallbackUrl } from "@/features/billing/lib/callback-url"
 import { getTossRuntimeForOrganization } from "@/features/billing/lib/toss/server"
 import { getOrganizationEntitlements } from "@/features/billing/queries/get-organization-entitlements"
 import { requireTeacherStudioAccess } from "@/features/studio/lib/require-teacher-studio-access"
 import type { ActionResult } from "@/shared/actions"
+import { getRequestHostname } from "@/shared/lib/request-host"
 
 // [스탠다드 시작] 의 서버 쪽.
 //
@@ -104,14 +106,25 @@ export const startStandardCheckout = async (): Promise<ActionResult<StandardChec
   }
 
   const origin = await resolveOrigin()
+  /*
+   * 결제사에 넘기는 주소는 처음부터 이 host 의 주소여야 한다.
+   *
+   * ⚠️ Studio host 에서 /studio/... 를 그대로 넘기면 결제 복귀가 canonical
+   *    redirect 를 한 번 더 타게 된다. redirect 는 옛 링크를 받아 주는
+   *    보험이지 정상 결제 흐름의 필수 경유지가 아니다.
+   */
+  const hostname = await getRequestHostname()
+  const toCallbackUrl = (internalPath: string) =>
+    resolveStudioBillingCallbackUrl({ internalPath, hostname, origin })
 
   return {
     ok: true,
     data: {
       clientKey: runtime.clientKey,
       customerKey,
-      successUrl: `${origin}${CALLBACK_PATH}`,
-      failUrl: `${origin}${FAIL_PATH}?billing=failed`,
+      successUrl: toCallbackUrl(CALLBACK_PATH),
+      /* 실패 query 이름·값은 결제사와의 기존 계약이다. 그대로 둔다. */
+      failUrl: `${toCallbackUrl(FAIL_PATH)}?billing=failed`,
       amount: plan.amount,
       planName: plan.name
     }

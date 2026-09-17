@@ -118,15 +118,6 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
               </Link>
               에 동의하는 것으로 봅니다
             </p>
-
-            <div className={styles.divider} aria-hidden="true" />
-
-            <p className={styles.studioNotice}>
-              선생님·학원 관리자이신가요?{" "}
-              <Link href="/studio/sign-in" className={styles.studioLink}>
-                학원 로그인
-              </Link>
-            </p>
           </div>
         </section>
       </div>

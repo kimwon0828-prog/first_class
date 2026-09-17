@@ -31,6 +31,7 @@ import { resolveStudioDateRange } from "@/features/studio/lib/studio-date-range"
 import { getStudioApplications } from "@/features/studio/queries/get-studio-applications"
 import { StudioDashboardPeriodControl } from "@/features/studio/ui/studio-dashboard-period-control"
 import { StudioStatusBadge } from "@/features/studio/ui/studio-status-badge"
+import { getStudioNavigationPathResolver } from "@/shared/lib/studio-navigation-server"
 
 import styles from "./page.module.css"
 
@@ -46,6 +47,7 @@ const DONUT_SEGMENT_CLASS: Record<string, string> = {
 }
 
 export default async function StudioIndexPage({ searchParams }: StudioIndexPageProps) {
+  const studioPath = await getStudioNavigationPathResolver()
   const teacher = await requireTeacherStudioAccess()
   const resolvedSearchParams = searchParams ? await searchParams : undefined
   const selectedDateRange = resolveStudioDateRange({
@@ -475,7 +477,7 @@ export default async function StudioIndexPage({ searchParams }: StudioIndexPageP
                 {view.actionTotalCount > 0 ? (
                   <span className={styles.panelCount}>{view.actionTotalCount}건</span>
                 ) : null}
-                <Link href="/studio/cases" className={styles.panelAction}>
+                <Link href={studioPath("/studio/cases")} className={styles.panelAction}>
                   상담·등록에서 보기 →
                 </Link>
               </div>
@@ -512,7 +514,7 @@ export default async function StudioIndexPage({ searchParams }: StudioIndexPageP
                 {view.todayScheduleCount > 0 ? (
                   <span className={styles.panelCount}>{view.todayScheduleCount}건</span>
                 ) : null}
-                <Link href="/studio/schedule" className={styles.panelAction}>
+                <Link href={studioPath("/studio/schedule")} className={styles.panelAction}>
                   일정 관리에서 보기 →
                 </Link>
               </div>

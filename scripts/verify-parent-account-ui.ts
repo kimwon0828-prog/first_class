@@ -9,7 +9,7 @@
 //   D. 뒤로가기 터치 타깃은 44px 아래로 내려가지 않는다.
 //   E. My 하위 화면은 하단 탭을 유지한다.
 //   F. 하단 여백은 --parent-nav-space 토큰 하나로만 잡는다.
-//   G. /auth/sign-in 은 탭이 없는 진입 화면이고, 카카오가 유일한 primary CTA 다.
+//   G. /auth/sign-in 은 탭이 없는 학부모 전용 진입 화면이고, 카카오가 유일한 primary CTA 다.
 //   H. "조회 실패" 와 "아직 없음" 은 서로 다른 화면이다.
 //   I. 관심수업 빈 화면의 CTA 는 Home 하나다.
 //   J. 계정 화면에 가짜 신호(별점 · 리뷰 수 · 순위 · 추천 점수)를 그리지 않는다.
@@ -183,7 +183,8 @@ check(
 /* 명시적으로 넘어온 returnTo 를 덮어쓰지 않는다. */
 check("G) returnTo 를 덮어쓰지 않는다", signInPage.includes('next={returnTo ?? "/"}'))
 check("G) 외부 주소로는 돌아가지 않는다", read(SIGN_IN_PAGE).includes('!value.startsWith("/") || value.startsWith("//")'))
-check("G) 학원 로그인은 보조 링크로 남는다", signInPage.includes('href="/studio/sign-in"'))
+/* S2: Parent 진입점에서 Studio 흔적을 뺀다. Studio 는 /studio/sign-in 으로만 들어온다. */
+check("G) Parent 로그인에 Studio CTA 가 없다", !signInPage.includes("/studio/sign-in"))
 
 console.log("\n[H] 조회 실패와 빈 상태는 다른 화면이다")
 

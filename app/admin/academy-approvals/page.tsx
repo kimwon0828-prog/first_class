@@ -9,6 +9,7 @@ import { syncOrganizationCoordinatesSafely } from "@/features/organizations/lib/
 import { requireSession } from "@/features/auth/lib/session"
 import { getSupabaseServiceRoleClient } from "@/integrations/supabase/service-role"
 import { getSupabaseServerClient } from "@/integrations/supabase/server"
+import { resolveStudioCrossProductHref } from "@/shared/lib/cross-product-navigation-server"
 
 type SignupRequestRow = {
   id: string
@@ -119,7 +120,8 @@ const requireAdmin = async () => {
   }
 
   if (profile.dbRole !== "admin") {
-    redirect(profile.role === "parent" ? "/classes" : "/studio")
+    /* Studio 계정은 다른 origin 으로 내보낸다. 학부모는 Parent 안에 남는다. */
+    redirect(profile.role === "parent" ? "/classes" : await resolveStudioCrossProductHref("/studio"))
   }
 
   return profile

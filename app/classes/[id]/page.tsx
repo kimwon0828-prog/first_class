@@ -16,6 +16,7 @@ import { resolveStoredMapCoordinates } from "@/features/maps/lib/stored-map-coor
 import { resolveOrganizationAddressLines } from "@/features/organizations/lib/organization-address-contract"
 import { formatClassSubjectDisplayLabel } from "@/shared/lib/subject-master"
 import styles from "./page.module.css"
+import { resolveStudioCrossProductHref } from "@/shared/lib/cross-product-navigation-server"
 
 type ClassDetailPageProps = {
   params: Promise<{
@@ -178,7 +179,7 @@ export default async function ClassDetailPage({ params, searchParams }: ClassDet
 
             {isStudioUser ? (
               <Link
-                href="/studio"
+                href={await resolveStudioCrossProductHref("/studio")}
                 className={styles.iconButton}
                 style={{ width: "auto", padding: "0 12px", fontSize: 13, fontWeight: 700 }}
               >

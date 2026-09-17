@@ -1,6 +1,9 @@
+"use client"
+
 import Image from "next/image"
 import Link from "next/link"
 
+import { useStudioNavigationPath } from "@/features/studio/ui/studio-navigation-provider"
 import styles from "./studio-home-logo.module.css"
 
 type StudioHomeLogoProps = {
@@ -18,9 +21,11 @@ export const StudioHomeLogo = ({
   height = 30,
   priority = false
 }: StudioHomeLogoProps) => {
+  const homeHref = useStudioNavigationPath("/studio")
+
   return (
     <Link
-      href="/studio"
+      href={homeHref}
       aria-label="첫수업 대시보드로 이동"
       className={className ? `${styles.link} ${className}` : styles.link}
     >

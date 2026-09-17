@@ -89,13 +89,6 @@ export const SignInForm = ({ returnTo, showKakaoButton = true, compact = false }
       <button type="submit" disabled={isPending} className={styles.submitButton}>
         {isPending ? "로그인 중..." : "로그인"}
       </button>
-
-      <div style={{ marginTop: 24, textAlign: "center", fontSize: 13, color: "#6b7280" }}>
-        선생님/학원 관리자이신가요?{" "}
-        <Link href="/studio/sign-in" style={{ color: "#2563eb", textDecoration: "none" }}>
-          선생님 로그인
-        </Link>
-      </div>
     </form>
   )
 }

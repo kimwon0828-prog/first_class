@@ -1,3 +1,5 @@
+import { toParentUrl } from "@/shared/config/site-origins"
+
 import type { Metadata } from "next"
 import Image from "next/image"
 import Link from "next/link"
@@ -22,6 +24,7 @@ import { formatClassSubjectDisplayLabel } from "@/shared/lib/subject-master"
 import { formatDistanceLabel } from "@/features/location/lib/search-location"
 
 import styles from "./page.module.css"
+import { getStudioCrossProductHrefResolver } from "@/shared/lib/cross-product-navigation-server"
 
 /*
  * Parent Home.
@@ -42,7 +45,7 @@ export const metadata: Metadata = {
   },
   openGraph: {
     type: "website",
-    url: "https://firstsuup.com/",
+    url: toParentUrl("/"),
     siteName: "첫수업",
     title: "첫수업 | 학원 체험수업 비교·예약",
     description:
@@ -165,19 +168,21 @@ export default async function ParentHomePage({ searchParams }: HomePageProps) {
   }
 
   const { authenticated, isParentUser, isStudioUser } = auth
+  /* Studio 는 다른 origin 이다. 상대 경로로는 그 자리를 가리킬 수 없다. */
+  const studioHref = await getStudioCrossProductHrefResolver()
   const myPageEntryHref = authenticated
     ? isStudioUser
-      ? "/studio"
+      ? studioHref("/studio")
       : "/my"
     : "/auth/sign-in"
   const scheduleEntryHref = authenticated
     ? isStudioUser
-      ? "/studio"
+      ? studioHref("/studio")
       : "/my/schedule"
     : `/auth/sign-in?${new URLSearchParams({ returnTo: "/my/schedule" }).toString()}`
   const recordEntryHref = authenticated
     ? isStudioUser
-      ? "/studio"
+      ? studioHref("/studio")
       : "/record"
     : `/auth/sign-in?${new URLSearchParams({ returnTo: "/record" }).toString()}`
 
@@ -470,7 +475,7 @@ export default async function ParentHomePage({ searchParams }: HomePageProps) {
 
             {authenticated ? (
               isStudioUser ? (
-                <Link href="/studio" className={styles.headerAction} aria-label="스튜디오로 이동">
+                <Link href={studioHref("/studio")} className={styles.headerAction} aria-label="스튜디오로 이동">
                   스튜디오
                 </Link>
               ) : (

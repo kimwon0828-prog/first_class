@@ -2,6 +2,7 @@ import { redirect } from "next/navigation"
 
 import { completeStandardCheckout } from "@/features/billing/actions/complete-standard-checkout"
 import { requireTeacherStudioAccess } from "@/features/studio/lib/require-teacher-studio-access"
+import { resolveStudioNavigationPath } from "@/shared/lib/studio-navigation-server"
 
 export const dynamic = "force-dynamic"
 
@@ -30,5 +31,7 @@ export default async function StudioBillingCallbackRoute({
   const outcome =
     result.status === "activated" ? "activated" : result.status === "pending" ? "pending" : "failed"
 
-  redirect(`/studio/billing?billing=${outcome}`)
+  /* query 는 path helper 에 넣지 않는다. 경로만 옮기고 결과는 따로 붙인다. */
+  const billingPath = await resolveStudioNavigationPath("/studio/billing")
+  redirect(`${billingPath}?${new URLSearchParams({ billing: outcome }).toString()}`)
 }

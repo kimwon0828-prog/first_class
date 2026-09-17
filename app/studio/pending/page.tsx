@@ -7,6 +7,9 @@ import { StudioHomeLogo } from "@/features/studio/ui/studio-home-logo"
 import { StudioSignUpForm } from "@/features/studio/ui/studio-sign-up-form"
 import { getSupabaseServerClient } from "@/integrations/supabase/server"
 import { formatAdministrativeRegionLabel } from "@/features/location/lib/region-selection"
+import { getParentCrossProductHref } from "@/shared/config/cross-product-navigation"
+import { getRequestHostname } from "@/shared/lib/request-host"
+import { getStudioNavigationPathResolver } from "@/shared/lib/studio-navigation-server"
 
 type SignupRequestRow = {
   id: string
@@ -30,15 +33,16 @@ type SignupRequestRow = {
 }
 
 export default async function StudioPendingPage() {
+  const studioPath = await getStudioNavigationPathResolver()
   const session = await getSession()
   
   if (!session) {
-    redirect("/studio/sign-in")
+    redirect(studioPath("/studio/sign-in"))
   }
 
   const profile = await getMyProfile()
   if (profile?.role === "academy" || profile?.role === "admin") {
-    redirect("/studio/applications")
+    redirect(studioPath("/studio/applications"))
   }
 
   const supabase = await getSupabaseServerClient()
@@ -73,7 +77,8 @@ export default async function StudioPendingPage() {
     .maybeSingle()
   
   if (!signupRequest && profile?.role === "parent") {
-    redirect("/classes")
+    /* 학부모 세션은 Parent origin 으로 내보낸다. 같은 host 로 보내면 되돌아온다. */
+    redirect(getParentCrossProductHref({ pathname: "/classes", hostname: await getRequestHostname() }))
   }
 
   const request = (signupRequest as SignupRequestRow | null) ?? null
@@ -175,7 +180,7 @@ export default async function StudioPendingPage() {
               Studio 사용 권한과 세션 종료 권한을 묶지 않는다. */}
           <div style={{ marginTop: 24 }}>
             <Link
-              href="/studio/sign-out"
+              href={studioPath("/studio/sign-out")}
               prefetch={false}
               style={{
                 display: "inline-block",
@@ -224,7 +229,7 @@ export default async function StudioPendingPage() {
               여기서만 쓰던 /api/auth/sign-out 은 존재하지 않는 경로라 404 였고,
               세션이 그대로 남아 승인 대기 화면에 갇혔다. */}
           <Link
-            href="/studio/sign-out"
+            href={studioPath("/studio/sign-out")}
             prefetch={false}
             style={{
               display: "inline-block",

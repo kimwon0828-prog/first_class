@@ -120,7 +120,10 @@ type StudioApplicationTableProps = {
   periodLabel: string
 }
 
+import { useStudioNavigationPathFactory } from "@/features/studio/ui/studio-navigation-provider"
+
 export const StudioApplicationTable = ({ items, periodLabel }: StudioApplicationTableProps) => {
+  const studioPath = useStudioNavigationPathFactory()
   const router = useRouter()
   const searchParams = useSearchParams()
   const initialStatusFilter = useMemo<StudioApplicationFilterKey>(() => {
@@ -209,7 +212,7 @@ export const StudioApplicationTable = ({ items, periodLabel }: StudioApplication
       return
     }
     setPendingApplicationId(applicationId)
-    router.push(`/studio/applications/${applicationId}`)
+    router.push(studioPath(`/studio/applications/${applicationId}`))
   }
 
   const handleRowKeyDown = (event: KeyboardEvent, applicationId: string) => {

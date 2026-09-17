@@ -3,6 +3,9 @@ import { redirect } from "next/navigation"
 
 import { StudioHomeLogo } from "@/features/studio/ui/studio-home-logo"
 import { getSupabaseServerClient } from "@/integrations/supabase/server"
+import { getParentCrossProductHref } from "@/shared/config/cross-product-navigation"
+import { getRequestHostname } from "@/shared/lib/request-host"
+import { getStudioNavigationPathResolver } from "@/shared/lib/studio-navigation-server"
 
 type StudioAccessPageProps = {
   searchParams?: Promise<{
@@ -57,9 +60,17 @@ export default async function StudioAccessPage({ searchParams }: StudioAccessPag
     data: { user }
   } = await supabase.auth.getUser()
 
+  const studioPath = await getStudioNavigationPathResolver()
+
   if (!user) {
-    redirect("/studio/sign-in")
+    redirect(studioPath("/studio/sign-in"))
   }
+
+  /* Studio host 에서 relative "/classes" 는 Studio 로 되돌아온다. Parent origin 으로 보낸다. */
+  const parentClassesHref = getParentCrossProductHref({
+    pathname: "/classes",
+    hostname: await getRequestHostname()
+  })
 
   return (
     <main
@@ -94,7 +105,7 @@ export default async function StudioAccessPage({ searchParams }: StudioAccessPag
       >
         <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
           <Link
-            href="/classes"
+            href={parentClassesHref}
             style={{
               display: "inline-flex",
               alignItems: "center",
@@ -113,7 +124,7 @@ export default async function StudioAccessPage({ searchParams }: StudioAccessPag
             학부모 화면 보기
           </Link>
           <Link
-            href="/studio/sign-out"
+            href={studioPath("/studio/sign-out")}
             prefetch={false}
             style={{
               display: "inline-flex",
@@ -133,7 +144,7 @@ export default async function StudioAccessPage({ searchParams }: StudioAccessPag
             로그아웃
           </Link>
           <Link
-            href="/studio"
+            href={studioPath("/studio")}
             style={{
               display: "inline-flex",
               alignItems: "center",

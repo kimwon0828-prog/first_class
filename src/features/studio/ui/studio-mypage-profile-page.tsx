@@ -1,5 +1,7 @@
 "use client"
 
+import { toParentUrl } from "@/shared/config/site-origins"
+
 import { useActionState, useEffect, useMemo, useRef, useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
@@ -119,7 +121,6 @@ const initialActionState: SaveAcademyPublicProfileActionState = {
   completedAt: null
 }
 
-const SITE_ORIGIN = "https://firstsuup.com"
 const PROFILE_ASSET_BUCKET = "academy-profile-assets"
 const ASSET_FILENAME_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.(jpg|jpeg|png|webp)$/
@@ -155,7 +156,7 @@ const buildAcademyPublicPageHandle = (slug: string | null | undefined, organizat
   toNullableText(slug) ?? organizationId
 
 const buildAcademyPublicPageUrl = (slug: string | null | undefined, organizationId: string) =>
-  `${SITE_ORIGIN}/academy/${buildAcademyPublicPageHandle(slug, organizationId)}`
+  toParentUrl(`/academy/${buildAcademyPublicPageHandle(slug, organizationId)}`)
 
 const createInitialFormValues = (
   publicProfile: StudioAcademyPublicProfile | null,
@@ -182,6 +183,8 @@ type StudioMypageProfilePageProps = {
   canEditPublicProfile: boolean
 }
 
+import { useStudioNavigationPathFactory } from "@/features/studio/ui/studio-navigation-provider"
+
 export function StudioMypageProfilePage({
   organizationId,
   academyName,
@@ -194,6 +197,7 @@ export function StudioMypageProfilePage({
   publicProfileError,
   canEditPublicProfile
 }: StudioMypageProfilePageProps) {
+  const studioPath = useStudioNavigationPathFactory()
   const router = useRouter()
   const [state, formAction, isPending] = useActionState(saveAcademyPublicProfileAction, initialActionState)
   const disableFormByQueryError = Boolean(publicProfileError)
@@ -621,7 +625,7 @@ export function StudioMypageProfilePage({
     <div className={styles.page}>
       <div className={styles.container}>
         <header className={styles.header}>
-          <Link href="/studio/mypage" prefetch={false} className={styles.backLink}>
+          <Link href={studioPath("/studio/mypage")} prefetch={false} className={styles.backLink}>
             <span aria-hidden="true" className={styles.backIcon}>
               {"←"}
             </span>
@@ -655,7 +659,7 @@ export function StudioMypageProfilePage({
                 학원명, 대표자명, 사업자정보, 주소와 연락처는 관리자 승인 후 변경됩니다.
               </p>
             </div>
-            <Link href="/studio/settings" prefetch={false} className={styles.secondaryLink}>
+            <Link href={studioPath("/studio/settings")} prefetch={false} className={styles.secondaryLink}>
               학원 공식정보 수정
             </Link>
           </div>

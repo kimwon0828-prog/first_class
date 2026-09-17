@@ -16,7 +16,7 @@
 //   B. module-level mutable singleton 이 없다(사용자 간 client 공유 금지).
 //   C. cookie getAll / setAll 계약이 그대로다.
 //   D. createServerClient 호출이 memoized factory 안에 있다.
-//   E. 이번 fix 에서 middleware matcher 를 넓히지 않았다.
+//   E. middleware matcher 의 Parent 범위를 넓히지 않았다.
 //   F. profile_missing 을 학부모로 강제하지 않는다.
 //   G. profile retry · sleep · setTimeout 우회가 남아 있지 않다.
 //
@@ -105,11 +105,23 @@ check(
 
 console.log("\n[E] 이번 fix 의 범위")
 
+/* S3B 에서 Studio host 조건부 항목이 붙었다. Parent 범위는 그대로여야 한다. */
+const matcherBlock = middleware.slice(middleware.indexOf("matcher: ["))
 check(
-  "E) middleware matcher 를 넓히지 않았다",
-  middleware.includes('matcher: ["/my/:path*", "/applications/:path*", "/studio/:path*", "/classes/:id/apply"]'),
-  middleware.split("matcher:")[1]?.split("\n")[0]?.trim()
+  "E) Parent matcher 를 넓히지 않았다",
+  ["/my/:path*", "/applications/:path*", "/studio/:path*", "/classes/:id/apply"].every((source) =>
+    matcherBlock.split("\n").some((row) => row.trim() === `"${source}",`)
+  )
 )
+check(
+  "E) 조건 없는 광역 matcher 가 없다",
+  !matcherBlock.includes('"/:path*"') && !matcherBlock.includes('"/(.*)"')
+)
+/* 넓은 경로는 Studio host 조건이 붙은 항목에만 허용한다. */
+for (const row of matcherBlock.split("\n")) {
+  if (!row.includes("source:")) continue
+  check("E) 넓은 matcher 항목에 host 조건이 붙어 있다", row.includes('has: [{ type: "host"'), row.trim())
+}
 for (const route of ['"/"', '"/notifications', '"/favorites"', '"/record/:path*"', '"/academies"']) {
   check(`E) matcher 에 ${route} 를 넣지 않았다`, !middleware.includes(`matcher: [${route}`) && !middleware.includes(`, ${route}`))
 }

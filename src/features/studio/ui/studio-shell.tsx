@@ -1,12 +1,15 @@
 "use client"
 
 import Link from "next/link"
-import { usePathname } from "next/navigation"
 import type { ReactNode } from "react"
 import { useEffect, useMemo, useState } from "react"
 
 import { getSupabaseBrowserClient } from "@/integrations/supabase/client"
 import { StudioHomeLogo } from "@/features/studio/ui/studio-home-logo"
+import {
+  useStudioInternalPathname,
+  useStudioNavigationPathFactory
+} from "@/features/studio/ui/studio-navigation-provider"
 import styles from "./studio-shell.module.css"
 
 const PROFILE_ASSET_BUCKET = "academy-profile-assets"
@@ -119,7 +122,9 @@ const isActivePath = (pathname: string, href: string) => {
 }
 
 export const StudioShell = ({ children, organizationName, logoImagePath, footer }: StudioShellProps) => {
-  const pathname = usePathname() ?? ""
+  /* 링크는 host 에 맞춰 나가고, 위치 비교는 내부 경로로 한다. */
+  const studioPath = useStudioNavigationPathFactory()
+  const pathname = useStudioInternalPathname()
   const accountLabel = organizationName?.trim() || "학원"
   const accountInitial = accountLabel.slice(0, 1)
   const mypageHref = "/studio/mypage"
@@ -179,7 +184,7 @@ export const StudioShell = ({ children, organizationName, logoImagePath, footer 
             return (
               <Link
                 key={item.href}
-                href={item.href}
+                href={studioPath(item.href)}
                 prefetch={prefetchFor(item.href)}
                 className={`${styles.navItem} ${active ? styles.navItemActive : ""} ${
                   pendingHref === item.href ? styles.navItemPending : ""
@@ -205,7 +210,7 @@ export const StudioShell = ({ children, organizationName, logoImagePath, footer 
         <div className={styles.sidebarBottom}>
           <div className={styles.accountCard}>
             <Link
-              href={mypageHref}
+              href={studioPath(mypageHref)}
               prefetch={prefetchFor(mypageHref)}
               className={`${styles.accountProfileLink} ${
                 isMypageActive ? styles.accountProfileLinkActive : ""

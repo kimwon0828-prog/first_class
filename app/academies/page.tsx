@@ -29,6 +29,7 @@ import {
 
 import styles from "./page.module.css"
 import { ParentBottomNav } from "@/features/classes/ui/parent-bottom-nav"
+import { getStudioCrossProductHrefResolver } from "@/shared/lib/cross-product-navigation-server"
 
 type AcademiesPageProps = {
   searchParams?: Promise<{
@@ -229,10 +230,12 @@ export default async function AcademiesPage({ searchParams }: AcademiesPageProps
   const profile = session ? await getMyProfile() : null
   const isStudioUser = profile?.dbRole === "academy" || profile?.dbRole === "admin"
   // 로그인이 필요한 탭은 다른 학부모 화면과 같은 진입 규칙을 쓴다.
+  /* Studio 는 다른 origin 이다. 상대 경로로는 그 자리를 가리킬 수 없다. */
+  const studioHref = await getStudioCrossProductHrefResolver()
   const parentTabHref = (path: string) =>
     session
       ? isStudioUser
-        ? "/studio"
+        ? studioHref("/studio")
         : path
       : `/auth/sign-in?${new URLSearchParams({ returnTo: path }).toString()}`
 
@@ -304,7 +307,7 @@ export default async function AcademiesPage({ searchParams }: AcademiesPageProps
       <ParentBottomNav
         scheduleHref={parentTabHref("/my/schedule")}
         recordHref={parentTabHref("/record")}
-        myPageHref={session ? (isStudioUser ? "/studio" : "/my") : "/auth/sign-in"}
+        myPageHref={session ? (isStudioUser ? studioHref("/studio") : "/my") : "/auth/sign-in"}
       />
     </main>
   )

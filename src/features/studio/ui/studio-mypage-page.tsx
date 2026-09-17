@@ -1,6 +1,7 @@
 import Link from "next/link"
 
 import { LEGAL_LINKS } from "@/shared/config/legal-links"
+import { getStudioNavigationPathResolver } from "@/shared/lib/studio-navigation-server"
 
 import styles from "./studio-mypage-page.module.css"
 
@@ -32,7 +33,8 @@ type StudioMypagePageProps = {
  * 여기서 값을 직접 고치지 않는다. 실제 수정 화면(프로필 수정 / 학원 설정)으로 보내기만 한다.
  * 정책 문서도 app/(legal)/* 를 그대로 링크한다 — Studio 안에 내용을 복사하지 않는다.
  */
-export function StudioMypagePage({ academyName }: StudioMypagePageProps) {
+export async function StudioMypagePage({ academyName }: StudioMypagePageProps) {
+  const studioPath = await getStudioNavigationPathResolver()
   return (
     <div className={styles.page}>
       <header className={styles.header}>
@@ -52,17 +54,17 @@ export function StudioMypagePage({ academyName }: StudioMypagePageProps) {
           <LinkRow
             title="프로필 수정"
             description="공개 페이지 링크와 학원 소개를 관리합니다."
-            href="/studio/mypage/profile"
+            href={studioPath("/studio/mypage/profile")}
           />
           <LinkRow
             title="학원 설정"
             description="등록된 학원 정보를 확인하고 수정을 요청합니다."
-            href="/studio/settings"
+            href={studioPath("/studio/settings")}
           />
           <LinkRow
             title="구독 및 결제"
             description="현재 플랜과 결제 정보를 확인합니다."
-            href="/studio/billing"
+            href={studioPath("/studio/billing")}
           />
         </div>
       </section>
@@ -89,7 +91,7 @@ export function StudioMypagePage({ academyName }: StudioMypagePageProps) {
         </div>
 
         <div className={styles.list}>
-          <Link href="/studio/sign-out" prefetch={false} className={styles.signOutRow}>
+          <Link href={studioPath("/studio/sign-out")} prefetch={false} className={styles.signOutRow}>
             로그아웃
           </Link>
         </div>

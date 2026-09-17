@@ -15,6 +15,7 @@ import type {
   StudioConsultationPipelineGroup
 } from "@/shared/lib/db/adapter"
 
+import { getStudioNavigationPathResolver } from "@/shared/lib/studio-navigation-server"
 import styles from "./unregistered-students-manager.module.css"
 
 type UnregisteredStudentsManagerProps = {
@@ -195,14 +196,17 @@ const renderLatestConsultationMeta = (item: StudioConsultationPipelineApplicatio
   return meta.join(" · ")
 }
 
-export const UnregisteredStudentsManager = ({
+export const UnregisteredStudentsManager = async ({
   items,
   counselorOptions,
   selectedQuery,
   selectedCounselorId,
   error,
-  basePath = "/studio/unregistered"
+  basePath: internalBasePath = "/studio/unregistered"
 }: UnregisteredStudentsManagerProps) => {
+  const studioPath = await getStudioNavigationPathResolver()
+  /* 필터 form 과 초기화 링크가 모두 이 자리를 가리킨다. host 에 맞춰 한 번만 옮긴다. */
+  const basePath = studioPath(internalBasePath)
   const currentParams = {
     q: selectedQuery,
     counselorId: selectedCounselorId
@@ -277,7 +281,7 @@ export const UnregisteredStudentsManager = ({
           <p className={styles.emptyDescription}>
             검색어나 상담자 필터를 비우거나 신청 관리에서 체험 완료 학생을 확인해 주세요.
           </p>
-          <Link href="/studio/applications" className={styles.emptyButton}>
+          <Link href={studioPath("/studio/applications")} className={styles.emptyButton}>
             신청 관리로 이동
           </Link>
         </section>
@@ -364,7 +368,7 @@ export const UnregisteredStudentsManager = ({
                                   <p className={styles.actionTitle}>{groupMeta.actionTitle}</p>
                                 </div>
                                 <div className={styles.cardActions}>
-                                  <Link href={`/studio/applications/${item.id}`} className={styles.tertiaryButton}>
+                                  <Link href={studioPath(`/studio/applications/${item.id}`)} className={styles.tertiaryButton}>
                                     상세 보기
                                   </Link>
                                 </div>

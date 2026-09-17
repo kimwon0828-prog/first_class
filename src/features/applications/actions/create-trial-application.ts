@@ -6,6 +6,7 @@ import { getMyProfile } from "@/features/auth/lib/profile-sync"
 import { requireSession } from "@/features/auth/lib/session"
 import { getSupabaseServerClient } from "@/integrations/supabase/server"
 import { dataAdapter } from "@/shared/lib/db"
+import { resolveStudioCrossProductHref } from "@/shared/lib/cross-product-navigation-server"
 
 export type CreateTrialApplicationActionState = {
   status: "idle" | "error" | "success"
@@ -115,7 +116,7 @@ export async function createTrialApplicationAction(
     return {
       status: "error",
       message: "학원 계정은 체험수업을 신청할 수 없어요. 수업 관리는 스튜디오에서 진행해주세요.",
-      redirectTo: "/studio"
+      redirectTo: await resolveStudioCrossProductHref("/studio")
     }
   }
 

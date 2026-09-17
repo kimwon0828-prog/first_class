@@ -345,6 +345,8 @@ const renderFieldError = (message: string | undefined) =>
     </p>
   ) : null
 
+import { useStudioNavigationPath } from "@/features/studio/ui/studio-navigation-provider"
+
 export const StudioClassCreateWizard = ({
   organizationId,
   teacherOptions,
@@ -353,6 +355,7 @@ export const StudioClassCreateWizard = ({
   subjectCatalogError,
   createSuccessHref
 }: StudioClassCreateWizardProps) => {
+  const classesHref = useStudioNavigationPath("/studio/classes")
   const router = useRouter()
   const safeTeacherOptions = useMemo(() => (Array.isArray(teacherOptions) ? teacherOptions : []), [teacherOptions])
   const safeSubjectCatalog = useMemo(
@@ -868,7 +871,7 @@ export const StudioClassCreateWizard = ({
       <div className={styles.stickyChrome}>
         <header className={styles.headerCard}>
           <div className={styles.headerLeft}>
-            <Link href="/studio/classes" className={styles.backButton} aria-label="수업 목록으로 돌아가기">
+            <Link href={classesHref} className={styles.backButton} aria-label="수업 목록으로 돌아가기">
               ←
             </Link>
             <div className={styles.titleGroup}>

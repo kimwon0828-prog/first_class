@@ -5,6 +5,7 @@ import { useMemo, useTransition } from "react"
 
 import type { StudioDashboardTeacherFilterOption } from "@/shared/lib/db/adapter"
 import styles from "@/features/studio/ui/studio-teacher-filter.module.css"
+import { useStudioNavigationPathFactory } from "@/features/studio/ui/studio-navigation-provider"
 
 type StudioTeacherFilterProps = {
   options: StudioDashboardTeacherFilterOption[]
@@ -15,8 +16,9 @@ type StudioTeacherFilterProps = {
 export const StudioTeacherFilter = ({
   options,
   selectedTeacherId,
-  basePath = "/studio"
+  basePath: internalBasePath = "/studio"
 }: StudioTeacherFilterProps) => {
+  const studioPath = useStudioNavigationPathFactory()
   const router = useRouter()
   const searchParams = useSearchParams()
   const [isPending, startTransition] = useTransition()
@@ -36,6 +38,7 @@ export const StudioTeacherFilter = ({
 
     const query = params.toString()
     startTransition(() => {
+      const basePath = studioPath(internalBasePath)
       router.push(query ? `${basePath}?${query}` : basePath)
     })
   }
