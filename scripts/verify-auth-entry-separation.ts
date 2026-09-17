@@ -124,7 +124,8 @@ check("D) Studio auth route 를 아직 옮기지 않았다", !exists("app/studio
 check("D) Studio 계정 신청 링크는 남는다", studioSignInForm.includes('useStudioNavigationPath("/studio/sign-up")') && studioSignInForm.includes("href={signUpHref}"))
 
 /* Studio 로 보내던 나머지 진입점은 이번 단계에서 건드리지 않는다. */
-check("D) account-conflict 는 여전히 Studio 로 보낸다", hrefsOf(accountConflictPage).includes("/studio/sign-in"))
+/* S4B 이후 목적지는 host 에 맞춰 계산된다. Studio 로 보낸다는 사실은 그대로다. */
+check("D) account-conflict 는 여전히 Studio 로 보낸다", accountConflictPage.includes('resolveStudioCrossProductHref("/studio/sign-in")'))
 check(
   "D) studio access 가드는 여전히 Studio 로그인으로 보낸다",
   codeOf("src/features/studio/lib/require-teacher-studio-access.ts").includes('redirect(studioPath("/studio/sign-in"))')

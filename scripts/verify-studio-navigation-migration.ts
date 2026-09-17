@@ -241,7 +241,8 @@ check("F) Studio 화면에 하드코딩된 /studio redirect 가 없다", leftove
 check("F) sign-out route 도 helper 를 거친다", codeOf(SIGN_OUT_ROUTE).includes("resolveStudioNavigationPath"))
 check("F) sign-out route 는 같은 origin 안에서 움직인다", codeOf(SIGN_OUT_ROUTE).includes("request.url"))
 
-/* Parent→Studio CTA 는 이번 범위가 아니다. 남아 있어야 한다. */
+/* S4B 에서 Parent→Studio CTA 도 cross-product helper 로 옮겨갔다.
+   자세한 계약은 verify-parent-studio-cta-migration 이 본다. */
 const PARENT_TO_STUDIO = [
   "app/page.tsx",
   "app/classes/page.tsx",
@@ -249,7 +250,9 @@ const PARENT_TO_STUDIO = [
   "app/auth/account-conflict/page.tsx"
 ]
 for (const file of PARENT_TO_STUDIO) {
-  check(`F) ${file} 의 Parent→Studio CTA 는 그대로다 (다음 단계)`, /href="\/studio/.test(read(file)))
+  const code = read(file)
+  check(`F) ${file} 의 Parent→Studio CTA 가 helper 를 거친다`, code.includes("CrossProductHref"))
+  check(`F) ${file} 에 상대 /studio href 가 남아 있지 않다`, !/href="\/studio/.test(code))
 }
 
 console.log("\n[G] revalidatePath 무변경")

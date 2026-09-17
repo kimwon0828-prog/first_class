@@ -20,6 +20,8 @@ export function FavoritesClient(props: {
   scheduleEntryHref: string
   recordEntryHref: string
   myPageEntryHref: string
+  /* Studio 는 다른 origin 이라 서버가 골라서 내려준다. */
+  studioHref: string
 }) {
   const [favoriteIds, setFavoriteIds] = useState<string[]>([])
 
@@ -82,7 +84,7 @@ export function FavoritesClient(props: {
           <section className={styles.stateCard}>
             <p className={styles.stateTitle}>학원 계정은 관심수업 기능을 사용할 수 없어요.</p>
             <p className={styles.stateDesc}>수업 관리는 스튜디오에서 진행해주세요.</p>
-            <Link href="/studio" className={styles.retryLink}>
+            <Link href={props.studioHref} className={styles.retryLink}>
               스튜디오로 이동
             </Link>
           </section>

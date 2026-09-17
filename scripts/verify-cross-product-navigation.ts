@@ -210,13 +210,18 @@ check("범위) Studio 내부 redirect 도 helper 를 거친다", studioGuard.inc
 const CROSS_PRODUCT_ENTRY_POINTS = [
   ...STUDIO_TO_PARENT_SITES,
   PARENT_GUARD,
-  "src/features/studio/ui/studio-navigation-provider.tsx"
+  "src/features/studio/ui/studio-navigation-provider.tsx",
+  /* S4B: Parent 화면은 이 server resolver 를 거친다. 각자 pure helper 를 부르지 않는다. */
+  "src/shared/lib/cross-product-navigation-server.ts"
 ]
+/* pure helper 를 직접 import 하는 곳만 본다. resolver 를 거치는 화면은 그 아래다. */
+const pureHelperImporters = sourceFiles.filter((file) =>
+  /from "(@\/shared\/config|\.)\/cross-product-navigation"/.test(read(file))
+)
 check("범위) cross-product helper 를 쓰는 곳은 정해진 진입점뿐이다", (() => {
-  const callers = sourceFiles.filter((file) => read(file).includes("cross-product-navigation"))
-  return callers.every((file) => CROSS_PRODUCT_ENTRY_POINTS.includes(file)) &&
-    CROSS_PRODUCT_ENTRY_POINTS.every((file) => callers.includes(file))
-})(), sourceFiles.filter((file) => read(file).includes("cross-product-navigation")).join(", "))
+  return pureHelperImporters.every((file) => CROSS_PRODUCT_ENTRY_POINTS.includes(file)) &&
+    CROSS_PRODUCT_ENTRY_POINTS.every((file) => pureHelperImporters.includes(file))
+})(), pureHelperImporters.join(", "))
 
 console.log("\n[G] 기존 contract 를 재사용한다")
 

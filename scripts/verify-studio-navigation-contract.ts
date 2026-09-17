@@ -183,7 +183,8 @@ const routerMoves = countMatches(/router\.(?:push|replace)\(`?\/studio/g)
 const serverRedirects = countMatches(/redirect\(`?"?\/studio/g)
 
 /* 남은 하드코딩은 전부 Parent→Studio CTA 다 — 이건 다음 단계 몫이다. */
-check("inventory) 남은 정적 href 는 Parent→Studio CTA 뿐이다", staticHrefs === 9, `${staticHrefs}개`)
+/* S4B 에서 Parent→Studio CTA 까지 옮겼다. 하드코딩된 /studio href 는 남지 않는다. */
+check("inventory) 하드코딩된 정적 /studio href 가 없다", staticHrefs === 0, `${staticHrefs}개`)
 check("inventory) 동적 href 는 전부 옮겨졌다", templateHrefs === 0, `${templateHrefs}개`)
 check("inventory) router 이동은 전부 옮겨졌다", routerMoves === 0, `${routerMoves}개`)
 /* S3E 에서 require-parent-access 의 redirect("/studio") 하나가 cross-product helper 로 옮겨갔다. */

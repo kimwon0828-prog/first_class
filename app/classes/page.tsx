@@ -22,6 +22,7 @@ import { formatStoredTargetGrades } from "@/shared/constants/grade-options"
 import { clearSearchLocationAction } from "@/features/location/actions/search-location-actions"
 
 import styles from "./page.module.css"
+import { getStudioCrossProductHrefResolver } from "@/shared/lib/cross-product-navigation-server"
 
 /*
  * 수업찾기(Search / Browse).
@@ -134,15 +135,17 @@ export default async function ClassesSearchPage({ searchParams }: ClassesPagePro
   } = context
 
   const { authenticated, isStudioUser } = auth
-  const myPageEntryHref = authenticated ? (isStudioUser ? "/studio" : "/my") : "/auth/sign-in"
+  /* Studio 는 다른 origin 이다. 상대 경로로는 그 자리를 가리킬 수 없다. */
+  const studioHref = await getStudioCrossProductHrefResolver()
+  const myPageEntryHref = authenticated ? (isStudioUser ? studioHref("/studio") : "/my") : "/auth/sign-in"
   const scheduleEntryHref = authenticated
     ? isStudioUser
-      ? "/studio"
+      ? studioHref("/studio")
       : "/my/schedule"
     : `/auth/sign-in?${new URLSearchParams({ returnTo: "/my/schedule" }).toString()}`
   const recordEntryHref = authenticated
     ? isStudioUser
-      ? "/studio"
+      ? studioHref("/studio")
       : "/record"
     : `/auth/sign-in?${new URLSearchParams({ returnTo: "/record" }).toString()}`
 
@@ -245,7 +248,7 @@ export default async function ClassesSearchPage({ searchParams }: ClassesPagePro
 
             {authenticated ? (
               isStudioUser ? (
-                <Link href="/studio" className={styles.headerAction} aria-label="스튜디오로 이동">
+                <Link href={studioHref("/studio")} className={styles.headerAction} aria-label="스튜디오로 이동">
                   스튜디오
                 </Link>
               ) : (

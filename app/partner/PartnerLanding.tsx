@@ -6,6 +6,7 @@ import PartnerInquiryForm from "./PartnerInquiryForm"
 import PartnerLossCalculator from "./PartnerLossCalculator"
 import styles from "./partner.module.css"
 import { COMPANY_ADDRESS, COMPANY_INFO } from "@/shared/config/company-info"
+import { getStudioCrossProductHrefResolver } from "@/shared/lib/cross-product-navigation-server"
 
 const TALLY_URL = "https://tally.so/r/b5XeNL"
 const PARTNER_LINK = "firstsuup.com/c/은행사거리-○○학원"
@@ -181,7 +182,10 @@ const faqItems = [
   }
 ]
 
-export default function PartnerLanding() {
+export default async function PartnerLanding() {
+  /* Studio 는 다른 origin 이다. 상대 경로로는 그 자리를 가리킬 수 없다. */
+  const studioHref = await getStudioCrossProductHrefResolver()
+
   return (
     <main className={styles.page}>
       <header className={styles.hd}>
@@ -209,7 +213,7 @@ export default function PartnerLanding() {
             <Link href="/" className={`${styles.btn} ${styles.btnO} ${styles.btnSm}`}>
               학부모 플랫폼
             </Link>
-            <Link href="/studio/sign-in" className={`${styles.btn} ${styles.btnG} ${styles.btnSm}`}>
+            <Link href={studioHref("/studio/sign-in")} className={`${styles.btn} ${styles.btnG} ${styles.btnSm}`}>
               로그인
             </Link>
           </div>
@@ -618,7 +622,7 @@ export default function PartnerLanding() {
                   <li key={item}>{item}</li>
                 ))}
               </ul>
-              <Link href="/studio/sign-up" className={`${styles.btn} ${styles.btnO} ${styles.pCta}`}>
+              <Link href={studioHref("/studio/sign-up")} className={`${styles.btn} ${styles.btnO} ${styles.pCta}`}>
                 무료로 시작하기
               </Link>
             </div>
@@ -638,7 +642,7 @@ export default function PartnerLanding() {
                   <li key={item}>{item}</li>
                 ))}
               </ul>
-              <Link href="/studio/billing" className={`${styles.btn} ${styles.btnG} ${styles.pCta}`}>
+              <Link href={studioHref("/studio/billing")} className={`${styles.btn} ${styles.btnG} ${styles.pCta}`}>
                 Standard 시작하기
               </Link>
             </div>

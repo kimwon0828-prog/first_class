@@ -9,6 +9,7 @@ import { getPublicClassDetail } from "@/features/classes/queries/get-public-clas
 import { getMyChildren } from "@/features/children/queries/get-my-children"
 import { ApplyForm } from "@/features/applications/ui/apply-form"
 import styles from "./page.module.css"
+import { resolveStudioCrossProductHref } from "@/shared/lib/cross-product-navigation-server"
 
 type ApplyPageProps = {
   params: Promise<{
@@ -144,7 +145,7 @@ export default async function ClassApplyPage({ params }: ApplyPageProps) {
                   <p className={styles.dangerText}>
                     학원 계정은 체험수업을 신청할 수 없어요. 수업 관리는 스튜디오에서 진행해주세요.
                   </p>
-                  <Link href="/studio" className={styles.link}>
+                  <Link href={await resolveStudioCrossProductHref("/studio")} className={styles.link}>
                     스튜디오로 이동
                   </Link>
                 </section>
