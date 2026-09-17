@@ -3,6 +3,8 @@
 import { redirect } from "next/navigation"
 
 import { resolveCurrentAuth } from "@/features/auth/lib/current-auth"
+import { getStudioCrossProductHref } from "@/shared/config/cross-product-navigation"
+import { getRequestHostname } from "@/shared/lib/request-host"
 
 type RequireParentAccessOptions = {
   returnTo: string
@@ -101,7 +103,8 @@ export const requireParentAccess = async ({ returnTo }: RequireParentAccessOptio
   }
 
   if (state.status === "role_mismatch") {
-    redirect("/studio")
+    /* Studio 계정은 Studio origin 으로 내보낸다. Parent host 에 붙잡아 두지 않는다. */
+    redirect(getStudioCrossProductHref({ internalPath: "/studio", hostname: await getRequestHostname() }))
   }
 
   return state.profile

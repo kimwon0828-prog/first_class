@@ -6,6 +6,8 @@ import { redirect } from "next/navigation"
 
 import { normalizeProfileRole } from "@/features/auth/lib/profile-sync"
 import { getSupabaseServerClient } from "@/integrations/supabase/server"
+import { getParentCrossProductHref } from "@/shared/config/cross-product-navigation"
+import { getRequestHostname } from "@/shared/lib/request-host"
 
 // Studio 접근 context 는 로그인 운영 멤버(profile)와 organization 만으로 구성한다.
 // 수업 담당 선생님은 classes.teacher_id(teachers.id) 가 canonical source 이며,
@@ -226,7 +228,12 @@ const requireTeacherStudioAccessCached = cache(async (): Promise<TeacherStudioAc
       hasPurposePrefetchHeader,
       redirectReason: "parent_role_redirect_classes"
     })
-    redirect("/classes")
+    /*
+     * ⚠️ Studio host 에서 relative "/classes" 로 보내면 middleware 가 그걸
+     *    다시 /studio/classes 로 rewrite 해서 여기로 돌아온다 — 무한 loop.
+     *    학부모는 Parent origin 으로 내보낸다.
+     */
+    redirect(getParentCrossProductHref({ pathname: "/classes", hostname: await getRequestHostname() }))
   }
 
   if (!allowed) {

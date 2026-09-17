@@ -7,6 +7,8 @@ import { StudioHomeLogo } from "@/features/studio/ui/studio-home-logo"
 import { StudioSignUpForm } from "@/features/studio/ui/studio-sign-up-form"
 import { getSupabaseServerClient } from "@/integrations/supabase/server"
 import { formatAdministrativeRegionLabel } from "@/features/location/lib/region-selection"
+import { getParentCrossProductHref } from "@/shared/config/cross-product-navigation"
+import { getRequestHostname } from "@/shared/lib/request-host"
 
 type SignupRequestRow = {
   id: string
@@ -73,7 +75,8 @@ export default async function StudioPendingPage() {
     .maybeSingle()
   
   if (!signupRequest && profile?.role === "parent") {
-    redirect("/classes")
+    /* 학부모 세션은 Parent origin 으로 내보낸다. 같은 host 로 보내면 되돌아온다. */
+    redirect(getParentCrossProductHref({ pathname: "/classes", hostname: await getRequestHostname() }))
   }
 
   const request = (signupRequest as SignupRequestRow | null) ?? null

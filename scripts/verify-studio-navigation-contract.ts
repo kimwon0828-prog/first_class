@@ -14,12 +14,14 @@
 //   I. middleware rewrite 무변경
 //   J. auth / role / cookie 무변경
 //
-// S3D 는 "runtime navigation 변화 0" 이다. helper 를 만들어 두기만 하고
-// 기존 href · router.push · redirect 는 하나도 바꾸지 않는다.
+// S3D 는 "runtime navigation 변화 0" 이었다. Studio 내부 same-product
+// navigation(href · router.push · redirect)은 아직 그대로다 — S3F 대상이다.
 //
 // 여기에 navigation inventory 도 함께 못박는다. 특히 Studio→Parent 이동은
 // Studio host 에서 relative path 로는 표현할 수 없다(/classes 가 다시 Studio
-// 로 rewrite 된다). 다음 단계가 그 자리를 놓치지 않도록 목록을 고정한다.
+// 로 rewrite 된다). S3E 가 그 6곳을 cross-product helper 로 옮겼고, 자세한
+// 계약은 verify-cross-product-navigation 이 본다. 여기서는 그 자리들이
+// relative path 로 되돌아가지 않는지만 지킨다.
 
 import { existsSync, readFileSync, readdirSync } from "node:fs"
 import { join, resolve } from "node:path"
@@ -175,35 +177,41 @@ const serverRedirects = countMatches(/redirect\(`?"?\/studio/g)
 check("inventory) 정적 href 가 그대로 남아 있다", staticHrefs >= 38, `${staticHrefs}개`)
 check("inventory) 동적 href 가 그대로 남아 있다", templateHrefs >= 4, `${templateHrefs}개`)
 check("inventory) router 이동이 그대로 남아 있다", routerMoves >= 1, `${routerMoves}개`)
-check("inventory) server redirect 가 그대로 남아 있다", serverRedirects >= 16, `${serverRedirects}개`)
+/* S3E 에서 require-parent-access 의 redirect("/studio") 하나가 cross-product helper 로 옮겨갔다. */
+check("inventory) Studio 내부 server redirect 가 그대로 남아 있다", serverRedirects >= 15, `${serverRedirects}개`)
 
 console.log("\n[cross-product] Studio→Parent 는 relative path 로 표현할 수 없다")
 
 /*
  * ⚠️ Studio host 에서 "/classes" 는 Parent 목록이 아니라 Studio classes 로
- *    rewrite 된다. 그래서 아래 자리들은 parent 계정을 Studio 안으로 되돌려
- *    보낸다 — require-teacher-studio-access 의 parent_role_redirect_classes
- *    는 그대로 두면 루프가 된다.
+ *    rewrite 된다. 그래서 아래 자리들이 relative path 로 남아 있으면 parent
+ *    계정을 Studio 안으로 되돌려보낸다 — 루프가 된다.
  *
- *    S3D 는 runtime 을 바꾸지 않으므로 여기서는 목록만 고정한다. 다음 단계가
- *    이 자리들을 toParentUrl 로 옮긴다. 자리가 사라지거나 늘면 여기서 깨진다.
+ *    S3D 가 목록으로 고정했고 S3E 가 cross-product helper 로 옮겼다. 자세한
+ *    계약은 verify-cross-product-navigation 이 본다. 여기서는 이 자리들이
+ *    relative path 로 되돌아가지 않는지만 지킨다.
  */
-const STUDIO_TO_PARENT: Array<[string, string]> = [
-  [STUDIO_ACCESS_GUARD, 'redirect("/classes")'],
-  ["app/studio/sign-in/page.tsx", 'redirect("/classes")'],
-  ["app/studio/sign-up/page.tsx", 'redirect("/classes")'],
-  ["app/studio/pending/page.tsx", 'redirect("/classes")'],
-  ["app/studio/access/page.tsx", 'href="/classes"']
+const STUDIO_TO_PARENT = [
+  STUDIO_ACCESS_GUARD,
+  "app/studio/sign-in/page.tsx",
+  "app/studio/sign-up/page.tsx",
+  "app/studio/pending/page.tsx",
+  "app/studio/access/page.tsx"
 ]
-for (const [file, snippet] of STUDIO_TO_PARENT) {
-  check(`cross) ${file} 에 ${snippet} 가 아직 남아 있다`, read(file).includes(snippet))
+for (const file of STUDIO_TO_PARENT) {
+  const code = codeOf(file)
+  check(`cross) ${file} 가 cross-product helper 를 쓴다`, code.includes("getParentCrossProductHref"))
+  check(`cross) ${file} 에 same-host /classes 가 남아 있지 않다`, !code.includes('redirect("/classes")') && !code.includes('href="/classes"'))
 }
 check(
-  "cross) parent role 은 여전히 /classes 로 보내진다 (다음 단계 대상)",
-  read(STUDIO_ACCESS_GUARD).includes('redirectReason: "parent_role_redirect_classes"')
+  "cross) parent role 판정은 여전히 DB role 로 한다",
+  read(STUDIO_ACCESS_GUARD).includes('redirectReason: "parent_role_redirect_classes"') &&
+    read(STUDIO_ACCESS_GUARD).includes('normalized.dbRole === "parent"')
 )
 /* Parent→Studio 도 같은 이유로 절대 주소가 필요하다. */
-check("cross) require-parent-access 는 아직 /studio 로 보낸다", read("src/features/my/lib/require-parent-access.ts").includes('redirect("/studio")'))
+const parentGuardCode = codeOf("src/features/my/lib/require-parent-access.ts")
+check("cross) require-parent-access 가 cross-product helper 를 쓴다", parentGuardCode.includes("getStudioCrossProductHref"))
+check("cross) same-host /studio redirect 가 남아 있지 않다", !parentGuardCode.includes('redirect("/studio")'))
 
 console.log("\n[G] revalidatePath(\"/studio/...\") 무변경")
 

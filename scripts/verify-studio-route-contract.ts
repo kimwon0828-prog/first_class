@@ -42,6 +42,7 @@ const SUPABASE_MIDDLEWARE = "src/integrations/supabase/middleware.ts"
 const STUDIO_ROUTES = "src/shared/config/studio-routes.ts"
 const HOST_REWRITE = "src/shared/config/studio-host-rewrite.ts"
 const NAVIGATION = "src/shared/config/studio-navigation.ts"
+const CROSS_PRODUCT = "src/shared/config/cross-product-navigation.ts"
 const TOSS_CHECKOUT = "src/features/billing/actions/start-standard-checkout.ts"
 const PARENT_SIGN_IN_PAGE = "app/auth/sign-in/page.tsx"
 const STUDIO_SIGN_IN_FORM = "src/features/studio/ui/studio-sign-in-form.tsx"
@@ -260,13 +261,13 @@ const callers = sourceFiles.filter(
   (file) => file !== STUDIO_ROUTES && /from "(@\/shared\/config\/studio-routes|\.\/studio-routes)"/.test(read(file))
 )
 
-const ALLOWED_CONSUMERS = [HOST_REWRITE, NAVIGATION]
+const ALLOWED_CONSUMERS = [HOST_REWRITE, NAVIGATION, CROSS_PRODUCT]
 check(
   "소비처) studio-routes 는 shared/config routing 모듈만 부른다",
   callers.every((file) => ALLOWED_CONSUMERS.includes(file)),
   callers.join(", ")
 )
-check("소비처) 두 소비처가 모두 살아 있다", ALLOWED_CONSUMERS.every((file) => callers.includes(file)), callers.join(", "))
+check("소비처) 허용된 소비처가 모두 살아 있다", ALLOWED_CONSUMERS.every((file) => callers.includes(file)), callers.join(", "))
 check("소비처) middleware 는 contract 를 직접 부르지 않는다", !read(MIDDLEWARE).includes("studio-routes"))
 check("소비처) studio-routes 는 rewrite/redirect 를 하지 않는다", (() => {
   const code = codeOf(STUDIO_ROUTES)
@@ -276,7 +277,7 @@ check("소비처) studio-routes 는 순수 모듈이다", (() => {
   const code = codeOf(STUDIO_ROUTES)
   return !code.includes("process.env") && !/from "next/.test(code) && !code.includes("server-only")
 })())
-for (const file of [HOST_REWRITE, NAVIGATION]) {
+for (const file of ALLOWED_CONSUMERS) {
   check(`소비처) ${file} 도 순수 모듈이다`, (() => {
     const code = codeOf(file)
     return !code.includes("process.env") && !/from "next/.test(code) && !code.includes("server-only")

@@ -4,6 +4,8 @@ import { getMyProfile } from "@/features/auth/queries/get-my-profile"
 import { getSession } from "@/features/auth/lib/session"
 import { StudioHomeLogo } from "@/features/studio/ui/studio-home-logo"
 import { StudioSignInForm } from "@/features/studio/ui/studio-sign-in-form"
+import { getParentCrossProductHref } from "@/shared/config/cross-product-navigation"
+import { getRequestHostname } from "@/shared/lib/request-host"
 import styles from "./page.module.css"
 
 type StudioSignInPageProps = {
@@ -37,7 +39,8 @@ export default async function StudioSignInPage({ searchParams }: StudioSignInPag
       redirect(returnTo ?? "/studio")
     }
 
-    redirect("/classes")
+    /* 학부모 세션은 Parent origin 으로 내보낸다. 같은 host 로 보내면 되돌아온다. */
+    redirect(getParentCrossProductHref({ pathname: "/classes", hostname: await getRequestHostname() }))
   }
 
   return (

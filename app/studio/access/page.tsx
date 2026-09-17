@@ -3,6 +3,8 @@ import { redirect } from "next/navigation"
 
 import { StudioHomeLogo } from "@/features/studio/ui/studio-home-logo"
 import { getSupabaseServerClient } from "@/integrations/supabase/server"
+import { getParentCrossProductHref } from "@/shared/config/cross-product-navigation"
+import { getRequestHostname } from "@/shared/lib/request-host"
 
 type StudioAccessPageProps = {
   searchParams?: Promise<{
@@ -61,6 +63,12 @@ export default async function StudioAccessPage({ searchParams }: StudioAccessPag
     redirect("/studio/sign-in")
   }
 
+  /* Studio host 에서 relative "/classes" 는 Studio 로 되돌아온다. Parent origin 으로 보낸다. */
+  const parentClassesHref = getParentCrossProductHref({
+    pathname: "/classes",
+    hostname: await getRequestHostname()
+  })
+
   return (
     <main
       style={{
@@ -94,7 +102,7 @@ export default async function StudioAccessPage({ searchParams }: StudioAccessPag
       >
         <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
           <Link
-            href="/classes"
+            href={parentClassesHref}
             style={{
               display: "inline-flex",
               alignItems: "center",
