@@ -35,6 +35,10 @@ type SafeOrganizationRow = {
   bname: string | null
 }
 
+/** 검색 비교는 공백을 접고 소문자로 맞춘 뒤 한다. */
+const normalizeSearchText = (value: string | null | undefined) =>
+  (value ?? "").trim().toLowerCase().replace(/\s+/g, " ")
+
 export type AcademyClassPreview = {
   id: string
   title: string
@@ -48,6 +52,8 @@ export type AcademyClassPreview = {
 
 export type AcademyListItem = {
   id: string
+  /** 검색 대상. 이름 · 지점 · 붙여 쓴 형태 · 지역이 전부 소문자로 들어 있다. */
+  searchHaystack: string[]
   displayName: string
   address: string | null
   addressDetail: string | null
@@ -61,6 +67,14 @@ export type AcademyListItem = {
 }
 
 type GetAcademiesForListOptions = {
+  /**
+   * 학원명 · 지점명 검색어.
+   *
+   * ⚠️ /classes 검색과 같은 규칙이다 — 학원명만 보면 "중계센터" 같은 지점명으로는
+   *    아무것도 찾을 수 없고, "씨큐브코딩 중계센터" 처럼 붙여 치는 가장 흔한
+   *    검색도 실패한다. 이름 · 지점 · 붙여 쓴 형태 · 지역까지 본다.
+   */
+  query?: string | null
   // Subject Master FK. code -> id 해석은 page orchestration 이 담당한다.
   subjectCategoryId?: string | null
   subjectId?: string | null
@@ -265,6 +279,9 @@ export const getAcademiesForList = async (
       const displayName = [organization.name, organization.branch_name].filter(Boolean).join(" ").trim()
 
       const distanceKm = options?.distanceByOrganizationId?.get(organizationId)
+      const regionLabel = [organization.sido, organization.sigungu, organization.bname]
+        .filter(Boolean)
+        .join(" ")
 
       return {
         id: organizationId,
@@ -277,10 +294,26 @@ export const getAcademiesForList = async (
         subjectTags,
         targetAgeSummary: buildTargetAgeSummary(organizationClasses),
         representativeClasses,
+        searchHaystack: [
+          organization.name,
+          organization.branch_name,
+          organization.branch_name ? `${organization.name} ${organization.branch_name}` : null,
+          regionLabel || null
+        ]
+          .filter((value): value is string => Boolean(value))
+          .map(normalizeSearchText),
         ...(distanceKm === undefined ? {} : { distanceKm })
       } satisfies AcademyListItem
     })
     .filter((item): item is AcademyListItem => Boolean(item))
+    .filter((item) => {
+      const needle = normalizeSearchText(options?.query ?? "")
+      if (!needle) {
+        return true
+      }
+
+      return item.searchHaystack.some((value) => value.includes(needle))
+    })
     .sort((left, right) => {
       // 거리 정보가 넘어온 경우(= 내 주변)에는 거리순이 다른 정렬보다 우선한다.
       if (options?.distanceByOrganizationId) {

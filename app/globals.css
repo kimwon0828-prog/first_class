@@ -41,6 +41,17 @@
   --col: 480px;
   --gutter: 16px;
   --tabbar-h: 60px;
+  /*
+   * 학부모 공통 floating navigation.
+   *
+   * nav 가 화면 위에 떠 있으므로 본문이 그 높이만큼 비워 둬야 한다.
+   * 화면마다 숫자를 따로 적으면 어긋나므로 여기 하나로 둔다.
+   */
+  --parent-nav-h: 64px;
+  --parent-nav-inset: 14px;
+  --parent-nav-space: calc(
+    var(--parent-nav-h) + var(--parent-nav-inset) * 2 + env(safe-area-inset-bottom)
+  );
 }
 
 html,

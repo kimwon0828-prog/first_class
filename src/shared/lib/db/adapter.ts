@@ -177,6 +177,16 @@ export type StudioClassListItem = ClassSubjectReadModel & {
 }
 
 export type OrganizationLocationInfo = {
+  /**
+   * 학원 상세(/academy/[handle])로 가는 route 식별자.
+   *
+   * ⚠️ 새로 조회하는 값이 아니다 — 공개 projection 이 이미 읽어 오던 id 다.
+   *    /academy 는 slug 와 organization id 를 모두 canonical 하게 받는다.
+   * ⚠️ 화면 텍스트로 id 를 보여주지 않는다. 링크 주소로만 쓴다.
+   * ⚠️ optional 이다 — 이 값을 읽지 않는 조회 경로가 있다. 없으면 링크를 만들지
+   *    않는다(깨진 주소를 그리는 것보다 링크가 없는 편이 낫다).
+   */
+  id?: string
   name: string
   branchName: string | null
   address: string | null

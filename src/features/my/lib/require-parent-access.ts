@@ -97,7 +97,7 @@ export const requireParentAccess = async ({ returnTo }: RequireParentAccessOptio
   }
 
   if (state.status === "profile_error") {
-    redirect("/classes")
+    redirect("/")
   }
 
   if (state.status === "role_mismatch") {

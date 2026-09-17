@@ -10,11 +10,11 @@ export type ClassCardProps = {
   thumbnailAlt: string
   title: string
   academyName: string | null
-  subjectLabel: string | null
   secondaryLabel: string | null
+  /** 대상 학년. 수업에 실제로 적혀 있을 때만 넘긴다. */
+  gradeLabel?: string | null
   priceLabel: string
   isFree: boolean
-  statusBadge?: { label: string; tone: "open" | "muted" } | null
   scheduleLabel?: string | null
   distanceLabel?: string | null
   classId: string
@@ -27,8 +27,10 @@ export function ClassCard({
   title,
   academyName,
   secondaryLabel,
+  gradeLabel,
   priceLabel,
   isFree,
+  scheduleLabel,
   distanceLabel,
   classId
 }: ClassCardProps) {
@@ -65,6 +67,9 @@ export function ClassCard({
         <h3 className={styles.title}>{title}</h3>
         {secondaryLabel ? <p className={styles.meta}>{secondaryLabel}</p> : null}
         {academyName ? <p className={styles.academy}>{academyName}</p> : null}
+        {gradeLabel ? <p className={styles.meta}>{gradeLabel}</p> : null}
+        {/* 예약 가능 일정은 실제 class_schedules 가 있을 때만 내려온다. 없으면 이 줄이 없다. */}
+        {scheduleLabel ? <p className={styles.schedule}>{scheduleLabel}</p> : null}
         {distanceLabel ? <p className={styles.distance}>{distanceLabel}</p> : null}
       </div>
     </Link>

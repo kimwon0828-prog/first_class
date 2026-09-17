@@ -16,6 +16,8 @@ import {
 const CURRENT_LOCATION_LABEL = "현재 위치"
 
 const revalidateLocationSurfaces = () => {
+  // Home 이 /classes 에서 떨어져 나온 뒤로 지역 맥락을 따로 읽는다. 같이 비운다.
+  revalidatePath("/")
   revalidatePath("/classes")
   revalidatePath("/academies")
 }

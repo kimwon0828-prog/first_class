@@ -1,0 +1,41 @@
+/* /my 하위 화면(프로필 · 자녀 관리)과 동일한 헤더 규격을 쓴다.
+   목록/카드 스타일은 /classes 의 page.module.css 를 그대로 재사용한다. */
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: grid;
+  grid-template-columns: 44px 1fr 44px;
+  align-items: center;
+  min-height: 64px;
+  padding: calc(var(--s3) + env(safe-area-inset-top)) var(--gutter) var(--s3);
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+
+.backButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  /* 손가락으로 누르는 버튼이다. 44px 아래로 내리지 않는다. */
+  width: 44px;
+  height: 44px;
+  margin-left: -10px;
+  color: var(--text-1);
+  text-decoration: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.title {
+  margin: 0;
+  text-align: center;
+  font-size: 18px;
+  line-height: 1.35;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: var(--text-1);
+}
+
+.list {
+  margin-top: var(--s3);
+}

@@ -9,7 +9,6 @@ import { getPublicClassDetail } from "@/features/classes/queries/get-public-clas
 import { getMyChildren } from "@/features/children/queries/get-my-children"
 import { ApplyForm } from "@/features/applications/ui/apply-form"
 import styles from "./page.module.css"
-import { POC_DISCOVERY_HREF } from "@/shared/config/discovery"
 
 type ApplyPageProps = {
   params: Promise<{
@@ -24,6 +23,10 @@ const formatPrice = (price: number) => {
 
   return `${price.toLocaleString("ko-KR")}원`
 }
+
+/** 체험수업 / 레벨테스트. 신청 전에는 "예약" 이라고 부르지 않는다. */
+const resolveProgramTypeLabel = (programType: string | null | undefined) =>
+  programType === "level_test" ? "레벨테스트" : "체험수업"
 
 const resolveApplyPageTitle = (programType: string | null | undefined) => {
   if (programType === "level_test") {
@@ -115,8 +118,8 @@ export default async function ClassApplyPage({ params }: ApplyPageProps) {
           {error ? (
             <section className={`${styles.card} ${styles.dangerCard}`}>
               <p className={styles.dangerText}>{error}</p>
-              <Link href={POC_DISCOVERY_HREF} className={styles.link}>
-                수업 목록으로 이동
+              <Link href={`/classes/${resolvedParams.id}`} className={styles.link}>
+                수업 상세로 돌아가기
               </Link>
             </section>
           ) : null}
@@ -152,6 +155,7 @@ export default async function ClassApplyPage({ params }: ApplyPageProps) {
                 <p className={styles.summaryName}>{classItem.title}</p>
                 <p className={styles.summaryMeta}>{cardSubtitle}</p>
                 <p className={styles.summaryMeta}>
+                  {resolveProgramTypeLabel(classItem.programType)} ·{" "}
                   {formatClassSubjectDisplayLabel(classItem) || "과목 정보 준비 중"}
                 </p>
                 <p className={styles.summaryMeta}>대상 학년: {formatStoredTargetGrades(classItem.targetAge)}</p>

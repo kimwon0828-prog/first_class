@@ -1,0 +1,669 @@
+.page {
+  min-height: 100vh;
+  width: 100%;
+  overflow-x: hidden;
+  background: var(--bg);
+}
+
+.shell {
+  width: 100%;
+  max-width: var(--col);
+  margin: 0 auto;
+  min-height: 100vh;
+  background: var(--surface);
+  padding-bottom: var(--parent-nav-space);
+}
+
+.content {
+  position: relative;
+  z-index: 1;
+  display: block;
+  margin-top: -22px;
+  border-radius: 22px 22px 0 0;
+  background: var(--surface);
+  padding: 20px 0 var(--s8);
+}
+
+/*
+ * Parent Home 헤더.
+ *
+ * 브랜드 그린 블록 위에 로고 · 현재 맥락(지역/아이) · 검색이 차례로 앉고,
+ * 아래 흰 시트(.content)가 둥근 모서리로 그 위에 겹친다.
+ */
+.header {
+  position: relative;
+  z-index: 0;
+  display: grid;
+  gap: 14px;
+  padding: var(--s4) var(--gutter) 34px;
+  background: var(--brand-500);
+}
+
+.headerTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s3);
+}
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+/* 로고 자산은 초록 단색이다. 초록 배경 위에서는 흰색으로 뒤집어 쓴다. */
+.brandLogo {
+  filter: brightness(0) invert(1);
+}
+
+.headerAction {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 32px;
+  padding: 0 12px;
+  border-radius: var(--r-full);
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  background: transparent;
+  color: #ffffff;
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.headerIconButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  /* 손가락으로 누르는 버튼이다. 44px 아래로 내리지 않는다. */
+  width: 44px;
+  height: 44px;
+  border-radius: var(--r-full);
+  color: #ffffff;
+  text-decoration: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.headerContext {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.childChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+  color: #ffffff;
+  text-decoration: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.childChipLabel {
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.childChip svg {
+  flex: 0 0 auto;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.searchForm {
+  flex: 1;
+  min-width: 0;
+}
+
+.searchPill {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  min-height: 46px;
+  border-radius: var(--r-full);
+  background: #ffffff;
+  padding: 0 18px;
+  color: var(--text-3);
+}
+
+/*
+ * 검색 실행 버튼은 입력 오른쪽에 둔다.
+ *
+ * 아이콘이 장식이 아니라 실제 submit 버튼이다 — 타이핑만으로는 검색되지 않는다.
+ */
+.searchSubmit {
+  order: 2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  /* 손가락으로 누르는 버튼이다. 아이콘은 작아도 누를 자리는 44px 아래로 내리지 않는다. */
+  width: 44px;
+  height: 44px;
+  /* pill 오른쪽 padding 안쪽으로 당겨 아이콘 위치는 그대로 두고 hit area 만 넓힌다. */
+  margin-right: -12px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--r-full);
+  background: transparent;
+  color: var(--text-1);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.searchSubmit svg {
+  width: 20px;
+  height: 20px;
+}
+
+.searchPill svg {
+  flex: 0 0 auto;
+  color: currentColor;
+}
+
+.searchPill input {
+  order: 1;
+}
+
+.searchInput {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: none;
+  background: transparent;
+  padding: 0;
+  font-size: 14px;
+  color: var(--text-1);
+}
+
+.searchInput::placeholder {
+  color: var(--text-3);
+}
+
+.heroSection {
+  padding: 0 var(--gutter);
+}
+
+.filterInlineItem {
+  min-width: 0;
+}
+
+.filterInlineTrigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  border: none;
+  background: transparent;
+  padding: 0;
+  font-size: 14px;
+  line-height: 1.4;
+  font-weight: 600;
+  color: #ffffff;
+  cursor: pointer;
+}
+
+.filterInlineIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 15px;
+  height: 15px;
+  flex: 0 0 auto;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.filterInlineLabel {
+  font-size: 14px;
+  font-weight: 600;
+  color: #ffffff;
+}
+
+.filterInlineChevron {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
+  color: rgba(255, 255, 255, 0.85);
+  transition: transform 0.2s ease;
+}
+
+.filterInlineChevron svg {
+  width: 14px;
+  height: 14px;
+}
+
+.filterInlineChevronOpen {
+  transform: rotate(180deg);
+}
+
+.heroSection {
+  margin-top: 0;
+}
+
+.heroSection + .categorySection {
+  margin-top: 22px;
+}
+
+.heroCard {
+  position: relative;
+  min-height: 220px;
+  border-radius: var(--r-lg);
+  overflow: hidden;
+  background: var(--text-1);
+}
+
+.heroOverlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(270deg, rgba(135, 134, 134, 0.2) 0%, rgba(0, 0, 0, 0.7) 78%);
+}
+
+.heroContent {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: var(--s4);
+  padding: var(--s6);
+  color: var(--surface);
+}
+
+.heroBrand {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  min-height: 36px;
+}
+
+.heroBrand :global(img) {
+  display: block;
+  width: auto;
+  height: 32px;
+}
+
+.heroCopy {
+  margin: 0;
+  font-size: 16px;
+  line-height: 1.6;
+  letter-spacing: -0.02em;
+  color: var(--surface);
+}
+
+.heroCopy strong {
+  font-weight: 800;
+}
+
+.categorySection,
+.sectionBlock {
+  display: grid;
+  gap: var(--s4);
+}
+
+.categorySection,
+.sectionBlock {
+  margin-top: 28px;
+}
+
+.sectionHeading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 var(--gutter);
+}
+
+.sectionHeadingMain {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.sectionHeadingTitle {
+  margin: 0;
+  font-size: 18px;
+  line-height: 1.4;
+  font-weight: 500;
+  letter-spacing: -0.3px;
+  color: #171717;
+}
+
+.sectionHeadingLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  font-size: 13px;
+  font-weight: 500;
+  color: #a3a3a3;
+  text-decoration: none;
+}
+
+.sectionHeadingLink svg {
+  width: 16px;
+  height: 16px;
+  color: #a3a3a3;
+}
+
+.subjectChipRail {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 0 var(--gutter) 4px;
+  scroll-padding-inline: var(--gutter);
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.subjectChipRail::-webkit-scrollbar {
+  display: none;
+}
+
+.subjectChip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  flex: 0 0 auto;
+  min-height: 42px;
+  padding: 0 14px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface);
+  color: var(--text-2);
+  font-size: 14px;
+  line-height: 1;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.subjectChipIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  flex: 0 0 auto;
+  border-radius: 7px;
+  background: var(--brand-50);
+  color: var(--brand-700);
+}
+
+.subjectChipIcon svg {
+  width: 14px;
+  height: 14px;
+}
+
+.pageEmptyState {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--s10) var(--gutter);
+}
+
+.pageEmptyInner {
+  width: 100%;
+  display: grid;
+  justify-items: center;
+  gap: var(--s2);
+  text-align: center;
+}
+
+.pageEmptyTitle {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.5;
+  font-weight: 700;
+  color: var(--text-1);
+}
+
+.pageEmptyDesc {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--text-2);
+}
+
+.resetButton {
+  min-width: 140px;
+  height: 44px;
+  padding: 0 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-1);
+  text-decoration: none;
+}
+
+@media (hover: hover) {
+  .subjectChip:hover {
+    border-color: var(--brand-500);
+    background: var(--brand-50);
+  }}
+
+@media (min-width: 520px) {
+  .shell {
+    border-left: 1px solid var(--border);
+    border-right: 1px solid var(--border);
+  }}
+
+.radiusRail {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 10px;
+  flex-wrap: wrap;
+}
+
+.radiusChip {
+  height: 30px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  background: transparent;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1;
+  color: #ffffff;
+  cursor: pointer;
+}
+
+.radiusChipActive {
+  border-color: #ffffff;
+  background: #ffffff;
+  color: var(--brand-700);
+}
+
+/* 시트 안의 첫 섹션은 시트 자체의 여백을 쓴다. */
+.content > *:first-child {
+  margin-top: 0;
+}
+
+.categorySection + .heroSection {
+  margin-top: 22px;
+}
+
+/*
+ * "지금 확인할 것".
+ *
+ * 한 줄에 한 가지 일만 담는다. 카드에 숫자나 배지를 더 붙이지 않는다 —
+ * 여기 오는 것은 모두 학부모가 실제로 열어 볼 수 있는 것 하나뿐이다.
+ */
+.highlightList {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0 var(--gutter);
+  list-style: none;
+}
+
+.highlightCard {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 64px;
+  padding: 12px 12px 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--surface);
+  text-decoration: none;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.highlightIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  flex: 0 0 auto;
+  border-radius: 10px;
+  background: var(--brand-50);
+  color: var(--brand-700);
+}
+
+.highlightIcon svg {
+  width: 20px;
+  height: 20px;
+}
+
+.highlightBody {
+  display: grid;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+/* 누구의 어떤 체험인지. 화면이 "무엇에 대한 확인" 인지 먼저 말한다. */
+.highlightSubject {
+  font-size: 12px;
+  line-height: 1.4;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--brand-700);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.highlightTitle {
+  min-width: 0;
+  font-size: 15px;
+  line-height: 1.35;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--text-1);
+}
+
+.highlightAction {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  min-width: 56px;
+  min-height: 34px;
+  padding: 0 14px;
+  border-radius: var(--r-full);
+  background: var(--brand-500);
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+/* "다가오는 수업 일정" — 확정된 일정만 온다. */
+.upcomingList {
+  display: grid;
+  gap: 16px;
+  margin: 0;
+  padding: 0 var(--gutter);
+  list-style: none;
+}
+
+.upcomingCard {
+  display: grid;
+  gap: 10px;
+  text-decoration: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.upcomingThumb {
+  position: relative;
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  overflow: hidden;
+  border-radius: 14px;
+  background: var(--surface-sub);
+}
+
+.upcomingThumbEmpty {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, var(--brand-50), var(--surface-sub));
+}
+
+.upcomingBody {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.upcomingTitle {
+  font-size: 15px;
+  line-height: 1.4;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--text-1);
+}
+
+.upcomingAcademy {
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--text-2);
+}
+
+.upcomingSchedule {
+  font-size: 15px;
+  line-height: 1.4;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--brand-500);
+}
+
+/* Home 큐레이션 그리드. 카탈로그가 아니라 몇 장만 놓는 자리다. */
+.homeCardGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px 12px;
+  margin: 0;
+  padding: 0 var(--gutter);
+  list-style: none;
+}
+
+.homeCardGridItem {
+  min-width: 0;
+}

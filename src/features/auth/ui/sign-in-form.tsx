@@ -18,9 +18,16 @@ export const SignInForm = ({ returnTo, showKakaoButton = true, compact = false }
     status: "idle",
     message: ""
   })
-  const signUpHref = returnTo
-    ? `/auth/sign-up?returnTo=${encodeURIComponent(returnTo)}`
-    : "/auth/sign-up"
+  /*
+   * 학부모 가입은 카카오 한 길뿐이다.
+   *
+   * ⚠️ 그래서 "회원가입" 이라고 적지 않는다. 눌러도 이메일 가입 화면은 없고
+   *    카카오 시작 화면으로 갈 뿐이라, 그 라벨은 없는 길을 약속하는 셈이 된다.
+   *    문구를 실제 동작에 맞춘다. 새 가입 흐름을 만들지 않는다.
+   */
+  const kakaoStartHref = returnTo
+    ? `/auth/sign-in?returnTo=${encodeURIComponent(returnTo)}`
+    : "/auth/sign-in"
 
   return (
     <form action={formAction} className={`${styles.form} ${compact ? styles.compactForm : ""}`.trim()}>
@@ -59,7 +66,7 @@ export const SignInForm = ({ returnTo, showKakaoButton = true, compact = false }
         <>
           <KakaoAuthButton
             label="카카오로 로그인"
-            next={returnTo ?? "/classes"}
+            next={returnTo ?? "/"}
             className={styles.kakaoButton}
           />
 
@@ -76,7 +83,7 @@ export const SignInForm = ({ returnTo, showKakaoButton = true, compact = false }
         <span className={styles.separator}>|</span>
         <Link href="/auth/reset-password">비밀번호 찾기</Link>
         <span className={styles.separator}>|</span>
-        <Link href={signUpHref}>회원가입</Link>
+        <Link href={kakaoStartHref}>카카오로 시작하기</Link>
       </div>
 
       <button type="submit" disabled={isPending} className={styles.submitButton}>

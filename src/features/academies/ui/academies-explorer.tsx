@@ -9,6 +9,7 @@ import type { RegionCatalog, RegionSelection } from "@/features/location/lib/reg
 import { LocationFilter, type LocationMode } from "@/features/location/ui/location-filter"
 import { SubjectFilter } from "@/features/subjects/ui/subject-filter"
 import { GradeFilter } from "@/features/grades/ui/grade-filter"
+import { ClassesSearchPill } from "@/features/classes/ui/classes-region-select"
 import { AcademySortFilter } from "./academy-sort-filter"
 import type { AcademySort } from "../lib/academy-sort"
 import type { Subject, SubjectCatalogCategory } from "@/shared/lib/subject-master"
@@ -17,6 +18,8 @@ import styles from "../../../../app/academies/page.module.css"
 
 type AcademiesExplorerProps = {
   academies: AcademyListItem[]
+  /** URL 의 q. 입력값의 출처는 언제나 URL 이다. */
+  initialQuery: string
   locationMode: LocationMode
   locationLabel: string
   radiusKm: SearchRadiusKm
@@ -47,6 +50,7 @@ const buildAcademyLocationLabel = (academy: AcademyListItem) => {
 
 export function AcademiesExplorer({
   academies,
+  initialQuery,
   locationMode,
   locationLabel,
   radiusKm,
@@ -63,6 +67,15 @@ export function AcademiesExplorer({
 }: AcademiesExplorerProps) {
   return (
     <section className={styles.listSection} aria-label="학원 리스트">
+      <ClassesSearchPill
+        initialQuery={initialQuery}
+        placeholder="학원명, 지점명으로 찾기"
+        className={styles.searchForm}
+        pillClassName={styles.searchPill}
+        inputClassName={styles.searchInput}
+        submitButtonClassName={styles.searchSubmit}
+      />
+
       <div className={styles.filterRow}>
         <SubjectFilter
           catalog={subjectCatalog}
@@ -113,8 +126,8 @@ export function AcademiesExplorer({
 
       {academies.length === 0 ? (
         <div className={styles.emptyCard}>
-          <p className={styles.emptyTitle}>조건에 맞는 학원을 아직 준비 중이에요.</p>
-          <p className={styles.emptyDesc}>과목이나 지역을 바꿔 다시 찾아보세요.</p>
+          <p className={styles.emptyTitle}>조건에 맞는 학원이 아직 없어요.</p>
+          <p className={styles.emptyDesc}>검색어나 지역을 바꿔 다시 찾아보세요.</p>
         </div>
       ) : (
         <ul className={styles.academyList}>
@@ -132,18 +145,12 @@ export function AcademiesExplorer({
                           <p className={styles.academyLocation}>{locationLabelText}</p>
                         ) : null
                       })()}
-                      <h2 className={styles.academyName}>{academy.displayName}</h2>
+                      <h2 className={styles.academyName}>
+                        <Link href={`/academy/${academy.id}`} className={styles.academyNameLink}>
+                          {academy.displayName}
+                        </Link>
+                      </h2>
                     </div>
-                    <span className={styles.academyBookmarkPlaceholder} aria-hidden="true">
-                      <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                        <path
-                          d="M7 4h10a1 1 0 0 1 1 1v17l-6-3.6L6 22V5a1 1 0 0 1 1-1Z"
-                          stroke="currentColor"
-                          strokeWidth="1.8"
-                          strokeLinejoin="round"
-                        />
-                      </svg>
-                    </span>
                   </div>
 
                   <div className={styles.subjectTagRow}>
@@ -174,13 +181,19 @@ export function AcademiesExplorer({
                     <p className={styles.academyAddress}>
                       {academy.address ? academy.address : academy.addressDetail ?? "주소 정보를 준비 중이에요."}
                     </p>
-                    {primaryClass ? (
-                      <Link href={`/classes/${primaryClass.id}`} className={styles.primaryAction}>
-                        수업 보기
+                    <div className={styles.academyActionRow}>
+                      {/* 학원이 어떤 곳인지 보는 길. route 는 organization id 를 canonical 하게 받는다. */}
+                      <Link href={`/academy/${academy.id}`} className={styles.secondaryAction}>
+                        학원 정보
                       </Link>
-                    ) : (
-                      <span className={styles.primaryActionDisabled}>수업 준비 중</span>
-                    )}
+                      {primaryClass ? (
+                        <Link href={`/classes/${primaryClass.id}`} className={styles.primaryAction}>
+                          수업 보기
+                        </Link>
+                      ) : (
+                        <span className={styles.primaryActionDisabled}>수업 준비 중</span>
+                      )}
+                    </div>
                   </div>
                 </article>
               </li>

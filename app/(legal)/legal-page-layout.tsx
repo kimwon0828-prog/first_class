@@ -3,7 +3,6 @@ import Link from "next/link"
 import type { ReactNode } from "react"
 
 import styles from "./legal-page.module.css"
-import { POC_DISCOVERY_HREF } from "@/shared/config/discovery"
 import { COMPANY_ADDRESS, COMPANY_INFO } from "@/shared/config/company-info"
 
 type LegalSection = {
@@ -36,7 +35,7 @@ export function LegalPageLayout({
     <main className={styles.page}>
       <div className={styles.shell}>
         <header className={styles.header}>
-          <Link href={POC_DISCOVERY_HREF} className={styles.brandLink} aria-label="첫수업 홈으로 이동">
+          <Link href="/" className={styles.brandLink} aria-label="첫수업 홈으로 이동">
             <Image
               src="/images/first-class-logo.png"
               alt="첫수업"

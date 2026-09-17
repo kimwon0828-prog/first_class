@@ -28,10 +28,11 @@ import {
 } from "@/shared/constants/grade-options"
 
 import styles from "./page.module.css"
-import { POC_DISCOVERY_HREF } from "@/shared/config/discovery"
+import { ParentBottomNav } from "@/features/classes/ui/parent-bottom-nav"
 
 type AcademiesPageProps = {
   searchParams?: Promise<{
+    q?: string
     subjectCategory?: string
     subject?: string
     // legacy academy-area query. 필터로 쓰지 않고 canonical URL 에서 제거만 한다.
@@ -60,6 +61,7 @@ const decodeQueryValue = (value: string | null | undefined) => {
 // /academies 는 streaming fallback(loading.tsx) 이 없어 redirect() 가 실제 307 을 보낸다.
 // Location 헤더는 non-ASCII 를 담지 못하므로 query 값을 전부 percent-encode 한다.
 const buildAcademiesHref = (params: {
+  q?: string | null
   subjectCategory?: string | null
   subject?: string | null
   grade?: string | null
@@ -70,6 +72,7 @@ const buildAcademiesHref = (params: {
   bname?: string | null
 }) => {
   const parts: string[] = []
+  if (params.q) parts.push(`q=${encodeURIComponent(params.q)}`)
   if (params.subjectCategory) {
     parts.push(`subjectCategory=${encodeURIComponent(params.subjectCategory)}`)
   }
@@ -88,6 +91,10 @@ export default async function AcademiesPage({ searchParams }: AcademiesPageProps
   // legacy academy-area query 는 더 이상 필터가 아니다. 발견되면 canonical URL 에서 제거만 한다.
   const hasLegacyRegionQuery =
     typeof resolvedSearchParams?.region === "string" && resolvedSearchParams.region.trim().length > 0
+  const selectedQuery =
+    typeof resolvedSearchParams?.q === "string" && resolvedSearchParams.q.trim().length > 0
+      ? resolvedSearchParams.q.trim()
+      : null
   const rawGrade =
     typeof resolvedSearchParams?.grade === "string" && resolvedSearchParams.grade.trim().length > 0
       ? resolvedSearchParams.grade.trim()
@@ -147,6 +154,7 @@ export default async function AcademiesPage({ searchParams }: AcademiesPageProps
   ) {
     redirect(
       buildAcademiesHref({
+        q: selectedQuery,
         subjectCategory: selectedSubjectCategory?.code ?? null,
         subject: selectedSubject?.code ?? null,
         grade: selectedGrade,
@@ -189,6 +197,7 @@ export default async function AcademiesPage({ searchParams }: AcademiesPageProps
     locationLookupFailed
       ? Promise.resolve([])
       : getAcademiesForList({
+          query: selectedQuery,
           subjectCategoryId: selectedSubjectCategory?.id ?? null,
           subjectId: selectedSubject?.id ?? null,
           grade: selectedGrade,
@@ -218,16 +227,14 @@ export default async function AcademiesPage({ searchParams }: AcademiesPageProps
       ? `현재 위치 · ${radiusKm}km`
       : "전체"
   const profile = session ? await getMyProfile() : null
-  const isParentUser = profile?.role === "parent"
   const isStudioUser = profile?.dbRole === "academy" || profile?.dbRole === "admin"
-  const myApplicationsHref = "/my/applications"
-  const myApplicationsEntryHref = session
-    ? isParentUser
-      ? myApplicationsHref
-      : isStudioUser
+  // 로그인이 필요한 탭은 다른 학부모 화면과 같은 진입 규칙을 쓴다.
+  const parentTabHref = (path: string) =>
+    session
+      ? isStudioUser
         ? "/studio"
-        : myApplicationsHref
-    : `/auth/sign-in?${new URLSearchParams({ returnTo: myApplicationsHref }).toString()}`
+        : path
+      : `/auth/sign-in?${new URLSearchParams({ returnTo: path }).toString()}`
 
   return (
     <main className={styles.page}>
@@ -277,6 +284,7 @@ export default async function AcademiesPage({ searchParams }: AcademiesPageProps
 
         <AcademiesExplorer
           academies={academies}
+          initialQuery={selectedQuery ?? ""}
           locationMode={locationMode}
           locationLabel={locationFilterLabel}
           radiusKm={radiusKm}
@@ -293,56 +301,11 @@ export default async function AcademiesPage({ searchParams }: AcademiesPageProps
         />
       </div>
 
-      <nav className={styles.bottomNav} aria-label="하단 탭">
-        <Link href={POC_DISCOVERY_HREF} className={styles.navItem}>
-          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-            <path
-              d="M3 10.5L12 3l9 7.5V21a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1V10.5Z"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
-          <span>홈</span>
-        </Link>
-        <Link href="/academies" className={`${styles.navItem} ${styles.navItemActive}`}>
-          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-            <path
-              d="M12 21s-6-5.47-6-10a6 6 0 1 1 12 0c0 4.53-6 10-6 10Z"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-            <circle cx="12" cy="11" r="2.5" stroke="currentColor" strokeWidth="2" />
-          </svg>
-          <span>학원찾기</span>
-        </Link>
-        <Link href="/favorites" className={styles.navItem}>
-          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-            <path
-              d="M7 4h10a1 1 0 0 1 1 1v17l-6-3.6L6 22V5a1 1 0 0 1 1-1Z"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinejoin="round"
-            />
-          </svg>
-          <span>관심수업</span>
-        </Link>
-        <Link href={myApplicationsEntryHref} className={styles.navItem}>
-          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-            <path
-              d="M9 6h11M9 12h11M9 18h11M5 6h.01M5 12h.01M5 18h.01"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
-          <span>내 신청</span>
-        </Link>
-      </nav>
+      <ParentBottomNav
+        scheduleHref={parentTabHref("/my/schedule")}
+        recordHref={parentTabHref("/record")}
+        myPageHref={session ? (isStudioUser ? "/studio" : "/my") : "/auth/sign-in"}
+      />
     </main>
   )
 }

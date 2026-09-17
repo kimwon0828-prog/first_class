@@ -12,7 +12,7 @@
   margin: 0 auto;
   min-height: 100dvh;
   background: var(--surface);
-  padding-bottom: calc(var(--tabbar-h) + var(--s8) + env(safe-area-inset-bottom));
+  padding-bottom: var(--parent-nav-space);
 }
 
 .shell * {
@@ -52,37 +52,8 @@
 
 .content {
   display: grid;
-  gap: var(--s8);
-  padding: var(--s5) var(--gutter) var(--s8);
-}
-
-.card {
-  border: 1px solid var(--border);
-  border-radius: var(--r-md);
-  background: var(--surface);
-  padding: var(--s5);
-}
-
-.dangerCard {
-  border-color: var(--danger);
-  background: var(--surface);
-}
-
-.dangerText {
-  margin: 0 0 var(--s3);
-  color: var(--danger);
-  font-size: 14px;
-  line-height: 1.6;
-}
-
-.link {
-  display: inline-flex;
-  align-items: center;
-  min-height: 36px;
-  color: var(--brand-700);
-  font-size: 14px;
-  font-weight: 700;
-  text-decoration: none;
+  gap: 22px;
+  padding: 18px 0 var(--s8);
 }
 
 .emptyState {
@@ -132,58 +103,6 @@
   text-decoration: none;
 }
 
-.bottomNav {
-  position: fixed;
-  bottom: 0;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 50;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  width: 100%;
-  max-width: var(--col);
-  min-height: var(--tabbar-h);
-  background: var(--surface);
-  border-top: 1px solid var(--border);
-  padding: var(--s3) var(--gutter) calc(var(--s3) + env(safe-area-inset-bottom));
-}
-
-.navItem {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  text-decoration: none;
-  color: var(--text-3);
-  font-size: 11px;
-  -webkit-tap-highlight-color: transparent;
-}
-
-.navItem svg {
-  width: 22px;
-  height: 22px;
-}
-
-.navItemActive {
-  color: var(--brand-700);
-}
-
-.navItemActive svg {
-  color: var(--brand-700);
-}
-
-@media (min-width: 520px) {
-  .shell {
-    border-left: 1px solid var(--border);
-    border-right: 1px solid var(--border);
-  }
-}
-
-
-/* 자녀 전환. Global Child Context 가 생기면 이 자리를 그대로 대체한다. */
 .childBar {
   display: flex;
   align-items: center;
@@ -240,20 +159,94 @@
   flex-direction: column;
   gap: 2px;
   margin: 0 var(--gutter) var(--s2);
-  padding: var(--s3) var(--s4);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  background: var(--surface);
+  /* 손가락으로 누르는 자리다. */
+  min-height: 44px;
+  padding: 14px 16px;
+  border: 1px solid var(--brand-100);
+  border-radius: 14px;
+  background: var(--brand-50);
   text-decoration: none;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .profileCtaLabel {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--text);
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--brand-700);
 }
 
 .profileCtaHint {
-  font-size: 12px;
-  color: var(--text-muted);
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--text-2);
+}
+
+/* 교육 프로필 진입점은 경험 카드처럼 보이지 않게 한다. 별도 feature entry 다. */
+.historySection {
+  display: grid;
+  gap: 12px;
+}
+
+.historyHeading {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 0 var(--gutter);
+}
+
+.historyTitle {
+  margin: 0;
+  font-size: 17px;
+  line-height: 1.4;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: var(--text-1);
+}
+
+.historyCount {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-3);
+}
+
+.stateCard {
+  margin: 0 var(--gutter);
+  padding: 28px 20px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  background: var(--surface-sub);
+  text-align: center;
+}
+
+.stateTitle {
+  margin: 0;
+  font-size: 16px;
+  line-height: 1.45;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--text-1);
+}
+
+.stateDesc {
+  margin: 6px 0 0;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--text-2);
+}
+
+.retryLink {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  margin-top: 16px;
+  padding: 0 18px;
+  border-radius: var(--r-full);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-1);
+  font-size: 14px;
+  font-weight: 700;
+  text-decoration: none;
 }

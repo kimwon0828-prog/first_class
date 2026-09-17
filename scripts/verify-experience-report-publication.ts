@@ -710,14 +710,44 @@ check(
 check("version 을 학부모에게 보여 주지 않는다", !parentReportCode.includes("report.version"))
 
 console.log("\n── 28. 리포트가 없으면 안내를 만들지 않는다 ──")
+/*
+ * 여기서 고정하는 것은 문법이 아니라 계약이다.
+ *
+ * reportResult.status 든 reportResult?.status 든 상관없다. 확인해야 하는 것은
+ *   1. "리포트 보기" 로 가는 길이 발행본이 있을 때만 열린다
+ *   2. 조회 실패가 "리포트 없음" 과 다른 분기로 갈라진다
+ * 두 가지다. 정확한 문자열만 찾으면 안전한 리팩터링에도 검증이 깨진다(실제로 겪었다).
+ */
+const reportStatusFlag = (flag: string, status: string) =>
+  new RegExp(`const\\s+${flag}\\s*=\\s*reportResult\\??\\.status === "${status}"`).test(parentDetailCode)
+
+check(
+  "발행본 여부를 발행 조회 결과에서 읽는다",
+  reportStatusFlag("hasPublishedReport", "ok"),
+  parentDetailCode.match(/const hasPublishedReport = .*/)?.[0] ?? "선언을 찾지 못했다"
+)
+
+/* 리포트로 가는 길은 하나뿐이고, 그 하나가 발행본 분기 안에 있어야 한다. */
+const reportCtaPattern = /href=\{`\/record\/\$\{experience\.id\}\/report`\}/g
+const reportCtaCount = parentDetailCode.match(reportCtaPattern)?.length ?? 0
+const reportCtaAt = parentDetailCode.search(reportCtaPattern)
+const publishedBranchAt = parentDetailCode.indexOf("{hasPublishedReport ? (")
+const failedBranchAt = parentDetailCode.indexOf(") : reportLoadFailed ? (")
+
+check("리포트 CTA 는 한 곳에만 있다", reportCtaCount === 1, `${reportCtaCount}곳`)
 check(
   "발행본이 있을 때만 CTA 를 보여 준다",
-  parentDetailPage.includes("hasPublishedReport") &&
-    parentDetailPage.includes('reportResult.status === "ok"')
+  publishedBranchAt >= 0 && reportCtaAt > publishedBranchAt && reportCtaAt < failedBranchAt,
+  `branch=${publishedBranchAt} cta=${reportCtaAt} failed=${failedBranchAt}`
 )
 check(
   "상세도 조회 실패를 구분한다",
-  parentDetailPage.includes("reportLoadFailed") && parentDetailPage.includes('reportResult.status === "error"')
+  reportStatusFlag("reportLoadFailed", "error") && failedBranchAt > publishedBranchAt,
+  parentDetailCode.match(/const reportLoadFailed = .*/)?.[0] ?? "선언을 찾지 못했다"
+)
+check(
+  "조회 실패를 '리포트 없음' 으로 접지 않는다",
+  parentDetailCode.includes("리포트 정보를 불러오지 못했어요.")
 )
 check(
   "빈 placeholder 카드를 만들지 않는다",

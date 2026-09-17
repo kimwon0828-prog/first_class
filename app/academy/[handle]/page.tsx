@@ -207,7 +207,7 @@ export default async function AcademyPage({ params }: AcademyPageProps) {
             </div>
           ) : (
             <div className={styles.emptyCard}>
-              <strong className={styles.emptyTitle}>현재 공개 중인 수업이 없습니다.</strong>
+              <strong className={styles.emptyTitle}>현재 신청 가능한 첫수업이 없어요.</strong>
               <p className={styles.emptyDescription}>운영 중인 수업이 열리면 이 영역에 가장 먼저 표시됩니다.</p>
             </div>
           )}

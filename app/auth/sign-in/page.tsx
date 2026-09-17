@@ -36,14 +36,14 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
     if (profile) {
       redirect(returnTo ?? resolvePostAuthRedirect(profile.role))
     }
-    redirect(returnTo ?? "/classes")
+    redirect(returnTo ?? "/")
   }
 
   return (
     <main className={styles.page}>
       <div className={styles.shell}>
         <div className={styles.topBar}>
-          <Link href="/classes" className={styles.backButton} aria-label="뒤로가기">
+          <Link href="/" className={styles.backButton} aria-label="뒤로가기">
             <svg
               width="20"
               height="20"
@@ -87,7 +87,7 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
           <div className={styles.ctaBlock}>
             <KakaoAuthButton
               label="카카오로 3초 만에 시작하기"
-              next={returnTo ?? "/classes"}
+              next={returnTo ?? "/"}
               className={styles.kakaoButton}
               icon={
                 <svg

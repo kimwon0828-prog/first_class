@@ -5,12 +5,22 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import type { User } from "@supabase/supabase-js"
 
 import { MyChildrenManager } from "@/features/children/ui/my-children-manager"
+import { ParentBottomNav } from "@/features/classes/ui/parent-bottom-nav"
 import { createSupabaseBrowserClient } from "@/integrations/supabase/client"
 import { getPublicEnv } from "@/shared/config/env"
 import type { ChildProfile } from "@/shared/lib/db/adapter"
 import styles from "../../../../app/my/children/page.module.css"
 
 type LoadState = "loading" | "ready" | "auth_required" | "forbidden" | "error"
+
+// 세션 진단용 문자열은 학부모 화면에 그대로 노출하지 않는다.
+// 다른 auth 디버그 경로와 같은 flag 로만 연다.
+const shouldShowAuthDebug = process.env.NEXT_PUBLIC_DEBUG_AUTH === "1"
+
+const logAuthDebug = (payload: Record<string, unknown>) => {
+  if (!shouldShowAuthDebug) return
+  console.log("MY_CHILDREN_CLIENT_AUTH", payload)
+}
 
 type AuthDebugState = {
   hasSession: boolean
@@ -146,7 +156,7 @@ export const MyChildrenClient = () => {
       const supabase = createSupabaseBrowserClient()
       const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
       const sessionUser = sessionData.session?.user ?? null
-      console.log("MY_CHILDREN_CLIENT_AUTH", {
+      logAuthDebug({
         phase: "session",
         hasSession: Boolean(sessionData.session),
         sessionError: sessionError?.message ?? null,
@@ -159,7 +169,7 @@ export const MyChildrenClient = () => {
       } = await supabase.auth.getUser()
       const resolvedUser = sessionUser ?? userData.user ?? null
 
-      console.log("MY_CHILDREN_CLIENT_AUTH", {
+      logAuthDebug({
         phase: "user",
         hasUser: Boolean(userData.user),
         userError: userError?.message ?? null,
@@ -204,7 +214,7 @@ export const MyChildrenClient = () => {
   useEffect(() => {
     const supabase = createSupabaseBrowserClient()
     const { data: subscription } = supabase.auth.onAuthStateChange((event, session) => {
-      console.log("MY_CHILDREN_CLIENT_AUTH", {
+      logAuthDebug({
         phase: "change",
         event,
         hasSession: Boolean(session),
@@ -251,33 +261,30 @@ export const MyChildrenClient = () => {
     <main className={styles.page}>
       <div className={styles.shell}>
         <header className={styles.header}>
-          <div className={styles.headerRow}>
-            <Link href="/my" aria-label="뒤로가기" className={styles.backButton}>
-              <svg
-                width="20"
-                height="20"
-                viewBox="0 0 24 24"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
-                aria-hidden="true"
-              >
-                <path
-                  d="M15 18l-6-6 6-6"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-            </Link>
-            <div className={styles.headerSpacer} />
-          </div>
-
+          <Link href="/my" aria-label="뒤로가기" className={styles.backButton}>
+            <svg
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+              aria-hidden="true"
+            >
+              <path
+                d="M15 18l-6-6 6-6"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </Link>
           <h1 className={styles.title}>자녀 관리</h1>
-          <p className={styles.subtitle}>자녀 정보를 등록해두면 신청할 때 더 빠르게 불러올 수 있어요.</p>
+          <span aria-hidden="true" />
         </header>
 
         <div className={styles.content}>
+          <p className={styles.subtitle}>자녀 정보를 등록해두면 신청할 때 더 빠르게 불러올 수 있어요.</p>
           {status === "loading" ? (
             <section className={styles.card}>
               <p className={styles.noticeText}>자녀 정보를 불러오는 중이에요...</p>
@@ -287,9 +294,11 @@ export const MyChildrenClient = () => {
           {status === "auth_required" ? (
             <section className={`${styles.card} ${styles.dangerCard}`}>
               <p className={styles.dangerText}>{message}</p>
-              <pre className={styles.dangerText} style={{ whiteSpace: "pre-wrap" }}>
-                {authDebugLines}
-              </pre>
+              {shouldShowAuthDebug ? (
+                <pre className={styles.dangerText} style={{ whiteSpace: "pre-wrap" }}>
+                  {authDebugLines}
+                </pre>
+              ) : null}
               <Link href="/auth/sign-in?returnTo=%2Fmy%2Fchildren" className={styles.link}>
                 다시 로그인하기
               </Link>
@@ -318,41 +327,7 @@ export const MyChildrenClient = () => {
         </div>
       </div>
 
-      <nav className={styles.bottomNav} aria-label="하단 탭">
-        <Link href="/classes" className={styles.navItem}>
-          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-            <path
-              d="M3 9.6 12 4l9 5.6v9.2A1.2 1.2 0 0 1 19.8 20h-4.6v-5.4H8.8V20H4.2A1.2 1.2 0 0 1 3 18.8V9.6Z"
-              stroke="currentColor"
-              strokeWidth="1.8"
-              strokeLinejoin="round"
-            />
-          </svg>
-          <span>홈</span>
-        </Link>
-        <Link href="/favorites" className={styles.navItem}>
-          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-            <path
-              d="m12 20-1.38-1.24C5.76 14.43 3 11.92 3 8.84 3 6.33 4.97 4.4 7.5 4.4c1.54 0 3.02.72 3.95 1.86A5.18 5.18 0 0 1 15.4 4.4C17.93 4.4 19.9 6.33 19.9 8.84c0 3.08-2.76 5.59-7.62 9.92L12 20Z"
-              stroke="currentColor"
-              strokeWidth="1.8"
-              strokeLinejoin="round"
-            />
-          </svg>
-          <span>관심수업</span>
-        </Link>
-        <Link href="/my" className={`${styles.navItem} ${styles.navItemActive}`}>
-          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-            <path
-              d="M12 12.2a3.6 3.6 0 1 0 0-7.2 3.6 3.6 0 0 0 0 7.2Zm-6.8 6.6c0-3.1 3.04-5 6.8-5 3.76 0 6.8 1.9 6.8 5"
-              stroke="currentColor"
-              strokeWidth="1.8"
-              strokeLinecap="round"
-            />
-          </svg>
-          <span>마이</span>
-        </Link>
-      </nav>
+      <ParentBottomNav />
     </main>
   )
 }

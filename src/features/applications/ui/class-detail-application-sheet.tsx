@@ -14,6 +14,10 @@ import {
   getChildGradeLabel,
   getLearnerGradesByGroup
 } from "@/shared/constants/education-taxonomy"
+import {
+  isBookablePublicSlot,
+  isHiddenPublicSlot
+} from "@/features/applications/lib/public-class-slots"
 import type { AvailableScheduleSlot } from "@/shared/lib/db/adapter"
 import { useTrialApplicationForm, type TrialApplicationFormProps } from "./use-trial-application-form"
 import styles from "./class-detail-application-sheet.module.css"
@@ -40,7 +44,6 @@ type GroupedDateSlots = {
 }
 
 const WEEKDAY_SHORT_LABELS = ["일", "월", "화", "수", "목", "금", "토"]
-const HIDDEN_BOOKING_STATUS = "hidden"
 
 const toDateKey = (date: Date) =>
   `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`
@@ -93,15 +96,10 @@ const buildMonthGrid = (monthKey: string) => {
 
 const getDateMonthValue = (dateKey: string) => dateKey.slice(0, 7)
 
-const isHiddenSlot = (slot: AvailableScheduleSlot) => slot.bookingStatus === HIDDEN_BOOKING_STATUS
+// 판정은 상세 화면과 공유한다 — 목록에 보이는데 눌러 보면 없는 상태를 만들지 않는다.
+const isHiddenSlot = (slot: AvailableScheduleSlot) => isHiddenPublicSlot(slot)
 
-const isPastSlot = (slot: AvailableScheduleSlot) => {
-  const time = new Date(slot.startAt).getTime()
-  return Number.isNaN(time) || time <= Date.now()
-}
-
-const isSelectableSlot = (slot: AvailableScheduleSlot) =>
-  !isHiddenSlot(slot) && !slot.isClosed && slot.remainingCount > 0 && !isPastSlot(slot)
+const isSelectableSlot = (slot: AvailableScheduleSlot) => isBookablePublicSlot(slot, Date.now())
 
 const buildGroupedDateSlots = (availableSlots: AvailableScheduleSlot[]) => {
   const grouped = new Map<string, GroupedDateSlots>()

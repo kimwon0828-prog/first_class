@@ -481,7 +481,8 @@ export const ApplyForm = ({
 
       <div className={styles.fixedCta}>
         <button type="submit" disabled={isPending || !canSubmit} className={styles.ctaButton}>
-          {isPending ? "신청 제출 중..." : "신청 완료하기"}
+          {/* 누르기 전에는 "완료"·"확정"이라고 부르지 않는다. 접수되는 것은 신청이다. */}
+          {isPending ? "신청 제출 중..." : "체험 신청하기"}
         </button>
       </div>
     </form>

@@ -12,7 +12,7 @@
   margin: 0 auto;
   min-height: 100dvh;
   background: var(--surface);
-  padding-bottom: var(--s8);
+  padding-bottom: var(--parent-nav-space);
 }
 
 .shell * {
@@ -24,7 +24,7 @@
   top: 0;
   z-index: 5;
   display: grid;
-  grid-template-columns: 32px 1fr 32px;
+  grid-template-columns: 44px 1fr 44px;
   align-items: center;
   min-height: 64px;
   padding: calc(var(--s3) + env(safe-area-inset-top)) var(--gutter) var(--s3);
@@ -36,11 +36,13 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
+  /* 손가락으로 누르는 버튼이다. 44px 아래로 내리지 않는다. */
+  width: 44px;
+  height: 44px;
+  margin-left: -10px;
   color: var(--text-1);
   text-decoration: none;
-  font-size: 20px;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .title {

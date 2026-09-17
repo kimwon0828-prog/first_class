@@ -41,6 +41,10 @@ type MyApplicationRow = {
 export async function cancelMyApplicationAction(
   applicationId: string
 ): Promise<CancelMyApplicationActionResult> {
+  /*
+   * 취소 후에는 "취소됨" 을 바로 확인할 수 있어야 한다.
+   * 그 상태가 보이는 화면은 신청 현황이다 — /record 는 다녀온 경험만 담는다.
+   */
   const parent = await requireParentAccess({ returnTo: "/my/applications" })
 
   if (!applicationId) {
@@ -119,10 +123,17 @@ export async function cancelMyApplicationAction(
     }
   }
 
-  revalidatePath("/my")
-  revalidatePath("/record")
-  // 옛 경로는 /record 로 redirect 되지만, 캐시는 따로 잡혀 있어 함께 비운다.
+  /*
+   * 취소가 실제로 바꾸는 화면만 비운다.
+   *   신청 현황 — 취소됨 으로 옮겨간다
+   *   일정      — 확정이었다면 사라진다
+   *   홈        — 다가오는 수업 미리보기가 줄어든다
+   * /record 는 완료 경험만 담아 취소와 무관하고, /my/actions 는 발행본 기준이라
+   * 취소로 바뀌지 않는다.
+   */
   revalidatePath("/my/applications")
+  revalidatePath("/my/schedule")
+  revalidatePath("/")
 
   if (currentApplication.class_organization_id) {
     await sendStudioNotificationSafely({

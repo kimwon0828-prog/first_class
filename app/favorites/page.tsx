@@ -12,20 +12,33 @@ export default async function FavoritesPage() {
   const isParent = role === "parent"
   const isStudioUser = role === "academy" || role === "admin"
   const favoritesEnabled = !session || profile?.role === "parent"
-  const myApplicationsHref = "/my/applications"
-  const myApplicationsEntryHref = session
+  const scheduleHref = "/my/schedule"
+  const scheduleEntryHref = session
+    ? isStudioUser
+      ? "/studio"
+      : scheduleHref
+    : `/auth/sign-in?${new URLSearchParams({ returnTo: scheduleHref }).toString()}`
+  const recordHref = "/record"
+  const recordEntryHref = session
+    ? isStudioUser
+      ? "/studio"
+      : recordHref
+    : `/auth/sign-in?${new URLSearchParams({ returnTo: recordHref }).toString()}`
+  const myPageEntryHref = session
     ? isParent
-      ? myApplicationsHref
+      ? "/my"
       : isStudioUser
         ? "/studio"
-        : myApplicationsHref
-    : `/auth/sign-in?${new URLSearchParams({ returnTo: myApplicationsHref }).toString()}`
+        : "/my"
+    : "/auth/sign-in"
 
   return (
     <FavoritesClient
       allClasses={data}
       favoritesEnabled={favoritesEnabled}
-      myApplicationsEntryHref={myApplicationsEntryHref}
+      scheduleEntryHref={scheduleEntryHref}
+      recordEntryHref={recordEntryHref}
+      myPageEntryHref={myPageEntryHref}
     />
   )
 }

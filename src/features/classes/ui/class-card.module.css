@@ -117,3 +117,12 @@
   font-weight: 600;
   color: var(--brand-700, #2aad38);
 }
+
+.schedule {
+  margin: 2px 0 0;
+  font-size: 12px;
+  line-height: 1.4;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--brand-700);
+}

@@ -12,7 +12,7 @@
   margin: 0 auto;
   min-height: 100dvh;
   background: var(--surface);
-  padding-bottom: calc(var(--tabbar-h) + var(--s8) + env(safe-area-inset-bottom));
+  padding-bottom: var(--parent-nav-space);
 }
 
 .shell * {
@@ -23,7 +23,8 @@
   position: sticky;
   top: 0;
   z-index: 5;
-  display: flex;
+  display: grid;
+  grid-template-columns: 44px 1fr 44px;
   align-items: center;
   min-height: 64px;
   padding: calc(var(--s3) + env(safe-area-inset-top)) var(--gutter) var(--s3);
@@ -31,48 +32,33 @@
   border-bottom: 1px solid var(--border);
 }
 
+.backButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  /* 손가락으로 누르는 버튼이다. 44px 아래로 내리지 않는다. */
+  width: 44px;
+  height: 44px;
+  margin-left: -10px;
+  color: var(--text-1);
+  text-decoration: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
 .title {
   margin: 0;
-  font-size: 28px;
-  line-height: 1.25;
+  text-align: center;
+  font-size: 18px;
+  line-height: 1.35;
   font-weight: 800;
-  letter-spacing: -0.04em;
+  letter-spacing: -0.03em;
   color: var(--text-1);
 }
 
 .content {
   display: grid;
-  gap: var(--s8);
-  padding: var(--s5) var(--gutter) var(--s8);
-}
-
-.card {
-  border: 1px solid var(--border);
-  border-radius: var(--r-md);
-  background: var(--surface);
-  padding: var(--s5);
-}
-
-.dangerCard {
-  border-color: var(--danger);
-  background: var(--surface);
-}
-
-.dangerText {
-  margin: 0 0 var(--s3);
-  color: var(--danger);
-  font-size: 14px;
-  line-height: 1.6;
-}
-
-.link {
-  display: inline-flex;
-  align-items: center;
-  min-height: 36px;
-  color: var(--brand-700);
-  font-size: 14px;
-  font-weight: 700;
-  text-decoration: none;
+  gap: 22px;
+  padding: 18px 0 var(--s8);
 }
 
 .emptyState {
@@ -81,15 +67,6 @@
   justify-content: center;
   min-height: calc(100dvh - 180px - var(--tabbar-h));
   padding: var(--s10) 0;
-}
-
-.emptyInner {
-  display: grid;
-  justify-items: center;
-  gap: var(--s3);
-  width: 100%;
-  max-width: 280px;
-  text-align: center;
 }
 
 .emptyTitle {
@@ -122,52 +99,191 @@
   text-decoration: none;
 }
 
-.bottomNav {
-  position: fixed;
-  bottom: 0;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 50;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  width: 100%;
-  max-width: var(--col);
-  min-height: var(--tabbar-h);
-  background: var(--surface);
-  border-top: 1px solid var(--border);
-  padding: var(--s3) var(--gutter) calc(var(--s3) + env(safe-area-inset-bottom));
+.subcopy {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--text-2);
 }
 
-.navItem {
-  flex: 1;
+.group {
+  display: grid;
+  gap: 10px;
+}
+
+.groupHeading {
   display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 0 var(--gutter);
+}
+
+.groupTitle {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.4;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--text-1);
+}
+
+.groupLink {
+  flex: 0 0 auto;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--brand-700);
   text-decoration: none;
-  color: var(--text-3);
-  font-size: 11px;
+}
+
+.applicationList {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0 var(--gutter);
+  list-style: none;
+}
+
+.applicationCard {
+  display: grid;
+  gap: 3px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--surface);
+  text-decoration: none;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
   -webkit-tap-highlight-color: transparent;
 }
 
-.navItem svg {
-  width: 22px;
+/* 취소된 신청. 목록에는 남지만 예정 일정처럼 보이지 않게 한다. */
+.applicationCardMuted {
+  background: var(--surface-sub);
+  box-shadow: none;
+}
+
+.cardTopRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 3px;
+}
+
+.typeBadge,
+.statusBadge {
+  display: inline-flex;
+  align-items: center;
   height: 22px;
+  padding: 0 8px;
+  border-radius: 7px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
 }
 
-.navItemActive {
+.typeBadge {
+  background: var(--surface-sub);
+  color: var(--text-2);
+}
+
+.statusBadge {
+  background: var(--brand-50);
   color: var(--brand-700);
 }
 
-.navItemActive svg {
+.statusBadgeMuted {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text-3);
+}
+
+.cardTitle {
+  font-size: 15px;
+  line-height: 1.4;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--text-1);
+}
+
+.cardAcademy {
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--text-2);
+}
+
+.cardChild {
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--text-3);
+}
+
+.slotList {
+  display: grid;
+  gap: 2px;
+  margin-top: 6px;
+}
+
+.slotRow {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.slotLabel {
+  flex: 0 0 auto;
+  min-width: 28px;
+  color: var(--text-3);
+}
+
+.slotValue {
+  color: var(--text-2);
+}
+
+.slotValueStrong {
+  font-weight: 700;
+  letter-spacing: -0.02em;
   color: var(--brand-700);
 }
 
-@media (min-width: 520px) {
-  .shell {
-    border-left: 1px solid var(--border);
-    border-right: 1px solid var(--border);
-  }
+.stateCard {
+  margin: 0 var(--gutter);
+  padding: 28px 20px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  background: var(--surface-sub);
+  text-align: center;
+}
+
+.stateTitle {
+  margin: 0;
+  font-size: 16px;
+  line-height: 1.45;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--text-1);
+}
+
+.stateDesc {
+  margin: 6px 0 0;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--text-2);
+}
+
+.retryLink {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  margin-top: 16px;
+  padding: 0 18px;
+  border-radius: var(--r-full);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-1);
+  font-size: 14px;
+  font-weight: 700;
+  text-decoration: none;
 }

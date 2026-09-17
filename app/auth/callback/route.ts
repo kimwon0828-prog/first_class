@@ -5,14 +5,20 @@ import { ensureParentProfile } from "@/features/auth/lib/profile-sync"
 import { resolvePostAuthRedirect } from "@/features/auth/lib/redirect"
 import { getSupabaseServerClient } from "@/integrations/supabase/server"
 
+/*
+ * 돌아갈 자리.
+ *
+ * ⚠️ 외부 주소 차단 규칙은 그대로다 — "/" 로 시작하지 않거나 "//" 로 시작하면
+ *    남의 사이트로 튕길 수 있으므로 버린다. 바뀐 것은 버렸을 때의 기본값뿐이다.
+ */
 const resolveSafeNext = (value: string | null) => {
   const normalized = value?.trim() ?? ""
   if (!normalized) {
-    return "/classes"
+    return "/"
   }
 
   if (!normalized.startsWith("/") || normalized.startsWith("//")) {
-    return "/classes"
+    return "/"
   }
 
   return normalized

@@ -2,16 +2,7 @@
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import type { CSSProperties } from "react"
-import { useEffect, useRef, useState, useTransition } from "react"
-
-type ClassesSearchInputProps = {
-  initialQuery: string
-  label?: string
-  hideLabel?: boolean
-  placeholder?: string
-  className?: string
-  inputClassName?: string
-}
+import { useEffect, useState, useTransition } from "react"
 
 type ClassesSearchPillProps = {
   initialQuery: string
@@ -19,22 +10,15 @@ type ClassesSearchPillProps = {
   className?: string
   pillClassName?: string
   inputClassName?: string
-}
-
-type ClassesSubjectGridItem = {
-  value: string
-  label: string
-  emoji: string
-}
-
-type ClassesSubjectGridProps = {
-  items: readonly ClassesSubjectGridItem[]
-  selectedSubject: string | null
-  gridClassName: string
-  itemClassName: string
-  itemActiveClassName: string
-  emojiClassName: string
-  labelClassName: string
+  /** 돋보기 submit 버튼용 class. */
+  submitButtonClassName?: string
+  /**
+   * 검색 결과를 보여 줄 route.
+   *
+   * Home(/) 은 검색 화면이 아니라서 결과를 /classes 로 넘긴다. 지정하지 않으면
+   * 지금 있는 화면에 그대로 머문다(= 검색 화면 안에서의 재검색).
+   */
+  targetPathname?: string
 }
 
 const inputStyle: CSSProperties = {
@@ -109,132 +93,86 @@ const buildHref = (
   return queryString ? `${pathname}?${queryString}` : pathname
 }
 
-export function ClassesSearchInput({
-  initialQuery,
-  label = "검색",
-  hideLabel = false,
-  placeholder = "과목, 지역으로 검색",
-  className,
-  inputClassName
-}: ClassesSearchInputProps) {
-  const router = useRouter()
-  const pathname = usePathname()
-  const searchParams = useSearchParams()
-  const [value, setValue] = useState(initialQuery)
-  const debounceRef = useRef<number | null>(null)
-  const [isPending, startTransition] = useTransition()
-
-  useEffect(() => {
-    setValue(initialQuery)
-  }, [initialQuery])
-
-  const applyQuery = (nextValue: string) => {
-    const normalized = nextValue.trim()
-    startTransition(() => {
-      router.replace(buildHref(pathname, searchParams, { q: normalized || null }))
-    })
-  }
-
-  const scheduleApply = (nextValue: string) => {
-    if (debounceRef.current) {
-      window.clearTimeout(debounceRef.current)
-    }
-    debounceRef.current = window.setTimeout(() => {
-      applyQuery(nextValue)
-    }, 250)
-  }
-
-  return (
-    <form
-      onSubmit={(event) => {
-        event.preventDefault()
-        applyQuery(value)
-      }}
-      className={className}
-      aria-busy={isPending}
-      style={className ? undefined : { display: "grid", gap: 6 }}
-    >
-      <label style={{ display: "grid", gap: 6 }}>
-        {!hideLabel ? <span style={{ fontSize: 14, color: "#374151" }}>{label}</span> : null}
-        <input
-          value={value}
-          onChange={(event) => {
-            const nextValue = event.target.value
-            setValue(nextValue)
-            scheduleApply(nextValue)
-          }}
-          placeholder={placeholder}
-          inputMode="search"
-          className={inputClassName}
-          style={inputClassName ? undefined : inputStyle}
-        />
-        {isPending ? (
-          <span style={pendingTextStyle} role="status" aria-live="polite">
-            불러오는 중...
-          </span>
-        ) : null}
-      </label>
-    </form>
-  )
-}
-
 export function ClassesSearchPill({
   initialQuery,
   placeholder,
   className,
   pillClassName,
-  inputClassName
+  inputClassName,
+  submitButtonClassName,
+  targetPathname
 }: ClassesSearchPillProps) {
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const [value, setValue] = useState(initialQuery)
-  const debounceRef = useRef<number | null>(null)
   const [isPending, startTransition] = useTransition()
 
+  /*
+   * 적용된 검색어(URL)와 편집 중인 값(input)은 다른 것이다.
+   *
+   * 이 effect 는 밖에서 URL 이 바뀐 경우를 따라간다 — 뒤로/앞으로 가기,
+   * Home 에서 ?q= 를 달고 들어오는 경우. 타이핑은 URL 을 건드리지 않으므로
+   * 여기서 되감기는 일이 없다.
+   */
   useEffect(() => {
     setValue(initialQuery)
   }, [initialQuery])
 
-  const applyQuery = (nextValue: string) => {
-    const normalized = nextValue.trim()
+  /*
+   * 검색은 사용자가 실행할 때만 일어난다.
+   *
+   * ⚠️ 타이핑으로 검색하지 않는다. 글자마다 결과가 바뀌면 학부모는 다 치기도
+   *    전에 "없어요" 를 여러 번 보게 되고, 한 글자 지울 때마다 history 가 흔들린다.
+   *    돋보기 버튼과 Enter 만 검색이다.
+   */
+  const submitQuery = () => {
+    const normalized = value.trim()
+    const destination = targetPathname ?? pathname
+    // q 만 set/delete 한다. 과목 · 지역 · 반경 등 나머지 조건은 그대로 실려 간다.
+    const href = buildHref(destination, searchParams, { q: normalized || null })
     startTransition(() => {
-      router.replace(buildHref(pathname, searchParams, { q: normalized || null }))
-    })
-  }
+      /*
+       * 다른 화면으로 넘어가는 검색은 push 다.
+       *
+       * replace 로 넘기면 Home 이 history 에서 사라져 뒤로 가기가 Home 을
+       * 건너뛴다. 같은 화면 안에서 검색어만 고치는 경우에만 replace 다.
+       */
+      if (destination !== pathname) {
+        router.push(href)
+        return
+      }
 
-  const scheduleApply = (nextValue: string) => {
-    if (debounceRef.current) {
-      window.clearTimeout(debounceRef.current)
-    }
-    debounceRef.current = window.setTimeout(() => {
-      applyQuery(nextValue)
-    }, 250)
+      router.replace(href)
+    })
   }
 
   return (
     <form
       onSubmit={(event) => {
         event.preventDefault()
-        applyQuery(value)
+        submitQuery()
       }}
       className={className}
+      role="search"
       aria-busy={isPending}
     >
       <div className={pillClassName}>
-        <SearchIcon />
         <input
           value={value}
           onChange={(event) => {
-            const nextValue = event.target.value
-            setValue(nextValue)
-            scheduleApply(nextValue)
+            // 입력만 한다. 여기서 router 를 호출하지 않는다.
+            setValue(event.target.value)
           }}
           placeholder={placeholder}
           inputMode="search"
+          enterKeyHint="search"
           className={inputClassName}
           style={inputClassName ? undefined : { ...inputStyle, border: 0, padding: 0 }}
         />
+        <button type="submit" aria-label="검색" className={submitButtonClassName}>
+          <SearchIcon />
+        </button>
       </div>
       {isPending ? (
         <span style={pendingTextStyle} role="status" aria-live="polite">
@@ -242,58 +180,5 @@ export function ClassesSearchPill({
         </span>
       ) : null}
     </form>
-  )
-}
-
-export function ClassesSubjectGrid({
-  items,
-  selectedSubject,
-  gridClassName,
-  itemClassName,
-  itemActiveClassName,
-  emojiClassName,
-  labelClassName
-}: ClassesSubjectGridProps) {
-  const router = useRouter()
-  const pathname = usePathname()
-  const searchParams = useSearchParams()
-  const [isPending, startTransition] = useTransition()
-
-  const handleToggle = (value: string) => {
-    const currentSubject = searchParams.get("subject")
-    startTransition(() => {
-      router.push(
-        buildHref(pathname, searchParams, {
-          subjectCategory: null,
-          subject: currentSubject === value ? null : value
-        })
-      )
-    })
-  }
-
-  return (
-    <div className={gridClassName} aria-busy={isPending}>
-      {items.map((item) => {
-        const isActive = selectedSubject === item.value
-        return (
-          <button
-            key={item.value}
-            type="button"
-            className={`${itemClassName}${isActive ? ` ${itemActiveClassName}` : ""}`}
-            onClick={() => handleToggle(item.value)}
-            disabled={isPending}
-            aria-disabled={isPending}
-          >
-            <span className={emojiClassName}>{item.emoji}</span>
-            <span className={labelClassName}>{item.label}</span>
-          </button>
-        )
-      })}
-      {isPending ? (
-        <p style={{ ...pendingTextStyle, width: "100%", marginBottom: 0 }} role="status" aria-live="polite">
-          불러오는 중...
-        </p>
-      ) : null}
-    </div>
   )
 }

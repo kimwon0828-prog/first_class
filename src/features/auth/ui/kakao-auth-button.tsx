@@ -14,14 +14,19 @@ type KakaoAuthButtonProps = {
   icon?: ReactNode
 }
 
+/*
+ * 로그인 후 돌아갈 자리.
+ *
+ * ⚠️ 외부 주소 차단 규칙은 그대로다. 기본값만 Home(/) 으로 바뀐다.
+ */
 const resolveSafeNext = (value?: string) => {
   const normalized = value?.trim() ?? ""
   if (!normalized) {
-    return "/classes"
+    return "/"
   }
 
   if (!normalized.startsWith("/") || normalized.startsWith("//")) {
-    return "/classes"
+    return "/"
   }
 
   return normalized

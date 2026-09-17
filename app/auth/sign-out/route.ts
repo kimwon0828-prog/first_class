@@ -2,7 +2,13 @@ import { NextResponse } from "next/server"
 
 import { getSupabaseServerClient } from "@/integrations/supabase/server"
 
+const shouldDebugAuth = process.env.NEXT_PUBLIC_DEBUG_AUTH === "1"
+
 const logSignOutRequest = (request: Request, method: "GET" | "POST") => {
+  if (!shouldDebugAuth) {
+    return
+  }
+
   const url = new URL(request.url)
   console.log("[sign-out called]", {
     method,
