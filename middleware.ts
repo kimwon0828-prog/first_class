@@ -1,7 +1,10 @@
 import { NextResponse, type NextRequest } from "next/server"
 
 import { getSupabaseMiddlewareClient } from "@/integrations/supabase/middleware"
-import { resolveStudioRewritePathname } from "@/shared/config/studio-host-rewrite"
+import {
+  resolveStudioCanonicalRedirectUrl,
+  resolveStudioRewritePathname
+} from "@/shared/config/studio-host-rewrite"
 
 /*
  * 요청이 어느 host 로 들어왔나.
@@ -17,15 +20,25 @@ const resolveRequestHostname = (request: NextRequest) =>
   request.headers.get("x-forwarded-host") ?? request.headers.get("host") ?? ""
 
 export async function middleware(request: NextRequest) {
-  const studioRewritePathname = resolveStudioRewritePathname(
-    resolveRequestHostname(request),
-    request.nextUrl.pathname
-  )
+  const hostname = resolveRequestHostname(request)
+  const { pathname, search } = request.nextUrl
+
+  /*
+   * 순서가 계약이다.
+   *
+   * ⚠️ 옛 /studio/... URL 은 먼저 canonical 주소로 돌려보낸다. 여기서 rewrite
+   *    로 먼저 처리해 버리면 /studio prefix 가 주소창에 계속 남는다.
+   */
+  const studioCanonicalRedirectUrl = resolveStudioCanonicalRedirectUrl(hostname, pathname, search)
+  const studioRewritePathname = studioCanonicalRedirectUrl
+    ? null
+    : resolveStudioRewritePathname(hostname, pathname)
 
   if (process.env.NEXT_PUBLIC_DEBUG_AUTH === "1") {
     console.log("[middleware]", {
-      pathname: request.nextUrl.pathname,
-      hostname: resolveRequestHostname(request),
+      pathname,
+      hostname,
+      studioCanonicalRedirectUrl,
       studioRewritePathname,
       hasCookie: Boolean(request.headers.get("cookie"))
     })
@@ -46,13 +59,18 @@ export async function middleware(request: NextRequest) {
    * ⚠️ 순서가 계약이다.
    *    - refresh 가 끝난 뒤에 만들어야 갱신된 request cookie 가 downstream 으로
    *      그대로 넘어간다.
-   *    - 한 번만 만들어야 rewrite 가 유실되지 않는다.
+   *    - 한 번만 만들어야 redirect · rewrite 가 유실되지 않는다. redirect 라고
+   *      해서 여기서 response 를 새로 만들지 않는다 — 그러면 갱신 cookie 를
+   *      버리게 된다.
    *    아래에서 response 를 다시 만들거나 교체하지 않는다.
    */
-  const response = studioRewritePathname
-    ? /* clone() 이라 query · hash · protocol · host 는 그대로 남는다. pathname 만 바꾼다. */
-      NextResponse.rewrite(withPathname(request, studioRewritePathname), { request })
-    : NextResponse.next({ request })
+  const response = studioCanonicalRedirectUrl
+    ? /* 이미 쓰이고 있는 legacy URL 이다. 아직 영구 이전으로 못 박지 않는다. */
+      NextResponse.redirect(studioCanonicalRedirectUrl, LEGACY_REDIRECT_STATUS)
+    : studioRewritePathname
+      ? /* clone() 이라 query · hash · protocol · host 는 그대로 남는다. pathname 만 바꾼다. */
+        NextResponse.rewrite(withPathname(request, studioRewritePathname), { request })
+      : NextResponse.next({ request })
 
   for (const cookie of takePendingCookies()) {
     response.cookies.set(cookie.name, cookie.value, cookie.options)
@@ -60,6 +78,9 @@ export async function middleware(request: NextRequest) {
 
   return response
 }
+
+/* temporary. 308/301 은 rollout 검증 뒤에 따로 결정한다. */
+const LEGACY_REDIRECT_STATUS = 307
 
 const withPathname = (request: NextRequest, pathname: string) => {
   const url = request.nextUrl.clone()

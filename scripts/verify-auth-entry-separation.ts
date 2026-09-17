@@ -177,7 +177,14 @@ check("F) 세션 갱신만 한다", middleware.includes("await supabase.auth.get
 for (const term of ["nextUrl.host", "STUDIO_ORIGIN", "PARENT_ORIGIN"]) {
   check(`F) middleware 에 ${term} 가 없다`, !middleware.includes(term))
 }
-check("F) middleware 는 authz 판단을 하지 않는다", !middleware.includes("redirect"))
+/* S3C: routing canonicalization 을 위한 redirect 는 있다. 권한 판정은 없다. */
+check(
+  "F) middleware 는 authz 판단을 하지 않는다",
+  ["profiles", "role", "organization_id", "requireParentAccess", "requireTeacherStudioAccess"].every(
+    (term) => !middleware.includes(term)
+  )
+)
+check("F) middleware 의 redirect 는 canonical Studio URL 뿐이다", (middleware.match(/NextResponse\.redirect\(/g) ?? []).length === 1)
 
 console.log("\n[G] cookie 계약 무변경")
 

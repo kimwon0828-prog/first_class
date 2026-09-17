@@ -307,7 +307,9 @@ const parentMatcherIsIntact = (code: string) => {
 }
 check("E) Parent matcher 범위가 그대로다", parentMatcherIsIntact(middleware))
 check("E) 세션 갱신만 한다", middleware.includes("await supabase.auth.getClaims()"))
-for (const term of ["NextResponse.redirect", "nextUrl.host"]) {
+/* S3C: canonical redirect 가 생겼다. 경로는 여전히 contract 가 정한다. */
+check("E) redirect 는 canonical Studio URL 하나뿐이다", (middleware.match(/NextResponse\.redirect\(/g) ?? []).length === 1)
+for (const term of ["nextUrl.host"]) {
   check(`E) middleware 에 ${term} 가 없다`, !middleware.includes(term))
 }
 /* 경로 규칙은 S3A contract 한 곳에만 있다. middleware 본문에 다시 적지 않는다. */

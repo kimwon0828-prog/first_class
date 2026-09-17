@@ -11,13 +11,13 @@
 //   F. Parent host "/auth/sign-in" → rewrite 없음
 //   G. 이미 internal 인 /studio/classes → double prefix 없음
 //   H. static · API 는 rewrite 하지 않는다.
-//   I. host 를 auth/role 판정에 쓰지 않는다.
+//   I. host 를 auth/role 판정에 쓰지 않는다 (redirect 는 canonical 정리뿐).
 //
 // [cookie] 이번 단계의 P0.
 //   A. 최종 response 는 middleware 가 한 번 만들고, Supabase cookie 가 거기 적힌다.
 //   B. setAll 은 request cookie 갱신 + 쓸 cookie 수집만 한다.
 //   C. setAll 안에서 NextResponse 를 다시 만들지 않는다.
-//   D. rewrite 이후 response 를 교체하지 않는다.
+//   D. redirect/rewrite 이후 response 를 교체하지 않는다.
 //   E. cookie domain 을 설정하지 않는다.
 //
 // routing 판단은 순수 함수를 실제로 불러서 본다. response/cookie 구조는
@@ -161,7 +161,13 @@ for (const term of AUTHZ_TERMS) {
   check(`routing I) middleware 에 ${term} 가 없다`, !middleware.includes(term))
   check(`routing I) studio-host-rewrite 에 ${term} 가 없다`, !hostRewrite.includes(term))
 }
-check("routing I) middleware 는 redirect 하지 않는다", !middleware.includes("NextResponse.redirect"))
+/* S3C: middleware 는 옛 /studio URL 을 canonical Studio URL 로 돌려보낸다.
+   redirect 는 그 한 가지뿐이고, 권한을 보고 하는 redirect 는 없다. */
+check("routing I) redirect 는 canonical Studio URL 하나뿐이다", (middleware.match(/NextResponse\.redirect\(/g) ?? []).length === 1)
+check(
+  "routing I) redirect 대상은 canonical helper 가 정한다",
+  middleware.includes("NextResponse.redirect(studioCanonicalRedirectUrl, LEGACY_REDIRECT_STATUS)")
+)
 check("routing I) middleware 는 여전히 getClaims 만 부른다", middleware.includes("await supabase.auth.getClaims()"))
 check("routing I) middleware 는 DB 를 조회하지 않는다", !middleware.includes(".from(") && !middleware.includes("service-role"))
 check("routing I) studio-host-rewrite 는 next 를 import 하지 않는다", !/from "next/.test(hostRewrite))
@@ -206,17 +212,17 @@ console.log("\n[cookie C-D] response 를 다시 만들거나 교체하지 않는
 check("cookie C) supabase helper 가 NextResponse 를 만들지 않는다", !supabaseMiddleware.includes("NextResponse."))
 check("cookie C) supabase helper 는 NextResponse 를 값으로 import 하지 않는다", supabaseMiddleware.includes('import type { NextRequest, NextResponse } from "next/server"'))
 check("cookie C) supabase helper 가 response 를 돌려주지 않는다", !/response\s*:/.test(supabaseMiddleware.replace(/MiddlewareSupabaseResult[\s\S]*?\}/, "")))
-check("cookie D) response 는 한 번만 만들어진다", (middleware.match(/NextResponse\.(next|rewrite)\(/g) ?? []).length === 2)
-check("cookie D) response 는 const 다", middleware.includes("const response = studioRewritePathname"))
-check("cookie D) response 를 재할당하지 않는다", !/\bresponse\s*=\s*NextResponse/.test(middleware.replace("const response = studioRewritePathname", "")))
+check("cookie D) response 는 한 번만 만들어진다", (middleware.match(/NextResponse\.(next|rewrite|redirect)\(/g) ?? []).length === 3)
+check("cookie D) response 는 const 다", middleware.includes("const response = studioCanonicalRedirectUrl"))
+check("cookie D) response 를 재할당하지 않는다", !/\bresponse\s*=\s*NextResponse/.test(middleware.replace("const response = studioCanonicalRedirectUrl", "")))
 /* refresh 가 끝난 뒤에 만들어야 갱신된 request cookie 가 downstream 으로 간다. */
 check(
   "cookie D) response 는 getClaims() 뒤에 만들어진다",
-  middleware.indexOf("await supabase.auth.getClaims()") < middleware.indexOf("const response = studioRewritePathname")
+  middleware.indexOf("await supabase.auth.getClaims()") < middleware.indexOf("const response = studioCanonicalRedirectUrl")
 )
 check(
   "cookie D) cookie 적용은 response 생성 뒤다",
-  middleware.indexOf("const response = studioRewritePathname") < middleware.indexOf("takePendingCookies()")
+  middleware.indexOf("const response = studioCanonicalRedirectUrl") < middleware.indexOf("takePendingCookies()")
 )
 
 console.log("\n[cookie E] cookie 계약 무변경")
