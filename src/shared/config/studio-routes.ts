@@ -29,6 +29,36 @@ const STUDIO_AUTH_PATH_PAIRS = [
   ["/studio/sign-out", "/auth/sign-out"]
 ] as const
 
+/**
+ * 두 제품이 같이 쓰는 auth 화면.
+ *
+ * ⚠️ 위의 sign-in / sign-up / sign-out 과 다르다. 그쪽은 Studio 전용 화면이라
+ *    host 마다 다른 route 로 간다. 이쪽은 화면이 하나뿐이라 Studio host 에서도
+ *    경로가 그대로여야 한다 — /studio/auth/find-email 같은 route 는 없다.
+ *
+ *    누가 쓰는 화면인지는 지금도 ?type=academy 가 정한다. 그 구조는 그대로 둔다.
+ */
+export const STUDIO_SHARED_AUTH_PATHS = [
+  "/auth/find-email",
+  "/auth/reset-password",
+  "/auth/recovery",
+  "/auth/update-password"
+] as const
+
+const SHARED_AUTH_PATH_SET = new Set<string>(STUDIO_SHARED_AUTH_PATHS)
+
+/** Studio host 에서도 경로를 바꾸지 않고 그대로 지나가야 하는 화면인가. */
+export const isStudioSharedAuthPath = (pathname: string): boolean => {
+  if (typeof pathname !== "string") {
+    return false
+  }
+
+  const [path] = pathname.split(/[?#]/)
+  const normalized = path.length > 1 && path.endsWith("/") ? path.slice(0, -1) : path
+
+  return SHARED_AUTH_PATH_SET.has(normalized)
+}
+
 const INTERNAL_TO_EXTERNAL = new Map<string, string>(STUDIO_AUTH_PATH_PAIRS)
 const EXTERNAL_TO_INTERNAL = new Map<string, string>(
   STUDIO_AUTH_PATH_PAIRS.map(([internal, external]) => [external, internal])

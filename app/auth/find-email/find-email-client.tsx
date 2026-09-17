@@ -2,6 +2,10 @@
 
 import Link from "next/link"
 import { useState } from "react"
+import {
+  useParentCrossProductHref,
+  useStudioNavigationPath
+} from "@/features/studio/ui/studio-navigation-provider"
 
 type UserType = "parent" | "academy"
 
@@ -20,7 +24,15 @@ export const FindEmailClient = ({ initialUserType }: FindEmailClientProps) => {
     setSubmitted(true)
   }
 
-  const loginHref = userType === "academy" ? "/studio/sign-in" : "/auth/sign-in"
+  /*
+   * 돌아갈 로그인 화면은 host 마다 다르다.
+   *
+   * ⚠️ Studio host 에서 relative "/auth/sign-in" 은 Studio 로그인으로 rewrite
+   *    된다. 학부모를 그쪽으로 보내면 안 되므로 Parent origin 을 쓴다.
+   */
+  const academyLoginHref = useStudioNavigationPath("/studio/sign-in")
+  const parentLoginHref = useParentCrossProductHref("/auth/sign-in")
+  const loginHref = userType === "academy" ? academyLoginHref : parentLoginHref
 
   return (
     <main

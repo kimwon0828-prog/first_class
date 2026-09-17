@@ -5,6 +5,10 @@ import { useRouter } from "next/navigation"
 import { useEffect, useMemo, useState } from "react"
 
 import { getSupabaseBrowserClient } from "@/integrations/supabase/client"
+import {
+  useParentCrossProductHref,
+  useStudioNavigationPath
+} from "@/features/studio/ui/studio-navigation-provider"
 
 type UserType = "parent" | "academy"
 type RecoveryStatus = "idle" | "loading" | "success" | "error"
@@ -15,9 +19,6 @@ type RecoveryConfirmClientProps = {
 
 const INVALID_LINK_MESSAGE = "유효하지 않은 링크입니다. 비밀번호 재설정 메일을 다시 요청해 주세요."
 const EXPIRED_LINK_MESSAGE = "링크가 만료되었거나 이미 사용되었습니다. 비밀번호 재설정 메일을 다시 요청해 주세요."
-
-const getLoginHref = (userType: UserType) =>
-  userType === "academy" ? "/studio/sign-in" : "/auth/sign-in"
 
 const getRetryHref = (userType: UserType) => `/auth/reset-password?type=${userType}`
 
@@ -48,7 +49,15 @@ const resolveLinkErrorMessage = (error: unknown) => {
 
 export const RecoveryConfirmClient = ({ userType }: RecoveryConfirmClientProps) => {
   const router = useRouter()
-  const loginHref = getLoginHref(userType)
+  /*
+   * 돌아갈 로그인 화면은 host 마다 다르다.
+   *
+   * ⚠️ Studio host 에서 relative "/auth/sign-in" 은 Studio 로그인으로 rewrite
+   *    된다. 학부모를 그쪽으로 보내면 안 되므로 Parent origin 을 쓴다.
+   */
+  const academyLoginHref = useStudioNavigationPath("/studio/sign-in")
+  const parentLoginHref = useParentCrossProductHref("/auth/sign-in")
+  const loginHref = userType === "academy" ? academyLoginHref : parentLoginHref
   const retryHref = getRetryHref(userType)
   const continueHref = getContinueHref(userType)
   const [tokenHash, setTokenHash] = useState<string | null>(null)

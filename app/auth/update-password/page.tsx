@@ -5,6 +5,10 @@ import { useSearchParams } from "next/navigation"
 import { Suspense, useEffect, useMemo, useState } from "react"
 
 import { getSupabaseBrowserClient } from "@/integrations/supabase/client"
+import {
+  useParentCrossProductHref,
+  useStudioNavigationPath
+} from "@/features/studio/ui/studio-navigation-provider"
 
 const isValidPassword = (value: string) => value.length >= 8
 const INVALID_LINK_MESSAGE = "유효하지 않거나 만료된 링크입니다. 비밀번호 재설정 메일을 다시 요청해 주세요."
@@ -20,7 +24,15 @@ const logSupabaseError = (label: string, error: unknown) => {
 function UpdatePasswordPageContent() {
   const searchParams = useSearchParams()
   const userType = searchParams.get("type") === "academy" ? "academy" : "parent"
-  const loginHref = userType === "academy" ? "/studio/sign-in" : "/auth/sign-in"
+  /*
+   * 돌아갈 로그인 화면은 host 마다 다르다.
+   *
+   * ⚠️ Studio host 에서 relative "/auth/sign-in" 은 Studio 로그인으로 rewrite
+   *    된다. 학부모를 그쪽으로 보내면 안 되므로 Parent origin 을 쓴다.
+   */
+  const academyLoginHref = useStudioNavigationPath("/studio/sign-in")
+  const parentLoginHref = useParentCrossProductHref("/auth/sign-in")
+  const loginHref = userType === "academy" ? academyLoginHref : parentLoginHref
   const retryHref = `/auth/reset-password?type=${userType}`
   const successButtonLabel = userType === "academy" ? "학원 로그인으로 이동" : "학부모 로그인으로 이동"
   const [isSessionReady, setIsSessionReady] = useState(false)

@@ -3,6 +3,7 @@
 import { usePathname } from "next/navigation"
 import { createContext, useContext, useMemo, type ReactNode } from "react"
 
+import { getParentCrossProductHref } from "@/shared/config/cross-product-navigation"
 import { getStudioNavigationPath, toStudioInternalNavigationPath } from "@/shared/config/studio-navigation"
 
 /*
@@ -69,4 +70,19 @@ export const useStudioInternalPathname = (): string => {
   const pathname = usePathname() ?? ""
 
   return useMemo(() => toStudioInternalNavigationPath(pathname), [pathname])
+}
+
+/**
+ * 이 화면에서 Parent 로 나갈 주소.
+ *
+ * Studio host 에서는 relative 경로가 다시 Studio 로 rewrite 되므로 절대 주소가
+ * 필요하다. 그 밖의 host 에서는 받은 경로 그대로다.
+ *
+ * ⚠️ 두 제품이 같이 쓰는 화면(비밀번호 재설정 등)에서 "학부모 로그인" 같은
+ *    링크가 이걸 쓴다. 판단 규칙은 S3E helper 하나뿐이다.
+ */
+export const useParentCrossProductHref = (pathname: string): string => {
+  const hostname = useStudioNavigationHostname()
+
+  return useMemo(() => getParentCrossProductHref({ pathname, hostname }), [pathname, hostname])
 }

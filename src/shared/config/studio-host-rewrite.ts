@@ -14,7 +14,12 @@
  */
 
 import { STUDIO_ORIGIN, isParentHost, isStudioHost } from "./site-origins"
-import { isStudioInternalPath, toStudioExternalPath, toStudioInternalPath } from "./studio-routes"
+import {
+  isStudioInternalPath,
+  isStudioSharedAuthPath,
+  toStudioExternalPath,
+  toStudioInternalPath
+} from "./studio-routes"
 
 /* 화면이 아닌 요청. rewrite 대상이 아니다. */
 const EXCLUDED_PREFIXES = ["/_next/", "/api/"]
@@ -51,6 +56,17 @@ export const resolveStudioRewritePathname = (hostname: string, pathname: string)
    *    middleware 는 redirect 를 먼저 보고, 여기까지 오지 않는다.
    */
   if (isStudioInternalPath(pathname)) {
+    return null
+  }
+
+  /*
+   * 두 제품이 같이 쓰는 auth 화면.
+   *
+   * ⚠️ 여기서 옮기면 /studio/auth/find-email 로 가는데 그런 route 는 없다.
+   *    화면이 하나뿐이라 경로도 하나뿐이어야 한다. query(?type=academy)도
+   *    손대지 않으므로 누구를 위한 화면인지는 그대로 전달된다.
+   */
+  if (isStudioSharedAuthPath(pathname)) {
     return null
   }
 

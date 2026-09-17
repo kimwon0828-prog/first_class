@@ -203,9 +203,19 @@ const studioInternalHrefs = sourceFiles
    자세한 계약은 verify-studio-navigation-migration 이 본다. */
 check("범위) Studio 내부 href 는 helper 를 거친다", studioInternalHrefs === 0, `하드코딩 ${studioInternalHrefs}개`)
 check("범위) Studio 내부 redirect 도 helper 를 거친다", studioGuard.includes('studioPath("/studio/sign-in")') && studioGuard.includes('studioPath("/studio/pending")'))
-check("범위) cross-product helper 를 쓰는 곳은 6곳뿐이다", (() => {
+/*
+ * S4A 에서 공용 auth 화면도 Parent 로 돌아갈 일이 생겼다. client 가 각자 helper 를
+ * 부르지 않도록 provider 의 훅 하나로 모았다. 그 진입점까지가 허용 범위다.
+ */
+const CROSS_PRODUCT_ENTRY_POINTS = [
+  ...STUDIO_TO_PARENT_SITES,
+  PARENT_GUARD,
+  "src/features/studio/ui/studio-navigation-provider.tsx"
+]
+check("범위) cross-product helper 를 쓰는 곳은 정해진 진입점뿐이다", (() => {
   const callers = sourceFiles.filter((file) => read(file).includes("cross-product-navigation"))
-  return callers.length === 6 && [...STUDIO_TO_PARENT_SITES, PARENT_GUARD].every((file) => callers.includes(file))
+  return callers.every((file) => CROSS_PRODUCT_ENTRY_POINTS.includes(file)) &&
+    CROSS_PRODUCT_ENTRY_POINTS.every((file) => callers.includes(file))
 })(), sourceFiles.filter((file) => read(file).includes("cross-product-navigation")).join(", "))
 
 console.log("\n[G] 기존 contract 를 재사용한다")
