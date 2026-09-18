@@ -215,6 +215,17 @@
   background: var(--amber-bg);
 }
 
+/* 요금제로 잠긴 기능. 경고가 아니라 상태다 — amber 를 쓰지 않는다.
+   --surface-sub 는 디자인 시스템이 잠금·비활성에 지정한 면이다(§2 토큰). */
+.lockedNotice {
+  display: grid;
+  gap: 4px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--surface-sub);
+}
+
 .noticeTitle {
   margin: 0;
   font-size: 14px;

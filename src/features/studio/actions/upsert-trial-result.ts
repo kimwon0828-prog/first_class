@@ -170,8 +170,9 @@ export async function upsertTrialResultAction(
 
   const teacher = await requireTeacherStudioAccess()
 
-  // 유료 기능이다. form 없이 action 이 직접 호출될 수 있으므로 서버에서 막는다.
-  // 조회 실패는 허용하지 않는다(fail closed).
+  // 지금은 모든 요금제에서 열려 있다(기록은 무료다). gate 를 지우지 않는 이유는
+  // 이것이 요금제가 쓰기에 닿는 단 하나의 지점이기 때문이다 — 나중에 이 기록에
+  // 요금제 조건이 생기면 여기만 보면 된다. 조회 실패는 허용하지 않는다(fail closed).
   const entitlement = await requireStudioEntitlement(teacher.organizationId, "canWriteTrialResults")
   if (!entitlement.allowed) {
     return {

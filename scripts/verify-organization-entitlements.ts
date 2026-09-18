@@ -67,21 +67,23 @@ const fullAccessOverride = (
   expiresAt
 })
 
+// 유료로 남는 것은 기록을 바깥으로 내보내는 일뿐이다 — 학부모 공유와 전환 분석.
 const STANDARD_KEYS: Array<keyof StudioEntitlements> = [
-  "canWriteTrialResults",
   "canPublishParentReport",
-  "canWriteConsultations",
-  "canReopenConsultation",
   "canUseConversionAnalytics",
   "hasMarketplaceRankingBoost"
 ]
+// 기록과 운영은 전부 무료다(AGENTS.md 요금제 정책).
 const FREE_KEYS: Array<keyof StudioEntitlements> = [
   "canListOnMarketplace",
   "canManageAcademyProfile",
   "canManageClasses",
   "canManageSchedule",
   "canManageTeachers",
-  "canProcessTrial"
+  "canProcessTrial",
+  "canWriteTrialResults",
+  "canWriteConsultations",
+  "canReopenConsultation"
 ]
 const READ_KEYS: Array<keyof StudioEntitlements> = [
   "canViewTrialResults",
@@ -292,12 +294,12 @@ console.log("\n[4] full_access=false override 는 아무 효과가 없다")
 }
 
 // ─────────────────────────────────────────────────────────────
-// PLAN-1A 안전장치.
+// 상품 경계를 flag 이름으로 못박는다.
 //
-// 발행 권한을 작성 권한에서 떼어낸 단계다. 다음 단계(PLAN-1B)에서 작성을 무료로
-// 열 때 발행까지 함께 열리면 Free 학원이 학부모에게 리포트를 보내게 된다.
-// 그 사고는 조용히 일어나므로 여기서 각 flag 를 이름으로 못박는다.
-console.log("\n[5] 발행 권한과 작성 권한의 분리")
+// 기록(작성)은 무료, 공유(발행)와 분석은 유료다. 위의 KEYS 묶음 검증만으로는
+// 두 묶음을 동시에 잘못 옮겨도 통과할 수 있어, 여기서 개별 flag 를 이름으로 확인한다.
+// 특히 작성과 발행이 다시 한 덩어리가 되면 무료 학원이 학부모에게 리포트를 보낸다.
+console.log("\n[5] 기록은 무료 · 공유와 분석은 유료")
 {
   const before = failures
   const free = getPlanEntitlements("free")
@@ -309,11 +311,20 @@ console.log("\n[5] 발행 권한과 작성 권한의 분리")
   check(standard.canPublishParentReport === true, "STANDARD 가 리포트를 발행하지 못한다")
   check(pro.canPublishParentReport === true, "PRO 가 리포트를 발행하지 못한다")
 
-  // PLAN-1B 전까지 작성 권한은 유료 그대로다. 여기가 먼저 열리면 이 검증이 깨지고,
-  // 그때 발행 flag 가 함께 열렸는지 반드시 다시 본다.
-  check(free.canWriteTrialResults === false, "PLAN-1B 전인데 FREE 체험 결과 작성이 열렸다")
-  check(free.canWriteConsultations === false, "PLAN-1B 전인데 FREE 상담 작성이 열렸다")
-  check(free.canReopenConsultation === false, "PLAN-1B 전인데 FREE 상담 재개가 열렸다")
+  // 기록은 무료다. 이 셋이 다시 닫히면 확정 정책(AGENTS.md)과 어긋난다.
+  check(free.canWriteTrialResults === true, "FREE 체험 결과 작성이 막혔다")
+  check(free.canWriteConsultations === true, "FREE 상담 작성이 막혔다")
+  check(free.canReopenConsultation === true, "FREE 상담 재개가 막혔다")
+
+  // 작성이 열렸다고 해서 발행이 따라 열리면 안 된다. 이 둘의 간격이 상품 경계다.
+  check(
+    free.canWriteTrialResults === true && free.canPublishParentReport === false,
+    "작성과 발행이 다시 한 덩어리가 됐다"
+  )
+
+  // 분석은 유료로 남는다.
+  check(free.canUseConversionAnalytics === false, "FREE 에서 전환 분석이 열렸다")
+  check(standard.canUseConversionAnalytics === true, "STANDARD 에서 전환 분석이 막혔다")
 
   // 구현체가 없는 기능을 Standard 로 올리지 않는다(billing 허위 표시 방지).
   check(standard.canUseAdvancedAnalytics === false, "구현체 없는 고급 분석이 STANDARD 로 열렸다")
@@ -323,7 +334,7 @@ console.log("\n[5] 발행 권한과 작성 권한의 분리")
     "구현체 없는 AI 상담 도구가 STANDARD 로 열렸다"
   )
 
-  passLine(before, "발행 ≠ 작성 / PLAN-1B 전 작성 권한 유지 / 미구현 기능 비판매")
+  passLine(before, "기록 무료 / 발행·분석 유료 / 발행 ≠ 작성 / 미구현 기능 비판매")
 }
 
 if (failures > 0) {

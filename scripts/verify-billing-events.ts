@@ -476,8 +476,8 @@ const run = async () => {
         snapshot,
         new Date(new Date(item.expected).getTime() + 60 * 1000)
       )
-      check(justBefore.entitlements.canWriteConsultations, `${item.label}: 유예 직전에 닫혔다`)
-      check(!justAfter.entitlements.canWriteConsultations, `${item.label}: 유예 이후에도 열려 있다`)
+      check(justBefore.entitlements.canPublishParentReport, `${item.label}: 유예 직전에 닫혔다`)
+      check(!justAfter.entitlements.canPublishParentReport, `${item.label}: 유예 이후에도 열려 있다`)
 
       // 결제된 기간이 끝나기 전에는 절대 닫히지 않는다.
       const atPeriodEnd = resolveStudioEntitlements(
@@ -485,7 +485,7 @@ const run = async () => {
         new Date(new Date(item.periodEnd).getTime() - 60 * 1000)
       )
       check(
-        atPeriodEnd.entitlements.canWriteConsultations,
+        atPeriodEnd.entitlements.canPublishParentReport,
         `${item.label}: 이미 결제된 기간 안인데 닫혔다`
       )
 
@@ -580,13 +580,13 @@ const run = async () => {
       const lateAt = new Date("2026-10-14T00:00:00.000Z")
       // 실패가 오기 전에 이미 닫혀 있다.
       check(
-        !resolveStudioEntitlements(snapshotOf(FIRST_GRACE), lateAt).entitlements.canWriteConsultations,
+        !resolveStudioEntitlements(snapshotOf(FIRST_GRACE), lateAt).entitlements.canPublishParentReport,
         "D: 유예가 끝났는데 열려 있다"
       )
 
       const grace = await failAt("D 늦은 실패 10-14", "episode-d-4", lateAt.toISOString(), FIRST_GRACE)
       check(
-        !resolveStudioEntitlements(snapshotOf(grace), lateAt).entitlements.canWriteConsultations,
+        !resolveStudioEntitlements(snapshotOf(grace), lateAt).entitlements.canPublishParentReport,
         "D: 늦은 실패 이벤트로 유료 접근이 다시 열렸다"
       )
       passLine(stepBefore, "D 유예 종료 후 실패      → 재오픈 0")
@@ -784,7 +784,7 @@ const run = async () => {
         },
         new Date()
       )
-      check(!entitlements.entitlements.canWriteConsultations, `${item.label}: Studio 유료 접근이 열렸다`)
+      check(!entitlements.entitlements.canPublishParentReport, `${item.label}: Studio 유료 접근이 열렸다`)
 
       // Marketplace 우선 노출 0.
       const boosted = (await admin(

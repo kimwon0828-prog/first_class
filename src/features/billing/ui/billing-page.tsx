@@ -68,7 +68,8 @@ export const BillingPage = ({ overview, notice }: BillingPageProps) => {
             나에게 맞는 플랜을 선택하세요
           </h2>
           <p className={styles.sectionDescription}>
-            체험 운영은 무료로 시작하고, 상담과 등록 전환 관리가 필요할 때 스탠다드로 확장하세요.
+            기록과 운영은 무료로 시작하고, 학부모 공유와 전환 분석이 필요할 때 스탠다드로
+            확장하세요.
           </p>
         </div>
 

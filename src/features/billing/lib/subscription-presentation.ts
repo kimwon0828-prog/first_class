@@ -318,12 +318,13 @@ const FREE_BENEFITS = [
   "학원·수업 등록",
   "체험 신청 관리",
   "일정·체험 운영",
+  "체험 결과·상담 기록",
   "Excel 예약 가져오기"
 ]
 
 const STANDARD_BENEFITS = [
   "무료의 모든 기능",
-  "체험 결과 및 상담 기록",
+  "학부모 리포트 발행",
   "등록 전환 분석",
   "등록 전환 인포그래픽",
   "Marketplace 우선 노출"
@@ -358,7 +359,7 @@ export const buildPricingCards = (
       subName: "Free",
       priceLabel: formatBillingAmount(0),
       priceUnit: "/ 월",
-      description: "체험수업 모집과 기본 운영을 부담 없이 시작하세요.",
+      description: "체험 모집부터 상담 기록까지 부담 없이 시작하세요.",
       benefits: FREE_BENEFITS,
       featured: false,
       cta: freeCta
@@ -369,7 +370,7 @@ export const buildPricingCards = (
       subName: "Standard",
       priceLabel: formatBillingAmount(options.standardAmount),
       priceUnit: "/ 월",
-      description: "상담부터 등록 전환까지 한 흐름으로 관리하고 분석하세요.",
+      description: "쌓인 기록을 분석하고 학부모와 나누세요.",
       benefits: STANDARD_BENEFITS,
       featured: isFree,
       cta: standardCta
@@ -402,6 +403,7 @@ const COMPARISON_SOURCES: ComparisonSource[] = [
   { label: "Excel 예약 가져오기", ungated: true },
   { label: "체험 결과 작성", entitlementKey: "canWriteTrialResults" },
   { label: "상담·등록 전환 관리", entitlementKey: "canWriteConsultations" },
+  { label: "학부모 리포트 발행", entitlementKey: "canPublishParentReport" },
   { label: "등록 전환 분석", entitlementKey: "canUseConversionAnalytics" },
   { label: "등록 전환 인포그래픽", entitlementKey: "canUseConversionAnalytics" },
   { label: "Marketplace 우선 노출", entitlementKey: "hasMarketplaceRankingBoost" }

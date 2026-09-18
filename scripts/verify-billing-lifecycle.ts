@@ -266,8 +266,8 @@ const run = async () => {
     )
 
     check(
-      entitlements.canWriteConsultations === row.expectStudioPaid,
-      `${row.label}: Studio 유료 기능 기대 ${row.expectStudioPaid} / 실제 ${entitlements.canWriteConsultations}`
+      entitlements.canPublishParentReport === row.expectStudioPaid,
+      `${row.label}: Studio 유료 기능 기대 ${row.expectStudioPaid} / 실제 ${entitlements.canPublishParentReport}`
     )
     check(
       entitlements.hasMarketplaceRankingBoost === row.expectStudioPaid,
@@ -282,9 +282,11 @@ const run = async () => {
       hasInternalFullAccess === Boolean(row.override),
       `${row.label}: 내부 전체 권한 판정이 다르다`
     )
-    // 무료 운영과 기존 데이터 열람은 어떤 경우에도 닫히지 않는다.
+    // 무료 운영 · 기록 · 기존 데이터 열람은 어떤 경우에도 닫히지 않는다.
     check(entitlements.canProcessTrial, `${row.label}: 무료 체험 운영이 막혔다`)
     check(entitlements.canViewConsultationHistory, `${row.label}: 기존 상담 열람이 막혔다`)
+    check(entitlements.canWriteTrialResults, `${row.label}: 체험 결과 기록이 막혔다`)
+    check(entitlements.canWriteConsultations, `${row.label}: 상담 기록이 막혔다`)
     passLine(
       before,
       `${row.label.padEnd(26)} → 결제 ${row.expectPaid ? "유효" : "없음"} · Studio 유료 ${
@@ -358,13 +360,16 @@ const run = async () => {
       new Date("2027-01-01T00:00:00.000Z")
     )
 
-    check(inside.entitlements.canWriteConsultations, "PoC 기간 안인데 Standard 가 닫혔다")
+    check(inside.entitlements.canPublishParentReport, "PoC 기간 안인데 Standard 가 닫혔다")
     check(inside.entitlements.hasMarketplaceRankingBoost, "PoC 기간 안인데 우선 노출이 닫혔다")
     // DB status 가 아직 trialing 이어도 기간이 지나면 닫힌다.
-    check(!after.entitlements.canWriteConsultations, "기간이 지났는데 Standard 가 열려 있다")
+    check(!after.entitlements.canPublishParentReport, "기간이 지났는데 Standard 가 열려 있다")
     check(!after.entitlements.hasMarketplaceRankingBoost, "기간이 지났는데 우선 노출이 열려 있다")
     check(after.entitlements.canProcessTrial, "만료 후 무료 운영까지 막혔다")
     check(after.entitlements.canViewTrialResults, "만료 후 기존 체험 결과 열람이 막혔다")
+    // downgrade 후에도 기록은 계속된다. 잠기는 것은 학부모 공유와 분석뿐이다.
+    check(after.entitlements.canWriteTrialResults, "만료 후 체험 결과 기록까지 막혔다")
+    check(after.entitlements.canWriteConsultations, "만료 후 상담 기록까지 막혔다")
     passLine(before, "2026-09-05 열림 · 2027-01-01 닫힘 (상태 갱신과 무관)")
   }
 

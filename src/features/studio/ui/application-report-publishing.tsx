@@ -328,7 +328,25 @@ export const ApplicationReportPublishing = ({
         </div>
       ) : null}
 
-      {activeBlocker ? (
+      {/*
+        발행이 요금제로 잠긴 상태.
+
+        버튼만 조용히 지우지 않는다. 미리보기까지 만든 원장이 발행 자리에서
+        아무것도 못 찾으면 화면이 고장난 것처럼 보인다(디자인 시스템 §10.2).
+        잠긴 것은 발행 하나이고, 작성·미리보기·철회는 그대로 돌아간다.
+      */}
+      {!canPublishReport ? (
+        <div className={styles.lockedNotice} role="status">
+          <p className={styles.noticeTitle}>학부모 리포트 발행은 스탠다드 플랜에서 사용할 수 있어요.</p>
+          <p className={styles.noticeBody}>
+            체험 결과 작성과 미리보기는 계속 사용할 수 있고, 이미 발행한 리포트는 학부모가 그대로
+            볼 수 있어요.
+          </p>
+        </div>
+      ) : null}
+
+      {/* 잠긴 상태에서는 발행 준비 안내를 띄우지 않는다. 지금 할 수 없는 일의 준비물이다. */}
+      {canPublishReport && activeBlocker ? (
         <div className={styles.notice} role="status">
           <p className={styles.noticeTitle}>{BLOCKER_TEXT[activeBlocker.kind].title}</p>
           <p className={styles.noticeBody}>{BLOCKER_TEXT[activeBlocker.kind].body}</p>

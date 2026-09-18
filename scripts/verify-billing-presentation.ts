@@ -363,15 +363,35 @@ console.log("\n[10] 기능 비교표")
   const freePlan = getPlanEntitlements("free")
   const standardPlan = getPlanEntitlements("standard")
 
-  check(rows.length === 8, `비교 항목 수가 다르다: ${rows.length}`)
+  check(rows.length === 9, `비교 항목 수가 다르다: ${rows.length}`)
   check(rows.every((row) => row.standard), "스탠다드에서 안 되는 항목이 비교표에 있다")
 
   // 무료에서 실제로 되는 기능을 유료 전용처럼 적으면 안 된다.
+  // 기록(체험 결과 · 상담)은 무료다 — 여기서 빠지면 화면이 무료 학원에게 거짓말을 한다.
   const freeRows = rows.filter((row) => row.free).map((row) => row.label)
   check(
     JSON.stringify(freeRows) ===
-      JSON.stringify(["Marketplace 입점", "수업·체험 운영", "Excel 예약 가져오기"]),
+      JSON.stringify([
+        "Marketplace 입점",
+        "수업·체험 운영",
+        "Excel 예약 가져오기",
+        "체험 결과 작성",
+        "상담·등록 전환 관리"
+      ]),
     `무료 지원 항목이 다르다: ${freeRows.join(", ")}`
+  )
+
+  // 유료 전용 항목도 사실과 맞아야 한다. 무료에 ✓ 가 붙으면 팔 것이 없어진다.
+  const paidOnlyRows = rows.filter((row) => !row.free).map((row) => row.label)
+  check(
+    JSON.stringify(paidOnlyRows) ===
+      JSON.stringify([
+        "학부모 리포트 발행",
+        "등록 전환 분석",
+        "등록 전환 인포그래픽",
+        "Marketplace 우선 노출"
+      ]),
+    `유료 전용 항목이 다르다: ${paidOnlyRows.join(", ")}`
   )
 
   // 표가 손으로 적힌 값이 아니라 실제 계약에서 나온 값인지 확인한다.
@@ -386,12 +406,21 @@ console.log("\n[10] 기능 비교표")
     "우선 노출 항목이 계약과 다르다"
   )
   check(byLabel.get("Marketplace 입점")?.free === freePlan.canListOnMarketplace, "입점 항목이 계약과 다르다")
+  check(
+    byLabel.get("학부모 리포트 발행")?.free === freePlan.canPublishParentReport &&
+      byLabel.get("학부모 리포트 발행")?.standard === standardPlan.canPublishParentReport,
+    "리포트 발행 항목이 계약과 다르다"
+  )
 
   // 아직 팔지 않는 기능은 비교표에 없다.
-  for (const banned of ["AI", "리포트", "고급 분석", "수요 분석", "프로"]) {
+  //
+  // "리포트" 는 이 목록에서 빠졌다. 구현체가 없어서 금지했던 것인데, 학부모 리포트
+  // 발행은 실제로 구현됐고 지금 스탠다드의 핵심 가치다. 대신 그 항목이 계약에서
+  // 파생되는지는 바로 위에서 확인한다.
+  for (const banned of ["AI", "고급 분석", "수요 분석", "내보내기", "프로"]) {
     check(!rows.some((row) => row.label.includes(banned)), `판매하지 않는 기능이 노출됐다: ${banned}`)
   }
-  passLine(before, "8개 항목 · 무료 3개 지원 · 값이 entitlement 계약에서 파생")
+  passLine(before, "9개 항목 · 무료 5개 지원 · 값이 entitlement 계약에서 파생")
 }
 
 console.log("\n[11] 다음 결제 카드")
