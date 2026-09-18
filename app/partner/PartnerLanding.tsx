@@ -20,8 +20,8 @@ const navItems = [
 ]
 
 const stripItems = [
-  "체험 운영은 Free로 시작",
-  "상담·등록 관리는 Standard 월 49,000원"
+  "체험·상담·등록 기록은 Free로 시작",
+  "학부모 리포트와 전환 분석은 Standard 월 49,000원"
 ]
 
 const flowCards = [
@@ -127,29 +127,27 @@ const freeFeatures = [
   "예약 및 일정 관리",
   "담당 교사 관리",
   "체험수업 운영 및 완료 처리",
+  "체험 결과 기록",
+  "상담 이력 · 등록 전환 기록",
   "Excel 예약 가져오기"
 ]
 
 const standardFeatures = [
   "Free의 모든 기능",
-  "체험 결과 기록",
-  "상담 이력 관리",
-  "등록 전환 관리",
-  "후속 상담 관리",
+  "학부모 리포트 발행",
   "등록 전환 분석",
   "미등록 사유 분석",
-  "등록 전환 리포트",
-  "첫수업 플랫폼 우선 노출"
+  "등록 전환 인포그래픽"
 ]
 
 const perks = [
   {
     title: "무료로 먼저 시작",
-    description: "체험수업 모집과 운영은 Free로 시작할 수 있습니다."
+    description: "체험 모집부터 상담·등록 기록까지 Free로 시작할 수 있습니다."
   },
   {
-    title: "상담·등록 관리로 확장",
-    description: "필요할 때 Standard로 전환해 상담과 등록 전환을 관리합니다."
+    title: "공유와 분석으로 확장",
+    description: "필요할 때 Standard로 전환해 학부모 리포트를 보내고 등록 전환을 분석합니다."
   },
   {
     title: "도입 지원",
@@ -600,19 +598,19 @@ export default async function PartnerLanding() {
         <div className={styles.wrap}>
           <p className={styles.kick}>요금</p>
           <h2 className={styles.sectionHeading}>
-            체험 운영은 무료로,
+            기록과 운영은 무료로,
             <br />
-            상담과 등록 관리는 필요할 때 확장하세요
+            학부모 공유와 분석은 필요할 때 확장하세요
           </h2>
           <p className={styles.sub}>
-            첫수업은 Free로 시작할 수 있습니다. 체험 이후의 상담과 등록 전환 관리가 필요할 때
-            Standard로 확장하세요.
+            체험·상담·등록 기록은 Free로 시작할 수 있습니다. 그 기록을 학부모에게 리포트로
+            보내고 등록 전환을 분석할 때 Standard로 확장하세요.
           </p>
 
           <div className={styles.price}>
             <div className={styles.pc}>
               <p className={styles.pK}>FREE</p>
-              <p className={styles.pN}>입점 · 모객 · 체험 운영</p>
+              <p className={styles.pN}>입점 · 모객 · 체험 · 상담 기록</p>
               <div className={styles.pA}>
                 <span className={styles.pFree}>0원</span>
                 <span className={styles.pCycle}>별도 결제 없음</span>
@@ -632,7 +630,7 @@ export default async function PartnerLanding() {
                 <p className={styles.pK}>STANDARD</p>
                 <span className={styles.pTag}>추천</span>
               </div>
-              <p className={styles.pN}>상담 · 등록 전환 관리</p>
+              <p className={styles.pN}>학부모 리포트 · 등록 전환 분석</p>
               <div className={styles.pA}>
                 <span className={styles.pFree}>월 49,000원</span>
                 <span className={styles.pCycle}>월 단위 정기결제</span>

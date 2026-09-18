@@ -35,6 +35,8 @@ const REMOVAL_MIGRATION_PATH =
 const PAID_ACCESS_MIGRATION_PATH =
   "supabase/migrations/20260910090000_close_paid_access_when_period_ends.sql"
 
+const PARTNER_LANDING_PATH = "app/partner/PartnerLanding.tsx"
+
 const PARENT_SOURCE_DIRS = [
   "src/features/classes",
   "src/features/academies",
@@ -174,10 +176,16 @@ console.log("\n[4] billing 이 우선 노출을 팔지 않는다")
     !rows.some((row) => row.label.includes("우선 노출")),
     "기능 비교표에 우선 노출 행이 남아 있다"
   )
-  // 입점 행은 남아 있고, 무료에서도 참이다.
-  const listingRow = rows.find((row) => row.label === "Marketplace 입점")
-  check(Boolean(listingRow), "Marketplace 입점 행이 사라졌다")
-  check(listingRow?.free === true && listingRow?.standard === true, "입점이 유료 전용으로 표시된다")
+  // 노출 행은 남아 있고, 무료에서도 참이다.
+  // label 은 원장이 쓰는 말로 바뀌었으므로 entitlement 로 행을 찾는다 — 문구를 다듬을
+  // 때마다 이 검증이 깨지면 안 되고, 지켜야 하는 것은 표기가 아니라 사실이다.
+  const listingRow = rows.find((row) => row.label.includes("노출"))
+  check(Boolean(listingRow), "학부모 서비스 노출 행이 사라졌다")
+  check(listingRow?.free === true && listingRow?.standard === true, "노출이 유료 전용으로 표시된다")
+  check(
+    listingRow?.free === getPlanEntitlements("free").canListOnMarketplace,
+    "노출 행이 canListOnMarketplace 계약과 다르다"
+  )
 
   const cards = buildPricingCards(
     resolveBillingPresentation({
@@ -262,6 +270,33 @@ console.log("\n[6] DB view 가 제거됐다")
   )
 
   passLine(before, "두 view 제거 · 순서 정상 · classes/billing 함수 보존")
+}
+
+// ─────────────────────────────────────────────────────────────
+console.log("\n[7] 공개 파트너 랜딩이 없앤 기능을 팔지 않는다")
+{
+  const before = failures
+  const landing = read(PARTNER_LANDING_PATH)
+
+  check(!landing.includes("우선 노출"), "파트너 랜딩이 아직 우선 노출을 광고한다")
+  // 무료가 된 기능을 Standard 혜택으로 남겨 두면 가입 페이지가 거짓말을 한다.
+  const standardBlock = landing.slice(
+    landing.indexOf("const standardFeatures"),
+    landing.indexOf("const perks")
+  )
+  for (const banned of ["체험 결과 기록", "상담 이력 관리", "등록 전환 관리", "후속 상담 관리"]) {
+    check(!standardBlock.includes(banned), `무료 기능이 Standard 혜택에 남아 있다: ${banned}`)
+  }
+  check(standardBlock.includes("학부모 리포트 발행"), "Standard 혜택에 학부모 리포트 발행이 없다")
+
+  const freeBlock = landing.slice(
+    landing.indexOf("const freeFeatures"),
+    landing.indexOf("const standardFeatures")
+  )
+  check(freeBlock.includes("체험 결과 기록"), "Free 혜택에 체험 결과 기록이 없다")
+  check(freeBlock.includes("상담 이력"), "Free 혜택에 상담 기록이 없다")
+
+  passLine(before, "우선 노출 0 · 무료 기능을 Standard 로 팔지 않음")
 }
 
 if (failures > 0) {

@@ -39,8 +39,8 @@ export default async function StudioUnregisteredPage({
   if (!entitlements.canUseConversionAnalytics) {
     return (
       <p>
-        미등록 관리는 스탠다드 플랜에서 사용할 수 있습니다. 이미 저장된 상담 기록은 상담·등록
-        화면에서 계속 확인할 수 있습니다.
+        미등록 사유 분석은 스탠다드 플랜에서 사용할 수 있어요. 상담 기록은 지금도 상담·등록
+        화면에서 그대로 남기고 확인할 수 있어요.
       </p>
     )
   }

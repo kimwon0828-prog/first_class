@@ -455,14 +455,15 @@ export default async function StudioIndexPage({ searchParams }: StudioIndexPageP
               <article className={styles.chartCard} aria-labelledby="dashboard-analytics-locked-title">
                 <div className={styles.chartHead}>
                   <h3 className={styles.chartTitle} id="dashboard-analytics-locked-title">
-                    스탠다드 플랜에서 볼 수 있습니다
+                    등록 전환 분석은 스탠다드 플랜에서 사용할 수 있어요
                   </h3>
                   <p className={styles.chartDescription}>
-                    상담 기록을 남기면 신청 → 등록 흐름과 등록 전환율을 기간별로 확인할 수 있습니다.
+                    신청 → 등록 흐름과 등록 전환율을 기간별로 확인할 수 있어요.
                   </p>
                 </div>
                 <p className={styles.chartEmpty}>
-                  이미 저장된 체험 결과와 상담 이력은 상담·등록 화면에서 계속 확인할 수 있습니다.
+                  체험 결과와 상담 기록은 지금도 그대로 남길 수 있어요. 잠긴 것은 그 기록을
+                  모아 보는 분석이에요.
                 </p>
               </article>
             )}

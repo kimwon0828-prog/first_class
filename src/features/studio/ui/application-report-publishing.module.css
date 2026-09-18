@@ -226,6 +226,23 @@
   background: var(--surface-sub);
 }
 
+/* 잠금 안내 안의 단일 경로. 버튼 위계를 새로 만들지 않고 텍스트 링크로 둔다 —
+   여기서 할 일은 발행이 아니라 "왜 막혔는지 확인" 이다. */
+.lockedLink {
+  justify-self: start;
+  margin-top: 4px;
+  font-size: 13px;
+  line-height: 20px;
+  font-weight: 700;
+  color: var(--text-1);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.lockedLink:hover {
+  color: var(--text-2);
+}
+
 .noticeTitle {
   margin: 0;
   font-size: 14px;

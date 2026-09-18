@@ -558,6 +558,17 @@ check(
   )
 }
 
+// 잠금 안내는 갈 곳을 준다. 막아 놓고 길을 안 알려주면 원장은 여기서 끝난다.
+check(
+  "잠금 안내가 플랜 화면으로 가는 길을 준다",
+  reportUi.includes('studioPath("/studio/billing")') && reportUi.includes("플랜 확인하기")
+)
+// 같은 화면에 업그레이드 안내를 여러 개 두지 않는다(디자인 시스템 §10.2).
+check(
+  "잠금 안내는 한 곳뿐이다",
+  (reportUi.match(/스탠다드 플랜에서/g) ?? []).length === 1
+)
+
 check(
   "잠금 안내는 경고 색을 쓰지 않는다",
   reportUi.includes("styles.lockedNotice") &&

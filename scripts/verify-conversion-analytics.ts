@@ -364,5 +364,35 @@ check(
   supabaseAdapterCode.includes("Promise.all([")
 )
 
+// ─── 잠금 안내가 무엇이 잠겼는지 정확히 말한다 ───
+//
+// 기록은 무료다. 잠긴 것은 그 기록을 모아 보는 분석뿐이다. 안내가 "기록을 쓰려면
+// 결제하라" 처럼 읽히면 무료 학원이 쓸 수 있는 기능을 안 쓰게 된다.
+const UNREGISTERED_PAGE_PATH = "app/studio/(dashboard)/unregistered/page.tsx"
+const unregisteredPage = read(UNREGISTERED_PAGE_PATH)
+
+check(
+  "대시보드 잠금 안내가 분석 기능을 가리킨다",
+  page.includes("등록 전환 분석은 스탠다드 플랜에서 사용할 수 있어요")
+)
+check(
+  "미등록 잠금 안내가 분석 기능을 가리킨다",
+  unregisteredPage.includes("미등록 사유 분석은 스탠다드 플랜에서 사용할 수 있어요")
+)
+for (const [label, source] of [
+  ["대시보드", page],
+  ["미등록", unregisteredPage]
+] as const) {
+  // "이미 저장된 …은 계속 확인할 수 있습니다" 는 새 기록이 막힌 것처럼 읽힌다.
+  check(
+    `${label} 잠금 안내가 기록을 유료처럼 말하지 않는다`,
+    !source.includes("이미 저장된")
+  )
+  check(
+    `${label} 잠금 안내가 기록은 계속된다고 말한다`,
+    /상담 기록은 지금도|기록은 지금도 그대로|지금도 그대로 남길 수 있어요/.test(source)
+  )
+}
+
 console.log(`\n${failures === 0 ? "ALL PASS" : `${failures} FAILURE(S)`}`)
 process.exit(failures === 0 ? 0 : 1)

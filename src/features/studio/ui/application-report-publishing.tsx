@@ -1,6 +1,7 @@
 "use client"
 
 import { useActionState, useEffect, useRef, useState } from "react"
+import Link from "next/link"
 import { useRouter } from "next/navigation"
 
 import {
@@ -12,6 +13,7 @@ import {
   type WithdrawExperienceReportActionState
 } from "@/features/studio/actions/withdraw-experience-report"
 import { formatSeoulDateTime } from "@/features/studio/lib/seoul-datetime"
+import { useStudioNavigationPathFactory } from "@/features/studio/ui/studio-navigation-provider"
 import type { ExperienceReportSnapshotV1 } from "@/features/reports/lib/experience-report-snapshot"
 import { SEOUL_TIME_ZONE } from "@/shared/lib/seoul-datetime"
 
@@ -191,6 +193,7 @@ export const ApplicationReportPublishing = ({
   canPublishReport
 }: ApplicationReportPublishingProps) => {
   const router = useRouter()
+  const studioPath = useStudioNavigationPathFactory()
   const publishAction = publishExperienceReportAction.bind(null, applicationId)
   const [publishState, submitPublish, isPublishing] = useActionState(
     publishAction,
@@ -342,6 +345,9 @@ export const ApplicationReportPublishing = ({
             체험 결과 작성과 미리보기는 계속 사용할 수 있고, 이미 발행한 리포트는 학부모가 그대로
             볼 수 있어요.
           </p>
+          <Link href={studioPath("/studio/billing")} prefetch={false} className={styles.lockedLink}>
+            플랜 확인하기
+          </Link>
         </div>
       ) : null}
 

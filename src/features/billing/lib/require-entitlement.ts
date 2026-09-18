@@ -15,8 +15,11 @@ export type EntitlementGateResult =
   | { allowed: true }
   | { allowed: false; message: string }
 
+// ⚠️ "기존 기록은 계속 확인할 수 있습니다" 라고 쓰지 않는다.
+//    기록은 이제 무료이고 지금도 새로 남길 수 있다. 그 문장은 쓰기가 잠긴 것처럼 읽힌다.
+//    지금 이 gate 에 걸리는 것은 학부모 리포트 발행뿐이다.
 const UPGRADE_MESSAGE =
-  "이 기능은 스탠다드 플랜에서 사용할 수 있습니다. 기존 기록은 계속 확인할 수 있습니다."
+  "이 기능은 스탠다드 플랜에서 사용할 수 있습니다. 체험 결과와 상담 기록은 그대로 사용할 수 있습니다."
 
 const LOOKUP_FAILED_MESSAGE = "플랜 정보를 확인하지 못했습니다. 잠시 후 다시 시도해 주세요."
 
