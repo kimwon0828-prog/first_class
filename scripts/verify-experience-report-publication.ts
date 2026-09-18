@@ -386,13 +386,29 @@ for (const [name, source] of [
   ["withdraw", withdrawAction]
 ] as const) {
   check(`${name} action 이 Studio 접근을 확인한다`, source.includes("requireTeacherStudioAccess()"))
-  check(`${name} action 이 entitlement 를 확인한다`, source.includes("requireStudioEntitlement("))
   check(
     `${name} action 이 조직 scope 를 좁힌다`,
     source.includes("getStudioTrialResultSaveContext(")
   )
   check(`${name} action 이 캐시를 되살린다`, source.includes("revalidatePath("))
 }
+
+// 발행과 철회의 권한은 다르다. 같은 flag 로 묶으면 작성을 무료로 여는 순간
+// 발행까지 열리고, 반대로 발행을 잠그면 downgrade 된 학원이 이미 나간 리포트를
+// 거둘 수 없게 된다. 두 방향을 각각 고정한다.
+check(
+  "publish 가 발행 entitlement 를 확인한다",
+  publishAction.includes('requireStudioEntitlement(') &&
+    publishAction.includes('"canPublishParentReport"')
+)
+check(
+  "publish 가 작성 권한을 발행 gate 로 쓰지 않는다",
+  !publishAction.includes('"canWriteTrialResults"')
+)
+check(
+  "withdraw 에는 요금제 gate 가 없다",
+  !withdrawAction.includes("requireStudioEntitlement(")
+)
 check(
   "publish 가 확인한 revision 을 넘긴다",
   publishAction.includes("expectedAssessmentUpdatedAt") &&
@@ -498,7 +514,15 @@ check(
 )
 check(
   "오류일 때 발행 안내 문구를 띄우지 않는다",
-  reportUi.includes("canWrite && !publishedReportLoadError ? (")
+  reportUi.includes("canPublishReport && !publishedReportLoadError ? (")
+)
+check(
+  "화면이 발행 권한과 작성 권한을 섞지 않는다",
+  reportUi.includes("canPublishReport: boolean") && !reportUi.includes("canWrite:")
+)
+check(
+  "철회 버튼이 발행 권한에 묶이지 않는다",
+  /const canWithdraw =(?![\s\S]{0,80}canPublishReport)/.test(reportUi)
 )
 check(
   "미리보기는 계속 보여 준다",

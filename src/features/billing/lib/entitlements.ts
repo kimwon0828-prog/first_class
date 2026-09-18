@@ -26,8 +26,21 @@ export type StudioEntitlements = {
   canViewTrialResults: boolean
   canViewConsultationHistory: boolean
 
-  // ── STANDARD: 상담 · 등록 전환 ─────────────────────────────
+  // ── STANDARD: 상담 · 등록 전환 · 학부모 공유 ────────────────
   canWriteTrialResults: boolean
+  /**
+   * 학부모 리포트 신규 발행 · 새 버전 재발행.
+   *
+   * ⚠️ canWriteTrialResults 와 묶지 않는다. 작성과 발행은 다른 행위다 —
+   *    작성은 학원 안에 남는 기록이고, 발행은 학부모에게 나가는 문서다.
+   *    최종 정책에서 작성은 무료로 열리고 발행만 유료로 남는다.
+   *
+   * 철회(withdraw)는 여기에 포함되지 않는다. 이미 발행된 리포트를 거두는 일은
+   * 요금제와 무관하게 허용한다 — 발행을 막는 것과 이미 보낸 것을 거두는 것은
+   * 다른 행위이고, downgrade 된 학원에게 철회 수단이 없으면 잘못 나간 문서를
+   * 되돌릴 방법이 사라진다.
+   */
+  canPublishParentReport: boolean
   /**
    * 상담 작성/수정.
    *
@@ -70,6 +83,7 @@ const FREE_ENTITLEMENTS: StudioEntitlements = {
   canViewConsultationHistory: true,
 
   canWriteTrialResults: false,
+  canPublishParentReport: false,
   canWriteConsultations: false,
   canReopenConsultation: false,
   canUseConversionAnalytics: false,
@@ -83,6 +97,7 @@ const FREE_ENTITLEMENTS: StudioEntitlements = {
 const STANDARD_ENTITLEMENTS: StudioEntitlements = {
   ...FREE_ENTITLEMENTS,
   canWriteTrialResults: true,
+  canPublishParentReport: true,
   canWriteConsultations: true,
   canReopenConsultation: true,
   canUseConversionAnalytics: true,

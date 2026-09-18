@@ -80,7 +80,14 @@ export async function publishExperienceReportAction(
 
   // DB 함수도 권한을 확인하지만 여기서 생략하지 않는다.
   // server action 은 form 없이 직접 호출될 수 있고, 요금제는 DB 가 모른다.
-  const entitlement = await requireStudioEntitlement(teacher.organizationId, "canWriteTrialResults")
+  //
+  // ⚠️ 작성 권한(canWriteTrialResults)이 아니라 발행 권한을 본다.
+  //    작성은 학원 안에 남는 기록이고 발행은 학부모에게 나가는 문서다.
+  //    둘을 같은 flag 로 묶으면 작성을 무료로 여는 순간 발행까지 함께 열린다.
+  const entitlement = await requireStudioEntitlement(
+    teacher.organizationId,
+    "canPublishParentReport"
+  )
   if (!entitlement.allowed) {
     return { status: "error", message: entitlement.message }
   }

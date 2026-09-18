@@ -9,6 +9,7 @@
 //   4. override 가 만료되면 즉시 요금제 기준으로 돌아온다.
 
 import {
+  getPlanEntitlements,
   resolveStudioEntitlements,
   type StudioEntitlements
 } from "@/features/billing/lib/entitlements"
@@ -68,6 +69,7 @@ const fullAccessOverride = (
 
 const STANDARD_KEYS: Array<keyof StudioEntitlements> = [
   "canWriteTrialResults",
+  "canPublishParentReport",
   "canWriteConsultations",
   "canReopenConsultation",
   "canUseConversionAnalytics",
@@ -287,6 +289,41 @@ console.log("\n[4] full_access=false override 는 아무 효과가 없다")
   check(!hasInternalFullAccess, "full_access=false 인데 내부 권한으로 판정됐다")
   check(none(entitlements, STANDARD_KEYS), "full_access=false 인데 유료 기능이 열렸다")
   passLine(before, "full_access=false → FREE 그대로")
+}
+
+// ─────────────────────────────────────────────────────────────
+// PLAN-1A 안전장치.
+//
+// 발행 권한을 작성 권한에서 떼어낸 단계다. 다음 단계(PLAN-1B)에서 작성을 무료로
+// 열 때 발행까지 함께 열리면 Free 학원이 학부모에게 리포트를 보내게 된다.
+// 그 사고는 조용히 일어나므로 여기서 각 flag 를 이름으로 못박는다.
+console.log("\n[5] 발행 권한과 작성 권한의 분리")
+{
+  const before = failures
+  const free = getPlanEntitlements("free")
+  const standard = getPlanEntitlements("standard")
+  const pro = getPlanEntitlements("pro")
+
+  check("canPublishParentReport" in free, "canPublishParentReport 계약이 없다")
+  check(free.canPublishParentReport === false, "FREE 가 학부모 리포트를 발행할 수 있다")
+  check(standard.canPublishParentReport === true, "STANDARD 가 리포트를 발행하지 못한다")
+  check(pro.canPublishParentReport === true, "PRO 가 리포트를 발행하지 못한다")
+
+  // PLAN-1B 전까지 작성 권한은 유료 그대로다. 여기가 먼저 열리면 이 검증이 깨지고,
+  // 그때 발행 flag 가 함께 열렸는지 반드시 다시 본다.
+  check(free.canWriteTrialResults === false, "PLAN-1B 전인데 FREE 체험 결과 작성이 열렸다")
+  check(free.canWriteConsultations === false, "PLAN-1B 전인데 FREE 상담 작성이 열렸다")
+  check(free.canReopenConsultation === false, "PLAN-1B 전인데 FREE 상담 재개가 열렸다")
+
+  // 구현체가 없는 기능을 Standard 로 올리지 않는다(billing 허위 표시 방지).
+  check(standard.canUseAdvancedAnalytics === false, "구현체 없는 고급 분석이 STANDARD 로 열렸다")
+  check(standard.canImportConsultations === false, "구현체 없는 상담 가져오기가 STANDARD 로 열렸다")
+  check(
+    standard.canUseAiConsultationTools === false,
+    "구현체 없는 AI 상담 도구가 STANDARD 로 열렸다"
+  )
+
+  passLine(before, "발행 ≠ 작성 / PLAN-1B 전 작성 권한 유지 / 미구현 기능 비판매")
 }
 
 if (failures > 0) {

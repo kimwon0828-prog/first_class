@@ -2,7 +2,6 @@
 
 import { revalidatePath } from "next/cache"
 
-import { requireStudioEntitlement } from "@/features/billing/lib/require-entitlement"
 import { requireTeacherStudioAccess } from "@/features/studio/lib/require-teacher-studio-access"
 import { getStudioTrialResultSaveContext } from "@/features/studio/queries/get-studio-trial-result-save-context"
 import { dataAdapter } from "@/shared/lib/db"
@@ -43,11 +42,17 @@ export async function withdrawExperienceReportAction(
 
   const teacher = await requireTeacherStudioAccess()
 
-  const entitlement = await requireStudioEntitlement(teacher.organizationId, "canWriteTrialResults")
-  if (!entitlement.allowed) {
-    return { status: "error", message: entitlement.message }
-  }
-
+  // ⚠️ 요금제 gate 를 두지 않는다. 의도적이다.
+  //
+  //    철회는 이미 학부모에게 나간 문서를 거두는 일이다. 발행을 막는 것과는 다르다.
+  //    downgrade 로 Free 가 된 학원에서 철회까지 막으면, 잘못 나간 리포트를
+  //    되돌릴 방법이 사라지고 학부모는 틀린 문서를 계속 보게 된다.
+  //
+  //    always-true entitlement 를 새로 만들어 형식만 맞추지도 않는다 —
+  //    아무도 막지 않는 flag 는 계약이 아니라 장식이다.
+  //
+  //    권한은 여기서 두 겹으로 지킨다: Studio 인증(위)과 조직 scope(아래).
+  //    RPC 도 자기 조직 신청만 철회한다.
   const { data: context, error } = await getStudioTrialResultSaveContext(
     applicationId,
     teacher.organizationId

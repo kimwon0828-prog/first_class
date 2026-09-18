@@ -603,7 +603,7 @@ export default async function StudioApplicationDetailPage({ params }: StudioAppl
                   assessmentUpdatedAt={reportView.assessmentUpdatedAt}
                   assessmentChangedSincePublish={reportView.assessmentChangedSincePublish}
                   blockers={reportView.blockers}
-                  canWrite={entitlements.canWriteTrialResults}
+                  canPublishReport={entitlements.canPublishParentReport}
                 />
               ) : null
             }
