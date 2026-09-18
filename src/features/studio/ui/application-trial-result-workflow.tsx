@@ -135,17 +135,17 @@ type ApplicationTrialResultWorkflowProps = {
   /** 서버가 정한 기준 시각. 체험 종료 판정이 hydration 전후로 갈리지 않게 한다. */
   nowIso: string
   /**
-   * 유료 쓰기 권한. 서버에서 해석해 넘긴다.
+   * 쓰기 권한. 서버에서 해석해 넘긴다.
    *
-   * 화면에서 요금제 이름을 비교하지 않는다. 잠긴 경우에도 기존 체험 결과와
-   * 상담 이력은 그대로 보여 준다 — 잠기는 것은 새로 쓰기뿐이다.
-   * 실제 차단은 server action 이 하고, 여기서는 할 수 없는 버튼을 숨긴다.
+   * ⚠️ 기능별로 따로 받는다. 하나의 boolean 으로 묶지 않는다 — 한 번 묶으면
+   *    권한 경계가 바뀔 때(지금처럼) 어느 기능이 왜 잠겼는지 알 수 없게 된다.
+   *
+   * 화면에서 요금제 이름을 비교하지 않는다. 실제 차단은 server action 이 하고,
+   * 여기서는 할 수 없는 버튼을 숨긴다.
    */
-  paidWriteAccess: {
-    canWriteTrialResults: boolean
-    canWriteConsultations: boolean
-    canReopenConsultation: boolean
-  }
+  canWriteTrialResults: boolean
+  canWriteConsultations: boolean
+  canReopenConsultation: boolean
 }
 
 type NextActionState = {
@@ -366,7 +366,9 @@ export const ApplicationTrialResultWorkflow = ({
   reportSection = null,
   parentDecisionSection = null,
   nowIso,
-  paidWriteAccess
+  canWriteTrialResults,
+  canWriteConsultations,
+  canReopenConsultation
 }: ApplicationTrialResultWorkflowProps) => {
   const router = useRouter()
   const [isPromptOpen, setIsPromptOpen] = useState(false)
@@ -592,23 +594,18 @@ export const ApplicationTrialResultWorkflow = ({
 
   const hasTrialResult = Boolean(application.trialResult)
   const isCompletedView = application.status === "completed"
-  // 상담을 새로 쓸 수 있는 Case 인가(업무 조건) + 쓸 수 있는 플랜인가(권한).
+  // 상담을 새로 쓸 수 있는 Case 인가(업무 조건) + 쓸 수 있는 권한인가.
   const isConsultationWritableCase =
     application.status === "completed" &&
     application.registrationStatus !== "enrolled" &&
     application.registrationStatus !== "not_enrolled"
-  const canAddConsultation =
-    isConsultationWritableCase && paidWriteAccess.canWriteConsultations
+  const canAddConsultation = isConsultationWritableCase && canWriteConsultations
   // 재개는 미등록 종결에만 연다. 등록 완료(enrolled)는 취소/환불이라는 다른 의미라 대상이 아니다.
   const canReopenRegistration =
     application.status === "completed" &&
     application.registrationStatus === "not_enrolled" &&
-    paidWriteAccess.canReopenConsultation
-  const canWriteTrialResult = paidWriteAccess.canWriteTrialResults
-  // 잠긴 안내는 한 화면에 하나만 둔다(디자인 시스템 §10.2).
-  // 체험 완료 이후 원장이 실제로 막히는 지점이 "다음 할 일" 이라 거기에 놓는다.
-  const isPaidWorkflowLocked =
-    isCompletedView && !paidWriteAccess.canWriteTrialResults && !paidWriteAccess.canWriteConsultations
+    canReopenConsultation
+  const canWriteTrialResult = canWriteTrialResults
   const unregisteredReasonLabel = getTrialResultUnregisteredReasonLabel(application.unregisteredReason)
   const now = useMemo(() => new Date(nowIso), [nowIso])
   const nextActionState = getNextActionState(application, now)
@@ -706,13 +703,7 @@ export const ApplicationTrialResultWorkflow = ({
           {completedTodoCard.description ? (
             <p className={styles.todoDescription}>{completedTodoCard.description}</p>
           ) : null}
-          {isPaidWorkflowLocked ? (
-            <p className={styles.todoDescription}>
-              체험 결과와 등록 상담 기록은 스탠다드 플랜에서 남길 수 있습니다. 이미 저장된 기록은
-              아래에서 그대로 확인할 수 있습니다.
-            </p>
-          ) : null}
-          {completedPrimaryAction || (isPaidWorkflowLocked && phoneHref) ? (
+          {completedPrimaryAction || phoneHref ? (
             <div className={styles.todoActionRow}>
               {completedPrimaryAction === "trial_result" ? (
                 <button type="button" className={styles.primaryButton} onClick={() => openEditor()}>

@@ -1,6 +1,7 @@
 "use client"
 
 import { useActionState, useEffect, useRef, useState } from "react"
+import Link from "next/link"
 import { useRouter } from "next/navigation"
 
 import {
@@ -12,6 +13,7 @@ import {
   type WithdrawExperienceReportActionState
 } from "@/features/studio/actions/withdraw-experience-report"
 import { formatSeoulDateTime } from "@/features/studio/lib/seoul-datetime"
+import { useStudioNavigationPathFactory } from "@/features/studio/ui/studio-navigation-provider"
 import type { ExperienceReportSnapshotV1 } from "@/features/reports/lib/experience-report-snapshot"
 import { SEOUL_TIME_ZONE } from "@/shared/lib/seoul-datetime"
 
@@ -51,7 +53,16 @@ type ApplicationReportPublishingProps = {
   /** 마지막 발행 이후 평가가 수정됐는가. */
   assessmentChangedSincePublish: boolean
   blockers: ReportPublishBlocker[]
-  canWrite: boolean
+  /**
+   * 학부모에게 발행할 수 있는가(스탠다드).
+   *
+   * ⚠️ 체험 결과 작성 권한과 다른 값이다. 작성은 학원 안에 남는 기록이고
+   *    발행은 학부모에게 나가는 문서다. 미리보기는 이 값과 무관하게 보여 준다 —
+   *    발행하지 못해도 무엇이 나갈지는 볼 수 있어야 한다.
+   *
+   * 철회는 이 값을 따르지 않는다. 요금제와 무관하게 허용한다.
+   */
+  canPublishReport: boolean
 }
 
 const initialPublishState: PublishExperienceReportActionState = {
@@ -179,9 +190,10 @@ export const ApplicationReportPublishing = ({
   assessmentUpdatedAt,
   assessmentChangedSincePublish,
   blockers,
-  canWrite
+  canPublishReport
 }: ApplicationReportPublishingProps) => {
   const router = useRouter()
+  const studioPath = useStudioNavigationPathFactory()
   const publishAction = publishExperienceReportAction.bind(null, applicationId)
   const [publishState, submitPublish, isPublishing] = useActionState(
     publishAction,
@@ -238,12 +250,16 @@ export const ApplicationReportPublishing = ({
   // 현재 발행 상태를 모르면 어떤 발행 동작도 하지 않는다.
   // 미리보기는 그대로 보여 준다 — 그건 평가에서 만든 것이라 발행본과 무관하다.
   const canPublish =
-    canWrite &&
+    canPublishReport &&
     !publishedReportLoadError &&
     !activeBlocker &&
     Boolean(preview) &&
     Boolean(assessmentUpdatedAt)
-  const canWithdraw = canWrite && !publishedReportLoadError && Boolean(publishedVersion)
+  // 철회에는 요금제 조건이 없다. 지금 공개 중인 발행본이 있고 그 사실을 알고 있으면 된다.
+  // Free 로 내려온 학원도 이미 나간 리포트를 거둘 수 있어야 한다.
+  const canWithdraw = !publishedReportLoadError && Boolean(publishedVersion)
+  // 발행은 못 해도 철회할 것이 남아 있으면 조작 영역을 보여 준다.
+  const hasActions = canPublishReport || Boolean(publishedVersion)
   const publishedDateText = publishedAt ? formatSeoulDateTime(publishedAt) : null
 
   return (
@@ -315,7 +331,28 @@ export const ApplicationReportPublishing = ({
         </div>
       ) : null}
 
-      {activeBlocker ? (
+      {/*
+        발행이 요금제로 잠긴 상태.
+
+        버튼만 조용히 지우지 않는다. 미리보기까지 만든 원장이 발행 자리에서
+        아무것도 못 찾으면 화면이 고장난 것처럼 보인다(디자인 시스템 §10.2).
+        잠긴 것은 발행 하나이고, 작성·미리보기·철회는 그대로 돌아간다.
+      */}
+      {!canPublishReport ? (
+        <div className={styles.lockedNotice} role="status">
+          <p className={styles.noticeTitle}>학부모 리포트 발행은 스탠다드 플랜에서 사용할 수 있어요.</p>
+          <p className={styles.noticeBody}>
+            체험 결과 작성과 미리보기는 계속 사용할 수 있고, 이미 발행한 리포트는 학부모가 그대로
+            볼 수 있어요.
+          </p>
+          <Link href={studioPath("/studio/billing")} prefetch={false} className={styles.lockedLink}>
+            플랜 확인하기
+          </Link>
+        </div>
+      ) : null}
+
+      {/* 잠긴 상태에서는 발행 준비 안내를 띄우지 않는다. 지금 할 수 없는 일의 준비물이다. */}
+      {canPublishReport && activeBlocker ? (
         <div className={styles.notice} role="status">
           <p className={styles.noticeTitle}>{BLOCKER_TEXT[activeBlocker.kind].title}</p>
           <p className={styles.noticeBody}>{BLOCKER_TEXT[activeBlocker.kind].body}</p>
@@ -345,27 +382,29 @@ export const ApplicationReportPublishing = ({
         </div>
       ) : null}
 
-      {canWrite ? (
+      {hasActions ? (
         <div className={styles.actions}>
-          <form action={submitPublish} className={styles.publishForm}>
-            {/* 원장이 확인한 revision. 그 사이 평가가 바뀌었으면 서버가 거절한다. */}
-            <input
-              type="hidden"
-              name="expectedAssessmentUpdatedAt"
-              value={assessmentUpdatedAt ?? ""}
-            />
-            <button
-              type="submit"
-              className={styles.primaryButton}
-              disabled={!canPublish || isPublishing || isWithdrawing}
-            >
-              {isPublishing
-                ? "발행 중..."
-                : publishedVersion
-                  ? "새 버전으로 발행"
-                  : "부모에게 리포트 발행"}
-            </button>
-          </form>
+          {canPublishReport ? (
+            <form action={submitPublish} className={styles.publishForm}>
+              {/* 원장이 확인한 revision. 그 사이 평가가 바뀌었으면 서버가 거절한다. */}
+              <input
+                type="hidden"
+                name="expectedAssessmentUpdatedAt"
+                value={assessmentUpdatedAt ?? ""}
+              />
+              <button
+                type="submit"
+                className={styles.primaryButton}
+                disabled={!canPublish || isPublishing || isWithdrawing}
+              >
+                {isPublishing
+                  ? "발행 중..."
+                  : publishedVersion
+                    ? "새 버전으로 발행"
+                    : "부모에게 리포트 발행"}
+              </button>
+            </form>
+          ) : null}
 
           {publishedVersion ? (
             <button
@@ -381,7 +420,7 @@ export const ApplicationReportPublishing = ({
         </div>
       ) : null}
 
-      {canWrite && !publishedReportLoadError ? (
+      {canPublishReport && !publishedReportLoadError ? (
         <p className={styles.footnote}>
           {publishedVersion
             ? "기존 리포트는 과거 발행 기록으로 보존됩니다."

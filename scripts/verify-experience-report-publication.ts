@@ -44,6 +44,7 @@ const DETAIL_PAGE_PATH = "app/studio/(dashboard)/applications/[id]/page.tsx"
 const PUBLISH_ACTION_PATH = "src/features/studio/actions/publish-experience-report.ts"
 const WITHDRAW_ACTION_PATH = "src/features/studio/actions/withdraw-experience-report.ts"
 const REPORT_UI_PATH = "src/features/studio/ui/application-report-publishing.tsx"
+const WORKFLOW_UI_PATH = "src/features/studio/ui/application-trial-result-workflow.tsx"
 const ANON_MIGRATION_PATH =
   "supabase/migrations/20260914120000_restrict_experience_report_rpc_execute.sql"
 const CONTENT_MIGRATION_PATH =
@@ -386,13 +387,29 @@ for (const [name, source] of [
   ["withdraw", withdrawAction]
 ] as const) {
   check(`${name} action 이 Studio 접근을 확인한다`, source.includes("requireTeacherStudioAccess()"))
-  check(`${name} action 이 entitlement 를 확인한다`, source.includes("requireStudioEntitlement("))
   check(
     `${name} action 이 조직 scope 를 좁힌다`,
     source.includes("getStudioTrialResultSaveContext(")
   )
   check(`${name} action 이 캐시를 되살린다`, source.includes("revalidatePath("))
 }
+
+// 발행과 철회의 권한은 다르다. 같은 flag 로 묶으면 작성을 무료로 여는 순간
+// 발행까지 열리고, 반대로 발행을 잠그면 downgrade 된 학원이 이미 나간 리포트를
+// 거둘 수 없게 된다. 두 방향을 각각 고정한다.
+check(
+  "publish 가 발행 entitlement 를 확인한다",
+  publishAction.includes('requireStudioEntitlement(') &&
+    publishAction.includes('"canPublishParentReport"')
+)
+check(
+  "publish 가 작성 권한을 발행 gate 로 쓰지 않는다",
+  !publishAction.includes('"canWriteTrialResults"')
+)
+check(
+  "withdraw 에는 요금제 gate 가 없다",
+  !withdrawAction.includes("requireStudioEntitlement(")
+)
 check(
   "publish 가 확인한 revision 을 넘긴다",
   publishAction.includes("expectedAssessmentUpdatedAt") &&
@@ -498,7 +515,66 @@ check(
 )
 check(
   "오류일 때 발행 안내 문구를 띄우지 않는다",
-  reportUi.includes("canWrite && !publishedReportLoadError ? (")
+  reportUi.includes("canPublishReport && !publishedReportLoadError ? (")
+)
+check(
+  "화면이 발행 권한과 작성 권한을 섞지 않는다",
+  reportUi.includes("canPublishReport: boolean") && !reportUi.includes("canWrite:")
+)
+check(
+  "철회 버튼이 발행 권한에 묶이지 않는다",
+  /const canWithdraw =(?![\s\S]{0,80}canPublishReport)/.test(reportUi)
+)
+// 무료 학원은 여기까지 와서 발행만 막힌다. 버튼만 사라지면 화면이 고장난 것처럼 보인다.
+check(
+  "발행이 잠기면 이유를 글자로 말한다",
+  reportUi.includes("{!canPublishReport ? (") &&
+    reportUi.includes("학부모 리포트 발행은 스탠다드 플랜에서 사용할 수 있어요.")
+)
+check(
+  "잠금 안내가 기존 기록·발행본이 살아 있음을 말한다",
+  reportUi.includes("체험 결과 작성과 미리보기는 계속 사용할 수 있고")
+)
+// 기록은 무료다. 작성이 유료라고 말하던 화면 계약이 남아 있으면 안 된다.
+{
+  const workflowUi = read(WORKFLOW_UI_PATH)
+  check(
+    "작성 권한을 기능별로 따로 받는다",
+    workflowUi.includes("canWriteTrialResults: boolean") &&
+      workflowUi.includes("canWriteConsultations: boolean") &&
+      workflowUi.includes("canReopenConsultation: boolean")
+  )
+  check(
+    "여러 기능을 하나의 paid 묶음으로 다시 묶지 않는다",
+    !workflowUi.includes("paidWriteAccess") && !workflowUi.includes("isPaidWorkflowLocked")
+  )
+  check(
+    "작성이 유료라고 말하던 안내가 남아 있지 않다",
+    !workflowUi.includes("스탠다드 플랜에서 남길 수 있습니다")
+  )
+  check(
+    "화면이 요금제 이름을 직접 비교하지 않는다",
+    !/plan\s*===\s*["']/.test(workflowUi) && !/plan\s*===\s*["']/.test(reportUi)
+  )
+}
+
+// 잠금 안내는 갈 곳을 준다. 막아 놓고 길을 안 알려주면 원장은 여기서 끝난다.
+check(
+  "잠금 안내가 플랜 화면으로 가는 길을 준다",
+  reportUi.includes('studioPath("/studio/billing")') && reportUi.includes("플랜 확인하기")
+)
+// 같은 화면에 업그레이드 안내를 여러 개 두지 않는다(디자인 시스템 §10.2).
+check(
+  "잠금 안내는 한 곳뿐이다",
+  (reportUi.match(/스탠다드 플랜에서/g) ?? []).length === 1
+)
+
+check(
+  "잠금 안내는 경고 색을 쓰지 않는다",
+  reportUi.includes("styles.lockedNotice") &&
+    read("src/features/studio/ui/application-report-publishing.module.css").includes(
+      "var(--surface-sub)"
+    )
 )
 check(
   "미리보기는 계속 보여 준다",

@@ -476,8 +476,8 @@ const run = async () => {
         snapshot,
         new Date(new Date(item.expected).getTime() + 60 * 1000)
       )
-      check(justBefore.entitlements.canWriteConsultations, `${item.label}: 유예 직전에 닫혔다`)
-      check(!justAfter.entitlements.canWriteConsultations, `${item.label}: 유예 이후에도 열려 있다`)
+      check(justBefore.entitlements.canPublishParentReport, `${item.label}: 유예 직전에 닫혔다`)
+      check(!justAfter.entitlements.canPublishParentReport, `${item.label}: 유예 이후에도 열려 있다`)
 
       // 결제된 기간이 끝나기 전에는 절대 닫히지 않는다.
       const atPeriodEnd = resolveStudioEntitlements(
@@ -485,7 +485,7 @@ const run = async () => {
         new Date(new Date(item.periodEnd).getTime() - 60 * 1000)
       )
       check(
-        atPeriodEnd.entitlements.canWriteConsultations,
+        atPeriodEnd.entitlements.canPublishParentReport,
         `${item.label}: 이미 결제된 기간 안인데 닫혔다`
       )
 
@@ -580,13 +580,13 @@ const run = async () => {
       const lateAt = new Date("2026-10-14T00:00:00.000Z")
       // 실패가 오기 전에 이미 닫혀 있다.
       check(
-        !resolveStudioEntitlements(snapshotOf(FIRST_GRACE), lateAt).entitlements.canWriteConsultations,
+        !resolveStudioEntitlements(snapshotOf(FIRST_GRACE), lateAt).entitlements.canPublishParentReport,
         "D: 유예가 끝났는데 열려 있다"
       )
 
       const grace = await failAt("D 늦은 실패 10-14", "episode-d-4", lateAt.toISOString(), FIRST_GRACE)
       check(
-        !resolveStudioEntitlements(snapshotOf(grace), lateAt).entitlements.canWriteConsultations,
+        !resolveStudioEntitlements(snapshotOf(grace), lateAt).entitlements.canPublishParentReport,
         "D: 늦은 실패 이벤트로 유료 접근이 다시 열렸다"
       )
       passLine(stepBefore, "D 유예 종료 후 실패      → 재오픈 0")
@@ -704,7 +704,7 @@ const run = async () => {
   {
     const before = failures
     const ORG_F = "b21e0000-0000-4000-8000-000000000006"
-    // Marketplace view 는 now() 로 판정한다. 고정 날짜를 쓰면 실제 시계에 따라
+    // 유료 접근은 now() 로 판정한다. 고정 날짜를 쓰면 실제 시계에 따라
     // 재오픈이 우연히 가려질 수 있어, 기준 시각을 지금에 맞춘다.
     const PERIOD_START = iso(-35)
     const PERIOD_END = iso(-5)
@@ -784,13 +784,7 @@ const run = async () => {
         },
         new Date()
       )
-      check(!entitlements.entitlements.canWriteConsultations, `${item.label}: Studio 유료 접근이 열렸다`)
-
-      // Marketplace 우선 노출 0.
-      const boosted = (await admin(
-        `marketplace_boosted_organizations?organization_id=eq.${ORG_F}&select=organization_id`
-      )) as Array<unknown>
-      check(boosted.length === 0, `${item.label}: Marketplace boost 가 열렸다`)
+      check(!entitlements.entitlements.canPublishParentReport, `${item.label}: Studio 유료 접근이 열렸다`)
 
       passLine(caseBefore, `${item.label.padEnd(32)} → ignored · 상태 유지 · 재오픈 0`)
     }

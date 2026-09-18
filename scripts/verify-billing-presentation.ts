@@ -363,35 +363,73 @@ console.log("\n[10] 기능 비교표")
   const freePlan = getPlanEntitlements("free")
   const standardPlan = getPlanEntitlements("standard")
 
-  check(rows.length === 8, `비교 항목 수가 다르다: ${rows.length}`)
+  check(rows.length === 9, `비교 항목 수가 다르다: ${rows.length}`)
   check(rows.every((row) => row.standard), "스탠다드에서 안 되는 항목이 비교표에 있다")
 
   // 무료에서 실제로 되는 기능을 유료 전용처럼 적으면 안 된다.
+  // 기록(체험 결과 · 상담)은 무료다 — 여기서 빠지면 화면이 무료 학원에게 거짓말을 한다.
   const freeRows = rows.filter((row) => row.free).map((row) => row.label)
   check(
     JSON.stringify(freeRows) ===
-      JSON.stringify(["Marketplace 입점", "수업·체험 운영", "Excel 예약 가져오기"]),
+      JSON.stringify([
+        "첫수업 학부모 서비스 노출",
+        "수업·체험 운영",
+        "체험 결과 작성",
+        "상담·등록 기록",
+        "Excel 예약 가져오기"
+      ]),
     `무료 지원 항목이 다르다: ${freeRows.join(", ")}`
+  )
+
+  // 유료 전용 항목도 사실과 맞아야 한다. 무료에 ✓ 가 붙으면 팔 것이 없어진다.
+  const paidOnlyRows = rows.filter((row) => !row.free).map((row) => row.label)
+  check(
+    JSON.stringify(paidOnlyRows) ===
+      JSON.stringify([
+        "학부모 리포트 발행",
+        "등록 전환 분석",
+        "미등록 사유 분석",
+        "등록 전환 인포그래픽"
+      ]),
+    `유료 전용 항목이 다르다: ${paidOnlyRows.join(", ")}`
   )
 
   // 표가 손으로 적힌 값이 아니라 실제 계약에서 나온 값인지 확인한다.
   const byLabel = new Map(rows.map((row) => [row.label, row]))
   check(byLabel.get("체험 결과 작성")?.free === freePlan.canWriteTrialResults, "체험 결과 항목이 계약과 다르다")
   check(
-    byLabel.get("상담·등록 전환 관리")?.free === freePlan.canWriteConsultations,
+    byLabel.get("상담·등록 기록")?.free === freePlan.canWriteConsultations,
     "상담 항목이 계약과 다르다"
   )
+  // 요금제에 따른 우선 노출은 없다. 행이 되살아나면 정책과 어긋난다.
   check(
-    byLabel.get("Marketplace 우선 노출")?.standard === standardPlan.hasMarketplaceRankingBoost,
-    "우선 노출 항목이 계약과 다르다"
+    !rows.some((row) => row.label.includes("우선 노출")),
+    "Marketplace 우선 노출 행이 되살아났다"
   )
-  check(byLabel.get("Marketplace 입점")?.free === freePlan.canListOnMarketplace, "입점 항목이 계약과 다르다")
+  check(
+    byLabel.get("첫수업 학부모 서비스 노출")?.free === freePlan.canListOnMarketplace,
+    "노출 항목이 계약과 다르다"
+  )
+  // 내부 용어를 원장 화면에 그대로 내보내지 않는다.
+  check(
+    !rows.some((row) => /marketplace/i.test(row.label)),
+    "비교표 label 에 내부 용어가 남아 있다"
+  )
+  check(
+    byLabel.get("학부모 리포트 발행")?.free === freePlan.canPublishParentReport &&
+      byLabel.get("학부모 리포트 발행")?.standard === standardPlan.canPublishParentReport,
+    "리포트 발행 항목이 계약과 다르다"
+  )
 
   // 아직 팔지 않는 기능은 비교표에 없다.
-  for (const banned of ["AI", "리포트", "고급 분석", "수요 분석", "프로"]) {
+  //
+  // "리포트" 는 이 목록에서 빠졌다. 구현체가 없어서 금지했던 것인데, 학부모 리포트
+  // 발행은 실제로 구현됐고 지금 스탠다드의 핵심 가치다. 대신 그 항목이 계약에서
+  // 파생되는지는 바로 위에서 확인한다.
+  for (const banned of ["AI", "고급 분석", "수요 분석", "내보내기", "프로"]) {
     check(!rows.some((row) => row.label.includes(banned)), `판매하지 않는 기능이 노출됐다: ${banned}`)
   }
-  passLine(before, "8개 항목 · 무료 3개 지원 · 값이 entitlement 계약에서 파생")
+  passLine(before, "9개 항목 · 무료 5개 지원 · 값이 entitlement 계약에서 파생")
 }
 
 console.log("\n[11] 다음 결제 카드")
@@ -430,6 +468,84 @@ console.log("\n[11] 다음 결제 카드")
   const free = fact({ subscription: null, override: null }, false)
   check(free.value === null && free.emptyText === "예정된 결제가 없어요.", "무료 빈 상태가 다르다")
   passLine(before, "자동 결제일 + 금액 / 종료 예정일 / 예정 없음")
+}
+
+// ─────────────────────────────────────────────────────────────
+// 플랜의 뜻이 화면에 제대로 서 있는가.
+//
+// 비교표가 계약에서 파생되는 것만으로는 부족하다. 카드 문구가 낡으면 원장은
+// "무료로는 기록도 못 하는구나" 라고 읽고 떠난다. 실제 경계는 그게 아니다 —
+// 기록은 무료이고, 파는 것은 그 기록을 학부모와 나누고 분석하는 일이다.
+console.log("\n[12] 카드 문구가 실제 경계를 말한다")
+{
+  const before = failures
+  const freeView = buildPricingCards(present({ subscription: null, override: null }, false), {
+    billingAvailable: false,
+    standardAmount: AMOUNT
+  })
+  const freeCard = freeView.find((card) => card.planCode === "free")!
+  const standardCard = freeView.find((card) => card.planCode === "standard")!
+
+  // 무료 카드가 기록을 포함한다고 말해야 한다.
+  check(/상담|기록/.test(freeCard.description), "무료 카드 설명이 기록을 말하지 않는다")
+  check(
+    freeCard.benefits.some((item) => item.includes("체험 결과") && item.includes("상담")),
+    "무료 혜택에 체험 결과·상담 기록이 없다"
+  )
+  check(
+    freeCard.benefits.some((item) => item.includes("Excel")),
+    "무료 혜택에 Excel 예약 가져오기가 없다"
+  )
+
+  // 스탠다드는 공유·분석으로 읽혀야 한다.
+  check(
+    /리포트|공유|분석/.test(standardCard.description),
+    "스탠다드 카드 설명이 공유·분석을 말하지 않는다"
+  )
+  check(
+    !/기록할|기록을 남/.test(standardCard.description),
+    "스탠다드 카드가 기록을 파는 것처럼 말한다"
+  )
+
+  // 우선순위: 학부모 리포트 발행이 "무료의 모든 기능" 바로 다음이다.
+  check(standardCard.benefits[0] === "무료의 모든 기능", "스탠다드 첫 줄이 무료 포함이 아니다")
+  check(
+    standardCard.benefits[1] === "학부모 리포트 발행",
+    `스탠다드 핵심 가치가 맨 위가 아니다: ${standardCard.benefits[1]}`
+  )
+  check(
+    standardCard.benefits.includes("등록 전환 분석") &&
+      standardCard.benefits.includes("미등록 사유 분석") &&
+      standardCard.benefits.includes("등록 전환 인포그래픽"),
+    "스탠다드 혜택에 분석 기능이 빠졌다"
+  )
+
+  // 무료에서 되는 것을 스탠다드 혜택으로 다시 팔지 않는다.
+  for (const banned of ["체험 결과 기록", "상담 이력 관리", "등록 전환 관리", "Excel"]) {
+    check(
+      !standardCard.benefits.some((item) => item.includes(banned)),
+      `무료 기능을 스탠다드 혜택으로 적었다: ${banned}`
+    )
+  }
+
+  // 구현체가 없는 기능과 없앤 기능은 어느 카드에도 없다.
+  for (const card of freeView) {
+    for (const banned of ["우선 노출", "AI", "고급 대시보드", "내보내기", "export"]) {
+      check(
+        !card.benefits.some((item) => item.includes(banned)),
+        `${card.name} 카드에 팔지 않는 기능이 있다: ${banned}`
+      )
+    }
+  }
+
+  // 결제가 아직 열리지 않았으면 그 사실을 그대로 말한다. CTA 를 거짓으로 활성화하지 않는다.
+  check(standardCard.cta.kind === "disabled", "결제 준비 중인데 CTA 가 활성화됐다")
+  check(standardCard.cta.note === "결제 기능을 준비 중이에요.", "결제 준비중 안내가 사라졌다")
+
+  // 현재 플랜을 무료 카드가 스스로 말한다(전용 카드를 따로 두지 않는다).
+  check(freeCard.cta.label === "현재 이용 중", `무료 사용자의 현재 플랜 표시가 다르다: ${freeCard.cta.label}`)
+
+  passLine(before, "무료=기록 · 스탠다드=공유·분석 · 결제 준비중 유지 · 현재 플랜 표시")
 }
 
 if (failures > 0) {

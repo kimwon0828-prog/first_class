@@ -576,11 +576,9 @@ export default async function StudioApplicationDetailPage({ params }: StudioAppl
           <ApplicationTrialResultWorkflow
             application={data}
             nowIso={nowIso}
-            paidWriteAccess={{
-              canWriteTrialResults: entitlements.canWriteTrialResults,
-              canWriteConsultations: entitlements.canWriteConsultations,
-              canReopenConsultation: entitlements.canReopenConsultation
-            }}
+            canWriteTrialResults={entitlements.canWriteTrialResults}
+            canWriteConsultations={entitlements.canWriteConsultations}
+            canReopenConsultation={entitlements.canReopenConsultation}
             parentDecisionSection={
               <StudioParentDecision
                 decision={parentDecisionResult.data}
@@ -603,7 +601,7 @@ export default async function StudioApplicationDetailPage({ params }: StudioAppl
                   assessmentUpdatedAt={reportView.assessmentUpdatedAt}
                   assessmentChangedSincePublish={reportView.assessmentChangedSincePublish}
                   blockers={reportView.blockers}
-                  canWrite={entitlements.canWriteTrialResults}
+                  canPublishReport={entitlements.canPublishParentReport}
                 />
               ) : null
             }

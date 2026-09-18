@@ -2,13 +2,24 @@
 //
 // 화면과 action 은 요금제 이름을 비교하지 않는다. 항상 여기서 나온 flag 만 본다.
 //   나쁨:  if (plan === "standard")
-//   좋음:  if (!entitlements.canWriteConsultations)
+//   좋음:  if (!entitlements.canPublishParentReport)
 //
 // 누적 모델이다. STANDARD 는 FREE 전체를 포함하고, PRO 는 STANDARD 전체를 포함한다.
+//
+// 경계는 한 문장이다(AGENTS.md 요금제 정책).
+//   FREE      기록하고 운영한다.
+//   STANDARD  기록을 분석하고 학부모와 공유한다.
+//
+// 그래서 작성(체험 결과 · 상담 · 등록 결과)은 무료다. 유료는 그 기록을 바깥으로
+// 내보내는 일 — 학부모 리포트 발행과 전환 분석 — 에만 붙는다.
 //
 // 읽기와 쓰기를 나눈 것은 downgrade 때문이다. 유료를 쓰다 무료로 내려온 학원도
 // 과거 체험 결과와 상담 이력은 계속 볼 수 있어야 한다.
 // 그래서 열람 flag 는 과거 결제 이력을 조회해서 계산하지 않고 항상 참이다.
+//
+// ⚠️ "지금 유료인가" 를 확인하는 코드는 canWriteConsultations 를 쓰지 않는다.
+//    그 flag 는 이제 무료에서도 참이다. 유료 여부의 대표값은
+//    canPublishParentReport 나 canUseConversionAnalytics 다.
 
 import type { OrganizationBillingSnapshot, OrganizationPlanCode } from "@/shared/lib/db/adapter"
 
@@ -19,14 +30,9 @@ export type StudioEntitlements = {
   canManageClasses: boolean
   canManageSchedule: boolean
   canManageTeachers: boolean
-  /** 신청 확인 · 일정 확정 · 취소 · 노쇼 · 체험 완료. 무료의 마지막 단계다. */
+  /** 신청 확인 · 일정 확정 · 취소 · 노쇼 · 체험 완료. */
   canProcessTrial: boolean
-
-  // ── 열람: downgrade 후에도 유지된다 ────────────────────────
-  canViewTrialResults: boolean
-  canViewConsultationHistory: boolean
-
-  // ── STANDARD: 상담 · 등록 전환 ─────────────────────────────
+  /** 체험 결과(관찰 · 추천) 작성/수정. 학원 안에 남는 기록이다. */
   canWriteTrialResults: boolean
   /**
    * 상담 작성/수정.
@@ -37,20 +43,30 @@ export type StudioEntitlements = {
    */
   canWriteConsultations: boolean
   canReopenConsultation: boolean
-  canUseConversionAnalytics: boolean
+
+  // ── 열람: downgrade 후에도 유지된다 ────────────────────────
+  canViewTrialResults: boolean
+  canViewConsultationHistory: boolean
+
+  // ── STANDARD: 학부모 공유 · 전환 분석 ───────────────────────
   /**
-   * Standard 의 Marketplace 우선 노출 자격.
+   * 학부모 리포트 신규 발행 · 새 버전 재발행.
    *
-   * 이 flag 는 Studio 화면용이다. 실제 정렬은 공개 수업 목록이 수행한다 —
-   * marketplace_ranked_classes 를 `order by boost_eligible desc, created_at desc` 로
-   * 조회한다(features/classes/queries/public-class-safe-projection.ts).
+   * ⚠️ canWriteTrialResults 와 묶지 않는다. 작성과 발행은 다른 행위다 —
+   *    작성은 학원 안에 남는 기록이고(무료), 발행은 학부모에게 나가는 문서다(유료).
+   *    둘을 다시 합치면 무료 학원이 학부모에게 리포트를 보내게 된다.
    *
-   * 공개 목록의 자격 판정은 이 resolver 가 아니라 marketplace_boosted_organizations 다.
-   * 결제 사실만 보고 내부 전체 권한은 제외한다 — 두 판정의 일치는
-   * scripts/verify-marketplace-boost.ts 가, 정렬 계약은
-   * scripts/verify-marketplace-ranking.ts 가 고정한다.
+   * 철회(withdraw)는 여기에 포함되지 않는다. 이미 발행된 리포트를 거두는 일은
+   * 요금제와 무관하게 허용한다 — 발행을 막는 것과 이미 보낸 것을 거두는 것은
+   * 다른 행위이고, downgrade 된 학원에게 철회 수단이 없으면 잘못 나간 문서를
+   * 되돌릴 방법이 사라진다.
    */
-  hasMarketplaceRankingBoost: boolean
+  canPublishParentReport: boolean
+  canUseConversionAnalytics: boolean
+
+  // ⚠️ 여기에 "공개 목록 우선 노출" 류의 flag 를 다시 만들지 않는다.
+  //    학부모가 보는 순서는 학원이 돈을 냈는지와 무관하다(AGENTS.md 요금제 정책).
+  //    유료 기능은 학원이 자기 데이터로 하는 일에만 붙는다.
 
   // ── PRO: 현재 판매하지 않는다. 내부 전체 권한에서만 참이다. ──
   canUseAdvancedAnalytics: boolean
@@ -65,15 +81,15 @@ const FREE_ENTITLEMENTS: StudioEntitlements = {
   canManageSchedule: true,
   canManageTeachers: true,
   canProcessTrial: true,
+  canWriteTrialResults: true,
+  canWriteConsultations: true,
+  canReopenConsultation: true,
 
   canViewTrialResults: true,
   canViewConsultationHistory: true,
 
-  canWriteTrialResults: false,
-  canWriteConsultations: false,
-  canReopenConsultation: false,
+  canPublishParentReport: false,
   canUseConversionAnalytics: false,
-  hasMarketplaceRankingBoost: false,
 
   canUseAdvancedAnalytics: false,
   canImportConsultations: false,
@@ -82,11 +98,8 @@ const FREE_ENTITLEMENTS: StudioEntitlements = {
 
 const STANDARD_ENTITLEMENTS: StudioEntitlements = {
   ...FREE_ENTITLEMENTS,
-  canWriteTrialResults: true,
-  canWriteConsultations: true,
-  canReopenConsultation: true,
-  canUseConversionAnalytics: true,
-  hasMarketplaceRankingBoost: true
+  canPublishParentReport: true,
+  canUseConversionAnalytics: true
 }
 
 const PRO_ENTITLEMENTS: StudioEntitlements = {

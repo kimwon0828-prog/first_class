@@ -314,19 +314,24 @@ export type PricingCard = {
   cta: PricingCardCta
 }
 
+// 카드 혜택 문구.
+//
+// ⚠️ 순서가 곧 우선순위다. 스탠다드는 "무료에서 기록을 못 해서 사는 플랜" 이 아니라
+//    "무료에서 쌓은 기록을 학부모와 나누고 분석하려고 사는 플랜" 이다.
+//    그래서 학부모 리포트 발행을 맨 위에 둔다.
 const FREE_BENEFITS = [
   "학원·수업 등록",
-  "체험 신청 관리",
-  "일정·체험 운영",
+  "체험 신청·일정 관리",
+  "체험 결과·상담 기록",
   "Excel 예약 가져오기"
 ]
 
 const STANDARD_BENEFITS = [
   "무료의 모든 기능",
-  "체험 결과 및 상담 기록",
+  "학부모 리포트 발행",
   "등록 전환 분석",
-  "등록 전환 인포그래픽",
-  "Marketplace 우선 노출"
+  "미등록 사유 분석",
+  "등록 전환 인포그래픽"
 ]
 
 /**
@@ -358,7 +363,8 @@ export const buildPricingCards = (
       subName: "Free",
       priceLabel: formatBillingAmount(0),
       priceUnit: "/ 월",
-      description: "체험수업 모집과 기본 운영을 부담 없이 시작하세요.",
+      description:
+        "체험수업 신청부터 상담·등록 기록까지 기본 운영을 무료로 시작하세요.",
       benefits: FREE_BENEFITS,
       featured: false,
       cta: freeCta
@@ -369,7 +375,8 @@ export const buildPricingCards = (
       subName: "Standard",
       priceLabel: formatBillingAmount(options.standardAmount),
       priceUnit: "/ 월",
-      description: "상담부터 등록 전환까지 한 흐름으로 관리하고 분석하세요.",
+      description:
+        "쌓인 체험·상담 기록을 분석하고 학부모에게 리포트를 공유하세요.",
       benefits: STANDARD_BENEFITS,
       featured: isFree,
       cta: standardCta
@@ -396,15 +403,24 @@ type ComparisonSource =
   /** 지금 어떤 플랜에서도 잠기지 않는 기능. 예약 Excel 가져오기가 여기에 해당한다. */
   | { label: string; ungated: true }
 
+// ⚠️ label 은 원장이 쓰는 말로 적는다. "Marketplace 입점" 같은 내부 용어를 그대로
+//    노출하면 무엇을 사는지 알 수 없다. 바꾸는 것은 표기뿐이고 entitlement 는 그대로다.
+//
+// 무료(기록·운영) → 유료(공유·분석) 순으로 둔다. 표를 위에서 아래로 읽으면
+// 어디서 유료가 시작되는지가 그대로 보인다.
+//
+// 미등록 사유 분석과 인포그래픽은 등록 전환 분석과 같은 flag 를 쓴다. 한 화면의
+// 같은 집계에서 나오는 것들이라 flag 를 쪼개면 계약만 늘고 지킬 것은 늘지 않는다.
 const COMPARISON_SOURCES: ComparisonSource[] = [
-  { label: "Marketplace 입점", entitlementKey: "canListOnMarketplace" },
+  { label: "첫수업 학부모 서비스 노출", entitlementKey: "canListOnMarketplace" },
   { label: "수업·체험 운영", entitlementKey: "canProcessTrial" },
-  { label: "Excel 예약 가져오기", ungated: true },
   { label: "체험 결과 작성", entitlementKey: "canWriteTrialResults" },
-  { label: "상담·등록 전환 관리", entitlementKey: "canWriteConsultations" },
+  { label: "상담·등록 기록", entitlementKey: "canWriteConsultations" },
+  { label: "Excel 예약 가져오기", ungated: true },
+  { label: "학부모 리포트 발행", entitlementKey: "canPublishParentReport" },
   { label: "등록 전환 분석", entitlementKey: "canUseConversionAnalytics" },
-  { label: "등록 전환 인포그래픽", entitlementKey: "canUseConversionAnalytics" },
-  { label: "Marketplace 우선 노출", entitlementKey: "hasMarketplaceRankingBoost" }
+  { label: "미등록 사유 분석", entitlementKey: "canUseConversionAnalytics" },
+  { label: "등록 전환 인포그래픽", entitlementKey: "canUseConversionAnalytics" }
 ]
 
 export const buildFeatureComparison = (): FeatureComparisonRow[] => {

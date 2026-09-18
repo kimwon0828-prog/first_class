@@ -27,6 +27,36 @@
 8. 상태값은 당장 크게 늘리지 않고 후속 phase에서 attendance/result/consultation/registration 축으로 분리한다.
 9. 과한 기능을 한 번에 만들지 않는다.
 
+## 요금제 정책 (Free / Standard)
+경계는 한 문장이다. **Free는 기록하고 운영한다. Standard는 기록을 분석하고 학부모와 공유한다.**
+
+Free에서 가능:
+- 체험 결과 작성
+- 상담 작성/수정, 상담 재오픈
+- 등록 결과 기록
+- 리포트 내부 미리보기
+- Excel 예약 가져오기
+
+Standard 전용:
+- 학부모 리포트 신규 발행
+- 학부모 리포트 새 버전 재발행
+- 등록 전환 분석
+- 미등록 사유 분석
+- 등록 전환 인포그래픽
+
+이미 발행된 리포트:
+- downgrade 이후에도 학부모 열람을 유지한다. 발행본은 발행 시점 snapshot이고, Parent RLS는 요금제를 보지 않는다.
+- Free에서도 철회할 수 있다. 철회를 발행 권한과 같은 flag로 묶지 않는다 — 발행을 막는 것과 이미 보낸 것을 거두는 것은 다른 행위다.
+- Free 전환 이후 막히는 것은 새 발행과 새 버전 발행뿐이다.
+
+운영 규칙:
+- 요금제 판정의 단일 소스는 `src/features/billing/lib/entitlements.ts`다. 화면과 action은 요금제 이름을 비교하지 않고 entitlement flag만 본다.
+- 유료 mutation은 UI에서 버튼을 감추는 것으로 끝내지 않는다. server action에서 `requireStudioEntitlement`로 막는다(fail closed).
+- 구현체가 없는 기능(고급 대시보드, 데이터 export, AI 상담 도구)은 billing 화면에 판매 기능으로 표시하지 않는다.
+- Marketplace 입점은 Free / Standard 공통이다. **요금제에 따른 우선 노출은 없다.**
+  학부모가 보는 순서는 학원이 돈을 냈는지와 무관하다 — 공개 수업 목록의 정렬에
+  결제 사실을 넣지 않는다. 유료 기능은 학원이 자기 데이터로 하는 일에만 붙인다.
+
 ## 개발 원칙
 - 항상 먼저 계획을 짧게 제시한 뒤 구현한다.
 - docs 폴더의 문서를 먼저 읽고 그 기준으로 작업한다.
