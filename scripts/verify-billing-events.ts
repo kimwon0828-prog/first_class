@@ -704,7 +704,7 @@ const run = async () => {
   {
     const before = failures
     const ORG_F = "b21e0000-0000-4000-8000-000000000006"
-    // Marketplace view 는 now() 로 판정한다. 고정 날짜를 쓰면 실제 시계에 따라
+    // 유료 접근은 now() 로 판정한다. 고정 날짜를 쓰면 실제 시계에 따라
     // 재오픈이 우연히 가려질 수 있어, 기준 시각을 지금에 맞춘다.
     const PERIOD_START = iso(-35)
     const PERIOD_END = iso(-5)
@@ -785,12 +785,6 @@ const run = async () => {
         new Date()
       )
       check(!entitlements.entitlements.canPublishParentReport, `${item.label}: Studio 유료 접근이 열렸다`)
-
-      // Marketplace 우선 노출 0.
-      const boosted = (await admin(
-        `marketplace_boosted_organizations?organization_id=eq.${ORG_F}&select=organization_id`
-      )) as Array<unknown>
-      check(boosted.length === 0, `${item.label}: Marketplace boost 가 열렸다`)
 
       passLine(caseBefore, `${item.label.padEnd(32)} → ignored · 상태 유지 · 재오픈 0`)
     }

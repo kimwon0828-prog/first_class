@@ -5,10 +5,9 @@
 // 여기서 고정하는 계약.
 //   1. 유료 접근은 결제 기간으로 닫힌다 — 상태 갱신이 늦거나 실패해도 새지 않는다.
 //   2. TS resolver(resolveStudioEntitlements)와 SQL(organization_has_paid_access)의
-//      판정이 모든 경우에 같다. 갈리면 Studio 는 무료인데 Marketplace 는 우선 노출된다.
-//   3. Marketplace view 도 같은 판정을 쓴다.
-//   4. 내부 전체 권한은 Studio 만 열고 공개 우선 노출은 열지 않는다(의도된 유일한 차이).
-//   5. 씨큐브 PoC 형태(manual trialing)가 기간 안에서는 열리고 기간 후에는 닫힌다.
+//      판정이 모든 경우에 같다. 갈리면 한쪽만 유료로 판단해 기능이 어긋난다.
+//   3. 내부 전체 권한은 Studio 기능만 열고 결제 사실은 위조하지 않는다.
+//   4. 씨큐브 PoC 형태(manual trialing)가 기간 안에서는 열리고 기간 후에는 닫힌다.
 //
 // 로컬 Supabase 전용이다.
 
@@ -74,7 +73,7 @@ type Row = {
   gracePeriodEnd?: string | null
   cancelAtPeriodEnd?: boolean
   override?: boolean
-  /** 결제 기준 유료 접근(Studio 유료 기능 · Marketplace boost 공통). */
+  /** 결제 기준 유료 접근. */
   expectPaid: boolean
   /** Studio 상업 기능 전체. 내부 전체 권한이면 결제와 무관하게 열린다. */
   expectStudioPaid: boolean
@@ -246,11 +245,6 @@ const run = async () => {
     })
   }
 
-  const boostedRows = (await admin(
-    "marketplace_boosted_organizations?select=organization_id"
-  )) as Array<{ organization_id: string }>
-  const boosted = new Set(boostedRows.map((item) => item.organization_id))
-
   const sqlAccessRows = (await admin(
     `organization_subscriptions?select=organization_id,subscription_status,current_period_end,grace_period_end&organization_id=in.(${TRUTH_TABLE.map(
       (row) => orgId(row.index)
@@ -268,10 +262,6 @@ const run = async () => {
     check(
       entitlements.canPublishParentReport === row.expectStudioPaid,
       `${row.label}: Studio 유료 기능 기대 ${row.expectStudioPaid} / 실제 ${entitlements.canPublishParentReport}`
-    )
-    check(
-      entitlements.hasMarketplaceRankingBoost === row.expectStudioPaid,
-      `${row.label}: Studio boost flag 가 다른 유료 flag 와 다르다`
     )
     // 결제 사실은 override 로 위조되지 않는다.
     check(
@@ -303,8 +293,7 @@ const run = async () => {
 
     if (!row.status) {
       check(!stored, `${row.label}: 구독이 없어야 하는데 row 가 있다`)
-      check(!boosted.has(orgId(row.index)), `${row.label}: 구독 없이 우선 노출이 열렸다`)
-      passLine(before, `${row.label.padEnd(26)} → SQL 우선 노출 ×`)
+      passLine(before, `${row.label.padEnd(26)} → 구독 row 없음`)
       continue
     }
 
@@ -324,16 +313,9 @@ const run = async () => {
       sqlAccess === row.expectPaid,
       `${row.label}: SQL 판정 기대 ${row.expectPaid} / 실제 ${sqlAccess}`
     )
-    // 내부 전체 권한은 공개 우선 노출을 열지 않는다(의도된 유일한 차이).
-    check(
-      boosted.has(orgId(row.index)) === row.expectPaid,
-      `${row.label}: Marketplace 우선 노출이 결제 판정과 다르다`
-    )
     passLine(
       before,
-      `${row.label.padEnd(26)} → SQL ${sqlAccess ? "열림" : "닫힘"} · 우선 노출 ${
-        row.expectPaid ? "○" : "×"
-      }`
+      `${row.label.padEnd(26)} → SQL ${sqlAccess ? "열림" : "닫힘"}`
     )
   }
 
@@ -361,10 +343,8 @@ const run = async () => {
     )
 
     check(inside.entitlements.canPublishParentReport, "PoC 기간 안인데 Standard 가 닫혔다")
-    check(inside.entitlements.hasMarketplaceRankingBoost, "PoC 기간 안인데 우선 노출이 닫혔다")
     // DB status 가 아직 trialing 이어도 기간이 지나면 닫힌다.
     check(!after.entitlements.canPublishParentReport, "기간이 지났는데 Standard 가 열려 있다")
-    check(!after.entitlements.hasMarketplaceRankingBoost, "기간이 지났는데 우선 노출이 열려 있다")
     check(after.entitlements.canProcessTrial, "만료 후 무료 운영까지 막혔다")
     check(after.entitlements.canViewTrialResults, "만료 후 기존 체험 결과 열람이 막혔다")
     // downgrade 후에도 기록은 계속된다. 잠기는 것은 학부모 공유와 분석뿐이다.

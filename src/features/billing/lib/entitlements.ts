@@ -63,19 +63,10 @@ export type StudioEntitlements = {
    */
   canPublishParentReport: boolean
   canUseConversionAnalytics: boolean
-  /**
-   * Standard 의 Marketplace 우선 노출 자격.
-   *
-   * 이 flag 는 Studio 화면용이다. 실제 정렬은 공개 수업 목록이 수행한다 —
-   * marketplace_ranked_classes 를 `order by boost_eligible desc, created_at desc` 로
-   * 조회한다(features/classes/queries/public-class-safe-projection.ts).
-   *
-   * 공개 목록의 자격 판정은 이 resolver 가 아니라 marketplace_boosted_organizations 다.
-   * 결제 사실만 보고 내부 전체 권한은 제외한다 — 두 판정의 일치는
-   * scripts/verify-marketplace-boost.ts 가, 정렬 계약은
-   * scripts/verify-marketplace-ranking.ts 가 고정한다.
-   */
-  hasMarketplaceRankingBoost: boolean
+
+  // ⚠️ 여기에 "공개 목록 우선 노출" 류의 flag 를 다시 만들지 않는다.
+  //    학부모가 보는 순서는 학원이 돈을 냈는지와 무관하다(AGENTS.md 요금제 정책).
+  //    유료 기능은 학원이 자기 데이터로 하는 일에만 붙는다.
 
   // ── PRO: 현재 판매하지 않는다. 내부 전체 권한에서만 참이다. ──
   canUseAdvancedAnalytics: boolean
@@ -99,7 +90,6 @@ const FREE_ENTITLEMENTS: StudioEntitlements = {
 
   canPublishParentReport: false,
   canUseConversionAnalytics: false,
-  hasMarketplaceRankingBoost: false,
 
   canUseAdvancedAnalytics: false,
   canImportConsultations: false,
@@ -109,8 +99,7 @@ const FREE_ENTITLEMENTS: StudioEntitlements = {
 const STANDARD_ENTITLEMENTS: StudioEntitlements = {
   ...FREE_ENTITLEMENTS,
   canPublishParentReport: true,
-  canUseConversionAnalytics: true,
-  hasMarketplaceRankingBoost: true
+  canUseConversionAnalytics: true
 }
 
 const PRO_ENTITLEMENTS: StudioEntitlements = {

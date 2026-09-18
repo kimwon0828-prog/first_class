@@ -53,7 +53,9 @@ Standard 전용:
 - 요금제 판정의 단일 소스는 `src/features/billing/lib/entitlements.ts`다. 화면과 action은 요금제 이름을 비교하지 않고 entitlement flag만 본다.
 - 유료 mutation은 UI에서 버튼을 감추는 것으로 끝내지 않는다. server action에서 `requireStudioEntitlement`로 막는다(fail closed).
 - 구현체가 없는 기능(고급 대시보드, 데이터 export, AI 상담 도구)은 billing 화면에 판매 기능으로 표시하지 않는다.
-- Marketplace 우선 노출은 폐지 예정이다. 폐지 전까지 ranking 로직은 그대로 둔다.
+- Marketplace 입점은 Free / Standard 공통이다. **요금제에 따른 우선 노출은 없다.**
+  학부모가 보는 순서는 학원이 돈을 냈는지와 무관하다 — 공개 수업 목록의 정렬에
+  결제 사실을 넣지 않는다. 유료 기능은 학원이 자기 데이터로 하는 일에만 붙인다.
 
 ## 개발 원칙
 - 항상 먼저 계획을 짧게 제시한 뒤 구현한다.

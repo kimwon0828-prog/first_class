@@ -70,8 +70,7 @@ const fullAccessOverride = (
 // 유료로 남는 것은 기록을 바깥으로 내보내는 일뿐이다 — 학부모 공유와 전환 분석.
 const STANDARD_KEYS: Array<keyof StudioEntitlements> = [
   "canPublishParentReport",
-  "canUseConversionAnalytics",
-  "hasMarketplaceRankingBoost"
+  "canUseConversionAnalytics"
 ]
 // 기록과 운영은 전부 무료다(AGENTS.md 요금제 정책).
 const FREE_KEYS: Array<keyof StudioEntitlements> = [

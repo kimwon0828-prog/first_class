@@ -363,7 +363,7 @@ console.log("\n[10] 기능 비교표")
   const freePlan = getPlanEntitlements("free")
   const standardPlan = getPlanEntitlements("standard")
 
-  check(rows.length === 9, `비교 항목 수가 다르다: ${rows.length}`)
+  check(rows.length === 8, `비교 항목 수가 다르다: ${rows.length}`)
   check(rows.every((row) => row.standard), "스탠다드에서 안 되는 항목이 비교표에 있다")
 
   // 무료에서 실제로 되는 기능을 유료 전용처럼 적으면 안 된다.
@@ -388,8 +388,7 @@ console.log("\n[10] 기능 비교표")
       JSON.stringify([
         "학부모 리포트 발행",
         "등록 전환 분석",
-        "등록 전환 인포그래픽",
-        "Marketplace 우선 노출"
+        "등록 전환 인포그래픽"
       ]),
     `유료 전용 항목이 다르다: ${paidOnlyRows.join(", ")}`
   )
@@ -401,9 +400,10 @@ console.log("\n[10] 기능 비교표")
     byLabel.get("상담·등록 전환 관리")?.free === freePlan.canWriteConsultations,
     "상담 항목이 계약과 다르다"
   )
+  // 요금제에 따른 우선 노출은 없다. 행이 되살아나면 정책과 어긋난다.
   check(
-    byLabel.get("Marketplace 우선 노출")?.standard === standardPlan.hasMarketplaceRankingBoost,
-    "우선 노출 항목이 계약과 다르다"
+    !rows.some((row) => row.label.includes("우선 노출")),
+    "Marketplace 우선 노출 행이 되살아났다"
   )
   check(byLabel.get("Marketplace 입점")?.free === freePlan.canListOnMarketplace, "입점 항목이 계약과 다르다")
   check(
@@ -420,7 +420,7 @@ console.log("\n[10] 기능 비교표")
   for (const banned of ["AI", "고급 분석", "수요 분석", "내보내기", "프로"]) {
     check(!rows.some((row) => row.label.includes(banned)), `판매하지 않는 기능이 노출됐다: ${banned}`)
   }
-  passLine(before, "9개 항목 · 무료 5개 지원 · 값이 entitlement 계약에서 파생")
+  passLine(before, "8개 항목 · 무료 5개 지원 · 값이 entitlement 계약에서 파생")
 }
 
 console.log("\n[11] 다음 결제 카드")

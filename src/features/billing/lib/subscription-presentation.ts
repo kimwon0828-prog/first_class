@@ -326,8 +326,7 @@ const STANDARD_BENEFITS = [
   "무료의 모든 기능",
   "학부모 리포트 발행",
   "등록 전환 분석",
-  "등록 전환 인포그래픽",
-  "Marketplace 우선 노출"
+  "등록 전환 인포그래픽"
 ]
 
 /**
@@ -405,8 +404,7 @@ const COMPARISON_SOURCES: ComparisonSource[] = [
   { label: "상담·등록 전환 관리", entitlementKey: "canWriteConsultations" },
   { label: "학부모 리포트 발행", entitlementKey: "canPublishParentReport" },
   { label: "등록 전환 분석", entitlementKey: "canUseConversionAnalytics" },
-  { label: "등록 전환 인포그래픽", entitlementKey: "canUseConversionAnalytics" },
-  { label: "Marketplace 우선 노출", entitlementKey: "hasMarketplaceRankingBoost" }
+  { label: "등록 전환 인포그래픽", entitlementKey: "canUseConversionAnalytics" }
 ]
 
 export const buildFeatureComparison = (): FeatureComparisonRow[] => {
