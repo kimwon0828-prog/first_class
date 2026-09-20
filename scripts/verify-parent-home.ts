@@ -127,7 +127,7 @@ check(
   homeCode.includes("./classes/page") ? "root 가 여전히 classes 를 참조한다" : ""
 )
 check("root 가 자기 컴포넌트를 렌더한다", homeCode.includes("export default function ParentHomePage"))
-check("classes 가 검색 컴포넌트를 렌더한다", searchCode.includes("export default async function ClassesSearchPage"))
+check("classes 가 검색 컴포넌트를 렌더한다", searchCode.includes("export default function ClassesSearchPage") && searchCode.includes("<ClassesSearchContent"))
 check(
   "두 화면이 같은 조회 맥락을 공유한다(규칙이 두 벌로 갈리지 않는다)",
   homeCode.includes("resolveClassDiscoveryContext") && searchCode.includes("resolveClassDiscoveryContext")
@@ -226,7 +226,7 @@ for (const [label, needle] of [
   check(`Search 에 ${label} 이(가) 없다`, !searchCode.includes(needle))
 }
 check("Search 는 검색 · 지역 · 과목 · 세부 과목 · 결과를 갖는다",
-  ["<ClassesSearchPill", "<LocationFilter", "과목 대분류", "세부 과목", "resultGrid"].every((part) =>
+  ["<ClassesSearchPill", "<LocationFilter", "과목 대분류", "<ClassesSubjectFilter", "resultGrid"].every((part) =>
     searchCode.includes(part)
   )
 )
@@ -247,7 +247,6 @@ console.log("\n[7] 하단 탭")
 /* 탭 구성 · active 규칙 자체는 verify-parent-nav 가 본다. 여기서는 공용 nav 사용만 본다. */
 for (const [label, path] of [
   ["home", HOME_PATH],
-  ["search", SEARCH_PATH],
   ["record", "app/record/page.tsx"],
   ["my", "app/my/page.tsx"],
   ["favorites", "app/favorites/favorites-client.tsx"]

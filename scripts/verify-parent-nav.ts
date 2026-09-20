@@ -110,9 +110,10 @@ check("active 를 밖에서 주입하지 않는다", !nav.includes("active?:") &
 
 console.log("\n[3] 모든 학부모 화면이 같은 nav 를 쓴다")
 
+check("수업찾기는 하단 nav 를 렌더하지 않는다", !codeOf("app/classes/page.tsx").includes("<ParentBottomNav"))
+
 const NAV_SCREENS = [
   "app/page.tsx",
-  "app/classes/page.tsx",
   "app/record/page.tsx",
   "app/my/page.tsx",
   "app/my/schedule/page.tsx",
@@ -172,7 +173,8 @@ const PADDED_SCREENS = [
   "app/my/applications/page.module.css"
 ]
 for (const path of PADDED_SCREENS) {
-  check(`${path} 가 공통 token 으로 아래를 비운다`, read(path).includes("padding-bottom: var(--parent-nav-space);"))
+  check(`${path} 가 공통 token 으로 아래를 비운다`, (path === "app/classes/page.module.css" && read("app/classes/page.tsx").includes("className={homeStyles.shell}")
+    ? read("app/page.module.css") : read(path)).includes("padding-bottom: var(--parent-nav-space);"))
 }
 
 console.log("\n[7] 아이콘")

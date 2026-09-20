@@ -20,6 +20,7 @@ import {
 export type LocationMode = "all" | "nearby" | "region"
 
 type LocationFilterProps = {
+  manageSheetFocus?: boolean
   mode: LocationMode
   label: string
   radiusKm: SearchRadiusKm
@@ -126,6 +127,7 @@ const readCurrentPosition = () =>
   })
 
 export function LocationFilter({
+  manageSheetFocus = false,
   mode,
   label,
   radiusKm,
@@ -268,6 +270,7 @@ export function LocationFilter({
       key={key}
       type="button"
       disabled={busy}
+      aria-pressed={options.selected}
       onClick={options.onClick}
       style={{
         ...rowStyle,
@@ -335,7 +338,7 @@ export function LocationFilter({
         </div>
       ) : null}
 
-      <BottomSheet open={isOpen} onClose={closeSheet} title={sheetTitle}>
+      <BottomSheet open={isOpen} onClose={closeSheet} title={sheetTitle} manageFocus={manageSheetFocus}>
         {view === "modes" ? (
           <div role="group" aria-label="위치 탐색 방식">
             {renderRow("all", "전체", {

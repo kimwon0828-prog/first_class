@@ -30,6 +30,7 @@ import type { SubjectCatalogCategory } from "@/shared/lib/subject-master"
  * ⚠️ query 이름 · canonicalization 규칙 · 지역 우선순위를 바꾸지 않는다.
  */
 export type ClassDiscoverySearchParams = {
+  child?: string
   region?: string
   q?: string
   subjectCategory?: string

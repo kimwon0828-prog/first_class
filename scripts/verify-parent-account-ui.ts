@@ -165,7 +165,7 @@ for (const [label, css] of [
   ["/my/children", childrenCss],
   ["/my/profile", profileCss],
   ["/my/applications", applicationsCss],
-  ["/classes(공용 shell)", read("app/classes/page.module.css")]
+  ["/classes(공용 shell)", read("app/classes/page.tsx").includes("className={homeStyles.shell}") ? read("app/page.module.css") : ""]
 ] as const) {
   check(`F) ${label} shell 이 --parent-nav-space 를 쓴다`, ruleOf(css, "shell").includes("var(--parent-nav-space)"))
 }

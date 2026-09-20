@@ -8,6 +8,7 @@
  *    radius · sido · sigungu · bname 은 이미 밖에 나가 있는 계약이다.
  */
 export type ClassesHrefParams = {
+  child?: string | null
   subjectCategory?: string | null
   subject?: string | null
   q?: string | null
@@ -38,6 +39,7 @@ export const buildClassesHref = (params: ClassesHrefParams = {}) => {
   if (params.sido) parts.push(`sido=${escapeQueryValue(params.sido)}`)
   if (params.sigungu) parts.push(`sigungu=${escapeQueryValue(params.sigungu)}`)
   if (params.bname) parts.push(`bname=${escapeQueryValue(params.bname)}`)
+  if (params.child) parts.push(`child=${escapeQueryValue(params.child)}`)
   return parts.length ? `/classes?${parts.join("&")}` : "/classes"
 }
 
