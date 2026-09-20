@@ -116,7 +116,7 @@ const NAV_SCREENS = [
   "app/page.tsx",
   "app/record/page.tsx",
   "app/my/page.tsx",
-  "app/my/schedule/page.tsx",
+  "src/features/schedule/ui/parent-schedule-screen.tsx",
   "app/academies/page.tsx",
   "app/favorites/favorites-client.tsx",
   "src/features/children/ui/my-children-client.tsx"
@@ -168,7 +168,7 @@ const PADDED_SCREENS = [
   "app/classes/page.module.css",
   "app/record/page.module.css",
   "app/my/page.module.css",
-  "app/my/schedule/page.module.css",
+  "src/features/schedule/ui/parent-schedule-screen.module.css",
   "app/my/children/page.module.css",
   "app/my/applications/page.module.css"
 ]

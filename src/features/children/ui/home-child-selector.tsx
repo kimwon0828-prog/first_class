@@ -1,7 +1,7 @@
 "use client"
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
-import { useState, useTransition } from "react"
+import { type ReactNode, useState, useTransition } from "react"
 
 import {
   CHILD_QUERY_KEY,
@@ -32,6 +32,8 @@ type HomeChildSelectorProps = {
   manageSheetFocus?: boolean
   unselectedLabel?: string
   labelClassName?: string
+  /** Optional child context presentation; selection and URL behavior stay shared. */
+  triggerContent?: ReactNode
 }
 
 const ChevronIcon = () => (
@@ -51,6 +53,7 @@ export function HomeChildSelector({
   selectedChildId,
   className,
   labelClassName,
+  triggerContent,
   manageSheetFocus = false,
   unselectedLabel
 }: HomeChildSelectorProps) {
@@ -100,7 +103,7 @@ export function HomeChildSelector({
         aria-busy={isPending}
         onClick={() => setOpen(true)}
       >
-        <span className={`${styles.triggerLabel} ${labelClassName ?? ""}`.trim()}>{triggerLabel}</span>
+        <span className={`${styles.triggerLabel} ${labelClassName ?? ""}`.trim()}>{triggerContent ?? triggerLabel}</span>
         <ChevronIcon />
       </button>
 
