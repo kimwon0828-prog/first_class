@@ -129,6 +129,7 @@ export function BookmarkButton(props: {
   return (
     <button
       type="button"
+      aria-pressed={isFavorite}
       aria-label={isFavorite ? "관심수업 해제" : "관심수업 추가"}
       className={className}
       style={style}

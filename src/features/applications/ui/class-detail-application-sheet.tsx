@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useId, useMemo, useRef, useState } from "react"
 
 import {
   clearTrialApplicationDraft,
@@ -157,6 +157,9 @@ export function ClassDetailApplicationSheet({
   fixedCtaClassName,
   ctaButtonClassName
 }: ClassDetailApplicationSheetProps) {
+  const dialogId = useId()
+  const dialogRef = useRef<HTMLDivElement>(null)
+  const ctaRef = useRef<HTMLButtonElement>(null)
   const [isOpen, setIsOpen] = useState(false)
   const [step, setStep] = useState<Step>(1)
   const [isCalendarView, setIsCalendarView] = useState(false)
@@ -258,10 +261,23 @@ export function ClassDetailApplicationSheet({
       return
     }
 
+    const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : ctaRef.current
+    const frame = requestAnimationFrame(() => dialogRef.current?.querySelector<HTMLButtonElement>("button")?.focus())
     const overflow = document.body.style.overflow
     document.body.style.overflow = "hidden"
 
     const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Tab") {
+        const controls = Array.from(dialogRef.current?.querySelectorAll<HTMLElement>('button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex="0"]') ?? [])
+          .filter((element) => element.getClientRects().length > 0)
+        const first = controls[0], last = controls[controls.length - 1]
+        if (!first) { event.preventDefault(); dialogRef.current?.focus(); return }
+        if (event.shiftKey && (document.activeElement === first || !dialogRef.current?.contains(document.activeElement))) {
+          event.preventDefault(); last?.focus()
+        } else if (!event.shiftKey && (document.activeElement === last || !dialogRef.current?.contains(document.activeElement))) {
+          event.preventDefault(); first.focus()
+        }
+      }
       if (event.key === "Escape") {
         setIsOpen(false)
         setIsCalendarView(false)
@@ -270,7 +286,9 @@ export function ClassDetailApplicationSheet({
 
     window.addEventListener("keydown", handleKeyDown)
     return () => {
+      cancelAnimationFrame(frame)
       document.body.style.overflow = overflow
+      if (previousFocus?.isConnected) previousFocus.focus()
       window.removeEventListener("keydown", handleKeyDown)
     }
   }, [isOpen])
@@ -360,15 +378,17 @@ export function ClassDetailApplicationSheet({
   return (
     <>
       <div className={fixedCtaClassName}>
-        <button type="button" className={ctaButtonClassName} onClick={openSheet}>
-          체험 신청하기
+        <button ref={ctaRef} type="button" className={ctaButtonClassName} onClick={openSheet}
+          aria-haspopup="dialog" aria-expanded={isOpen} aria-controls={dialogId}>
+          체험수업 신청하기
         </button>
       </div>
 
       {isOpen ? (
-        <div className={styles.overlay} onClick={closeSheet} aria-hidden="true">
+        <div className={styles.overlay} onClick={closeSheet}>
           <div
             className={styles.sheet}
+            ref={dialogRef} id={dialogId} tabIndex={-1}
             role="dialog"
             aria-modal="true"
             aria-label="체험수업 신청"

@@ -120,7 +120,7 @@ check("raw code · UUID 를 그리지 않는다", !detail.includes("classItem.su
 
 console.log("\n[3] 체험 가능 일정")
 
-check("상세에 일정 섹션이 있다", detail.includes(">체험 가능 일정</h2>"))
+check("상세에 일정 섹션이 있다", detail.includes(">가장 빠른 체험 일정</h2>"))
 check(
   "D) 0건이면 0건이라고 적는다",
   detail.includes("현재 예약 가능한 일정이 없어요.")
@@ -132,7 +132,8 @@ check(
 check("조회 실패와 0건을 구분한다", detail.includes("{slotsError ? ("))
 check(
   "판정은 신청 sheet 와 같은 함수다",
-  detail.includes("buildPublicSlotLines(slots, Date.now()") &&
+  detail.includes("selectEarliestDetailSlot(slots, Date.now()") &&
+    read("src/features/classes/lib/class-detail-presentation.ts").includes("isBookablePublicSlot(slot, now)") &&
     slotsLib.includes("selectBookablePublicSlots(slots, now)") &&
     sheet.includes("isBookablePublicSlot(slot, Date.now())")
 )

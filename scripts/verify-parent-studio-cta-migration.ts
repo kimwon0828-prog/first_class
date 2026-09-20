@@ -117,7 +117,6 @@ check("이전) Parent UI 에 상대 /studio 이동이 없다", leftoverLiterals.
 const MIGRATED_SITES = [
   "app/page.tsx",
   "app/classes/page.tsx",
-  "app/classes/[id]/page.tsx",
   "app/classes/[id]/apply/page.tsx",
   "app/academies/page.tsx",
   FAVORITES_PAGE,
@@ -276,6 +275,8 @@ check("L) role 판정은 여전히 profile 로 한다", (() => {
   return admin.includes("getMyProfile") && admin.includes('profile.dbRole !== "admin"')
 })())
 check("L) DB 마이그레이션을 건드리지 않았다", walk("supabase/migrations").filter((file) => file.endsWith(".sql")).every((file) => !read(file).includes("cross-product")))
+
+check("상세 헤더는 Studio 링크를 중복하지 않는다", !codeOf("app/classes/[id]/page.tsx").includes('href="/studio"'))
 
 console.log(failures === 0 ? "\nALL PASS" : `\nFAIL: ${failures}건 실패`)
 process.exit(failures === 0 ? 0 : 1)
