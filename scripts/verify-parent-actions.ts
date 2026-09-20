@@ -198,17 +198,9 @@ check(
   "Home 은 앞의 몇 개만 미리 본다",
   homeQuery.includes("allActions.slice(0, PARENT_ACTION_PREVIEW_LIMIT)") && PARENT_ACTION_PREVIEW_LIMIT === 3
 )
-check(
-  "더 있으면 전체 보기를 띄운다",
-  homeQuery.includes("hasMoreActions: allActions.length > PARENT_ACTION_PREVIEW_LIMIT") &&
-    home.includes('<Link href="/my/actions" className={styles.sectionHeadingLink}>')
-)
-check(
-  "E) Action 0건이면 Home section 을 숨긴다",
-  home.includes("const hasHighlightSection = Boolean(parentHome && parentHome.actions.length > 0)") &&
-    home.includes("{homeHighlightSection}")
-)
-check("Home 의 각 줄은 그 Action 의 목적지로 간다", home.includes("<Link href={action.href}"))
+check("Home은 리포트 한 건을 별도 안내한다", home.includes("const report = parentHome?.actions[0]") && home.includes('aria-label="체험 리포트"'))
+check("리포트가 없으면 리포트 안내를 숨긴다", home.includes("{report ? (") && !home.includes("parentHome.actions.map"))
+check("Home 리포트는 기존 목적지로 간다", home.includes("href={report.href}"))
 /*
  * 실패했으면 빈 목록을 그리는 게 아니라 Action 영역 자체를 접는다.
  * 뒤에 아이 필터가 붙어도 "실패 → []" 라는 분기 자체는 그대로여야 한다.

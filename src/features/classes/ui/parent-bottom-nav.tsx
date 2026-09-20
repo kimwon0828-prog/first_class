@@ -21,6 +21,7 @@ import styles from "./parent-bottom-nav.module.css"
  *    거기서는 홈이 active 다. route 는 그대로 살아 있다.
  */
 type ParentBottomNavProps = {
+  designVersion?: "v1"
   /** 로그인 상태에 따라 목적지가 달라지는 탭만 주소를 받는다. */
   scheduleHref?: string
   recordHref?: string
@@ -79,6 +80,7 @@ const MyIcon = () => (
 )
 
 export const ParentBottomNav = ({
+  designVersion,
   scheduleHref = "/my/schedule",
   recordHref = "/record",
   myPageHref = "/my"
@@ -100,7 +102,7 @@ export const ParentBottomNav = ({
   ] as const
 
   return (
-    <nav className={styles.bottomNav} aria-label="하단 탭">
+    <nav className={`${styles.bottomNav} ${designVersion === "v1" ? styles.v1 : ""}`} aria-label="하단 탭">
       {navItems.map((item) => {
         const isActive = activeTab === item.tab
         return (

@@ -1,0 +1,30 @@
+/* Only subject pictograms use this three-color palette; navigation stays monochrome. */
+.pictogram {
+  --pictogram-primary: var(--brand-700);
+  --pictogram-accent: var(--blue-fg);
+  --pictogram-soft: var(--brand-100);
+  color: var(--pictogram-primary);
+}
+.pictogram[data-subject="korean_language"],
+.pictogram[data-subject="coding_it_robotics"],
+.pictogram[data-subject="foreign_language"] {
+  --pictogram-primary: var(--blue-fg);
+  --pictogram-accent: var(--amber-fg);
+  --pictogram-soft: var(--blue-bg);
+}
+.pictogram[data-subject="math"],
+.pictogram[data-subject="social_history"],
+.pictogram[data-subject="art_design"] {
+  --pictogram-primary: var(--amber-fg);
+  --pictogram-accent: var(--blue-fg);
+  --pictogram-soft: var(--amber-bg);
+}
+.pictogram[data-subject="english"],
+.pictogram[data-subject="music"],
+.pictogram[data-subject="sports_dance"] {
+  --pictogram-primary: var(--red-fg);
+  --pictogram-accent: var(--blue-fg);
+  --pictogram-soft: var(--red-bg);
+}
+.surface { fill: var(--pictogram-soft); }
+.accent { color: var(--pictogram-accent); }

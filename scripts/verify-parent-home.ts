@@ -5,11 +5,11 @@
 // 여기서 고정하는 것.
 //   1. / 와 /classes 는 서로 다른 page 다. root 가 classes page 를 re-export 하지 않는다.
 //   2. Home 은 카탈로그가 아니다 — 큐레이션 몇 개만 보여 주고 나머지는 /classes 로 넘긴다.
-//   3. Home 은 개인화 근거가 있을 때와 없을 때 render tree 자체가 다르다(CSS order 금지).
+//   3. Home V1 은 과목 → 조건부 일정 · 별도 리포트 → 수업 slider → 학원 순서다.
 //   4. 근거 없는 개인화 문구를 쓰지 않는다.
 //   5. Search 는 Home 것(배너 · 지금 확인할 것 · 다가오는 수업 · 홈 큐레이션)을 들이지 않는다.
 //   6. view=browse 는 더 이상 없다.
-//   7. 하단 탭은 홈 / · 수업찾기 /classes · 기록 /record · 마이페이지 /my 넷이고
+//   7. 하단 탭은 홈 / · 일정 /my/schedule · 기록 /record · 마이페이지 /my 넷이고
 //      favorites 는 탭에 없지만 route 는 살아 있다.
 //   8. canonical 은 / 와 /classes 로 갈린다.
 //   9. query 계약(q · subjectCategory · subject · radius · sido · sigungu · bname)은 그대로다.
@@ -25,7 +25,8 @@ import {
   PARENT_HOME_UPCOMING_LIMIT,
   formatChildChipLabel,
   formatHomeScheduleLabel,
-  selectUpcomingExperiences
+  selectUpcomingExperiences,
+  selectHomeDiscoveryClasses
 } from "@/features/classes/lib/parent-home"
 import { buildClassesHref } from "@/features/classes/lib/classes-href"
 import type { ChildProfile, ParentApplicationSummary } from "@/shared/lib/db/adapter"
@@ -109,12 +110,7 @@ const child = (overrides: Partial<ChildProfile> & { id: string }): ChildProfile 
 })
 
 /** 이름 있는 render tree 한 덩어리를 그대로 떼어 온다. */
-const treeBody = (source: string, name: string) => {
-  const from = source.indexOf(`const ${name} = (`)
-  if (from < 0) return ""
-  const to = source.indexOf("\n  )", from)
-  return source.slice(from, to)
-}
+
 
 const orderIn = (body: string, parts: readonly string[]) => {
   const positions = parts.map((part) => body.indexOf(part))
@@ -130,7 +126,7 @@ check(
   !homeCode.includes('export { default } from "./classes/page"'),
   homeCode.includes("./classes/page") ? "root 가 여전히 classes 를 참조한다" : ""
 )
-check("root 가 자기 컴포넌트를 렌더한다", homeCode.includes("export default async function ParentHomePage"))
+check("root 가 자기 컴포넌트를 렌더한다", homeCode.includes("export default function ParentHomePage"))
 check("classes 가 검색 컴포넌트를 렌더한다", searchCode.includes("export default async function ClassesSearchPage"))
 check(
   "두 화면이 같은 조회 맥락을 공유한다(규칙이 두 벌로 갈리지 않는다)",
@@ -188,68 +184,23 @@ check(
 )
 check(
   "Home 의 '전체 보기' 는 /classes 다",
-  homeCode.includes("href={buildClassesHref()}")
+  homeCode.includes("href={discoveryHref}")
 )
 check(
   "Home 에 검색어 · 과목이 붙으면 /classes 로 넘긴다",
   homeCode.includes("if (homeQuery || homeSubjectCategory || homeSubject)")
 )
 
-console.log("\n[4] Home 의 두 화면은 render tree 가 다르다")
+console.log("\n[4] Home Design V1.1 정보 위계")
+check("과목 → 일정 → 별도 리포트 → 수업 → 학원", orderIn(homeCode, ['aria-label="과목별 둘러보기"', 'id="home-upcoming-title"', 'aria-label="체험 리포트"', 'id="home-classes-title"', 'id="home-academies-title"']))
+check("배너와 근거 없는 개인화 문구가 없다", !homeCode.includes("hero-banner") && !homeCode.includes("우리 아이에게 맞는 첫수업"))
+check("선택한 자녀 일정과 리포트는 독립적이다", homeCode.includes("selectedChild && upcoming ? (") && homeCode.includes("{report ? (") && !homeCode.includes("의 지금"))
+check("개인화 카드를 나열하지 않는다", !homeCode.includes("parentHome.actions.map") && !homeCode.includes("parentHome.upcoming.map"))
+check("가로 slider는 키보드로 접근 가능하다", homeCode.includes("tabIndex={0}") && homeCss.includes("scroll-snap-type: x mandatory"))
+check("지역과 자녀 선택을 유지한다", homeCode.includes("<LocationFilter") && homeCode.includes("<HomeChildSelector"))
+check("학원은 별도 실제 조회를 쓴다", homeCode.includes("getHomeAcademies(context)"))
+check("Home에만 새 토큰을 적용한다", homeCode.includes('data-parent-design="v1"'))
 
-const discoveryTree = treeBody(homeCode, "discoveryHomeTree")
-const conciergeTree = treeBody(homeCode, "conciergeHomeTree")
-check("discoveryHomeTree 가 이름 있는 render tree 다", discoveryTree.length > 0)
-check("conciergeHomeTree 가 이름 있는 render tree 다", conciergeTree.length > 0)
-check(
-  "두 화면이 한 줄에서 갈린다",
-  homeCode.includes("{hasPersonalizedHome ? conciergeHomeTree : discoveryHomeTree}")
-)
-check(
-  "Discovery Home — 과목 → 배너 → 첫수업 둘러보기",
-  orderIn(discoveryTree, ["subjectShortcutSection", "brandBannerSection", "renderHomeDiscoverySection"]),
-  discoveryTree.replace(/\s+/g, " ")
-)
-check(
-  "Concierge Home — 지금 확인할 것 → 다가오는 수업 → 개인화 큐레이션 → 과목 → 배너",
-  orderIn(conciergeTree, [
-    "homeHighlightSection",
-    "homeUpcomingSection",
-    "renderHomeDiscoverySection",
-    "subjectShortcutSection",
-    "brandBannerSection"
-  ]),
-  conciergeTree.replace(/\s+/g, " ")
-)
-check("두 tree 가 실제로 다르다", discoveryTree.replace(/\s+/g, "") !== conciergeTree.replace(/\s+/g, ""))
-
-/*
- * section 순서를 CSS 로 뒤집지 않는다. order 는 검색 pill 안에서만 허용한다.
- */
-const orderedSelectors = [...homeCss.matchAll(/([^{}]+)\{([^}]*)\}/g)]
-  .filter(([, , body]) => /(^|[^-\w])order\s*:/.test(body))
-  .map(([, selector]) => selector.trim())
-/* order 가 허용되는 곳은 검색 pill 내부(입력 · 돋보기 버튼)뿐이다. */
-const ORDER_ALLOWED_PREFIXES = [".searchPill", ".searchSubmit"]
-check(
-  "CSS order 로 section 순서를 뒤집지 않는다",
-  orderedSelectors.every((selector) =>
-    ORDER_ALLOWED_PREFIXES.some((prefix) => selector.startsWith(prefix))
-  ),
-  orderedSelectors.join(" | ")
-)
-check(
-  "역방향 flex 로 순서를 뒤집지 않는다",
-  !homeCss.includes("column-reverse") && !homeCss.includes("row-reverse")
-)
-
-console.log("\n[5] 근거 없는 개인화 문구를 쓰지 않는다")
-
-check(
-  "'우리 아이에게 맞는' 은 Concierge Home 에만 있다",
-  conciergeTree.includes("우리 아이에게 맞는 첫수업") && !discoveryTree.includes("우리 아이에게 맞는")
-)
-check("데이터 없는 Home 은 '첫수업 둘러보기' 라고 부른다", homeCode.includes('"첫수업 둘러보기"'))
 check("Search 에는 개인화 문구가 없다", !searchCode.includes("우리 아이에게 맞는"))
 /*
  * 인자는 바뀔 수 있다(지금은 선택된 아이 id 를 받는다). 고정할 것은 조건이다 —
@@ -257,7 +208,7 @@ check("Search 에는 개인화 문구가 없다", !searchCode.includes("우리 �
  */
 check(
   "개인화 조회는 Home 에서 학부모로 로그인했을 때만 나간다",
-  /authenticated && isParentUser \? await getParentHomeSummary\(/.test(
+  /authenticated && isParentUser \? getParentHomeSummary\(/.test(
     homeCode.replace(/\s+/g, " ")
   ) && !searchCode.includes("getParentHomeSummary")
 )
@@ -432,6 +383,29 @@ check(
   queryCode.includes("allActions.slice(0, PARENT_ACTION_PREVIEW_LIMIT)") &&
     queryCode.includes("hasMoreActions")
 )
+
+console.log("\n[13] V1.1 eligibility and presentation")
+const eligibilityClasses = [
+  { id: "lower", targetAge: "초1~초3" },
+  { id: "upper", targetAge: "초3~초6" },
+  { id: "older", targetAge: "초4~초6" },
+  { id: "invalid", targetAge: "알 수 없음" },
+  { id: "empty", targetAge: "" }
+]
+check("초3은 양쪽 경계에 포함되고 초4 이상은 제외", selectHomeDiscoveryClasses(eligibilityClasses, { grade: "초3" }, 6).map((item) => item.id).join(",") === "lower,upper")
+check("자녀 미선택은 일반 discovery 순서 유지", selectHomeDiscoveryClasses(eligibilityClasses, null, 6).length === 5)
+check("자녀 학년이 잘못되면 추측하지 않는다", selectHomeDiscoveryClasses(eligibilityClasses, { grade: "" }, 6).length === 0)
+const laterEligible = [...Array.from({ length: 6 }, (_, i) => ({ id: `older-${i}`, targetAge: "초4~초6" })), ...eligibilityClasses]
+check("먼저 6개로 잘라 적격 수업을 놓치지 않는다", selectHomeDiscoveryClasses(laterEligible, { grade: "초3" }, 6).map((item) => item.id).join(",") === "lower,upper")
+check("조회 단계의 제한도 자녀 필터 전에는 해제", /discoveryFetchLimit:[\s\S]*?CHILD_QUERY_KEY[\s\S]*?\? undefined/.test(homeCode))
+check("기존 신청 eligibility 함수를 재사용", libCode.includes("isChildEligibleForClass(selectedChild.grade, item.targetAge)"))
+check("과목 전체 shortcut 제거", !homeCode.includes('<SubjectIcon code="all"'))
+check("일정 제목 고정", homeCode.includes(">다가오는 수업 일정</h2>"))
+check("일정은 실제 cover image와 실제 목적지를 쓴다", homeCode.includes("src={upcoming.coverImageUrl}") && homeCode.includes("href={upcoming.href}"))
+const cardCode = codeOf("src/features/classes/ui/home-class-card.tsx")
+check("카드 정보 순서 title → price → academy", orderIn(cardCode, ["className={styles.title}", "className={styles.price}", "className={styles.academy}"]))
+check("가격 overlay 스타일이 없다", !read("src/features/classes/ui/home-class-card.module.css").match(/\.price\s*\{[^}]*position:/))
+check("부모 프로필은 child 정보와 분리", homeCode.includes("<ParentProfileAvatar imageUrl={null}") && homeCode.includes("auth.profile?.name"))
 
 console.log(failures === 0 ? "\nALL PASS" : `\nFAIL: ${failures}건 실패`)
 process.exit(failures === 0 ? 0 : 1)

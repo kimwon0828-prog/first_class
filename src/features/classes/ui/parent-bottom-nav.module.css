@@ -64,3 +64,21 @@
 .navItemActive .navLabel {
   font-weight: 700;
 }
+
+/* Home opt-in: keep the shared IA and other pages' appearance. */
+.v1 {
+  width: calc(100% - var(--gutter) * 2);
+  max-width: calc(var(--col) - var(--gutter) * 2);
+  padding: var(--s1);
+  gap: var(--s1);
+  border-radius: var(--r-sheet);
+  border: 1px solid var(--border);
+  background: var(--parent-glass);
+  -webkit-backdrop-filter: blur(var(--parent-blur));
+  backdrop-filter: blur(var(--parent-blur));
+  box-shadow: none;
+}
+.v1 .navItem { color: var(--text-3); gap: var(--s1); }
+.v1 .navItem svg { width: 24px; height: 24px; }
+.v1 .navLabel { font-size: var(--font-c1); font-weight: 500; line-height: 1.5; letter-spacing: 0; }
+.v1 .navItemActive { color: var(--brand-700); background: transparent; }

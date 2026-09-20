@@ -4,7 +4,7 @@
 - CURRENT: This repository is a Next.js 15 App Router service for FirstSuup, a parent-facing trial class / level test discovery and application flow plus a studio/admin operations surface for academies.
 - CURRENT: The active stack in `package.json` is `next`, `react`, `typescript`, `@supabase/ssr`, `@supabase/supabase-js`, `iconv-lite`, and `nodemailer`.
 - CURRENT: Parent-facing routes are mobile-first. Studio routes are desktop-first.
-- CURRENT: The root route `app/page.tsx` re-exports `app/classes/page.tsx`, so `/` currently resolves to the classes listing surface.
+- CURRENT: The root route `app/page.tsx` is the independent Parent Home. `/classes` remains the search/catalog route. Home V1 design rules and scoped token adoption are documented in `docs/PARENT_DESIGN_SYSTEM.md`.
 - CURRENT: MVP program types used in code are `trial_class` and `level_test`.
 
 ## 2. Architecture

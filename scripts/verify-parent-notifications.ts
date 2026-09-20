@@ -75,23 +75,21 @@ check("B) 서버 조회는 server-only 다", query.includes('import "server-only
 
 console.log("\n[C] Home bell")
 
-/* 링크 목적지는 실제 href 값으로 확인한다. import 경로 문자열에 속지 않는다. */
-const homeHrefs = Array.from(home.matchAll(/href=(?:"([^"]*)"|\{([^}]*)\})/g)).map(
-  (m) => m[1] ?? m[2] ?? ""
-)
-check("C) Home 에 /notifications 링크가 있다", homeHrefs.includes("/notifications"))
-check(
-  'C) 아이콘만 있으므로 aria-label="알림" 이다',
-  /href="\/notifications"[^>]*aria-label="알림"/.test(home.replace(/\s+/g, " "))
-)
-const iconRule = /\.headerIconButton\s*\{([^}]*)\}/.exec(homeCss)?.[1] ?? ""
+/* Inspect the bell's actual Link, including authenticated/guest destinations. */
+const bell = home.match(/<Link\b[^>]*aria-label="알림"[^>]*>/)?.[0] ?? ""
+check("C) Home 에 /notifications 링크가 있다",
+  bell.includes('href={authenticated ? (isStudioUser ? studioHref("/studio") : "/notifications") : "/auth/sign-in?returnTo=%2Fnotifications"}'))
+check('C) 아이콘만 있으므로 aria-label="알림" 이다', bell.includes('aria-label="알림"') && bell.includes("styles.headerIconButton"))
+// Grouped selectors and min-size declarations also establish the touch target.
+const iconRules = [...homeCss.matchAll(/([^{}]+)\{([^}]*)\}/g)]
+  .filter(([, selectors]) => selectors.split(",").some((selector) => selector.trim() === ".headerIconButton"))
+  .map(([, , rule]) => rule)
 const px = (rule: string, prop: string) =>
-  Number(new RegExp(`${prop}\\s*:\\s*(\\d+)px`).exec(rule)?.[1] ?? 0)
-check(
-  "C) 종의 터치 타깃이 44px 이상이다",
-  px(iconRule, "width") >= 44 && px(iconRule, "height") >= 44,
-  `width=${px(iconRule, "width")} height=${px(iconRule, "height")}`
-)
+  Number(new RegExp(`(?:^|;)\\s*${prop}\\s*:\\s*(\\d+)px`).exec(rule)?.[1] ?? 0)
+const iconWidth = Math.max(...iconRules.map((rule) => Math.max(px(rule, "width"), px(rule, "min-width"))))
+const iconHeight = Math.max(...iconRules.map((rule) => Math.max(px(rule, "height"), px(rule, "min-height"))))
+check("C) 종의 터치 타깃이 44px 이상이다", iconWidth >= 44 && iconHeight >= 44,
+  `width=${iconWidth} height=${iconHeight}`)
 
 console.log("\n[D] nav active")
 

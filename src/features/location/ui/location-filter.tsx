@@ -267,7 +267,6 @@ export function LocationFilter({
     <button
       key={key}
       type="button"
-      role="listitem"
       disabled={busy}
       onClick={options.onClick}
       style={{
@@ -338,7 +337,7 @@ export function LocationFilter({
 
       <BottomSheet open={isOpen} onClose={closeSheet} title={sheetTitle}>
         {view === "modes" ? (
-          <div role="list" aria-label="위치 탐색 방식">
+          <div role="group" aria-label="위치 탐색 방식">
             {renderRow("all", "전체", {
               selected: mode === "all",
               trailing: "check",
@@ -372,7 +371,7 @@ export function LocationFilter({
         ) : null}
 
         {view === "sido" ? (
-          <div role="list" aria-label="시도 목록">
+          <div role="group" aria-label="시도 목록">
             {renderRow("back", "← 위치 설정", { trailing: null, onClick: () => setView("modes") })}
             {regionCatalog.length === 0 ? (
               <p style={noticeStyle}>
@@ -399,7 +398,7 @@ export function LocationFilter({
         ) : null}
 
         {view === "sigungu" && sidoEntry ? (
-          <div role="list" aria-label="시군구 목록">
+          <div role="group" aria-label="시군구 목록">
             <button
               type="button"
               disabled={busy}
@@ -433,7 +432,7 @@ export function LocationFilter({
         ) : null}
 
         {view === "bname" && sidoEntry && sigunguEntry ? (
-          <div role="list" aria-label="읍면동 목록">
+          <div role="group" aria-label="읍면동 목록">
             <button
               type="button"
               disabled={busy}
