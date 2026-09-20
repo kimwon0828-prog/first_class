@@ -28,6 +28,7 @@ import {
   selectUpcomingConfirmedExperiences,
   toParentScheduleItems
 } from "@/features/schedule/lib/parent-schedule"
+import { buildScheduleView, groupScheduleMonths } from "@/features/schedule/lib/schedule-view"
 import { resolveParentNavTab } from "@/features/classes/lib/parent-nav"
 import type { ChildProfile, ParentApplicationSummary } from "@/shared/lib/db/adapter"
 
@@ -145,7 +146,7 @@ check(
   homeLib.includes("selectUpcomingConfirmedExperiences") &&
     !homeLib.includes('item.status !== "confirmed"')
 )
-check("일정 화면도 같은 함수를 쓴다", page.includes("selectUpcomingConfirmedExperiences"))
+check("일정 화면도 같은 함수를 쓴다", codeOf("src/features/schedule/lib/schedule-view.ts").includes("selectUpcomingConfirmedExperiences"))
 
 console.log("\n[3] 날짜 · 시간은 한국 시간으로 읽는다")
 
@@ -220,23 +221,16 @@ check(
 )
 check("기존 parent-safe 조회를 쓴다", page.includes("getMyApplications()") && page.includes("getMyChildren()"))
 check("새 adapter method 를 만들지 않았다", !page.includes("dataAdapter."))
-check(
-  "자녀가 하나면 필터를 만들지 않는다",
-  page.includes("const hasMultipleChildren = children.data.length > 1") &&
-    page.includes("{hasMultipleChildren ? (")
-)
-check(
-  "URL 로 남의 아이를 지목할 수 없다",
-  page.includes("children.data.some((child) => child.id === requestedChildId)")
-)
-check(
-  "조회 실패와 일정 없음이 다른 분기다",
-  page.includes("{applications.error ? (") && page.includes("totalCount === 0 ? (")
-)
-check("실패 문구가 따로 있다", page.includes("일정을 불러오지 못했어요.") && page.includes("다시 시도해 주세요."))
-check("빈 상태 문구가 따로 있다", page.includes("예정된 첫수업이 없어요."))
-check("빈 상태 CTA 는 홈이다", page.includes('<Link href="/" className={styles.primaryButton}>'))
-check("공용 nav 를 쓴다", page.includes("<ParentBottomNav />"))
+const screen = codeOf("src/features/schedule/ui/parent-schedule-screen.tsx")
+check("공용 자녀 selector 사용", screen.includes("<HomeChildSelector") && screen.includes("manageSheetFocus"))
+check("owned child 검증 공용 계약", page.includes("resolveSelectedChildId("))
+check("조회 실패와 빈 상태 분리", page.includes("applications.error || children.error") && screen.includes("months.length === 0"))
+check("실패 및 retry", screen.includes("일정을 불러오지 못했어요.") && screen.includes("router.refresh()"))
+check("예정/완료 빈 상태", screen.includes("예정된 체험수업이 없어요.") && screen.includes("완료한 일정이 없어요."))
+check("탐색 CTA child 유지", screen.includes("buildClassesHref({ child: selectedChildId })"))
+check("공용 V1 nav", screen.includes('<ParentBottomNav designVersion="v1" />'))
+check("접근 가능한 키보드 tabs", screen.includes('role="tablist"') && screen.includes("aria-selected") && screen.includes("ArrowRight") && screen.includes("ArrowLeft"))
+check("로딩 및 오류 경계", exists("app/my/schedule/loading.tsx") && exists("app/my/schedule/error.tsx"))
 check("일정 탭이 active 다", resolveParentNavTab("/my/schedule") === "schedule")
 check("자녀 필터를 걸어도 일정 탭이다", resolveParentNavTab("/my/schedule?child=x".split("?")[0]) === "schedule")
 check(
@@ -256,6 +250,36 @@ check(
   "/my/applications 를 redirect 하지 않았다",
   !codeOf("app/my/applications/page.tsx").includes('redirect("/my/schedule")')
 )
+
+console.log("\n[8] V1 일정 모델")
+const instant = Date.parse("2026-09-21T00:00:00Z")
+const rows = [
+  application({ id: "today", childId: "c1", status: "confirmed", confirmedSlotAt: "2026-09-21T02:00:00Z" }),
+  application({ id: "oct", childId: "c2", status: "confirmed", confirmedSlotAt: "2026-10-01T02:00:00Z" }),
+  application({ id: "done1", childId: "c1", status: "completed", confirmedSlotAt: "2026-09-20T02:00:00Z", completedAt: "2026-09-21T00:00:00Z" }),
+  application({ id: "done2", childId: "c2", status: "completed", confirmedSlotAt: "2026-08-30T02:00:00Z", completedAt: "2026-09-21T01:00:00Z" }),
+  application({ id: "cancel", status: "canceled", confirmedSlotAt: "2026-10-02T02:00:00Z", canceledAt: "2026-09-20T00:00:00Z" }),
+  // no_show action maps to canceled; its internal timestamp is not exposed to Parent.
+  application({ id: "no-show", status: "canceled", confirmedSlotAt: "2026-09-19T02:00:00Z", canceledAt: "2026-09-19T03:00:00Z" }),
+  application({ id: "past", status: "confirmed", confirmedSlotAt: "2026-09-20T02:00:00Z" })
+]
+const all = buildScheduleView(rows, null, instant)
+check("예정 여러 건 오름차순", all.upcoming.map(x => x.id).join() === "today,oct")
+check("완료 실제 수업일 내림차순", all.completed.map(x => x.id).join() === "done1,done2")
+check("두 달 그룹", groupScheduleMonths(all.upcoming).map(x => x.key).join() === "2026-09,2026-10")
+check("완료 월 내림차순", groupScheduleMonths(all.completed).map(x => x.key).join() === "2026-09,2026-08")
+check("오늘 Seoul 날짜", all.upcoming[0].dateKey === "2026-09-21")
+check("취소/노쇼/미완료 과거 제외", [...all.upcoming, ...all.completed].every(x => !["cancel", "no-show", "past"].includes(x.id)))
+for (const childId of ["c1", "c2"]) {
+  const scoped = buildScheduleView(rows, childId, instant)
+  check(`${childId} 두 count 동기화`, scoped.upcoming.length === 1 && scoped.completed.length === 1)
+  check(`${childId} ID 일치`, [...scoped.upcoming, ...scoped.completed].every(x => rows.find(row => row.id === x.id)?.childId === childId))
+}
+const empty = buildScheduleView([], null, instant)
+check("예정/완료 모두 빈 상태", empty.upcoming.length === 0 && empty.completed.length === 0)
+check("없는 child 일정 없음", buildScheduleView(rows, "unknown", instant).upcoming.length === 0)
+check("경험 상세 canonical", all.completed.every(x => x.href === `/record/${x.id}`))
+check("노쇼 domain 유지", codeOf("src/features/studio/actions/update-application-status.ts").includes('no_show: {') && /no_show: \{[^}]*nextStatus: "canceled"/.test(codeOf("src/features/studio/actions/update-application-status.ts")))
 
 console.log(failures === 0 ? "\nALL PASS" : `\nFAIL: ${failures}건 실패`)
 process.exit(failures === 0 ? 0 : 1)

@@ -228,3 +228,14 @@ Academy summary uses real public logo/cover or ImageFallback; the full address a
 - “가장 빠른 체험 일정” shows one concrete future reservable occurrence: reuse `isBookablePublicSlot`, sort by parsed timestamp (not string or input order), display in Seoul time. Empty/error states remain truthful. All other date/time choices stay in the existing application sheet.
 
 - **Parent Map:** all Parent detail viewport widths use `zoomControl: false`, `scaleControl: false`, `pinchZoom: true`; retain drag, marker, NAVER logo/attribution and external map link. The 240px map keeps its existing radius. Its app-owned wrapper uses `position: relative; z-index: 0; isolation: isolate; overflow: hidden` so provider children stay below the layer30 Sticky CTA during scrolling. Do not modify provider DOM/CSS or hide attribution. Keep the existing 112px + safe-area content clearance separately.
+
+
+## Parent Schedule V1 — `/my/schedule`
+
+- 메인 탭 Header는 `내 일정`; Back 없이 기존 Parent 480px shell과 Floating Bottom Nav(일정 active)를 사용한다. 하단 여백은 `--parent-nav-space`.
+- 자녀 Context는 공용 HomeChildSelector와 owned `?child=` 계약을 사용한다. 이미지 필드가 없는 자녀는 Neutral 원형 User outline fallback. 선택 시 예정/완료 count와 list 모두 child ID로 필터링한다. 미선택은 기존 전체 보기이며 카드에 자녀 이름을 구분한다.
+- Segmented Control: 예정/완료와 실제 count, Green 700 selected, Neutral unselected, 최소 44px. tablist/tab/tabpanel, aria-selected와 좌우/Home/End 키 지원.
+- Calendar grid 대신 월 heading + 날짜 리스트. 예정은 기존 future confirmed 판정/오름차순. 완료는 completed 상태/기존 경험 날짜 규칙(확정 수업일 우선)/내림차순. 취소 및 canceled로 처리되는 노쇼는 두 탭에서 제외한다. 날짜·오늘은 Asia/Seoul.
+- Schedule List Card: White, Neutral 200 border, Radius 16, shadow 없음. 왼쪽 날짜·요일, 오른쪽 시작 시간/수업명/학원명/실제 주소/예정 또는 완료 배지. 거리·종료 시각·가격을 임의로 추가하지 않는다. 기존 `/record/[id]`로 이동.
+- 예정 Empty는 `예정된 체험수업이 없어요.` / `새로운 수업을 둘러보세요.`와 child를 보존한 수업찾기 CTA. 완료 Empty는 `완료한 일정이 없어요.` / `체험수업이 완료되면 여기에 표시돼요.`.
+- Loading은 자녀 Context/탭/카드 형태의 정적 skeleton. 조회 실패는 Empty와 분리하고 친근한 안내와 재시도 제공.
