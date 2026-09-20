@@ -31,6 +31,8 @@ import {
  */
 export type ParentHomeSummary = {
   /** 선택 UI 가 그릴 목록. 조회 실패면 빈 배열이고, selector 를 띄우지 않는다. */
+  childrenError: boolean
+  error: boolean
   childOptions: ChildSelectorOption[]
   /** 지금 보고 있는 아이. null 이면 전체다. */
   selectedChildId: string | null
@@ -42,6 +44,8 @@ export type ParentHomeSummary = {
 }
 
 const EMPTY_SUMMARY: ParentHomeSummary = {
+  childrenError: false,
+  error: false,
   childOptions: [],
   selectedChildId: null,
   actions: [],
@@ -62,7 +66,7 @@ export const getParentHomeSummary = async (
 
   if (applications.error) {
     // 신청을 못 읽었으면 개인화 영역 전체를 접는다. 빈 홈이 거짓말하는 홈보다 낫다.
-    return { ...EMPTY_SUMMARY, childOptions, selectedChildId }
+    return { ...EMPTY_SUMMARY, childOptions, selectedChildId, childrenError: Boolean(children.error), error: true }
   }
 
   const now = Date.now()
@@ -70,8 +74,8 @@ export const getParentHomeSummary = async (
    * 아이를 고르면 그 아이의 것만 남긴다.
    *
    * ⚠️ 좁히는 것은 아이와 실제로 연결된 자리뿐이다 — 다가오는 일정과 확인할 것.
-   *    수업 탐색 목록까지 아이 기준으로 걸러내지 않는다. 어떤 수업이 어느 아이에게
-   *    맞는지 말해 주는 데이터가 없어서, 그렇게 하면 근거 없는 추천이 된다.
+   *    Home 수업 목록의 신청 대상 판정은 호출부가 별도로 수행한다.
+   *    child.grade / class.targetAge와 기존 신청 eligibility 함수를 재사용한다.
    */
   const scopedApplications = selectChildScopedItems(applications.data, selectedChildId)
   const upcomingApplications = selectUpcomingExperiences(scopedApplications, now)
@@ -121,6 +125,8 @@ export const getParentHomeSummary = async (
   })
 
   return {
+    childrenError: Boolean(children.error),
+    error: Boolean(actionsResult.error),
     childOptions,
     selectedChildId,
     actions: allActions.slice(0, PARENT_ACTION_PREVIEW_LIMIT),

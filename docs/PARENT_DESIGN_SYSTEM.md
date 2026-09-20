@@ -1,0 +1,190 @@
+# Parent Design System V1.3
+
+Authoritative Parent specification. First adoption: Home `/` (2026-09-20).
+CSS source: `app/globals.css`, `[data-parent-design="v1"]`.
+The existing `STUDIO_DESIGN_SYSTEM.md` remains Studio-only. No global replacement of legacy Parent or Studio tokens.
+
+## Foundation
+
+- White surface, charcoal type, green actions, thin borders, no normal card shadows.
+- Reference viewport 390px; minimum 360px; content column max 480px, centered on desktop; horizontal gutter 20px. No desktop multi-column layout.
+- Font stack: Pretendard Variable, Pretendard, system-ui, sans-serif. No bundled Pretendard asset exists currently; browsers without it use system-ui.
+- All text: line-height 1.5, letter-spacing 0.
+- H1/H2/H3/H4/H5 mobile: 24/20/18/16/14px; desktop (768px+): 28/24/20/18/16px. Weights: 600/600/600/700/600.
+- B1/B2/C1: 16/14/12px, weight 500.
+- Spacing: 4/8/12/16/20/24/32/40/48/64px. Section gap 32, heading-to-content 16, card gap 12–16.
+- Radius: 8 small, 12 button/input, 16 card, 24 sheet/nav, 999 chip.
+- Border: 1px Neutral 200; strong Neutral 300; focus 2px Green 700.
+- Primary button: Green 700, hover 800, pressed 900, white text. Heights 36/44/48/52; main mobile CTA 52. Touch targets at least 44×44 (a smaller visual chip needs a larger hit area).
+- Secondary: white + border; Dark: Neutral 950 + white; Ghost: transparent. Standard selected filter: charcoal + white.
+
+### Parent Layout / App Shell
+
+- Mobile, viewport ≤ 480px: Page/App background = #FFFFFF. The Parent surface fills the viewport width.
+- Desktop, viewport > 480px: Outer Canvas = Neutral 50 (#F7F8F8); Parent App Surface = #FFFFFF. Maximum width remains 480px, centered with `margin-inline: auto`, single column.
+- Reuse existing shell tokens: `--bg` for outer canvas, `--surface` for App Surface, `--col` for 480px maximum. The shared V1 token scope switches `--bg` at >480px; keep the white surface independent of it.
+- The existing shell fills at least the viewport height, including short/loading/error content. No new wrapper, shadow, gradient or widened layout. Bottom navigation remains centered within the Parent surface.
+- Existing legacy Parent pages keep their current scope; this restores Home's use of the established outer-page/inner-shell pattern without a global layout migration.
+
+### Palette and semantic aliases
+
+| Scale | 50 | 100 | 200 | 300 | 400 | 500 | 600 | 700 | 800 | 900 |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Green | #F1FAF2 | #E3F6E5 | #C3EBC8 | #92DA9B | #59C768 | #2BAD39 | #228F2F | #1A7426 | #165D20 | #124C1B |
+| Neutral | #F7F8F8 | #F1F3F2 | #E5E8E6 | #D4D8D6 | #AEB4B1 | #858C88 | #626966 | #454B48 | #2D312F | #202321 |
+
+Neutral 0: #FFFFFF; Neutral 950: #111312.
+Text primary/secondary/tertiary: Neutral 950/600/500. Surface: Neutral 0; secondary surface: Neutral 50.
+Green 500 is brand expression, not a white-text CTA background. Required body information uses Neutral 600; Neutral 500 is limited to placeholder/inactive navigation per specification.
+
+### Previous values and adoption
+
+| Existing source | Before | V1 opt-in |
+|---|---|---|
+| globals brand 50/100/500/700/900 | #eaf7ec / #d3efd8 / #2aad38 / #1b7a26 / #12561a | Green scale above |
+| text 1/2/3 | #1a1a1a / #5c5c5c / #8e8e8e | Neutral 950/600/500 |
+| background / border | #f5f5f5 / #e8e8e8 | Neutral 0 / 200 |
+| gutter | 16px | 20px |
+| font | Inter first, 13/15px and negative tracking in Home | Pretendard stack, fixed scale, zero tracking |
+| home card | 4:3 thumbnail, no containing border | 272px width, 2.2:1 thumbnail, 16px radius + border |
+| floating nav | inset 14, radius 22, blur 18, alpha .86, active green pill | x 20, bottom 12 + safe-area, radius 24, blur 20, alpha .92, active icon/text only |
+
+Keep all new foundation values in globals. Home/card CSS uses these variables. Portal sheets inherit the same tokens only while V1 Home is mounted. Shared navigation opts in through `designVersion="v1"`; other routes retain their current presentation and IA.
+
+## Home composition and existing data contracts
+
+1. Brand + notifications + Parent profile. Parent identity comes from AuthProfile, never the selected child. There is no image field in the current profile projection; use a 40px Neutral surface/User 20px fallback inside a 44px link. The presentation accepts a future image URL, including image-load failure fallback. Guests use existing sign-in; no fake unread count.
+2. Location + child context. `LocationFilter` uses administrative URL fields or the existing geolocation cookie. `HomeChildSelector` uses `?child=` and ownership validation. Canonical location redirects preserve child. Guest/no-child entry goes to existing sign-in/child management.
+3. Search: 48px high, 12px radius, Neutral 50. `ClassesSearchPill` submits to `/classes` and retains current query context.
+4. Category shortcuts have no “전체” entry. Use a 40px full-radius Neutral 50 circle, 24px colored pictogram and Neutral 700 label. Desktop hover: Green 50 circle, original subject color, Neutral 950 label. Touch/pointer pressed: Green 100 circle, original subject color. No charcoal fill, white inversion, scale or bounce. `--motion-fast: 120ms` is defined in globals; reduced motion still disables transitions. Pictograms follow the existing inline SVG convention with consistent rounded 2px strokes and at most three existing token colors. Actual `subjectCatalog` controls labels, codes, order, and availability; fallback icon for unknown codes. No new taxonomy.
+5. “다가오는 수업 일정” is an independent section, shown when an owned child is selected and has an upcoming confirmed schedule. Use the existing child-scoped summary and route; show a full-content-width 2.2:1 class image, title, academy, Seoul date/time. Do not fabricate missing images or schedules. The report-review link is a separate conditional aside and cannot replace or suppress a schedule. A report query error cannot suppress an available schedule.
+6. “이런 수업은 어때요?”: existing public class query. With a selected owned child, reuse `isChildEligibleForClass(child.grade, class.targetAge)` from the application action; invalid/missing grades or target ranges fail closed. No age-to-grade mapping. Filter before slicing to six; remove the early discovery query limit when a child parameter is present. Without selected child retain general discovery. Horizontal snap rail, 272px cards, 2.2:1 image. Body order: title → neutral price → academy/location → subject/real distance. Never overlay price on the image. Card link and favorite button remain siblings.
+7. Academy list: existing `getAcademiesForList` with the same administrative or nearby organization filter as `/academies`. Up to three, alphabetical (distance first when nearby). Do not derive academies from the limited class preview. No paid priority. Unselected location uses “학원 둘러보기”; selected location uses “우리 동네 학원”.
+8. Existing tabs: 홈 / 일정 / 기록 / 마이페이지. 64px height, 20px horizontal margins, bottom 12px + safe-area. Body reserves 96px + safe-area.
+
+Report source is a live published snapshot with no ParentDecision, not read/unread state. The current action kind is only `report_review`. Do not invent “new”, other action kinds, or workflow states. Upcoming selection and formatting reuse existing Asia/Seoul rules. No auth, DB schema, status transition, adapter interface, or route changes.
+
+## States and accessibility
+
+- Page-local Suspense skeleton follows header/category/slider/academy structure. Page-local error boundary offers reload and discovery. Neither adds a root loading/error boundary to unrelated routes.
+- Section errors use plain user messages and existing discovery links; empty sections offer further exploration.
+- Semantic H1/H2/H3, labelled search and icon buttons, visible focus, accessible image alternatives, keyboard-focusable horizontal rail, and reduced motion.
+- Reused location buttons retain native button semantics (previous role=listitem suppressed that role).
+- Shared BottomSheet still has existing focus-trap/focus-return limitations; it is not redesigned in this Home task.
+
+## Authoritative sources and adoption boundary
+
+This is the **only authoritative Parent design-system document**. Runtime foundation: `app/globals.css` under `[data-parent-design="v1"]`; component CSS consumes those tokens. The CSS scope name `v1` is the adoption switch and includes Home V1.3, not an obsolete visual version.
+
+- `STUDIO_DESIGN_SYSTEM.md`: independent Studio-only specification; explicitly excludes Parent. Preserve it and its references in `CLAUDE.md` and globals.
+- `docs/CODEX_HANDOFF.md`: project entry guide linking here, not a second design system.
+- `docs/partner-landing-reference.html`: partner landing reference, not Parent authority.
+- `AGENTS.md`: product/development constraints, not a parallel token catalog.
+- Existing route CSS is implementation, not an alternative standard. Legacy `/classes`, `/my`, `/record` share outer `--bg` / inner `--surface` / `--col` conventions; `/academies` still has legacy 430px/hardcoded styling. No migration of those pages is included here.
+- The pre-existing untracked HTML/canvas artifacts are not authoritative; preserve them without staging.
+
+## Core token registry
+
+Approved values below are the contract for Parent components. **A documented value is not a claim that a CSS variable or reusable component is already implemented.** Only Home-consumed tokens have been adopted into the runtime scope; do not create unused runtime variables or replace legacy styles in bulk.
+
+| Family | Approved values | Current runtime coverage |
+|---|---|---|
+| Spacing | 4 / 8 / 12 / 16 / 20 / 24 / 32 / 40 / 48 / 64px | EXISTS: inherited `--s1`…`--s10`, scoped `--s12`, `--s16`; gutter 20 |
+| Radius | 8 / 12 / 16 / 24 / 999px | EXISTS: `--r-sm/md/lg/sheet/full` |
+| Control size | 32 / 36 / 44 / 48 / 52px | PARTIAL: used as dimensions, not a complete named variable set. Visual 32/36 controls need 44px hit areas |
+| Icon | 16 / 20 / 24px | EXISTS as SVG/CSS sizes; no universal component |
+| Opacity | disabled 40%, secondary 60%, overlay 48%, glass 92% | PARTIAL: glass .92 implemented; other values are documented contract. Prefer semantic text colors over opacity for legible content |
+| Motion | 80 / 120 / 200 / 300ms | PARTIAL: `--motion-fast:120ms` implemented; other durations reserved in specification. Reduced motion disables nonessential transitions |
+| Layer | 0 / 10 / 20 / 30 / 40 / 50 / 60 / 70 / 80 | PARTIAL: nav uses existing 60. Intended roles: base 0, local raised 10, sticky header 20, sticky controls 30, popover 40, backdrop 50, nav 60, dialog 70, toast 80. Existing sheet 200 is a compatibility exception |
+| Media | 1:1 / 4:3 / 16:9 | PARTIAL: approved reusable media presets, not a CSS ratio registry. **Home landscape exception: 2.2:1**, required by the finalized Home card/schedule design |
+| Font | Pretendard Variable → Pretendard → system-ui → sans-serif | PARTIAL: stack implemented; no bundled or loaded font asset. No new font/dependency introduced in finalization |
+| Typography | Foundation scale above, line-height 1.5, zero tracking | PARTIAL: sizes implemented as variables, weights in consuming CSS/document. Desktop type scale at 768px+, while outer canvas changes at >480px |
+
+Subject color accents reuse root blue/amber/red foreground/background tokens plus scoped Green. They identify categories only, not success/error statuses. Primary CTA remains Green 700+, brand identity Green 500.
+
+## Component contracts
+
+The following is the complete **documentation contract**, not a claim that every component has a shipped reusable implementation. Home implementations remain fixed. New adoption on another route is a separate task.
+
+Common states for interactive components: default; hover; pressed; visible 2px Green 700 focus; disabled (noninteractive, 40% opacity only where legible); pending when applicable (announce progress, prevent duplicate submission). Status is never communicated by color alone. All hit targets at least 44×44; all icon-only actions labelled; respect reduced motion. Common prohibitions: fabricated facts, arbitrary palette/type/spacing/layers, nested interactive elements, unnecessary shadows, inaccessible color-only or hover-only actions.
+
+Abbreviations: N = Neutral, G = Green; R = radius in px; “common” refers to the states/prohibitions above. Every row specifies geometry, appearance, states, purpose and additional prohibitions.
+
+| Component | Size / radius | Color / token | States | Usage | Prohibited patterns |
+|---|---|---|---|---|---|
+| App Header | 480px max, 20px X, ≥44px actions; R0 | Surface N0, text N950 | common actions; guest/Parent/Studio destinations | Brand + notifications + Parent avatar; distinct region/child row | Child name owned by avatar; mixed Parent/Child group |
+| Page Header | H1; 20px X, 16px gap; R0 | N950 title, N600 supporting text | default, loading | Page identity/back action | Extra decorative hero on every page |
+| Section Header | H3/H4; content gap16; action hit44; R0 | N950 / N600 | default; common link states | Title plus real destination if available | Forced “전체보기” with no route |
+| Button | h36/44/48/52; R12 | Primary G700/N0, hover G800, pressed G900; secondary N0/border N200; dark N950/N0; ghost transparent | common, loading | Explicit action; main mobile CTA52 | White text on G500; disabling only visually |
+| Icon Button | hit44; icon20/24; R12 or full | Neutral or Green semantic | common; selected/toggled labelled | Compact named action | Missing aria-label; fake badges |
+| Search | h48; R12; icon20 | N50, placeholder N500, text N950 | common, pending, clear | Submit Enter/button to canonical results | Fake local filter; unrequested typing mutations |
+| Input | h44/48; X12; R12 | N0, border N200, N950 | common, empty, filled, invalid | Labelled single-line entry | Placeholder-only label; raw technical errors |
+| Textarea | ≥3 B2 lines + padding12; R12 | Input palette | common, empty, filled, invalid | Multiline note | Fixed clipping of entered content |
+| Select | h44/48; R12; chevron16 | Input palette | common, open, selected, empty/error options | Choose existing options | Inventing taxonomy options |
+| Checkbox | mark20, hit44; R8 | N0/N300, checked G700/N0 | common, checked, mixed | Independent multiple choices | Whole-row nested controls; color-only check |
+| Radio | mark20, hit44; Rfull | N0/N300, selected G700 | common, selected | Mutually exclusive choice group | Multiple checked values in one group |
+| Switch | visual40×24, hit44; Rfull | off N300, on G700, thumb N0 | common, on/off, saving | Immediate reversible boolean setting | Using it to submit unrelated forms |
+| Chip / Filter | visual h32, hit44, X12; Rfull | N0/N200/N700; selected N950/N0 | common, selected, removable | Actual filter state | Green selected fill by default; fake filter state |
+| Badge | C1, padding4×8; Rfull | N100/N700; semantic colors only for real status | default, semantic state | Compact actual status/count | Invented unread count/rating/rank |
+| Subject Category Pictogram | circle40, icon24, C1 label, item hit≥44; Rfull | N50 circle, N700 label, ≤3 existing pictogram colors | hover G50, pressed G100, focus ring; icon color unchanged | Taxonomy-driven search shortcut | “전체”; charcoal hover; white inversion; 3D/emoji/scale/bounce |
+| Segmented Control | segment hit44, rail padding4; R12 | N100 rail, N0/N950 selected surface | common, selected | Small mutually exclusive view switch | Double nested tabs; invented state |
+| Tabs | hit44, gap16; R0 or12 | N600 idle, G700 active indicator | common, selected, keyboard navigation | Distinct related panels/routes | Color-only selection; changing IA casually |
+| Card | padding16/20, gap12/16; R16 | N0, border N200, no shadow | default; common if clickable | Group related content | Card nesting without purpose; shadow per card |
+| Landscape Class Card | w272, image2.2:1, padding16; R16 | Card palette; neutral price | default, favorite, missing image, focused link | Title → price → academy/location → subject | Price overlay; portrait return; uneven image/body height |
+| Academy List Row | thumbnail64 square, gap12, vertical16; R12 thumbnail | N0, N200 divider, N950 title/N600 metadata | common link, missing image, empty/error list | Academy discovery, same location context | Ranking or paid-priority signals |
+| Divider | 1px; R0 | N200 | static | Quiet structural boundary | Heavy decorative rules |
+| Accordion | trigger≥44; content padding16; R12 if bounded | N950/N600, N200 border | common, expanded/collapsed; aria-expanded | Optional supporting detail | Hiding required next action; hover-only opening |
+| Bottom Navigation | h64; x20; bottom12+safe-area; R24 | glass92%, border N200, blur20; active G700, inactive N500 | common, active page, pending | 홈 / 일정 / 기록 / 마이페이지 | Active pill, new tab IA, wide desktop nav |
+| Sticky CTA | button52; X20, gap12, safe-area; R12 | N0 surface, G700 CTA, optional N200 top border | common, pending, unavailable | Primary page action with reserved content clearance | Covering content/nav; multiple competing sticky layers |
+| Bottom Sheet | max480; content scrolls; X20; top R24 | N0, overlay48% standard | opening/open/closing, focus/escape, loading/error content | Mobile selection/task | Background interaction, trapped scroll, no focus return; see legacy exceptions |
+| Modal / Dialog | max480 within gutter20; padding24; R24 | N0, overlay48%, thin border | open/closed, focus trapped/restored, pending/error | Focused confirmation/task | Unlabelled dialog, irreversible default action |
+| Dropdown / Popover | rows≥44, padding8/12, viewport-constrained; R12 | N0/N200/N950 | common, open, selected, escape | Anchored short choices/context | Offscreen menus; hover-only access |
+| Toast | B2; padding12/16; R12 | N950/N0 or semantic notice | shown/dismissed, polite status | Transient confirmation | Only location for important errors; interruptive live region |
+| Inline Notice | padding12/16; R12 | N50/N600; existing semantic palette | info/success/error; action common | Contextual feedback | Raw stack/SQL/error details |
+| Empty | padding20, B2; R16 if bounded | N0/N600, optional N200 border | true empty with next action | Explain absence and offer real destination | Treating failed fetch as empty; decorative giant art |
+| Loading / Skeleton | match final frames/rows; same radii | N100 on N0 | busy, reduced motion | Preserve layout and announce loading | Fake data presented as real; unnecessary shimmer |
+| Error | B2, padding20, action≥44; R16 | N0/N600, semantic error if needed | retry/pending/recovered | Friendly failure and discovery/retry | Technical internals; dead-end error |
+| ImageFallback | fills parent frame, icon24; inherits frame radius | N50 background, Image icon N400; optional C1/N500 | missing URL | Same language for schedule/class/academy | Large centered text, decorative replacement image |
+| Avatar | circle40, User20, link hit44; Rfull | N50/N600 fallback; image cover | image/missing/load failure; common link | Parent identity only | Child identity in Parent avatar; DB field invented for presentation |
+| Thumbnail | 1:1 /4:3 /16:9, Home2.2:1 exception; R12/16 | Original image or ImageFallback | loaded/missing, meaningful alt | Real content imagery | Stretching, invented academy photos |
+| Progress | track8, gap8, C1; Rfull | N100 track/G700 progress | determinate/indeterminate, accessible value | Real measured completion | Fake percentage or matching score |
+| Stepper | indicator32 with hit44 if interactive, gap12; Rfull | N100/N600, active G700 | current/completed/upcoming; aria-current | Finite actual steps | Invented workflow statuses; color-only step |
+| Date/Time Trigger | h44/48, icon20, X12; R12 | Input palette | common, selected, unavailable, error | Existing Asia/Seoul schedule choices | Comparing UTC timestamps directly to local clock strings |
+| Data Visualization | constrained to Parent width, label C1/B2, gap16; R16 if card | Neutral labels, G700 emphasis; subject colors only for subject categories | loading/empty/error/data, textual alternative | Actual observations/counts/trends | Fake ranking, matching %, truncated misleading axes, unsupported paid features |
+
+Home's class body reserves token-derived rows: title two B1 lines (48px), price one B2 line (21px), academy/location one C1 line (18px), subject one C1 line (18px), with 4px gaps and 16px padding. Blank metadata retains the row; title clamps after two lines. At 390px the next card exposure is 66px. Actual image URLs/rendering stay unchanged; shared ImageFallback handles absent URLs, not network-error recovery for every image.
+
+## Content rules
+
+Firstsuup supports exploration, observation, records and informed choice; it does not decide for the family. Use direct factual labels: “다가오는 수업 일정”, “이런 수업은 어때요?”, “우리 동네 학원”, “리포트 확인하기”. Never add BEST, 최고의 학원, 가장 잘 맞는 학원, fabricated recommendation order, matching score/96% matching, ratings or review counts. Schedule and report remain independent; never rename the schedule to “우리 아이의 지금”.
+
+## Audit classification and compatibility exceptions
+
+Audit date: 2026-09-20. EXISTS = source/contract present; PARTIAL = some implementation/coverage missing; MISSING = absent before this audit; CONFLICT = different rules in the same intended scope or an explicit legacy deviation. Documentation completeness and runtime component availability are separate.
+
+| Audit area | Before finalization | Resolution / remaining runtime status |
+|---|---|---|
+| Parent authority | EXISTS | This file + scoped globals; no duplicate Parent specification discovered |
+| Version notes | CONFLICT | Replaced iterative V1.1–V1.3 records with one final contract; old dark/white subject hover is not a current rule |
+| Foundation colors/layout/spacing/radius | EXISTS | Exact V1 palette and white/Neutral50 shell confirmed |
+| Typography/font delivery | PARTIAL | Sizes/stack exist; actual Pretendard Variable asset remains absent; browser falls back to system font |
+| Core registry | PARTIAL / MISSING | Full approved values documented above; unused runtime variables intentionally not added |
+| Home component documentation | PARTIAL | Complete geometry/colors/states/usage/prohibitions now documented |
+| General forms/overlays/progress/chart documentation | MISSING | Component contracts added; not newly implemented or restyled |
+| Product rules | EXISTS | Parent≠Child, URL ownership, eligibility, report/schedule separation and discovery retained |
+| Home-vs-document conflict | CONFLICT | Category outline wording updated to colored pictogram; landscape2.2:1 explicitly remains an exception to generic media presets |
+| Legacy root tokens | CONFLICT if applied as Parent V1 | V1 is opt-in; Studio and old pages keep current values until separately migrated |
+| Shared BottomSheet | PARTIAL / CONFLICT | Legacy z-index200, overlay40%, some inline 13/15px text, incomplete focus trap/return remain. Home applies scoped radius24/buttonsB2/reduced motion; remaining differences are compatibility exceptions, not the target standard |
+| Contrast | PARTIAL | N600 used for body information; specified N500 small inactive/placeholder text needs separate AA contrast review. Do not claim full WCAG conformance |
+
+No new UI, route, auth, data, library, Studio or schema work is authorized by this documentation audit. In particular, do not fix the legacy sheet by silently changing shared runtime behavior.
+
+## Final regression and verification
+
+- Required commands: `npm run typecheck`, `npm run lint`, `npm run build`, `git diff --check`, all `scripts/verify-parent-*.ts`.
+- Build in an isolated copy when a dev server uses the working tree's `.next`; do not disturb the running dev server.
+- Browser widths: 360 /390 /480 /1440. Mobile outer/surface white; desktop Neutral50 outer + white 480px surface, navigation inside, no page overflow.
+- Confirm public search/category destinations, location continuity, Parent/Child ownership, original images/shared fallbacks, price position and equal-height 272px cards. Report-review and confirmed-schedule selection/child eligibility are covered by pure verifiers.
+- Existing browser evidence: 66px next card at 390; same 122.72px image height and 273.72px card height; long-title/empty-metadata stress leaves height unchanged; hover Green50, pressed Green100, pictogram colors stable, 120ms, no scaling. Root JSX/content structure remains Home V1.3.
+- Limit: no authenticated Parent session was available for browser testing of actual child names, reports and upcoming schedules. No fake live profiles, reports or schedules were introduced. No geolocation permission flow tested.
+- Finalization preserves pre-existing unrelated untracked files and stages only the explicit Parent change list. Commit/push are authorized by the finalization request; no PR is created.

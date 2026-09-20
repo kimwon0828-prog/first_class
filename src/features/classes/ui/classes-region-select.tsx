@@ -165,6 +165,7 @@ export function ClassesSearchPill({
             setValue(event.target.value)
           }}
           placeholder={placeholder}
+          aria-label={placeholder}
           inputMode="search"
           enterKeyHint="search"
           className={inputClassName}
