@@ -23,6 +23,7 @@ type ClassDetailPageProps = {
     id: string
   }>
   searchParams?: Promise<{
+    child?: string
     sido?: string
     sigungu?: string
     bname?: string
@@ -50,7 +51,7 @@ export default async function ClassDetailPage({ params, searchParams }: ClassDet
   const resolvedSearchParams = searchParams ? await searchParams : undefined
   // legacy academy-area query 는 받지 않는다. 실제 행정지역 값이 명시적으로 있을 때만 canonical query 를 만든다.
   const regionQuery = new URLSearchParams()
-  for (const key of ["sido", "sigungu", "bname"] as const) {
+  for (const key of ["sido", "sigungu", "bname", "child"] as const) {
     const value = resolvedSearchParams?.[key]
     if (typeof value === "string" && value.trim().length > 0) {
       regionQuery.set(key, value.trim())

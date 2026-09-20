@@ -81,3 +81,7 @@
 
 /* Pressed comes after hover so pointer and touch share the same feedback. */
 .subjectChip:active .subjectCircle { background: var(--brand-100); }
+
+.searchTrigger { text-decoration: none; min-width: 0; }
+.searchTrigger:focus-visible { outline: 2px solid var(--brand-700); outline-offset: 2px; }
+.searchPlaceholder { flex: 1; min-width: 0; padding-right: var(--s3); font-size: var(--font-b2); color: var(--text-3); }

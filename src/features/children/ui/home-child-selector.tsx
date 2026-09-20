@@ -29,6 +29,8 @@ type HomeChildSelectorProps = {
   options: ChildSelectorOption[]
   selectedChildId: string | null
   className?: string
+  manageSheetFocus?: boolean
+  unselectedLabel?: string
   labelClassName?: string
 }
 
@@ -48,7 +50,9 @@ export function HomeChildSelector({
   options,
   selectedChildId,
   className,
-  labelClassName
+  labelClassName,
+  manageSheetFocus = false,
+  unselectedLabel
 }: HomeChildSelectorProps) {
   const router = useRouter()
   const pathname = usePathname()
@@ -56,7 +60,8 @@ export function HomeChildSelector({
   const [open, setOpen] = useState(false)
   const [isPending, startTransition] = useTransition()
 
-  const triggerLabel = formatChildTriggerLabel(options, selectedChildId)
+  const triggerLabel = !selectedChildId && unselectedLabel && options.length > 0
+    ? unselectedLabel : formatChildTriggerLabel(options, selectedChildId)
   if (!triggerLabel) {
     return null
   }
@@ -83,7 +88,7 @@ export function HomeChildSelector({
     })
   }
 
-  const offerAll = shouldOfferAllChildrenOption(options)
+  const offerAll = Boolean(unselectedLabel) || shouldOfferAllChildrenOption(options)
 
   return (
     <>
@@ -99,7 +104,7 @@ export function HomeChildSelector({
         <ChevronIcon />
       </button>
 
-      <BottomSheet open={open} onClose={() => setOpen(false)} title="아이 선택">
+      <BottomSheet open={open} onClose={() => setOpen(false)} title="아이 선택" manageFocus={manageSheetFocus}>
         <ul className={styles.list}>
           {offerAll ? (
             <li>
@@ -109,7 +114,7 @@ export function HomeChildSelector({
                 aria-current={selectedChildId === null ? "true" : undefined}
                 onClick={() => select(null)}
               >
-                <span className={styles.optionName}>우리 아이 전체</span>
+                <span className={styles.optionName}>{unselectedLabel ? "자녀 조건 없이 보기" : "우리 아이 전체"}</span>
                 {selectedChildId === null ? (
                   <span className={styles.check} aria-label="선택됨">
                     <CheckIcon />

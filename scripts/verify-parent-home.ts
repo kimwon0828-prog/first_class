@@ -127,7 +127,7 @@ check(
   homeCode.includes("./classes/page") ? "root 가 여전히 classes 를 참조한다" : ""
 )
 check("root 가 자기 컴포넌트를 렌더한다", homeCode.includes("export default function ParentHomePage"))
-check("classes 가 검색 컴포넌트를 렌더한다", searchCode.includes("export default async function ClassesSearchPage"))
+check("classes 가 검색 컴포넌트를 렌더한다", searchCode.includes("export default function ClassesSearchPage") && searchCode.includes("<ClassesSearchContent"))
 check(
   "두 화면이 같은 조회 맥락을 공유한다(규칙이 두 벌로 갈리지 않는다)",
   homeCode.includes("resolveClassDiscoveryContext") && searchCode.includes("resolveClassDiscoveryContext")
@@ -176,8 +176,15 @@ check("Home 에 marketing footer 가 없다", !homeCode.includes("ParentFooter")
 check("약관 · 사업자 정보는 /my 에 있다", codeOf("app/my/page.tsx").includes("<ParentFooter />"))
 check(
   "Home 의 검색은 /classes 로 넘긴다",
-  homeCode.includes('targetPathname="/classes"')
+  homeCode.includes('<Link href={searchEntryHref}') && homeCode.includes('aria-label="수업 검색하기"') && !homeCode.includes("ClassesSearchPill")
 )
+check("Home 검색 링크는 검증된 선택 자녀와 기존 지역 계약을 사용한다",
+  homeCode.includes("const searchEntryHref = buildClassesHref({ child: selectedChild?.id, radius: context.radiusQueryValue, ...context.regionQueryValues })"))
+check("검색 진입 URL 은 자녀와 행정지역을 인코딩해 유지한다",
+  buildClassesHref({ child: "owned-child", sido: "서울", sigungu: "노원구" }) ===
+  `/classes?sido=${encodeURIComponent("서울")}&sigungu=${encodeURIComponent("노원구")}&child=owned-child`)
+check("검색 진입 URL 은 자녀와 주변 반경을 함께 유지한다",
+  buildClassesHref({ child: "owned-child", radius: "3" }) === "/classes?radius=3&child=owned-child")
 check(
   "Home 의 과목 shortcut 은 실제 catalog code 를 쓴다",
   homeCode.includes("subjectCategory: category.code") && !homeCode.includes('subjectCategory: "math"')
@@ -226,7 +233,7 @@ for (const [label, needle] of [
   check(`Search 에 ${label} 이(가) 없다`, !searchCode.includes(needle))
 }
 check("Search 는 검색 · 지역 · 과목 · 세부 과목 · 결과를 갖는다",
-  ["<ClassesSearchPill", "<LocationFilter", "과목 대분류", "세부 과목", "resultGrid"].every((part) =>
+  ["<ClassesSearchPill", "<LocationFilter", "과목 대분류", "<ClassesSubjectFilter", "resultGrid"].every((part) =>
     searchCode.includes(part)
   )
 )
@@ -247,7 +254,6 @@ console.log("\n[7] 하단 탭")
 /* 탭 구성 · active 규칙 자체는 verify-parent-nav 가 본다. 여기서는 공용 nav 사용만 본다. */
 for (const [label, path] of [
   ["home", HOME_PATH],
-  ["search", SEARCH_PATH],
   ["record", "app/record/page.tsx"],
   ["my", "app/my/page.tsx"],
   ["favorites", "app/favorites/favorites-client.tsx"]

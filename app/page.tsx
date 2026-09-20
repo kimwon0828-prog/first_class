@@ -23,7 +23,6 @@ import {
   resolveClassDiscoveryContext,
   type ClassDiscoverySearchParams
 } from "@/features/classes/queries/resolve-class-discovery-context"
-import { ClassesSearchPill } from "@/features/classes/ui/classes-region-select"
 import { HomeClassCard } from "@/features/classes/ui/home-class-card"
 import { ParentBottomNav } from "@/features/classes/ui/parent-bottom-nav"
 import { LocationFilter } from "@/features/location/ui/location-filter"
@@ -191,6 +190,7 @@ async function ParentHomeContent({ searchParams }: HomePageProps) {
   const discoveryHref = buildClassesHref({ radius: context.radiusQueryValue, ...context.regionQueryValues })
   const academyHref = discoveryHref.replace("/classes", "/academies")
   const selectedChild = parentHome?.childOptions.find((child) => child.id === parentHome.selectedChildId)
+  const searchEntryHref = buildClassesHref({ child: selectedChild?.id, radius: context.radiusQueryValue, ...context.regionQueryValues })
   const report = parentHome?.actions[0]
   const upcoming = selectedChild ? parentHome?.upcoming[0] : undefined
   const homeDiscoveryClasses = selectHomeDiscoveryClasses(context.classes, selectedChild, HOME_DISCOVERY_LIMIT)
@@ -276,16 +276,15 @@ async function ParentHomeContent({ searchParams }: HomePageProps) {
             </div>
           </div>
 
-          {/* Home 의 검색은 결과 화면(/classes)으로 넘긴다. Home 은 검색 화면이 아니다. */}
-          <ClassesSearchPill
-            initialQuery=""
-            placeholder="지역, 학원명, 수업명으로 검색"
-            className={styles.searchForm}
-            pillClassName={styles.searchPill}
-            inputClassName={styles.searchInput}
-            submitButtonClassName={styles.searchSubmit}
-            targetPathname="/classes"
-          />
+          <Link href={searchEntryHref} className={`${styles.searchPill} ${styles.searchTrigger}`} aria-label="수업 검색하기">
+            <span className={styles.searchPlaceholder}>지역, 학원명, 수업명으로 검색</span>
+            <span className={styles.searchSubmit} aria-hidden="true">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                <circle cx="10.5" cy="10.5" r="7.5" stroke="currentColor" strokeWidth="2" />
+                <path d="m16.65 16.65 4.35 4.35" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+              </svg>
+            </span>
+          </Link>
         </header>
 
         <div className={styles.content}>

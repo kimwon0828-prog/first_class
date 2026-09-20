@@ -1,0 +1,12 @@
+.trigger { display: inline-flex; align-items: center; justify-content: center; gap: var(--s2); min-height: 44px; min-width: 44px; padding: var(--s2) var(--s3); border: 1px solid var(--border); border-radius: var(--r-full); background: var(--surface); color: var(--text-1); font: inherit; font-size: var(--font-b2); cursor: pointer; }
+.selected { background: var(--text-1); color: var(--surface); border-color: var(--text-1); }
+.form { padding: var(--s4) var(--gutter); }
+.options { margin: 0; padding: 0; border: 0; }
+.legend { margin-bottom: var(--s3); font-size: var(--font-b2); color: var(--text-2); }
+.option { display: flex; align-items: center; gap: var(--s3); min-height: 44px; font-size: var(--font-b2); cursor: pointer; }
+.option input { width: 20px; height: 20px; accent-color: var(--brand-700); }
+.actions { position: sticky; bottom: 0; display: flex; gap: var(--s3); padding-block: var(--s4); background: var(--surface); }
+.reset, .apply { min-height: 52px; padding: var(--s3) var(--s4); border: 1px solid var(--border); border-radius: var(--r-md); background: var(--surface); font: inherit; color: var(--text-1); cursor: pointer; }
+.apply { flex: 1; background: var(--brand-action); border-color: var(--brand-action); color: var(--surface); }
+.apply:hover { background: var(--brand-action-hover); }
+.apply:active { background: var(--brand-action-pressed); }

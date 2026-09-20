@@ -37,6 +37,7 @@ const stripJsxComments = (source: string) => source.replace(/\{\/\*[\s\S]*?\*\/\
 const codeOf = (path: string) => stripComments(stripJsxComments(read(path)))
 
 const search = codeOf(SEARCH_PATH)
+const detailFilter = codeOf("src/features/classes/ui/classes-subject-filter.tsx")
 const searchCss = stripComments(read(SEARCH_CSS_PATH))
 const projection = stripComments(read(PROJECTION_PATH))
 const context = stripComments(read(CONTEXT_PATH))
@@ -73,7 +74,7 @@ for (const [label, needle] of [
 }
 check("Search 는 자기 이름을 말한다", search.includes("수업찾기</h1>"))
 /* /classes 는 Home 에서 시작하는 검색의 결과 화면이라 홈 탭이 켜진다. */
-check("공용 nav 를 쓴다", search.includes("<ParentBottomNav"))
+check("독립 탐색 화면은 하단 nav 없이 뒤로 이동한다", !search.includes("<ParentBottomNav") && search.includes('aria-label="홈으로 이동"'))
 check("/classes 에서는 홈 탭이 active 다", resolveParentNavTab("/classes") === "home")
 check("검색 결과에서도 홈 탭이다", resolveParentNavTab("/classes/abc") === "home")
 check('하단 탭에 "수업찾기" 라벨이 없다', !navCode.includes('label: "수업찾기"'))
@@ -82,11 +83,10 @@ console.log("\n[2] 화면 순서")
 
 const SECTION_ORDER = [
   "searchTitle",
-  "<ClassesSearchPill",
-  "browseFilterRow",
   "<LocationFilter",
+  "<ClassesSearchPill",
   'aria-label="과목 대분류"',
-  "subjectDetailChipRail",
+  "<ClassesSubjectFilter",
   "activeFilterSection",
   "resultMeta",
   "resultGrid"
@@ -94,7 +94,7 @@ const SECTION_ORDER = [
 // 순서는 render tree 안에서만 본다. 위쪽 계산식의 등장 순서는 화면 순서가 아니다.
 const searchRender = search.slice(search.indexOf("  return ("))
 check(
-  "헤더 → 필터(지역 → 과목 → 세부 과목) → 적용 조건 → 결과",
+  "헤더 → 지역/자녀 → 검색 → 과목/세부 과목 → 적용 조건 → 결과",
   inOrder(searchRender, SECTION_ORDER),
   String(indexOfAll(searchRender, SECTION_ORDER))
 )
@@ -104,12 +104,12 @@ console.log("\n[3] URL 이 검색 상태의 source of truth 다")
 check("검색 입력값은 URL 의 q 다", search.includes('initialQuery={selectedQuery ?? ""}'))
 check(
   "placeholder 가 검색 대상을 말한다",
-  search.includes('placeholder="수업명, 학원명, 과목을 검색해보세요"')
+  search.includes('placeholder="수업명 또는 학원명을 검색해보세요"')
 )
 check(
   "과목 선택 상태가 URL 을 따라간다",
   search.includes("selectedSubjectCategory?.id === category.id") &&
-    search.includes("subjectChipActive") &&
+    search.includes("styles.subjectSelected") &&
     search.includes('aria-current={isActive ? "page" : undefined}')
 )
 check(
@@ -117,8 +117,8 @@ check(
   search.includes("selectedSubjectCategory.subjects.map")
 )
 check(
-  "세부 과목 rail 은 category 가 선택됐을 때만 나온다",
-  search.includes("{selectedSubjectCategory ? (")
+  "세부 과목 sheet 는 category 가 선택됐을 때만 나온다",
+  search.includes("{selectedSubjectCategory ? <ClassesSubjectFilter")
 )
 
 console.log("\n[4] 필터 조합 보존")
@@ -139,13 +139,13 @@ check(
 )
 check(
   "세부 과목만 바꿀 때는 상위 과목을 유지한다",
-  search.includes("subjectCategory: selectedSubjectCategory.code,\n                        subject: subject.code")
+  detailFilter.includes('params.set("subjectCategory", categoryCode)') && detailFilter.includes('params.set("subject", draft)') && detailFilter.includes("new URLSearchParams(searchParams.toString())")
 )
 check(
   "'전체' 과목은 category 와 subject 만 지운다",
   search.includes("buildSearchHref({ subjectCategory: null, subject: null })")
 )
-check("초기화는 /classes 다", search.includes('<Link href="/classes" className={styles.resetFilterButton}>'))
+check("검색 조건 초기화는 지역/자녀를 보존한다", search.includes('href={buildSearchHref({ q: null, subjectCategory: null, subject: null })} className={styles.resetFilterButton}') && search.includes("child: selectedChildId"))
 check(
   "검색어를 비우면 q 만 지운다(공유 pill 의 계약)",
   stripComments(read("src/features/classes/ui/classes-region-select.tsx")).includes(
@@ -156,7 +156,7 @@ check(
 console.log("\n[5] subject query 계약은 code 다")
 
 check("URL 은 category.code 를 쓴다", search.includes("subjectCategory: category.code"))
-check("URL 은 subject.code 를 쓴다", search.includes("subject: subject.code"))
+check("URL 은 subject.code 를 쓴다", detailFilter.includes("value={subject.code}") && detailFilter.includes('params.set("subject", draft)'))
 check("UUID 를 URL 에 쓰지 않는다", !search.includes("subjectCategory: category.id") && !search.includes("subject: subject.id"))
 check(
   "DB 필터는 id 로 내려간다(기존 계약)",
@@ -226,14 +226,14 @@ console.log("\n[9] 결과 · 빈 결과 · 오류 · 초기화")
 
 check("결과 개수는 실제 개수다", search.includes("const resultCount = classes.length"))
 check(
-  "검색어가 있으면 검색어를 말한다",
-  search.includes('`"${selectedQuery}" 검색 결과 ${resultCount}개`')
+  "결과 제목은 개수만 표시하고 검색어는 해제 가능한 chip 에 남는다",
+  search.includes('const resultMetaText = `수업 ${resultCount}개`') && search.includes('key: "q", label: `"${selectedQuery}"`')
 )
-check("빈 결과 문구가 따로 있다", search.includes("조건에 맞는 첫수업이 아직 없어요."))
+check("빈 결과 문구가 따로 있다", search.includes("조건에 맞는 수업이 없어요."))
 check("빈 결과에 다음 행동을 준다", search.includes("검색어나 필터를 바꿔 다시 찾아보세요."))
-check("오류는 QueryResult 의 error 를 쓴다", search.includes("{error ? (") && search.includes("{error}</p>"))
+check("오류는 QueryResult 의 error 를 쓴다", search.includes("{error ? (") && search.includes("수업을 불러오지 못했어요.") && !search.includes("{error}</p>"))
 check("오류와 빈 결과가 다른 분기다", search.includes("} : resultCount === 0 ? (".replace("} : ", "") ) || search.includes(") : resultCount === 0 ? ("))
-check("조건이 있을 때만 초기화를 보여 준다", search.includes("{hasActiveFilters ? ("))
+check("복수 조건에만 검색 초기화를 한 번 표시한다", search.includes("activeFilters.length > 1") && search.includes("{hasMultipleFilters ?") && search.split("검색 조건 초기화").length === 2)
 
 console.log("\n[10] 결과 카드는 실제 값만 그린다")
 
@@ -246,7 +246,7 @@ check(
     !schedule.includes("예약 가능 일정 확인")
 )
 check("관심수업 기능이 살아 있다", card.includes("<BookmarkButton"))
-check("카드가 학년 · 일정을 실제로 그린다", card.includes("{gradeLabel ?") && card.includes("{scheduleLabel ?"))
+check("비교 카드는 과목 · 대상을 제목 앞에 그린다", card.includes("{gradeLabel ?") && card.indexOf("{secondaryLabel ?") < card.indexOf("<h3"))
 
 const FORBIDDEN = ["일치율", "% 일치", "BEST", "AI 추천", "추천 점수", "랭킹", "적합도", "매칭 점수", "리뷰"]
 for (const term of FORBIDDEN) {

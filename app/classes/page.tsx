@@ -1,5 +1,5 @@
 import type { Metadata } from "next"
-import Image from "next/image"
+import { Suspense } from "react"
 import Link from "next/link"
 import { redirect } from "next/navigation"
 
@@ -12,7 +12,7 @@ import {
 } from "@/features/classes/queries/resolve-class-discovery-context"
 import { ClassCard } from "@/features/classes/ui/class-card"
 import { ClassesSearchPill } from "@/features/classes/ui/classes-region-select"
-import { ParentBottomNav } from "@/features/classes/ui/parent-bottom-nav"
+import { ParentProfileAvatar } from "@/features/classes/ui/parent-profile-avatar"
 import { formatAdministrativeRegionLabel } from "@/features/location/lib/region-selection"
 import { formatDistanceLabel, nextWiderSearchRadiusKm } from "@/features/location/lib/search-location"
 import { LocationFilter } from "@/features/location/ui/location-filter"
@@ -22,6 +22,15 @@ import { formatStoredTargetGrades } from "@/shared/constants/grade-options"
 import { clearSearchLocationAction } from "@/features/location/actions/search-location-actions"
 
 import styles from "./page.module.css"
+import homeStyles from "../page.module.css"
+import ClassesLoading from "./loading"
+import { HomeErrorBoundary } from "@/features/classes/ui/home-error-boundary"
+import { SubjectIcon } from "@/features/classes/ui/home-subject-icon"
+import { ClassesSubjectFilter } from "@/features/classes/ui/classes-subject-filter"
+import { HomeChildSelector } from "@/features/children/ui/home-child-selector"
+import { getMyChildren } from "@/features/children/queries/get-my-children"
+import { resolveSelectedChildId, toChildSelectorOptions } from "@/features/children/lib/child-selection"
+import { selectEligibleDiscoveryClasses, formatDiscoveryPrice } from "@/features/classes/lib/class-discovery-results"
 import { getStudioCrossProductHrefResolver } from "@/shared/lib/cross-product-navigation-server"
 
 /*
@@ -45,48 +54,10 @@ type ClassesPageProps = {
   searchParams?: Promise<ClassDiscoverySearchParams>
 }
 
-// 필터가 하나도 없는 기본 목록이 소비하는 최대 개수.
-const DISCOVERY_CLASS_FETCH_LIMIT = 10
-
-// 결과 카드에 예약 가능 일정을 붙일 최대 개수.
 const SCHEDULE_SUMMARY_LIMIT = 20
-
-const formatPrice = (price: number) => {
-  if (price <= 0) {
-    return "무료"
-  }
-
-  return `${price.toLocaleString("ko-KR")}원`
-}
 
 const getClassSubjectLabel = (item: ClassSummary) =>
   formatClassSubjectDisplayLabel(item) || "과목 정보 준비 중"
-
-// 카드 부제는 organization 의 행정지역 metadata 로만 만든다.
-// metadata 가 없으면 지역 표시를 생략하고 과목만 남긴다. legacy region fallback 없음.
-const buildCardSecondaryLabel = (item: ClassSummary) => {
-  const subjectLabel = getClassSubjectLabel(item)
-  const regionLabel = item.organization ? formatAdministrativeRegionLabel(item.organization) : null
-
-  return regionLabel ? `${regionLabel} · ${subjectLabel}` : subjectLabel
-}
-
-const SubjectGlyph = () => (
-  <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-    <path
-      d="M4 5.5A1.5 1.5 0 0 1 5.5 4H11v16H5.5A1.5 1.5 0 0 1 4 18.5v-13Z"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinejoin="round"
-    />
-    <path
-      d="M20 5.5A1.5 1.5 0 0 0 18.5 4H13v16h5.5a1.5 1.5 0 0 0 1.5-1.5v-13Z"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinejoin="round"
-    />
-  </svg>
-)
 
 /*
  * 저장된 현재 위치를 지운다.
@@ -105,18 +76,16 @@ async function clearNearbyLocationAction() {
   await clearSearchLocationAction()
 }
 
-export default async function ClassesSearchPage({ searchParams }: ClassesPageProps) {
+async function ClassesSearchContent({ searchParams }: ClassesPageProps) {
   const resolvedSearchParams = searchParams ? await searchParams : undefined
 
   const [context, auth] = await Promise.all([
-    resolveClassDiscoveryContext(resolvedSearchParams, {
-      discoveryFetchLimit: DISCOVERY_CLASS_FETCH_LIMIT
-    }),
+    resolveClassDiscoveryContext(resolvedSearchParams),
     resolveCurrentAuth("/classes")
   ])
 
   if (context.shouldCanonicalize) {
-    redirect(buildClassesHref(context.canonicalParams))
+    redirect(buildClassesHref({ ...context.canonicalParams, child: resolvedSearchParams?.child }))
   }
 
   const {
@@ -130,24 +99,24 @@ export default async function ClassesSearchPage({ searchParams }: ClassesPagePro
     radiusQueryValue,
     regionQueryValues,
     regionSelectionLabel,
-    classes,
-    error
+    classes: allClasses,
+    error: classesError
   } = context
+
+  const childrenResult = auth.isParentUser
+    ? await getMyChildren() : { data: [], error: null }
+  const selectedChildId = resolveSelectedChildId(resolvedSearchParams?.child, childrenResult.data)
+  const selectedChild = childrenResult.data.find((child) => child.id === selectedChildId) ?? null
+  const classes = selectEligibleDiscoveryClasses(allClasses, selectedChild)
+  // Do not silently present unfiltered results as personalized when child loading failed.
+  const error = classesError || (resolvedSearchParams?.child && childrenResult.error
+    ? "자녀 정보를 불러오지 못했어요. 다시 시도해주세요." : null)
 
   const { authenticated, isStudioUser } = auth
   /* Studio 는 다른 origin 이다. 상대 경로로는 그 자리를 가리킬 수 없다. */
   const studioHref = await getStudioCrossProductHrefResolver()
-  const myPageEntryHref = authenticated ? (isStudioUser ? studioHref("/studio") : "/my") : "/auth/sign-in"
-  const scheduleEntryHref = authenticated
-    ? isStudioUser
-      ? studioHref("/studio")
-      : "/my/schedule"
-    : `/auth/sign-in?${new URLSearchParams({ returnTo: "/my/schedule" }).toString()}`
-  const recordEntryHref = authenticated
-    ? isStudioUser
-      ? studioHref("/studio")
-      : "/record"
-    : `/auth/sign-in?${new URLSearchParams({ returnTo: "/record" }).toString()}`
+  const profileHref = authenticated ? (isStudioUser ? studioHref("/studio") : "/my/profile") : "/auth/sign-in"
+  const notificationsHref = authenticated ? (isStudioUser ? studioHref("/studio") : "/notifications") : "/auth/sign-in?returnTo=%2Fnotifications"
 
   /** 이 화면 안에서 필터를 바꾸는 링크. 지금 걸린 조건을 유지한 채 한 칸만 바꾼다. */
   const buildSearchHref = (
@@ -156,6 +125,7 @@ export default async function ClassesSearchPage({ searchParams }: ClassesPagePro
     buildClassesHref({
       subjectCategory: selectedSubjectCategory?.code ?? null,
       subject: selectedSubject?.code ?? null,
+      child: selectedChildId,
       q: selectedQuery,
       radius: radiusQueryValue,
       ...regionQueryValues,
@@ -163,6 +133,7 @@ export default async function ClassesSearchPage({ searchParams }: ClassesPagePro
     })
 
   const detailRegionQuery = new URLSearchParams()
+  if (selectedChildId) detailRegionQuery.set("child", selectedChildId)
   if (regionQueryValues.sido) detailRegionQuery.set("sido", regionQueryValues.sido)
   if (regionQueryValues.sigungu) detailRegionQuery.set("sigungu", regionQueryValues.sigungu)
   if (regionQueryValues.bname) detailRegionQuery.set("bname", regionQueryValues.bname)
@@ -180,7 +151,7 @@ export default async function ClassesSearchPage({ searchParams }: ClassesPagePro
   const scheduleSummaryTargets = classes.slice(0, SCHEDULE_SUMMARY_LIMIT)
   const scheduleSummaryByClassId =
     !error && scheduleSummaryTargets.length > 0
-      ? await getPublicClassCardScheduleSummaries(scheduleSummaryTargets.map((item) => item.id))
+      ? await getPublicClassCardScheduleSummaries(scheduleSummaryTargets.map((item) => item.id)).catch(() => new Map())
       : new Map()
 
   /*
@@ -189,13 +160,7 @@ export default async function ClassesSearchPage({ searchParams }: ClassesPagePro
    * ⚠️ 실제 개수만 말한다. "추천" · "인기" 같은 말을 붙이지 않는다 — 그런 순위가 없다.
    */
   const resultCount = classes.length
-  const resultMetaText = selectedQuery
-    ? `"${selectedQuery}" 검색 결과 ${resultCount}개`
-    : selectedSubject
-      ? `${selectedSubject.name} 수업 ${resultCount}개`
-      : selectedSubjectCategory
-        ? `${selectedSubjectCategory.name} 수업 ${resultCount}개`
-        : `수업 ${resultCount}개`
+  const resultMetaText = `수업 ${resultCount}개`
 
   /*
    * 지금 걸려 있는 조건.
@@ -229,155 +194,71 @@ export default async function ClassesSearchPage({ searchParams }: ClassesPagePro
     isNearbyMode ? { key: "nearby", label: `내 주변 ${radiusKm}km`, removeHref: null } : null
   ].filter((item): item is ActiveFilter => item !== null)
   const hasActiveFilters = activeFilters.length > 0
+  const hasMultipleFilters = activeFilters.length > 1 && Boolean(selectedQuery || selectedSubjectCategory || selectedSubject)
 
   return (
-    <main className={styles.page}>
-      <div className={styles.shell}>
-        <header className={`${styles.header} ${styles.headerCompact}`}>
-          <div className={styles.headerTop}>
-            <Link href="/" className={styles.brand} aria-label="첫수업 홈">
-              <Image
-                src="/images/first-class-logo.png"
-                alt="첫수업"
-                width={84}
-                height={28}
-                className={styles.brandLogo}
-                priority
-              />
-            </Link>
-
-            {authenticated ? (
-              isStudioUser ? (
-                <Link href={studioHref("/studio")} className={styles.headerAction} aria-label="스튜디오로 이동">
-                  스튜디오
-                </Link>
-              ) : (
-                <Link href={myPageEntryHref} className={styles.headerIconButton} aria-label="마이페이지">
-                  <svg
-                    width="22"
-                    height="22"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    xmlns="http://www.w3.org/2000/svg"
-                    aria-hidden="true"
-                  >
-                    <path
-                      d="M20 21a8 8 0 1 0-16 0"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                    <path
-                      d="M12 13a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  </svg>
-                </Link>
-              )
-            ) : (
-              <Link href={myPageEntryHref} className={styles.headerAction} aria-label="로그인">
-                로그인
-              </Link>
-            )}
-          </div>
-
+    <main className={homeStyles.page} data-parent-design="v1" data-parent-classes>
+      <div className={homeStyles.shell}>
+        <header className={styles.header}>
+          <Link href="/" className={styles.backLink} aria-label="홈으로 이동">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m15 6-6 6 6 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
+          </Link>
           <h1 className={styles.searchTitle}>수업찾기</h1>
-
-          <ClassesSearchPill
-            initialQuery={selectedQuery ?? ""}
-            placeholder="수업명, 학원명, 과목을 검색해보세요"
-            className={styles.searchForm}
-            pillClassName={styles.searchPill}
-            inputClassName={styles.searchInput}
-            submitButtonClassName={styles.searchSubmit}
-          />
+          <div className={styles.accountActions} role="group" aria-label="학부모 계정">
+            <Link href={notificationsHref} className={homeStyles.headerIconButton} aria-label="알림">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M18 8a6 6 0 1 0-12 0c0 5-2 6-2 6h16s-2-1-2-6ZM10 19a2 2 0 0 0 4 0" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </Link>
+            <Link href={profileHref} className={homeStyles.headerIconButton} aria-label={authenticated ? "프로필" : "로그인"}>
+              <ParentProfileAvatar imageUrl={null} name={auth.isParentUser ? auth.profile?.name : undefined} />
+            </Link>
+          </div>
         </header>
-
         <div className={styles.content}>
-          <section className={styles.browseFilterSection} aria-label="검색 조건">
-            <div className={styles.browseFilterRow}>
-              <LocationFilter
-                mode={context.locationMode}
-                label={context.locationFilterLabel}
-                regionCatalog={context.regionCatalog}
-                regionSelection={context.regionSelection}
-                radiusKm={radiusKm}
-                className={styles.filterInlineItem}
-                triggerClassName={styles.filterInlineTrigger}
-                labelClassName={styles.filterInlineLabel}
-                iconClassName={styles.filterInlineIcon}
-                chevronWrapClassName={styles.filterInlineChevron}
-                openChevronClassName={styles.filterInlineChevronOpen}
-                radiusRailClassName={styles.radiusRail}
-                radiusChipClassName={styles.radiusChip}
-                radiusChipActiveClassName={styles.radiusChipActive}
-              />
+          <div className={homeStyles.headerContext} role="group" aria-label="탐색 지역과 자녀 선택">
+            <LocationFilter mode={context.locationMode}
+              label={context.locationMode === "all" ? "전체 지역" : context.locationFilterLabel}
+              regionCatalog={context.regionCatalog} regionSelection={context.regionSelection} radiusKm={radiusKm}
+              className={homeStyles.filterInlineItem} triggerClassName={homeStyles.filterInlineTrigger}
+              labelClassName={homeStyles.filterInlineLabel} iconClassName={homeStyles.filterInlineIcon}
+              chevronWrapClassName={homeStyles.filterInlineChevron} openChevronClassName={homeStyles.filterInlineChevronOpen}
+              radiusRailClassName={homeStyles.radiusRail} radiusChipClassName={homeStyles.radiusChip}
+              radiusChipActiveClassName={homeStyles.radiusChipActive} manageSheetFocus />
+            <div className={homeStyles.childContext} role="group" aria-label="자녀 선택">
+              {childrenResult.data.length > 0 ? <HomeChildSelector
+                options={toChildSelectorOptions(childrenResult.data)} selectedChildId={selectedChildId}
+                className={homeStyles.childChip} labelClassName={homeStyles.childChipLabel}
+                unselectedLabel="자녀 선택" manageSheetFocus />
+                : <Link className={homeStyles.childChip} href={authenticated ? (isStudioUser ? studioHref("/studio") : "/my/children") : "/auth/sign-in?returnTo=%2Fclasses"}>
+                  {childrenResult.error ? "자녀 확인하기" : "자녀 선택"}
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m6 9 6 6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" /></svg>
+                </Link>}
             </div>
-
-            <nav className={styles.subjectChipRail} aria-label="과목 대분류">
-              <Link
-                href={buildSearchHref({ subjectCategory: null, subject: null })}
-                className={`${styles.subjectChip} ${!selectedSubjectCategory ? styles.subjectChipActive : ""}`}
-                aria-current={!selectedSubjectCategory ? "page" : undefined}
-              >
-                <span className={styles.subjectChipIcon} aria-hidden="true">
-                  <SubjectGlyph />
-                </span>
-                전체
-              </Link>
+          </div>
+          {selectedChild ? <p className={styles.contextNote}>{selectedChild.name}의 대상 학년에 해당하는 수업을 보여드려요.</p> : null}
+          <ClassesSearchPill initialQuery={selectedQuery ?? ""} placeholder="수업명 또는 학원명을 검색해보세요"
+            className={homeStyles.searchForm} pillClassName={homeStyles.searchPill}
+            inputClassName={homeStyles.searchInput} submitButtonClassName={homeStyles.searchSubmit} />
+          <section className={styles.browseFilterSection} aria-label="검색 조건">
+            <nav className={`${homeStyles.subjectChipRail} ${styles.subjectRail}`} aria-label="과목 대분류">
               {subjectCatalog.map((category) => {
                 const isActive = selectedSubjectCategory?.id === category.id
-                return (
-                  <Link
-                    key={category.id}
-                    /* 상위 과목이 바뀌면 이전 세부 과목은 더 이상 유효하지 않다. 그때만 지운다. */
-                    href={buildSearchHref({ subjectCategory: category.code, subject: null })}
-                    className={`${styles.subjectChip} ${isActive ? styles.subjectChipActive : ""}`}
-                    aria-current={isActive ? "page" : undefined}
-                  >
-                    <span className={styles.subjectChipIcon} aria-hidden="true">
-                      <SubjectGlyph />
-                    </span>
-                    {category.name}
-                  </Link>
-                )
+                return <Link key={category.id}
+                  href={buildSearchHref({ subjectCategory: category.code, subject: null })}
+                  className={`${homeStyles.subjectChip} ${isActive ? styles.subjectSelected : ""}`}
+                  aria-current={isActive ? "page" : undefined}>
+                  <span className={homeStyles.subjectCircle}><SubjectIcon code={category.code} colored /></span>
+                  <span>{category.name}</span>
+                </Link>
               })}
             </nav>
-
-            {selectedSubjectCategory ? (
-              <nav
-                className={styles.subjectDetailChipRail}
-                aria-label={`${selectedSubjectCategory.name} 세부 과목`}
-              >
-                <Link
-                  href={buildSearchHref({ subjectCategory: selectedSubjectCategory.code, subject: null })}
-                  className={`${styles.subjectDetailChip} ${!selectedSubject ? styles.subjectDetailChipActive : ""}`}
-                  aria-current={!selectedSubject ? "page" : undefined}
-                >
-                  전체
-                </Link>
-                {selectedSubjectCategory.subjects.map((subject) => {
-                  const isActive = selectedSubject?.id === subject.id
-                  return (
-                    <Link
-                      key={subject.id}
-                      href={buildSearchHref({
-                        subjectCategory: selectedSubjectCategory.code,
-                        subject: subject.code
-                      })}
-                      className={`${styles.subjectDetailChip} ${isActive ? styles.subjectDetailChipActive : ""}`}
-                      aria-current={isActive ? "page" : undefined}
-                    >
-                      {subject.name}
-                    </Link>
-                  )
-                })}
-              </nav>
-            ) : null}
+            <div className={styles.filterBar}>
+              {selectedSubjectCategory ? <ClassesSubjectFilter key={selectedSubjectCategory.code}
+                categoryCode={selectedSubjectCategory.code} categoryName={selectedSubjectCategory.name}
+                subjects={selectedSubjectCategory.subjects.map((subject) => ({ code: subject.code, name: subject.name }))}
+                selectedSubject={selectedSubject?.code ?? null} /> : null}
+            </div>
           </section>
 
           {hasActiveFilters ? (
@@ -409,16 +290,17 @@ export default async function ClassesSearchPage({ searchParams }: ClassesPagePro
                   )
                 )}
               </ul>
-              <Link href="/classes" className={styles.resetFilterButton}>
-                초기화
-              </Link>
+              {hasMultipleFilters ? <Link href={buildSearchHref({ q: null, subjectCategory: null, subject: null })} className={styles.resetFilterButton}>
+                검색 조건 초기화
+              </Link> : null}
             </section>
           ) : null}
 
+          {!error ? <h2 className={styles.resultMeta} aria-live="polite">{resultMetaText}</h2> : null}
           {error ? (
             <section className={styles.sectionBlock}>
               <div className={styles.stateCard}>
-                <p className={styles.stateTitle}>{error}</p>
+                <p className={styles.stateTitle}>수업을 불러오지 못했어요.</p>
                 <p className={styles.stateDesc}>잠시 후 다시 시도해 주세요.</p>
                 <Link href={buildSearchHref()} className={styles.retryLink}>
                   다시 불러오기
@@ -428,7 +310,7 @@ export default async function ClassesSearchPage({ searchParams }: ClassesPagePro
           ) : resultCount === 0 ? (
             <section className={styles.pageEmptyState}>
               <div className={styles.pageEmptyInner}>
-                <p className={styles.pageEmptyTitle}>조건에 맞는 첫수업이 아직 없어요.</p>
+                <p className={styles.pageEmptyTitle}>조건에 맞는 수업이 없어요.</p>
                 <p className={styles.pageEmptyDesc}>검색어나 필터를 바꿔 다시 찾아보세요.</p>
                 {isNearbyMode && widerRadiusKm && widerRadiusHref ? (
                   <Link href={widerRadiusHref} className={styles.resetButton}>
@@ -439,16 +321,11 @@ export default async function ClassesSearchPage({ searchParams }: ClassesPagePro
                     전체 지역으로 보기
                   </Link>
                 ) : null}
-                {hasActiveFilters ? (
-                  <Link href="/classes" className={styles.resetButton}>
-                    조건 초기화
-                  </Link>
-                ) : null}
+
               </div>
             </section>
           ) : (
             <section className={styles.sectionBlock}>
-              <p className={styles.resultMeta}>{resultMetaText}</p>
               <ul className={styles.resultGrid}>
                 {classes.map((item) => {
                   const academyName = item.organization
@@ -464,11 +341,11 @@ export default async function ClassesSearchPage({ searchParams }: ClassesPagePro
                         thumbnailAlt={`${item.title} 대표 이미지`}
                         title={item.title}
                         academyName={academyName}
-                        secondaryLabel={buildCardSecondaryLabel(item)}
+                        secondaryLabel={getClassSubjectLabel(item)}
+                        regionLabel={item.organization ? formatAdministrativeRegionLabel(item.organization) : null}
                         /* 수업에 실제로 적혀 있을 때만 학년을 말한다. */
                         gradeLabel={gradeLabel === "정보 준비 중" ? null : gradeLabel}
-                        priceLabel={formatPrice(item.trialPrice)}
-                        isFree={item.trialPrice <= 0}
+                        priceLabel={formatDiscoveryPrice(item.trialPrice)}
                         scheduleLabel={scheduleSummaryByClassId.get(item.id)?.summaryLabel ?? null}
                         distanceLabel={distanceLabelForClass(item)}
                         classId={item.id}
@@ -482,11 +359,12 @@ export default async function ClassesSearchPage({ searchParams }: ClassesPagePro
         </div>
       </div>
 
-      <ParentBottomNav
-        scheduleHref={scheduleEntryHref}
-        recordHref={recordEntryHref}
-        myPageHref={myPageEntryHref}
-      />
     </main>
   )
+}
+
+export default function ClassesSearchPage(props: ClassesPageProps) {
+  return <HomeErrorBoundary title="수업을 불러오지 못했어요.">
+    <Suspense fallback={<ClassesLoading />}><ClassesSearchContent {...props} /></Suspense>
+  </HomeErrorBoundary>
 }
