@@ -384,7 +384,9 @@ export const NaverMapByAddress = ({
         const map = new mapApi.Map(containerRef.current, {
           center: position,
           zoom: 16,
-          zoomControl: true
+          zoomControl: false,
+          scaleControl: false,
+          pinchZoom: true
         })
 
         new mapApi.Marker({

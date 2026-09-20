@@ -158,11 +158,11 @@ check(
 )
 check(
   "H) 수업 상세에서 학원으로 갈 수 있다",
-  classDetail.includes("const academyHref = organization?.id ? `/academy/${organization.id}` : null")
+  classDetail.includes("const academyHref = organization?.id ? `/academy/${academy?.slug ?? organization.id}` : null")
 )
 check(
   "H) 식별자가 없으면 링크를 만들지 않는다",
-  classDetail.includes("{academyHref ? (")
+  classDetail.includes("{academyHref ?")
 )
 check("I) 학원 상세의 수업이 수업 상세로 간다", detailPage.includes("href={`/classes/${item.id}`}"))
 check(

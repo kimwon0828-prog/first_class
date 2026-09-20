@@ -1,0 +1,10 @@
+.disclosure { min-width: 0; border-bottom: 1px solid var(--border); }
+.heading { margin: 0; font-size: var(--font-b1); font-weight: 600; }
+.trigger { display: flex; justify-content: space-between; align-items: center; gap: var(--s3); width: 100%; min-height: 52px; padding: var(--s4); border: 0; background: transparent; color: var(--text-1); font: inherit; text-align: left; cursor: pointer; }
+.trigger svg { flex-shrink: 0; }
+.openIcon { transform: rotate(90deg); }
+.panel { padding: 0 var(--s4) var(--s4); }
+.introduction { margin: 0; font-size: var(--font-b1); line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; }
+.clamped { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 4; overflow: hidden; }
+.expandButton { display: inline-flex; align-items: center; justify-content: center; min-width: 44px; min-height: 44px; margin-top: var(--s2); padding: 0; border: 0; background: transparent; color: var(--brand-700); font: inherit; font-size: var(--font-b2); font-weight: 600; cursor: pointer; }
+.trigger:focus-visible, .expandButton:focus-visible { outline: 2px solid var(--brand-700); outline-offset: 2px; border-radius: var(--r-sm); }

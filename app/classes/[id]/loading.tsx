@@ -1,41 +1,18 @@
-import type { CSSProperties } from "react"
-
-const skeletonCardStyle: CSSProperties = {
-  backgroundColor: "#ffffff",
-  border: "1px solid #e5e7eb",
-  borderRadius: 12,
-  padding: 14
-}
-
-const skeletonBarStyle: CSSProperties = {
-  height: 10,
-  borderRadius: 6,
-  backgroundColor: "#e5e7eb"
-}
+import styles from "./page.module.css"
 
 export default function ClassDetailLoading() {
-  return (
-    <main style={{ maxWidth: 640, margin: "0 auto", padding: "20px 16px 40px" }}>
-      <div style={{ ...skeletonBarStyle, width: "35%", marginBottom: 12 }} />
-      <div style={{ display: "grid", gap: 10 }}>
-        <section style={skeletonCardStyle}>
-          <div style={{ ...skeletonBarStyle, width: "30%", marginBottom: 8 }} />
-          <div style={{ ...skeletonBarStyle, width: "70%", marginBottom: 10 }} />
-          <div style={{ ...skeletonBarStyle, width: "45%" }} />
-        </section>
-
-        <section style={skeletonCardStyle}>
-          <div style={{ ...skeletonBarStyle, width: "40%", marginBottom: 8 }} />
-          <div style={{ ...skeletonBarStyle, width: "100%", marginBottom: 6 }} />
-          <div style={{ ...skeletonBarStyle, width: "90%" }} />
-        </section>
-
-        <section style={skeletonCardStyle}>
-          <div style={{ ...skeletonBarStyle, width: "40%", marginBottom: 8 }} />
-          <div style={{ ...skeletonBarStyle, width: "85%", marginBottom: 6 }} />
-          <div style={{ ...skeletonBarStyle, width: "75%" }} />
-        </section>
+  return <main className={styles.page} data-parent-design="v1" aria-busy="true" aria-label="수업 상세 불러오는 중">
+    <div className={styles.shell}>
+      <div className={styles.topBar}><p className={styles.headerTitle}>수업 상세</p></div>
+      <div className={styles.heroSection} aria-hidden="true">
+        <div className={styles.imageFrame} />
+        <div className={`${styles.skeleton} ${styles.skeletonTitle}`} />
+        <div className={`${styles.skeleton} ${styles.skeletonShort}`} />
       </div>
-    </main>
-  )
+      <div className={styles.sections} aria-hidden="true">
+        <div className={styles.section}><div className={styles.skeleton} /><div className={styles.skeleton} /></div>
+        <div className={styles.section}><div className={`${styles.skeleton} ${styles.skeletonShort}`} /><div className={styles.skeleton} /></div>
+      </div>
+    </div>
+  </main>
 }

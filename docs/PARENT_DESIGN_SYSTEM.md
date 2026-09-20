@@ -202,3 +202,29 @@ No new UI, route, auth, data, library, Studio or schema work is authorized by th
 - The detail subject sheet keeps draft radio state until “결과 보기”; “초기화” clears the draft subject only. Search-condition reset clears query and subject filters while preserving region/child context. Region is changed/cleared in the existing region control; a nearby cookie has its existing explicit clear action.
 - Classes opts into `BottomSheet.manageFocus`: keyboard containment, Escape, focus return, scrollable content and 48% backdrop, layer70. Legacy callers keep their default behavior. Skeleton follows the vertical 16:9 list; friendly errors reuse the existing page-local boundary, without changing detail-route error handling.
 - Count is based on the retrieved eligible results, including zero. The old ten-card discovery cap is not used on Classes. Existing optional schedule summaries cover the first 20 results and do not promise booking availability; a schedule-query failure does not suppress the list. Backend pagination beyond the existing public query limit remains a future task.
+
+## Class Detail adoption
+
+`/classes/[id]` is for understanding, checking and applying. It uses the existing V1 white/480px shell and gray desktop canvas; no Bottom Navigation. The independent header has Back, “수업 상세”, and the real wishlist. Home remains discovery, Classes remains comparison.
+
+- **Class Detail Hero:** existing 4:3 media preset, R16, cover image or shared ImageFallback; no overlays. Body order: subject/target badges → semantic class H1 styled H2 → neutral H3 price → canonical academy summary card. Academy profile slug is preferred, organization ID remains the supported fallback. Optional public academy-image lookup failures do not suppress the class.
+- **Detail Info Row:** semantic `dl`, B1, icon/label and right-aligned value with gap16, N200 internal dividers in a White/R16 card. Only actual program type/class format and the existing post-assignment notice. Do not repeat academy/region/subject/target/price in this table or invent a class-wide duration. Schedule duration comes from actual start/end timestamps in Asia/Seoul.
+- **Detail Accordion:** 52px native button with `aria-expanded`/`aria-controls`, H3 under the section H2, independently collapsed panels. Preserve original recommendedFor/experiencePoints/curriculum strings and line breaks; no generated bullets or curriculum count. Introduction previews four lines, with “더보기/접기” only when content overflows. No nonessential animation. Schedule shows only the earliest future reservable occurrence using the shared availability predicate and timestamp ordering. Other dates remain in the application sheet.
+- **Sticky CTA:** button52/R12/G700/N0; white container, N200 top border, padding16×20 plus bottom safe area, max480, layer30. Content reserves 112px plus safe area. Opens the existing application sheet; does not invent unavailable/duplicate states. Guests may inspect slots before the existing sign-in step. An owned selected child gets factual eligibility text; ineligible children still use the sheet's existing alternate-child flow, and the server continues to enforce ownership/grade/slot/consent rules. The sheet traps keyboard focus, restores it on close, and is not hidden from assistive technology.
+
+Academy summary uses real public logo/cover or ImageFallback; the full address and existing Naver provider remain in the Location section (240px preview). Detail's existing missing-data panel and query-error branch remain distinct; this task does not change its existing HTTP not-found semantics or the `/apply` route. Loading follows Hero/title/info/content without extra card decoration. No auth, DB, migration, workflow or Foundation changes.
+
+### Class Detail V1.1 visual grouping
+
+- Primary title H2, price H3, section headings H3, introduction/body B1 (supporting text B2), metadata C1. Section gap32 and heading-to-content16.
+- Academy identity below price is a compact image/name/region link card. No duplicate lower academy section is rendered.
+- Owned selected-child eligibility uses a User fallback and factual text: eligible Green50 with a check icon, otherwise Neutral50. No invented child images or assessments.
+- Class info uses monochrome icon/label/value rows; schedule uses a Green50 calendar surface. Info, schedule, academy and accordion groups use White/N200/R16, padding16 and no shadow. Accordion rows keep native button/aria behavior and internal dividers. Introduction and location remain unboxed; the existing CTA tray and hero stay unchanged.
+
+### Class Detail V1.2 child and schedule context
+
+- Classes links preserve owned `?child=`. Detail validates ownership again; detail has no child selection UI. Without query context, summarize owned eligible children: one child by name, multiple children by count and names, none eligible with Neutral factual text, no children with no card. Invalid/foreign query IDs never expose a child. The application sheet remains the authoritative application child selection.
+- Keep only the top Academy Summary link; omit the duplicate lower academy section. Keep location/address/Naver map independently.
+- “가장 빠른 체험 일정” shows one concrete future reservable occurrence: reuse `isBookablePublicSlot`, sort by parsed timestamp (not string or input order), display in Seoul time. Empty/error states remain truthful. All other date/time choices stay in the existing application sheet.
+
+- **Parent Map:** all Parent detail viewport widths use `zoomControl: false`, `scaleControl: false`, `pinchZoom: true`; retain drag, marker, NAVER logo/attribution and external map link. The 240px map keeps its existing radius. Its app-owned wrapper uses `position: relative; z-index: 0; isolation: isolate; overflow: hidden` so provider children stay below the layer30 Sticky CTA during scrolling. Do not modify provider DOM/CSS or hide attribution. Keep the existing 112px + safe-area content clearance separately.
