@@ -176,8 +176,15 @@ check("Home 에 marketing footer 가 없다", !homeCode.includes("ParentFooter")
 check("약관 · 사업자 정보는 /my 에 있다", codeOf("app/my/page.tsx").includes("<ParentFooter />"))
 check(
   "Home 의 검색은 /classes 로 넘긴다",
-  homeCode.includes('targetPathname="/classes"')
+  homeCode.includes('<Link href={searchEntryHref}') && homeCode.includes('aria-label="수업 검색하기"') && !homeCode.includes("ClassesSearchPill")
 )
+check("Home 검색 링크는 검증된 선택 자녀와 기존 지역 계약을 사용한다",
+  homeCode.includes("const searchEntryHref = buildClassesHref({ child: selectedChild?.id, radius: context.radiusQueryValue, ...context.regionQueryValues })"))
+check("검색 진입 URL 은 자녀와 행정지역을 인코딩해 유지한다",
+  buildClassesHref({ child: "owned-child", sido: "서울", sigungu: "노원구" }) ===
+  `/classes?sido=${encodeURIComponent("서울")}&sigungu=${encodeURIComponent("노원구")}&child=owned-child`)
+check("검색 진입 URL 은 자녀와 주변 반경을 함께 유지한다",
+  buildClassesHref({ child: "owned-child", radius: "3" }) === "/classes?radius=3&child=owned-child")
 check(
   "Home 의 과목 shortcut 은 실제 catalog code 를 쓴다",
   homeCode.includes("subjectCategory: category.code") && !homeCode.includes('subjectCategory: "math"')
