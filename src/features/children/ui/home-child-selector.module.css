@@ -14,9 +14,9 @@
 }
 
 .triggerLabel {
-  font-size: 13px;
+  font-size: var(--font-b2);
   font-weight: 700;
-  letter-spacing: -0.02em;
+  letter-spacing: 0;
 }
 
 .list {
@@ -48,10 +48,10 @@
 }
 
 .optionName {
-  font-size: 15px;
-  line-height: 1.45;
+  font-size: var(--font-b2);
+  line-height: 1.5;
   font-weight: 700;
-  letter-spacing: -0.02em;
+  letter-spacing: 0;
   color: var(--text-1);
   overflow-wrap: anywhere;
 }

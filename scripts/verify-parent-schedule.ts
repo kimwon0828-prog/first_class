@@ -247,10 +247,10 @@ check(
 console.log("\n[7] Home 연동 · 기존 route 보존")
 
 check(
-  'Home "다가오는 수업" 전체 보기가 /my/schedule 이다',
-  home.includes('<Link href="/my/schedule" className={styles.sectionHeadingLink}>')
+  'Home 일정 탭은 /my/schedule 이다',
+  home.includes('scheduleHref={scheduleEntryHref}') && home.includes('"/my/schedule"')
 )
-check("Home 카드는 경험 상세로 그대로 간다", home.includes("href={item.href}"))
+check("Home 카드는 경험 상세로 그대로 간다", home.includes("href={upcoming.href}"))
 check("/my/applications 가 남아 있다", exists("app/my/applications/page.tsx"))
 check(
   "/my/applications 를 redirect 하지 않았다",

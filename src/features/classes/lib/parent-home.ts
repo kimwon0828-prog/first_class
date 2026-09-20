@@ -1,3 +1,4 @@
+import { isChildEligibleForClass } from "@/shared/constants/grade-options"
 import type { ChildProfile, ParentApplicationSummary } from "@/shared/lib/db/adapter"
 import { selectUpcomingConfirmedExperiences } from "@/features/schedule/lib/parent-schedule"
 import { getSeoulDateTimeParts } from "@/shared/lib/seoul-datetime"
@@ -79,3 +80,14 @@ export const selectUpcomingExperiences = (
   now: number
 ): ParentApplicationSummary[] =>
   selectUpcomingConfirmedExperiences(applications, now, PARENT_HOME_UPCOMING_LIMIT)
+
+/** Same eligibility contract as create-trial-application; no age-to-grade inference. */
+export const selectHomeDiscoveryClasses = <T extends { targetAge: string }>(
+  classes: readonly T[],
+  selectedChild: { grade: string } | null | undefined,
+  limit: number
+): T[] => (
+  selectedChild
+    ? classes.filter((item) => isChildEligibleForClass(selectedChild.grade, item.targetAge))
+    : [...classes]
+).slice(0, limit)

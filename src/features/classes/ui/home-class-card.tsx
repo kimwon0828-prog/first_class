@@ -1,3 +1,4 @@
+import { ImageFallback } from "@/shared/ui/image-fallback"
 import Image from "next/image"
 import Link from "next/link"
 
@@ -21,7 +22,7 @@ export type HomeClassCardProps = {
   academyName: string | null
   subjectLabel: string | null
   priceLabel: string
-  isFree: boolean
+  locationLabel?: string | null
   distanceLabel?: string | null
   classId: string
 }
@@ -34,43 +35,45 @@ export function HomeClassCard({
   academyName,
   subjectLabel,
   priceLabel,
-  isFree,
+  locationLabel,
   distanceLabel,
   classId
 }: HomeClassCardProps) {
   return (
-    <Link href={href} className={styles.card}>
+    <article className={styles.card}>
+      <Link href={href} className={styles.cardLink}>
       <span className={styles.thumbnail}>
         {thumbnailUrl ? (
           <Image
             src={thumbnailUrl}
             alt={thumbnailAlt}
             fill
-            sizes="(max-width: 480px) 60vw, 240px"
+            sizes="272px"
             style={{ objectFit: "cover" }}
             unoptimized
           />
         ) : (
-          <span className={styles.placeholder} role="img" aria-label="수업 이미지 준비 중" />
+          <ImageFallback label="수업 이미지 없음" />
         )}
-        <span className={`${styles.price} ${isFree ? styles.priceFree : ""}`}>{priceLabel}</span>
-        <BookmarkButton
-          classId={classId}
-          className={styles.bookmark}
-          activeClassName={styles.bookmarkActive}
-          iconSize={18}
-          variant="heart"
-        />
       </span>
 
       <span className={styles.body}>
         <span className={styles.title}>{title}</span>
-        {academyName ? <span className={styles.academy}>{academyName}</span> : null}
+        <span className={styles.price}>{priceLabel}</span>
+        <span className={styles.academy}>{[academyName, locationLabel].filter(Boolean).join(" · ")}</span>
         <span className={styles.metaRow}>
           {subjectLabel ? <span className={styles.subject}>{subjectLabel}</span> : null}
           {distanceLabel ? <span className={styles.distance}>{distanceLabel}</span> : null}
         </span>
       </span>
-    </Link>
+      </Link>
+        <BookmarkButton
+          classId={classId}
+          className={styles.bookmark}
+          activeClassName={styles.bookmarkActive}
+          iconSize={20}
+          variant="heart"
+        />
+    </article>
   )
 }
