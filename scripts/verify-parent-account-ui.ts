@@ -59,7 +59,7 @@ const hrefsOf = (code: string) =>
     (m) => m[1] ?? m[2] ?? m[3] ?? ""
   )
 
-const myPage = codeOf(MY_PAGE)
+const myPage = codeOf(MY_PAGE) + codeOf("app/my/my-frame.tsx")
 const myHub = codeOf(MY_HUB)
 const myHubCss = read(MY_HUB_CSS)
 const childrenClient = codeOf(CHILDREN_CLIENT)
@@ -108,7 +108,7 @@ check(
 console.log("\n[B] /my 는 탭 root 다")
 
 check("B) /my 에 뒤로가기가 없다", !myPage.includes("뒤로가기") && !myHub.includes("뒤로가기"))
-check("B) /my 에 하단 탭이 있다", myPage.includes("<ParentBottomNav />"))
+check("B) /my 에 하단 탭이 있다", myPage.includes('<ParentBottomNav designVersion="v1" />'))
 check("B) /my 는 Hub 이지 dashboard 가 아니다", !myPage.includes("다가오는") && !myHub.includes("다가오는"))
 
 console.log("\n[C][D][E][F] My 하위 화면의 헤더 · 탭 · 하단 여백")

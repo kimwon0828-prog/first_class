@@ -115,7 +115,7 @@ check("수업찾기는 하단 nav 를 렌더하지 않는다", !codeOf("app/clas
 const NAV_SCREENS = [
   "app/page.tsx",
   "src/features/record/ui/record-home.tsx",
-  "app/my/page.tsx",
+  "app/my/my-frame.tsx",
   "src/features/schedule/ui/parent-schedule-screen.tsx",
   "app/academies/page.tsx",
   "app/favorites/favorites-client.tsx",

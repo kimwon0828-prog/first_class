@@ -5,14 +5,14 @@ import styles from "./parent-footer.module.css"
 import { COMPANY_ADDRESS, COMPANY_INFO } from "@/shared/config/company-info"
 
 
-export function ParentFooter() {
+export function ParentFooter({ showLegalLinks = true, designVersion }: { showLegalLinks?: boolean; designVersion?: "v1" } = {}) {
   return (
-    <footer className={styles.footer}>
+    <footer className={`${styles.footer} ${designVersion === "v1" ? styles.v1 : ""}`}>
       <div className={styles.brandRow}>
         <Image src="/images/first-class-logo.png" alt="첫수업" width={70} height={23} />
       </div>
 
-      <nav className={styles.linkList} aria-label="푸터 링크">
+      {showLegalLinks ? <nav className={styles.linkList} aria-label="푸터 링크">
         <Link href="/terms" className={styles.link}>
           이용약관
         </Link>
@@ -22,7 +22,7 @@ export function ParentFooter() {
         <Link href="/third-party-consent" className={styles.link}>
           제3자 제공 동의
         </Link>
-      </nav>
+      </nav> : null}
 
       <details className={styles.businessDetails}>
         <summary className={styles.summary}>사업자 정보</summary>

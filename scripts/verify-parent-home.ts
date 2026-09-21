@@ -173,7 +173,7 @@ check("Home 에 세부 과목 rail 이 없다", !homeCode.includes("subjectDetai
 check("Home 에 '새로 열린 수업' 이 없다", !homeCode.includes("새로 열린 수업"))
 check("Home 에 Partner 모집 카드가 없다", !homeCode.includes("파트너 신청하기"))
 check("Home 에 marketing footer 가 없다", !homeCode.includes("ParentFooter"))
-check("약관 · 사업자 정보는 /my 에 있다", codeOf("app/my/page.tsx").includes("<ParentFooter />"))
+check("약관 · 사업자 정보는 /my 에 있다", codeOf("app/my/page.tsx").includes("<ParentFooter "))
 check(
   "Home 의 검색은 /classes 로 넘긴다",
   homeCode.includes('<Link href={searchEntryHref}') && homeCode.includes('aria-label="수업 검색하기"') && !homeCode.includes("ClassesSearchPill")
@@ -255,7 +255,7 @@ console.log("\n[7] 하단 탭")
 for (const [label, path] of [
   ["home", HOME_PATH],
   ["record", "src/features/record/ui/record-home.tsx"],
-  ["my", "app/my/page.tsx"],
+  ["my", "app/my/my-frame.tsx"],
   ["favorites", "app/favorites/favorites-client.tsx"]
 ] as const) {
   check(`${label} 화면이 공용 ParentBottomNav 를 쓴다`, codeOf(path).includes("<ParentBottomNav"))

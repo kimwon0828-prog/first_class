@@ -269,3 +269,15 @@ Academy summary uses real public logo/cover or ImageFallback; the full address a
 - 요약만 N200/R16 카드로 표현하고 본문은 section gap32/heading gap16과 얇은 구분선으로 읽는다. B1 본문, 원문 줄바꿈 유지, gutter20/max480, desktop N50 canvas/white surface. 기존 typography/token만 사용한다.
 - 없는 관찰·총평·제안은 해당 section을 생략한다. snapshot label을 재해석하거나 줄이지 않는다. 일정은 발행된 자유 텍스트이며 확정/예약 가능 일정으로 표시하지 않는다. 점수/순위/적합도/읽음 신호/내부 메모 없음.
 - 본인 신청/RLS/published source 유지. 소유 조회 실패와 not-found를 구분한다. report 전용 loading/error, 조회 실패 실제 retry, 리포트 없음 중립 안내+상세 복귀를 제공한다. owned child context를 상단/하단 복귀에 유지한다. 로그인 returnTo의 child는 이동 context일 뿐 소유권 근거가 아니다.
+
+
+## Parent My V1 — `/my`
+
+- `마이페이지` Header + 알림 링크 → 학부모 프로필(avatar/이름/내 정보 수정하기) → 우리 아이(자녀 관리/등록 자녀 수) → 내 활동(신청 현황/관심수업) → 계정 및 서비스 안내(로그아웃/약관/개인정보/제3자 제공 동의) → 공용 Footer 사업자 정보 → V1 Floating Bottom Nav(마이페이지 active).
+- owned children 조회의 실제 개수만 표시한다. 실패는 0명으로 바꾸지 않고 자녀 영역 retry로 제한하며 프로필/메뉴/로그아웃은 유지한다. 신청 dashboard 집계는 조회하지 않는다. My 전용 skeleton/error를 제공한다.
+- 일정/기록은 Bottom Nav에만 둔다. `/my/actions`는 이번 My에서 노출하지 않는다. 관심수업의 localStorage 계약, 기존 인증과 로그아웃 POST는 유지한다.
+- 프로필은 학부모 본인이다. 실제 이미지 필드가 없어 User outline fallback을 사용한다. 20px gutter/480px white surface/desktop Neutral 50, 기존 type/radius/spacing token을 사용한다. Footer는 opt-in V1과 약관 링크 숨김으로 본문 중복을 방지한다.
+- 회원 탈퇴 route/action이 없어 이번 버전에는 가짜 링크를 렌더하지 않는다. 실제 기능이 마련되는 별도 작업에서 서비스 안내 카드 밖 하단 중앙의 작은 Neutral text link로 제공한다.
+
+- My visual refinement: 프로필은 Green 50/R16, 64px User outline avatar, 학부모 이름과 하단 전폭 outline `내 정보 수정하기`. 우리 아이와 내 활동에는 40px soft icon surface/24px monochrome outline/제목/설명을 함께 둔다. 자녀 0명은 실제 빈 상태 문구, 조회 실패는 기존 부분 오류로 구분한다. 계정 안내는 동일 stroke의 outline icon과 중립 로그아웃을 사용한다.
+- My Footer는 48px logo, C1 Neutral 보조 문구와 border 없는 compact 사업자 details로 본문보다 약하게 표현한다. 공용 V1 nav/safe-area는 유지한다. 회원 탈퇴가 구현되기 전에는 안내 카드와 Footer 사이에 가짜 UI/링크를 만들지 않는다.

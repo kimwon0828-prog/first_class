@@ -74,7 +74,7 @@ check(
   "다가오는 일정을 /my 에서 다시 강조하지 않는다",
   !hub.includes("다음 체험") && !hub.includes("confirmedSlotAt") && !myPage.includes("resolveNextUpcomingApplication")
 )
-check("진행 중 카운터를 다시 그리지 않는다", !hub.includes("진행 중") && !hub.includes("statCard"))
+check("진행 중 카운터를 다시 그리지 않는다", !hub.includes("statCard") && !hub.includes("confirmedApplicationCount") && !hub.includes("reviewingApplicationCount"))
 check("기록을 메뉴로 중복하지 않는다", !hub.includes('href="/record"'))
 for (const term of ["결제", "구독", "쿠폰", "포인트", "멤버십"]) {
   check(`없는 기능 "${term}" 을 만들지 않는다`, !hub.includes(term))
@@ -85,18 +85,18 @@ console.log("\n[3] /my 메뉴 구성")
 const MENU = [
   ["자녀 관리", "/my/children"],
   ["관심수업", "/favorites"],
-  ["내 정보", "/my/profile"]
+  ["내 정보 수정하기", "/my/profile"]
 ] as const
 for (const [label, href] of MENU) {
   check(`${label} → ${href}`, hub.includes(`href="${href}"`) && hub.includes(`>${label}<`))
 }
 check("로그아웃이 남아 있다", hub.includes('action="/auth/sign-out"'))
-check("자녀 수는 실제 값이다", hub.includes("{childrenCount}명") && myPage.includes("childrenCount={data.childrenCount}"))
+check("자녀 수는 실제 값이다", hub.includes("${childrenCount}명의 자녀가 등록되어 있어요.") && myPage.includes("childrenCount={children.error ? null : children.data.length}"))
 check(
   "약관 · 사업자 정보는 한 자리에 있다",
-  myPage.includes("<ParentFooter />") && !hub.includes("이용약관")
+  myPage.includes('<ParentFooter showLegalLinks={false}') && hub.includes("이용약관")
 )
-check("조회 실패를 빈 화면으로 접지 않는다", myPage.includes("{error ? ("))
+check("조회 실패를 빈 화면으로 접지 않는다", myPage.includes("childrenError={children.error}") && hub.includes("childrenError ?"))
 
 console.log("\n[4] /favorites")
 
