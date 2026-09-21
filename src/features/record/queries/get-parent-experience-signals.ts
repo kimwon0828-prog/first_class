@@ -40,6 +40,7 @@ export const getParentExperienceSignals = async (
 
   try {
     const children = await getMyChildren()
+    if (children.error) throw new Error("failed_to_fetch_signal_children")
     const reportedExperienceIds = new Set<string>()
 
     if (!children.error && children.data.length > 0) {

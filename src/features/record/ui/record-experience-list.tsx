@@ -1,4 +1,5 @@
 import Link from "next/link"
+import { withRecordChild } from "@/features/record/lib/record-href"
 
 import {
   getExperienceTypeLabel,
@@ -22,6 +23,7 @@ type RecordExperienceListProps = {
   experiences: ParentExperience[]
   /** 자녀 필터가 "전체" 일 때만 각 항목에 아이 이름을 덧붙인다. */
   showChildName: boolean
+  selectedChildId?: string | null
   /** 지금 살아 있는 발행본이 있는 경험. 조회에 실패하면 넘기지 않는다. */
   reportedExperienceIds?: ReadonlySet<string>
   /** 내 생각을 남긴 경험. 무엇을 골랐는지는 보여 주지 않는다. */
@@ -89,6 +91,7 @@ const buildMonthGroups = (experiences: ParentExperience[]): MonthGroup[] => {
 export const RecordExperienceList = ({
   experiences,
   showChildName,
+  selectedChildId = null,
   reportedExperienceIds,
   decidedExperienceIds
 }: RecordExperienceListProps) => {
@@ -105,67 +108,45 @@ export const RecordExperienceList = ({
           <ul className={styles.cards}>
             {group.items.map(({ experience, date }) => {
               const dayLabel = formatDayLabel(date)
+              const parts = getSeoulDateTimeParts(date)
               const academyName = experience.academyName?.trim() || null
               const showReport = hasReport(experience.id)
 
               return (
                 <li key={experience.id} className={styles.card}>
-                  <Link href={`/record/${experience.id}`} className={styles.cardMain}>
-                    <span className={styles.cardTopRow}>
-                      {dayLabel ? <span className={styles.cardDate}>{dayLabel}</span> : null}
-                      <span className={styles.typeBadge}>
+                  <Link href={withRecordChild(`/record/${experience.id}`, selectedChildId)} className={styles.cardMain}>
+                    <time dateTime={date} className={styles.dateBlock} aria-label={dayLabel ?? undefined}>
+                      <strong>{parts?.day}</strong>
+                      <span>{parts ? SEOUL_WEEKDAY_SHORT[parts.weekday] : null}</span>
+                    </time>
+                    <span className={styles.cardBody}>
+                      <span className={styles.typeLabel}>
                         {getExperienceTypeLabel(experience.classProgramType)}
                       </span>
-                    </span>
-
-                    {showChildName ? (
-                      <span className={styles.cardChild}>
-                        {experience.childGrade
-                          ? `${experience.childName} · ${experience.childGrade}`
-                          : experience.childName}
+                      <span className={styles.cardTitle}>
+                        {experience.classTitle ?? "수업 정보 준비 중"}
                       </span>
-                    ) : null}
-
-                    <span className={styles.cardTitle}>
-                      {experience.classTitle ?? "수업 정보 준비 중"}
+                      {academyName ? <span className={styles.cardAcademy}>{academyName}</span> : null}
+                      {showChildName ? (
+                        <span className={styles.cardChild}>
+                          {experience.childGrade
+                            ? `${experience.childName} · ${experience.childGrade}`
+                            : experience.childName}
+                        </span>
+                      ) : null}
                     </span>
-                    {academyName ? <span className={styles.cardAcademy}>{academyName}</span> : null}
-
-                    {/*
-                      있는 것만 말한다. "리포트 없음" 같은 부정 배지는 만들지 않고,
-                      신호 조회가 실패했으면 이 줄 자체가 없다.
-                    */}
-                    {showReport || hasDecision(experience.id) ? (
-                      <span className={styles.signalRow}>
-                        {showReport ? <span className={styles.signal}>리포트</span> : null}
-                        {hasDecision(experience.id) ? (
-                          <span className={styles.signalMuted}>내 생각 남김</span>
-                        ) : null}
-                      </span>
-                    ) : null}
+                    <span className={styles.chevron} aria-hidden="true">›</span>
                   </Link>
 
-                  {/* 발행본이 있을 때만 바로 열 수 있는 길을 준다. */}
-                  {showReport ? (
-                    <Link href={`/record/${experience.id}/report`} className={styles.reportCta}>
-                      리포트 보기
-                      <svg
-                        width="16"
-                        height="16"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        xmlns="http://www.w3.org/2000/svg"
-                        aria-hidden="true"
-                      >
-                        <path
-                          d="M9 18l6-6-6-6"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        />
-                      </svg>
-                    </Link>
+                  {showReport || hasDecision(experience.id) ? (
+                    <div className={styles.signalRow}>
+                      {showReport ? (
+                        <Link href={withRecordChild(`/record/${experience.id}/report`, selectedChildId)} className={styles.reportCta}>
+                          리포트 보기 <span aria-hidden="true">›</span>
+                        </Link>
+                      ) : null}
+                      {hasDecision(experience.id) ? <span className={styles.signalMuted}>내 생각 남김</span> : null}
+                    </div>
                   ) : null}
                 </li>
               )

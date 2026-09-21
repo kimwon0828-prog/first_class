@@ -239,3 +239,14 @@ Academy summary uses real public logo/cover or ImageFallback; the full address a
 - Schedule List Card: White, Neutral 200 border, Radius 16, shadow 없음. 왼쪽 날짜·요일, 오른쪽 시작 시간/수업명/학원명/실제 주소/예정 또는 완료 배지. 거리·종료 시각·가격을 임의로 추가하지 않는다. 기존 `/record/[id]`로 이동.
 - 예정 Empty는 `예정된 체험수업이 없어요.` / `새로운 수업을 둘러보세요.`와 child를 보존한 수업찾기 CTA. 완료 Empty는 `완료한 일정이 없어요.` / `체험수업이 완료되면 여기에 표시돼요.`.
 - Loading은 자녀 Context/탭/카드 형태의 정적 skeleton. 조회 실패는 Empty와 분리하고 친근한 안내와 재시도 제공.
+
+
+## Parent Record V1 — `/record`
+
+- Header `기록` / `아이의 경험과 남겨진 기록을 확인해보세요.` → 공용 Child Selector의 Schedule Context 스타일 → 조건부 교육 프로필 compact Green 50 card → `교육 기록 N개` → 최신 경험순 월별 목록 → V1 Floating Bottom Nav(기록 active).
+- 전체 Context는 `모든 아이` / `총 N명의 자녀`, 선택 Context는 실제 이름·학년과 User outline fallback. owned `?child=` 사용. 교육 프로필은 선택 자녀 또는 유일한 자녀일 때만 노출한다.
+- Experience Card: White/N200/R16/no shadow. Schedule 카드와 같은 왼쪽 고정 40px 날짜 컬럼(큰 일 숫자 + 요일), 오른쪽 C1 프로그램 유형/수업명(최대 두 줄)/학원명/chevron. 월은 바깥 그룹 heading에만 표시한다. 날짜 H1, 본문 gap4, 컬럼 gap16/padding16을 Schedule과 맞춘다. 전체 보기에서만 자녀 정보. completed만 있는 목록이므로 완료 badge는 반복하지 않는다.
+- 카드 본문과 리포트 링크는 별도 영역으로, 중첩 link 없이 기존 상세/리포트 route를 사용한다. 현재 published report와 확인된 ParentDecision 신호만 표시한다. `내 생각 남김`은 기존 조회 범위(발행본 있는 경험)에 한정되며 전체 기록의 작성률/완료 상태로 해석하지 않는다.
+- 월별 최신순은 resolveParentExperienceDate와 Asia/Seoul 계약 유지. 상세/리포트/교육 프로필/탐색 링크에 검증된 child Context를 전달한다. 데이터와 권한 계약을 변경하지 않는다.
+- 중앙 Empty: `아직 쌓인 교육 기록이 없어요.` / `체험수업이나 레벨테스트를 완료하면 아이의 경험이 이곳에 차곡차곡 쌓여요.` / child를 유지한 `수업 찾아보기`. 자녀·기록 조회 오류는 Empty와 분리하며 현재 URL을 유지하는 실제 retry를 제공한다. 신호 조회 실패는 부정 배지를 만들지 않는다.
+- 새 필터·정렬 UI·NEW/read-state·점수·순위·사진·평가를 추가하지 않는다. 기존 typography/spacing/shell/nav safe-space token만 사용한다.

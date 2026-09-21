@@ -1,3 +1,5 @@
+import { withRecordChild } from "@/features/record/lib/record-href"
+import { getRecordChildContext } from "@/features/record/queries/get-record-child-context"
 import Link from "next/link"
 import { notFound } from "next/navigation"
 import { unstable_noStore as noStore } from "next/cache"
@@ -58,9 +60,11 @@ const formatPublishedDate = (value: string) => {
 }
 
 export default async function ExperienceReportPage({
-  params
+  params,
+  searchParams
 }: {
   params: Promise<{ experienceId: string }>
+  searchParams?: Promise<Record<string, string | string[] | undefined>>
 }) {
   noStore()
   const { experienceId } = await params
@@ -73,7 +77,8 @@ export default async function ExperienceReportPage({
     notFound()
   }
 
-  const backHref = `/record/${experienceId}`
+  const selectedChildId = await getRecordChildContext((await searchParams)?.child)
+  const backHref = withRecordChild(`/record/${experienceId}`, selectedChildId)
 
   // 내 경험이지만 지금 볼 수 있는 리포트가 없을 때.
   // 조회 실패와 미발행을 같은 화면으로 뭉개지 않는다.

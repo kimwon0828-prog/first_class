@@ -254,7 +254,7 @@ console.log("\n[7] 하단 탭")
 /* 탭 구성 · active 규칙 자체는 verify-parent-nav 가 본다. 여기서는 공용 nav 사용만 본다. */
 for (const [label, path] of [
   ["home", HOME_PATH],
-  ["record", "app/record/page.tsx"],
+  ["record", "src/features/record/ui/record-home.tsx"],
   ["my", "app/my/page.tsx"],
   ["favorites", "app/favorites/favorites-client.tsx"]
 ] as const) {

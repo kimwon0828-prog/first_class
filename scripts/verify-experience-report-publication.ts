@@ -804,7 +804,7 @@ check(
 )
 
 /* 리포트로 가는 길은 하나뿐이고, 그 하나가 발행본 분기 안에 있어야 한다. */
-const reportCtaPattern = /href=\{`\/record\/\$\{experience\.id\}\/report`\}/g
+const reportCtaPattern = /href=\{withRecordChild\(`\/record\/\$\{experience\.id\}\/report`, selectedChildId\)\}/g
 const reportCtaCount = parentDetailCode.match(reportCtaPattern)?.length ?? 0
 const reportCtaAt = parentDetailCode.search(reportCtaPattern)
 const publishedBranchAt = parentDetailCode.indexOf("{hasPublishedReport ? (")
