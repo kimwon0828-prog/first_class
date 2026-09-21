@@ -364,3 +364,9 @@ Academy summary uses real public logo/cover or ImageFallback; the full address a
 - 64px R12 actual active-public class image or shared fallback, type/status → class → academy, then child and Seoul schedule. Confirmed timestamp takes precedence; otherwise requested timestamp. No academy image substitution. Optional image failure does not fail applications.
 - V1 White/R16/thin-border cards, gutter20, max480, desktop Neutral50, no shadow. Neutral canceled styling. V1 Floating Bottom Nav, My active, no active nav pill; reserve bottom safe space.
 - Progress empty invites discovery at `/classes`; canceled empty is separate. Card skeleton and route-specific errors preserve the frame; query errors use router.refresh, unexpected route errors reload. No registration/CRM fields, fake status, or in-card cancellation.
+
+## Profile V1 — /my/profile
+
+- Back Header `내 정보 수정` returns to `/my`; simple name / phone / birth date form. Name required, phone and birth date optional, existing validation and save action remain unchanged. No OAuth/age-policy changes, new account settings or withdrawal UI.
+- Parent V1 gutter20/max480, White surface, Neutral50 desktop canvas, token-based 52px inputs and Green save action. Floating Bottom Nav My active without pill; reserve safe-area space.
+- Load actual data before offering editing. Failed/missing detail query shows retry without a fallback blank form. Form-shaped skeleton and local error boundary retain the Profile header. Save success stays on the form with an accessible status; errors use alert. Original birth date field/payload contract remains in force.

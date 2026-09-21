@@ -54,11 +54,12 @@ export const ParentProfileForm = ({
   }
 
   return (
-    <form action={formAction} onSubmit={handleSubmit} className={styles.form}>
+    <form action={formAction} onSubmit={handleSubmit} className={styles.form} aria-busy={isPending}>
       <label className={styles.field}>
-        <span className={styles.label}>보호자명</span>
+        <span className={styles.label}>이름 <span className={styles.required}>필수</span></span>
         <input
           name="name"
+          autoComplete="name"
           type="text"
           required
           minLength={2}
@@ -70,9 +71,10 @@ export const ParentProfileForm = ({
       </label>
 
       <label className={styles.field}>
-        <span className={styles.label}>보호자 연락처</span>
+        <span className={styles.label}>연락처 <span className={styles.optional}>선택</span></span>
         <input
           name="phone"
+          autoComplete="tel"
           type="tel"
           maxLength={20}
           defaultValue={initialPhone ?? ""}
@@ -83,9 +85,11 @@ export const ParentProfileForm = ({
       </label>
 
       <label className={styles.field}>
-        <span className={styles.label}>생년월일</span>
+        <span className={styles.label}>생년월일 <span className={styles.optional}>선택</span></span>
         <input
           name="parentBirthDate"
+          autoComplete="bday"
+          aria-describedby="profile-birth-note"
           type="date"
           min={MIN_PARENT_BIRTH_DATE}
           max={maxBirthDate}
@@ -95,8 +99,11 @@ export const ParentProfileForm = ({
         />
       </label>
 
+      <p id="profile-birth-note" className={styles.note}>카카오 로그인으로 가입한 경우 생년월일이 비어 있을 수 있어요.</p>
+
       {clientMessage || state.message ? (
         <p
+          role={clientMessage || state.status === "error" ? "alert" : "status"}
           className={clientMessage || state.status === "error" ? styles.errorMessage : styles.infoMessage}
         >
           {clientMessage || state.message}
@@ -104,7 +111,7 @@ export const ParentProfileForm = ({
       ) : null}
 
       <button type="submit" disabled={isPending} className={styles.submitButton}>
-        {isPending ? "저장 중..." : "보호자 정보 저장"}
+        {isPending ? "저장 중..." : "저장하기"}
       </button>
     </form>
   )

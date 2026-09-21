@@ -1,83 +1,15 @@
-.page {
-  min-height: 100dvh;
-  width: 100%;
-  overflow-x: hidden;
-  background: var(--bg);
-}
-
-.shell {
-  box-sizing: border-box;
-  width: 100%;
-  max-width: var(--col);
-  margin: 0 auto;
-  min-height: 100dvh;
-  background: var(--surface);
-  padding-bottom: var(--parent-nav-space);
-}
-
-.shell * {
-  box-sizing: border-box;
-}
-
-.header {
-  position: sticky;
-  top: 0;
-  z-index: 5;
-  display: grid;
-  grid-template-columns: 44px 1fr 44px;
-  align-items: center;
-  min-height: 64px;
-  padding: calc(var(--s3) + env(safe-area-inset-top)) var(--gutter) var(--s3);
-  background: var(--surface);
-  border-bottom: 1px solid var(--border);
-}
-
-.backButton {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  /* 손가락으로 누르는 버튼이다. 44px 아래로 내리지 않는다. */
-  width: 44px;
-  height: 44px;
-  margin-left: -10px;
-  color: var(--text-1);
-  text-decoration: none;
-  -webkit-tap-highlight-color: transparent;
-}
-
-.title {
-  margin: 0;
-  text-align: center;
-  font-size: 18px;
-  line-height: 1.35;
-  font-weight: 800;
-  letter-spacing: -0.03em;
-  color: var(--text-1);
-}
-
-.content {
-  display: grid;
-  gap: var(--s4);
-  padding: var(--s5) var(--gutter) var(--s8);
-}
-
-.intro {
-  margin: 0;
-  font-size: 13px;
-  line-height: 1.6;
-  color: var(--text-2);
-}
-
-.error {
-  margin: 0;
-  font-size: 13px;
-  line-height: 1.6;
-  color: var(--danger);
-}
-
-@media (min-width: 520px) {
-  .shell {
-    border-left: 1px solid var(--border);
-    border-right: 1px solid var(--border);
-  }
-}
+.page { width: 100%; min-height: 100dvh; background: var(--bg); }
+.shell { width: 100%; max-width: var(--col); min-height: 100dvh; margin-inline: auto; background: var(--surface); padding-bottom: calc(var(--parent-nav-space) + var(--s6)); }
+.header { position: sticky; top: 0; z-index: 5; display: flex; align-items: center; gap: var(--s2); min-height: 64px; padding: calc(var(--s2) + env(safe-area-inset-top)) var(--gutter) var(--s2); background: var(--surface); }
+.back { display: grid; place-items: center; width: 44px; height: 44px; color: var(--text-1); border-radius: var(--r-md); }
+.header h1 { margin: 0; font-size: var(--font-h3); font-weight: 600; }
+.content { padding: var(--s5) var(--gutter) 0; }
+.intro { margin: 0 0 var(--s8); font-size: var(--font-b2); color: var(--text-2); }
+.state { padding: var(--s8) var(--s4); border: 1px solid var(--border); border-radius: var(--r-lg); text-align: center; }
+.state h2 { margin: 0; font-size: var(--font-h4); font-weight: 600; }
+.state p { margin: var(--s3) 0 0; font-size: var(--font-b2); color: var(--text-2); }
+.state button { min-height: 48px; width: 100%; margin-top: var(--s6); border: 0; border-radius: var(--r-md); background: var(--brand-700); color: var(--neutral-0); font: inherit; font-size: var(--font-b2); cursor: pointer; }
+.state button:disabled { opacity: .6; }
+.skeleton { display: grid; gap: var(--s6); }
+.skeleton span { display: block; width: 30%; height: var(--s4); margin-bottom: var(--s2); background: var(--neutral-50); border-radius: var(--r-sm); }
+.skeleton > div > div, .skeletonButton { height: 52px; background: var(--neutral-50); border-radius: var(--r-md); }
