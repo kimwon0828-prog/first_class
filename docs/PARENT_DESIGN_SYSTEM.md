@@ -281,3 +281,12 @@ Academy summary uses real public logo/cover or ImageFallback; the full address a
 
 - My visual refinement: 프로필은 Green 50/R16, 64px User outline avatar, 학부모 이름과 하단 전폭 outline `내 정보 수정하기`. 우리 아이와 내 활동에는 40px soft icon surface/24px monochrome outline/제목/설명을 함께 둔다. 자녀 0명은 실제 빈 상태 문구, 조회 실패는 기존 부분 오류로 구분한다. 계정 안내는 동일 stroke의 outline icon과 중립 로그아웃을 사용한다.
 - My Footer는 48px logo, C1 Neutral 보조 문구와 border 없는 compact 사업자 details로 본문보다 약하게 표현한다. 공용 V1 nav/safe-area는 유지한다. 회원 탈퇴가 구현되기 전에는 안내 카드와 Footer 사이에 가짜 UI/링크를 만들지 않는다.
+
+
+## Parent Children V1 — `/my/children`
+
+- Back Header `자녀 관리` → `/my`. 관리 화면이며 `?child=` 선택 context와 편집 상태는 분리한다. 기존 최신 등록순/owned children/create·update action/RLS/필드는 유지한다. 삭제 기능과 새 필드는 추가하지 않는다.
+- `등록된 자녀 N명` 목록은 User outline avatar, 이름, 표시용 학년, 실제 학교명만 노출한다. 긴 메모/수준/목표는 목록에 반복하지 않는다. 알 수 없는 학년은 코드를 노출하지 않고 확인 안내를 사용한다.
+- White/R16/Neutral 200 card, gutter20/max480, Green action. 수정 hit area 최소44px. 선택 자녀처럼 radio/선택 pill을 만들지 않는다. 수정 폼만 해당 카드 바로 아래 펼치며 heading focus/scroll과 reduced-motion을 지원한다.
+- 목록 아래 `+ 자녀 추가하기`. 0명은 중앙 Empty와 Primary CTA, 버튼을 누르면 추가 폼을 연다. 이름·학년 필수, 기존 선택 필드는 `추가 정보 (선택)` details에서 확인/수정한다. 추가/수정 모두 저장·취소, 저장 오류는 입력값과 함께 유지한다.
+- loading은 공통 frame 안의 정적 skeleton, 조회 오류는 실제 재조회 + `/my` 복귀, 저장 오류는 form alert로 구분한다. 기존 Floating Bottom Nav V1의 마이페이지 active 및 safe-space를 유지한다.

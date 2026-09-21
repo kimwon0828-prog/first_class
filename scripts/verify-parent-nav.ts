@@ -119,7 +119,7 @@ const NAV_SCREENS = [
   "src/features/schedule/ui/parent-schedule-screen.tsx",
   "app/academies/page.tsx",
   "app/favorites/favorites-client.tsx",
-  "src/features/children/ui/my-children-client.tsx"
+  "src/features/children/ui/children-frame.tsx"
 ]
 for (const path of NAV_SCREENS) {
   check(`${path} 가 공용 nav 를 쓴다`, codeOf(path).includes("<ParentBottomNav"))

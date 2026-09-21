@@ -1,188 +1,90 @@
 "use client"
 
-import { useActionState, useEffect, useMemo, useState } from "react"
+import { useActionState, useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
-
-import {
-  createChildProfileAction,
-  type ChildProfileActionState
-} from "@/features/children/actions/create-child-profile"
+import { createChildProfileAction, type ChildProfileActionState } from "@/features/children/actions/create-child-profile"
 import { updateChildProfileAction } from "@/features/children/actions/update-child-profile"
-import { ChildProfileForm } from "@/features/children/ui/child-profile-form"
+import { ChildProfileForm } from "./child-profile-form"
+import { getChildGradeLabel, normalizeLearnerGrade } from "@/shared/constants/education-taxonomy"
 import type { ChildProfile } from "@/shared/lib/db/adapter"
 import styles from "./my-children-manager.module.css"
 
-type MyChildrenManagerProps = {
-  items: ChildProfile[]
-  onSaved?: () => void | Promise<void>
+type Props = { items: ChildProfile[]; onSaved?: () => void | Promise<void> }
+const initialActionState: ChildProfileActionState = { status: "idle", message: "" }
+
+function Avatar() {
+  return <span className={styles.avatar} aria-hidden="true"><svg width="28" height="28" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="8" r="4" stroke="currentColor" strokeWidth="1.8" /><path d="M4 21v-2a8 8 0 0 1 16 0v2" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" /></svg></span>
 }
 
-const initialActionState: ChildProfileActionState = {
-  status: "idle",
-  message: ""
+// Each opened form owns fresh action state, so switching children never carries an old error.
+function Editor({ child, onCancel, onSaved, onPendingChange }: { child?: ChildProfile; onCancel: () => void; onSaved: () => void; onPendingChange?: (pending: boolean) => void }) {
+  const [state, action, pending] = useActionState(child ? updateChildProfileAction : createChildProfileAction, initialActionState)
+  useEffect(() => { onPendingChange?.(pending) }, [pending, onPendingChange])
+  const headingRef = useRef<HTMLHeadingElement>(null)
+  const savedRef = useRef(onSaved)
+  savedRef.current = onSaved
+  useEffect(() => {
+    const heading = headingRef.current
+    heading?.focus({ preventScroll: true })
+    heading?.scrollIntoView({ block: "nearest", behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" })
+  }, [])
+  useEffect(() => {
+    if (state.status === "success") savedRef.current()
+  }, [state])
+  return <div className={styles.formPanel}>
+    <h3 ref={headingRef} tabIndex={-1} className={styles.formTitle}>{child ? "자녀 정보 수정" : "새로운 자녀를 등록해요"}</h3>
+    <ChildProfileForm mode={child ? "update" : "create"} initialValue={child} formAction={action} state={state} isPending={pending} onCancelEdit={onCancel} />
+  </div>
 }
 
-export const MyChildrenManager = ({ items, onSaved }: MyChildrenManagerProps) => {
+export const MyChildrenManager = ({ items, onSaved }: Props) => {
   const router = useRouter()
-  const [editingChildId, setEditingChildId] = useState<string | null>(null)
-  const [formVersion, setFormVersion] = useState(0)
-  const [isFormExpanded, setIsFormExpanded] = useState(items.length === 0)
-  const [createState, createFormAction, isCreatePending] = useActionState(
-    createChildProfileAction,
-    initialActionState
-  )
-  const [updateState, updateFormAction, isUpdatePending] = useActionState(
-    updateChildProfileAction,
-    initialActionState
-  )
-
-  const editingChild = useMemo(
-    () => items.find((item) => item.id === editingChildId) ?? null,
-    [editingChildId, items]
-  )
-
+  const [editor, setEditor] = useState<string | null>(null)
+  const [saving, setSaving] = useState(false)
+  const rootRef = useRef<HTMLElement>(null)
+  const openerIdRef = useRef<string | null>(null)
+  const [announcement, setAnnouncement] = useState("")
+  const close = () => setEditor(null)
   useEffect(() => {
-    if (createState.status === "success") {
-      setFormVersion((value) => value + 1)
-      setIsFormExpanded(false)
-      if (onSaved) {
-        void onSaved()
-      } else {
-        router.refresh()
-      }
-    }
-  }, [createState.status, onSaved, router])
-
-  useEffect(() => {
-    if (updateState.status === "success") {
-      setEditingChildId(null)
-      setFormVersion((value) => value + 1)
-      setIsFormExpanded(false)
-      if (onSaved) {
-        void onSaved()
-      } else {
-        router.refresh()
-      }
-    }
-  }, [onSaved, router, updateState.status])
-
-  useEffect(() => {
-    if (items.length === 0) {
-      setIsFormExpanded(true)
-    }
-  }, [items.length])
-
-  useEffect(() => {
-    if (editingChildId) {
-      setIsFormExpanded(true)
-    }
-  }, [editingChildId])
-
-  const formMode = editingChild ? "update" : "create"
-  const activeState = editingChild ? updateState : createState
-  const activeFormAction = editingChild ? updateFormAction : createFormAction
-  const isPending = editingChild ? isUpdatePending : isCreatePending
-  const formKey = editingChild ? `update-${editingChild.id}-${editingChild.updatedAt}` : `create-${formVersion}`
-
-  return (
-    <section className={styles.stack}>
-      {items.length === 0 ? (
-        <section className={styles.noticeCard}>
-          <p className={styles.noticeText}>
-            자녀 정보를 미리 등록해두면 신청서 작성 시 아이 이름과 학년을 자동으로 불러올 수 있어요.
-          </p>
-        </section>
-      ) : null}
-
-      <section className={styles.listSection}>
-        <header className={styles.sectionHeader}>
-          <h2 className={styles.sectionTitle}>등록된 자녀</h2>
-          <p className={styles.sectionDesc}>총 {items.length}명의 자녀 정보가 등록되어 있어요.</p>
-        </header>
-
-        {items.length === 0 ? (
-          <div className={styles.empty}>
-            <p className={styles.emptyTitle}>아직 등록된 자녀가 없어요.</p>
-            <p className={styles.emptyDesc}>아래에서 첫 자녀 정보를 등록해보세요.</p>
+    if (editor !== null || openerIdRef.current === null) return
+    const button = Array.from(rootRef.current?.querySelectorAll<HTMLButtonElement>("[data-editor-trigger]") ?? []).find(node => node.dataset.editorTrigger === openerIdRef.current)
+    button?.focus({ preventScroll: true })
+    openerIdRef.current = null
+  }, [editor])
+  const saved = () => {
+    setAnnouncement(editor === "create" ? "자녀 정보를 등록했어요." : "자녀 정보를 수정했어요.")
+    close()
+    if (onSaved) void onSaved()
+    else router.refresh()
+  }
+  const open = (id: string) => { openerIdRef.current = id; setAnnouncement(""); setEditor(id) }
+  return <section ref={rootRef} className={styles.stack}>
+    <p className={styles.announcement} role="status">{announcement}</p>
+    {editor !== "create" && items.length > 0 ? <div className={styles.noticeCard}><Avatar /><p>자녀 정보를 확인하고 언제든 수정할 수 있어요.</p></div> : null}
+    {items.length > 0 ? <section className={styles.listSection} aria-labelledby="children-list-title">
+      <h2 id="children-list-title" className={styles.sectionTitle}>등록된 자녀 {items.length}명</h2>
+      <div className={styles.childList}>{items.map(item => {
+        const isEditing = editor === item.id
+        const grade = normalizeLearnerGrade(item.grade)
+        return <article key={item.id} className={`${styles.childCard} ${isEditing ? styles.childCardActive : ""}`}>
+          <div className={styles.childTop}>
+            <Avatar />
+            <div className={styles.childBody}>
+              <h3 className={styles.childName}>{item.name}</h3>
+              <p className={styles.childMeta}>{grade ? getChildGradeLabel(grade) : "학년 확인 필요"}</p>
+              {item.schoolName ? <p className={styles.childMeta}>{item.schoolName}</p> : null}
+            </div>
+            <button type="button" className={styles.editButton} aria-label={`${item.name} 정보 ${isEditing ? "닫기" : "수정"}`} aria-expanded={isEditing} aria-controls={isEditing ? `child-editor-${item.id}` : undefined} disabled={isEditing ? saving : editor !== null} data-editor-trigger={item.id} onClick={() => isEditing ? close() : open(item.id)}>{isEditing ? "닫기" : "수정"}</button>
           </div>
-        ) : (
-          <div className={styles.childList}>
-            {items.map((item) => {
-              const isEditing = editingChildId === item.id
-              const infoRows = [
-                item.schoolName ? { label: "학교", value: item.schoolName } : null,
-                item.currentLevel ? { label: "현재 수준", value: item.currentLevel } : null,
-                item.notes ? { label: "메모", value: item.notes } : null,
-                item.goalNote ? { label: "목표/고민", value: item.goalNote } : null
-              ].filter(Boolean) as Array<{ label: string; value: string }>
-              const visibleRows = infoRows.slice(0, 3)
-
-              return (
-                <article key={item.id} className={`${styles.childCard} ${isEditing ? styles.childCardActive : ""}`}>
-                  <div className={styles.childTop}>
-                    <div className={styles.childNameRow}>
-                      <div className={styles.childName}>{item.name}</div>
-                      <span className={styles.gradeBadge}>{item.grade}</span>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setEditingChildId(item.id)}
-                      className={styles.editButton}
-                    >
-                      수정
-                    </button>
-                  </div>
-
-                  {visibleRows.length > 0 ? (
-                    <div className={styles.kvGrid}>
-                      {visibleRows.map((row) => (
-                        <div key={row.label} className={styles.kvRow}>
-                          <span className={styles.kvLabel}>{row.label}</span>
-                          <span className={styles.kvValue}>{row.value}</span>
-                        </div>
-                      ))}
-                    </div>
-                  ) : null}
-                </article>
-              )
-            })}
-          </div>
-        )}
-      </section>
-
-      <section className={styles.formSection}>
-        <header className={styles.sectionHeader}>
-          <h2 className={styles.sectionTitle}>{editingChild ? "자녀 정보 수정" : "자녀 등록"}</h2>
-        </header>
-
-        {!editingChild && items.length > 0 && !isFormExpanded ? (
-          <button
-            type="button"
-            className={styles.toggleButton}
-            onClick={() => setIsFormExpanded(true)}
-          >
-            + 자녀 등록
-          </button>
-        ) : null}
-
-        {isFormExpanded ? (
-          <div key={formKey} className={styles.formPanel}>
-            <ChildProfileForm
-              mode={formMode}
-              formAction={activeFormAction}
-              isPending={isPending}
-              state={activeState}
-              initialValue={editingChild}
-              onCancelEdit={() => {
-                setEditingChildId(null)
-                if (items.length > 0) {
-                  setIsFormExpanded(false)
-                }
-              }}
-            />
-          </div>
-        ) : null}
-      </section>
-    </section>
-  )
+          {isEditing ? <div id={`child-editor-${item.id}`}><Editor child={item} onCancel={close} onSaved={saved} onPendingChange={setSaving} /></div> : null}
+        </article>
+      })}</div>
+    </section> : editor !== "create" ? <div className={styles.empty}>
+      <Avatar />
+      <h2 className={styles.emptyTitle}>등록된 자녀가 없어요.</h2>
+      <p className={styles.emptyDesc}>자녀를 등록하면 체험수업 신청 시<br />정보를 편하게 불러올 수 있어요.</p>
+      <button type="button" className={styles.primaryButton} data-editor-trigger="create" onClick={() => open("create")}>+ 자녀 추가하기</button>
+    </div> : null}
+    {editor === "create" ? <Editor onCancel={close} onSaved={saved} /> : items.length > 0 && !editor ? <button type="button" className={styles.addButton} data-editor-trigger="create" onClick={() => open("create")}>+ 자녀 추가하기</button> : null}
+  </section>
 }

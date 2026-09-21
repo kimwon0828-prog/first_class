@@ -5,7 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import type { User } from "@supabase/supabase-js"
 
 import { MyChildrenManager } from "@/features/children/ui/my-children-manager"
-import { ParentBottomNav } from "@/features/classes/ui/parent-bottom-nav"
+import { ChildrenFrame, ChildrenSkeleton } from "./children-frame"
 import { createSupabaseBrowserClient } from "@/integrations/supabase/client"
 import { getPublicEnv } from "@/shared/config/env"
 import type { ChildProfile } from "@/shared/lib/db/adapter"
@@ -258,41 +258,11 @@ export const MyChildrenClient = () => {
   )
 
   return (
-    <main className={styles.page}>
-      <div className={styles.shell}>
-        <header className={styles.header}>
-          <Link href="/my" aria-label="뒤로가기" className={styles.backButton}>
-            <svg
-              width="20"
-              height="20"
-              viewBox="0 0 24 24"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-              aria-hidden="true"
-            >
-              <path
-                d="M15 18l-6-6 6-6"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-          </Link>
-          <h1 className={styles.title}>자녀 관리</h1>
-          <span aria-hidden="true" />
-        </header>
-
-        <div className={styles.content}>
-          <p className={styles.subtitle}>자녀 정보를 등록해두면 신청할 때 더 빠르게 불러올 수 있어요.</p>
-          {status === "loading" ? (
-            <section className={styles.card}>
-              <p className={styles.noticeText}>자녀 정보를 불러오는 중이에요...</p>
-            </section>
-          ) : null}
+    <ChildrenFrame>
+          {status === "loading" ? <ChildrenSkeleton /> : null}
 
           {status === "auth_required" ? (
-            <section className={`${styles.card} ${styles.dangerCard}`}>
+            <section className={styles.card}>
               <p className={styles.dangerText}>{message}</p>
               {shouldShowAuthDebug ? (
                 <pre className={styles.dangerText} style={{ whiteSpace: "pre-wrap" }}>
@@ -306,7 +276,7 @@ export const MyChildrenClient = () => {
           ) : null}
 
           {status === "forbidden" ? (
-            <section className={`${styles.card} ${styles.dangerCard}`}>
+            <section className={styles.card}>
               <p className={styles.dangerText}>{message}</p>
               <Link href="/classes" className={styles.link}>
                 수업 목록으로 이동
@@ -315,19 +285,15 @@ export const MyChildrenClient = () => {
           ) : null}
 
           {status === "error" ? (
-            <section className={`${styles.card} ${styles.dangerCard}`}>
-              <p className={styles.dangerText}>{message}</p>
-              <Link href="/my" className={styles.link}>
-                마이페이지로 이동
-              </Link>
+            <section className={styles.errorState} role="alert">
+              <h2 className={styles.stateTitle}>자녀 정보를 불러오지 못했어요.</h2>
+              <p className={styles.noticeText}>잠시 후 다시 시도해 주세요.</p>
+              <button type="button" className={styles.retryButton} onClick={() => void loadChildren()}>다시 시도하기</button>
+              <Link href="/my" className={styles.returnLink}>마이페이지로 돌아가기</Link>
             </section>
           ) : null}
 
           {status === "ready" ? <MyChildrenManager items={items} onSaved={loadChildren} /> : null}
-        </div>
-      </div>
-
-      <ParentBottomNav />
-    </main>
+    </ChildrenFrame>
   )
 }

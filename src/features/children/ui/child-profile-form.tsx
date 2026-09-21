@@ -1,8 +1,9 @@
 "use client"
 
+import { startTransition, useState } from "react"
+
 import {
   LEARNER_GRADE_GROUPS,
-  getChildGradeLabel,
   getLearnerGradesByGroup,
   normalizeLearnerGrade
 } from "@/shared/constants/education-taxonomy"
@@ -30,9 +31,25 @@ export const ChildProfileForm = ({
 }: ChildProfileFormProps) => {
   const normalizedInitialGrade = normalizeLearnerGrade(initialValue?.grade)
   const legacyGradeValue = initialValue?.grade?.trim() && !normalizedInitialGrade ? initialValue.grade.trim() : null
+  const [values, setValues] = useState(() => ({
+    name: initialValue?.name ?? "",
+    grade: normalizedInitialGrade ?? "",
+    schoolName: initialValue?.schoolName ?? "",
+    notes: initialValue?.notes ?? "",
+    currentLevel: initialValue?.currentLevel ?? "",
+    interestSubjects: initialValue?.interestSubjects ?? "",
+    goalNote: initialValue?.goalNote ?? ""
+  }))
+
+  const optionalCount = [values.schoolName, values.notes, values.currentLevel, values.interestSubjects, values.goalNote].filter(value => value.trim().length > 0).length
 
   return (
-    <form action={formAction} className={styles.form}>
+    // Successful saves close this editor; failed actions must not reset entered values.
+    <form action={formAction} className={styles.form} onSubmit={event => {
+      event.preventDefault()
+      const formData = new FormData(event.currentTarget)
+      startTransition(() => formAction(formData))
+    }}>
       {mode === "update" && initialValue ? <input type="hidden" name="childId" value={initialValue.id} /> : null}
 
       <label className={styles.field}>
@@ -43,7 +60,8 @@ export const ChildProfileForm = ({
           required
           minLength={2}
           maxLength={30}
-          defaultValue={initialValue?.name ?? ""}
+          value={values.name}
+          onChange={event => setValues(current => ({ ...current, name: event.target.value }))}
           disabled={isPending}
           className={styles.input}
         />
@@ -54,7 +72,8 @@ export const ChildProfileForm = ({
         <select
           name="grade"
           required
-          defaultValue={normalizedInitialGrade ?? ""}
+          value={values.grade}
+          onChange={event => setValues(current => ({ ...current, grade: event.target.value }))}
           disabled={isPending}
           className={styles.input}
         >
@@ -73,17 +92,15 @@ export const ChildProfileForm = ({
         </select>
         {legacyGradeValue ? (
           <p className={styles.infoMessage}>
-            현재 저장값은 `{getChildGradeLabel(legacyGradeValue) ?? legacyGradeValue}` 입니다. 새 저장 시에는 학년을
-            다시 선택해 주세요.
+            학년 정보를 확인해 주세요. 저장하려면 학년을 다시 선택해 주세요.
           </p>
         ) : null}
       </label>
 
       <details
-        open={mode === "update"}
         className={styles.details}
       >
-        <summary className={styles.summary}>선택 정보 더 입력하기</summary>
+        <summary className={styles.summary}>추가 정보 (선택){mode === "update" && optionalCount > 0 ? ` · ${optionalCount}개 입력됨` : ""}</summary>
         <div className={styles.detailsContent}>
           <label className={styles.field}>
             <span className={styles.label}>학교명</span>
@@ -91,7 +108,8 @@ export const ChildProfileForm = ({
               name="schoolName"
               type="text"
               maxLength={60}
-              defaultValue={initialValue?.schoolName ?? ""}
+              value={values.schoolName}
+          onChange={event => setValues(current => ({ ...current, schoolName: event.target.value }))}
               disabled={isPending}
               className={styles.input}
             />
@@ -103,7 +121,8 @@ export const ChildProfileForm = ({
               name="notes"
               rows={3}
               maxLength={500}
-              defaultValue={initialValue?.notes ?? ""}
+              value={values.notes}
+          onChange={event => setValues(current => ({ ...current, notes: event.target.value }))}
               disabled={isPending}
               placeholder="성향, 주의사항, 알레르기 등을 적어 주세요."
               className={styles.textarea}
@@ -116,7 +135,8 @@ export const ChildProfileForm = ({
               name="currentLevel"
               type="text"
               maxLength={120}
-              defaultValue={initialValue?.currentLevel ?? ""}
+              value={values.currentLevel}
+          onChange={event => setValues(current => ({ ...current, currentLevel: event.target.value }))}
               disabled={isPending}
               placeholder="예: 입문 단계, 기초 개념 가능"
               className={styles.input}
@@ -129,7 +149,8 @@ export const ChildProfileForm = ({
               name="interestSubjects"
               type="text"
               maxLength={120}
-              defaultValue={initialValue?.interestSubjects ?? ""}
+              value={values.interestSubjects}
+          onChange={event => setValues(current => ({ ...current, interestSubjects: event.target.value }))}
               disabled={isPending}
               placeholder="예: 수학, 과학"
               className={styles.input}
@@ -142,7 +163,8 @@ export const ChildProfileForm = ({
               name="goalNote"
               rows={4}
               maxLength={500}
-              defaultValue={initialValue?.goalNote ?? ""}
+              value={values.goalNote}
+          onChange={event => setValues(current => ({ ...current, goalNote: event.target.value }))}
               disabled={isPending}
               placeholder="학습 목표나 상담 시 전달하고 싶은 내용을 적어 주세요."
               className={styles.textarea}
@@ -153,6 +175,7 @@ export const ChildProfileForm = ({
 
       {state.message ? (
         <p
+          role={state.status === "error" ? "alert" : "status"}
           className={state.status === "error" ? styles.errorMessage : styles.infoMessage}
         >
           {state.message}
@@ -160,30 +183,8 @@ export const ChildProfileForm = ({
       ) : null}
 
       <div className={styles.buttonStack}>
-        <button
-          type="submit"
-          disabled={isPending}
-          className={styles.primaryButton}
-        >
-          {isPending
-            ? mode === "create"
-              ? "등록 중..."
-              : "저장 중..."
-            : mode === "create"
-              ? "자녀 등록하기"
-              : "저장하기"}
-        </button>
-
-        {mode === "update" && onCancelEdit ? (
-          <button
-            type="button"
-            onClick={onCancelEdit}
-            disabled={isPending}
-            className={styles.secondaryButton}
-          >
-            취소
-          </button>
-        ) : null}
+        {onCancelEdit ? <button type="button" onClick={onCancelEdit} disabled={isPending} className={styles.secondaryButton}>취소</button> : null}
+        <button type="submit" disabled={isPending} className={styles.primaryButton}>{isPending ? "저장 중…" : "저장하기"}</button>
       </div>
     </form>
   )

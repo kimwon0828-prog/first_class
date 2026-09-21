@@ -62,7 +62,7 @@ const hrefsOf = (code: string) =>
 const myPage = codeOf(MY_PAGE) + codeOf("app/my/my-frame.tsx")
 const myHub = codeOf(MY_HUB)
 const myHubCss = read(MY_HUB_CSS)
-const childrenClient = codeOf(CHILDREN_CLIENT)
+const childrenClient = codeOf(CHILDREN_CLIENT) + codeOf("src/features/children/ui/children-frame.tsx")
 const childrenCss = read(CHILDREN_CSS)
 const profilePage = codeOf(PROFILE_PAGE)
 const profileCss = read(PROFILE_CSS)
