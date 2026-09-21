@@ -61,6 +61,7 @@ export const getMyEducationProfile = async (
         childId: child.id,
         childName: child.name,
         reports: reports.map((report) => ({
+          thumbnailUrl: report.thumbnailUrl,
           experienceId: report.experienceId,
           reportId: report.reportId,
           reportVersion: report.reportVersion,

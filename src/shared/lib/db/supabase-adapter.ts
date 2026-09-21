@@ -1,3 +1,4 @@
+import { getPublicClassImagesByIds } from "@/features/classes/queries/public-class-safe-projection"
 import {
   canCollectParentDecision,
   isParentDecision,
@@ -5657,7 +5658,7 @@ export const supabaseDataAdapter: DataAdapter = {
     //    호출자가 넘긴 childId 로 남의 아이를 가리켜도 그 행은 여기 없다.
     const { data: experienceRows, error: experienceError } = await supabase
       .from("my_trial_applications")
-      .select("id, confirmed_slot_at, requested_slot_at, completed_at, canceled_at, created_at")
+      .select("id, class_id, confirmed_slot_at, requested_slot_at, completed_at, canceled_at, created_at")
       .eq("child_id", childId)
 
     if (experienceError) {
@@ -5666,6 +5667,7 @@ export const supabaseDataAdapter: DataAdapter = {
 
     const experiences = (experienceRows ?? []) as Array<{
       id: string
+      class_id: string
       confirmed_slot_at: string | null
       requested_slot_at: string
       completed_at: string | null
@@ -5695,6 +5697,15 @@ export const supabaseDataAdapter: DataAdapter = {
 
     const experienceById = new Map(experiences.map((experience) => [experience.id, experience]))
 
+    const publishedIds = new Set((reportRows ?? []).map(row => row.application_id))
+    let images = new Map<string, string | null>()
+    try {
+      images = await getPublicClassImagesByIds(experiences.filter(item => publishedIds.has(item.id)).map(item => item.class_id))
+    } catch (error) {
+      // Optional public media must not hide published observations.
+      console.error("[education-profile] public class image lookup failed", error)
+    }
+
     return (reportRows ?? [])
       .map((row) => {
         const report = mapExperienceReport(row as ExperienceReportRow)
@@ -5709,6 +5720,7 @@ export const supabaseDataAdapter: DataAdapter = {
         }
 
         return {
+          thumbnailUrl: images.get(experience.class_id) ?? null,
           experienceId: report.applicationId,
           reportId: report.id,
           reportVersion: report.version,

@@ -2616,6 +2616,7 @@ export const mockDataAdapter: DataAdapter = {
         }
 
         return {
+          thumbnailUrl: classes.find(item => item.id === application.classId && item.isActive)?.coverImageUrl ?? null,
           experienceId: report.applicationId,
           reportId: report.id,
           reportVersion: report.version,

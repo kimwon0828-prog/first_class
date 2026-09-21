@@ -344,3 +344,15 @@ Academy summary uses real public logo/cover or ImageFallback; the full address a
 ### Home 부가 조회 실패
 
 알림 읽음 상태, bell indicator, 체험 후 action 조회 실패는 Home 전체 오류로 전파하지 않는다. 읽음 상태 불명은 `readStateStatus: unavailable` / `isUnread: undefined`로 유지하고 dot을 표시하지 않는다. Action 조회 실패는 부분 안내로 표현하며 정상 조회된 일정과 탐색 영역은 유지한다. 실패를 읽음 또는 할 일 없음으로 해석하지 않고 서버에 조회 단계와 오류를 기록한다.
+
+## Education Profile V1 — /record/profile
+
+- Owned `?child=` remains required. Back returns to `/record?child=…`; no child selector or Bottom Nav. Missing/unowned children keep the same not-found response.
+- Child name + “발행된 체험 리포트의 관찰을 시간순으로 모았어요.” + “N개의 체험 리포트”. Count unique experiences with a current published snapshot, not all applications.
+- One timeline entry per experience, newest experience first, month groups in Asia/Seoul using the existing Record date resolver. Preserve per-report observation labels in full; never substitute the latest label from another experience.
+- Date, snapshot class/academy names and recognized trial/level-test type; no subject without source data. Neutral thin timeline line with small Green dots, White R16 thin-border cards. Full-width report link has a 44px minimum touch target and preserves child context.
+- No observation-frequency display, traits, scores, ranking, ParentDecision, AI summary or evaluation. Existing aggregate domain consumers remain unchanged.
+- Distinguish no published reports, a published report with zero observations, query failure with server refresh retry, and skeleton. Unexpected route errors offer a full-request retry. Missing observation entries do not hide the report link.
+- Shared Parent V1 scope: gutter20, max480, desktop Neutral50 outer canvas, white centered surface, no shadow; semantic dates, headings, focus and no motion-dependent loading.
+
+- Education Profile headers use a 64px square, R12 class thumbnail beside snapshot metadata. Read current active public `classes.cover_image_url` in one batch after owned experience/published report lookup; no academy substitution. Missing/failed images use the shared ImageFallback. Media lookup failure keeps observations available.

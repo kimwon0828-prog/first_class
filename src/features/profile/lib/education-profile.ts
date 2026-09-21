@@ -26,6 +26,8 @@ import type { ExperienceReportSnapshotV1 } from "@/features/reports/lib/experien
  *    superseded 된 옛 버전도, withdrawn 된 것도 세지 않는다.
  */
 export type EducationProfileSourceReport = {
+  /** Current public class media; never part of the observation snapshot. */
+  thumbnailUrl?: string | null
   /** 이 관찰이 나온 체험. /record/[experienceId] 로 돌아갈 열쇠다. */
   experienceId: string
   reportId: string
@@ -82,11 +84,24 @@ export type EducationProfileObservation = {
   sources: EducationProfileObservationSource[]
 }
 
+export type EducationProfileExperience = {
+  thumbnailUrl: string | null
+  experienceId: string
+  reportId: string
+  reportVersion: number
+  experienceDate: string
+  classTitle: string
+  academyName: string
+  type: string
+  observations: { code: string; label: string }[]
+}
+
 export type EducationProfile = {
   childId: string
   childName: string
   /** 발행된 리포트가 있는 체험의 수. 신청 수가 아니다. */
   publishedExperienceCount: number
+  experiences: EducationProfileExperience[]
   observations: EducationProfileObservation[]
 }
 
@@ -195,6 +210,17 @@ export const buildEducationProfile = (input: {
     childId: input.childId,
     childName: input.childName,
     publishedExperienceCount: reports.length,
+    experiences: reports.map(report => ({
+      thumbnailUrl: report.thumbnailUrl ?? null,
+      experienceId: report.experienceId,
+      reportId: report.reportId,
+      reportVersion: report.reportVersion,
+      experienceDate: report.experienceDate,
+      classTitle: report.content.experience.class.title,
+      academyName: report.content.experience.academy.name,
+      type: report.content.experience.type,
+      observations: report.content.observations.map(item => ({ code: item.code, label: item.label }))
+    })).sort((a, b) => toTime(b.experienceDate) - toTime(a.experienceDate) || a.experienceId.localeCompare(b.experienceId)),
     observations
   }
 }

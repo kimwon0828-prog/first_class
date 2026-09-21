@@ -418,3 +418,13 @@ export const getPublicClassDetailWithSafeProjection = async (
     organization
   }
 }
+
+/** Public active-class images only; one narrow batch, never academy images. */
+export const getPublicClassImagesByIds = async (classIds: readonly string[]): Promise<Map<string, string | null>> => {
+  const ids = [...new Set(classIds.filter(Boolean))]
+  if (!ids.length) return new Map()
+  const { data, error } = await getSupabaseServiceRoleClient()
+    .from("classes").select("id, cover_image_url").in("id", ids).eq("is_active", true)
+  if (error) throw new Error("failed_to_fetch_public_class_images", { cause: error })
+  return new Map((data ?? []).map(row => [row.id, row.cover_image_url ?? null]))
+}

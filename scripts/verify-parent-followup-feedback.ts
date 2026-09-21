@@ -419,8 +419,8 @@ check("1회면 말하지 않는다", describeEvidenceCount(1) === null)
 check("2회면 개수로 말한다", describeEvidenceCount(2) === "2개의 체험에서 관찰됐어요")
 check("3회도 같다", describeEvidenceCount(3) === "3개의 체험에서 관찰됐어요")
 check(
-  "화면이 null 을 그리지 않는다",
-  clean(read(PROFILE_PAGE_PATH)).includes("describeEvidenceCount(observation.evidenceCount) ? (")
+  "프로필 기본 화면은 관찰 횟수를 그리지 않는다",
+  !clean(read(PROFILE_PAGE_PATH)).includes("describeEvidenceCount")
 )
 {
   const snapshot = (codes: string[]) => ({

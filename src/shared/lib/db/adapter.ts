@@ -1224,6 +1224,7 @@ export type ExperienceReportSummary = {
  * 만들지 않는다).
  */
 export type ParentChildPublishedReport = {
+  thumbnailUrl: string | null
   experienceId: string
   reportId: string
   reportVersion: number

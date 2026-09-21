@@ -266,12 +266,12 @@ check(
     pageCode.includes("`/record/${source.experienceId}")
 )
 check(
-  "관찰마다 근거 목록을 그린다",
-  pageCode.includes("observation.sources.map")
+  "경험마다 원문 관찰 목록을 그린다",
+  pageCode.includes("source.observations.map")
 )
 check(
   "근거 없는 요약만 두지 않는다",
-  pageCode.includes("observation.label") && pageCode.includes("sourceList")
+  pageCode.includes("observation.label") && pageCode.includes("reportLink")
 )
 
 console.log("\n── 5. 점수 · 순위 · 성향으로 바꾸지 않는다 ──")
@@ -312,8 +312,8 @@ console.log("\n── 5. 점수 · 순위 · 성향으로 바꾸지 않는다 �
   check("한 번뿐이면 횟수를 말하지 않는다", describeEvidenceCount(1) === null)
   check("두 번부터 말한다", describeEvidenceCount(2) === "2개의 체험에서 관찰됐어요")
   check(
-    "화면이 횟수를 그 문장으로 그린다",
-    pageCode.includes("describeEvidenceCount(observation.evidenceCount)")
+    "기본 화면은 관찰 빈도를 표시하지 않는다",
+    !pageCode.includes("describeEvidenceCount") && !pageCode.includes("evidenceCount")
   )
 }
 check(
@@ -402,7 +402,7 @@ check(
 console.log("\n── 9. 빈 상태 ──")
 check(
   "빈 상태 문구가 있다",
-  pageCode.includes("아직 쌓인 관찰 기록이 없어요") &&
+  pageCode.includes("아직 발행된 체험 리포트가 없어요") &&
     pageCode.includes("체험 리포트가 발행되면")
 )
 check(

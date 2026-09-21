@@ -135,12 +135,12 @@ console.log("\n── 3. 학부모 화면에 평가 언어가 없다 ──")
     PARENT_SURFACES.every((path) => TRAIT_WORDS.every((word) => !clean(read(path)).includes(word)))
   )
   check(
-    "교육 프로필이 '관찰된 모습' 으로 말한다",
-    clean(read("app/record/profile/page.tsx")).includes("관찰된 모습")
+    "교육 프로필이 선생님의 관찰 원문으로 말한다",
+    clean(read("app/record/profile/page.tsx")).includes("선생님의 관찰")
   )
   check(
     "리포트가 '체험 리포트' 다",
-    clean(read("app/record/[experienceId]/report/page.tsx")).includes("체험 리포트") &&
+    clean(read("app/record/[experienceId]/report/report-frame.tsx")).includes("체험 리포트") &&
       !clean(read("app/record/[experienceId]/report/page.tsx")).includes("결과표")
   )
   check(
@@ -190,7 +190,7 @@ console.log("\n── 5. primary CTA 는 하나 ──")
 console.log("\n── 6. 실패와 없음을 구분한다 ──")
 {
   for (const [label, path, errorToken, emptyToken] of [
-    ["교육 프로필", "app/record/profile/page.tsx", 'result.state === "error"', "아직 쌓인 관찰 기록이 없어요"],
+    ["교육 프로필", "app/record/profile/page.tsx", 'result.state === "error"', "아직 발행된 체험 리포트가 없어요"],
     ["전환 현황", DASHBOARD_PAGE, "conversion?.error", "체험을 마친 학생이 없습니다"]
   ] as const) {
     const code = clean(read(path))
@@ -235,7 +235,7 @@ console.log("\n── 8. 날짜는 공용 helper 로 읽는다 ──")
   check("학부모 화면이 local timezone getter 를 쓰지 않는다", offenders.length === 0, offenders.join(", "))
   check(
     "공용 KST helper 를 쓴다",
-    clean(read("app/record/profile/page.tsx")).includes("getSeoulDateTimeParts") &&
+    clean(read("src/features/profile/lib/education-profile-timeline.ts")).includes("getSeoulDateTimeParts") &&
       clean(read("app/record/[experienceId]/report/page.tsx")).includes("getSeoulDateTimeParts")
   )
 }
@@ -259,7 +259,8 @@ console.log("\n── 9. 접근성 ──")
   )
   check(
     "자녀 선택이 현재 선택을 색 말고도 알린다",
-    clean(read("app/record/page.tsx")).includes("aria-current")
+    clean(read("src/features/record/ui/record-home.tsx")).includes("HomeChildSelector") &&
+      clean(read("src/features/children/ui/home-child-selector.tsx")).includes("aria-current")
   )
 }
 

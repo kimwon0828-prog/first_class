@@ -301,7 +301,7 @@ for (const file of filesUsing("observations")) {
   }
 
   // 집계된 DTO 를 받는 화면이면, 그 집계가 스냅샷에서 나왔는지 끝까지 따라간다.
-  const usesProfileAggregate = /profile\.observations|observation\.sources/.test(source)
+  const usesProfileAggregate = /profile\.(?:observations|experiences)|observation\.sources/.test(source)
   const aggregateSource = usesProfileAggregate
     ? readFileSync(resolve(process.cwd(), EDUCATION_PROFILE_LIB), "utf8")
     : ""
