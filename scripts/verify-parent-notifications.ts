@@ -96,7 +96,7 @@ console.log("\n[D] nav active")
 check("D) /notifications → 홈 탭", resolveParentNavTab("/notifications") === "home")
 check("D) 하위 경로도 홈 탭", resolveParentNavTab("/notifications/anything") === "home")
 check("D) nav 계약에 명시돼 있다", navLib.includes('"/notifications"'))
-check("D) 화면이 공용 nav 를 쓴다", page.includes("<ParentBottomNav"))
+check("D) 독립 알림 화면은 nav 없음", !page.includes("<ParentBottomNav"))
 check("D) 직접 만든 탭이 없다", !page.includes('aria-label="하단 탭"'))
 /* 마이페이지가 같이 켜지지 않는다. */
 check("D) 마이페이지 탭이 같이 켜지지 않는다", resolveParentNavTab("/notifications") !== "my")
@@ -210,9 +210,9 @@ check("최신순으로 정렬된다", notifications[0]?.id === "report_published
 check("자녀 이름이 실제 값으로 붙는다", notifications[0]?.childName === "김사랑")
 check("수업 · 학원 맥락이 붙는다", notifications[0]?.contextLabel === "파이썬 체험 · 씨큐브코딩 중계센터")
 
-const groups = groupNotificationsBySeoulDate(notifications)
+const groups = groupNotificationsBySeoulDate(notifications, "2026-09-21T00:00:00Z")
 check("날짜는 KST 로 묶인다", groups.length > 0 && groups[0].dateKey === "2026-09-16", groups.map((g) => g.dateKey).join(", "))
-check("날짜 라벨이 한국어다", groups[0]?.dateLabel === "9월 16일", groups[0]?.dateLabel)
+check("날짜 라벨이 한국어다", groups[0]?.dateLabel === "9월 16일 (수)", groups[0]?.dateLabel)
 
 console.log("\n[I] /my/actions 와 모델을 섞지 않는다")
 
@@ -243,13 +243,13 @@ check("K) 상담 메모 · CRM 이 없다", !query.includes("consultation") && !
 console.log("\n[L] 빈 상태와 조회 실패 분리")
 
 check("L) 빈 상태 문구가 있다", page.includes("아직 받은 알림이 없어요."))
-check("L) 빈 상태 보조 문구가 있다", page.includes("첫수업과 관련된 새로운 소식이 생기면 여기에 보여드릴게요."))
-check("L) 조회 실패 문구가 있다", query.includes("알림을 불러오지 못했어요.") && page.includes("잠시 후 다시 시도해 주세요."))
+check("L) 빈 상태 보조 문구가 있다", page.includes("신청, 일정, 리포트 소식이"))
+check("L) 조회 실패 문구가 있다", query.includes("알림을 불러오지 못했어요.") && read("src/features/notifications/ui/notifications-retry.tsx").includes("잠시 후 다시 시도해주세요."))
 check("L) 실패를 없음으로 접지 않는다", page.includes("error ?") && page.includes("groups.length === 0"))
 /* 알림함은 둘러보는 화면이 아니다. 빈 상태에 CTA 를 두지 않는다. */
-const emptyBlock = /emptyState[\s\S]*?<\/section>/.exec(page)?.[0] ?? ""
+const emptyBlock = /groups.length === 0[\s\S]*?<\/section>/.exec(page)?.[0] ?? ""
 check("L) 빈 상태에 CTA 가 없다", !emptyBlock.includes("<Link"))
-check("L) 하단 여백은 공통 token 이다", pageCss.includes("padding-bottom: var(--parent-nav-space)"))
+check("L) 하단 여백은 공통 token 이다", pageCss.includes("env(safe-area-inset-bottom)"))
 
 console.log(failures === 0 ? "\nALL PASS" : `\nFAIL: ${failures}건 실패`)
 process.exit(failures === 0 ? 0 : 1)

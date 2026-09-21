@@ -34,6 +34,8 @@ export type ParentNotification = {
   childName: string | null
   /** 수업명 · 학원명. 있는 것만 잇는다. */
   contextLabel: string | null
+  classTitle?: string | null
+  academyName?: string | null
   href: string
 }
 
@@ -139,6 +141,8 @@ export const selectParentNotifications = (input: {
       title: STATUS_TITLES.report_published,
       childName: resolveChildName(application),
       contextLabel: buildContextLabel(application),
+      classTitle: application.classTitle,
+      academyName: application.academyName,
       href: `/record/${application.id}/report`
     })
   }
@@ -158,6 +162,8 @@ export const selectParentNotifications = (input: {
       title: STATUS_TITLES[kind],
       childName: resolveChildName(application),
       contextLabel: buildContextLabel(application),
+      classTitle: application.classTitle,
+      academyName: application.academyName,
       href: resolveNotificationHref(kind, application.id)
     })
   }
@@ -194,7 +200,8 @@ export type ParentNotificationDayGroup = {
 
 /** 날짜는 한국 기준으로 묶는다. 서버가 UTC 여도 학부모가 보는 날짜는 KST 다. */
 export const groupNotificationsBySeoulDate = (
-  notifications: readonly ParentNotification[]
+  notifications: readonly ParentNotification[],
+  now = new Date().toISOString()
 ): ParentNotificationDayGroup[] => {
   const groups = new Map<string, ParentNotification[]>()
 
@@ -210,13 +217,19 @@ export const groupNotificationsBySeoulDate = (
     .sort((left, right) => (left[0] < right[0] ? 1 : left[0] > right[0] ? -1 : 0))
     .map(([dateKey, items]) => ({
       dateKey,
-      dateLabel: formatNotificationDateLabel(items[0].occurredAt),
+      dateLabel: formatNotificationDateLabel(items[0].occurredAt, now),
       items
     }))
 }
 
-export const formatNotificationDateLabel = (value: string): string => {
+export const formatNotificationDateLabel = (value: string, now = new Date().toISOString()): string => {
   const parts = getSeoulDateTimeParts(value)
+  const current = getSeoulDateTimeParts(now)
   if (!parts) return ""
-  return `${parts.month}월 ${parts.day}일`
+  if (formatSeoulDateKey(value) === formatSeoulDateKey(now)) return "오늘"
+  return `${parts.year === current?.year ? "" : `${parts.year}년 `}${parts.month}월 ${parts.day}일 (${"일월화수목금토"[parts.weekday]})`
+}
+export const formatNotificationTime = (value: string): string => {
+  const parts = getSeoulDateTimeParts(value)
+  return parts ? `${String(parts.hour).padStart(2, "0")}:${String(parts.minute).padStart(2, "0")}` : ""
 }

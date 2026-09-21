@@ -1,3 +1,4 @@
+import { NotificationBell } from "@/features/notifications/ui/notification-indicator"
 import { ImageFallback } from "@/shared/ui/image-fallback"
 import { toParentUrl } from "@/shared/config/site-origins"
 
@@ -221,9 +222,7 @@ async function ParentHomeContent({ searchParams }: HomePageProps) {
               className={styles.headerIconButton}
               aria-label="알림"
             >
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                <path d="M18 8a6 6 0 1 0-12 0c0 5-2 6-2 6h16s-2-1-2-6ZM10 19a2 2 0 0 0 4 0" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
+              <NotificationBell />
             </Link>
             {!isStudioUser ? (
               <Link href={isParentUser ? "/my/profile" : myPageEntryHref} className={styles.headerIconButton}

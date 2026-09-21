@@ -310,3 +310,12 @@ Academy summary uses real public logo/cover or ImageFallback; the full address a
 - 전화는 공개용 organizations.academy_phone만 사용한다. 담당자 contact_phone fallback은 금지한다. 방문 정보 안에 실제 번호와 보조 전화하기 링크만 제공한다.
 - 소개/운영시간/주차/오시는 길은 실제 값이 있을 때만 표시. 구조화된 가짜 특징 없음. 지도·child 전달·목록 query 복원은 이번 범위에 없다.
 - route loading/error(reset retry)/not-found를 구분하며 학원 존재 + 수업 0건은 학원 정보를 유지한다.
+
+## Parent Notifications V1 — `/notifications`
+
+- 독립 사건 이력 화면: Back Header `알림` → Home, 다른 navigation/Bottom Nav 없음. V1 White/max480/gutter20/R16/thin border.
+- 기존 본인 신청·상태 로그·published report·5종 mapping·destination 유지. Action 목록과 합치지 않는다. 내부 note/직원/전화/SMS 로그는 노출하지 않는다.
+- Seoul 최신순 날짜 그룹: 오늘 / 같은 연도 월·일·요일 / 다른 연도 연·월·일·요일. 행은 Green outline icon surface → 제목 → 자녀·수업 → 학원 → 실제 HH:mm → chevron. 행 전체 링크, 반복 확인하기 없음.
+- `NotificationRow.isUnread`와 `NotificationBell.isUnread`는 presentation-only prop, 기본 false. 실제 source 연결 전 Production은 dot 없음. true일 때만 기존 red token의 6px dot과 접근성 이름을 표시한다. 읽음 저장·숫자 badge·NEW·localStorage 추론 없음.
+- Home bell은 기존 href/접근성/터치영역을 유지한 채 공통 아이콘 presentation만 사용한다.
+- Empty에는 CTA 없음. 조회 실패는 router.refresh retry, route error는 reset 병행. Loading은 날짜 heading + 행 skeleton. Pagination/child context는 추가하지 않는다.
