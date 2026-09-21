@@ -199,7 +199,7 @@ check(
 )
 
 console.log("\n[4] Home Design V1.1 정보 위계")
-check("과목 → 일정 → 별도 리포트 → 수업 → 학원", orderIn(homeCode, ['aria-label="과목별 둘러보기"', 'id="home-upcoming-title"', 'aria-label="체험 리포트"', 'id="home-classes-title"', 'id="home-academies-title"']))
+check("과목 → 일정 → 별도 리포트 → 수업 → 학원", orderIn(homeCode, ['aria-label="과목별 둘러보기"', 'id="home-upcoming-title"', 'aria-label={report.kind === "report_review"', 'id="home-classes-title"', 'id="home-academies-title"']))
 check("배너와 근거 없는 개인화 문구가 없다", !homeCode.includes("hero-banner") && !homeCode.includes("우리 아이에게 맞는 첫수업"))
 check("선택한 자녀 일정과 리포트는 독립적이다", homeCode.includes("selectedChild && upcoming ? (") && homeCode.includes("{report ? (") && !homeCode.includes("의 지금"))
 check("개인화 카드를 나열하지 않는다", !homeCode.includes("parentHome.actions.map") && !homeCode.includes("parentHome.upcoming.map"))
@@ -215,7 +215,7 @@ check("Search 에는 개인화 문구가 없다", !searchCode.includes("우리 �
  */
 check(
   "개인화 조회는 Home 에서 학부모로 로그인했을 때만 나간다",
-  /authenticated && isParentUser \? getParentHomeSummary\(/.test(
+  /authenticated && isParentUser \? settleHomeEnhancement\("summary", \(\) => getParentHomeSummary\(/.test(
     homeCode.replace(/\s+/g, " ")
   ) && !searchCode.includes("getParentHomeSummary")
 )
@@ -328,7 +328,7 @@ check(
   "조회는 기존 것만 조립한다",
   queryCode.includes("getMyApplications") &&
     queryCode.includes("getMyChildren") &&
-    queryCode.includes("getParentActions") &&
+    queryCode.includes("getParentHomeActions") &&
     contextCode.includes("getPublicClasses")
 )
 
@@ -382,7 +382,7 @@ check("lib 은 requestedSlotAt 을 일정으로 읽지 않는다", !libCode.incl
 /* Action(지금 확인해야 할 것) 판정은 verify-parent-actions 가 본다. */
 check(
   "Home 이 Action 판정을 다시 쓰지 않는다",
-  queryCode.includes("getParentActions()") && !queryCode.includes("getPublishedExperienceReport")
+  queryCode.includes("getParentHomeActions(applications.data, notifications)") && !queryCode.includes("getPublishedExperienceReport")
 )
 check(
   "Home 은 앞의 몇 개만 미리 보여 준다",

@@ -62,7 +62,7 @@ Keep all new foundation values in globals. Home/card CSS uses these variables. P
 7. Academy list: existing `getAcademiesForList` with the same administrative or nearby organization filter as `/academies`. Up to three, alphabetical (distance first when nearby). Do not derive academies from the limited class preview. No paid priority. Unselected location uses “학원 둘러보기”; selected location uses “우리 동네 학원”.
 8. Existing tabs: 홈 / 일정 / 기록 / 마이페이지. 64px height, 20px horizontal margins, bottom 12px + safe-area. Body reserves 96px + safe-area.
 
-Report source is a live published snapshot with no ParentDecision, not read/unread state. The current action kind is only `report_review`. Do not invent “new”, other action kinds, or workflow states. Upcoming selection and formatting reuse existing Asia/Seoul rules. No auth, DB schema, status transition, adapter interface, or route changes.
+Home post-experience actions use the current published report's persisted receipt separately from ParentDecision. Unread report takes priority and opens the report through the read-saving link. Once read, missing ParentDecision leads to the existing record decision form (only when canCollectParentDecision permits it); any current decision, including considering, completes this step. Missing academyEvaluationCompleted means unavailable, never false/complete; a future real evaluation source and destination must be connected together. Current decision-complete experiences have no Home action. Unknown read state does not generate an action. Notifications keeps its event history and independent ParentDecision helper; Home bell still reflects all real unread notifications. No DB/auth or new evaluation fields.
 
 ## States and accessibility
 
@@ -340,3 +340,7 @@ Academy summary uses real public logo/cover or ImageFallback; the full address a
 - Read-state 조회 실패 시 event 목록은 유지한다. `readStateStatus=unavailable`, `isUnread=undefined`로 unknown을 표현한다. dot/읽음 저장 enhancement만 비활성화하고 기본 surface로 렌더한다. 이를 읽음 완료로 저장하거나 추정하지 않는다. 실제 event 조회 실패만 전체 Error이며 서버 로그에 단계/code/message를 남긴다.
 
 - Receipt RLS의 source 소유권 검사는 `my_trial_applications` Parent view를 사용한다. Parent에게 비공개 원본 trial_applications SELECT 권한을 추가하지 않는다.
+
+### Home 부가 조회 실패
+
+알림 읽음 상태, bell indicator, 체험 후 action 조회 실패는 Home 전체 오류로 전파하지 않는다. 읽음 상태 불명은 `readStateStatus: unavailable` / `isUnread: undefined`로 유지하고 dot을 표시하지 않는다. Action 조회 실패는 부분 안내로 표현하며 정상 조회된 일정과 탐색 영역은 유지한다. 실패를 읽음 또는 할 일 없음으로 해석하지 않고 서버에 조회 단계와 오류를 기록한다.

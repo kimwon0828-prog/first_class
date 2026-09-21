@@ -1,4 +1,5 @@
 import "server-only"
+import { settleHomeEnhancement, logHomeEnhancementFailure } from "../lib/home-enhancement"
 
 import { getMyApplications } from "@/features/applications/queries/get-my-applications"
 import {
@@ -10,10 +11,11 @@ import {
 import { getMyChildren } from "@/features/children/queries/get-my-children"
 import { getPublicClassDetail } from "@/features/classes/queries/get-public-class-detail"
 import {
-  PARENT_ACTION_PREVIEW_LIMIT,
-  type ParentAction
+  PARENT_ACTION_PREVIEW_LIMIT
 } from "@/features/actions/lib/parent-actions"
-import { getParentActions } from "@/features/actions/queries/get-parent-actions"
+import { getParentHomeActions } from "@/features/actions/queries/get-parent-home-actions"
+import type { ParentHomeAction } from "@/features/actions/lib/parent-home-actions"
+import type { ParentNotificationsResult } from "@/features/notifications/queries/get-parent-notifications"
 import {
   formatHomeScheduleLabel,
   selectUpcomingExperiences,
@@ -36,14 +38,14 @@ export type ParentHomeSummary = {
   childOptions: ChildSelectorOption[]
   /** 지금 보고 있는 아이. null 이면 전체다. */
   selectedChildId: string | null
-  /** Home 이 미리 보여 주는 Action. 전체는 /notifications의 리포트 안내 가 맡는다. */
-  actions: ParentAction[]
+  /** Home의 다음 행동 안내. Notifications 사건 이력과 별도로 판정한다. */
+  actions: ParentHomeAction[]
   /** 미리 보여 준 것 말고도 더 있는가. "전체 보기" 를 띄울지 정한다. */
   hasMoreActions: boolean
   upcoming: ParentHomeUpcoming[]
 }
 
-const EMPTY_SUMMARY: ParentHomeSummary = {
+export const EMPTY_SUMMARY: ParentHomeSummary = {
   childrenError: false,
   error: false,
   childOptions: [],
@@ -57,14 +59,20 @@ const EMPTY_SUMMARY: ParentHomeSummary = {
  * @param requestedChildId 주소(?child=)에 적힌 아이. 내 아이가 아니면 무시된다.
  */
 export const getParentHomeSummary = async (
-  requestedChildId?: string | null
+  requestedChildId?: string | null,
+  notifications: Promise<ParentNotificationsResult | null> = Promise.resolve(null)
 ): Promise<ParentHomeSummary> => {
-  const [applications, children] = await Promise.all([getMyApplications(), getMyChildren()])
+  const [applications, children] = await Promise.all([
+    settleHomeEnhancement("applications", getMyApplications, { data: [], error: "신청 정보를 불러오지 못했어요." }),
+    settleHomeEnhancement("children", getMyChildren, { data: [], error: "자녀 정보를 불러오지 못했어요." })
+  ])
 
+  if (children.error) logHomeEnhancementFailure("children", new Error(children.error))
   const childOptions = children.error ? [] : toChildSelectorOptions(children.data)
   const selectedChildId = resolveSelectedChildId(requestedChildId, childOptions)
 
   if (applications.error) {
+    logHomeEnhancementFailure("applications", new Error(applications.error))
     // 신청을 못 읽었으면 개인화 영역 전체를 접는다. 빈 홈이 거짓말하는 홈보다 낫다.
     return { ...EMPTY_SUMMARY, childOptions, selectedChildId, childrenError: Boolean(children.error), error: true }
   }
@@ -80,21 +88,16 @@ export const getParentHomeSummary = async (
   const scopedApplications = selectChildScopedItems(applications.data, selectedChildId)
   const upcomingApplications = selectUpcomingExperiences(scopedApplications, now)
 
-  /*
-   * Action 판정은 Home 이 따로 하지 않는다.
-   *
-   * /notifications의 리포트 안내 와 같은 selector 를 쓴다 — 두 화면이 서로 다른 "확인할 것" 을
-   * 말하면 어느 쪽도 믿을 수 없다. Home 은 앞의 몇 개만 미리 보여 줄 뿐이다.
-   */
+  // Home next actions use read state and decision independently. Timeline helper remains separate.
   const [coverImageUrls, actionsResult] = await Promise.all([
     Promise.all(
       upcomingApplications.map(async (item) => {
         // 표지 이미지는 공개 수업 정보다. 못 읽으면 이미지 없이 그린다.
-        const detail = await getPublicClassDetail(item.classId)
+        const detail = await settleHomeEnhancement("schedule-cover", () => getPublicClassDetail(item.classId), { data: null, error: "표지 이미지를 불러오지 못했어요." })
         return [item.id, detail.error ? null : detail.data?.coverImageUrl ?? null] as const
       })
     ),
-    getParentActions()
+    getParentHomeActions(applications.data, notifications)
   ])
 
   const coverImageUrlByExperienceId = new Map(coverImageUrls)

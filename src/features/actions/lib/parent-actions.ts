@@ -7,9 +7,8 @@ import type { ParentApplicationSummary } from "@/shared/lib/db/adapter"
  *    "학원 확인 중" · "예약 확정됨" · "다가오는 수업" 은 여기 오지 않는다.
  *    다가오는 일정은 /my/schedule 의 책임이다.
  *
- * ⚠️ 읽음/안읽음을 발명하지 않는다. 그런 상태가 DB 에 없다.
- *    V1 의 판정은 객관적인 두 사실의 조합뿐이다 —
- *      살아 있는 발행본이 있다  AND  아직 ParentDecision 이 없다.
+ * Notifications의 ParentDecision 보조문구를 위한 계약이다.
+ * Home의 다음 행동은 parent-home-actions가 persisted read state와 별도로 판정한다.
  */
 export type ParentActionKind = "report_review"
 
@@ -57,8 +56,8 @@ const toTime = (value: string | null): number => {
 /**
  * 지금 해야 할 일 목록.
  *
- * Home 의 "지금 확인할 것" 과 /notifications의 리포트 안내 가 이 함수 하나를 쓴다 —
- * 두 화면이 서로 다른 목록을 말하면 어느 쪽도 믿을 수 없다.
+ * Notifications 리포트 보조문구는 이 ParentDecision 계약을 사용한다.
+ * Home 다음 행동은 별도 selector에서 실제 report read state까지 반영한다.
  *
  * ⚠️ 우선순위 점수 · 마감 · 긴급도를 만들지 않는다. 그런 값이 없다.
  *    최근에 끝난 경험이 앞에 올 뿐이다.

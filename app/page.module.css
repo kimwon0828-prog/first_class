@@ -85,3 +85,6 @@
 .searchTrigger { text-decoration: none; min-width: 0; }
 .searchTrigger:focus-visible { outline: 2px solid var(--brand-700); outline-offset: 2px; }
 .searchPlaceholder { flex: 1; min-width: 0; padding-right: var(--s3); font-size: var(--font-b2); color: var(--text-3); }
+
+.reportBody { display: grid; gap: var(--s2); min-width: 0; overflow-wrap: anywhere; }
+.reportDescription { font-size: var(--font-b2); color: var(--text-2); line-height: 1.6; }

@@ -38,12 +38,14 @@ export const getParentExperienceSignals = async (
 
   const candidateIds = new Set(candidates.map((item) => item.id))
 
+  let queryStage = "getMyChildren"
   try {
     const children = await getMyChildren()
     if (children.error) throw new Error("failed_to_fetch_signal_children")
     const reportedExperienceIds = new Set<string>()
 
     if (!children.error && children.data.length > 0) {
+      queryStage = "listMyPublishedReportsByChild"
       const perChild = await Promise.all(
         children.data.map((child) => dataAdapter.listMyPublishedReportsByChild(child.id))
       )
@@ -62,6 +64,7 @@ export const getParentExperienceSignals = async (
      */
     const legacyCandidates = candidates.filter((item) => !item.childId)
     if (legacyCandidates.length > 0) {
+      queryStage = "getPublishedExperienceReport"
       const legacyReports = await Promise.all(
         legacyCandidates.map(async (item) => {
           const report = await dataAdapter.getPublishedExperienceReport(item.id)
@@ -79,6 +82,7 @@ export const getParentExperienceSignals = async (
       return { ...EMPTY, reportedExperienceIds }
     }
 
+    queryStage = "getCurrentParentDecision"
     const decided = await Promise.all(
       [...reportedExperienceIds].map(async (experienceId) => {
         const decision = await dataAdapter.getCurrentParentDecision(experienceId)
@@ -91,7 +95,13 @@ export const getParentExperienceSignals = async (
       decidedExperienceIds: new Set(decided.filter((value): value is string => value !== null)),
       error: null
     }
-  } catch {
+  } catch (error) {
+    const detail = error as { code?: unknown; message?: unknown; stack?: unknown } | null
+    console.error(`[parent-experience-signals:${queryStage}] query failed`, {
+      code: typeof detail?.code === "string" ? detail.code : "unknown",
+      message: typeof detail?.message === "string" ? detail.message : "Experience signal query failed",
+      stack: typeof detail?.stack === "string" ? detail.stack : undefined
+    })
     return {
       reportedExperienceIds: new Set(),
       decidedExperienceIds: new Set(),

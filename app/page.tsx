@@ -1,4 +1,4 @@
-import { getParentNotifications } from "@/features/notifications/queries/get-parent-notifications"
+import { NotificationLink } from "@/features/notifications/ui/notification-link"
 import { NotificationBell } from "@/features/notifications/ui/notification-indicator"
 import { ImageFallback } from "@/shared/ui/image-fallback"
 import { toParentUrl } from "@/shared/config/site-origins"
@@ -20,7 +20,9 @@ import { getHomeAcademies } from "@/features/classes/queries/get-home-academies"
 import { SubjectIcon } from "@/features/classes/ui/home-subject-icon"
 import { CHILD_QUERY_KEY } from "@/features/children/lib/child-selection"
 import { HomeChildSelector } from "@/features/children/ui/home-child-selector"
-import { getParentHomeSummary } from "@/features/classes/queries/get-parent-home-summary"
+import { settleHomeEnhancement } from "@/features/classes/lib/home-enhancement"
+import { getHomeNotifications, hasHomeUnreadNotifications } from "@/features/notifications/queries/get-home-notifications"
+import { getParentHomeSummary, EMPTY_SUMMARY } from "@/features/classes/queries/get-parent-home-summary"
 import {
   resolveClassDiscoveryContext,
   type ClassDiscoverySearchParams
@@ -185,12 +187,13 @@ async function ParentHomeContent({ searchParams }: HomePageProps) {
     "string"
       ? ((resolvedSearchParams as Record<string, string>)[CHILD_QUERY_KEY] ?? null)
       : null
+  const notificationRequest = auth.status === "ok" && isParentUser ? getHomeNotifications(auth.profile.id) : Promise.resolve(null)
   const [parentHome, academyResult, notificationResult] = await Promise.all([
-    authenticated && isParentUser ? getParentHomeSummary(requestedChildId) : Promise.resolve(null),
+    authenticated && isParentUser ? settleHomeEnhancement("summary", () => getParentHomeSummary(requestedChildId, notificationRequest), { ...EMPTY_SUMMARY, error: true }) : Promise.resolve(null),
     getHomeAcademies(context),
-    auth.status === "ok" && isParentUser ? getParentNotifications(auth.profile.id) : Promise.resolve(null)
+    notificationRequest
   ])
-  const hasUnreadNotifications = notificationResult?.readStateStatus === "available" && !notificationResult.error && Boolean(notificationResult?.notifications.some(item => item.isUnread))
+  const hasUnreadNotifications = hasHomeUnreadNotifications(notificationResult)
   const discoveryHref = buildClassesHref({ radius: context.radiusQueryValue, ...context.regionQueryValues })
   const academyHref = discoveryHref.replace("/classes", "/academies")
   const selectedChild = parentHome?.childOptions.find((child) => child.id === parentHome.selectedChildId)
@@ -325,11 +328,11 @@ async function ParentHomeContent({ searchParams }: HomePageProps) {
             </section>
           ) : null}
           {report ? (
-            <aside aria-label="체험 리포트">
-              <Link href={report.href} className={styles.reportLink}>
-                <span><span className={styles.academyName}>{report.title}</span><span className={styles.muted}>{[report.childName, report.classTitle].filter(Boolean).join(" · ")}</span></span>
-                <span className={styles.reportAction}>리포트 확인하기 {chevronIcon}</span>
-              </Link>
+            <aside aria-label={report.kind === "report_review" ? "체험 리포트" : "체험 후 생각"}>
+              <NotificationLink notificationKey={report.notificationKey ?? ""} isUnread={report.kind === "report_review"} href={report.href} className={styles.reportLink}>
+                <span className={styles.reportBody}><span className={styles.academyName}>{report.title}</span><span className={styles.reportDescription}>{report.description}</span><span className={styles.muted}>{[report.childName, report.classTitle].filter(Boolean).join(" · ")}</span></span>
+                <span className={styles.reportAction}>{report.ctaLabel} {chevronIcon}</span>
+              </NotificationLink>
             </aside>
           ) : null}
 

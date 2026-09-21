@@ -20,7 +20,7 @@ assert(row.includes('item.kind === "report_published"') && row.includes('hasPend
 assert(row.includes('hasPendingReport ?') && row.includes('item.isUnread'))
 const home=read("src/features/classes/queries/get-parent-home-summary.ts")
 assert(!home.includes('hasPendingReports'))
-assert(read('app/page.tsx').includes('notificationResult?.notifications.some(item => item.isUnread)'))
+assert(read('app/page.tsx').includes('hasHomeUnreadNotifications(notificationResult)'))
 assert(read("src/features/decisions/actions/set-parent-decision.ts").includes('revalidatePath("/notifications")'))
 assert(!read("src/features/notifications/queries/get-parent-notifications.ts").includes('getParentActions'))
 console.log('PASS: decision controls pending action, never event existence; removed route redirect; report variant; parent-wide bell; revalidation')
