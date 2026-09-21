@@ -70,7 +70,7 @@ export function AcademySortFilter({
     .join(" ")
 
   // sort query 만 재구성하고 과목 / 학년 / 위치 query 는 그대로 보존한다.
-  // 추천순은 기본값이므로 URL 에 별도 값을 만들지 않는다.
+  // 기본순은 기본값이므로 URL 에 별도 값을 만들지 않는다.
   const buildHref = (nextSort: AcademySort) => {
     const params = new URLSearchParams(searchParams.toString())
     params.delete(MANAGED_QUERY_KEY)
@@ -115,7 +115,7 @@ export function AcademySortFilter({
           opacity: isDisabled ? 0.55 : 1
         }}
       >
-        <span className={labelClassName}>정렬 · {activeLabel}</span>
+        <span className={labelClassName}>{activeLabel}</span>
         <span className={chevronClassName}>
           <ChevronDownIcon />
         </span>

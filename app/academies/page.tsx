@@ -1,8 +1,7 @@
-import Link from "next/link"
+import { Suspense, type ComponentProps } from "react"
+import { AcademiesFrame, AcademiesSkeleton } from "@/features/academies/ui/academies-frame"
 import { redirect } from "next/navigation"
 
-import { getMyProfile } from "@/features/auth/lib/profile-sync"
-import { getSession } from "@/features/auth/lib/session"
 import { getAcademiesForList } from "@/features/academies/queries/get-academies-for-list"
 import { getSelectableSubjectCatalog } from "@/features/subjects/queries/get-subject-master"
 import { resolveSubjectQuerySelection } from "@/features/subjects/lib/subject-query"
@@ -27,9 +26,6 @@ import {
   parseStoredTargetGrades
 } from "@/shared/constants/grade-options"
 
-import styles from "./page.module.css"
-import { ParentBottomNav } from "@/features/classes/ui/parent-bottom-nav"
-import { getStudioCrossProductHrefResolver } from "@/shared/lib/cross-product-navigation-server"
 
 type AcademiesPageProps = {
   searchParams?: Promise<{
@@ -194,20 +190,6 @@ export default async function AcademiesPage({ searchParams }: AcademiesPageProps
     ? [...distanceByOrganizationId.keys()]
     : regionOrganizationIds
 
-  const [academies, session] = await Promise.all([
-    locationLookupFailed
-      ? Promise.resolve([])
-      : getAcademiesForList({
-          query: selectedQuery,
-          subjectCategoryId: selectedSubjectCategory?.id ?? null,
-          subjectId: selectedSubject?.id ?? null,
-          grade: selectedGrade,
-          sort: selectedSort === "name" ? "name" : null,
-          ...(organizationIdFilter ? { organizationIds: organizationIdFilter } : {}),
-          ...(distanceByOrganizationId ? { distanceByOrganizationId } : {})
-        }),
-    getSession()
-  ])
   // chip label 도 Subject Master 기준으로 만든다. "과목 · " 접두는 SubjectFilter 가 붙인다.
   const selectedSubjectLabel = selectedSubjectCategory
     ? formatClassSubjectDisplayLabel({
@@ -227,88 +209,39 @@ export default async function AcademiesPage({ searchParams }: AcademiesPageProps
     : isNearbyMode
       ? `현재 위치 · ${radiusKm}km`
       : "전체"
-  const profile = session ? await getMyProfile() : null
-  const isStudioUser = profile?.dbRole === "academy" || profile?.dbRole === "admin"
-  // 로그인이 필요한 탭은 다른 학부모 화면과 같은 진입 규칙을 쓴다.
-  /* Studio 는 다른 origin 이다. 상대 경로로는 그 자리를 가리킬 수 없다. */
-  const studioHref = await getStudioCrossProductHrefResolver()
-  const parentTabHref = (path: string) =>
-    session
-      ? isStudioUser
-        ? studioHref("/studio")
-        : path
-      : `/auth/sign-in?${new URLSearchParams({ returnTo: path }).toString()}`
+  const options = {
+    query: selectedQuery,
+    subjectCategoryId: selectedSubjectCategory?.id ?? null,
+    subjectId: selectedSubject?.id ?? null,
+    grade: selectedGrade,
+    sort: selectedSort === "name" ? "name" : null,
+    ...(organizationIdFilter ? { organizationIds: organizationIdFilter } : {}),
+    ...(distanceByOrganizationId ? { distanceByOrganizationId } : {})
+  }
+  const view = {
+    initialQuery: selectedQuery ?? "",
+    locationMode, locationLabel: locationFilterLabel, radiusKm,
+    regionCatalog, regionSelection, subjectCatalog,
+    selectedSubjectCategory, selectedSubject, selectedSubjectLabel,
+    selectedGrade, selectedGradeLabel: selectedGrade ? formatStoredTargetGrades(selectedGrade) : "전체 학년",
+    selectedSort, sortDisabledReasonLabel: isNearbyMode ? ACADEMY_DISTANCE_SORT_LABEL : null
+  }
+  // Resolve canonical redirects before streaming, preserving the existing HTTP 307 contract.
+  return <AcademiesFrame><Suspense key={JSON.stringify(resolvedSearchParams)} fallback={<AcademiesSkeleton />}>
+    <AcademiesResults options={options} view={view} locationLookupFailed={locationLookupFailed} />
+  </Suspense></AcademiesFrame>
+}
 
-  return (
-    <main className={styles.page}>
-      <div className={styles.shell}>
-        <header className={styles.header}>
-          <div>
-            <p className={styles.eyebrow}>과목별 학원 리스트</p>
-            <h1 className={styles.title}>학원 찾기</h1>
-          </div>
-          <div className={styles.headerActions}>
-            <button type="button" className={styles.iconButton} aria-label="검색 기능 준비 중">
-              <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                <path
-                  d="M11 19a8 8 0 1 1 0-16 8 8 0 0 1 0 16ZM21 21l-4.35-4.35"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-            </button>
-            <Link href="/favorites" className={styles.iconButton} aria-label="관심수업">
-              <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                <path
-                  d="M7 4h10a1 1 0 0 1 1 1v17l-6-3.6L6 22V5a1 1 0 0 1 1-1Z"
-                  stroke="currentColor"
-                  strokeWidth="1.9"
-                  strokeLinejoin="round"
-                />
-              </svg>
-            </Link>
-          </div>
-        </header>
-
-        <div className={styles.summaryBar}>
-          <p className={styles.summaryText}>
-            {selectedSubjectLabel
-              ? `${selectedSubjectLabel} 수업을 운영하는 학원을 한눈에 둘러보세요.`
-              : "과목별로 운영 중인 학원과 대표 수업을 한 번에 둘러보세요."}
-          </p>
-          <p className={styles.summaryMeta}>
-            {academies.length > 0
-              ? `${academies.length}개 학원`
-              : "조건에 맞는 학원을 준비 중"}
-          </p>
-        </div>
-
-        <AcademiesExplorer
-          academies={academies}
-          initialQuery={selectedQuery ?? ""}
-          locationMode={locationMode}
-          locationLabel={locationFilterLabel}
-          radiusKm={radiusKm}
-          regionCatalog={regionCatalog}
-          regionSelection={regionSelection}
-          subjectCatalog={subjectCatalog}
-          selectedSubjectCategory={selectedSubjectCategory}
-          selectedSubject={selectedSubject}
-          selectedSubjectLabel={selectedSubjectLabel}
-          selectedGrade={selectedGrade}
-          selectedGradeLabel={selectedGrade ? formatStoredTargetGrades(selectedGrade) : "전체 학년"}
-          selectedSort={selectedSort}
-          sortDisabledReasonLabel={isNearbyMode ? ACADEMY_DISTANCE_SORT_LABEL : null}
-        />
-      </div>
-
-      <ParentBottomNav
-        scheduleHref={parentTabHref("/my/schedule")}
-        recordHref={parentTabHref("/record")}
-        myPageHref={session ? (isStudioUser ? studioHref("/studio") : "/my") : "/auth/sign-in"}
-      />
-    </main>
-  )
+async function AcademiesResults({ options, view, locationLookupFailed }: {
+  options: Parameters<typeof getAcademiesForList>[0]
+  view: Omit<ComponentProps<typeof AcademiesExplorer>, "academies" | "error">
+  locationLookupFailed: boolean
+}) {
+  let academies: Awaited<ReturnType<typeof getAcademiesForList>> = []
+  let error = locationLookupFailed
+  if (!error) {
+    try { academies = await getAcademiesForList({ ...options }) }
+    catch { error = true }
+  }
+  return <AcademiesExplorer {...view} academies={academies} error={error} />
 }

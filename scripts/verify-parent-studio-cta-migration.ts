@@ -114,11 +114,12 @@ check("이전) Parent UI 에 하드코딩된 /studio href 가 없다", leftoverH
 const leftoverLiterals = parentSurfaceFiles.filter((file) => /(redirect|redirectTo:|myPageHref=)\s*\(?\s*"\/studio"/.test(codeOf(file)))
 check("이전) Parent UI 에 상대 /studio 이동이 없다", leftoverLiterals.length === 0, leftoverLiterals.join(", "))
 
+check("학원찾기는 계정별 nav/Studio CTA 없이 공개 탐색만 제공", !codeOf("app/academies/page.tsx").includes("ParentBottomNav") && !codeOf("app/academies/page.tsx").includes("studioHref"))
+
 const MIGRATED_SITES = [
   "app/page.tsx",
   "app/classes/page.tsx",
   "app/classes/[id]/apply/page.tsx",
-  "app/academies/page.tsx",
   FAVORITES_PAGE,
   ACCOUNT_CONFLICT,
   PARTNER_LANDING,
@@ -130,7 +131,7 @@ for (const file of MIGRATED_SITES) {
   check(`이전) ${file} 가 cross-product helper 를 쓴다`, codeOf(file).includes("CrossProductHref"))
 }
 /* 한 화면에서 hostname 을 여러 번 읽지 않는다. */
-for (const file of ["app/page.tsx", "app/classes/page.tsx", "app/academies/page.tsx", FAVORITES_PAGE, PARTNER_LANDING]) {
+for (const file of ["app/page.tsx", "app/classes/page.tsx", FAVORITES_PAGE, PARTNER_LANDING]) {
   check(
     `이전) ${file} 는 resolver 를 한 번만 받는다`,
     (codeOf(file).match(/getStudioCrossProductHrefResolver\(\)/g) ?? []).length === 1

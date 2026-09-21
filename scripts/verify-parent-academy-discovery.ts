@@ -66,7 +66,7 @@ for (const [label, needle] of [
 }
 check("J) /academies 는 홈 탭이다", resolveParentNavTab("/academies") === "home")
 check("J) /academy/* 도 홈 탭이다", resolveParentNavTab("/academy/some-handle") === "home")
-check("공용 nav 를 쓴다", listPage.includes("<ParentBottomNav"))
+check("독립 탐색 화면은 Bottom Nav 없음", !listPage.includes("<ParentBottomNav"))
 
 console.log("\n[2] 학원 검색")
 
@@ -145,16 +145,16 @@ check(
   "8) 자리표시자 전용 CSS 가 남아 있지 않다",
   !read("app/academies/page.module.css").includes("academyBookmark")
 )
-check("빈 결과 문구가 있다", explorer.includes("조건에 맞는 학원이 아직 없어요."))
+check("빈 결과 문구가 있다", explorer.includes("검색 결과가 없어요.") && explorer.includes("아직 공개된 학원이 없어요."))
 
 console.log("\n[5] 학원 상세 연결")
 
 /* 이름과 하단 진입점 둘 다 학원 상세로 간다. 하나가 끊겨도 잡히게 개수로 본다. */
 const academyHrefCount = explorer.match(/href=\{`\/academy\/\$\{academy\.id\}`\}/g)?.length ?? 0
-check("D) 학원명이 상세로 간다", academyHrefCount >= 2, `${academyHrefCount}곳`)
+check("D) 단일 카드 링크가 상세로 간다", academyHrefCount === 1, `${academyHrefCount}곳`)
 check(
   "D) 카드에 학원 정보 진입점이 있다",
-  explorer.includes("className={styles.secondaryAction}") && explorer.includes("학원 정보")
+  explorer.includes("className={styles.academyCard}") && !explorer.includes("classPreviewCard")
 )
 check(
   "H) 수업 상세에서 학원으로 갈 수 있다",

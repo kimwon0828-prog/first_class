@@ -117,7 +117,6 @@ const NAV_SCREENS = [
   "src/features/record/ui/record-home.tsx",
   "app/my/my-frame.tsx",
   "src/features/schedule/ui/parent-schedule-screen.tsx",
-  "app/academies/page.tsx",
   "app/favorites/favorites-client.tsx",
   "src/features/children/ui/children-frame.tsx"
 ]
@@ -126,13 +125,14 @@ for (const path of NAV_SCREENS) {
   check(`${path} 에 직접 만든 탭이 없다`, !codeOf(path).includes('aria-label="하단 탭"'))
 }
 
+check("학원찾기는 하단 nav 를 렌더하지 않는다", !codeOf("app/academies/page.tsx").includes("ParentBottomNav") && !codeOf("src/features/academies/ui/academies-frame.tsx").includes("ParentBottomNav"))
+
 console.log("\n[4] 삭제 금지 route")
 
 for (const route of [
   "app/favorites/page.tsx",
   "app/my/applications/page.tsx",
   "app/classes/page.tsx",
-  "app/academies/page.tsx",
   "app/my/children/page.tsx"
 ]) {
   check(`${route} 가 남아 있다`, exists(route))

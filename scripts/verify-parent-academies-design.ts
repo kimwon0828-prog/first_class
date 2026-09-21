@@ -1,0 +1,20 @@
+import assert from "node:assert/strict"
+import { readFileSync } from "node:fs"
+import { ACADEMY_SORT_OPTIONS, resolveAcademySort } from "@/features/academies/lib/academy-sort"
+const read = (p: string) => readFileSync(p,"utf8")
+const page=read("app/academies/page.tsx"), ui=read("src/features/academies/ui/academies-explorer.tsx"), frame=read("src/features/academies/ui/academies-frame.tsx")
+assert.equal(ACADEMY_SORT_OPTIONS[0].label,"기본순")
+assert.deepEqual(resolveAcademySort("recommended"),{sort:"recommended",shouldCanonicalize:true})
+assert.deepEqual(resolveAcademySort("name"),{sort:"name",shouldCanonicalize:false})
+assert(!page.includes("ParentBottomNav") && !frame.includes("ParentBottomNav"))
+assert(frame.includes('href="/"') && frame.includes('data-parent-design="v1"'))
+assert(page.indexOf('redirect(')<page.indexOf('<Suspense'))
+assert(page.includes('let error = locationLookupFailed'))
+assert(ui.includes('router.refresh()'))
+assert(ui.includes('academies.length === 0') && ui.includes('error ?'))
+assert(ui.includes('href={`/academy/${academy.id}`}'))
+assert(!ui.includes('representativeClasses.map') && !ui.includes('수업 보기'))
+assert(!ui.includes('childId') && !ui.includes('isChildEligible'))
+assert(ui.includes('params.delete(key)'))
+assert(ui.includes('without(["q", "subjectCategory", "subject", "grade"])'))
+console.log('PASS: Academies standalone frame, existing sort values, redirect-before-stream, error separation, retry, card link and filter removal')

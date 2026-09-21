@@ -1,7 +1,7 @@
 // /academies 가 지원하는 정렬은 서버 comparator 가 실제로 구분하는 두 값뿐이다.
-// 추천순은 기본값이라 URL 에 값을 만들지 않고, sort query 자체를 비운다.
+// 기본순은 기본값이라 URL 에 값을 만들지 않고, sort query 자체를 비운다.
 export const ACADEMY_SORT_OPTIONS = [
-  { value: "recommended", label: "추천순" },
+  { value: "recommended", label: "기본순" },
   { value: "name", label: "이름순" }
 ] as const
 
@@ -14,7 +14,7 @@ export const isAcademySort = (value: string | null | undefined): value is Academ
   ACADEMY_SORT_OPTIONS.some((option) => option.value === value)
 
 // URL 의 sort 를 정렬 선택으로 해석한다.
-// 값이 없으면 기본(추천순)이고, 해석되지 않으면 canonical URL 에서 제거한다.
+// 값이 없으면 기본(기본순)이고, 해석되지 않으면 canonical URL 에서 제거한다.
 export const resolveAcademySort = (
   value: string | null | undefined
 ): { sort: AcademySort; shouldCanonicalize: boolean } => {

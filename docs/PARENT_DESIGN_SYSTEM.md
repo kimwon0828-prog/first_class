@@ -80,7 +80,7 @@ This is the **only authoritative Parent design-system document**. Runtime founda
 - `docs/CODEX_HANDOFF.md`: project entry guide linking here, not a second design system.
 - `docs/partner-landing-reference.html`: partner landing reference, not Parent authority.
 - `AGENTS.md`: product/development constraints, not a parallel token catalog.
-- Existing route CSS is implementation, not an alternative standard. Legacy `/classes`, `/my`, `/record` share outer `--bg` / inner `--surface` / `--col` conventions; `/academies` still has legacy 430px/hardcoded styling. No migration of those pages is included here.
+- Existing route CSS is implementation, not an alternative standard. Legacy `/classes`, `/my`, `/record` share outer `--bg` / inner `--surface` / `--col` conventions; `/academies` now adopts the scoped V1 Academies pattern below. Unrelated legacy routes are not globally migrated.
 - The pre-existing untracked HTML/canvas artifacts are not authoritative; preserve them without staging.
 
 ## Core token registry
@@ -290,3 +290,13 @@ Academy summary uses real public logo/cover or ImageFallback; the full address a
 - White/R16/Neutral 200 card, gutter20/max480, Green action. 수정 hit area 최소44px. 선택 자녀처럼 radio/선택 pill을 만들지 않는다. 수정 폼만 해당 카드 바로 아래 펼치며 heading focus/scroll과 reduced-motion을 지원한다.
 - 목록 아래 `+ 자녀 추가하기`. 0명은 중앙 Empty와 Primary CTA, 버튼을 누르면 추가 폼을 연다. 이름·학년 필수, 기존 선택 필드는 `추가 정보 (선택)` details에서 확인/수정한다. 추가/수정 모두 저장·취소, 저장 오류는 입력값과 함께 유지한다.
 - loading은 공통 frame 안의 정적 skeleton, 조회 오류는 실제 재조회 + `/my` 복귀, 저장 오류는 form alert로 구분한다. 기존 Floating Bottom Nav V1의 마이페이지 active 및 safe-space를 유지한다.
+
+
+## Parent Academies V1 — `/academies`
+
+- 독립 탐색 화면: Home 복귀 Back Header `학원 찾기`, Bottom Nav 없음. White/max480/gutter20/desktop Neutral 50와 R16 thin-border/no shadow card를 사용한다.
+- 기존 위치 설정을 지역 Context로 분리하고 실제 q 검색 → 과목/학년/정렬 → 해제 가능한 검색 조건 → `학원 N개` → 카드 목록 순서로 표시한다. 지역·cookie는 기존 위치 설정에서 변경하며 검색 조건 초기화는 q/subjectCategory/subject/grade만 해제한다.
+- `recommended` query/default comparator는 유지하고 표시명만 `기본순`으로 바꾼다. 내 주변은 기존 거리순을 유지한다. 추천/평가/순위 의미를 추가하지 않는다.
+- 카드 전체가 `/academy/{organizationId}` 단일 링크다. 공통 outline 건물 아이콘은 로고가 아닌 fallback이다. 실제 이름/지점/지역 또는 거리/과목/대상/주소만 표시한다. 대표 수업·중복 CTA·사진·별점은 목록에 넣지 않는다.
+- getAcademiesForList 공개 범위, Subject Master, 학년/지역/query/cookie와 handle resolver는 변경하지 않는다. child eligibility나 새 조회 계약을 만들지 않는다.
+- 지역 canonical redirect를 완료한 뒤 결과 조회에 Suspense skeleton을 적용하여 기존 HTTP 307을 유지한다. route 전체 loading 대신 결과 fallback을 사용한다. 위치/목록 조회 실패는 0건과 분리하고 router.refresh retry를 제공한다. 상위 초기 조회 오류는 route error boundary에서 retry한다.
