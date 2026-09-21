@@ -356,3 +356,11 @@ Academy summary uses real public logo/cover or ImageFallback; the full address a
 - Shared Parent V1 scope: gutter20, max480, desktop Neutral50 outer canvas, white centered surface, no shadow; semantic dates, headings, focus and no motion-dependent loading.
 
 - Education Profile headers use a 64px square, R12 class thumbnail beside snapshot metadata. Read current active public `classes.cover_image_url` in one batch after owned experience/published report lookup; no academy substitution. Missing/failed images use the shared ImageFallback. Media lookup failure keeps observations available.
+
+## Applications V1 — /my/applications
+
+- Back Header `신청 현황` → `/my`; intro → accessible 진행 중 N / 취소 N tabs → application cards. No child selector; every card names the child and formats the stored grade. No new child query contract.
+- Existing selectors preserve new/reviewing/confirmed and canceled, newest application first; completed stays in Record. Do not infer completion from dates. Canonical detail destination `/record/[applicationId]` and detail-only cancellation guards stay unchanged.
+- 64px R12 actual active-public class image or shared fallback, type/status → class → academy, then child and Seoul schedule. Confirmed timestamp takes precedence; otherwise requested timestamp. No academy image substitution. Optional image failure does not fail applications.
+- V1 White/R16/thin-border cards, gutter20, max480, desktop Neutral50, no shadow. Neutral canceled styling. V1 Floating Bottom Nav, My active, no active nav pill; reserve bottom safe space.
+- Progress empty invites discovery at `/classes`; canceled empty is separate. Card skeleton and route-specific errors preserve the frame; query errors use router.refresh, unexpected route errors reload. No registration/CRM fields, fake status, or in-card cancellation.

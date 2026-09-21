@@ -50,7 +50,7 @@ const stripJsxComments = (source: string) => source.replace(/\{\/\*[\s\S]*?\*\/\
 const codeOf = (path: string) => stripComments(stripJsxComments(read(path)))
 
 const split = stripComments(read(SPLIT_PATH))
-const applicationsPage = codeOf(APPLICATIONS_PAGE)
+const applicationsPage = codeOf(APPLICATIONS_PAGE) + codeOf("app/my/applications/applications-list.tsx") + codeOf("src/features/applications/lib/parent-application-card.ts")
 const recordPage = codeOf(RECORD_PAGE) + codeOf("src/features/record/ui/record-home.tsx")
 const recordList = codeOf(RECORD_LIST_PATH)
 const hub = codeOf(HUB_PATH)
@@ -177,11 +177,11 @@ check(
 check("취소는 일정에 오지 않는다", !scheduleIds.includes("canceled-1"))
 check(
   "취소 카드는 따로 묶여 muted 로 그려진다",
-  applicationsPage.includes("applicationCardMuted") && applicationsPage.includes("muted\n                      />")
+  applicationsPage.includes("tab === 0 ? inProgress : canceled") && applicationsPage.includes('item.status === "canceled" ? styles.canceled')
 )
 check(
   "취소 카드의 확정 시각을 강조하지 않는다",
-  applicationsPage.includes("muted ? styles.slotValue : styles.slotValueStrong")
+  applicationsPage.includes('item.status === "canceled" ? styles.canceled')
 )
 check("신청이 하나도 없으면 비어 있다", !hasAnyApplicationStatusItem([]))
 
@@ -199,14 +199,13 @@ check(
 check(
   "카드가 실제 값만 그린다",
   applicationsPage.includes("{item.academyName ?") &&
-    applicationsPage.includes("{requestedLabel ?") &&
-    applicationsPage.includes("{confirmedLabel ?") &&
-    applicationsPage.includes("if (!value) {")
+    applicationsPage.includes("{schedule ?") &&
+    applicationsPage.includes("if (!value) return null")
 )
 check("상세는 기존 route 그대로다", applicationsPage.includes("`/record/${item.id}`"))
 check(
-  "확정 신청에는 일정 보기를 준다",
-  applicationsPage.includes('<Link href="/my/schedule" className={styles.groupLink}>')
+  "확정 일정은 희망 일정보다 우선한다",
+  applicationsPage.includes("item.confirmedSlotAt || item.requestedSlotAt")
 )
 
 console.log("\n[4] status 문자열을 새로 만들지 않는다")
