@@ -29,7 +29,7 @@ export type ParentAction = {
   href: string
 }
 
-/** Home 이 미리 보여 주는 개수. 전체는 /my/actions 가 맡는다. */
+/** Home 이 미리 보여 주는 개수. 전체는 /notifications의 리포트 안내 가 맡는다. */
 export const PARENT_ACTION_PREVIEW_LIMIT = 3
 
 /**
@@ -57,7 +57,7 @@ const toTime = (value: string | null): number => {
 /**
  * 지금 해야 할 일 목록.
  *
- * Home 의 "지금 확인할 것" 과 /my/actions 가 이 함수 하나를 쓴다 —
+ * Home 의 "지금 확인할 것" 과 /notifications의 리포트 안내 가 이 함수 하나를 쓴다 —
  * 두 화면이 서로 다른 목록을 말하면 어느 쪽도 믿을 수 없다.
  *
  * ⚠️ 우선순위 점수 · 마감 · 긴급도를 만들지 않는다. 그런 값이 없다.

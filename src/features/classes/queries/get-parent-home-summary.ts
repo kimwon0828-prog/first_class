@@ -36,7 +36,7 @@ export type ParentHomeSummary = {
   childOptions: ChildSelectorOption[]
   /** 지금 보고 있는 아이. null 이면 전체다. */
   selectedChildId: string | null
-  /** Home 이 미리 보여 주는 Action. 전체는 /my/actions 가 맡는다. */
+  /** Home 이 미리 보여 주는 Action. 전체는 /notifications의 리포트 안내 가 맡는다. */
   actions: ParentAction[]
   /** 미리 보여 준 것 말고도 더 있는가. "전체 보기" 를 띄울지 정한다. */
   hasMoreActions: boolean
@@ -83,7 +83,7 @@ export const getParentHomeSummary = async (
   /*
    * Action 판정은 Home 이 따로 하지 않는다.
    *
-   * /my/actions 와 같은 selector 를 쓴다 — 두 화면이 서로 다른 "확인할 것" 을
+   * /notifications의 리포트 안내 와 같은 selector 를 쓴다 — 두 화면이 서로 다른 "확인할 것" 을
    * 말하면 어느 쪽도 믿을 수 없다. Home 은 앞의 몇 개만 미리 보여 줄 뿐이다.
    */
   const [coverImageUrls, actionsResult] = await Promise.all([

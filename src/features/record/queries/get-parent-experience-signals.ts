@@ -13,7 +13,7 @@ import type { ParentApplicationSummary } from "@/shared/lib/db/adapter"
  * ⚠️ 실패를 "없음" 으로 접지 않는다. 읽지 못했으면 error 를 올려서
  *    화면이 "리포트 없음" 이라고 단정하지 않게 한다.
  *
- * /record 목록과 /my/actions 가 같은 사실을 같은 방법으로 읽는다.
+ * /record 목록과 /notifications의 리포트 안내 가 같은 사실을 같은 방법으로 읽는다.
  */
 export type ParentExperienceSignals = {
   /** 지금 살아 있는 발행본이 있는 경험. */

@@ -8,7 +8,7 @@ import type { ApplicationStatus, ParentApplicationSummary } from "@/shared/lib/d
  *   /my/applications  내가 신청한 것이 지금 어떻게 진행되고 있지?
  *   /my/schedule      다음 수업이 언제지?            (확정된 미래만)
  *   /record           아이가 무엇을 경험했지?         (실제로 다녀온 것만)
- *   /my/actions       내가 지금 해야 할 일이 뭐지?
+ *   /notifications의 리포트 안내       내가 지금 해야 할 일이 뭐지?
  *
  * ⚠️ status 문자열을 새로 만들지 않는다. adapter 의 ApplicationStatus 가 전부다:
  *    new · reviewing · confirmed · completed · canceled

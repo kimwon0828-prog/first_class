@@ -1,3 +1,4 @@
+import { getParentNotifications } from "@/features/notifications/queries/get-parent-notifications"
 import { NotificationBell } from "@/features/notifications/ui/notification-indicator"
 import { ImageFallback } from "@/shared/ui/image-fallback"
 import { toParentUrl } from "@/shared/config/site-origins"
@@ -184,10 +185,12 @@ async function ParentHomeContent({ searchParams }: HomePageProps) {
     "string"
       ? ((resolvedSearchParams as Record<string, string>)[CHILD_QUERY_KEY] ?? null)
       : null
-  const [parentHome, academyResult] = await Promise.all([
+  const [parentHome, academyResult, notificationResult] = await Promise.all([
     authenticated && isParentUser ? getParentHomeSummary(requestedChildId) : Promise.resolve(null),
-    getHomeAcademies(context)
+    getHomeAcademies(context),
+    auth.status === "ok" && isParentUser ? getParentNotifications(auth.profile.id) : Promise.resolve(null)
   ])
+  const hasUnreadNotifications = notificationResult?.readStateStatus === "available" && !notificationResult.error && Boolean(notificationResult?.notifications.some(item => item.isUnread))
   const discoveryHref = buildClassesHref({ radius: context.radiusQueryValue, ...context.regionQueryValues })
   const academyHref = discoveryHref.replace("/classes", "/academies")
   const selectedChild = parentHome?.childOptions.find((child) => child.id === parentHome.selectedChildId)
@@ -220,9 +223,9 @@ async function ParentHomeContent({ searchParams }: HomePageProps) {
             <Link
               href={authenticated ? (isStudioUser ? studioHref("/studio") : "/notifications") : "/auth/sign-in?returnTo=%2Fnotifications"}
               className={styles.headerIconButton}
-              aria-label="알림"
+              aria-label={hasUnreadNotifications ? "알림, 읽지 않은 알림이 있음" : "알림"}
             >
-              <NotificationBell />
+              <NotificationBell hasUnreadNotifications={hasUnreadNotifications} />
             </Link>
             {!isStudioUser ? (
               <Link href={isParentUser ? "/my/profile" : myPageEntryHref} className={styles.headerIconButton}

@@ -316,6 +316,27 @@ Academy summary uses real public logo/cover or ImageFallback; the full address a
 - 독립 사건 이력 화면: Back Header `알림` → Home, 다른 navigation/Bottom Nav 없음. V1 White/max480/gutter20/R16/thin border.
 - 기존 본인 신청·상태 로그·published report·5종 mapping·destination 유지. Action 목록과 합치지 않는다. 내부 note/직원/전화/SMS 로그는 노출하지 않는다.
 - Seoul 최신순 날짜 그룹: 오늘 / 같은 연도 월·일·요일 / 다른 연도 연·월·일·요일. 행은 Green outline icon surface → 제목 → 자녀·수업 → 학원 → 실제 HH:mm → chevron. 행 전체 링크, 반복 확인하기 없음.
-- `NotificationRow.isUnread`와 `NotificationBell.isUnread`는 presentation-only prop, 기본 false. 실제 source 연결 전 Production은 dot 없음. true일 때만 기존 red token의 6px dot과 접근성 이름을 표시한다. 읽음 저장·숫자 badge·NEW·localStorage 추론 없음.
+- 읽음 표시는 아래 Persisted notification reads 규칙을 따른다. 숫자 badge·NEW·localStorage 추론 없음.
 - Home bell은 기존 href/접근성/터치영역을 유지한 채 공통 아이콘 presentation만 사용한다.
 - Empty에는 CTA 없음. 조회 실패는 router.refresh retry, route error는 reset 병행. Loading은 날짜 heading + 행 skeleton. Pagination/child context는 추가하지 않는다.
+
+## Parent Notifications V2 — Report card timeline
+
+- 단일 날짜별 timeline 유지. 별도 action section 없음. report_published만 Green 50/Green 200/R16 카드와 44px `리포트 보기` 링크로 표시. 일반 4종 row/destination/time/grouping 유지.
+- 기존 getParentActions 결과의 experience/report href가 일치할 때만 생각 남기기 보조문구를 추가한다. ParentDecision 저장은 event 제거 조건이 아니다. 알림 source/selector는 action selector와 분리한다.
+- `/my/actions` page/CSS는 제거하고 `/notifications` 영구 redirect로 호환한다. action domain과 Home query는 유지한다.
+- Home bell은 아래 persisted read 규칙을 사용한다. pending report action은 보조문구 판정에 사용하며 bell과 분리한다.
+- 데이터 조회 실패는 실제 retry를 제공하고 action 조회 실패를 결정 존재로 추정하지 않는다. 결정 저장 후 Notifications/Home 재검증. 기존 후보 20건 제한을 유지하며 전체 unread count를 의미하지 않는다.
+
+## Persisted notification reads
+
+- Stable key는 기존 `status:<application_logs.id>` / `report_published:<experience_reports.id>` 그대로다. 완료 알림도 실제 완료 전이 log ID다. 새 버전 report ID는 별도 알림이다.
+- `parent_notification_reads`는 본인 parent/key의 최초 읽음 시각을 저장한다. 현재 event와 receipt를 매칭하며 조회 실패를 unread로 추측하지 않는다. 원본 사건과 ParentDecision은 변경하지 않는다.
+- 일반 unread 행은 Green50, 제목600, 6px red dot; read 행은 White/제목500. Report는 읽은 후에도 Green 강조 variant/버튼을 유지하고 dot과 제목 강조만 해제한다.
+- Home bell dot은 실제 unread event가 있을 때만 표시한다. V2 pending-report bell 정책을 대체한다. ParentDecision 보조문구는 action selector로 별도 판정한다.
+- 클릭은 읽음 저장 후 canonical destination으로 이동한다. read 행은 write를 생략한다. 저장 실패 또는 1.5초 지연 시에도 이동하며, 실패한 receipt는 다음 조회 때 unread로 남는다. 수정키/새 탭은 기본 링크 동작을 유지하며 저장을 시도한다.
+- source가 철회/삭제되어도 receipt는 inert 상태로 보존한다. orphan cleanup은 별도 유지보수 범위이며 자동 삭제하지 않는다.
+
+- Read-state 조회 실패 시 event 목록은 유지한다. `readStateStatus=unavailable`, `isUnread=undefined`로 unknown을 표현한다. dot/읽음 저장 enhancement만 비활성화하고 기본 surface로 렌더한다. 이를 읽음 완료로 저장하거나 추정하지 않는다. 실제 event 조회 실패만 전체 Error이며 서버 로그에 단계/code/message를 남긴다.
+
+- Receipt RLS의 source 소유권 검사는 `my_trial_applications` Parent view를 사용한다. Parent에게 비공개 원본 trial_applications SELECT 권한을 추가하지 않는다.

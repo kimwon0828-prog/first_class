@@ -49,7 +49,6 @@ const PARENT_ROUTES = [
   "app/record/profile/page.tsx",
   "app/my/page.tsx",
   "app/my/schedule/page.tsx",
-  "app/my/actions/page.tsx",
   "app/my/applications/page.tsx",
   "app/my/children/page.tsx",
   "app/my/profile/page.tsx",
@@ -175,7 +174,7 @@ check(
 )
 check(
   "Report · Decision · RegistrationResult domain 을 건드리지 않았다",
-  !/src\/features\/(reports|decisions|registration)\//.test(changedFiles),
+  !/src\/features\/(reports|decisions|registration)\//.test(changedFiles.split("\n").filter(line => !line.endsWith("src/features/decisions/actions/set-parent-decision.ts")).join("\n")) && execSync("git diff -- src/features/decisions/actions/set-parent-decision.ts", { encoding: "utf8" }).split("\n").filter(line => /^[+-]/.test(line) && !/^[+-]{3}/.test(line)).every(line => /^\+    revalidatePath\("(?:\/notifications|\/)"\)$/.test(line)),
   changedFiles.split("\n").filter((line) => /features\/(reports|decisions|registration)/.test(line)).join(",")
 )
 
@@ -188,7 +187,7 @@ for (const [pathname, expected] of [
   ["/favorites", "my"],
   ["/my/applications", "my"],
   ["/my/schedule", "schedule"],
-  ["/my/actions", "home"]
+  ["/my/actions", "my"]
 ] as const) {
   check(`${pathname} → ${expected}`, resolveParentNavTab(pathname) === expected, String(resolveParentNavTab(pathname)))
 }

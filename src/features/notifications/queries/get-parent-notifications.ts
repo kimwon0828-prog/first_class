@@ -3,6 +3,7 @@ import "server-only"
 import { getMyApplications } from "@/features/applications/queries/get-my-applications"
 import {
   selectParentNotifications,
+  applyNotificationReads,
   type ParentApplicationStatusEvent,
   type ParentNotification,
   type ParentPublishedReportEvent
@@ -13,7 +14,7 @@ import type { ApplicationStatus } from "@/shared/lib/db/adapter"
 /**
  * 알림함이 읽는 것.
  *
- * ⚠️ 새 table · migration · RLS · RPC 를 만들지 않는다. 이미 있는 두 자리에서만 읽는다.
+ * 사건은 기존 두 source에서 생성하며 읽음 상태만 별도 parent receipt로 조회한다.
  *      application_logs   — 상태가 실제로 바뀐 사건과 그 시각(created_at)
  *      experience_reports — 발행된 리포트와 그 시각(published_at)
  *    둘 다 학부모 본인 것만 보이도록 RLS 가 이미 좁혀 준다
@@ -31,6 +32,15 @@ import type { ApplicationStatus } from "@/shared/lib/db/adapter"
 export type ParentNotificationsResult = {
   notifications: ParentNotification[]
   error: string | null
+  readStateStatus: "available" | "unavailable"
+}
+
+function logNotificationQueryError(stage: "events" | "read-state", error: unknown) {
+  const value = error as { code?: string; message?: string }
+  // No parent IDs, notification keys, tokens or private payloads in logs.
+  console.error(`[parent-notifications:${stage}] query failed`, {
+    code: value?.code ?? "unknown", message: value?.message ?? "Unknown query failure"
+  })
 }
 
 const READ_FAILED = "알림을 불러오지 못했어요."
@@ -41,12 +51,12 @@ export const getParentNotifications = async (
   const applications = await getMyApplications()
 
   if (applications.error) {
-    return { notifications: [], error: READ_FAILED }
+    return { notifications: [], error: READ_FAILED, readStateStatus: "unavailable" }
   }
 
   const applicationIds = applications.data.map((item) => item.id)
   if (applicationIds.length === 0) {
-    return { notifications: [], error: null }
+    return { notifications: [], error: null, readStateStatus: "available" }
   }
 
   try {
@@ -65,7 +75,8 @@ export const getParentNotifications = async (
     ])
 
     if (logResult.error || reportResult.error) {
-      return { notifications: [], error: READ_FAILED }
+      logNotificationQueryError("events", logResult.error ?? reportResult.error)
+      return { notifications: [], error: READ_FAILED, readStateStatus: "unavailable" }
     }
 
     const statusEvents: ParentApplicationStatusEvent[] = (logResult.data ?? []).map((row) => ({
@@ -86,16 +97,28 @@ export const getParentNotifications = async (
         publishedAt: row.published_at as string
       }))
 
-    return {
-      notifications: selectParentNotifications({
-        applications: applications.data,
-        statusEvents,
-        publishedReports,
-        parentProfileId
-      }),
-      error: null
+    const notifications = selectParentNotifications({
+      applications: applications.data, statusEvents, publishedReports, parentProfileId
+    })
+    // Read receipts are optional enhancement. Never discard successfully loaded events.
+    try {
+      const readKeys = new Set<string>()
+      for (let offset = 0; offset < notifications.length; offset += 100) {
+        const { data, error } = await supabase.from("parent_notification_reads")
+          .select("notification_key").eq("parent_id", parentProfileId)
+          .in("notification_key", notifications.slice(offset, offset + 100).map(item => item.id))
+        if (error) throw error
+        for (const row of data ?? []) readKeys.add(row.notification_key as string)
+      }
+      return { notifications: applyNotificationReads(notifications, readKeys), error: null, readStateStatus: "available" }
+    } catch (error) {
+      logNotificationQueryError("read-state", error)
+      // isUnread remains undefined (unknown), never false (confirmed read).
+      return { notifications, error: null, readStateStatus: "unavailable" }
     }
-  } catch {
-    return { notifications: [], error: READ_FAILED }
+
+  } catch (error) {
+    logNotificationQueryError("events", error)
+    return { notifications: [], error: READ_FAILED, readStateStatus: "unavailable" }
   }
 }

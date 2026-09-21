@@ -25,13 +25,12 @@ import {
   selectParentActionCandidates,
   selectParentActions
 } from "@/features/actions/lib/parent-actions"
-import { resolveParentNavTab } from "@/features/classes/lib/parent-nav"
 import type { ParentApplicationSummary } from "@/shared/lib/db/adapter"
 
 const LIB_PATH = "src/features/actions/lib/parent-actions.ts"
 const QUERY_PATH = "src/features/actions/queries/get-parent-actions.ts"
 const SIGNALS_PATH = "src/features/record/queries/get-parent-experience-signals.ts"
-const PAGE_PATH = "app/my/actions/page.tsx"
+const PAGE_PATH = "app/notifications/page.tsx"
 const HOME_PATH = "app/page.tsx"
 const HOME_QUERY_PATH = "src/features/classes/queries/get-parent-home-summary.ts"
 
@@ -210,62 +209,11 @@ check(
   /actionsResult\.error\s*\?\s*\[\]/.test(homeQuery) && homeQuery.includes("actionsResult.actions")
 )
 
-console.log("\n[6] 화면 계약")
-
-check("route 가 있다", exists(PAGE_PATH))
-check("H) 로그인 정책은 기존 것을 쓴다", page.includes('requireParentAccess({ returnTo: "/my/actions" })'))
-check("제목이 있다", page.includes("지금 확인해야 할 것</h1>"))
-check(
-  "카드가 자녀 · 수업 · 제목 · CTA 를 그린다",
-  page.includes("formatParentActionSubject(action)") &&
-    page.includes("{action.title}") &&
-    page.includes("{action.ctaLabel}")
-)
-check("학원명은 있을 때만 그린다", page.includes("{action.academyName ? ("))
-check(
-  "G) /my/actions 에서는 홈 탭이다",
-  resolveParentNavTab("/my/actions") === "home" && page.includes("<ParentBottomNav />")
-)
-check("일정을 여기서 다루지 않는다", !page.includes("다가오는") && !page.includes("confirmedSlotAt"))
-
-console.log("\n[7] empty · error")
-
-check("빈 상태 문구가 따로 있다", page.includes("지금 확인할 내용이 없어요."))
-check("빈 상태 보조 문구", page.includes("새로운 확인 사항이 생기면 여기에 보여드릴게요."))
-// import 경로의 "classes" 가 아니라 실제 링크만 본다.
-const pageLinks = [...page.matchAll(/href="([^"]+)"/g)].map((match) => match[1])
-check(
-  "빈 상태에서 수업 검색을 유도하지 않는다",
-  !page.includes("수업 찾아보기") && !pageLinks.some((href) => href === "/" || href.startsWith("/classes")),
-  pageLinks.join(" ")
-)
-check("실패 문구가 따로 있다", query.includes("확인할 내용을 불러오지 못했어요.") && page.includes("잠시 후 다시 시도해 주세요."))
-check("실패와 0건이 다른 분기다", page.includes("{error ? (") && page.includes("actions.length === 0 ? ("))
-check("조회 실패를 빈 목록으로 접지 않는다", query.includes("error: LOAD_ERROR_MESSAGE"))
-
-console.log("\n[8] 만들지 않은 것")
-
-/*
- * Phase 9 에서 알림함(/notifications)이 따로 생겼다.
- *
- * 그래서 "알림 페이지가 없다" 는 단언은 더 이상 맞지 않는다. 지켜야 할 것은
- * 파일의 부재가 아니라 두 화면이 다른 모델이라는 사실이다 —
- * Action 은 끝나면 사라지는 "지금 할 일", Notification 은 남는 "그때 있던 일".
- * /my/actions 가 이력 목록으로 바뀌지 않았는지를 대신 확인한다.
- */
-check("/my/actions 는 알림함이 아니다", !page.includes("알림") && !query.includes("알림"))
-check(
-  "/my/actions 가 알림 selector 를 쓰지 않는다",
-  !query.includes("selectParentNotifications") && !query.includes("features/notifications")
-)
-check("알림함은 자기 자리에 따로 있다", exists("app/notifications/page.tsx"))
-check(
-  "알림함이 /my/actions 하위로 들어가지 않았다",
-  !exists("app/my/notifications")
-)
-check("/my/applications 가 남아 있다", exists("app/my/applications/page.tsx"))
-check("/record 가 남아 있다", exists("app/record/page.tsx"))
-check("/my 가 남아 있다", exists("app/my/page.tsx"))
-
+console.log("\n[6] V2 통합 화면")
+check("actions 독립 화면 제거", !exists("app/my/actions/page.tsx") && !exists("app/my/actions/page.module.css"))
+check("알림은 action query 재사용", page.includes("getParentActions()"))
+check("동일 timeline에 report variant 전달", page.includes("pendingReportHrefs.has(item.href)"))
+check("action domain에 notification selector 혼합 없음", !query.includes("selectParentNotifications"))
+check("알림 페이지 유지", exists(PAGE_PATH))
 console.log(failures === 0 ? "\nALL PASS" : `\nFAIL: ${failures}건 실패`)
 process.exit(failures === 0 ? 0 : 1)

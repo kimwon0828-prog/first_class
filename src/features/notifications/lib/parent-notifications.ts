@@ -10,10 +10,6 @@ import { formatSeoulDateKey, getSeoulDateTimeParts } from "@/shared/lib/seoul-da
  *    두 화면이 같은 사실(발행된 리포트)을 참고할 수는 있지만
  *    Action selector 의 결과를 그대로 알림 목록으로 쓰지 않는다.
  *
- * ⚠️ 읽음/안읽음이 없다. schema 에 read_at · is_read 가 없으므로
- *    "안 읽은 N개" · 빨간 점 · 배지를 만들지 않는다. 지금 만들면
- *    그것은 데이터가 아니라 화면이 지어낸 상태다.
- *
  * ⚠️ 추천 수업 · 관심수업 가격 · 인기 학원 같은 마케팅 알림은 없다.
  *    그런 event 를 적어 두는 자리가 schema 에 없다.
  */
@@ -26,6 +22,8 @@ export type ParentNotificationKind =
 
 export type ParentNotification = {
   id: string
+  /** Assigned only after persisted receipts are loaded. */
+  isUnread?: boolean
   kind: ParentNotificationKind
   /** 그 일이 실제로 일어난 시각. 추정하지 않는다. */
   occurredAt: string
@@ -233,3 +231,7 @@ export const formatNotificationTime = (value: string): string => {
   const parts = getSeoulDateTimeParts(value)
   return parts ? `${String(parts.hour).padStart(2, "0")}:${String(parts.minute).padStart(2, "0")}` : ""
 }
+
+/** Match only current events; orphan receipts never create a notification. */
+export const applyNotificationReads = (items: readonly ParentNotification[], keys: ReadonlySet<string>): ParentNotification[] =>
+  items.map(item => ({ ...item, isUnread: !keys.has(item.id) }))

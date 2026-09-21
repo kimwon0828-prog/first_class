@@ -18,7 +18,7 @@
 //
 // 순수 함수와 소스 검사만 쓴다. DB · 네트워크를 건드리지 않는다.
 
-import { existsSync, readFileSync, readdirSync } from "node:fs"
+import { existsSync, readFileSync } from "node:fs"
 import { resolve } from "node:path"
 
 import { resolveParentNavTab } from "@/features/classes/lib/parent-nav"
@@ -76,10 +76,10 @@ check("B) 서버 조회는 server-only 다", query.includes('import "server-only
 console.log("\n[C] Home bell")
 
 /* Inspect the bell's actual Link, including authenticated/guest destinations. */
-const bell = home.match(/<Link\b[^>]*aria-label="알림"[^>]*>/)?.[0] ?? ""
+const bell = [...home.matchAll(/<Link\b[^>]*>/g)].map(match => match[0]).find(link => link.includes("hasUnreadNotifications")) ?? ""
 check("C) Home 에 /notifications 링크가 있다",
   bell.includes('href={authenticated ? (isStudioUser ? studioHref("/studio") : "/notifications") : "/auth/sign-in?returnTo=%2Fnotifications"}'))
-check('C) 아이콘만 있으므로 aria-label="알림" 이다', bell.includes('aria-label="알림"') && bell.includes("styles.headerIconButton"))
+check('C) 아이콘만 있으므로 aria-label="알림" 이다', bell.includes("읽지 않은 알림이 있음") && bell.includes("styles.headerIconButton"))
 // Grouped selectors and min-size declarations also establish the touch target.
 const iconRules = [...homeCss.matchAll(/([^{}]+)\{([^}]*)\}/g)]
   .filter(([, selectors]) => selectors.split(",").some((selector) => selector.trim() === ".headerIconButton"))
@@ -101,22 +101,10 @@ check("D) 직접 만든 탭이 없다", !page.includes('aria-label="하단 탭"'
 /* 마이페이지가 같이 켜지지 않는다. */
 check("D) 마이페이지 탭이 같이 켜지지 않는다", resolveParentNavTab("/notifications") !== "my")
 
-console.log("\n[E] 읽음/안읽음을 발명하지 않는다")
-
-const migrationsDir = resolve(process.cwd(), "supabase/migrations")
-const migrationText = readdirSync(migrationsDir)
-  .filter((name) => name.endsWith(".sql"))
-  .map((name) => readFileSync(resolve(migrationsDir, name), "utf8"))
-  .join("\n")
-check(
-  "E) schema 에 read_at · is_read 가 없다(전제 확인)",
-  !/\bread_at\b/.test(migrationText) && !/\bis_read\b/.test(migrationText)
-)
-for (const term of ["읽음", "안 읽은", "새 알림", "unread", "readAt", "isRead"]) {
-  check(`E) 화면에 "${term}" 이 없다`, !page.includes(term) && !lib.includes(term))
-}
-check("E) 배지 · 점을 만들지 않는다", !page.includes("badge") && !page.includes("dot") && !homeCss.includes(".bellDot"))
-check("E) Home 종에도 배지가 없다", !/href="\/notifications"[\s\S]{0,400}?(badge|Badge|unread)/.test(home))
+console.log("\n[E] persisted reads")
+check("E) 별도 읽음 migration", existsSync(resolve(process.cwd(), "supabase/migrations/20260921130000_create_parent_notification_reads.sql")))
+check("E) persisted read 매칭", query.includes("applyNotificationReads") && query.includes('from("parent_notification_reads")'))
+check("E) 가짜 localStorage 없음", !page.includes("localStorage") && !lib.includes("localStorage"))
 
 console.log("\n[F] 실제 timestamp 가 있는 source 만")
 
@@ -217,7 +205,7 @@ check("날짜 라벨이 한국어다", groups[0]?.dateLabel === "9월 16일 (수
 console.log("\n[I] /my/actions 와 모델을 섞지 않는다")
 
 check("I) Action selector 를 import 하지 않는다", !lib.includes("selectParentActions") && !query.includes("selectParentActions"))
-check("I) Action query 를 import 하지 않는다", !query.includes("get-parent-actions") && !page.includes("getParentActions"))
+check("I) Action query 를 import 하지 않는다", !query.includes("get-parent-actions") && page.includes("getParentActions()"))
 check("I) 알림함은 자기 selector 를 쓴다", page.includes("getParentNotifications"))
 check("I) Action 은 ParentDecision 으로 사라지지만 알림은 남는다", !lib.includes("decidedExperienceIds"))
 check("I) Action 쪽 계약은 그대로다", exists(ACTIONS_LIB) && codeOf(ACTIONS_LIB).includes('"report_review"'))
@@ -245,7 +233,7 @@ console.log("\n[L] 빈 상태와 조회 실패 분리")
 check("L) 빈 상태 문구가 있다", page.includes("아직 받은 알림이 없어요."))
 check("L) 빈 상태 보조 문구가 있다", page.includes("신청, 일정, 리포트 소식이"))
 check("L) 조회 실패 문구가 있다", query.includes("알림을 불러오지 못했어요.") && read("src/features/notifications/ui/notifications-retry.tsx").includes("잠시 후 다시 시도해주세요."))
-check("L) 실패를 없음으로 접지 않는다", page.includes("error ?") && page.includes("groups.length === 0"))
+check("L) 실패를 없음으로 접지 않는다", page.includes("error || actionResult.error ?") && page.includes("groups.length === 0"))
 /* 알림함은 둘러보는 화면이 아니다. 빈 상태에 CTA 를 두지 않는다. */
 const emptyBlock = /groups.length === 0[\s\S]*?<\/section>/.exec(page)?.[0] ?? ""
 check("L) 빈 상태에 CTA 가 없다", !emptyBlock.includes("<Link"))

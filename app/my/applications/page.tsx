@@ -24,7 +24,7 @@ import styles from "./page.module.css"
  *    여기          내가 신청한 것이 지금 어떻게 진행되고 있지?
  *    /my/schedule  다음 수업이 언제지?      (확정된 미래만)
  *    /record       아이가 무엇을 경험했지?   (실제로 다녀온 것만)
- *    /my/actions   내가 지금 해야 할 일은?
+ *    /notifications의 리포트 안내   내가 지금 해야 할 일은?
  *
  * ⚠️ completed 는 여기 오지 않는다. 그건 기록이다.
  *    canceled 는 여기 남는다 — 내가 취소한 신청도 다시 확인할 수 있어야 한다.

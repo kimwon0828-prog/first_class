@@ -116,7 +116,6 @@ check("E) 기본 설명이 그대로다", rootLayout.includes("학부모와 학�
 const PARENT_CANONICALS: Array<[string, string]> = [
   ["app/page.tsx", "/"],
   ["app/classes/page.tsx", "/classes"],
-  ["app/my/actions/page.tsx", "/my/actions"],
   ["app/my/applications/page.tsx", "/my/applications"],
   ["app/my/schedule/page.tsx", "/my/schedule"],
   ["app/notifications/page.tsx", "/notifications"]

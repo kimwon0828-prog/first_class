@@ -67,7 +67,7 @@ const EXPECTED: ReadonlyArray<readonly [string, ParentNavTab | null]> = [
   ["/academy/some-handle", "home"],
   ["/my/schedule", "schedule"],
   // Action Center 는 Home 흐름의 상세 화면이다. 마이페이지가 아니다.
-  ["/my/actions", "home"],
+  ["/my/actions", "my"],
   ["/my/schedule/anything", "schedule"],
   ["/record", "record"],
   ["/record/abc-123", "record"],
@@ -137,7 +137,7 @@ for (const route of [
 ]) {
   check(`${route} 가 남아 있다`, exists(route))
 }
-check("/my/actions 가 있다", exists("app/my/actions/page.tsx"))
+check("/my/actions 화면 제거", !exists("app/my/actions/page.tsx"))
 
 console.log("\n[5] floating navigation")
 

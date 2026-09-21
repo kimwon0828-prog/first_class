@@ -288,7 +288,7 @@ for (const [pathname, expected] of [
   ["/my/applications", "my"],
   ["/my/schedule", "schedule"],
   ["/record", "record"],
-  ["/my/actions", "home"]
+  ["/my/actions", "my"]
 ] as const) {
   check(`${pathname} → ${expected}`, resolveParentNavTab(pathname) === expected, String(resolveParentNavTab(pathname)))
 }

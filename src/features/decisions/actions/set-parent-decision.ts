@@ -110,6 +110,8 @@ export async function setParentDecisionAction(
 
     revalidatePath(`/record/${experienceId}`)
     revalidatePath("/record")
+    revalidatePath("/notifications")
+    revalidatePath("/")
 
     return {
       status: "success",

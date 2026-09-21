@@ -11,7 +11,6 @@
 .icon { display: grid; place-items: center; width: 40px; height: 40px; flex: 0 0 40px; border-radius: var(--r-full); color: var(--brand-700); background: var(--brand-50); }
 .itemBody { display: grid; gap: var(--s1); min-width: 0; flex: 1; overflow-wrap: anywhere; }
 .itemTitle { font-size: var(--font-b2); font-weight: 600; }
-.itemTitle > span { margin-left: var(--s1); vertical-align: middle; }
 .itemMeta { font-size: var(--font-c1); color: var(--text-2); }
 .time { margin-top: var(--s2); font-size: var(--font-c1); color: var(--text-2); }
 .chevron { flex-shrink: 0; align-self: center; color: var(--text-2); }
@@ -26,3 +25,16 @@
 .skeletonRow { display: flex; gap: var(--s3); padding: var(--s4); border: 1px solid var(--border); border-radius: var(--r-lg); height: 144px; }
 .skeletonRow span { width: 40px; height: 40px; border-radius: var(--r-full); background: var(--surface-sub); }
 .skeletonRow div { flex: 1; border-radius: var(--r-sm); background: var(--surface-sub); }
+.reportCard { display: grid; gap: var(--s3); padding: var(--s4); border: 1px solid var(--brand-200); border-radius: var(--r-lg); background: var(--brand-50); overflow-wrap: anywhere; }
+.reportHeader { display: flex; align-items: flex-start; gap: var(--s3); }
+.reportHeader h3, .reportHeader p { margin: 0; }
+.reportCard .icon { background: var(--brand-100); }
+.reportDescription { margin: 0; color: var(--text-2); font-size: var(--font-b2); line-height: 1.6; }
+.reportButton { display: flex; justify-content: center; align-items: center; min-height: 44px; padding: var(--s2) var(--s3); border-radius: var(--r-md); background: var(--brand-700); color: var(--surface); text-decoration: none; font-size: var(--font-b2); font-weight: 600; }
+.reportButton:hover { background: var(--brand-800); }
+
+.read { background: var(--surface); }
+.itemTitle { font-weight: 500; }
+.unread .itemTitle { font-weight: 600; }
+.item.unread { background: var(--brand-50); }
+.unreadDot { display: inline-block; width: 6px; height: 6px; margin-left: var(--s2); vertical-align: middle; border-radius: var(--r-full); background: var(--red-fg); }
