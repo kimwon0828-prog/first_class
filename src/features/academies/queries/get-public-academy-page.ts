@@ -13,7 +13,9 @@ type OrganizationRow = {
   address_line1: string | null
   address_line2: string | null
   academy_phone: string | null
-  contact_phone: string | null
+  sido: string | null
+  sigungu: string | null
+  bname: string | null
 }
 
 type AcademyPublicProfileRow = {
@@ -35,6 +37,7 @@ export type PublicAcademyPageData = {
   branchName: string | null
   address: string | null
   phone: string | null
+  regionLabel?: string | null
   logoImagePath: string | null
   logoImageUrl: string | null
   coverImagePath: string | null
@@ -165,7 +168,9 @@ const fetchOrganization = async (organizationId: string) => {
         "address_line1",
         "address_line2",
         "academy_phone",
-        "contact_phone"
+        "sido",
+        "sigungu",
+        "bname"
       ].join(", ")
     )
     .eq("id", organizationId)
@@ -204,7 +209,8 @@ export const getPublicAcademyPageByHandle = async (handle: string): Promise<Publ
     name: organization.name,
     branchName: toNullableText(organization.branch_name),
     address: formatOrganizationAddress(organization),
-    phone: toNullableText(organization.academy_phone) ?? toNullableText(organization.contact_phone),
+    phone: toNullableText(organization.academy_phone),
+    regionLabel: [organization.sido, organization.sigungu, organization.bname].map(toNullableText).filter(Boolean).join(" · ") || null,
     logoImagePath: toNullableText(publicProfile?.logo_image_path),
     logoImageUrl: buildPublicUrl(toNullableText(publicProfile?.logo_image_path)),
     coverImagePath: toNullableText(publicProfile?.cover_image_path),

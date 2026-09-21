@@ -7,6 +7,8 @@ import { notFound } from "next/navigation"
 import { getPublicAcademyClasses } from "@/features/academies/queries/get-public-academy-classes"
 import { getPublicAcademyPageByHandle } from "@/features/academies/queries/get-public-academy-page"
 
+import { AcademyDetailFrame, AcademyIcon } from "@/features/academies/ui/academy-detail-frame"
+
 import styles from "./page.module.css"
 
 type AcademyPageProps = {
@@ -83,223 +85,54 @@ export async function generateMetadata({ params }: AcademyPageProps): Promise<Me
 }
 
 export default async function AcademyPage({ params }: AcademyPageProps) {
-  const resolvedParams = await params
-  const academy = await getPublicAcademyPageByHandle(resolvedParams.handle)
-
-  if (!academy) {
-    notFound()
-  }
-
+  const { handle } = await params
+  const academy = await getPublicAcademyPageByHandle(handle)
+  if (!academy) notFound()
   const classes = await getPublicAcademyClasses(academy.organizationId)
-  const academyDisplayName = buildAcademyDisplayName(academy.name, academy.branchName)
-  const descriptionParagraphs = splitMultilineItems(academy.description)
-  const operatingHourLines = splitMultilineItems(academy.operatingHours)
-  const parkingInfoLines = splitMultilineItems(academy.parkingInfo)
-  const directionLines = splitMultilineItems(academy.directions)
-  const hasPhone = Boolean(academy.phone)
-  const phoneHref = academy.phone ? `tel:${academy.phone.replace(/[^0-9+]/g, "")}` : null
-  const logoInitial = academy.name.trim().charAt(0) || "학"
-
-  return (
-    <main className={styles.page}>
-      <div className={styles.shell}>
-        <header className={styles.topBar}>
-          <Link href="/academies" className={styles.iconButton} aria-label="학원 목록으로 돌아가기">
-            <svg
-              width="20"
-              height="20"
-              viewBox="0 0 24 24"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-              aria-hidden="true"
-            >
-              <path
-                d="M15 18l-6-6 6-6"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-          </Link>
-          <p className={styles.topBarTitle}>학원 소개</p>
-          <div className={styles.topBarSpacer} aria-hidden="true" />
-        </header>
-
-        <section className={styles.heroSection}>
-          <div className={styles.coverSection} aria-label="학원 대표 이미지">
-            {academy.coverImageUrl ? (
-              <>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={academy.coverImageUrl} alt={`${academyDisplayName} 대표 이미지`} className={styles.coverImage} />
-              </>
-            ) : (
-              <div className={styles.coverFallback}>
-                <span className={styles.coverFallbackEyebrow}>첫수업 공개 학원 페이지</span>
-                <strong className={styles.coverFallbackTitle}>{academyDisplayName}</strong>
-              </div>
-            )}
-          </div>
-
-          <div className={styles.headerCard}>
-            <div className={styles.logoFrame}>
-              {academy.logoImageUrl ? (
-                <>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={academy.logoImageUrl} alt={`${academyDisplayName} 로고`} className={styles.logoImage} />
-                </>
-              ) : (
-                <span className={styles.logoFallback} aria-hidden="true">
-                  {logoInitial}
-                </span>
-              )}
-            </div>
-            <div className={styles.headerBody}>
-              <p className={styles.eyebrow}>학원 소개</p>
-              <h1 className={styles.title}>{academyDisplayName}</h1>
-              <p className={styles.subtitle}>{academy.shortDescription ?? "학원 소개를 준비 중입니다."}</p>
-              <div className={styles.headerMeta}>
-                <span>{academy.address ?? "주소 준비 중"}</span>
-                <span>{academy.phone ?? "대표 전화 준비 중"}</span>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <div className={styles.sections}>
-          <section className={styles.section}>
-          <div className={styles.sectionHeader}>
-            <div>
-              <p className={styles.sectionEyebrow}>핵심 섹션</p>
-              <h2 className={styles.sectionTitle}>진행 중인 수업</h2>
-            </div>
-            <p className={styles.sectionMeta}>{classes.length > 0 ? `${classes.length}개 수업` : "운영 중인 수업 준비 중"}</p>
-          </div>
-
-          {classes.length > 0 ? (
-            <div className={styles.classGrid}>
-              {classes.map((item) => (
-                <Link key={item.id} href={`/classes/${item.id}`} className={styles.classCard}>
-                  <div>
-                    <p className={styles.classProgramType}>{item.programTypeLabel}</p>
-                    <strong className={styles.classTitle}>{item.title}</strong>
-                  </div>
-                  <dl className={styles.classInfoList}>
-                    <div className={styles.classInfoRow}>
-                      <dt className={styles.classInfoLabel}>과목</dt>
-                      <dd className={styles.classInfoValue}>{item.subjectLabel}</dd>
-                    </div>
-                    <div className={styles.classInfoRow}>
-                      <dt className={styles.classInfoLabel}>대상 학년</dt>
-                      <dd className={styles.classInfoValue}>{item.targetAgeLabel}</dd>
-                    </div>
-                    <div className={styles.classInfoRow}>
-                      <dt className={styles.classInfoLabel}>기간</dt>
-                      <dd className={styles.classInfoValue}>{item.periodLabel}</dd>
-                    </div>
-                    <div className={styles.classInfoRow}>
-                      <dt className={styles.classInfoLabel}>요일·시간</dt>
-                      <dd className={styles.classInfoValue}>{item.scheduleLabel}</dd>
-                    </div>
-                  </dl>
-                </Link>
-              ))}
-            </div>
-          ) : (
-            <div className={styles.emptyCard}>
-              <strong className={styles.emptyTitle}>현재 신청 가능한 첫수업이 없어요.</strong>
-              <p className={styles.emptyDescription}>운영 중인 수업이 열리면 이 영역에 가장 먼저 표시됩니다.</p>
-            </div>
-          )}
-          </section>
-
-          <section className={styles.section}>
-            <div className={styles.sectionHeader}>
-              <div>
-                <p className={styles.sectionEyebrow}>학원 소개</p>
-                <h2 className={styles.sectionTitle}>우리 학원은 이렇게 운영해요</h2>
-              </div>
-            </div>
-            {descriptionParagraphs.length > 0 ? (
-              <div className={styles.textBlock}>
-                {descriptionParagraphs.map((paragraph) => (
-                  <p key={paragraph} className={styles.bodyText}>
-                    {paragraph}
-                  </p>
-                ))}
-              </div>
-            ) : (
-              <p className={styles.bodyTextMuted}>상세 소개를 준비 중입니다.</p>
-            )}
-          </section>
-
-          <section className={styles.section}>
-            <div className={styles.sectionHeader}>
-              <div>
-                <p className={styles.sectionEyebrow}>운영 정보</p>
-                <h2 className={styles.sectionTitle}>방문 전에 확인해 주세요</h2>
-              </div>
-            </div>
-            <div className={styles.infoGrid}>
-              <article className={styles.infoItem}>
-                <h3 className={styles.infoTitle}>운영시간</h3>
-                {operatingHourLines.length > 0 ? (
-                  operatingHourLines.map((line) => (
-                    <p key={line} className={styles.infoText}>
-                      {line}
-                    </p>
-                  ))
-                ) : (
-                  <p className={styles.infoTextMuted}>운영시간 정보를 준비 중입니다.</p>
-                )}
-              </article>
-              <article className={styles.infoItem}>
-                <h3 className={styles.infoTitle}>주차 안내</h3>
-                {parkingInfoLines.length > 0 ? (
-                  parkingInfoLines.map((line) => (
-                    <p key={line} className={styles.infoText}>
-                      {line}
-                    </p>
-                  ))
-                ) : (
-                  <p className={styles.infoTextMuted}>주차 안내 정보를 준비 중입니다.</p>
-                )}
-              </article>
-              <article className={styles.infoItem}>
-                <h3 className={styles.infoTitle}>오시는 길</h3>
-                {directionLines.length > 0 ? (
-                  directionLines.map((line) => (
-                    <p key={line} className={styles.infoText}>
-                      {line}
-                    </p>
-                  ))
-                ) : (
-                  <p className={styles.infoTextMuted}>오시는 길 정보를 준비 중입니다.</p>
-                )}
-              </article>
-              <article className={styles.infoItem}>
-                <h3 className={styles.infoTitle}>주소</h3>
-                <p className={styles.infoText}>{academy.address ?? "주소 정보를 준비 중입니다."}</p>
-              </article>
-              <article className={styles.infoItem}>
-                <h3 className={styles.infoTitle}>대표 전화</h3>
-                <p className={styles.infoText}>{academy.phone ?? "대표 전화 정보를 준비 중입니다."}</p>
-              </article>
-            </div>
-          </section>
-        </div>
+  const name = buildAcademyDisplayName(academy.name, academy.branchName)
+  const subjects = [...new Set(classes.map(item => item.subjectLabel).filter(Boolean))]
+  const details = [
+    { label: "주소", value: academy.address },
+    { label: "운영시간", value: academy.operatingHours },
+    { label: "주차", value: academy.parkingInfo },
+    { label: "오시는 길", value: academy.directions }
+  ].filter(item => item.value)
+  const hasVisitInfo = details.length > 0 || Boolean(academy.phone)
+  return <AcademyDetailFrame>
+    <section className={styles.summary} aria-label="학원 정보">
+      {academy.coverImageUrl ? <div className={styles.cover}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={academy.coverImageUrl} alt={`${name} 대표 이미지`} />
+      </div> : null}
+      <div className={styles.identity}>
+        {academy.logoImageUrl ? <div className={styles.profileImage}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={academy.logoImageUrl} alt={`${name} 공개 프로필 이미지`} />
+        </div> : !academy.coverImageUrl ? <span className={styles.fallback}><AcademyIcon /></span> : null}
+        <div className={styles.identityText}><h1>{name}</h1>{academy.regionLabel ? <p className={styles.region}>{academy.regionLabel}</p> : null}</div>
       </div>
-
-      <div className={styles.mobileCtaBar}>
-        {phoneHref ? (
-          <a href={phoneHref} className={styles.mobileCtaButton}>
-            대표 전화 걸기
-          </a>
-        ) : (
-          <span className={styles.mobileCtaButtonDisabled}>대표 전화 준비 중</span>
-        )}
-      </div>
-      {hasPhone ? <div className={styles.mobileBottomSpacing} aria-hidden="true" /> : null}
-    </main>
-  )
+      {academy.shortDescription ? <p className={styles.description}>{academy.shortDescription}</p> : null}
+      {subjects.length ? <div className={styles.tags}>{subjects.map(subject => <span key={subject}>{subject}</span>)}</div> : null}
+    </section>
+    <section className={styles.section}>
+      <h2>공개된 수업 {classes.length}개</h2>
+      {classes.length ? <ul className={styles.classList}>{classes.map(item => <li key={item.id}>
+        <Link href={`/classes/${item.id}`} className={styles.classCard}>
+          <div className={styles.classBody}>
+            <span className={styles.type}>{item.programTypeLabel}</span>
+            <h3>{item.title}</h3>
+            <p>{[item.subjectLabel, item.targetAgeLabel].filter(Boolean).join(" · ")}</p>
+            {item.scheduleLabel && item.scheduleLabel !== "요일·시간 확인 필요" ? <p className={styles.schedule}>{item.scheduleLabel}</p> : null}
+          </div>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m9 6 6 6-6 6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>
+        </Link>
+      </li>)}</ul> : <p className={styles.empty}>현재 공개된 수업이 없어요.</p>}
+    </section>
+    {academy.description ? <section className={styles.section}><h2>학원 소개</h2><div className={styles.textBlock}>{splitMultilineItems(academy.description).map((text, index) => <p key={index}>{text}</p>)}</div></section> : null}
+    {hasVisitInfo ? <section className={styles.section}><h2>위치 및 방문 안내</h2>
+      <dl className={styles.visit}>{details.map(item => <div key={item.label}><dt>{item.label}</dt><dd>{item.value}</dd></div>)}
+        {academy.phone ? <div><dt>전화</dt><dd><span>{academy.phone}</span><a className={styles.phone} href={`tel:${academy.phone.replace(/[^0-9+]/g, "")}`}>전화하기</a></dd></div> : null}
+      </dl>
+    </section> : null}
+  </AcademyDetailFrame>
 }

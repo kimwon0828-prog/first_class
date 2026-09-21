@@ -300,3 +300,13 @@ Academy summary uses real public logo/cover or ImageFallback; the full address a
 - 카드 전체가 `/academy/{organizationId}` 단일 링크다. 공통 outline 건물 아이콘은 로고가 아닌 fallback이다. 실제 이름/지점/지역 또는 거리/과목/대상/주소만 표시한다. 대표 수업·중복 CTA·사진·별점은 목록에 넣지 않는다.
 - getAcademiesForList 공개 범위, Subject Master, 학년/지역/query/cookie와 handle resolver는 변경하지 않는다. child eligibility나 새 조회 계약을 만들지 않는다.
 - 지역 canonical redirect를 완료한 뒤 결과 조회에 Suspense skeleton을 적용하여 기존 HTTP 307을 유지한다. route 전체 loading 대신 결과 fallback을 사용한다. 위치/목록 조회 실패는 0건과 분리하고 router.refresh retry를 제공한다. 상위 초기 조회 오류는 route error boundary에서 retry한다.
+
+## Parent Academy Detail V1 — `/academy/[handle]`
+
+- Back Header `학원 소개`, `/academies` 복귀, hit44. White/max480/gutter20, desktop Neutral 50, single column. Bottom Nav/고정 전화 tray 없음.
+- 공개 cover/profile 이미지가 있으면 실제 이미지를 비율 유지하여 표시한다. 둘 다 없을 때만 academy outline fallback. Gradient/가짜 이미지 없음.
+- 학원명·지점·기존 조직 행정지역·실제 짧은 소개·공개 수업의 과목 → 공개된 수업 N개 → 실제 소개 본문 → 실제 방문 정보. 주소는 방문 정보에서 한 번만 표시한다.
+- 수업 카드는 유형/제목/과목/학년/실제 일정 요약/chevron, 전체가 기존 class detail 링크. 가격·thumbnail·예약 가능 추측 없음. 0건은 `현재 공개된 수업이 없어요.`
+- 전화는 공개용 organizations.academy_phone만 사용한다. 담당자 contact_phone fallback은 금지한다. 방문 정보 안에 실제 번호와 보조 전화하기 링크만 제공한다.
+- 소개/운영시간/주차/오시는 길은 실제 값이 있을 때만 표시. 구조화된 가짜 특징 없음. 지도·child 전달·목록 query 복원은 이번 범위에 없다.
+- route loading/error(reset retry)/not-found를 구분하며 학원 존재 + 수업 0건은 학원 정보를 유지한다.

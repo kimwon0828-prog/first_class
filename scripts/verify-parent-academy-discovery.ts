@@ -179,7 +179,7 @@ check(
 )
 check("G) 숨긴 일정은 제외한다", academyClassesQuery.includes('.neq("booking_status", "hidden")'))
 check("공개 조건을 새로 넓히지 않았다", !academyClassesQuery.includes("approval_status"))
-check("공개 수업이 0건이면 그렇게 말한다", detailPage.includes("현재 신청 가능한 첫수업이 없어요."))
+check("공개 수업이 0건이면 그렇게 말한다", detailPage.includes("현재 공개된 수업이 없어요."))
 check("없는 수업을 만들어 채우지 않는다", !detailPage.includes("준비 중인 수업 예시"))
 check("not found 계약이 그대로다", detailPage.includes("notFound()"))
 
