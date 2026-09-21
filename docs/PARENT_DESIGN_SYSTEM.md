@@ -250,3 +250,14 @@ Academy summary uses real public logo/cover or ImageFallback; the full address a
 - 월별 최신순은 resolveParentExperienceDate와 Asia/Seoul 계약 유지. 상세/리포트/교육 프로필/탐색 링크에 검증된 child Context를 전달한다. 데이터와 권한 계약을 변경하지 않는다.
 - 중앙 Empty: `아직 쌓인 교육 기록이 없어요.` / `체험수업이나 레벨테스트를 완료하면 아이의 경험이 이곳에 차곡차곡 쌓여요.` / child를 유지한 `수업 찾아보기`. 자녀·기록 조회 오류는 Empty와 분리하며 현재 URL을 유지하는 실제 retry를 제공한다. 신호 조회 실패는 부정 배지를 만들지 않는다.
 - 새 필터·정렬 UI·NEW/read-state·점수·순위·사진·평가를 추가하지 않는다. 기존 typography/spacing/shell/nav safe-space token만 사용한다.
+
+
+## Parent Record Detail V1 — `/record/[experienceId]`
+
+- 완료 경험: Back Header `체험 기록` → 자녀/유형/수업/학원/Seoul 날짜·시간/장소를 한 번만 보여주는 Summary → 발행 관찰 → 부모 생각 → 조건부 교육 프로필 → `수업 다시 보기`. Bottom Nav 없음. 480px white surface와 desktop Neutral 50 outer 유지.
+- Summary/section은 N200 border/R16/no shadow, 버튼 R12, chip full radius. 기존 typography/spacing token만 소비한다. 종료 시각은 현재 데이터에 없으므로 만들지 않는다.
+- 관찰은 published snapshot의 첫 두 관찰 원문과 존재하는 총평만 표시하고 canonical report로 연결한다. 빈 상태는 `아직 등록된 리포트가 없어요.`; 실패는 재시도와 구분한다. 추측/요약/NEW 없음.
+- 완료 경험의 ParentDecision 조회와 수정 권한은 분리한다. 저장된 생각은 canCollectParentDecision=false여도 읽기 전용으로 표시한다. 변경 UI만 기존 capability로 제한하며 기존 form/action을 재사용한다. 부모 의향을 학원 등록 결과로 해석하지 않는다. 기존 가능한 일정과 legacy 날짜는 저장된 의미 그대로 표시한다.
+- 교육 프로필은 experience.childId가 owned children에서 확인될 때만 연결한다. URL child context는 목록/리포트/수업 이동에 유지하며 경험의 자녀를 대체하지 않는다.
+- 미완료 신청은 기존 상태/일정/취소 계약을 유지한다. 완료 경험 전용 관찰/생각을 노출하지 않는다. 취소된 신청에 수업 진행 예정이라는 약속을 하지 않는다.
+- 상세 skeleton, 조회 실패 retry, 본인 기록 없음/not-found를 구분한다. 내부 CRM/상담/학원 등록 결과 원문을 추가로 조회하지 않는다.

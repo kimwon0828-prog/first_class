@@ -13,10 +13,16 @@ import {
   resolveExperienceStage,
   resolveParentExperienceDate
 } from "@/features/record/lib/experience-view"
-import { getMyExperienceDetail } from "@/features/record/queries/get-my-experience-detail"
+import { getMyExperienceDetailResult } from "@/features/record/queries/get-my-experience-detail"
 import { getMyExperienceReport } from "@/features/record/queries/get-my-experience-report"
 import { ExperienceCancelButton } from "@/features/record/ui/experience-cancel-button"
 import { getSeoulDateTimeParts } from "@/shared/lib/seoul-datetime"
+
+import { getMyChildren } from "@/features/children/queries/get-my-children"
+import { getExperienceReportSummary } from "@/features/reports/lib/experience-report-snapshot"
+import { formatPreferredSchedule, formatLegacyPreferredDate, getParentDeclineReasonLabel } from "@/features/decisions/lib/parent-decision"
+
+import { RecordDetailRetry } from "@/features/record/ui/record-detail-retry"
 
 import styles from "./page.module.css"
 
@@ -66,7 +72,9 @@ export default async function ExperienceDetailPage({
   const { experienceId } = await params
   await requireParentAccess({ returnTo: `/record/${experienceId}` })
 
-  const experience = await getMyExperienceDetail(experienceId)
+  const detailResult = await getMyExperienceDetailResult(experienceId)
+  if (detailResult.error) throw new Error("경험 정보를 불러오지 못했어요.")
+  const experience = detailResult.data
   if (!experience) {
     notFound()
   }
@@ -87,7 +95,15 @@ export default async function ExperienceDetailPage({
   const hasPublishedReport = reportResult?.status === "ok"
   const reportLoadFailed = reportResult?.status === "error"
   const showDecision = isCompletedExperience && experience.canCollectParentDecision
-  const decisionResult = showDecision ? await getMyCurrentParentDecision(experienceId) : null
+  const decisionResult = isCompletedExperience ? await getMyCurrentParentDecision(experienceId) : null
+  const decision = decisionResult?.status === "ok" ? decisionResult.decision : null
+  const childrenResult = isCompletedExperience && experience.childId ? await getMyChildren() : null
+  const profileChildId = !childrenResult?.error && childrenResult?.data.some(child => child.id === experience.childId)
+    ? experience.childId : null
+  const snapshot = reportResult?.status === "ok" ? reportResult.report.content : null
+  const summary = snapshot ? getExperienceReportSummary(snapshot) : null
+  const preferredSchedule = decision ? formatPreferredSchedule({ days: decision.preferredDays, startTime: decision.preferredStartTime, endTime: decision.preferredEndTime, mode: decision.preferredTimeMode }) : null
+  const legacySchedule = decision?.preferredDate ? formatLegacyPreferredDate(decision.preferredDate, decision.preferredTimeNote) : null
 
   const typeLabel = getExperienceTypeLabel(experience.classProgramType)
   const primaryDate = resolveParentExperienceDate(experience)
@@ -105,128 +121,85 @@ export default async function ExperienceDetailPage({
     : null
 
   return (
-    <main className={styles.page}>
+    <main className={styles.page} data-parent-design="v1">
       <div className={styles.shell}>
         <header className={styles.header}>
-          <Link href={backHref} className={styles.back}>
+          <Link href={backHref} className={styles.back} aria-label={`${backLabel}으로 돌아가기`}>
             <span aria-hidden="true">←</span>
-            {backLabel}
           </Link>
+          <h1 className={styles.headerTitle}>{isCompletedExperience ? "체험 기록" : "신청 정보"}</h1>
         </header>
-
-        <section className={styles.hero}>
-          <div className={styles.heroBadges}>
-            <span className={styles.typeBadge}>{typeLabel}</span>
-            {stageLabel ? <span className={styles.statusBadge}>{stageLabel}</span> : null}
-          </div>
-          {isCompletedExperience && dateLabel ? (
-            <p className={styles.heroDate}>{dateLabel}</p>
-          ) : null}
-          <h1 className={styles.title}>{experience.classTitle ?? "수업 정보 준비 중"}</h1>
-          {experience.academyName ? (
-            <p className={styles.academy}>{experience.academyName}</p>
-          ) : null}
-        </section>
-
         <div className={styles.content}>
-          <section className={styles.section} aria-labelledby="experience-information-title">
-            <h2 id="experience-information-title" className={styles.sectionTitle}>
-              {isCompletedExperience ? "경험 정보" : "신청 정보"}
-            </h2>
+          <section className={styles.section} aria-label={isCompletedExperience ? "경험 정보" : "신청 정보"}>
+            <p className={styles.child}>{childLabel}</p>
+            <div className={styles.badges}>
+              <span className={styles.typeBadge}>{typeLabel}</span>
+              {stageLabel ? <span className={styles.statusBadge}>{stageLabel}</span> : null}
+            </div>
+            <h2 className={styles.title}>{experience.classTitle ?? "수업 정보 준비 중"}</h2>
+            {experience.academyName ? <p className={styles.academy}>{experience.academyName}</p> : null}
             <dl className={styles.factList}>
-              <div className={styles.factRow}>
-                <dt>자녀</dt>
-                <dd>{childLabel}</dd>
-              </div>
-              {dateLabel ? (
-                <div className={styles.factRow}>
-                  <dt>{isCompletedExperience ? "다녀온 날" : "일정"}</dt>
-                  <dd>
-                    <span>{dateLabel}</span>
-                    {timeLabel ? <span className={styles.factSub}>{timeLabel}</span> : null}
-                  </dd>
-                </div>
-              ) : null}
-              {address ? (
-                <div className={styles.factRow}>
-                  <dt>장소</dt>
-                  <dd>{address}</dd>
-                </div>
-              ) : null}
+              {dateLabel ? <div className={styles.factRow}>
+                <dt>{isCompletedExperience ? "다녀온 날" : "일정"}</dt>
+                <dd><time dateTime={primaryDate}>{dateLabel}{timeLabel ? ` ${timeLabel}` : ""}</time></dd>
+              </div> : null}
+              {address ? <div className={styles.factRow}><dt>장소</dt><dd>{address}</dd></div> : null}
             </dl>
           </section>
 
-          {hasPublishedReport ? (
-            <section className={styles.reportCard} aria-labelledby="report-title">
-              <div>
-                <p className={styles.eyebrow}>선생님이 남긴 기록</p>
-                <h2 id="report-title" className={styles.reportTitle}>
-                  {typeLabel} 리포트가 도착했어요
-                </h2>
-                <p className={styles.reportDescription}>
-                  수업에서 관찰한 모습과 선생님의 제안을 확인해 보세요.
-                </p>
-              </div>
-              <Link href={withRecordChild(`/record/${experience.id}/report`, selectedChildId)} className={styles.reportLink}>
-                리포트 보기 <span aria-hidden="true">›</span>
-              </Link>
+          {isCompletedExperience ? <>
+            <section className={styles.section} aria-labelledby="report-title">
+              <h2 id="report-title" className={styles.sectionTitle}>선생님이 남긴 관찰</h2>
+              {hasPublishedReport ? (
+                <>
+                  {snapshot?.observations.slice(0, 2).map((observation, index) => <p className={styles.body} key={`${observation.code}-${index}`}>{observation.label}</p>)}
+                  {summary ? <p className={styles.body}>{summary}</p> : null}
+                  <Link href={withRecordChild(`/record/${experience.id}/report`, selectedChildId)} className={styles.reportLink}>
+                    리포트 전체 보기 <span aria-hidden="true">→</span>
+                  </Link>
+                </>
+              ) : reportLoadFailed ? <p className={styles.muted} role="status">리포트 정보를 불러오지 못했어요. <RecordDetailRetry /></p>
+                : <p className={styles.muted}>아직 등록된 리포트가 없어요.</p>}
             </section>
-          ) : reportLoadFailed ? (
-            <section className={styles.notice} aria-live="polite">
-              <p className={styles.noticeTitle}>리포트 정보를 불러오지 못했어요.</p>
-              <p className={styles.noticeBody}>잠시 후 다시 확인해 주세요.</p>
-            </section>
-          ) : null}
 
-          {showDecision && decisionResult && decisionResult.status !== "not_found" ? (
             <section className={styles.section} aria-labelledby="decision-title">
-              <div className={styles.sectionHeading}>
-                <p className={styles.eyebrow}>부모님의 기록</p>
-                <h2 id="decision-title" className={styles.sectionTitle}>
-                  이번 경험 후의 생각
-                </h2>
-              </div>
-              <ParentDecisionForm
-                experienceId={experience.id}
-                currentDeclineReason={
-                  decisionResult.status === "ok" ? (decisionResult.decision?.declineReason ?? null) : null
-                }
-                currentPreferredDays={
-                  decisionResult.status === "ok" ? (decisionResult.decision?.preferredDays ?? null) : null
-                }
-                currentPreferredStartTime={
-                  decisionResult.status === "ok"
-                    ? (decisionResult.decision?.preferredStartTime ?? null)
-                    : null
-                }
-                currentPreferredEndTime={
-                  decisionResult.status === "ok"
-                    ? (decisionResult.decision?.preferredEndTime ?? null)
-                    : null
-                }
-                currentPreferredTimeMode={
-                  decisionResult.status === "ok"
-                    ? (decisionResult.decision?.preferredTimeMode ?? null)
-                    : null
-                }
-                currentDecision={
-                  decisionResult.status === "ok" ? (decisionResult.decision?.decision ?? null) : null
-                }
-                loadError={decisionResult.status === "error" ? decisionResult.message : null}
-              />
+              <h2 id="decision-title" className={styles.sectionTitle}>이번 경험 후의 생각</h2>
+              {decisionResult?.status === "error" ? <p className={styles.muted} role="status">{decisionResult.message} <RecordDetailRetry /></p> : <>
+                {decision ? <div className={styles.decisionSummary}>
+                  <p className={styles.caption}>현재 선택</p>
+                  <span className={styles.statusBadge}>{{ planned: "등록 의향 있음", considering: "고민 중", declined: "등록하지 않음" }[decision.decision]}</span>
+                  {decision.declineReason ? <p className={styles.body}>{getParentDeclineReasonLabel(decision.declineReason)}</p> : null}
+                  {preferredSchedule || legacySchedule ? <p className={styles.muted}>가능 일정 · {preferredSchedule ?? legacySchedule}</p> : null}
+                </div> : <p className={styles.muted}>아직 남긴 생각이 없어요.</p>}
+                {showDecision && decisionResult?.status === "ok" ? <details className={styles.editor} key={decision?.createdAt ?? "empty"}>
+                  <summary>{decision ? "생각 변경하기" : "생각 남기기"}</summary>
+                  <ParentDecisionForm
+                    experienceId={experience.id}
+                    currentDecision={decision?.decision ?? null}
+                    currentDeclineReason={decision?.declineReason ?? null}
+                    currentPreferredDays={decision?.preferredDays ?? null}
+                    currentPreferredStartTime={decision?.preferredStartTime ?? null}
+                    currentPreferredEndTime={decision?.preferredEndTime ?? null}
+                    currentPreferredTimeMode={decision?.preferredTimeMode ?? null}
+                    loadError={null}
+                  />
+                </details> : null}
+              </>}
             </section>
-          ) : null}
+            {profileChildId ? <Link href={withRecordChild("/record/profile", profileChildId)} className={styles.profile}>
+              <div><h2 className={styles.sectionTitle}>교육 프로필</h2><p className={styles.muted}>아이의 다른 교육 경험도 함께 살펴보세요.</p></div>
+              <span aria-hidden="true">›</span>
+            </Link> : null}
+          </> : <aside className={styles.notice}>
+            <p>{experience.status === "canceled" ? "취소된 신청이에요." : "아직 완료된 교육 경험이 아니에요."}</p>
+            <p className={styles.muted}>완료된 경험은 교육 기록으로 남으며, 발행된 리포트가 있으면 함께 확인할 수 있어요.</p>
+          </aside>}
 
           <section className={styles.related} aria-label="관련 정보">
-            <Link href={withRecordChild(`/classes/${experience.classId}`, selectedChildId)} className={styles.secondaryLink}>
-              수업 정보 보기 <span aria-hidden="true">›</span>
-            </Link>
-            {experience.canCancel ? (
-              <ExperienceCancelButton
-                experienceId={experience.id}
-                confirmDescription={`${experience.classTitle ?? "이 수업"} 신청을 취소할까요?`}
-              />
-            ) : null}
+            {experience.classId ? <Link href={withRecordChild(`/classes/${experience.classId}`, selectedChildId)} className={styles.primaryLink}>
+              수업 다시 보기 <span aria-hidden="true">→</span>
+            </Link> : null}
+            {experience.canCancel ? <ExperienceCancelButton experienceId={experience.id} confirmDescription={`${experience.classTitle ?? "이 수업"} 신청을 취소할까요?`} /> : null}
           </section>
         </div>
       </div>

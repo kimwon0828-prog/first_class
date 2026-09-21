@@ -36,7 +36,7 @@ console.log("\n[1] 접근과 identity")
 
 check(
   "본인 경험 조회 뒤 notFound 로 닫는다",
-  page.includes("getMyExperienceDetail(experienceId)") &&
+  page.includes("getMyExperienceDetailResult(experienceId)") &&
     page.includes("if (!experience)") &&
     page.includes("notFound()")
 )
@@ -55,7 +55,7 @@ check(
   page.includes('isCompletedExperience ? "/record" : "/my/applications"') &&
     page.includes('isCompletedExperience ? "기록" : "신청 현황"')
 )
-check("완료 경험 제목은 경험 정보다", page.includes('isCompletedExperience ? "경험 정보" : "신청 정보"'))
+check("완료 경험은 통합 경험 정보 카드다", page.includes('isCompletedExperience ? "경험 정보" : "신청 정보"'))
 check("완료 경험은 처리 단계 라벨을 만들지 않는다", page.includes("!isCompletedExperience") && page.includes("stageLabel"))
 check("처리 타임라인을 렌더하지 않는다", !page.includes("ExperienceTimeline") && !page.includes("진행 흐름"))
 check("옛 상세 타임라인 컴포넌트를 제거했다", !existsSync(resolve(process.cwd(), TIMELINE_PATH)))
@@ -105,11 +105,19 @@ check("수업 정보 링크는 부차 행동으로 남긴다", page.includes("`/
 check("취소는 기존 canCancel 과 기존 버튼을 쓴다", page.includes("experience.canCancel") && page.includes("<ExperienceCancelButton"))
 check(
   "주요 터치 영역은 44px 이상이다",
-  css.includes("min-height: 44px") && css.includes("min-height: 46px")
+  css.includes("min-height: 44px") && css.includes("min-height: 48px")
 )
 for (const term of ["별점", "점수", "순위", "랭킹", "적합도", "성향", "rating", "score"]) {
   check(`근거 없는 평가 표현 \"${term}\" 을 만들지 않는다`, !page.includes(term) && !css.includes(term))
 }
+
+check("조회 실패는 notFound와 분리한다", page.includes('if (detailResult.error) throw') && detailQuery.includes('error ? null'))
+check("생각 조회는 수정 가능 여부와 독립적이다", page.includes('isCompletedExperience ? await getMyCurrentParentDecision(experienceId) : null'))
+check("읽기 전용 생각도 표시하고 변경 폼은 capability로 제한한다", page.includes('{decision ? <div') && page.includes('showDecision && decisionResult?.status === "ok"'))
+check("프로필 자녀는 해당 경험과 owned children의 교집합이다", page.includes('child.id === experience.childId') && page.includes('!childrenResult?.error'))
+check("관찰은 snapshot 원문만 미리 보여준다", page.includes('observation.label') && page.includes('getExperienceReportSummary(snapshot)'))
+check("리포트 없음과 조회 실패를 구분한다", page.includes('아직 등록된 리포트가 없어요.') && page.includes('reportLoadFailed'))
+check("상세 전용 로딩과 오류 화면이 있다", existsSync(resolve('app/record/[experienceId]/loading.tsx')) && existsSync(resolve('app/record/[experienceId]/error.tsx')))
 
 console.log(failures === 0 ? "\nALL PASS" : `\nFAIL: ${failures}건 실패`)
 process.exit(failures === 0 ? 0 : 1)

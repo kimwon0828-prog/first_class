@@ -17,12 +17,12 @@ import type { ParentExperience } from "@/features/record/lib/experience-view"
 // DTO 도 Parent 전용(ParentApplicationSummary)을 그대로 쓴다 —
 // Studio Detail DTO 를 재사용하면 학원 운영 필드가 같이 따라온다.
 
-const getMyExperienceDetailCached = cache(
-  async (experienceId: string): Promise<ParentExperience | null> => {
-    const { data } = await getMyApplications()
-    return data.find((item) => item.id === experienceId) ?? null
+export const getMyExperienceDetailResult = cache(
+  async (experienceId: string): Promise<{ data: ParentExperience | null; error: string | null }> => {
+    const { data, error } = await getMyApplications()
+    return { data: error ? null : data.find((item) => item.id === experienceId) ?? null, error }
   }
 )
 
 export const getMyExperienceDetail = async (experienceId: string) =>
-  getMyExperienceDetailCached(experienceId)
+  (await getMyExperienceDetailResult(experienceId)).data

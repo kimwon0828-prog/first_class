@@ -785,7 +785,7 @@ check(
 )
 check("version 을 학부모에게 보여 주지 않는다", !parentReportCode.includes("report.version"))
 
-console.log("\n── 28. 리포트가 없으면 안내를 만들지 않는다 ──")
+console.log("\n── 28. 발행본 CTA와 중립적인 없음/실패 안내를 구분한다 ──")
 /*
  * 여기서 고정하는 것은 문법이 아니라 계약이다.
  *
@@ -808,7 +808,7 @@ const reportCtaPattern = /href=\{withRecordChild\(`\/record\/\$\{experience\.id\
 const reportCtaCount = parentDetailCode.match(reportCtaPattern)?.length ?? 0
 const reportCtaAt = parentDetailCode.search(reportCtaPattern)
 const publishedBranchAt = parentDetailCode.indexOf("{hasPublishedReport ? (")
-const failedBranchAt = parentDetailCode.indexOf(") : reportLoadFailed ? (")
+const failedBranchAt = parentDetailCode.indexOf(") : reportLoadFailed ?")
 
 check("리포트 CTA 는 한 곳에만 있다", reportCtaCount === 1, `${reportCtaCount}곳`)
 check(
