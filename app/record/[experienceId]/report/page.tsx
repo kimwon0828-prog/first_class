@@ -9,6 +9,10 @@ import { getMyExperienceReport } from "@/features/record/queries/get-my-experien
 import { getExperienceReportSummary } from "@/features/reports/lib/experience-report-snapshot"
 import { getSeoulDateTimeParts } from "@/shared/lib/seoul-datetime"
 
+import { getExperienceTypeLabel } from "@/features/record/lib/experience-view"
+import { RecordDetailRetry } from "@/features/record/ui/record-detail-retry"
+import { ReportFrame } from "./report-frame"
+
 import styles from "./page.module.css"
 
 // 학원이 발행한 체험 리포트를 학부모가 보는 화면.
@@ -59,154 +63,86 @@ const formatPublishedDate = (value: string) => {
   return `${parts.year}.${month}.${day}`
 }
 
-export default async function ExperienceReportPage({
-  params,
-  searchParams
-}: {
+export default async function ExperienceReportPage({ params, searchParams }: {
   params: Promise<{ experienceId: string }>
   searchParams?: Promise<Record<string, string | string[] | undefined>>
 }) {
   noStore()
   const { experienceId } = await params
-  await requireParentAccess({ returnTo: `/record/${experienceId}/report` })
-
+  const childQuery = (await searchParams)?.child
+  // Return navigation carries context only; ownership is validated after authentication.
+  const returnTo = withRecordChild(`/record/${experienceId}/report`, typeof childQuery === "string" ? childQuery : null)
+  await requireParentAccess({ returnTo })
   const result = await getMyExperienceReport(experienceId)
+  if (result.status === "not_found") notFound()
 
-  // 남의 경험은 존재 여부조차 알려주지 않는다. Experience Detail 과 같은 처리다.
-  if (result.status === "not_found") {
-    notFound()
-  }
-
-  const selectedChildId = await getRecordChildContext((await searchParams)?.child)
+  const selectedChildId = await getRecordChildContext(childQuery)
   const backHref = withRecordChild(`/record/${experienceId}`, selectedChildId)
-
-  // 내 경험이지만 지금 볼 수 있는 리포트가 없을 때.
-  // 조회 실패와 미발행을 같은 화면으로 뭉개지 않는다.
   if (result.status !== "ok") {
     const isError = result.status === "error"
-
-    return (
-      <main className={styles.page}>
-        <div className={styles.shell}>
-          <header className={styles.header}>
-            <Link href={backHref} className={styles.back}>
-              ← 체험 기록
-            </Link>
-          </header>
-
-          <section className={styles.emptyState} aria-live="polite">
-            <p className={styles.emptyTitle}>
-              {isError
-                ? "리포트 정보를 불러오지 못했습니다."
-                : "현재 확인할 수 있는 체험 리포트가 없습니다."}
-            </p>
-            <p className={styles.emptyBody}>
-              {isError
-                ? "잠시 후 다시 확인해 주세요."
-                : "학원에서 리포트를 발행하면 이곳에서 확인할 수 있어요."}
-            </p>
-            <Link href={backHref} className={styles.emptyAction}>
-              체험 기록으로 돌아가기
-            </Link>
-          </section>
-        </div>
-      </main>
-    )
+    return <ReportFrame backHref={backHref}>
+      <section className={styles.emptyState} aria-live="polite">
+        <h2 className={styles.blockTitle}>{isError ? "리포트를 불러오지 못했어요." : "현재 확인할 수 있는 리포트가 없어요."}</h2>
+        {isError ? <><p className={styles.muted}>잠시 후 다시 시도해 주세요.</p><RecordDetailRetry /></> : null}
+        <Link href={backHref} className={styles.primaryAction}>체험 기록으로 돌아가기</Link>
+      </section>
+    </ReportFrame>
   }
 
   const { report } = result
   const snapshot = report.content
-  // V1 발행본에는 총평이라는 개념 자체가 없다. 없는 것을 빈 값으로 읽지 않는다.
   const summary = getExperienceReportSummary(snapshot)
   const experienceDate = formatReportDate(snapshot.experience.date)
   const publishedDate = formatPublishedDate(report.publishedAt)
+  const type = snapshot.experience.type
+  const typeLabel = type === "trial_class" || type === "level_test" ? getExperienceTypeLabel(type) : null
   const recommendations = [
     { label: "과정", value: snapshot.recommendation.course },
-    { label: "레벨", value: snapshot.recommendation.level },
-    { label: "일정", value: snapshot.recommendation.schedule }
+    { label: "레벨", value: snapshot.recommendation.level }
   ].filter((item): item is { label: string; value: string } => Boolean(item.value))
 
-  return (
-    <main className={styles.page}>
-      <div className={styles.shell}>
-        <header className={styles.header}>
-          <Link href={backHref} className={styles.back}>
-            ← 체험 기록
-          </Link>
-        </header>
+  return <ReportFrame backHref={backHref}>
+    <section className={styles.summary} aria-label="경험 요약">
+      {snapshot.experience.child.displayName ? <p className={styles.childName}>
+        {snapshot.experience.child.displayName}
+        {snapshot.experience.child.grade ? <span className={styles.grade}> · {snapshot.experience.child.grade}</span> : null}
+      </p> : null}
+      {typeLabel ? <span className={styles.typeBadge}>{typeLabel}</span> : null}
+      {snapshot.experience.class.title ? <h2 className={styles.classTitle}>{snapshot.experience.class.title}</h2> : null}
+      {snapshot.experience.academy.name ? <p className={styles.muted}>{snapshot.experience.academy.name}</p> : null}
+      {experienceDate ? <p className={styles.experienceDate}><time dateTime={snapshot.experience.date}>{experienceDate}</time></p> : null}
+    </section>
 
-        <section className={styles.hero}>
-          <p className={styles.childName}>{snapshot.experience.child.displayName}</p>
-          <h1 className={styles.title}>체험 리포트</h1>
-          {experienceDate ? <p className={styles.heroDate}>{experienceDate}</p> : null}
-          <p className={styles.academy}>{snapshot.experience.academy.name}</p>
-          <p className={styles.className}>{snapshot.experience.class.title}</p>
-        </section>
+    {snapshot.observations.length > 0 ? <section className={styles.block} aria-labelledby="observations-title">
+      <h2 id="observations-title" className={styles.blockTitle}>선생님이 남긴 관찰</h2>
+      <ul className={styles.observationList}>
+        {snapshot.observations.map((item, index) => <li key={`${item.code}-${index}`} className={styles.prose}>{item.label}</li>)}
+      </ul>
+    </section> : null}
 
-        {snapshot.observations.length > 0 ? (
-          <section className={styles.block} aria-labelledby="observations-title">
-            <h2 id="observations-title" className={styles.blockTitle}>
-              이번 체험에서 관찰된 모습
-            </h2>
-            {/*
-              발행 당시 저장된 문장을 그대로 보여 준다.
-              여기서 다시 해석하거나 다른 말로 바꾸지 않는다 — 학원이 적은 것이
-              학부모가 읽는 것이어야 한다.
-            */}
-            <ul className={styles.observationList}>
-              {snapshot.observations.map((item) => (
-                <li key={item.code} className={styles.observationItem}>
-                  {item.label}
-                </li>
-              ))}
-            </ul>
-          </section>
-        ) : null}
+    {summary ? <section className={styles.block} aria-labelledby="report-summary-title">
+      <h2 id="report-summary-title" className={styles.blockTitle}>선생님 총평</h2>
+      <p className={styles.prose}>{summary}</p>
+    </section> : null}
 
-        {/*
-          선생님 총평.
+    {recommendations.length > 0 ? <section className={styles.block} aria-labelledby="recommendation-title">
+      <h2 id="recommendation-title" className={styles.blockTitle}>선생님이 제안한 과정 · 레벨</h2>
+      <dl className={styles.recommendationList}>
+        {recommendations.map(item => <div key={item.label} className={styles.recommendationRow}>
+          <dt>{item.label}</dt><dd className={styles.prose}>{item.value}</dd>
+        </div>)}
+      </dl>
+    </section> : null}
 
-          ⚠️ 내부 메모(note)가 아니다. 학원이 부모에게 보이려고 따로 적은 글만
-             여기 온다. 비어 있으면 빈 카드를 만들지 않는다 —
-             "총평 없음" 이라는 말은 부모에게 아무 도움이 되지 않는다.
-        */}
-        {summary ? (
-          <section className={styles.block} aria-labelledby="report-summary-title">
-            <h2 id="report-summary-title" className={styles.blockTitle}>
-              선생님 총평
-            </h2>
-            <p className={styles.summaryText}>{summary}</p>
-          </section>
-        ) : null}
+    {snapshot.recommendation.schedule ? <section className={styles.block} aria-labelledby="schedule-title">
+      <h2 id="schedule-title" className={styles.blockTitle}>선생님이 제안한 일정</h2>
+      <p className={styles.prose}>{snapshot.recommendation.schedule}</p>
+    </section> : null}
 
-        {recommendations.length > 0 ? (
-<section className={styles.block} aria-labelledby="recommendation-title">
-            <h2 id="recommendation-title" className={styles.blockTitle}>
-              추천받은 다음 과정
-            </h2>
-            {/* 값이 없는 항목은 "-" 를 채우지 않고 행 자체를 두지 않는다. */}
-            <dl className={styles.recommendationList}>
-              {recommendations.map((item) => (
-                <div key={item.label} className={styles.recommendationRow}>
-                  <dt className={styles.recommendationLabel}>{item.label}</dt>
-                  <dd className={styles.recommendationValue}>{item.value}</dd>
-                </div>
-              ))}
-            </dl>
-          </section>
-        ) : null}
-
-        <footer className={styles.footer}>
-          {publishedDate ? <p className={styles.publishedAt}>{publishedDate} 발행</p> : null}
-          {/*
-            이 리포트가 어디서 왔는지 조용히 밝힌다.
-            첫수업이 분석했다거나 평가했다고 말하지 않는다 — 쓴 사람은 학원이다.
-          */}
-          <p className={styles.sourceNote}>
-            이 리포트는 체험 당시 학원에서 기록하고 발행한 내용을 바탕으로 보여드려요.
-          </p>
-        </footer>
-      </div>
-    </main>
-  )
+    <footer className={styles.footer}>
+      {publishedDate ? <p className={styles.caption}><time dateTime={report.publishedAt}>{publishedDate}</time> 발행</p> : null}
+      <p className={styles.caption}>이 리포트는 체험 당시 학원에서 기록하고 발행한 내용을 바탕으로 보여드려요.</p>
+      <Link href={backHref} className={styles.primaryAction}>체험 기록으로 돌아가기</Link>
+    </footer>
+  </ReportFrame>
 }

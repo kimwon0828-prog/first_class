@@ -737,7 +737,8 @@ const parentDetailCode = stripComments(parentDetailPage)
 
 check(
   "소유 확인이 리포트 조회보다 먼저다",
-  parentQuery.indexOf("getMyExperienceDetail(experienceId)") <
+  parentQuery.indexOf("getMyExperienceDetailResult(experienceId)") >= 0 &&
+  parentQuery.indexOf("getMyExperienceDetailResult(experienceId)") <
     parentQuery.indexOf("getPublishedExperienceReport(experienceId)")
 )
 check(

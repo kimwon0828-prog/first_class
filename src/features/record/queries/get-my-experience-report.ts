@@ -3,7 +3,7 @@ import "server-only"
 import { cache } from "react"
 
 import type { ParentExperience } from "@/features/record/lib/experience-view"
-import { getMyExperienceDetail } from "@/features/record/queries/get-my-experience-detail"
+import { getMyExperienceDetailResult } from "@/features/record/queries/get-my-experience-detail"
 import { dataAdapter } from "@/shared/lib/db"
 import type { ExperienceReportSummary } from "@/shared/lib/db/adapter"
 
@@ -20,7 +20,7 @@ import type { ExperienceReportSummary } from "@/shared/lib/db/adapter"
 export type ParentExperienceReportResult =
   | { status: "not_found" }
   | { status: "unavailable"; experience: ParentExperience }
-  | { status: "error"; experience: ParentExperience; message: string }
+  | { status: "error"; experience: ParentExperience | null; message: string }
   | { status: "ok"; experience: ParentExperience; report: ExperienceReportSummary }
 
 const REPORT_LOAD_ERROR_MESSAGE = "리포트 정보를 불러오지 못했습니다. 잠시 후 다시 확인해 주세요."
@@ -37,9 +37,13 @@ const getMyExperienceReportCached = cache(
      *      "리포트가 없습니다" 라고 답해 존재 여부를 흘리게 된다.
      *   2. 조회 경로가 늘어나도 소유 판정이 한 곳에 남는다.
      *
-     * getMyExperienceDetail 은 학부모 본인 목록에서만 찾으므로 남의 id 는 여기서 끝난다.
+     * getMyExperienceDetailResult 은 학부모 본인 목록에서만 찾으므로 남의 id 는 여기서 끝난다.
      */
-    const experience = await getMyExperienceDetail(experienceId)
+    const detail = await getMyExperienceDetailResult(experienceId)
+    if (detail.error) {
+      return { status: "error", experience: null, message: REPORT_LOAD_ERROR_MESSAGE }
+    }
+    const experience = detail.data
     if (!experience) {
       return { status: "not_found" }
     }

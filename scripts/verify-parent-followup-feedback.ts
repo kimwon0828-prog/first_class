@@ -306,7 +306,7 @@ check(
 )
 check(
   "총평이 없으면 빈 카드를 만들지 않는다",
-  parentReport.includes("{summary ? (")
+  /\{summary\s*\?\s*\(?\s*<section/.test(parentReport)
 )
 
 console.log("\n── 6. 총평도 발행 가능 내용이다 ──")

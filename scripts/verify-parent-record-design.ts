@@ -34,7 +34,7 @@ assert.ok(read("src/features/record/queries/get-parent-experience-signals.ts").i
 assert.ok(read("src/features/record/queries/get-record-child-context.ts").includes('resolveSelectedChildId(value, children.data)'))
 for (const p of ['app/record/[experienceId]/page.tsx','app/record/[experienceId]/report/page.tsx']) {
   const source = read(p)
-  assert.ok(source.includes('getRecordChildContext((await searchParams)?.child)'))
+  assert.ok(source.includes('getRecordChildContext((await searchParams)?.child)') || (source.includes('const childQuery = (await searchParams)?.child') && source.includes('getRecordChildContext(childQuery)')))
   assert.ok(source.includes('withRecordChild('))
 }
 assert.ok(read('app/record/profile/page.tsx').includes('withRecordChild(`/record/${source.experienceId}/report`, childId)'))

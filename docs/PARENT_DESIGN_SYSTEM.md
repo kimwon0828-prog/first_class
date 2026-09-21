@@ -261,3 +261,11 @@ Academy summary uses real public logo/cover or ImageFallback; the full address a
 - 교육 프로필은 experience.childId가 owned children에서 확인될 때만 연결한다. URL child context는 목록/리포트/수업 이동에 유지하며 경험의 자녀를 대체하지 않는다.
 - 미완료 신청은 기존 상태/일정/취소 계약을 유지한다. 완료 경험 전용 관찰/생각을 노출하지 않는다. 취소된 신청에 수업 진행 예정이라는 약속을 하지 않는다.
 - 상세 skeleton, 조회 실패 retry, 본인 기록 없음/not-found를 구분한다. 내부 CRM/상담/학원 등록 결과 원문을 추가로 조회하지 않는다.
+
+
+## Parent Report Detail V1 — `/record/[experienceId]/report`
+
+- `체험 리포트` Back Header → snapshot 경험 요약 카드(자녀/학년/유형/수업/학원/경험 날짜) → 관찰 원문 전체 → 조건부 총평 → 조건부 과정·레벨 제안 → 조건부 일정 제안 → 발행일/학원 출처/상세 복귀 CTA. Bottom Nav 없음.
+- 요약만 N200/R16 카드로 표현하고 본문은 section gap32/heading gap16과 얇은 구분선으로 읽는다. B1 본문, 원문 줄바꿈 유지, gutter20/max480, desktop N50 canvas/white surface. 기존 typography/token만 사용한다.
+- 없는 관찰·총평·제안은 해당 section을 생략한다. snapshot label을 재해석하거나 줄이지 않는다. 일정은 발행된 자유 텍스트이며 확정/예약 가능 일정으로 표시하지 않는다. 점수/순위/적합도/읽음 신호/내부 메모 없음.
+- 본인 신청/RLS/published source 유지. 소유 조회 실패와 not-found를 구분한다. report 전용 loading/error, 조회 실패 실제 retry, 리포트 없음 중립 안내+상세 복귀를 제공한다. owned child context를 상단/하단 복귀에 유지한다. 로그인 returnTo의 child는 이동 context일 뿐 소유권 근거가 아니다.

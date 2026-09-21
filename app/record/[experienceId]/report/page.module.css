@@ -1,223 +1,74 @@
-/*
- * 체험 리포트.
- *
- * 성적표가 아니다. 점수·등급·막대 그래프를 쓰지 않고, 학원이 적은 문장을
- * 읽기 좋게 놓는 것이 전부다. Experience Detail 과 같은 폭 정책을 따른다
- * (desktop 중앙 480px · mobile viewport).
- */
 .page {
   min-height: 100dvh;
-  width: 100%;
-  overflow-x: hidden;
   background: var(--bg);
 }
-
 .shell {
-  box-sizing: border-box;
   width: 100%;
   max-width: var(--col);
-  margin: 0 auto;
   min-height: 100dvh;
+  margin-inline: auto;
+  padding-bottom: calc(var(--s10) + env(safe-area-inset-bottom));
   background: var(--surface);
-  padding-bottom: var(--s10);
 }
-
-.shell * {
-  box-sizing: border-box;
-}
-
 .header {
   position: sticky;
   top: 0;
-  z-index: 5;
+  z-index: 20;
   display: flex;
   align-items: center;
-  min-height: 56px;
-  padding: calc(var(--s2) + env(safe-area-inset-top)) var(--gutter) var(--s2);
+  gap: var(--s2);
+  min-height: 60px;
+  padding: var(--s2) var(--gutter);
+  padding-top: calc(var(--s2) + env(safe-area-inset-top));
   background: var(--surface);
   border-bottom: 1px solid var(--border);
 }
-
 .back {
+  display: grid;
+  place-items: center;
+  min-width: 44px;
   min-height: 44px;
-  display: inline-flex;
-  align-items: center;
-  font-size: 14px;
-  font-weight: 700;
-  color: var(--text-2);
+  color: var(--text-1);
+  font-size: var(--font-h2);
   text-decoration: none;
 }
-
-.hero {
-  padding: var(--s6) var(--gutter) var(--s5);
-  border-bottom: 1px solid var(--border);
-}
-
-.childName {
-  margin: 0 0 var(--s1);
-  font-size: 14px;
-  line-height: 20px;
-  font-weight: 700;
-  color: var(--text-2);
-}
-
-.title {
-  margin: 0;
-  font-size: 22px;
-  line-height: 30px;
-  font-weight: 800;
-  letter-spacing: -0.03em;
-  color: var(--text-1);
-  word-break: keep-all;
-}
-
-.heroDate {
-  margin: var(--s3) 0 0;
-  font-size: 14px;
-  line-height: 20px;
-  color: var(--text-1);
-  font-variant-numeric: tabular-nums;
-}
-
-.academy {
-  margin: var(--s3) 0 0;
-  font-size: 14px;
-  line-height: 20px;
-  font-weight: 700;
-  color: var(--text-1);
-}
-
-.className {
-  margin: 2px 0 0;
-  font-size: 14px;
-  line-height: 20px;
-  color: var(--text-2);
-}
-
-.block {
-  padding: var(--s5) var(--gutter);
-  border-bottom: 1px solid var(--border);
-}
-
-.blockTitle {
-  margin: 0 0 var(--s3);
-  font-size: 12px;
-  line-height: 18px;
-  font-weight: 700;
-  color: var(--text-3);
-}
-
-/* 관찰은 판정이 아니라 문장이다. 아이콘이나 배지를 붙이지 않는다. */
-.observationList {
-  margin: 0;
-  padding-left: 18px;
-  display: grid;
-  gap: var(--s3);
-}
-
-.observationItem {
-  font-size: 15px;
-  line-height: 24px;
-  color: var(--text-1);
-  word-break: keep-all;
-}
-
-.recommendationList {
-  margin: 0;
-  display: grid;
-  gap: var(--s3);
-}
-
-.recommendationRow {
-  display: grid;
-  grid-template-columns: 56px minmax(0, 1fr);
-  gap: var(--s3);
-  align-items: baseline;
-}
-
-.recommendationLabel {
-  margin: 0;
-  font-size: 13px;
-  line-height: 22px;
-  font-weight: 700;
-  color: var(--text-3);
-}
-
-.recommendationValue {
-  margin: 0;
-  font-size: 15px;
-  line-height: 22px;
-  font-weight: 600;
-  color: var(--text-1);
-  word-break: keep-all;
-}
-
-.footer {
-  padding: var(--s5) var(--gutter);
-  display: grid;
-  gap: var(--s2);
-}
-
-.publishedAt {
-  margin: 0;
-  font-size: 12px;
-  line-height: 18px;
-  color: var(--text-3);
-  font-variant-numeric: tabular-nums;
-}
-
-.sourceNote {
-  margin: 0;
-  font-size: 12px;
-  line-height: 19px;
-  color: var(--text-3);
-  word-break: keep-all;
-}
-
-.emptyState {
-  padding: var(--s8) var(--gutter);
-  display: grid;
-  gap: var(--s2);
-  justify-items: start;
-}
-
-.emptyTitle {
-  margin: 0;
-  font-size: 16px;
-  line-height: 24px;
-  font-weight: 700;
-  color: var(--text-1);
-  word-break: keep-all;
-}
-
-.emptyBody {
-  margin: 0;
-  font-size: 14px;
-  line-height: 21px;
-  color: var(--text-2);
-  word-break: keep-all;
-}
-
-.emptyAction {
-  margin-top: var(--s3);
-  min-height: 44px;
-  display: inline-flex;
+.title { margin: 0; font-size: var(--font-h3); font-weight: 600; }
+.content { padding: var(--s5) var(--gutter) 0; overflow-wrap: anywhere; }
+.summary { padding: var(--s5); border: 1px solid var(--border); border-radius: var(--r-lg); }
+.childName { margin: 0 0 var(--s4); font-size: var(--font-b2); font-weight: 600; }
+.grade { color: var(--text-2); font-weight: 500; }
+.typeBadge { display: inline-flex; padding: var(--s1) var(--s2); border-radius: var(--r-full); background: var(--surface-sub); color: var(--text-2); font-size: var(--font-c1); }
+.classTitle { margin: var(--s2) 0 0; font-size: var(--font-h2); font-weight: 600; }
+.muted { margin: var(--s2) 0 0; color: var(--text-2); font-size: var(--font-b2); }
+.experienceDate { margin: var(--s4) 0 0; padding-top: var(--s4); border-top: 1px solid var(--border); font-size: var(--font-b2); font-variant-numeric: tabular-nums; }
+.block { padding: var(--s8) 0; border-bottom: 1px solid var(--border); }
+.blockTitle { margin: 0 0 var(--s4); font-size: var(--font-h4); font-weight: 700; }
+.observationList { display: grid; gap: var(--s4); margin: 0; padding-left: var(--s5); }
+.prose { margin: 0; font-size: var(--font-b1); font-weight: 500; line-height: 1.5; color: var(--text-1); white-space: pre-wrap; overflow-wrap: anywhere; }
+.recommendationList { display: grid; gap: var(--s4); margin: 0; }
+.recommendationRow { display: grid; grid-template-columns: 48px minmax(0, 1fr); gap: var(--s3); align-items: baseline; }
+.recommendationRow dt { color: var(--text-2); font-size: var(--font-b2); }
+.footer { display: grid; gap: var(--s2); padding-top: var(--s6); }
+.caption { margin: 0; color: var(--text-2); font-size: var(--font-c1); }
+.primaryAction {
+  display: flex;
   align-items: center;
-  padding: 0 var(--s4);
+  justify-content: center;
+  width: 100%;
+  min-height: 52px;
+  margin-top: var(--s4);
+  padding: var(--s3) var(--s4);
+  border: 0;
   border-radius: var(--r-md);
-  border: 1px solid var(--border);
-  background: var(--surface-sub);
-  color: var(--text-1);
-  font-size: 14px;
-  font-weight: 700;
+  background: var(--brand-action);
+  color: var(--surface);
+  font: inherit;
+  font-size: var(--font-b2);
+  font-weight: 600;
   text-decoration: none;
+  cursor: pointer;
 }
-
-/* 선생님 총평. 문장을 읽는 자리라 본문과 같은 크기로 둔다. */
-.summaryText {
-  margin: 0;
-  font-size: 15px;
-  line-height: 1.75;
-  color: var(--text);
-  white-space: pre-wrap;
-}
+.primaryAction:hover { background: var(--brand-action-hover); }
+.primaryAction:active { background: var(--brand-action-pressed); }
+.emptyState { padding-block: var(--s8); }
+.skeleton { height: 160px; margin-bottom: var(--s8); background: var(--surface-sub); border-radius: var(--r-lg); }
