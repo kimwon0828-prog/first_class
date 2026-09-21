@@ -51,7 +51,7 @@ const codeOf = (path: string) => stripComments(stripJsxComments(read(path)))
 
 const split = stripComments(read(SPLIT_PATH))
 const applicationsPage = codeOf(APPLICATIONS_PAGE)
-const recordPage = codeOf(RECORD_PAGE)
+const recordPage = codeOf(RECORD_PAGE) + codeOf("src/features/record/ui/record-home.tsx")
 const recordList = codeOf(RECORD_LIST_PATH)
 const hub = codeOf(HUB_PATH)
 const cancelAction = stripComments(read(CANCEL_PATH))
@@ -242,10 +242,10 @@ check(
   exists("app/record/[experienceId]/page.tsx") &&
     codeOf("app/record/[experienceId]/page.tsx").includes("getMyExperienceDetail")
 )
-check("교육 프로필 진입점이 남아 있다", recordPage.includes("/record/profile?child="))
+check("교육 프로필 진입점이 남아 있다", recordPage.includes('withRecordChild("/record/profile", profileChild.id)'))
 check(
   "리포트 · 내 생각은 실제 조회로만 표시한다",
-  recordPage.includes("getParentExperienceSignals(experiences)") &&
+  recordPage.includes("getParentExperienceSignals(error ? [] : experiences)") &&
     recordPage.includes("signals.error ? undefined :")
 )
 check(

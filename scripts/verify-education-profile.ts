@@ -391,12 +391,12 @@ check(
 )
 check(
   "진입점이 아이가 정해졌을 때만 보인다",
-  read(RECORD_PAGE_PATH).includes("profileChild ?") &&
-    read(RECORD_PAGE_PATH).includes("selectedChild ?? onlyChild")
+  read("src/features/record/ui/record-home.tsx").includes("profileChild ?") &&
+    read("src/features/record/ui/record-home.tsx").includes("selected ?? (childOptions.length === 1 ? childOptions[0] : null)")
 )
 check(
   "프로필이 child 를 URL 로 받는다",
-  read(RECORD_PAGE_PATH).includes("/record/profile?child=")
+  read("src/features/record/ui/record-home.tsx").includes('withRecordChild("/record/profile", profileChild.id)')
 )
 
 console.log("\n── 9. 빈 상태 ──")

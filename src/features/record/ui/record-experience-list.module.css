@@ -1,138 +1,16 @@
-.list {
-  display: grid;
-  gap: 22px;
-}
-
-.monthGroup {
-  display: grid;
-  gap: 10px;
-}
-
-.monthLabel {
-  margin: 0;
-  padding: 0 var(--gutter);
-  font-size: 14px;
-  line-height: 1.4;
-  font-weight: 700;
-  letter-spacing: -0.02em;
-  color: var(--text-2);
-}
-
-.cards {
-  display: grid;
-  gap: 10px;
-  margin: 0;
-  padding: 0 var(--gutter);
-  list-style: none;
-}
-
-.card {
-  border: 1px solid var(--border);
-  border-radius: 16px;
-  background: var(--surface);
-  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
-  overflow: hidden;
-}
-
-.cardMain {
-  display: grid;
-  gap: 3px;
-  padding: 14px;
-  text-decoration: none;
-  -webkit-tap-highlight-color: transparent;
-}
-
-.cardTopRow {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-bottom: 3px;
-}
-
-.cardDate {
-  font-size: 13px;
-  line-height: 1.4;
-  font-weight: 700;
-  letter-spacing: -0.02em;
-  color: var(--brand-700);
-}
-
-.typeBadge {
-  display: inline-flex;
-  align-items: center;
-  height: 21px;
-  padding: 0 8px;
-  border-radius: 7px;
-  background: var(--surface-sub);
-  color: var(--text-2);
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: -0.02em;
-}
-
-.cardChild {
-  font-size: 13px;
-  line-height: 1.4;
-  color: var(--text-3);
-}
-
-.cardTitle {
-  font-size: 15px;
-  line-height: 1.4;
-  font-weight: 700;
-  letter-spacing: -0.02em;
-  color: var(--text-1);
-}
-
-.cardAcademy {
-  font-size: 13px;
-  line-height: 1.4;
-  color: var(--text-2);
-}
-
-.signalRow {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-top: 6px;
-}
-
-.signal,
-.signalMuted {
-  display: inline-flex;
-  align-items: center;
-  height: 21px;
-  padding: 0 8px;
-  border-radius: 7px;
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: -0.02em;
-}
-
-.signal {
-  background: var(--brand-50);
-  color: var(--brand-700);
-}
-
-.signalMuted {
-  background: var(--surface-sub);
-  color: var(--text-2);
-}
-
-/* 발행본이 있을 때만 붙는 줄. 손가락으로 누르는 자리라 44px 아래로 내리지 않는다. */
-.reportCta {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 2px;
-  min-height: 44px;
-  padding: 0 14px;
-  border-top: 1px solid var(--border);
-  background: var(--surface);
-  color: var(--brand-700);
-  font-size: 14px;
-  font-weight: 700;
-  letter-spacing: -0.02em;
-  text-decoration: none;
-  -webkit-tap-highlight-color: transparent;
-}
+.list { display: grid; gap: var(--s8); }
+.monthLabel { margin: 0 0 var(--s4); font-size: var(--font-h3); font-weight: 600; }
+.cards { display: grid; gap: var(--s3); margin: 0; padding: 0; list-style: none; }
+.card { border: 1px solid var(--border); border-radius: var(--r-lg); background: var(--surface); }
+.cardMain { display: flex; align-items: center; gap: var(--s4); min-height: 44px; padding: var(--s4); color: var(--text-1); text-decoration: none; border-radius: var(--r-lg); }
+.dateBlock { display: grid; align-content: center; justify-items: center; align-self: stretch; flex: 0 0 var(--s10); font-size: var(--font-c1); color: var(--text-2); }
+.dateBlock strong { font-size: var(--font-h1); color: var(--text-1); font-weight: 600; }
+.cardBody { display: grid; flex: 1; min-width: 0; gap: var(--s1); }
+.typeLabel { font-size: var(--font-c1); color: var(--text-2); }
+.cardChild { font-size: var(--font-c1); color: var(--text-2); overflow-wrap: anywhere; }
+.cardTitle { font-size: var(--font-b1); font-weight: 600; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+.cardAcademy { font-size: var(--font-b2); color: var(--text-2); overflow-wrap: anywhere; }
+.chevron { color: var(--text-3); font-size: var(--font-h2); }
+.signalRow { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s3); margin: 0 var(--s4); padding: var(--s2) 0; border-top: 1px solid var(--border); }
+.reportCta { display: inline-flex; align-items: center; gap: var(--s2); min-height: 44px; font-size: var(--font-c1); color: var(--brand-700); text-decoration: none; }
+.signalMuted { font-size: var(--font-c1); color: var(--text-2); }

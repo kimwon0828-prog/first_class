@@ -1,3 +1,5 @@
+import { withRecordChild } from "@/features/record/lib/record-href"
+import { getRecordChildContext } from "@/features/record/queries/get-record-child-context"
 import Link from "next/link"
 import { notFound } from "next/navigation"
 import { unstable_noStore as noStore } from "next/cache"
@@ -54,9 +56,11 @@ const formatTime = (value: string) => {
 }
 
 export default async function ExperienceDetailPage({
-  params
+  params,
+  searchParams
 }: {
   params: Promise<{ experienceId: string }>
+  searchParams?: Promise<Record<string, string | string[] | undefined>>
 }) {
   noStore()
   const { experienceId } = await params
@@ -68,7 +72,8 @@ export default async function ExperienceDetailPage({
   }
 
   const isCompletedExperience = experience.status === "completed"
-  const backHref = isCompletedExperience ? "/record" : "/my/applications"
+  const selectedChildId = await getRecordChildContext((await searchParams)?.child)
+  const backHref = withRecordChild(isCompletedExperience ? "/record" : "/my/applications", selectedChildId)
   const backLabel = isCompletedExperience ? "기록" : "신청 현황"
 
   /*
@@ -162,7 +167,7 @@ export default async function ExperienceDetailPage({
                   수업에서 관찰한 모습과 선생님의 제안을 확인해 보세요.
                 </p>
               </div>
-              <Link href={`/record/${experience.id}/report`} className={styles.reportLink}>
+              <Link href={withRecordChild(`/record/${experience.id}/report`, selectedChildId)} className={styles.reportLink}>
                 리포트 보기 <span aria-hidden="true">›</span>
               </Link>
             </section>
@@ -213,7 +218,7 @@ export default async function ExperienceDetailPage({
           ) : null}
 
           <section className={styles.related} aria-label="관련 정보">
-            <Link href={`/classes/${experience.classId}`} className={styles.secondaryLink}>
+            <Link href={withRecordChild(`/classes/${experience.classId}`, selectedChildId)} className={styles.secondaryLink}>
               수업 정보 보기 <span aria-hidden="true">›</span>
             </Link>
             {experience.canCancel ? (

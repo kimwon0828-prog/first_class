@@ -37,7 +37,7 @@ const stripComments = (source: string) =>
 const stripJsxComments = (source: string) => source.replace(/\{\/\*[\s\S]*?\*\/\}/g, "")
 const codeOf = (path: string) => stripComments(stripJsxComments(read(path)))
 
-const page = codeOf(PAGE_PATH)
+const page = codeOf(PAGE_PATH) + codeOf("src/features/record/ui/record-home.tsx")
 const pageCss = stripComments(read(PAGE_CSS_PATH))
 const list = codeOf(LIST_PATH)
 const listCss = stripComments(read(LIST_CSS_PATH))
@@ -112,24 +112,24 @@ check(
   "단계 라벨 helper 를 쓰지 않는다",
   !list.includes("getExperienceStageLabel") && !list.includes("resolveExperienceStage")
 )
-check("헤더 문구가 경험을 말한다", page.includes("우리 아이가 경험한 첫수업을 모아볼 수 있어요."))
-check("섹션 제목이 있다", page.includes("지금까지의 첫수업"))
+check("헤더 문구가 경험을 말한다", page.includes("아이의 경험과 남겨진 기록을 확인해보세요."))
+check("섹션 제목이 있다", page.includes("교육 기록 {experiences.length}개"))
 check("통계 · 그래프를 만들지 않는다", !page.includes("chart") && !page.includes("그래프") && !pageCss.includes("chart"))
 
 console.log("\n[3] 자녀 필터")
 
-check("자녀가 여럿일 때만 필터를 만든다", page.includes("{hasMultipleChildren ? ("))
-check("기존 ?child= 계약을 쓴다", page.includes("`/record?child=${child.id}`"))
+check("공용 자녀 selector 재사용", page.includes("<HomeChildSelector"))
+check("기존 ?child= 계약을 쓴다", page.includes("selectedChildId={selectedChildId}"))
 check(
   "내 자녀가 아닌 id 는 적용하지 않는다",
-  page.includes("children.data.some((child) => child.id === requestedChildId)")
+  page.includes("resolveSelectedChildId(")
 )
-check("전체 칩이 있다", page.includes('<Link\n              href="/record"'))
+check("전체 Context 문구", page.includes('unselectedLabel="모든 아이"'))
 
 console.log("\n[4] 교육 프로필 진입점")
 
-check("D) /record/profile 로 간다", page.includes("`/record/profile?child=${profileChild.id}`"))
-check("아이가 정해졌을 때만 보인다", page.includes("{profileChild ? ("))
+check("D) /record/profile 로 간다", page.includes('withRecordChild("/record/profile", profileChild.id)'))
+check("아이가 정해졌을 때만 보인다", page.includes("{profileChild ?"))
 check(
   "경험 카드와 다르게 보인다",
   pageCss.includes(".profileCta {") && pageCss.includes("background: var(--brand-50);")
@@ -154,7 +154,7 @@ for (const term of ["별점", "점수", "순위", "랭킹", "rating", "score"]) 
 
 console.log("\n[6] 신호 표현")
 
-check("리포트 배지", list.includes(">리포트<"))
+check("리포트 배지", list.includes("리포트 보기"))
 check("내 생각 배지", list.includes(">내 생각 남김<"))
 check(
   "G) 부정 배지를 만들지 않는다",
@@ -193,16 +193,16 @@ check("최신순으로 정렬한다", list.includes("toTime(right.date) - toTime
 
 console.log("\n[8] empty · error")
 
-check("H) 두 상태가 다른 분기다", page.includes("{applications.error ? (") && page.includes("experiences.length === 0 ? ("))
-check("실패 문구", page.includes("교육 기록을 불러오지 못했어요.") && page.includes("잠시 후 다시 시도해 주세요."))
+check("H) 두 상태가 다른 분기다", page.includes('children.error ? "children" : applications.error ? "records"') && page.includes("experiences.length === 0 ?"))
+check("실패 문구", page.includes("교육 기록을 불러오지 못했어요.") && page.includes("잠시 후 다시 시도해주세요."))
 check("빈 상태 문구", page.includes("아직 쌓인 교육 기록이 없어요."))
-check("빈 상태 보조 문구", page.includes("체험수업을 다녀오면 아이의 경험이 여기에 차곡차곡 쌓여요."))
-check("빈 상태 CTA 는 하나, 홈으로 간다", page.includes('<Link href="/" className={styles.primaryButton}>'))
+check("빈 상태 보조 문구", page.includes("체험수업이나 레벨테스트를 완료하면"))
+check("빈 상태 CTA 는 child를 유지해 수업찾기로 간다", page.includes("buildClassesHref({ child: selectedChildId })"))
 
 console.log("\n[9] route · 탭 · 건드리지 않은 것")
 
 check("I) /record 는 기록 탭이다", resolveParentNavTab("/record") === "record")
-check("공용 nav 를 쓴다", page.includes("<ParentBottomNav />"))
+check("공용 nav 를 쓴다", page.includes('<ParentBottomNav designVersion="v1" />'))
 for (const route of [
   "app/record/[experienceId]/page.tsx",
   "app/record/[experienceId]/report/page.tsx",

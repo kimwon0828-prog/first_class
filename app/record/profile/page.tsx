@@ -1,3 +1,4 @@
+import { withRecordChild } from "@/features/record/lib/record-href"
 import Link from "next/link"
 import { notFound } from "next/navigation"
 import { unstable_noStore as noStore } from "next/cache"
@@ -129,7 +130,7 @@ export default async function EducationProfilePage({
                                 근거 없는 요약만 남기지 않는다.
                               */}
                               <Link
-                                href={`/record/${source.experienceId}/report`}
+                                href={withRecordChild(`/record/${source.experienceId}/report`, childId)}
                                 className={styles.sourceLink}
                               >
                                 <span className={styles.sourceDate}>{date ?? "날짜 미기록"}</span>

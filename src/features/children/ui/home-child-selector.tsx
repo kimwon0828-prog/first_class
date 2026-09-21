@@ -31,6 +31,7 @@ type HomeChildSelectorProps = {
   className?: string
   manageSheetFocus?: boolean
   unselectedLabel?: string
+  allChildrenLabel?: string
   labelClassName?: string
   /** Optional child context presentation; selection and URL behavior stay shared. */
   triggerContent?: ReactNode
@@ -55,7 +56,8 @@ export function HomeChildSelector({
   labelClassName,
   triggerContent,
   manageSheetFocus = false,
-  unselectedLabel
+  unselectedLabel,
+  allChildrenLabel
 }: HomeChildSelectorProps) {
   const router = useRouter()
   const pathname = usePathname()
@@ -117,7 +119,7 @@ export function HomeChildSelector({
                 aria-current={selectedChildId === null ? "true" : undefined}
                 onClick={() => select(null)}
               >
-                <span className={styles.optionName}>{unselectedLabel ? "자녀 조건 없이 보기" : "우리 아이 전체"}</span>
+                <span className={styles.optionName}>{allChildrenLabel ?? (unselectedLabel ? "자녀 조건 없이 보기" : "우리 아이 전체")}</span>
                 {selectedChildId === null ? (
                   <span className={styles.check} aria-label="선택됨">
                     <CheckIcon />
