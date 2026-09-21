@@ -256,7 +256,7 @@ for (const [label, path] of [
   ["home", HOME_PATH],
   ["record", "src/features/record/ui/record-home.tsx"],
   ["my", "app/my/my-frame.tsx"],
-  ["favorites", "app/favorites/favorites-client.tsx"]
+  ["favorites", "app/favorites/favorites-frame.tsx"]
 ] as const) {
   check(`${label} 화면이 공용 ParentBottomNav 를 쓴다`, codeOf(path).includes("<ParentBottomNav"))
 }

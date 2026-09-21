@@ -370,3 +370,11 @@ Academy summary uses real public logo/cover or ImageFallback; the full address a
 - Back Header `내 정보 수정` returns to `/my`; simple name / phone / birth date form. Name required, phone and birth date optional, existing validation and save action remain unchanged. No OAuth/age-policy changes, new account settings or withdrawal UI.
 - Parent V1 gutter20/max480, White surface, Neutral50 desktop canvas, token-based 52px inputs and Green save action. Floating Bottom Nav My active without pill; reserve safe-area space.
 - Load actual data before offering editing. Failed/missing detail query shows retry without a fallback blank form. Form-shaped skeleton and local error boundary retain the Profile header. Save success stays on the form with an accessible status; errors use alert. Original birth date field/payload contract remains in force.
+
+## Favorites V1
+
+- `/favorites`: Back to `/my`, browser-local storage notice, public saved-class intersection count, Classes V1 horizontal comparison cards. Preserve public query order and `/classes/[id]` links; no new child context.
+- Reuse `firstclass_favorites` ID array and both storage events. Heart is an independent 44px button outside the card link. Failed writes retain the saved item and show an error; inaccessible storage is not an empty list.
+- Actual class image or ImageFallback for missing/failed images. Subject/grade → title → price → academy/region; no invented price period, ranking or recommendations.
+- Hydration skeleton, public-query retry, storage retry and Empty are distinct. Empty discovery CTA goes to `/classes`.
+- V1 white/480px shell, 20px gutter, R16 cards and floating My-active navigation; reserve nav safe-area space below the final card.

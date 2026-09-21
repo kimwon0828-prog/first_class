@@ -6,7 +6,7 @@ import { FavoritesClient } from "./favorites-client"
 import { getStudioCrossProductHrefResolver } from "@/shared/lib/cross-product-navigation-server"
 
 export default async function FavoritesPage() {
-  const { data } = await getAllPublicClasses()
+  const { data, error } = await getAllPublicClasses()
   const session = await getSession()
   const profile = session ? await getMyProfile() : null
   const role = profile?.dbRole
@@ -38,6 +38,7 @@ export default async function FavoritesPage() {
   return (
     <FavoritesClient
       allClasses={data}
+      queryError={error}
       favoritesEnabled={favoritesEnabled}
       scheduleEntryHref={scheduleEntryHref}
       recordEntryHref={recordEntryHref}

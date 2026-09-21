@@ -117,7 +117,7 @@ const NAV_SCREENS = [
   "src/features/record/ui/record-home.tsx",
   "app/my/my-frame.tsx",
   "src/features/schedule/ui/parent-schedule-screen.tsx",
-  "app/favorites/favorites-client.tsx",
+  "app/favorites/favorites-frame.tsx",
   "src/features/children/ui/children-frame.tsx"
 ]
 for (const path of NAV_SCREENS) {
@@ -170,11 +170,12 @@ const PADDED_SCREENS = [
   "app/my/page.module.css",
   "src/features/schedule/ui/parent-schedule-screen.module.css",
   "app/my/children/page.module.css",
-  "app/my/applications/page.module.css"
+  "app/my/applications/page.module.css",
+  "app/favorites/favorites.module.css"
 ]
 for (const path of PADDED_SCREENS) {
-  check(`${path} 가 공통 token 으로 아래를 비운다`, (path === "app/classes/page.module.css" && read("app/classes/page.tsx").includes("className={homeStyles.shell}")
-    ? read("app/page.module.css") : read(path)).includes("padding-bottom: var(--parent-nav-space);"))
+  check(`${path} 가 공통 token 으로 아래를 비운다`, /padding-bottom:\s*(?:var\(--parent-nav-space\)|calc\(var\(--parent-nav-space\)\s*\+\s*var\(--s6\)\));/.test((path === "app/classes/page.module.css" && read("app/classes/page.tsx").includes("className={homeStyles.shell}")
+    ? read("app/page.module.css") : read(path))))
 }
 
 console.log("\n[7] 아이콘")

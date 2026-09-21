@@ -1,41 +1,24 @@
-/* /my 하위 화면(프로필 · 자녀 관리)과 동일한 헤더 규격을 쓴다.
-   목록/카드 스타일은 /classes 의 page.module.css 를 그대로 재사용한다. */
-.header {
-  position: sticky;
-  top: 0;
-  z-index: 5;
-  display: grid;
-  grid-template-columns: 44px 1fr 44px;
-  align-items: center;
-  min-height: 64px;
-  padding: calc(var(--s3) + env(safe-area-inset-top)) var(--gutter) var(--s3);
-  background: var(--surface);
-  border-bottom: 1px solid var(--border);
-}
-
-.backButton {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  /* 손가락으로 누르는 버튼이다. 44px 아래로 내리지 않는다. */
-  width: 44px;
-  height: 44px;
-  margin-left: -10px;
-  color: var(--text-1);
-  text-decoration: none;
-  -webkit-tap-highlight-color: transparent;
-}
-
-.title {
-  margin: 0;
-  text-align: center;
-  font-size: 18px;
-  line-height: 1.35;
-  font-weight: 800;
-  letter-spacing: -0.03em;
-  color: var(--text-1);
-}
-
-.list {
-  margin-top: var(--s3);
-}
+.page { width: 100%; min-height: 100dvh; background: var(--bg); }
+.shell { width: 100%; max-width: var(--col); min-height: 100dvh; margin-inline: auto; background: var(--surface); padding-bottom: calc(var(--parent-nav-space) + var(--s6)); }
+.header { display: flex; align-items: center; gap: var(--s2); min-height: 64px; padding: calc(var(--s2) + env(safe-area-inset-top)) var(--gutter) var(--s2); }
+.back { display: grid; place-items: center; width: 44px; height: 44px; color: var(--text-1); border-radius: var(--r-md); }
+.header h1 { margin: 0; font-size: var(--font-h3); font-weight: 600; }
+.content { padding: var(--s5) var(--gutter) 0; }
+.intro { margin: 0 0 var(--s8); font-size: var(--font-b2); color: var(--text-2); font-weight: 600; }
+.intro span { font-weight: 500; }
+.count { margin: 0 0 var(--s4); font-size: var(--font-h4); }
+.count span { color: var(--brand-700); }
+.list { display: grid; gap: var(--s4); list-style: none; padding: 0; margin: 0; }
+.list li { min-width: 0; }
+.cardTitle { padding-right: var(--s4); }
+.chevron { position: absolute; right: var(--s3); top: 50%; color: var(--text-2); }
+.state { padding: var(--s8) var(--s4); border: 1px solid var(--border); border-radius: var(--r-lg); text-align: center; }
+.state > svg { color: var(--text-3); margin-bottom: var(--s5); }
+.state h2 { margin: 0; font-size: var(--font-h4); font-weight: 600; }
+.state p, .notice { font-size: var(--font-b2); color: var(--text-2); }
+.action { display: flex; align-items: center; justify-content: center; min-height: 48px; width: 100%; margin-top: var(--s6); border: 0; border-radius: var(--r-md); background: var(--brand-700); color: var(--neutral-0); font: inherit; font-size: var(--font-b2); text-decoration: none; cursor: pointer; }
+.action:disabled { opacity: .6; }
+.skeleton { display: flex; gap: var(--s3); border: 1px solid var(--border); padding: var(--s3); border-radius: var(--r-lg); }
+.skeleton > span { width: 112px; height: 112px; flex-shrink: 0; }
+.skeleton span { display: block; background: var(--neutral-50); border-radius: var(--r-sm); }
+.skeleton > div { flex: 1; display: grid; gap: var(--s3); padding-block: var(--s2); }

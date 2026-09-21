@@ -20,7 +20,11 @@ export const getFavoriteClassIds = (): string[] => {
   if (typeof window === "undefined") {
     return []
   }
-  return safeParse(window.localStorage.getItem(STORAGE_KEY))
+  try {
+    return safeParse(window.localStorage.getItem(STORAGE_KEY))
+  } catch {
+    return []
+  }
 }
 
 export const setFavoriteClassIds = (ids: string[]) => {
@@ -38,10 +42,21 @@ export const toggleFavoriteClassId = (classId: string) => {
     return { nextIds: [] as string[], isFavorite: false }
   }
 
-  const current = getFavoriteClassIds()
+  const result = readFavoriteClassIds()
+  if (result.error) throw new Error("favorite_storage_unavailable")
+  const current = result.ids
   const isFavorite = current.includes(classId)
   const nextIds = isFavorite ? current.filter((id) => id !== classId) : [...current, classId]
   setFavoriteClassIds(nextIds)
   return { nextIds, isFavorite: !isFavorite }
 }
 
+
+/** Unlike legacy readers, screens can distinguish inaccessible storage from an empty list. */
+export const readFavoriteClassIds = (): { ids: string[]; error: boolean } => {
+  try {
+    return { ids: safeParse(window.localStorage.getItem(STORAGE_KEY)), error: false }
+  } catch {
+    return { ids: [], error: true }
+  }
+}

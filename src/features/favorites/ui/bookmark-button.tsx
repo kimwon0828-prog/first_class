@@ -86,8 +86,10 @@ export function BookmarkButton(props: {
   activeLabel?: string
   onChange?: (isFavorite: boolean) => void
   variant?: "bookmark" | "heart"
+  onError?: () => void
 }) {
   const [isFavorite, setIsFavorite] = useState(false)
+  const [saveError, setSaveError] = useState(false)
 
   const updateFromStorage = useMemo(
     () => () => {
@@ -112,9 +114,15 @@ export function BookmarkButton(props: {
   const onClick = (event: MouseEvent<HTMLButtonElement>) => {
     event.preventDefault()
     event.stopPropagation()
-    const result = toggleFavoriteClassId(props.classId)
-    setIsFavorite(result.isFavorite)
-    props.onChange?.(result.isFavorite)
+    try {
+      const result = toggleFavoriteClassId(props.classId)
+      setSaveError(false)
+      setIsFavorite(result.isFavorite)
+      props.onChange?.(result.isFavorite)
+    } catch {
+      setSaveError(true)
+      props.onError?.()
+    }
   }
 
   const className = `${props.className ?? ""} ${isFavorite ? props.activeClassName ?? "" : ""}`.trim()
@@ -127,6 +135,7 @@ export function BookmarkButton(props: {
     : props.style
 
   return (
+    <>
     <button
       type="button"
       aria-pressed={isFavorite}
@@ -144,5 +153,7 @@ export function BookmarkButton(props: {
       )}
       {props.showLabel ? <span>{isFavorite ? activeLabel : inactiveLabel}</span> : null}
     </button>
+    {saveError && !props.onError ? <span role="alert">관심수업을 저장하지 못했어요. 브라우저 저장 설정을 확인하고 다시 시도해주세요.</span> : null}
+    </>
   )
 }
