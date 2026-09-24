@@ -278,22 +278,10 @@ check(
 
 console.log("\n── 7. 분모를 화면에 적는다 ──")
 check("분수 표기 helper 가 있다", formatRateFraction(12, 24) === "12 / 24")
-check(
-  "두 비율 모두 분모를 같이 그린다",
-  (pageCode.match(/formatRateFraction\(/g) ?? []).length === 2
-)
-check(
-  "두 비율의 문구가 다르다",
-  pageCode.includes("체험 완료 대비 등록") && pageCode.includes("등록 결과가 확인된 학생 중 등록")
-)
-check(
-  "리포트 비율 문구가 분모를 말한다",
-  pageCode.includes("체험 완료 중")
-)
-check(
-  "미확정을 미등록이라 부르지 않는다",
-  pageCode.includes("미확정") && !pageCode.includes("미등록 처리") && !pageCode.includes("미등록으로 간주")
-)
+check("Dashboard는 별도 체험일 cohort 카드를 중복 표시하지 않는다", !pageCode.includes("체험 이후 전환 현황"))
+check("흐름 비율은 이전 단계 기준을 밝힌다", pageCode.includes("단계별 비율은 바로 앞 단계 대비입니다"))
+check("등록 도넛의 분모는 체험 완료다", pageCode.includes('analytics.donutTotal, "체험 완료"'))
+check("미확정을 미등록과 분리한다", read("src/features/studio/lib/studio-dashboard-analytics.ts").includes('label: "결과 미확정"'))
 
 console.log("\n── 8. 조직 경계 · 기간 ──")
 check(
@@ -307,12 +295,12 @@ check(
 check(
   "유료 권한이 없으면 조회하지 않는다",
   pageCode.includes("entitlements.canUseConversionAnalytics") &&
-    pageCode.includes("? await getStudioConversionAnalytics(")
+    pageCode.includes("? buildStudioDashboardMetrics(")
 )
 check(
   "기간 state 를 새로 만들지 않는다",
   queryCode.includes("StudioResolvedDateRange") &&
-    pageCode.includes("getStudioConversionAnalytics(applications, selectedDateRange)")
+    pageCode.includes("buildStudioDashboardMetrics(applications, selectedDateRange)")
 )
 check(
   "모든 지표가 같은 cohort 에서 나온다",

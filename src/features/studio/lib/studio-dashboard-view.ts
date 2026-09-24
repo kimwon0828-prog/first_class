@@ -82,6 +82,7 @@ export type StudioDashboardScheduleItem = {
   /** 오늘 일정에는 날짜를 붙이지 않는다. 다가오는 일정에서만 채운다. */
   dateLabel: string | null
   studentName: string
+  studentGrade: string
   classTitle: string
   teacherName: string | null
   statusLabel: string
@@ -92,8 +93,9 @@ export type StudioDashboardRegistrationItem = {
   id: string
   href: string
   studentName: string
+  studentGrade: string
   classTitle: string
-  /** 등록 결과가 실제 기록된 enrolled_at 만 사용한다. */
+  /** 등록/미등록 결과의 실제 enrolled_at / lost_at만 사용한다. */
   whenLabel: string | null
   outcomeLabel: string
   outcomeTone: StudioStatusTone
@@ -235,25 +237,20 @@ const buildActionItems = (applications: StudioApplicationSummary[], now: Date) =
 
 const buildRecentRegistrationItems = (applications: StudioApplicationSummary[]) => {
   return applications
-    .filter(
-      (item): item is StudioApplicationSummary & { enrolledAt: string } =>
-        item.registrationStatus === "enrolled" && Boolean(item.enrolledAt)
-    )
-    .map((item) => ({ item, enrolledAt: item.enrolledAt }))
-    .sort(
-      (left, right) => (toTimestamp(right.enrolledAt) ?? 0) - (toTimestamp(left.enrolledAt) ?? 0)
-    )
+    .filter(item => item.status === "completed" && (item.registrationStatus === "enrolled" || item.registrationStatus === "not_enrolled"))
+    .map(item => ({ item, resolvedAt: item.registrationStatus === "enrolled" ? item.enrolledAt : item.lostAt }))
+    .filter((entry): entry is typeof entry & { resolvedAt: string } => toTimestamp(entry.resolvedAt) != null)
+    .sort((left, right) => (toTimestamp(right.resolvedAt) ?? 0) - (toTimestamp(left.resolvedAt) ?? 0))
     .slice(0, STUDIO_DASHBOARD_SECTION_LIMIT)
-    .map<StudioDashboardRegistrationItem>(({ item, enrolledAt }) => {
-      const dateKey = toSeoulDateKey(enrolledAt)
-      const dateText = dateKey ? formatSelectedDateLabel(dateKey) : null
-
+    .map<StudioDashboardRegistrationItem>(({ item, resolvedAt }) => {
+      const dateKey = toSeoulDateKey(resolvedAt)
       return {
         id: item.id,
         href: toDetailHref(item.id),
         studentName: item.childName,
+        studentGrade: item.childGrade,
         classTitle: normalizeClassTitle(item.classTitle),
-        whenLabel: dateText ? `${dateText} 등록` : null,
+        whenLabel: dateKey ? formatSelectedDateLabel(dateKey) : null,
         outcomeLabel: getStudioRegistrationStatusLabel(item.registrationStatus),
         outcomeTone: getStudioRegistrationStatusTone(item.registrationStatus)
       }
@@ -274,6 +271,7 @@ const buildScheduleSection = (
   todayKey: string,
   now: Date
 ) => {
+  const gradeById = new Map(applications.map(item => [item.id, item.childGrade]))
   const events = buildStudioScheduleEvents(applications, now)
   const todayEvents = events.filter((event) => event.dateKey === todayKey)
   const isToday = todayEvents.length > 0
@@ -291,6 +289,7 @@ const buildScheduleSection = (
         timeLabel: event.timeLabel,
         dateLabel: isToday ? null : formatSelectedDateLabel(event.dateKey),
         studentName: event.childName,
+        studentGrade: gradeById.get(event.id) ?? "",
         classTitle: event.classTitle,
         teacherName: event.assignedTeacherName,
         statusLabel: event.statusLabel,

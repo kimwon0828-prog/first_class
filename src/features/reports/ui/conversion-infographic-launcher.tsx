@@ -97,7 +97,7 @@ export const ConversionInfographicLauncher = ({
   return (
     <>
       <button type="button" className={styles.trigger} onClick={() => setIsOpen(true)}>
-        인포그래픽
+        인포그래픽 보기
       </button>
 
       {isOpen ? (

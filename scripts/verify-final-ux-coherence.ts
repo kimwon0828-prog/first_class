@@ -79,7 +79,7 @@ console.log("── 1. 같은 뜻에 같은 이름 ──")
   )
   check(
     "결과 미확정을 미등록에 합치지 않는다",
-    DASHBOARD_CODE.includes("미확정") &&
+    clean(read("src/features/studio/lib/studio-dashboard-analytics.ts")).includes("미확정") &&
       !DASHBOARD_CODE.includes("미등록으로 간주") &&
       !DASHBOARD_CODE.includes("미등록 처리")
   )
@@ -87,34 +87,13 @@ console.log("── 1. 같은 뜻에 같은 이름 ──")
 
 console.log("\n── 2. 기간 필터가 무엇을 세는지 밝힌다 ──")
 {
-  check(
-    // 두 블록은 모집단이 다르다. 섹션 하나가 한 기준을 대표하면 안 된다.
-    "섹션 부제가 한 기준을 전체에 걸지 않는다",
-    !DASHBOARD_CODE.includes("접수된 신청 기준입니다")
-  )
-  check(
-    "블록마다 기준이 다를 수 있다고 말한다",
-    DASHBOARD_CODE.includes("블록마다 세는 날짜가 달라")
-  )
-  check("체험일 기준 배지가 있다", DASHBOARD_CODE.includes("체험일 기준"))
-  check(
-    "신청일 기준 배지가 있다",
-    (DASHBOARD_CODE.match(/신청일 기준/g) ?? []).length >= 2
-  )
-  check(
-    "등록 전환율이 어느 기준인지 적는다",
-    DASHBOARD_CODE.includes("등록 전환율 (신청일 기준)")
-  )
-  check(
-    // 기간 state 가 둘이면 블록끼리 다른 기간을 보게 된다.
-    "기간 state 는 하나다",
-    (DASHBOARD_CODE.match(/resolveStudioDateRange\(/g) ?? []).length === 1 &&
-      DASHBOARD_CODE.includes("getStudioConversionAnalytics(applications, selectedDateRange)")
-  )
-  check(
-    "전환 현황이 먼저 온다",
-    DASHBOARD_CODE.indexOf("체험 이후 전환 현황") < DASHBOARD_CODE.indexOf("신청 → 등록 흐름")
-  )
+  check("신청일 기준을 명시한다", DASHBOARD_CODE.includes("신청일 기준"))
+  check("기간은 분석에만 적용한다", DASHBOARD_CODE.includes("기간 선택은 분석에만 적용됩니다"))
+  check("기간 state는 하나다", (DASHBOARD_CODE.match(/resolveStudioDateRange\(/g) ?? []).length === 1)
+  check("업무 조회는 기간 제한이 없다", DASHBOARD_CODE.includes("getStudioApplications(teacher.organizationId)"))
+  check("핵심 인포그래픽이 업무보다 먼저 온다", DASHBOARD_CODE.indexOf('id="dashboard-flow-title"') < DASHBOARD_CODE.indexOf('id="dashboard-actions-title"'))
+  check("대형 전환/부모 의향 matrix 조회를 제거한다", !DASHBOARD_CODE.includes("getStudioConversionAnalytics"))
+
 }
 
 console.log("\n── 3. 학부모 화면에 평가 언어가 없다 ──")
@@ -191,20 +170,14 @@ console.log("\n── 6. 실패와 없음을 구분한다 ──")
 {
   for (const [label, path, errorToken, emptyToken] of [
     ["교육 프로필", "app/record/profile/page.tsx", 'result.state === "error"', "아직 발행된 체험 리포트가 없어요"],
-    ["전환 현황", DASHBOARD_PAGE, "conversion?.error", "체험을 마친 학생이 없습니다"]
+    ["대시보드", DASHBOARD_PAGE, "{error ?", "선택 기간에 접수된 신청이 없습니다"]
   ] as const) {
     const code = clean(read(path))
     check(`${label} 이 조회 실패와 데이터 없음을 나눈다`, code.includes(errorToken) && code.includes(emptyToken))
   }
-  check(
-    "0건을 성과처럼 크게 세우지 않는다",
-    DASHBOARD_CODE.includes("journeyValueEmpty") &&
-      DASHBOARD_CODE.includes("리포트를 발행하면 여기에 쌓여요")
-  )
-  check(
-    "0 이라는 사실을 숨기지 않는다",
-    DASHBOARD_CODE.includes("{conversion.data.reports.publishedExperienceCount}건")
-  )
+  check("빈 도넛에 안내를 표시한다", DASHBOARD_CODE.includes("아직 체험 완료 기록이 없습니다."))
+  check("0으로 나누지 않는다", DASHBOARD_CODE.includes('total ? `${(segment.count / total * 100).toFixed(1)}%` : "—"'))
+
 }
 
 console.log("\n── 7. 학원 내부 값이 학부모 화면에 없다 ──")
@@ -250,12 +223,12 @@ console.log("\n── 9. 접근성 ──")
     )
   )
   check(
-    "전환 matrix 가 scope 를 가진다",
-    DASHBOARD_CODE.includes('scope="col"') && DASHBOARD_CODE.includes('scope="row"')
+    "차트는 숫자 범례를 제공한다",
+    DASHBOARD_CODE.includes("<strong>{segment.count}</strong>")
   )
   check(
-    "분석 섹션에 aria-labelledby 가 있다",
-    DASHBOARD_CODE.includes('aria-labelledby="dashboard-analytics-title"')
+    "분석 섹션에 접근성 이름이 있다",
+    DASHBOARD_CODE.includes('aria-label="핵심 성과 분석"')
   )
   check(
     "자녀 선택이 현재 선택을 색 말고도 알린다",

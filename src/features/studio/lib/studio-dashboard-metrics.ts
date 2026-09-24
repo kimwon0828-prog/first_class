@@ -45,6 +45,8 @@ export type StudioDashboardUnregisteredReasonCount = {
 
 export type StudioDashboardMetrics = {
   periodLabel: string
+  /** 같은 신청일 cohort의 현재 저장 상태 분포. */
+  trialOutcomes: { completed: number; noShow: number; canceled: number; pending: number }
   steps: StudioDashboardMetricStep[]
   enrolledCount: number
   notEnrolledCount: number
@@ -141,6 +143,12 @@ export const buildStudioDashboardMetrics = (
 
   return {
     periodLabel: range.label,
+    trialOutcomes: {
+      completed: cohort.filter(item => item.status === "completed").length,
+      noShow: cohort.filter(item => item.status === "canceled" && item.noShowAt != null).length,
+      canceled: cohort.filter(item => item.status === "canceled" && item.noShowAt == null).length,
+      pending: cohort.filter(item => item.status !== "completed" && item.status !== "canceled").length
+    },
     steps: counts.map((count, index) => ({
       key: keys[index],
       label: labels[index],

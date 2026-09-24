@@ -1,50 +1,14 @@
+import styles from "./page.module.css"
+
 export default function StudioDashboardLoading() {
-  return (
-    <div
-      style={{
-        minHeight: "100dvh",
-        padding: "32px",
-        background: "#f8fafc"
-      }}
-      aria-busy="true"
-      aria-live="polite"
-    >
-      <div style={{ maxWidth: 1080, margin: "0 auto" }}>
-        <div
-          style={{
-            height: 96,
-            borderRadius: 24,
-            background: "#e2e8f0",
-            marginBottom: 24
-          }}
-        />
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
-            gap: 16,
-            marginBottom: 24
-          }}
-        >
-          {Array.from({ length: 4 }).map((_, index) => (
-            <div
-              key={index}
-              style={{
-                height: 128,
-                borderRadius: 20,
-                background: "#e2e8f0"
-              }}
-            />
-          ))}
-        </div>
-        <div
-          style={{
-            height: 360,
-            borderRadius: 24,
-            background: "#e2e8f0"
-          }}
-        />
-      </div>
+  return <div className={styles.page} aria-busy="true" aria-label="Studio 불러오는 중">
+    <div className={styles.header}><div className={styles.loadingLine} /></div>
+    <div className={styles.chartRow} aria-hidden="true">
+      {[0, 1, 2].map(key => <div className={styles.chartCard} key={key}><div className={styles.loadingChart} /></div>)}
     </div>
-  )
+    <div className={styles.workspace} aria-hidden="true" style={{ marginTop: "var(--s5)" }}>
+      {[0, 1].map(key => <div className={styles.panel} key={key}>{[0, 1, 2].map(row => <div className={styles.loadingRow} key={row} />)}</div>)}
+    </div>
+    <p className={styles.periodNote}>Studio를 불러오고 있습니다.</p>
+  </div>
 }

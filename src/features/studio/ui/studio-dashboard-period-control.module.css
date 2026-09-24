@@ -1,97 +1,94 @@
-/*
- * 성과 분석 header 의 기간 선택.
- * 자체 surface 를 만들지 않는다 — header 줄 위에 그대로 얹히는 chip row 다.
- */
-
 .control {
   display: flex;
   align-items: center;
   gap: var(--s2);
-  flex-wrap: wrap;
+  position: relative;
 }
 
 .quickList {
   display: flex;
   align-items: center;
-  gap: 4px;
-  flex-wrap: wrap;
+  gap: var(--s2);
 }
 
-.quickOption {
-  padding: 5px 10px;
+.periodButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  padding: 0 14px;
   border: 1px solid var(--border);
-  border-radius: var(--r-full);
+  border-radius: var(--r-md);
   background: var(--surface);
   color: var(--text-2);
-  font-size: 12px;
-  line-height: 18px;
+  font: inherit;
+  font-size: 13px;
+  line-height: 20px;
   font-weight: 700;
   text-decoration: none;
   white-space: nowrap;
+  cursor: pointer;
+  transition: border-color 150ms ease, background-color 150ms ease, color 150ms ease;
 }
 
-.quickOption:hover {
+.periodButton:hover {
   border-color: var(--border-strong);
   color: var(--text-1);
 }
 
-.quickOptionActive {
+.periodButtonActive,
+.periodButtonActive:hover {
   border-color: var(--brand-100);
   background: var(--brand-50);
   color: var(--brand-700);
 }
 
-.quickOption:focus-visible {
+.periodButton:focus-visible,
+.cancelButton:focus-visible,
+.applyButton:focus-visible {
   outline: 2px solid var(--brand-500);
   outline-offset: 2px;
 }
 
 .custom {
-  min-width: 0;
+  position: relative;
 }
 
-.customSummary {
-  padding: 5px 10px;
+.popover {
+  position: absolute;
+  z-index: 30;
+  top: calc(100% + 8px);
+  right: 0;
+  width: 360px;
+  padding: var(--s5);
   border: 1px solid var(--border);
-  border-radius: var(--r-full);
-  color: var(--text-2);
-  font-size: 12px;
-  line-height: 18px;
-  font-weight: 700;
-  white-space: nowrap;
-  cursor: pointer;
-  list-style: none;
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  box-shadow: 0 12px 30px rgba(26, 26, 26, 0.1);
 }
 
-.customSummary::-webkit-details-marker {
-  display: none;
+.popoverTitle {
+  margin: 0 0 var(--s4);
+  font-size: 15px;
+  line-height: 22px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
 }
 
-.customSummary:hover {
-  border-color: var(--border-strong);
-  color: var(--text-1);
-}
-
-.customSummary:focus-visible {
-  outline: 2px solid var(--brand-500);
-  outline-offset: 2px;
-}
-
-/* 떠 있는 popover 가 아니라 열리면 자리를 차지하는 in-flow 폼이다. shadow 를 쓰지 않는다. */
 .customForm {
   display: grid;
-  gap: var(--s2);
-  margin-top: 6px;
-  padding: var(--s3);
-  min-width: 220px;
-  border: 1px solid var(--border);
-  border-radius: var(--r-md);
-  background: var(--surface-sub);
+  gap: var(--s5);
+}
+
+.fieldGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--s3);
 }
 
 .field {
   display: grid;
-  gap: 4px;
+  gap: 6px;
   color: var(--text-2);
   font-size: 12px;
   line-height: 16px;
@@ -99,9 +96,11 @@
 }
 
 .field input {
-  min-height: 34px;
+  width: 100%;
+  min-width: 0;
+  min-height: 40px;
   padding: 0 10px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-strong);
   border-radius: var(--r-sm);
   background: var(--surface);
   color: var(--text-1);
@@ -115,19 +114,57 @@
   border-color: var(--brand-500);
 }
 
+.formActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--s2);
+}
+
+.cancelButton,
 .applyButton {
-  min-height: 34px;
-  border: 1px solid var(--brand-700);
+  min-width: 72px;
+  min-height: 38px;
+  padding: 0 var(--s4);
   border-radius: var(--r-sm);
-  background: var(--brand-700);
-  color: var(--surface);
+  font: inherit;
   font-size: 13px;
   line-height: 20px;
   font-weight: 700;
   cursor: pointer;
 }
 
-.applyButton:focus-visible {
-  outline: 2px solid var(--brand-500);
-  outline-offset: 2px;
+.cancelButton {
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  color: var(--text-2);
+}
+
+.applyButton {
+  border: 1px solid var(--brand-700);
+  background: var(--brand-700);
+  color: var(--surface);
+}
+
+.cancelButton:hover {
+  border-color: var(--text-3);
+  color: var(--text-1);
+}
+
+.applyButton:hover {
+  background: var(--brand-900);
+}
+
+@media (max-width: 720px) {
+  .control,
+  .quickList {
+    flex-wrap: wrap;
+  }
+
+  .popover {
+    width: min(360px, calc(100vw - 32px));
+  }
+
+  .fieldGrid {
+    grid-template-columns: 1fr;
+  }
 }

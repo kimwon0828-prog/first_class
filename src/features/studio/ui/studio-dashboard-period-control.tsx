@@ -1,5 +1,3 @@
-import Link from "next/link"
-
 import {
   STUDIO_DATE_RANGE_PRESET_OPTIONS,
   buildStudioDateRangeFromPreset,
@@ -7,9 +5,9 @@ import {
   type StudioResolvedDateRange
 } from "@/features/studio/lib/studio-date-range"
 
-import styles from "./studio-dashboard-period-control.module.css"
 import { getStudioNavigationPath } from "@/shared/config/studio-navigation"
 import { getRequestHostname } from "@/shared/lib/request-host"
+import { StudioDashboardPeriodPicker } from "./studio-dashboard-period-picker"
 
 type StudioDashboardPeriodControlProps = {
   selectedRange: StudioResolvedDateRange
@@ -18,7 +16,7 @@ type StudioDashboardPeriodControlProps = {
 
 const QUICK_PRESETS = STUDIO_DATE_RANGE_PRESET_OPTIONS.filter(
   (option): option is { value: Exclude<StudioDateRangePreset, "custom">; label: string } =>
-    option.value !== "custom"
+    ["thisMonth", "last3Months", "thisYear"].includes(option.value)
 )
 
 const buildPresetHref = (
@@ -55,49 +53,14 @@ export const StudioDashboardPeriodControl = async ({
   const basePath = getStudioNavigationPath({ internalPath: internalBasePath, hostname: await getRequestHostname() })
   const today = buildStudioDateRangeFromPreset("today")?.endDate ?? ""
 
-  return (
-    <div className={styles.control}>
-      <nav className={styles.quickList} aria-label="성과 기간 선택">
-        {QUICK_PRESETS.map((option) => (
-          <Link
-            key={option.value}
-            href={buildPresetHref(basePath, option.value)}
-            className={`${styles.quickOption} ${
-              selectedRange.preset === option.value ? styles.quickOptionActive : ""
-            }`}
-            aria-current={selectedRange.preset === option.value ? "page" : undefined}
-          >
-            {option.label}
-          </Link>
-        ))}
-      </nav>
-
-      <details className={styles.custom} open={selectedRange.preset === "custom"}>
-        <summary className={styles.customSummary}>직접 설정</summary>
-        <form className={styles.customForm} action={basePath} method="get">
-          <label className={styles.field}>
-            <span>시작일</span>
-            <input
-              type="date"
-              name="startDate"
-              defaultValue={selectedRange.startDate ?? today}
-              required
-            />
-          </label>
-          <label className={styles.field}>
-            <span>종료일</span>
-            <input
-              type="date"
-              name="endDate"
-              defaultValue={selectedRange.endDate ?? today}
-              required
-            />
-          </label>
-          <button type="submit" className={styles.applyButton}>
-            적용
-          </button>
-        </form>
-      </details>
-    </div>
-  )
+  return <StudioDashboardPeriodPicker
+    basePath={basePath}
+    options={QUICK_PRESETS.map(option => ({
+      ...option,
+      href: buildPresetHref(basePath, option.value)
+    }))}
+    selectedPreset={selectedRange.preset}
+    startDate={selectedRange.startDate ?? today}
+    endDate={selectedRange.endDate ?? today}
+  />
 }

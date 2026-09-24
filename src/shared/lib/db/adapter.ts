@@ -756,6 +756,8 @@ export type StudioApplicationSummary = TrialApplicationSummary & {
   canceledAt: string | null
   noShowAt: string | null
   enrolledAt: string | null
+  /** 저장된 미등록 종결일. 기존 summary 호출자는 생략할 수 있다. */
+  lostAt?: string | null
   registrationStatus: ApplicationRegistrationStatus
   /** 미등록으로 종결한 Case 의 현재 사유. 그 외 상태에서는 의미 없는 값이다. */
   unregisteredReason: ApplicationUnregisteredReason | null

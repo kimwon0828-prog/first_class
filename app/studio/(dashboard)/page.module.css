@@ -1,759 +1,88 @@
-/*
- * Dashboard.
- *
- * List Page 와 같은 shell(page / header / max-width 컨테이너)을 쓰고,
- * 본문만 2단 workspace 로 나눈다. Surface 는 workspace panel 세 개뿐이고
- * 행마다 카드를 만들지 않는다. 카드 섀도우는 쓰지 않는다(디자인 시스템 §2.5).
- */
-
-/* canvas 는 StudioShell 이 칠한다. 여기서 background 를 다시 쓰지 않는다. */
-.page {
-  min-height: 100dvh;
-  padding: 32px 24px 56px;
-  color: var(--text-1);
-}
-
-.header,
-.analytics,
-.workspace,
-.errorCard {
-  width: 100%;
-  max-width: var(--studio-max);
-  margin: 0 auto;
-}
-
-.header {
-  margin-bottom: var(--s5);
-}
-
-
-.title {
-  margin: 0;
-  color: var(--text-1);
-  font-size: 30px;
-  line-height: 36px;
-  font-weight: 800;
-  letter-spacing: -0.03em;
-}
-
-.subtitle {
-  margin: 6px 0 0;
-  color: var(--text-2);
-  font-size: 14px;
-  line-height: 22px;
-}
-
-/* 두 panel 의 아래 모서리가 맞도록 stretch 한다. */
-.workspace {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: var(--s4);
-}
-
-/* ── Operations summary / conversion infographic ─────────────── */
-
-/* ============ 성과 분석 ============ */
-
-.analytics {
-  display: grid;
-  gap: var(--s4);
-  margin-bottom: var(--s4);
-}
-
-.analyticsActions {
-  display: flex;
-  align-items: center;
-  gap: var(--s2);
-  flex-wrap: wrap;
-}
-
-.analyticsHead {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: var(--s3);
-  flex-wrap: wrap;
-}
-
-.analyticsHeading {
-  min-width: 0;
-}
-
-.analyticsTitle {
-  margin: 0;
-  color: var(--text-1);
-  font-size: 18px;
-  line-height: 26px;
-  font-weight: 800;
-  letter-spacing: -0.02em;
-}
-
-.analyticsDescription {
-  margin: 2px 0 0;
-  color: var(--text-2);
-  font-size: 13px;
-  line-height: 20px;
-}
-
-
-
-
-
-
-/* 두 카드의 위/아래 모서리가 맞도록 stretch 한다(align-items: start 를 쓰지 않는다). */
-.chartRow {
-  display: grid;
-  grid-template-columns: 2fr 1fr;
-  gap: var(--s4);
-}
-
-.chartCard {
-  display: flex;
-  flex-direction: column;
-  gap: var(--s4);
-  height: 100%;
-  padding: 18px;
-  border: 1px solid var(--border);
-  border-radius: var(--r-lg);
-  background: var(--surface);
-}
-
-.chartHead {
-  display: grid;
-  gap: 2px;
-}
-
-.chartTitle {
-  margin: 0;
-  color: var(--text-1);
-  font-size: 15px;
-  line-height: 22px;
-  font-weight: 800;
-}
-
-.chartDescription {
-  margin: 0;
-  color: var(--text-2);
-  font-size: 12px;
-  line-height: 18px;
-}
-
-.chartEmpty {
-  flex: 1 1 auto;
-  display: grid;
-  align-content: center;
-  margin: 0;
-  padding: 24px 0;
-  color: var(--text-3);
-  font-size: 13px;
-  line-height: 20px;
-  text-align: center;
-}
-
-/* ---- horizontal bar chart ---- */
-
-.barList {
-  flex: 1 1 auto;
-  display: grid;
-  /*
-   * 남는 세로 공간을 다섯 행이 똑같이 나눠 갖는다. gap 은 그대로라
-   * space-between 처럼 행이 뿔뿔이 떨어져 보이지 않는다.
-   * 각 행은 자체적으로 align-items: center 라 내용은 행 가운데에 남는다.
-   */
-  align-content: stretch;
-  gap: var(--s3);
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.barRow {
-  display: grid;
-  /*
-   * count 열을 고정 32px 이 아니라 내용 폭으로 둔다. 그래야 숫자가 열 오른쪽 끝이 아니라
-   * bar 가 끝나는 지점 바로 옆에 붙는다. grid 열이라 행끼리는 여전히 세로로 정렬된다.
-   */
-  grid-template-columns: 72px minmax(0, 1fr) minmax(20px, auto) 92px;
-  align-items: center;
-  gap: var(--s2);
-}
-
-.barLabel {
-  color: var(--text-2);
-  font-size: 13px;
-  line-height: 20px;
-  font-weight: 700;
-}
-
-.barTrack {
-  /* progress indicator 가 아니라 categorical bar 로 읽히도록 3px 만 두껍게 한다. */
-  height: 13px;
-  border-radius: var(--r-full);
-  background: var(--surface-sub);
-  overflow: hidden;
-}
-
-/* 다섯 단계 모두 같은 green 이다. 단계마다 색을 바꾸지 않는다. */
-.barFill {
-  display: block;
-  height: 100%;
-  min-width: 0;
-  border-radius: var(--r-full);
-  background: var(--brand-500);
-}
-
-.barCount {
-  color: var(--text-1);
-  font-size: 14px;
-  line-height: 20px;
-  font-weight: 800;
-  text-align: right;
-  font-variant-numeric: tabular-nums;
-}
-
-.barReached {
-  color: var(--text-3);
-  font-size: 12px;
-  line-height: 18px;
-  text-align: right;
-  white-space: nowrap;
-}
-
-/* ---- donut ---- */
-
-/* 남는 세로 공간은 여기서 흡수한다. 도넛과 legend 가 카드 가운데에 놓인다. */
-.donutBody {
-  flex: 1 1 auto;
-  display: grid;
-  align-content: center;
-  gap: var(--s4);
-  justify-items: center;
-}
-
-.donutFigure {
-  position: relative;
-  /*
-   * 카드 폭 대비 도넛이 작아 보여 약 9.5% 키운다.
-   * stroke 는 viewBox 기준이라 두께 비율은 그대로다.
-   */
-  width: 162px;
-  max-width: 100%;
-}
-
-.donut {
-  display: block;
-  width: 100%;
-  height: auto;
-}
-
-.donutTrack {
-  fill: none;
-  stroke: var(--surface-sub);
-}
-
-.donutSegment {
-  fill: none;
-}
-
-.donutEnrolled {
-  stroke: var(--green-fg);
-  color: var(--green-fg);
-}
-
-.donutNotEnrolled {
-  stroke: var(--gray-fg);
-  color: var(--gray-fg);
-}
-
-.donutPending {
-  stroke: var(--blue-fg);
-  color: var(--blue-fg);
-}
-
-.donutCenter {
-  position: absolute;
-  inset: 0;
-  display: grid;
-  align-content: center;
-  justify-items: center;
-  gap: 2px;
-  pointer-events: none;
-}
-
-.donutCenterLabel {
-  color: var(--text-2);
-  font-size: 12px;
-  line-height: 16px;
-  font-weight: 700;
-}
-
-.donutCenterValue {
-  color: var(--text-1);
-  font-size: 20px;
-  line-height: 26px;
-  font-weight: 800;
-  font-variant-numeric: tabular-nums;
-}
-
-/* donut 이 아니라 이 legend 가 실제 정보다. */
-.legend {
-  display: grid;
-  gap: 6px;
-  margin: 0;
-  padding: 0;
-  width: 100%;
-  list-style: none;
-}
-
-.legendItem {
-  display: flex;
-  align-items: center;
-  gap: var(--s2);
-}
-
-.legendDot {
-  flex: 0 0 auto;
-  width: 8px;
-  height: 8px;
-  border-radius: var(--r-full);
-  background: currentColor;
-}
-
-.legendLabel {
-  color: var(--text-2);
-  font-size: 13px;
-  line-height: 20px;
-}
-
-.legendValue {
-  margin-left: auto;
-  color: var(--text-1);
-  font-size: 13px;
-  line-height: 20px;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-}
-
-/*
- * 차트 설명이다. 라벨과 값을 한 줄로 붙이고, 값은 카드 제목보다 조금 큰 정도로만 둔다.
- */
-.conversionFoot {
-  display: flex;
-  align-items: baseline;
-  gap: 6px;
-  flex-wrap: wrap;
-  padding-top: var(--s3);
-  border-top: 1px solid var(--border);
-}
-
-.conversionLabel {
-  color: var(--text-2);
-  font-size: 13px;
-  line-height: 20px;
-  font-weight: 700;
-}
-
-.conversionValue {
-  color: var(--text-1);
-  font-size: 16px;
-  line-height: 24px;
-  font-weight: 800;
-  font-variant-numeric: tabular-nums;
-}
-
-.conversionMeta {
-  flex-basis: 100%;
-  color: var(--text-2);
-  font-size: 12px;
-  line-height: 18px;
-}
-
-
-.panel {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-}
-
-.panel {
-  border: 1px solid var(--border);
-  border-radius: var(--r-lg);
-  background: var(--surface);
-  overflow: hidden;
-}
-
-/* Title · Count · Text action. 큰 CTA 버튼은 두지 않는다. */
-.panelHead {
-  display: flex;
-  align-items: center;
-  gap: var(--s2);
-  padding: 14px 18px;
-  border-bottom: 1px solid var(--border);
-}
-
-.panelTitle {
-  margin: 0;
-  color: var(--text-1);
-  font-size: 15px;
-  line-height: 22px;
-  font-weight: 800;
-}
-
-.panelCount {
-  color: var(--text-2);
-  font-size: 13px;
-  line-height: 20px;
-  font-weight: 700;
-}
-
-.panelAction {
-  margin-left: auto;
-  color: var(--brand-700);
-  font-size: 13px;
-  line-height: 20px;
-  font-weight: 700;
-  text-decoration: none;
-  white-space: nowrap;
-}
-
-.panelAction:hover {
-  text-decoration: underline;
-}
-
-.panelAction:focus-visible {
-  outline: 2px solid var(--brand-500);
-  outline-offset: 2px;
-  border-radius: var(--r-sm);
-}
-
-.list {
-  /* 행은 위에서부터 쌓이고, 남는 공간은 아래에 남는다(한쪽 panel 만 짧아지지 않게). */
-  flex: 1 1 auto;
-  align-content: start;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.row + .row {
-  border-top: 1px solid var(--border);
-}
-
-.rowLink {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--s3);
-  padding: 12px 18px;
-  color: inherit;
-  text-decoration: none;
-}
-
-.rowLink:hover {
-  background: var(--surface-sub);
-}
-
-.rowLink:focus-visible {
-  outline: 2px solid var(--brand-500);
-  outline-offset: -2px;
-}
-
-/* 일정 행의 시각 열. 시간이 먼저 읽혀야 한다. */
-.rowTime {
-  display: grid;
-  gap: 2px;
-  flex: 0 0 auto;
-  min-width: 52px;
-}
-
-.rowTimeValue {
-  color: var(--text-1);
-  font-size: 15px;
-  line-height: 22px;
-  font-weight: 800;
-  font-variant-numeric: tabular-nums;
-}
-
-.rowTimeDate {
-  color: var(--text-3);
-  font-size: 12px;
-  line-height: 16px;
-}
-
-.rowBody {
-  display: grid;
-  gap: 2px;
-  flex: 1 1 auto;
-  min-width: 0;
-}
-
-.rowTitle {
-  color: var(--text-1);
-  font-size: 14px;
-  line-height: 22px;
-  font-weight: 700;
-}
-
-.rowTitleSub {
-  color: var(--text-2);
-  font-weight: 500;
-}
-
-.rowMeta {
-  color: var(--text-2);
-  font-size: 13px;
-  line-height: 20px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-/* 다음 행동은 안내 문구다. 시간 약속이 있는 것만 색을 쓰는 Case 목록과 달리 여기는 항상 본문 색이다. */
-.rowAction {
-  color: var(--text-3);
-  font-size: 13px;
-  line-height: 20px;
-}
-
-.empty {
-  /* 비어 있어도 sibling panel 높이를 유지하고, 문구는 남는 공간 가운데에 둔다. */
-  flex: 1 1 auto;
-  display: grid;
-  align-content: center;
-  margin: 0;
-  padding: 24px 18px;
-  color: var(--text-3);
-  font-size: 13px;
-  line-height: 20px;
-  text-align: center;
-}
-
-.errorCard {
-  padding: var(--s4);
-  border: 1px solid var(--red-fg);
-  border-radius: var(--r-md);
-  background: var(--red-bg);
-}
-
-.errorText {
-  margin: 0;
-  color: var(--red-fg);
-  font-size: 14px;
-  line-height: 22px;
-}
-
-@media (max-width: 900px) {
-  .page {
-    /* 좌우 20px 은 Studio 모바일 canonical gutter 다(StudioShell 의 .content inset 과 같은 값). */
-    padding: 24px 20px 48px;
-  }
-
-  .workspace {
-    grid-template-columns: 1fr;
-  }
-
-  .chartRow {
-    grid-template-columns: 1fr;
-  }
-
-  /*
-   * 1단으로 바뀌면 equal-height 를 강제할 sibling 이 없다.
-   * height: 100% 를 풀어 내용이 적은 카드에 빈 공간이 생기지 않게 한다.
-   */
-  .chartCard,
-  .panel {
-    height: auto;
-  }
-
-  .barList,
-  .donutBody,
-  .chartEmpty,
-  .list,
-  .empty {
-    flex: 0 0 auto;
-  }
-
-  .title {
-    font-size: 24px;
-    line-height: 32px;
-  }
-}
-
-@media (max-width: 640px) {
-  .analyticsHead {
-    align-items: flex-start;
-    flex-direction: column;
-  }
-
-  /* 좁은 화면에서는 도달률을 접고 label / bar / count 만 남긴다. 가로 스크롤을 만들지 않는다. */
-  .barRow {
-    grid-template-columns: 60px minmax(0, 1fr) minmax(18px, auto);
-  }
-
-  .barReached {
-    display: none;
-  }
-
-  .panelHead {
-    flex-wrap: wrap;
-    row-gap: 4px;
-  }
-
-  /* 좁은 화면에서는 text action 이 제목 아래 줄로 내려간다. 가로로 잘리지 않게 한다. */
-  .panelAction {
-    margin-left: 0;
-    flex-basis: 100%;
-  }
-
-  .rowMeta {
-    white-space: normal;
-  }
-}
-
-/*
- * 체험 이후 전환 현황.
- *
- * 기존 chartCard 토큰 위에 올린다 — 새 디자인 시스템을 들이지 않는다.
- * 깔때기 모양(위가 넓고 아래가 좁은 도형)을 쓰지 않는다. 각 단계가 앞 단계의
- * 부분집합이 아니라서, 그 모양 자체가 사실이 아닌 관계를 말하게 된다.
- */
-.journeyRail {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-  gap: var(--s2);
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.journeyCard {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  padding: var(--s3);
-  border: 1px solid var(--border);
-  border-radius: var(--r-md);
-  background: var(--surface);
-}
-
-.journeyLabel {
-  font-size: 12px;
-  color: var(--text-muted);
-}
-
-.journeyValue {
-  font-size: 20px;
-  font-weight: 700;
-  color: var(--text);
-  letter-spacing: -0.01em;
-}
-
-.journeyMeta {
-  font-size: 12px;
-  color: var(--text-muted);
-}
-
-.rateRow {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: var(--s2);
-}
-
-/* 비율 옆에 분모를 항상 같이 둔다. 비율만 있으면 무엇에 대한 비율인지 사라진다. */
-.rateBlock {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  padding: var(--s3);
-  border: 1px solid var(--border);
-  border-radius: var(--r-md);
-  background: var(--surface);
-}
-
-.rateLabel {
-  font-size: 12px;
-  color: var(--text-muted);
-}
-
-.rateValue {
-  font-size: 22px;
-  font-weight: 700;
-  color: var(--text);
-  letter-spacing: -0.01em;
-}
-
-.rateMeta {
-  font-size: 12px;
-  color: var(--text-muted);
-  font-variant-numeric: tabular-nums;
-}
-
-.matrixWrap {
-  display: flex;
-  flex-direction: column;
-  gap: var(--s2);
-}
-
-.matrixTitle {
-  margin: 0;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text);
-}
-
-.matrix {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 13px;
-}
-
-.matrix th,
-.matrix td {
-  padding: var(--s2);
-  border-bottom: 1px solid var(--border);
-  text-align: right;
-  color: var(--text);
-  font-variant-numeric: tabular-nums;
-}
-
-.matrix thead th {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--text-muted);
-}
-
-.matrix th[scope="row"],
-.matrix thead th:first-child {
-  text-align: left;
-  font-weight: 500;
-}
-
-.matrixNote {
-  margin: 0;
-  font-size: 12px;
-  line-height: 1.6;
-  color: var(--text-muted);
-}
-
-/*
- * 기준 날짜 배지.
- *
- * 같은 기간을 골라도 블록마다 세는 날짜가 다르다. 그 사실을 설명문 안에
- * 묻어 두면 읽히지 않아서, 제목 바로 아래에 짧게 붙인다.
- */
-.basisChip {
-  display: inline-block;
-  margin-right: var(--s1);
-  padding: 1px 6px;
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--text-muted);
-  vertical-align: middle;
-}
-
-/* 아직 쌓이지 않은 값. 0을 숨기지 않되 성과처럼 크게 세우지도 않는다. */
-.journeyValueEmpty {
-  color: var(--text-muted);
-  font-weight: 600;
-}
+/* Dashboard Phase 1.1: analytics first, daily operations independent of period. */
+.page { min-height: 100dvh; padding: 32px 24px 48px; color: var(--text-1); }
+.page > * { max-width: var(--studio-max); margin-inline: auto; }
+.header { display: grid; gap: var(--s5); margin-bottom: var(--s5); }
+.headerIntro { min-width: 0; }
+.title { margin: 0; font-size: 26px; line-height: 36px; font-weight: 800; letter-spacing: -.03em; }
+.subtitle { margin: var(--s1) 0 0; color: var(--text-2); font-size: 14px; line-height: 22px; }
+.dashboardToolbar { display: flex; align-items: center; justify-content: space-between; gap: var(--s6); min-height: 44px; }
+.toolbarStart { display: flex; align-items: center; min-width: 0; }
+.toolbarEnd { display: flex; align-items: center; justify-content: flex-end; gap: var(--s6); min-width: 0; }
+.today { flex: none; font-size: 13px; color: var(--text-2); white-space: nowrap; }
+.chartRow { display: grid; grid-template-columns: 1.2fr 1fr 1fr; gap: var(--s4); }
+.chartCard { min-width: 0; display: flex; flex-direction: column; gap: var(--s4); padding: var(--s5) var(--s4); border: 1px solid var(--border); border-radius: var(--r-lg); background: var(--surface); }
+.flowCard { background: var(--brand-50); border-color: var(--brand-100); }
+.chartTitle { margin: 0; font-size: 15px; line-height: 22px; font-weight: 800; }
+.flow { flex: 1; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); align-items: center; list-style: none; margin: 0; padding: var(--s3) 0; }
+.flow li { display: grid; gap: var(--s1); text-align: center; position: relative; }
+.flow li + li::before { content: '›'; position: absolute; top: 12px; left: -4px; color: var(--brand-500); font-size: 20px; }
+.flowValue { font-size: 28px; line-height: 36px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.flowLabel { color: var(--text-2); font-size: 12px; line-height: 20px; white-space: nowrap; }
+.flowRate, .flowBase { margin-top: var(--s3); font-size: 12px; line-height: 18px; color: var(--brand-700); font-variant-numeric: tabular-nums; }
+.flowBase { color: var(--text-3); }
+.chartNote { margin: auto 0 0; color: var(--text-3); font-size: 11px; line-height: 18px; }
+.donutLayout { flex: 1; display: flex; align-items: center; gap: var(--s3); }
+.donutWrap { position: relative; width: 112px; flex: 0 0 112px; }
+.donut { display: block; width: 100%; }
+.donutTrack { fill: none; stroke: var(--border); }
+.donutCenter { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: var(--s1); pointer-events: none; }
+.donutCenter strong { font-size: 24px; line-height: 28px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.donutCenter span { font-size: 11px; color: var(--text-2); }
+.completed, .enrolled { stroke: var(--brand-500); background: var(--brand-500); }
+.noShow { stroke: var(--red-fg); background: var(--red-fg); }
+.not_enrolled, .canceled { stroke: var(--text-3); background: var(--text-3); }
+.pending { stroke: var(--border); background: var(--border); }
+.legend { flex: 1; min-width: 0; display: grid; gap: var(--s3); list-style: none; padding: 0; margin: 0; }
+.legend li { display: grid; grid-template-columns: 8px minmax(0, 1fr) auto 42px; align-items: center; gap: 6px; font-size: 11px; line-height: 16px; color: var(--text-2); }
+.legend strong { color: var(--text-1); font-size: 12px; font-variant-numeric: tabular-nums; }
+.legendDot { width: 8px; height: 8px; border-radius: 50%; }
+.legendRate { text-align: right; font-variant-numeric: tabular-nums; }
+.periodNote { margin: var(--s3) 0 var(--s6); color: var(--text-3); font-size: 12px; line-height: 18px; }
+.workspace { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--s4); align-items: stretch; }
+.actionsPanel { height: 100%; }
+.sidePanels { min-width: 0; display: grid; grid-template-rows: repeat(2, minmax(min-content, 1fr)); gap: var(--s4); align-items: stretch; }
+.panel { min-width: 0; overflow: hidden; border: 1px solid var(--border); border-radius: var(--r-lg); background: var(--surface); }
+.panelHead { display: flex; align-items: center; gap: var(--s2); min-height: 60px; padding: var(--s4) var(--s5); border-bottom: 1px solid var(--border); }
+.panelHead h2 { margin: 0; font-size: 16px; line-height: 24px; font-weight: 800; letter-spacing: -.02em; }
+.panelCount { color: var(--text-3); font-size: 12px; white-space: nowrap; }
+.panelAction { margin-left: auto; display: inline-flex; align-items: center; gap: var(--s2); color: var(--brand-700); font-size: 12px; line-height: 20px; font-weight: 700; text-decoration: none; white-space: nowrap; }
+.panelAction span { font-size: 20px; }
+.list { list-style: none; margin: 0; padding: 0; }
+.row { background: var(--surface); }
+.row + .row .rowLink { border-top: 1px solid var(--border); }
+.rowLink { display: flex; width: 100%; align-items: center; gap: var(--s3); padding: var(--s3) var(--s5); min-height: 76px; color: inherit; background: var(--surface); text-decoration: none; cursor: pointer; transition: background-color 150ms ease; }
+.actionsPanel .rowLink { min-height: 98px; }
+.rowLink:hover { background: var(--brand-50); }
+.rowLink:focus-visible { outline: 2px solid var(--brand-500); outline-offset: -2px; background: var(--brand-50); }
+.panelAction:focus-visible, .moreAnalysis summary:focus-visible { outline: 2px solid var(--brand-500); outline-offset: -2px; border-radius: var(--r-sm); }
+.rowBody { display: grid; flex: 1; min-width: 0; gap: 2px; }
+.rowTitle { font-size: 14px; line-height: 22px; font-weight: 800; }
+.rowTitleSub { color: var(--text-2); font-weight: 400; font-size: 13px; }
+.rowMeta { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-2); font-size: 12px; line-height: 18px; }
+.rowAction { color: var(--text-3); font-size: 12px; line-height: 18px; }
+.chevron { color: var(--text-3); font-size: 22px; font-weight: 400; }
+.rowTime { min-width: 52px; display: grid; gap: var(--s1); }
+.rowTime strong { font-size: 18px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.rowTime > span { font-size: 11px; line-height: 16px; color: var(--text-3); }
+.resultDate { color: var(--text-3); font-size: 11px; }
+.registrationRow { min-height: 64px; }
+.empty { margin: 0; padding: var(--s5); font-size: 13px; line-height: 20px; color: var(--text-3); }
+.analysisFooter { margin-top: var(--s5); display: flex; gap: var(--s4); align-items: flex-start; justify-content: space-between; }
+.moreAnalysis { flex: 1; color: var(--text-2); font-size: 13px; }
+.moreAnalysis summary { cursor: pointer; padding: var(--s3) 0; font-weight: 700; }
+.moreAnalysis ul { max-width: 480px; list-style: none; margin: 0; padding: 0; }
+.moreAnalysis li { display: flex; justify-content: space-between; gap: var(--s4); padding: var(--s2) 0; border-bottom: 1px solid var(--border); }
+.locked { display: flex; align-items: center; justify-content: space-between; gap: var(--s4); border: 1px solid var(--brand-100); background: var(--brand-50); border-radius: var(--r-lg); padding: var(--s5); margin-bottom: var(--s5); font-size: 14px; }
+.locked p { margin: var(--s1) 0 0; color: var(--text-2); font-size: 13px; }
+.locked a { color: var(--brand-700); white-space: nowrap; }
+.errorCard { border: 1px solid var(--border); border-radius: var(--r-lg); padding: var(--s5); color: var(--red-fg); }
+@media (min-width: 1600px) { .donutWrap { width: 128px; flex-basis: 128px; } .legend li { font-size: 12px; } }
+@media (max-width: 1320px) { .chartRow { grid-template-columns: 1.15fr 1fr 1fr; } .donutLayout { flex-direction: column; gap: var(--s3); } .legend { width: 100%; } .flowLabel { font-size: 11px; } .resultDate { display: none; } }
+@media (max-width: 1050px) { .dashboardToolbar { align-items: flex-start; flex-direction: column; gap: var(--s3); } .toolbarEnd { justify-content: flex-start; flex-wrap: wrap; gap: var(--s3); } .chartRow { grid-template-columns: 1fr 1fr; } .flowCard { grid-column: 1 / -1; } .donutLayout { flex-direction: row; } .workspace { grid-template-columns: 1fr; } .actionsPanel { height: auto; } .sidePanels { grid-template-rows: auto; } }
+@media (max-width: 640px) { .page { padding: var(--s5) var(--s4); } .title { font-size: 22px; } .chartRow { grid-template-columns: 1fr; } .panelHead { flex-wrap: wrap; padding: var(--s3); } .rowLink { gap: var(--s2); padding-inline: var(--s3); } .analysisFooter { flex-direction: column; } }
+
+.loadingLine { width: 280px; height: 32px; background: var(--surface-sub); border-radius: var(--r-sm); }
+.loadingChart { height: 156px; background: var(--surface-sub); border-radius: var(--r-sm); }
+.loadingRow { height: 64px; margin: var(--s4); background: var(--surface-sub); border-radius: var(--r-sm); }
+
+@media (prefers-reduced-motion: reduce) { .rowLink { transition: none; } }

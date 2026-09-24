@@ -1711,6 +1711,7 @@ export const mockDataAdapter: DataAdapter = {
         )
         const mapped: StudioApplicationSummary = {
           ...item,
+          lostAt: item.lostAt ?? null,
           classSubject: classItem?.subject ?? null,
           classRegion: formatAdministrativeRegionLabel(mockOrganizationLocation),
           // mock 은 예약 블록 시각을 따로 갖지 않는다. confirmedSlotAt / 수업 길이로만 판정된다.

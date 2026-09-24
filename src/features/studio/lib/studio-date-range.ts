@@ -7,6 +7,8 @@ export type StudioDateRangePreset =
   | "last7Days"
   | "thisMonth"
   | "lastMonth"
+  | "last3Months"
+  | "thisYear"
   | "custom"
 
 export type StudioDateRangeQueryInput = {
@@ -44,6 +46,8 @@ export const STUDIO_DATE_RANGE_PRESET_OPTIONS: Array<{
   { value: "last7Days", label: "최근 7일" },
   { value: "thisMonth", label: "이번 달" },
   { value: "lastMonth", label: "지난달" },
+  { value: "last3Months", label: "최근 3개월" },
+  { value: "thisYear", label: "올해" },
   { value: "custom", label: "직접 설정" }
 ]
 
@@ -143,6 +147,11 @@ export const buildStudioDateRangeFromPreset = (
     }
   }
 
+  if (preset === "last3Months" || preset === "thisYear") {
+    const start = new Date(Date.UTC(today.getUTCFullYear(), preset === "thisYear" ? 0 : today.getUTCMonth() - 2, 1))
+    return { startDate: formatUtcDateAsYmd(start), endDate: formatUtcDateAsYmd(today) }
+  }
+
   const currentMonthStart = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), 1))
   const lastMonthEnd = addDays(currentMonthStart, -1)
   const lastMonthStart = new Date(
@@ -221,7 +230,7 @@ export const resolveStudioDateRange = (
   const normalizedStartDate = formatUtcDateAsYmd(startUtcDate)
   const normalizedEndDate = formatUtcDateAsYmd(endUtcDate)
   const matchedPreset =
-    (["today", "last7Days", "thisMonth", "lastMonth"] as const).find((preset) => {
+    (["thisMonth", "last3Months", "thisYear", "today", "last7Days", "lastMonth"] as const).find((preset) => {
       const presetRange = buildStudioDateRangeFromPreset(preset)
       return (
         presetRange?.startDate === normalizedStartDate && presetRange?.endDate === normalizedEndDate
