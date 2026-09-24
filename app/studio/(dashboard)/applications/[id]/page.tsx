@@ -1,3 +1,7 @@
+import { StudioQueryRetry } from "@/features/studio/ui/studio-query-retry"
+import { resolveStudioDetailReturn } from "@/features/studio/lib/studio-detail-navigation"
+import { getParentCrossProductHref } from "@/shared/config/cross-product-navigation"
+import { getRequestHostname } from "@/shared/lib/request-host"
 import Link from "next/link"
 import { notFound } from "next/navigation"
 
@@ -31,6 +35,7 @@ import { getStudioNavigationPathResolver } from "@/shared/lib/studio-navigation-
 import styles from "./page.module.css"
 
 type StudioApplicationDetailPageProps = {
+  searchParams?: Promise<{ returnTo?: string }>
   params: Promise<{
     id: string
   }>
@@ -205,8 +210,10 @@ const formatProgressDate = (value: string | null | undefined) => {
   }).format(date)
 }
 
-export default async function StudioApplicationDetailPage({ params }: StudioApplicationDetailPageProps) {
+export default async function StudioApplicationDetailPage({ params, searchParams }: StudioApplicationDetailPageProps) {
   const studioPath = await getStudioNavigationPathResolver()
+  const back = resolveStudioDetailReturn((await searchParams)?.returnTo)
+  const hostname = await getRequestHostname()
   const teacher = await requireTeacherStudioAccess()
   const resolvedParams = await params
   const { data, error } = await getStudioApplicationDetail(resolvedParams.id, teacher.organizationId)
@@ -455,7 +462,7 @@ export default async function StudioApplicationDetailPage({ params }: StudioAppl
           showRegistrationBadge,
           registrationTone,
           registrationLabel,
-          statusLabel,
+          statusLabel: caseStage === "in_trial" ? CASE_STAGE_LABELS.in_trial : statusLabel,
           programTypeLabel,
           parentName,
           parentPhone,
@@ -485,15 +492,15 @@ export default async function StudioApplicationDetailPage({ params }: StudioAppl
     <div className={styles.page}>
       <header className={styles.header}>
         <div className={styles.headerTopRow}>
-          <Link href={studioPath("/studio/cases")} className={styles.backLink}>
-            상담·등록으로 돌아가기
+          <Link href={studioPath(back.pathname) + back.search} className={styles.backLink}>
+            {back.label}
           </Link>
         </div>
       </header>
 
       {error ? (
         <section className={styles.errorCard} role="alert">
-          <p className={styles.errorText}>{error}</p>
+          <p className={styles.errorText}>{error}</p><StudioQueryRetry />
         </section>
       ) : null}
 
@@ -513,7 +520,7 @@ export default async function StudioApplicationDetailPage({ params }: StudioAppl
                 <p className={styles.caseSubline}>
                   <span className={styles.caseClassName}>{detailView.classTitle}</span>
                   {data.classId ? (
-                    <Link href={`/classes/${data.classId}`} className={styles.caseInlineLink}>
+                    <Link href={getParentCrossProductHref({ pathname: `/classes/${data.classId}`, hostname })} className={styles.caseInlineLink}>
                       미리보기
                     </Link>
                   ) : null}
@@ -522,24 +529,31 @@ export default async function StudioApplicationDetailPage({ params }: StudioAppl
                 </p>
 
                 <p className={styles.caseGuardian}>
-                  보호자 {detailView.parentName ?? "미기록"}
-                  {detailView.parentPhone ? (
-                    <>
-                      <span className={styles.caseDivider}>·</span>
-                      {detailView.parentPhone}
-                    </>
-                  ) : null}
+                  {detailViewSubjectAndProgramLabel(detailView.classSubject, detailView.programTypeLabel)}
+
                 </p>
               </div>
 
               {detailView.showRegistrationBadge ? (
                 <div className={styles.caseBadgeWrap}>
                   <StudioStatusBadge tone={detailView.registrationTone}>
-                    {detailView.registrationLabel}
+                    등록 상태 · {detailView.registrationLabel}
                   </StudioStatusBadge>
                 </div>
               ) : null}
             </div>
+
+            <details id="case-assignee" className={styles.assigneeDisclosure}>
+              <summary>담당 선생님 배정 / 변경</summary>
+              <ApplicationAssigneeForm
+                applicationId={data.id}
+                currentAssignedTeacherId={data.assignedTeacherId}
+                currentAssignedTeacherName={data.assignedTeacherName}
+                options={assigneeOptionsResult.data}
+                optionsError={assigneeOptionsResult.error}
+                defaultExpanded
+              />
+            </details>
 
             {detailView.phoneHref || detailView.smsHref ? (
               <div className={styles.caseActions}>
@@ -562,14 +576,13 @@ export default async function StudioApplicationDetailPage({ params }: StudioAppl
               {detailView.progressSteps.length > 0 ? (
                 <span className={styles.progressSteps}>{detailView.progressSteps.join("  ·  ")}</span>
               ) : null}
-              <span className={styles.progressCurrent}>현재 · {detailView.caseStageLabel}</span>
+              <span className={`${styles.progressCurrent} ${data.status === "canceled" ? styles.progressTerminal : ""}`}>신청 상태 · {detailView.statusLabel}</span>
             </div>
           </section>
 
           {/*
-            2. 다음 할 일  3. 신청 정보  4. 담당 선생님  5. 활동 기록  6. 체험 결과  7. 등록 상담
-
-            참조 정보(신청 정보 + 담당 선생님)는 workflow 에 slot 으로 넘겨
+            다음 할 일 → 기본 정보/체험 일정 → 상담 → 결과/리포트 → 부모 응답/등록 → 시스템 이력.
+            기본 정보와 체험 일정은 workflow 에 slot 으로 넘겨
             "다음 할 일" 바로 아래에 렌더한다(디자인 시스템 §4.2).
             CSS order 가 아니라 DOM 순서를 바꾸므로 탭 순서와 모바일 읽기 순서가 함께 맞는다.
           */}
@@ -581,6 +594,7 @@ export default async function StudioApplicationDetailPage({ params }: StudioAppl
             canReopenConsultation={entitlements.canReopenConsultation}
             parentDecisionSection={
               <StudioParentDecision
+                key="parent-decision"
                 decision={parentDecisionResult.data}
                 loadError={parentDecisionResult.error}
               />
@@ -592,6 +606,7 @@ export default async function StudioApplicationDetailPage({ params }: StudioAppl
                 reportView.publishedReportLoadError ||
                 reportView.blockers.length > 0) ? (
                 <ApplicationReportPublishing
+                  key="parent-report"
                   applicationId={data.id}
                   preview={reportView.preview}
                   publishedSnapshot={reportView.published?.content ?? null}
@@ -605,11 +620,11 @@ export default async function StudioApplicationDetailPage({ params }: StudioAppl
                 />
               ) : null
             }
-            referenceSections={
-        <section className={styles.applicationInfoSection} aria-labelledby="application-info-title">
+            referenceSections={<>
+        <section key="basic-info" className={styles.applicationInfoSection} aria-labelledby="application-info-title">
             <div className={styles.applicationInfoHeader}>
               <h2 id="application-info-title" className={styles.applicationInfoTitle}>
-                신청 정보
+                학생 / 학부모 기본 정보
               </h2>
             </div>
             <div className={styles.applicationInfoBody}>
@@ -630,40 +645,19 @@ export default async function StudioApplicationDetailPage({ params }: StudioAppl
                   <dt className={styles.summaryLabel}>신청일</dt>
                   <dd className={styles.summaryValue}>{detailView.applicationDateDetail}</dd>
                 </div>
-                <div className={styles.infoCell}>
-                  <dt className={styles.summaryLabel}>신청 수업</dt>
-                  <dd className={styles.summaryValue}>{detailView.classTitle}</dd>
-                </div>
-                <div className={styles.infoCell}>
-                  <dt className={styles.summaryLabel}>신청 유형 / 과목</dt>
-                  <dd className={styles.summaryValue}>
-                    {detailView.programTypeLabel}
-                    {detailView.classSubject ? ` · ${detailView.classSubject}` : ""}
-                  </dd>
-                </div>
-                <div className={styles.infoCell}>
-                  {/* 체험수업 예약 일시다. 등록 상담의 `정규수업 희망 일정` 과 다른 값이라
-                      "희망 일정" 이라는 말을 공유하지 않는다. */}
-                  <dt className={styles.summaryLabel}>체험 희망 일시</dt>
-                  <dd className={styles.summaryValue}>
-                    {detailView.requestedSchedule}
-                    <Link href={studioPath("/studio/schedule")} className={styles.caseInlineLink}>
-                      일정 관리
-                    </Link>
-                  </dd>
-                </div>
-                {detailView.confirmedSchedule ? (
-                  <div className={styles.infoCell}>
-                    <dt className={styles.summaryLabel}>확정 일정</dt>
-                    <dd className={styles.summaryValue}>{detailView.confirmedSchedule}</dd>
-                  </div>
-                ) : null}
+
+
                 {detailView.childSchool ? (
                   <div className={styles.infoCell}>
                     <dt className={styles.summaryLabel}>학교</dt>
                     <dd className={styles.summaryValue}>{detailView.childSchool}</dd>
                   </div>
                 ) : null}
+              </dl>
+              {detailView.currentLevel || detailView.classRegion || detailView.normalizedPreferredRegularSchedule || detailView.childNotes || detailView.parentMemo || detailView.normalizedGoalNote ? (
+                <details className={styles.assigneeDisclosure}>
+                  <summary>신청 당시 참고 정보</summary>
+                  <dl className={styles.applicationInfoGrid}>
                 {detailView.currentLevel ? (
                   <div className={styles.infoCell}>
                     <dt className={styles.summaryLabel}>현재 수준</dt>
@@ -711,17 +705,33 @@ export default async function StudioApplicationDetailPage({ params }: StudioAppl
                     <dd className={styles.summaryValueMultiline}>{detailView.normalizedGoalNote}</dd>
                   </div>
                 ) : null}
-              </dl>
+                  </dl>
+                </details>
+              ) : null}
 
-              <ApplicationAssigneeForm
-                applicationId={data.id}
-                currentAssignedTeacherId={data.assignedTeacherId}
-                currentAssignedTeacherName={data.assignedTeacherName}
-                options={assigneeOptionsResult.data}
-                optionsError={assigneeOptionsResult.error}
-              />
+
+
             </div>
         </section>
+        <section key="trial-schedule" className={styles.applicationInfoSection} aria-label="체험 일정"><div className={styles.applicationInfoHeader}><h2 className={styles.applicationInfoTitle}>체험 일정</h2></div><div className={styles.applicationInfoBody}><dl className={styles.applicationInfoGrid}>
+                <div className={styles.infoCell}>
+                  {/* 체험수업 예약 일시다. 등록 상담의 `정규수업 희망 일정` 과 다른 값이라
+                      "희망 일정" 이라는 말을 공유하지 않는다. */}
+                  <dt className={styles.summaryLabel}>체험 희망 일시</dt>
+                  <dd className={styles.summaryValue}>
+                    {detailView.requestedSchedule}
+                    <Link href={studioPath("/studio/schedule")} className={styles.caseInlineLink}>
+                      일정 관리
+                    </Link>
+                  </dd>
+                </div>
+                {detailView.confirmedSchedule ? (
+                  <div className={styles.infoCell}>
+                    <dt className={styles.summaryLabel}>확정 일정</dt>
+                    <dd className={styles.summaryValue}>{detailView.confirmedSchedule}</dd>
+                  </div>
+                ) : null}
+</dl></div></section></>
             }
           />
         </>

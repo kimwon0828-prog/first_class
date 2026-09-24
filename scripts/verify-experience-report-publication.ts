@@ -502,7 +502,7 @@ check(
 check(
   "오류 안내를 표시한다",
   reportUi.includes("현재 발행된 리포트 정보를 불러오지 못했습니다") &&
-    reportUi.includes("화면을 새로고침한 뒤 다시 확인해 주세요")
+    reportUi.includes("<StudioQueryRetry />")
 )
 check(
   "오류일 때 발행이 막힌다",

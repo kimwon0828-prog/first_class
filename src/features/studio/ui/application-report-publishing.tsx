@@ -1,5 +1,7 @@
 "use client"
 
+import { StudioQueryRetry } from "./studio-query-retry"
+
 import { useActionState, useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
@@ -297,25 +299,25 @@ export const ApplicationReportPublishing = ({
         평가를 다시 조립해서 "현재 발행본" 이라고 보여 주지 않는다.
       */}
       {publishedSnapshot ? (
-        <div className={styles.block}>
-          <p className={styles.blockLabel}>현재 부모님께 공개된 내용</p>
+        <details className={styles.block} open={!assessmentChangedSincePublish}>
+          <summary className={styles.blockLabel}>현재 부모님께 공개된 내용 보기</summary>
           <ReportBody snapshot={publishedSnapshot} />
-        </div>
+        </details>
       ) : null}
 
       {publishedReportLoadError ? (
         <div className={styles.notice} role="alert">
           <p className={styles.noticeTitle}>현재 발행된 리포트 정보를 불러오지 못했습니다.</p>
           <p className={styles.noticeBody}>
-            화면을 새로고침한 뒤 다시 확인해 주세요. 발행 상태를 확인하기 전까지는 발행과 철회를 할
+            다시 시도한 뒤 확인해 주세요. 발행 상태를 확인하기 전까지는 발행과 철회를 할
             수 없습니다.
-          </p>
+          </p><StudioQueryRetry />
         </div>
       ) : null}
 
       {assessmentChangedSincePublish ? (
         <div className={styles.notice} role="status">
-          <p className={styles.noticeTitle}>체험평가가 마지막 리포트 발행 이후 수정되었습니다.</p>
+          <p className={styles.noticeTitle}>체험 결과가 마지막 리포트 발행 이후 수정되었습니다.</p>
           <p className={styles.noticeBody}>
             변경 내용을 부모님께 전달하려면 새 버전으로 다시 발행해 주세요.
           </p>
@@ -323,12 +325,12 @@ export const ApplicationReportPublishing = ({
       ) : null}
 
       {preview ? (
-        <div className={styles.block}>
-          <p className={styles.blockLabel}>
-            {publishedSnapshot ? "현재 평가 기준 미리보기" : "부모님께 보일 내용"}
-          </p>
+        <details className={styles.block} open={!publishedSnapshot || assessmentChangedSincePublish}>
+          <summary className={styles.blockLabel}>
+            {publishedSnapshot ? "현재 작성본 미리보기" : "부모님께 보일 내용 확인"}
+          </summary>
           <ReportBody snapshot={preview} />
-        </div>
+        </details>
       ) : null}
 
       {/*

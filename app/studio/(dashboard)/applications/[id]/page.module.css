@@ -1,7 +1,7 @@
 /* canvas 는 StudioShell 이 칠한다. */
 .page {
   min-height: 100dvh;
-  padding: 32px 24px 56px;
+  padding: 24px 24px 48px;
 }
 
 /*
@@ -11,13 +11,13 @@
  */
 .page > * {
   width: 100%;
-  max-width: var(--studio-max);
+  max-width: min(var(--studio-max), 1040px);
   margin-left: auto;
   margin-right: auto;
 }
 
 .page > * + * {
-  margin-top: var(--s4);
+  margin-top: var(--s3);
 }
 
 .header {
@@ -37,7 +37,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  height: 40px;
+  min-height: 44px;
   padding: 0 var(--s3);
   border-radius: var(--r-md);
   border: 1px solid var(--border);
@@ -159,12 +159,14 @@
   border: 1px solid var(--border);
   border-radius: var(--r-md);
   background: var(--surface);
-  padding: 22px 22px 18px;
+  padding: var(--s5);
   display: grid;
-  gap: var(--s4);
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--s3);
 }
 
 .caseHeaderTop {
+  grid-column: 1 / -1;
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
@@ -253,6 +255,7 @@
 }
 
 .progressStrip {
+  grid-column: 1 / -1;
   display: flex;
   align-items: baseline;
   gap: 10px;
@@ -286,7 +289,7 @@
 }
 
 .applicationInfoHeader {
-  padding: 18px 20px;
+  padding: var(--s4) var(--s5);
 }
 
 .applicationInfoTitle {
@@ -322,6 +325,7 @@
   }
 
   .caseHeaderTop {
+  grid-column: 1 / -1;
     flex-direction: column;
     align-items: flex-start;
     gap: 10px;
@@ -357,3 +361,11 @@
   font-size: 12px;
   line-height: 18px;
 }
+
+.assigneeDisclosure { margin: 0; }
+.assigneeDisclosure[open] { grid-column: 1 / -1; }
+.assigneeDisclosure > summary { cursor: pointer; min-height: 44px; align-content: center; }
+.assigneeDisclosure:target { scroll-margin-top: 24px; }
+
+.progressTerminal { color: var(--red-fg); }
+@media (max-width: 640px) { .caseHeader { grid-template-columns: minmax(0, 1fr); } }

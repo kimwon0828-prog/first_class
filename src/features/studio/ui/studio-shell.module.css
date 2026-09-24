@@ -96,7 +96,7 @@
 .navItemActive {
   background: var(--brand-50);
   border-color: var(--brand-100);
-  color: var(--text-1);
+  color: var(--brand-700);
 }
 
 .navItemPending {

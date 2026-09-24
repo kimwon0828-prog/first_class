@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef } from "react"
+import { useEffect, useRef, useId } from "react"
 import { useActionState } from "react"
 import { useRouter } from "next/navigation"
 
@@ -44,7 +44,7 @@ const ACTIONS_BY_STATUS: Record<ApplicationStatus, ActionButtonConfig[]> = {
   ],
   confirmed: [
     { actionType: "move_to_completed", label: "체험 완료", tone: "primary" },
-    { actionType: "no_show", label: "노쇼 처리", tone: "secondary" }
+    { actionType: "no_show", label: "노쇼 처리", tone: "danger" }
   ],
   completed: [],
   canceled: []
@@ -62,7 +62,7 @@ const CASE_DETAIL_ACTIONS_BY_STATUS: Record<ApplicationStatus, ActionButtonConfi
   ],
   confirmed: [
     { actionType: "move_to_completed", label: "체험 완료", tone: "primary" },
-    { actionType: "no_show", label: "노쇼 처리", tone: "secondary" }
+    { actionType: "no_show", label: "노쇼 처리", tone: "danger" }
   ],
   completed: [],
   canceled: []
@@ -84,6 +84,10 @@ export const ApplicationStatusActionForm = ({
   showActions = true
 }: ApplicationStatusActionFormProps) => {
   const router = useRouter()
+  const dialogRef = useRef<HTMLDialogElement>(null)
+  const noShowSubmitRef = useRef<HTMLButtonElement>(null)
+  const dialogTitleId = useId()
+  const dialogDescriptionId = useId()
   const action = updateApplicationStatusAction.bind(null, applicationId)
   const [state, formAction, isPending] = useActionState(action, initialState)
   const handledPromptTokenRef = useRef<string | null>(null)
@@ -139,7 +143,11 @@ export const ApplicationStatusActionForm = ({
           {availableActions.map((item) => (
             <button
               key={item.actionType}
-              type="submit"
+              type={item.actionType === "no_show" ? "button" : "submit"}
+              onClick={item.actionType === "no_show" ? (event) => {
+                event.preventDefault()
+                dialogRef.current?.showModal()
+              } : undefined}
               name="actionType"
               value={item.actionType}
               disabled={isPending}
@@ -155,6 +163,18 @@ export const ApplicationStatusActionForm = ({
             </button>
           ))}
         </div>
+        <button ref={noShowSubmitRef} type="submit" name="actionType" value="no_show" hidden disabled={isPending} />
+        <dialog ref={dialogRef} className={styles.confirmDialog} aria-labelledby={dialogTitleId} aria-describedby={dialogDescriptionId}>
+          <h2 id={dialogTitleId}>이 학생을 노쇼로 처리할까요?</h2>
+          <p id={dialogDescriptionId}>노쇼 처리 후에는 기존 정책에 따라 되돌릴 수 없습니다.</p>
+          <div className={styles.confirmActions}>
+            <button type="button" autoFocus className={styles.secondaryButton} onClick={() => dialogRef.current?.close()}>돌아가기</button>
+            <button type="button" className={styles.dangerButton} disabled={isPending} onClick={() => {
+              dialogRef.current?.close()
+              noShowSubmitRef.current?.click()
+            }}>노쇼 처리</button>
+          </div>
+        </dialog>
       </form>
     )
 

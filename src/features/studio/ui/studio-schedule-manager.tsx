@@ -1,6 +1,7 @@
 "use client"
 
-import Link from "next/link"
+import { StudioQueryRetry } from "./studio-query-retry"
+import { StudioDetailLink } from "./studio-detail-link"
 import { useCallback, useEffect, useMemo, useState, type CSSProperties } from "react"
 
 import type { StudioStatusTone } from "@/features/studio/lib/application-status-labels"
@@ -146,8 +147,8 @@ const CalendarEventBlock = ({
   const title = `${event.timeLabel} · ${event.statusLabel} · ${event.childName} · ${event.classTitle} · ${event.assignedTeacherName ?? "미배정"}`
 
   return (
-    <Link
-      href={event.detailHref}
+    <StudioDetailLink
+      internalPath={event.detailHref}
       className={`${styles.timeEvent} ${TIME_TONE_CLASS[event.tone]} ${
         compact ? styles.timeEventCompact : ""
       }`}
@@ -162,7 +163,7 @@ const CalendarEventBlock = ({
       <span className={styles.timeEventName}>{event.childName}</span>
       <span className={styles.timeEventClass}>{event.classTitle}</span>
       <span className={styles.timeEventTeacher}>{event.assignedTeacherName ?? "선생님 미배정"}</span>
-    </Link>
+    </StudioDetailLink>
   )
 }
 
@@ -582,7 +583,7 @@ export const StudioScheduleManager = ({
 
       {error ? (
         <div className={styles.errorCard} role="alert">
-          <p className={styles.errorText}>{error}</p>
+          <p className={styles.errorText}>{error}</p><StudioQueryRetry />
         </div>
       ) : null}
 
@@ -729,16 +730,16 @@ export const StudioScheduleManager = ({
                       {visibleEvents.length > 0 ? (
                         <span className={styles.cellEvents}>
                           {visibleEvents.map((event) => (
-                            <Link
+                            <StudioDetailLink
                               key={event.id}
-                              href={event.detailHref}
+                              internalPath={event.detailHref}
                               className={styles.monthEvent}
                               title={`${event.timeLabel} ${event.childName} · ${event.classTitle} · ${event.statusLabel}`}
                             >
                               <span className={`${styles.monthEventTone} ${MONTH_TONE_CLASS[event.tone]}`} />
                               <span className={styles.monthEventTime}>{event.timeLabel}</span>
                               <span className={styles.monthEventName}>{event.childName}</span>
-                            </Link>
+                            </StudioDetailLink>
                           ))}
                           {overflowCount > 0 ? (
                             <span className={styles.eventMore}>+{overflowCount}개 더보기</span>

@@ -1,3 +1,4 @@
+import { StudioQueryRetry } from "@/features/studio/ui/studio-query-retry"
 import {
   formatLegacyPreferredDate,
   formatPreferredSchedule,
@@ -58,7 +59,7 @@ export const StudioParentDecision = ({ decision, loadError }: StudioParentDecisi
       </div>
 
       {loadError ? (
-        <p className={styles.muted}>{loadError}</p>
+        <div role="alert"><p className={styles.muted}>{loadError}</p><StudioQueryRetry /></div>
       ) : decision ? (
         <>
           <p className={styles.value}>&ldquo;{getParentDecisionLabel(decision.decision)}&rdquo;</p>

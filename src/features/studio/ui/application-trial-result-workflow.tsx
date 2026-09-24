@@ -1,5 +1,8 @@
 "use client"
 
+import { getCaseAttentionState } from "@/features/studio/lib/case-view-model"
+import { StudioSectionLink } from "./studio-section-link"
+
 import type { ReactNode } from "react"
 import { useActionState, useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
@@ -609,14 +612,12 @@ export const ApplicationTrialResultWorkflow = ({
   const unregisteredReasonLabel = getTrialResultUnregisteredReasonLabel(application.unregisteredReason)
   const now = useMemo(() => new Date(nowIso), [nowIso])
   const nextActionState = getNextActionState(application, now)
-  const confirmedScheduleAt = application.confirmedSlotAt ?? application.requestedSlotAt
-  const confirmedScheduleTime = new Date(confirmedScheduleAt).getTime()
-  // 이 gate 는 "끝났는가" 가 아니라 "시작했는가" 다. 수업 중에 일찍 완료 처리하는 길을
-  // 막지 않으려고 시작 시각 기준을 유지한다. 시각만 서버가 정한 now 로 통일한다.
-  const shouldShowStatusActions =
-    application.status !== "confirmed" ||
-    Number.isNaN(confirmedScheduleTime) ||
-    confirmedScheduleTime <= now.getTime()
+  const needsAssignee = getCaseAttentionState({ ...application, trialResultExists: hasTrialResult, hasAnyConsultationHistory: application.consultationLogs.length > 0 }, now) === "UNASSIGNED"
+  // Header와 같은 확정 블록/확정 시각 우선순위. 희망 시각으로 시작을 추정하지 않는다.
+  const trialProgress = getTrialProgressState(application, now)
+  const isInTrial = application.status === "confirmed" &&
+    (trialProgress === "in_trial" || trialProgress === "after_scheduled_end")
+  const shouldShowStatusActions = application.status !== "confirmed" || isInTrial
   const consultationOnlyLogs = useMemo(
     () => application.consultationLogs.filter((item) => item.activityType === "CONSULTATION"),
     [application.consultationLogs]
@@ -669,6 +670,8 @@ export const ApplicationTrialResultWorkflow = ({
   }, [])
 
   const activityEvents = useMemo(() => buildCaseActivityEvents(application), [application])
+  const consultationEvents = activityEvents.filter(event => event.kind === "consultation")
+  const systemEvents = activityEvents.filter(event => event.kind !== "consultation")
 
   // 상태가 달라도 같은 순서(다음 할 일 → 활동 기록 → 체험 결과)가 되도록 섹션을 한 번만 만든다.
   // 각 섹션은 카드 하나로 끝낸다(바깥 wrapper + 안쪽 callout 중첩을 만들지 않는다).
@@ -689,7 +692,19 @@ export const ApplicationTrialResultWorkflow = ({
         <h2 className={styles.sectionTitle}>다음 할 일</h2>
       </div>
 
-      {isCompletedView ? (
+      {needsAssignee && !isInTrial ? (
+        <div className={styles.todoBlock}>
+          <p className={styles.todoTitle}>담당 선생님을 배정해 주세요.</p>
+          <StudioSectionLink target="case-assignee" className={styles.primaryButton}>담당자 배정</StudioSectionLink>
+          {shouldShowStatusActions ? (
+            <details>
+              <summary className={styles.disclosureSummary}>신청 상태 처리</summary>
+              {application.status === "reviewing" ? <p className={styles.sectionMetaLine}>확정할 체험 일시 · {formatSeoulDateTime(application.requestedSlotAt) ?? application.selectedScheduleLabel ?? "일정 확인 필요"}</p> : null}
+              <ApplicationStatusActionForm applicationId={application.id} currentStatus={application.status} variant="case-detail" onCompletedSaved={handleCompletedSaved} />
+            </details>
+          ) : null}
+        </div>
+      ) : isCompletedView ? (
         <div
           className={`${styles.todoBlock} ${
             todoIsWarning
@@ -726,10 +741,12 @@ export const ApplicationTrialResultWorkflow = ({
         <p className={styles.todoTitle}>{nextActionState.title}</p>
       ) : (
         <div className={styles.todoBlock}>
-          <p className={styles.todoTitle}>{nextActionState.title}</p>
+          <p className={styles.todoTitle}>{application.status === "new" ? "신청 내용을 확인해 주세요." : nextActionState.title}</p>
           {nextActionState.description ? (
-            <p className={styles.todoDescription}>{nextActionState.description}</p>
+            <p className={styles.todoDescription}>{application.status === "new" ? "학생 정보와 희망 일정을 확인한 뒤 신청 확인을 진행해 주세요." : nextActionState.description}</p>
           ) : null}
+          {application.status === "reviewing" ? <p className={styles.sectionMetaLine}>확정할 체험 일시 · {formatSeoulDateTime(application.requestedSlotAt) ?? application.selectedScheduleLabel ?? "일정 확인 필요"}</p> : null}
+          {isInTrial && needsAssignee ? <StudioSectionLink target="case-assignee" className={styles.inlineTextButton}>담당자 배정 필요 →</StudioSectionLink> : null}
           <ApplicationStatusActionForm
             applicationId={application.id}
             currentStatus={application.status}
@@ -743,9 +760,9 @@ export const ApplicationTrialResultWorkflow = ({
   )
 
   const activitySection = (
-    <section className={`${styles.card} ${styles.sectionCard}`} aria-label="활동 기록">
+    <section className={`${styles.card} ${styles.sectionCard}`} aria-label="상담 이력">
       <div className={styles.sectionHead}>
-        <h2 className={styles.sectionTitle}>활동 기록</h2>
+        <h2 className={styles.sectionTitle}>상담 이력</h2>
         <div className={styles.sectionHeadActions}>
           {application.consultationLogs.length > 0 ? (
             <button type="button" className={styles.inlineTextButton} onClick={openConsultationHistory}>
@@ -762,33 +779,15 @@ export const ApplicationTrialResultWorkflow = ({
 
       {activityMetaLine ? <p className={styles.sectionMetaLine}>{activityMetaLine}</p> : null}
 
-      {activityEvents.length === 0 ? (
-        <p className={styles.simpleEmptyLine}>아직 활동 기록이 없어요.</p>
+      {application.nextContactAt ? <p className={styles.sectionMetaLine}>현재 다음 연락 · {formatSeoulDateTime(application.nextContactAt)}</p> : null}
+      {consultationEvents.length === 0 ? (
+        <p className={styles.simpleEmptyLine}>아직 상담 기록이 없어요.</p>
       ) : (
         <ol className={styles.activityList}>
-          {activityEvents.map((event) => {
+          {consultationEvents.slice(0, 1).map((event) => {
             const timeText = formatSeoulDateTime(event.at)
 
-            // 시스템 이벤트는 한 줄. 상담 기록만 내용까지 펼친다.
-            if (event.kind !== "consultation") {
-              return (
-                <li key={event.id} className={styles.activitySystemItem}>
-                  <span className={styles.activityMarker} aria-hidden="true" />
-                  <span className={styles.activitySystemTitle}>
-                    {event.title}
-                    {event.meta ? <span className={styles.activityMeta}> {event.meta}</span> : null}
-                  </span>
-                  <span className={styles.activitySystemTime}>{timeText}</span>
-                </li>
-              )
-            }
-
-            const detailLine = [
-              ...event.details,
-              event.nextContactAt
-                ? `다음 연락 · ${formatSeoulDateTime(event.nextContactAt) ?? "미정"}`
-                : null
-            ]
+            const detailLine = event.details
               .filter((item): item is string => Boolean(item))
               .join("  ·  ")
 
@@ -830,7 +829,7 @@ export const ApplicationTrialResultWorkflow = ({
       </div>
 
       {hasTrialResult && hasVisibleTrialResultContent ? (
-        <div className={styles.resultCompact}>
+        <details className={styles.resultCompact}><summary className={styles.disclosureSummary}>작성한 체험 결과 보기</summary>
           {storedObservations.canonical.length ? (
             <div className={styles.chipWrap}>
               {storedObservations.canonical.map((code) => (
@@ -884,7 +883,7 @@ export const ApplicationTrialResultWorkflow = ({
               </dd>
             </div>
           </dl>
-        </div>
+        </details>
       ) : isCompletedView ? (
         <div className={styles.compactEmpty}>
           <p className={styles.simpleEmptyLine}>체험 결과가 아직 기록되지 않았어요.</p>
@@ -903,16 +902,11 @@ export const ApplicationTrialResultWorkflow = ({
   const preferenceParsed = parseRegularSchedulePreference(application.regularSchedulePreference)
 
   const registrationConsultationSection = isCompletedView ? (
-    <section className={`${styles.card} ${styles.sectionCard}`} aria-label="등록 상담">
+    <section className={`${styles.card} ${styles.sectionCard}`} aria-label="학원 등록 결과">
       <div className={styles.sectionHead}>
-        <h2 className={styles.sectionTitle}>등록 상담</h2>
+        <h2 className={styles.sectionTitle}>학원 등록 결과</h2>
         {canAddConsultation || canReopenRegistration ? (
           <div className={styles.sectionHeadActions}>
-            {canAddConsultation ? (
-              <button type="button" className={styles.inlineTextButton} onClick={openConsultationEditor}>
-                + 상담 기록
-              </button>
-            ) : null}
             {canReopenRegistration ? (
               <button
                 type="button"
@@ -966,17 +960,15 @@ export const ApplicationTrialResultWorkflow = ({
           </div>
         ) : null}
 
-        {application.nextContactAt ? (
-          <div className={styles.resultGridRow}>
-            <dt className={styles.resultGridLabel}>다음 연락</dt>
-            <dd className={styles.resultGridValue}>
-              {formatSeoulDateTime(application.nextContactAt) ?? "-"}
-            </dd>
-          </div>
-        ) : null}
+
       </dl>
     </section>
   ) : null
+
+  const systemSection = <details className={`${styles.card} ${styles.sectionCard}`} aria-label="시스템 이력">
+    <summary className={styles.disclosureSummary}>시스템 이력</summary>
+    {systemEvents.length ? <ol className={styles.activityList}>{systemEvents.map(event => <li key={event.id} className={styles.activitySystemItem}><span className={styles.activitySystemTitle}>{event.title}{event.meta ? ` · ${event.meta}` : ""}</span><span className={styles.activitySystemTime}>{formatSeoulDateTime(event.at)}</span></li>)}</ol> : <p className={styles.simpleEmptyLine}>시스템 이력이 없습니다.</p>}
+  </details>
 
   return (
     <>
@@ -987,10 +979,11 @@ export const ApplicationTrialResultWorkflow = ({
       {isCompletedView ? reportSection : null}
       {isCompletedView ? parentDecisionSection : null}
       {registrationConsultationSection}
+      {systemSection}
 
       {sidebarContent ? <div className={styles.prioritySidebar}>{sidebarContent}</div> : null}
 
-      {isCompletedView && (phoneHref || completedPrimaryAction) ? (
+      {isCompletedView && !needsAssignee && (phoneHref || completedPrimaryAction) ? (
         <div className={styles.mobileActionBar} aria-label="모바일 빠른 액션">
           {phoneHref ? (
             <a href={phoneHref} className={styles.mobileActionButtonSecondary}>

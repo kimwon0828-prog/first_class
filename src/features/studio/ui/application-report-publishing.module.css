@@ -421,3 +421,9 @@
     grid-template-columns: 64px minmax(0, 1fr);
   }
 }
+
+.block > summary {
+  min-height: 44px;
+  align-content: center;
+  cursor: pointer;
+}

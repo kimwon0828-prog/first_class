@@ -208,6 +208,7 @@ check("범위) Studio 내부 redirect 도 helper 를 거친다", studioGuard.inc
  * 부르지 않도록 provider 의 훅 하나로 모았다. 그 진입점까지가 허용 범위다.
  */
 const CROSS_PRODUCT_ENTRY_POINTS = [
+  "app/studio/(dashboard)/applications/[id]/page.tsx",
   ...STUDIO_TO_PARENT_SITES,
   PARENT_GUARD,
   "src/features/studio/ui/studio-navigation-provider.tsx",

@@ -1,5 +1,7 @@
 "use client"
 
+import { StudioQueryRetry } from "./studio-query-retry"
+
 import { useActionState, useState } from "react"
 
 import {
@@ -21,6 +23,7 @@ type ApplicationAssigneeFormProps = {
   currentAssignedTeacherName: string | null
   options: StudioTeacherOption[]
   optionsError?: string | null
+  defaultExpanded?: boolean
   isReadOnly?: boolean
 }
 
@@ -30,11 +33,12 @@ export const ApplicationAssigneeForm = ({
   currentAssignedTeacherName,
   options,
   optionsError = null,
+  defaultExpanded = false,
   isReadOnly = false
 }: ApplicationAssigneeFormProps) => {
   const action = updateApplicationAssigneeAction.bind(null, applicationId)
   const [state, formAction, isPending] = useActionState(action, initialState)
-  const [isExpanded, setIsExpanded] = useState(!isReadOnly && currentAssignedTeacherId === null)
+  const [isExpanded, setIsExpanded] = useState(!isReadOnly && (defaultExpanded || currentAssignedTeacherId === null))
 
   return (
     <section className={styles.card} aria-label="담당 선생님 배정">
@@ -54,7 +58,7 @@ export const ApplicationAssigneeForm = ({
           <span className={styles.currentLabel}>현재 배정</span>
           <span className={styles.currentValue}>{currentAssignedTeacherName ?? "미배정"}</span>
         </div>
-        {currentAssignedTeacherId && !isReadOnly ? (
+        {currentAssignedTeacherId && !isReadOnly && !defaultExpanded ? (
           <button
             type="button"
             className={styles.secondaryButton}
@@ -73,7 +77,7 @@ export const ApplicationAssigneeForm = ({
             </div>
           ) : null}
 
-          {optionsError ? <div className={`${styles.message} ${styles.messageError}`}>{optionsError}</div> : null}
+          {optionsError ? <div className={`${styles.message} ${styles.messageError}`}>{optionsError}<StudioQueryRetry /></div> : null}
 
           <label className={styles.field}>
             <span className={styles.label}>배정할 선생님</span>
