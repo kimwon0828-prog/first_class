@@ -1,3 +1,4 @@
+import { formatDiscoveryPrice } from "@/features/classes/lib/class-discovery-results"
 import Link from "next/link"
 import Image from "next/image"
 
@@ -31,14 +32,6 @@ type ClassDetailPageProps = {
     sigungu?: string
     bname?: string
   }>
-}
-
-const formatPrice = (price: number) => {
-  if (price <= 0) {
-    return "무료"
-  }
-
-  return `${price.toLocaleString("ko-KR")}원`
 }
 
 const formatProgramType = (value: string) => (value === "level_test" ? "레벨테스트" : "체험수업")
@@ -164,7 +157,7 @@ export default async function ClassDetailPage({ params, searchParams }: ClassDet
                   {classItem.targetAge?.trim() ? <span className={styles.badge}>{targetGradeLabel}</span> : null}
                 </div>
                 <h1 className={styles.title}>{classItem.title}</h1>
-                <p className={styles.price}>{formatPrice(classItem.trialPrice)}</p>
+                <p className={styles.price}>{formatDiscoveryPrice(classItem)}</p>
                 {academyHref ? <Link href={academyHref} className={styles.academyEntry}>
                   <span className={styles.academyImage}>
                     {academyImage ? <Image src={academyImage} alt="" fill sizes="64px" style={{ objectFit: "cover" }} unoptimized />
@@ -272,7 +265,7 @@ export default async function ClassDetailPage({ params, searchParams }: ClassDet
         classId={classItem.id} classTitle={classItem.title} classTargetAge={classItem.targetAge}
         availableSlots={slots} slotsError={slotsError} childProfiles={children} childProfilesError={childrenError}
         parentName={profile?.name ?? ""} parentPhone={profile?.phone ?? null}
-        academyName={organizationLabel || null} trialPriceLabel={formatPrice(classItem.trialPrice)}
+        academyName={organizationLabel || null} trialPriceLabel={formatDiscoveryPrice(classItem)}
         hasSession={Boolean(session)} isParentUser={isParentUser} signInHref={signInHref}
         fixedCtaClassName={styles.fixedCta} ctaButtonClassName={styles.ctaButton} /> : null}
     </main>

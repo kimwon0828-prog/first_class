@@ -26,7 +26,7 @@ function FavoriteCard({ item, onError }: { item: ClassSummary; onError: () => vo
       <div className={card.body}>
         <div className={card.metadata}><span className={card.chip}>{formatClassSubjectDisplayLabel(item)}</span><span className={card.meta}>{formatStoredTargetGrades(item.targetAge)}</span></div>
         <h2 className={`${card.title} ${styles.cardTitle}`}>{item.title}</h2>
-        <p className={card.price}>{formatDiscoveryPrice(item.trialPrice)}</p>
+        <p className={card.price}>{formatDiscoveryPrice(item)}</p>
         {academy ? <p className={card.academy}>{academy}</p> : null}
         {region ? <p className={card.academy}>{region}</p> : null}
       </div>

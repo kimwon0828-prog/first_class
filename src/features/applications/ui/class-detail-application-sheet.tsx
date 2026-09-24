@@ -849,7 +849,7 @@ export function ClassDetailApplicationSheet({
                         </span>
                       </div>
                       <div className={styles.confirmRow}>
-                        <span className={styles.confirmLabel}>체험수업 비용</span>
+                        <span className={styles.confirmLabel}>신청 비용</span>
                         <span className={styles.confirmValue}>{trialPriceLabel}</span>
                       </div>
                     </div>

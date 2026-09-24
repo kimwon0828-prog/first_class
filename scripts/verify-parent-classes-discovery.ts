@@ -37,6 +37,15 @@ check("clear search filters keeps discovery context", () => {
   const params = new URL(buildClassesHref({ ...context, q: null, subjectCategory: null, subject: null }), "http://local").searchParams
   assert.equal(params.get("q"), null); assert.equal(params.get("sido"), context.sido); assert.equal(params.get("child"), context.child)
 })
-check("missing prices are not free", () => { for (const price of [null, undefined, NaN, Infinity, -1]) assert.equal(formatDiscoveryPrice(price), "가격 정보 확인 필요") })
-check("zero is free; real amount is formatted", () => { assert.equal(formatDiscoveryPrice(0), "무료"); assert.equal(formatDiscoveryPrice(10000), "10,000원") })
+for (const [programType, label] of [["trial_class", "체험수업"], ["level_test", "레벨테스트"]] as const) {
+  check(`${programType}: missing prices are not free`, () => {
+    for (const trialPrice of [null, undefined, NaN, Infinity, -1])
+      assert.equal(formatDiscoveryPrice({ programType, trialPrice }), "가격 정보 확인 필요")
+  })
+  check(`${programType}: explicit free and formatted trial fees`, () => {
+    for (const [trialPrice, expected] of [[0, `무료 ${label}`], [1000, `${label} 1,000원`],
+      [10000, `${label} 10,000원`], [2147483647, `${label} 2,147,483,647원`]] as const)
+      assert.equal(formatDiscoveryPrice({ programType, trialPrice }), expected)
+  })
+}
 console.log(`ALL PASS (${count})`)
