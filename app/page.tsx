@@ -1,3 +1,4 @@
+import { formatDiscoveryPrice } from "@/features/classes/lib/class-discovery-results"
 import { NotificationLink } from "@/features/notifications/ui/notification-link"
 import { NotificationBell } from "@/features/notifications/ui/notification-indicator"
 import { ImageFallback } from "@/shared/ui/image-fallback"
@@ -70,14 +71,6 @@ type HomePageProps = {
 
 // Home 이 실제로 보여 주는 큐레이션 개수. Home 은 카탈로그가 아니다.
 const HOME_DISCOVERY_LIMIT = 6
-
-const formatPrice = (price: number) => {
-  if (price <= 0) {
-    return "무료"
-  }
-
-  return `${price.toLocaleString("ko-KR")}원`
-}
 
 const getClassSubjectLabel = (item: ClassSummary) =>
   formatClassSubjectDisplayLabel(item) || "과목 정보 준비 중"
@@ -352,7 +345,7 @@ async function ParentHomeContent({ searchParams }: HomePageProps) {
                   <li key={item.id} className={styles.homeCardItem}>
                     <HomeClassCard href={`/classes/${item.id}`} thumbnailUrl={item.coverImageUrl} thumbnailAlt={`${item.title} 대표 이미지`} title={item.title}
                       academyName={item.organization ? [item.organization.name, item.organization.branchName].filter(Boolean).join(" ") : null}
-                      subjectLabel={getClassSubjectLabel(item)} priceLabel={formatPrice(item.trialPrice)}
+                      subjectLabel={getClassSubjectLabel(item)} priceLabel={formatDiscoveryPrice(item)}
                       locationLabel={item.organization?.bname || item.organization?.sigungu || item.organization?.sido || null}
                       distanceLabel={context.isNearbyMode && typeof item.distanceKm === "number" ? formatDistanceLabel(item.distanceKm) : null} classId={item.id} />
                   </li>

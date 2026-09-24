@@ -187,7 +187,7 @@ check(
   apply.includes("{classItem.title}") &&
     apply.includes("{cardSubtitle}") &&
     apply.includes("resolveProgramTypeLabel(classItem.programType)") &&
-    apply.includes("formatPrice(classItem.trialPrice)")
+    apply.includes("formatDiscoveryPrice(classItem)")
 )
 check("오류에서 방금 보던 수업으로 돌아간다", apply.includes("`/classes/${resolvedParams.id}`"))
 check("학원 계정은 신청할 수 없다", apply.includes('profile.role === "academy" || profile.role === "admin"'))

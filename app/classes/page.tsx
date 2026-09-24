@@ -345,7 +345,7 @@ async function ClassesSearchContent({ searchParams }: ClassesPageProps) {
                         regionLabel={item.organization ? formatAdministrativeRegionLabel(item.organization) : null}
                         /* 수업에 실제로 적혀 있을 때만 학년을 말한다. */
                         gradeLabel={gradeLabel === "정보 준비 중" ? null : gradeLabel}
-                        priceLabel={formatDiscoveryPrice(item.trialPrice)}
+                        priceLabel={formatDiscoveryPrice(item)}
                         scheduleLabel={scheduleSummaryByClassId.get(item.id)?.summaryLabel ?? null}
                         distanceLabel={distanceLabelForClass(item)}
                         classId={item.id}

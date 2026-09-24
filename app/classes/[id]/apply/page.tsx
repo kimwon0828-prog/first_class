@@ -1,3 +1,4 @@
+import { formatDiscoveryPrice } from "@/features/classes/lib/class-discovery-results"
 import Link from "next/link"
 
 import { formatStoredTargetGrades } from "@/shared/constants/grade-options"
@@ -15,14 +16,6 @@ type ApplyPageProps = {
   params: Promise<{
     id: string
   }>
-}
-
-const formatPrice = (price: number) => {
-  if (price <= 0) {
-    return "무료"
-  }
-
-  return `${price.toLocaleString("ko-KR")}원`
 }
 
 /** 체험수업 / 레벨테스트. 신청 전에는 "예약" 이라고 부르지 않는다. */
@@ -160,7 +153,7 @@ export default async function ClassApplyPage({ params }: ApplyPageProps) {
                   {formatClassSubjectDisplayLabel(classItem) || "과목 정보 준비 중"}
                 </p>
                 <p className={styles.summaryMeta}>대상 학년: {formatStoredTargetGrades(classItem.targetAge)}</p>
-                <p className={styles.summaryPrice}>{formatPrice(classItem.trialPrice)}</p>
+                <p className={styles.summaryPrice}>{formatDiscoveryPrice(classItem)}</p>
               </section>
 
               {profile?.role === "parent" ? (

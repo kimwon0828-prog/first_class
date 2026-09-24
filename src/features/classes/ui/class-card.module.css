@@ -6,7 +6,7 @@
 .chip, .meta { color: var(--text-2); font-size: var(--font-c1); line-height: 1.5; overflow-wrap: anywhere; }
 .chip { padding: 0 var(--s1); border-radius: var(--r-sm); background: var(--surface-sub); }
 .title { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; margin: 0; font-size: var(--font-b1); font-weight: 600; line-height: 1.5; overflow-wrap: anywhere; }
-.price { margin: 0; font-size: var(--font-b1); font-weight: 600; }
+.price { word-break: keep-all; overflow-wrap: anywhere; margin: 0; font-size: var(--font-b1); font-weight: 600; }
 .academy { margin: 0; color: var(--text-2); font-size: var(--font-c1); line-height: 1.5; overflow-wrap: anywhere; }
 .bookmarkButton { position: absolute; top: var(--s1); right: var(--s1); width: 44px; height: 44px; display: grid; place-items: center; padding: 0; border: 0; border-radius: var(--r-full); background: var(--surface); color: var(--text-2); cursor: pointer; }
 .bookmarkButtonActive { color: var(--brand-700); }
