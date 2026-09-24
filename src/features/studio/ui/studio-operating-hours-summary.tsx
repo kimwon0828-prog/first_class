@@ -6,6 +6,7 @@ import styles from "./studio-operating-hours-summary.module.css"
 
 type StudioOperatingHoursSummaryProps = {
   title: string
+  variant?: "card" | "inline"
   emptyDescription: string
   summary: OperatingHoursSummary
   actionLabel: string
@@ -14,13 +15,14 @@ type StudioOperatingHoursSummaryProps = {
 
 export const StudioOperatingHoursSummary = ({
   title,
+  variant = "card",
   emptyDescription,
   summary,
   actionLabel,
   onOpen
 }: StudioOperatingHoursSummaryProps) => {
   return (
-    <section className={styles.card}>
+    <section className={`${styles.card} ${variant === "inline" ? styles.inline : ""}`}>
       <div className={styles.header}>
         <div>
           <h3 className={styles.title}>{title}</h3>
@@ -37,7 +39,7 @@ export const StudioOperatingHoursSummary = ({
 
       {summary.hasValue ? (
         <div className={styles.summaryList}>
-          <div className={styles.summaryHeading}>기본 운영시간</div>
+          {variant === "card" ? <div className={styles.summaryHeading}>기본 운영시간</div> : null}
           {summary.groups.map((group) => (
             <article key={group.id} className={styles.groupCard}>
               <strong className={styles.groupWeekdays}>{group.weekdayLabel}</strong>

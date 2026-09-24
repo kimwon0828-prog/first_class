@@ -130,6 +130,7 @@ import type {
 } from "@/shared/lib/db/adapter"
 
 type ClassRow = {
+  operating_rule?: import("@/features/studio/lib/class-operating-rule").ClassOperatingRule | null
   id: string
   organization_id?: string
   program_type: ClassProgramType
@@ -497,6 +498,7 @@ const mapClass = (
     teacherName: resolvedTeacherName,
     coverImageUrl: row.cover_image_url ?? null,
     isActive: row.is_active,
+    ...(row.operating_rule !== undefined ? {operatingRule: row.operating_rule} : {}),
     schedules: (row.class_schedules ?? []).map(mapClassSchedule)
   }
 }
@@ -613,18 +615,20 @@ const attachClassSchedulesToRows = async (
     return rows.map((row) => ({ ...row, class_schedules: [] as ClassScheduleRow[] }))
   }
 
-  const { data, error } = await supabase
-    .from("class_schedules")
-    .select(CLASS_SCHEDULE_SELECT_FIELDS)
-    .in("class_id", classIds)
-    .order("sort_order", { ascending: true })
-    .order("created_at", { ascending: true })
-
-  if (error) {
-    throw new Error("failed_to_fetch_studio_class_schedules")
+  const scheduleRows: ClassScheduleRow[] = []
+  for (const ids of chunkArray(classIds,50)) for (let offset=0;;offset+=1000) {
+    const {data,error} = await supabase.from("class_schedules").select(CLASS_SCHEDULE_SELECT_FIELDS)
+      .in("class_id",ids).order("id").range(offset,offset+999)
+    if (error) throw new Error("failed_to_fetch_studio_class_schedules")
+    scheduleRows.push(...(data ?? []) as ClassScheduleRow[])
+    if ((data?.length ?? 0)<1000) break
   }
-
-  const scheduleRows = (data ?? []) as ClassScheduleRow[]
+  const ruleRows: Array<Record<string,unknown>> = []
+  for (const ids of chunkArray(classIds,50)) {
+    const {data,error} = await supabase.from("class_operating_rules").select("*").in("class_id",ids)
+    if (error) throw new Error("failed_to_fetch_class_operating_rules")
+    ruleRows.push(...(data ?? []))
+  }
   const scheduleIds = scheduleRows.map((row) => row.id)
   const applicationCountByScheduleId = new Map<string, number>()
 
@@ -668,9 +672,16 @@ const attachClassSchedulesToRows = async (
 
   return rows.map((row) => ({
     ...row,
+    operating_rule: mapOperatingRule(ruleRows.find((rule)=>rule.class_id===row.id)),
     class_schedules: schedulesByClassId.get(row.id) ?? []
   }))
 }
+
+const mapOperatingRule = (row?: Record<string,unknown> | null): import("@/features/studio/lib/class-operating-rule").ClassOperatingRule | null => row ? ({
+  id: String(row.id), operationType: row.operation_type as "rolling" | "fixed_period", startDate: String(row.start_date),
+  endDate: row.end_date ? String(row.end_date) : null, rollingDays: 90, revision: Number(row.revision),
+  isActive: Boolean(row.is_active), slots: row.slots as import("@/features/studio/lib/class-operating-rule").ClassOperatingRuleInput["slots"]
+}) : null
 
 /** PostgREST 는 한 응답에서 최대 1000 row 만 돌려준다. 그 이상은 나눠 받는다. */
 const SCHEDULE_SUMMARY_PAGE_SIZE = 1000
@@ -3557,6 +3568,22 @@ export const supabaseDataAdapter: DataAdapter = {
       teacher_intro: input.teacherIntro
     }
 
+    const ruleLookup = input.mode === "update"
+      ? await supabase.from("class_operating_rules").select("id").eq("class_id",normalizedClassId).maybeSingle()
+      : {data:null,error:null}
+    if (ruleLookup.error) throw new Error("failed_to_fetch_class_operating_rules")
+    if (input.operatingRule || ruleLookup.data) {
+      const {data: managedClass,error: managedError} = await supabase.rpc("save_studio_class_operating_rule",{
+        p_class_id: normalizedClassId || null, p_fields: detailPayload, p_rule: input.operatingRule ?? null,
+        p_expected_revision: input.operatingRuleRevision ?? 0,
+        p_manual_slots: input.mode === "create" ? (input.scheduleSlots ?? []).filter(s=>!s.seriesId || s.bookingStatus && s.bookingStatus !== "open") : []
+      }).single()
+      if (managedError || !managedClass) throw new Error(managedError?.message ?? "class_rule_save_failed")
+      const [enriched] = await attachClassSchedulesToRows(supabase,
+        await attachSubjectMasterToRows(supabase,[managedClass as ClassRow]))
+      return mapClass(enriched,teacherDisplayName)
+    }
+
     const buildQuery = (payload: typeof basePayload | typeof detailPayload) =>
       input.mode === "update"
         ? supabase
@@ -4024,21 +4051,13 @@ export const supabaseDataAdapter: DataAdapter = {
       throw new Error("class_schedule_capacity_below_active_reservations")
     }
 
-    const nextDisplayLabel =
-      input.displayLabel === undefined ? scheduleRow.display_label ?? null : input.displayLabel
-    const nextBookingStatus = input.bookingStatus ?? scheduleRow.booking_status ?? "open"
-
     const supabase = await getSupabaseServerClient()
     const { data, error } = await supabase
-      .from("class_schedules")
-      .update({
-        capacity: nextCapacityValue,
-        booking_status: nextBookingStatus,
-        display_label: nextDisplayLabel,
-        updated_at: new Date().toISOString()
-      })
-      .eq("id", scheduleRow.id)
-      .select(CLASS_SCHEDULE_SELECT_FIELDS)
+      .rpc("mutate_studio_class_schedule", {p_schedule_id:scheduleRow.id,p_patch:{
+        ...(input.capacity !== undefined ? {capacity:nextCapacityValue} : {}),
+        ...(input.bookingStatus !== undefined ? {booking_status:input.bookingStatus} : {}),
+        ...(input.displayLabel !== undefined ? {display_label:input.displayLabel} : {})
+      }})
       .single()
 
     if (error || !data) {
@@ -4060,16 +4079,9 @@ export const supabaseDataAdapter: DataAdapter = {
     }
 
     const supabase = await getSupabaseServerClient()
-    const { data, error } = await supabase
-      .from("class_schedules")
-      .update({
-        booking_status: input.bookingStatus,
-        updated_at: new Date().toISOString()
-      })
-      .eq("class_id", input.classId)
-      .eq("schedule_type", "one_time")
-      .eq("specific_date", input.specificDate)
-      .select("id")
+    const { data, error } = await supabase.rpc("set_class_schedule_date_exception", {
+      p_class_id: input.classId, p_date: input.specificDate, p_status: input.bookingStatus
+    })
 
     if (error) {
       throw new Error(
@@ -4081,7 +4093,7 @@ export const supabaseDataAdapter: DataAdapter = {
       )
     }
 
-    return Array.isArray(data) ? data.length : 0
+    return Number(data ?? 0)
   },
   async deleteStudioClassSchedule(input) {
     const scheduleRow = await getClassScheduleById(input.classScheduleId, input.organizationId)
@@ -4093,7 +4105,7 @@ export const supabaseDataAdapter: DataAdapter = {
     }
 
     const supabase = await getSupabaseServerClient()
-    const { error } = await supabase.from("class_schedules").delete().eq("id", scheduleRow.id)
+    const { error } = await supabase.rpc("mutate_studio_class_schedule",{p_schedule_id:scheduleRow.id,p_delete:true})
 
     if (error) {
       throw new Error(

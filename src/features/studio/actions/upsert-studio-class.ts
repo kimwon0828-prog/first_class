@@ -1,6 +1,8 @@
 "use server"
 
 import { revalidatePath } from "next/cache"
+import { resolveClassFormScheduleSave } from "@/features/studio/lib/class-form-schedule-save"
+import { parseClassOperatingRule, type ClassOperatingRuleInput } from "@/features/studio/lib/class-operating-rule"
 
 import { serializeTargetGrades } from "@/shared/constants/grade-options"
 import {
@@ -471,6 +473,15 @@ export async function upsertStudioClassAction(
       coverImageUrl = coverImageUrlRaw
     }
 
+    let operatingRule: ClassOperatingRuleInput | undefined
+    const ruleRaw = String(formData.get("operatingRule") ?? "")
+    const operatingRuleRevision = Number(formData.get("operatingRuleRevision") ?? 0)
+    if (ruleRaw) {
+      try {
+        operatingRule = parseClassOperatingRule(JSON.parse(ruleRaw))
+        if (!Number.isInteger(operatingRuleRevision) || operatingRuleRevision < 0) throw new Error("invalid_revision")
+      } catch { return safeError("운영 규칙을 확인해 주세요. 운영시간을 다시 설정한 뒤 저장해 주세요.") }
+    }
     const parsedSlots = parseScheduleSlots(formData)
     if (!parsedSlots.ok) {
       console.error("[upsertStudioClass validation failed]", {
@@ -485,7 +496,16 @@ export async function upsertStudioClassAction(
       return safeError(parsedSlots.message, "class_schedule_validation_failed")
     }
 
-    const scheduleSlots = parsedSlots.slots
+    const scheduleResolution = mode === "update" && existingClass && !operatingRule && !existingClass.operatingRule
+      ? resolveClassFormScheduleSave(
+          String(formData.get("scheduleWriteMode") ?? ""),
+          String(formData.get("scheduleSnapshot") ?? ""),
+          parsedSlots.slots,
+          existingClass.schedules ?? []
+        )
+      : { ok: true as const, slots: parsedSlots.slots }
+    if (!scheduleResolution.ok) return safeError(scheduleResolution.message)
+    const scheduleSlots = scheduleResolution.slots
     if (enforcePublicSlotGuard && isActive && scheduleSlots.length === 0) {
       return safeError("예약시간이 없어서 바로 공개할 수 없어요. 먼저 예약시간을 1개 이상 추가해 주세요.")
     }
@@ -530,7 +550,9 @@ export async function upsertStudioClassAction(
       teacherDisplayName: selectedTeacher?.teacherName ?? null,
       coverImageUrl,
       isActive,
-      scheduleSlots
+      scheduleSlots,
+      operatingRule,
+      operatingRuleRevision
     }
 
     let savedClass: Awaited<ReturnType<typeof dataAdapter.upsertStudioClass>>
@@ -548,6 +570,8 @@ export async function upsertStudioClassAction(
         hint: summary.hint,
         payload: payloadLog
       })
+      if (message.includes("operating_rule_revision_conflict"))
+        return safeError("운영 규칙이 다른 작업에서 변경되었습니다. 저장된 예약시간을 다시 불러온 뒤 확인해 주세요.")
       if (
         message.includes("invalid_or_inactive_subject_category_id") ||
         message.includes("invalid_or_inactive_subject_id") ||

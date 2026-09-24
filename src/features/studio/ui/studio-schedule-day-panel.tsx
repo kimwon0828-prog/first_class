@@ -1,7 +1,7 @@
 "use client"
 
 import { useRouter } from "next/navigation"
-import { useState, useTransition } from "react"
+import { useEffect, useState, useTransition } from "react"
 
 import { createStudioClassScheduleAction } from "@/features/studio/actions/create-studio-class-schedule"
 import { deleteStudioClassScheduleAction } from "@/features/studio/actions/delete-studio-class-schedule"
@@ -26,6 +26,7 @@ import { useStudioNavigationPath } from "@/features/studio/ui/studio-navigation-
 
 type StudioScheduleDayPanelProps = {
   classId: string
+  onPendingChange?: (pending: boolean) => void
   selectedDate: string
   day: StudioScheduleCalendarDay | null
   classManagementHref?: string
@@ -33,6 +34,7 @@ type StudioScheduleDayPanelProps = {
 
 export const StudioScheduleDayPanel = ({
   classId,
+  onPendingChange,
   selectedDate,
   day,
   classManagementHref: internalClassManagementHref = "/studio/classes"
@@ -45,6 +47,7 @@ export const StudioScheduleDayPanel = ({
   const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
+  useEffect(() => { onPendingChange?.(isPending) }, [isPending, onPendingChange])
   const isPast = selectedDate < new Date().toISOString().slice(0, 10)
 
   const oneTimeItems = day?.items.filter((item) => item.scheduleType === "one_time") ?? []

@@ -2,6 +2,10 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "crons": [
     {
+      "path": "/api/cron/rolling-schedules",
+      "schedule": "15 15 * * *"
+    },
+    {
       "path": "/api/cron/trial-reminders",
       "schedule": "0 1 * * *"
     },

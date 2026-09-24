@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 
 import {
   buildSlotsFromStartAndLast,
@@ -15,9 +15,10 @@ import {
   formatWeekdaySet,
   isValidDateInput,
   timeToMinutes,
-  toDateKey,
   weekdayLabels
 } from "@/features/studio/lib/class-schedule-rule-utils"
+
+import { formatSeoulDateKey } from "@/shared/lib/seoul-datetime"
 
 import styles from "./studio-operating-hours-modal.module.css"
 
@@ -74,12 +75,12 @@ const hasOverlappingRanges = (group: OperatingHoursGroupDraft, intervalMinutes: 
   return false
 }
 
-const validateDraft = (draft: CreateClassScheduleDraft, todayKey: string) => {
+const validateDraft = (draft: CreateClassScheduleDraft, todayKey: string, existingStartDate: string) => {
   if (!isValidDateInput(draft.operationStartDate)) {
     return "운영 시작일을 입력해 주세요."
   }
 
-  if (draft.operationStartDate < todayKey) {
+  if (draft.operationStartDate < todayKey && draft.operationStartDate !== existingStartDate) {
     return "운영 시작일은 오늘보다 빠를 수 없습니다."
   }
 
@@ -105,8 +106,8 @@ const validateDraft = (draft: CreateClassScheduleDraft, todayKey: string) => {
 
   if (!draft.usePerTimeRangeCapacity) {
     const sharedCapacity = Number(draft.defaultCapacity)
-    if (!Number.isFinite(sharedCapacity) || sharedCapacity < 1 || sharedCapacity > 30) {
-      return "타임당 정원은 1명 이상 30명 이하로 입력해 주세요."
+    if (!Number.isInteger(sharedCapacity) || sharedCapacity < 1) {
+      return "타임당 정원은 1명 이상의 정수로 입력해 주세요."
     }
   }
 
@@ -140,8 +141,8 @@ const validateDraft = (draft: CreateClassScheduleDraft, todayKey: string) => {
           return "타임당 정원을 입력해 주세요."
         }
         const capacity = Number(range.capacity)
-        if (!Number.isFinite(capacity) || capacity < 1 || capacity > 30) {
-          return "타임당 정원은 1명 이상 30명 이하로 입력해 주세요."
+        if (!Number.isInteger(capacity) || capacity < 1) {
+          return "타임당 정원은 1명 이상의 정수로 입력해 주세요."
         }
       }
       const slots = buildSlotsFromStartAndLast(range.startTime, range.lastStartTime, intervalMinutes)
@@ -175,7 +176,8 @@ export const StudioOperatingHoursModal = ({
 }: StudioOperatingHoursModalProps) => {
   const [draft, setDraft] = useState<CreateClassScheduleDraft>(value)
   const [error, setError] = useState<string | null>(null)
-  const todayKey = useMemo(() => toDateKey(new Date()), [])
+  const todayKey = useMemo(() => formatSeoulDateKey(new Date()) ?? "", [])
+  const modalRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (!isOpen) {
@@ -192,13 +194,28 @@ export const StudioOperatingHoursModal = ({
       return
     }
 
+    const previousFocus = document.activeElement as HTMLElement | null
+    const focusable = () => Array.from(modalRef.current?.querySelectorAll<HTMLElement>("button:not(:disabled), input:not(:disabled), select:not(:disabled)") ?? [])
+    focusable()[0]?.focus()
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") { event.preventDefault(); onClose() }
+      if (event.key === "Tab") {
+        const items = focusable()
+        const first = items[0], last = items.at(-1)
+        if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus() }
+        else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus() }
+      }
+    }
+    document.addEventListener("keydown", onKeyDown)
     const originalOverflow = document.body.style.overflow
     document.body.style.overflow = "hidden"
 
     return () => {
+      document.removeEventListener("keydown", onKeyDown)
+      previousFocus?.focus()
       document.body.style.overflow = originalOverflow
     }
-  }, [isOpen])
+  }, [isOpen, onClose])
 
   if (!isOpen) {
     return null
@@ -251,7 +268,7 @@ export const StudioOperatingHoursModal = ({
   }
 
   const handleSave = () => {
-    const message = validateDraft(draft, todayKey)
+    const message = validateDraft(draft, todayKey, value.operationStartDate)
     if (message) {
       setError(message)
       return
@@ -265,7 +282,7 @@ export const StudioOperatingHoursModal = ({
 
   return (
     <div className={styles.overlay} role="dialog" aria-modal="true" aria-label={title}>
-      <div className={styles.modal}>
+      <div ref={modalRef} className={styles.modal}>
         <div className={styles.header}>
           <h3 className={styles.title}>{title}</h3>
         </div>
@@ -295,7 +312,6 @@ export const StudioOperatingHoursModal = ({
                 className={styles.input}
                 type="number"
                 min={1}
-                max={30}
                 placeholder="정원 입력"
                 value={draft.defaultCapacity}
                 onChange={(event) => handleDefaultCapacityChange(event.target.value)}
@@ -303,7 +319,7 @@ export const StudioOperatingHoursModal = ({
             </label>
           </div>
           <p className={styles.hint}>
-            매 {draft.intervalMinutes}분마다 · 타임당 정원 {draft.defaultCapacity ? `${draft.defaultCapacity}명` : "정원 입력"}
+            {draft.intervalMinutes}분 수업이 같은 간격으로 생성됩니다. · 타임당 정원 {draft.defaultCapacity ? `${draft.defaultCapacity}명` : "정원 입력"}
           </p>
           <label className={styles.checkboxRow}>
             <input
@@ -326,7 +342,7 @@ export const StudioOperatingHoursModal = ({
                 className={styles.input}
                 type="date"
                 value={draft.operationStartDate}
-                min={todayKey}
+                min={value.operationStartDate && value.operationStartDate < todayKey ? value.operationStartDate : todayKey}
                 onChange={(event) => setDraft((current) => ({ ...current, operationStartDate: event.target.value }))}
               />
             </label>
@@ -348,10 +364,10 @@ export const StudioOperatingHoursModal = ({
               checked={draft.isAlwaysOpen}
               onChange={(event) => setDraft((current) => ({ ...current, isAlwaysOpen: event.target.checked }))}
             />
-            <span>상시 운영 (종료일 없음)</span>
+            <span>상시 운영 (90일 예약 일정 자동 연장)</span>
           </label>
           {draft.isAlwaysOpen ? (
-            <p className={styles.hint}>상시 운영은 현재 기준 {90}일치 예약시간을 먼저 생성합니다.</p>
+            <p className={styles.hint}>공개 중인 수업은 앞으로 90일간 예약 일정이 자동으로 열립니다. 비공개로 전환하면 자동 연장이 중단됩니다.</p>
           ) : null}
         </div>
 
@@ -486,7 +502,6 @@ export const StudioOperatingHoursModal = ({
                               className={styles.input}
                               type="number"
                               min={1}
-                              max={30}
                               placeholder="정원 입력"
                               value={range.capacity}
                               onChange={(event) =>
@@ -565,7 +580,7 @@ export const StudioOperatingHoursModal = ({
             취소
           </button>
           <button type="button" className={styles.saveButton} onClick={handleSave}>
-            저장
+            설정 적용
           </button>
         </div>
       </div>

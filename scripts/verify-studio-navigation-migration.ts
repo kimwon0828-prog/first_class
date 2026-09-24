@@ -188,7 +188,6 @@ check("D) client 가 pure helper 를 직접 부르지 않는다", directPureCall
 const CLIENT_NAV_SITES = [
   "app/studio/(dashboard)/classes/error.tsx",
   "src/features/reservation-import/ui/reservation-import-workspace.tsx",
-  "src/features/studio/ui/studio-class-create-wizard.tsx",
   "src/features/studio/ui/studio-class-form.tsx",
   "src/features/studio/ui/studio-classes-manager.tsx",
   "src/features/studio/ui/studio-mypage-profile-page.tsx",
@@ -200,6 +199,8 @@ const CLIENT_NAV_SITES = [
   STUDIO_SHELL,
   APPLICATION_TABLE
 ]
+// Class Form V1: the legacy entry delegates all UI/navigation to the shared form.
+check("D) 이전 등록 entry 가 공통 Form 에 위임한다", codeOf("src/features/studio/ui/studio-class-create-wizard.tsx").includes("<StudioClassForm"))
 for (const file of CLIENT_NAV_SITES) {
   const code = codeOf(file)
   check(`D) ${file} 가 provider 훅을 쓴다`, /useStudioNavigationPath(Factory)?\(/.test(code))

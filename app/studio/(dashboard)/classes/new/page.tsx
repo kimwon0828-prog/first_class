@@ -3,7 +3,7 @@ import {
   getStudioClassFormOptions,
   getStudioSubjectCatalog
 } from "@/features/studio/queries/get-studio-class-form-options"
-import { StudioClassCreateWizard } from "@/features/studio/ui/studio-class-create-wizard"
+import { StudioClassForm } from "@/features/studio/ui/studio-class-form"
 
 export default async function StudioClassNewPage() {
   const teacher = await requireTeacherStudioAccess()
@@ -17,7 +17,8 @@ export default async function StudioClassNewPage() {
 
   return (
     <>
-      <StudioClassCreateWizard
+      <StudioClassForm
+        variant="standalone"
         organizationId={teacher.organizationId}
         teacherOptions={teacherOptions}
         teacherOptionsError={teacherOptionsError}

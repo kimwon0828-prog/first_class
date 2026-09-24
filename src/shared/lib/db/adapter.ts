@@ -108,6 +108,8 @@ export type StudioClassScheduleType = "weekly" | "one_time"
 export type StudioClassScheduleBookingStatus = "open" | "closed" | "hidden"
 
 export type StudioClassScheduleItem = {
+  generatedByRuleId?: string | null
+  isManualOverride?: boolean
   id: string
   scheduleType: StudioClassScheduleType
   bookingStatus?: StudioClassScheduleBookingStatus
@@ -124,6 +126,7 @@ export type StudioClassScheduleItem = {
 }
 
 export type ClassSummary = ClassSubjectReadModel & {
+  operatingRule?: import("@/features/studio/lib/class-operating-rule").ClassOperatingRule | null
   id: string
   programType: ClassProgramType
   assignmentMode: ClassAssignmentMode
@@ -445,6 +448,8 @@ export type StudioTeacherReferenceCounts = {
 }
 
 export type StudioClassInput = {
+  operatingRule?: import("@/features/studio/lib/class-operating-rule").ClassOperatingRuleInput
+  operatingRuleRevision?: number
   mode: "create" | "update"
   classId?: string
   organizationId: string

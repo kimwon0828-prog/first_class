@@ -22,6 +22,8 @@ import styles from "./studio-class-schedule-editor.module.css"
 
 type StudioClassScheduleEditorProps = {
   classId: string
+  operationsOnly?: boolean
+  onPendingChange?: (pending: boolean) => void
   month: string
   days: StudioScheduleCalendarDay[]
   scheduleSlots: EditableStudioScheduleSlotDraft[]
@@ -54,6 +56,8 @@ const pickInitialSelectedDate = (days: StudioScheduleCalendarDay[], month: strin
 
 export const StudioClassScheduleEditor = ({
   classId,
+  operationsOnly = false,
+  onPendingChange,
   month,
   days,
   scheduleSlots,
@@ -66,7 +70,7 @@ export const StudioClassScheduleEditor = ({
   const dayMap = useMemo(() => new Map(days.map((day) => [day.date, day])), [days])
   const [selectedDate, setSelectedDate] = useState(() => pickInitialSelectedDate(days, month))
   const [isModalOpen, setIsModalOpen] = useState(false)
-  const [isExceptionOpen, setIsExceptionOpen] = useState(false)
+  const [isExceptionOpen, setIsExceptionOpen] = useState(operationsOnly)
   const todayKey = toDateKey(new Date())
 
   useEffect(() => {
@@ -103,6 +107,7 @@ export const StudioClassScheduleEditor = ({
 
   return (
     <section className={styles.editorLayout}>
+      {!operationsOnly ? <>
       <StudioOperatingHoursSummary
         title="체험수업 예약시간"
         emptyDescription="기본 운영시간이 아직 정리되지 않았습니다."
@@ -122,10 +127,12 @@ export const StudioClassScheduleEditor = ({
         </div>
       </section>
 
+      </> : null}
+
       {weeklySummaries.length > 0 ? (
         <section className={styles.infoCard}>
           <strong className={styles.infoTitle}>기존 반복 일정</strong>
-          <p className={styles.infoText}>weekly 일정은 읽기 전용으로 유지되며 기본 운영시간 수정 모달에서 변경하지 않습니다.</p>
+          <p className={styles.infoText}>기존 반복 일정은 그대로 유지됩니다. 이 창에서는 날짜별 예약시간을 관리합니다.</p>
           <div className={styles.weeklyList}>
             {weeklySummaries.map((item) => (
               <article key={item.weekdayLabel} className={styles.weeklyCard}>
@@ -158,9 +165,7 @@ export const StudioClassScheduleEditor = ({
 
         {isExceptionOpen ? (
           <>
-            <p className={styles.calendarDraftHint}>
-              아래 예외 일정 캘린더는 현재 저장된 일정 기준입니다. 기본 운영시간 변경 내용은 프로그램 수정 저장 후 반영됩니다.
-            </p>
+            <p className={styles.calendarDraftHint}>날짜별 변경은 즉시 반영됩니다. 수업 정보의 저장 버튼과 별도로 동작합니다.</p>
             <div className={styles.exceptionToolbar}>
               <button type="button" className={styles.iconButton} onClick={() => moveMonth(-1)}>
                 이전 달
@@ -187,12 +192,13 @@ export const StudioClassScheduleEditor = ({
               </div>
               <aside className={styles.panelPane}>
                 <div className={styles.noticeRow}>
-                  <span className={styles.noticeBadge}>weekly는 읽기 전용</span>
+                  <span className={styles.noticeBadge}>기존 반복 일정 유지</span>
                   {protectedCount > 0 ? (
                     <span className={styles.noticeBadgeMuted}>예약자 있는 일정 {protectedCount}개 보호</span>
                   ) : null}
                 </div>
                 <StudioScheduleDayPanel
+                  onPendingChange={onPendingChange}
                   classId={classId}
                   selectedDate={selectedDate}
                   day={selectedDay}

@@ -1,3 +1,4 @@
+import { reconcileMockOperatingRule, mockScheduleExceptions } from "@/features/studio/lib/reconcile-mock-operating-rule"
 import {
   canCollectParentDecision,
   isParentDeclineReason,
@@ -1111,6 +1112,8 @@ export const mockDataAdapter: DataAdapter = {
       }
     }
 
+    if (input.operatingRule && (existingClass?.operatingRule?.revision ?? 0) !== (input.operatingRuleRevision ?? 0))
+      throw new Error("operating_rule_revision_conflict")
     const nextValue: ClassSummary = {
       id: input.classId ?? `class-${classes.length + 1}`,
       programType: input.programType,
@@ -1131,11 +1134,19 @@ export const mockDataAdapter: DataAdapter = {
       teacherName: teacherSummary?.displayName ?? input.teacherDisplayName ?? null,
       coverImageUrl: input.coverImageUrl,
       isActive: input.isActive,
-      schedules: toMockClassSchedules({
+      operatingRule: input.operatingRule ? {...input.operatingRule,id:existingClass?.operatingRule?.id ?? crypto.randomUUID(),
+        revision:(existingClass?.operatingRule?.revision ?? 0)+1,rollingDays:90,isActive:true} : existingClass?.operatingRule,
+      schedules: input.operatingRule || existingClass?.operatingRule ? (existingClass
+        ? structuredClone(existingClass.schedules ?? [])
+        : toMockClassSchedules({classId: input.classId ?? `class-${classes.length + 1}`,
+          scheduleSlots: (input.scheduleSlots ?? []).filter(s=>!s.seriesId || s.bookingStatus && s.bookingStatus!=="open")
+        }).map(s=>({...s,isManualOverride:true}))) : toMockClassSchedules({
         classId: input.classId ?? `class-${classes.length + 1}`,
         scheduleSlots: input.scheduleSlots as unknown[]
       })
     }
+
+    reconcileMockOperatingRule(nextValue,formatSeoulDateKey(new Date())!,Boolean(input.operatingRule))
 
     if (input.mode === "update") {
       classes[existingIndex] = nextValue
@@ -1156,6 +1167,7 @@ export const mockDataAdapter: DataAdapter = {
     }
 
     target.isActive = isActive
+    if (isActive) reconcileMockOperatingRule(target,formatSeoulDateKey(new Date())!,false)
   },
   async listTeacherScheduleBlocks(teacherId) {
     const nowMs = Date.now()
@@ -1471,7 +1483,8 @@ export const mockDataAdapter: DataAdapter = {
       targetSchedule.displayLabel = input.displayLabel
     }
     targetSchedule.applicationCount = activeReservationCount
-    targetSchedule.isReferencedByApplications = activeReservationCount > 0
+    targetSchedule.isReferencedByApplications = applications.some(a=>a.classScheduleId===targetSchedule.id)
+    targetSchedule.isManualOverride = true
 
     return targetSchedule
   },
@@ -1485,8 +1498,13 @@ export const mockDataAdapter: DataAdapter = {
       (schedule) => schedule.scheduleType === "one_time" && schedule.specificDate === input.specificDate
     )
 
+    const dateException = mockScheduleExceptions.find(e=>e.classId===input.classId && e.date===input.specificDate && e.startTime===null)
+    if (dateException) dateException.status=input.bookingStatus
+    else mockScheduleExceptions.push({classId:input.classId,date:input.specificDate,startTime:null,status:input.bookingStatus})
+
     for (const schedule of targetSchedules) {
       schedule.bookingStatus = input.bookingStatus
+      schedule.isManualOverride = true
     }
 
     return targetSchedules.length
@@ -1507,6 +1525,10 @@ export const mockDataAdapter: DataAdapter = {
       throw new Error("class_schedule_with_active_reservations_cannot_be_deleted")
     }
 
+    const deleted = targetClass.schedules?.find(s=>s.id===input.classScheduleId)
+    if (targetClass.operatingRule && (deleted?.isReferencedByApplications || applications.some(a=>a.classScheduleId===input.classScheduleId)))
+      throw new Error("protected_class_schedule_change_blocked")
+    if (targetClass.operatingRule && deleted?.specificDate) mockScheduleExceptions.push({classId:targetClass.id,date:deleted.specificDate,startTime:deleted.startTime.slice(0,5),status:"deleted"})
     targetClass.schedules = (targetClass.schedules ?? []).filter((schedule) => schedule.id !== input.classScheduleId)
   },
   async previewBulkCreateClassSchedules(input: BulkCreateClassSchedulesInput) {

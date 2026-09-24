@@ -93,3 +93,10 @@
     width: 100%;
   }
 }
+
+/* Full-page forms already provide the section surface. */
+.inline { padding: 0; border: 0; border-radius: 0; }
+.inline .title { font-size: 15px; font-weight: 600; }
+.inline .groupCard { padding: 12px 0; border: 0; border-top: 1px solid var(--border); border-radius: 0; background: transparent; }
+.inline .groupWeekdays { font-size: 14px; font-weight: 600; }
+.inline .timeLabel, .inline .capacity { font-size: 13px; color: var(--text-2); }

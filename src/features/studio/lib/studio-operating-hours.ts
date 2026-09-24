@@ -171,7 +171,7 @@ const formatDateText = (value: string) => {
   return `${date.getFullYear()}.${String(date.getMonth() + 1).padStart(2, "0")}.${String(date.getDate()).padStart(2, "0")}`
 }
 
-const resolveOperationEndDate = (draft: CreateClassScheduleDraft) => {
+export const resolveOperationEndDate = (draft: CreateClassScheduleDraft) => {
   if (!isValidDateInput(draft.operationStartDate)) {
     return null
   }
@@ -355,7 +355,7 @@ export const summarizeCreateScheduleDraft = (draft: CreateClassScheduleDraft): O
   const periodLabel =
     draft.operationStartDate && (draft.isAlwaysOpen || draft.operationEndDate)
       ? `${formatDateText(draft.operationStartDate)} ~ ${
-          draft.isAlwaysOpen ? "종료일 없음" : formatDateText(draft.operationEndDate)
+          draft.isAlwaysOpen ? `${formatDateText(resolveOperationEndDate(draft) ?? "")}까지 생성 (90일)` : formatDateText(draft.operationEndDate)
         }`
       : "운영 기간을 설정해 주세요."
 
@@ -590,7 +590,12 @@ export const applyOperatingDraftToScheduleSlots = (
     editableSlots.map((slot) => [`${slot.seriesId}::${slot.specificDate}::${slot.startTime}`, slot] as const)
   )
 
-  const nextGeneratedSlots = buildCreateClassScheduleDraftSlots(draft).map<EditableStudioScheduleSlotDraft>((slot) => {
+  // Keep referenced/past/exception slots exactly once, including when the rule includes the same time.
+  const preservedKeys = new Set(preservedSlots.filter((slot) => slot.scheduleType === "one_time")
+    .map((slot) => buildSlotKey(slot.specificDate, slot.startTime)))
+  const nextGeneratedSlots = buildCreateClassScheduleDraftSlots(draft)
+    .filter((slot) => !preservedKeys.has(buildSlotKey(slot.specificDate, slot.startTime)))
+    .map<EditableStudioScheduleSlotDraft>((slot) => {
     const key = `${slot.seriesId ?? ""}::${slot.specificDate}::${slot.startTime}`
     const matched = editableSlotMap.get(key)
 
