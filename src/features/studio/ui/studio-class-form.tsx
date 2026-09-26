@@ -38,16 +38,19 @@ import {
 } from "@/shared/lib/subject-master"
 import { classScheduleSnapshot } from "@/features/studio/lib/class-form-schedule-save"
 import { classOperatingRuleFromDraft, classOperatingRuleToDraft, rollingPreviewDraft } from "@/features/studio/lib/class-operating-rule"
+import {
+  presentOperatingDraft,
+  presentOperatingDraftGroups
+} from "@/features/studio/lib/class-operation-presentation"
 import type { CreateClassScheduleDraft } from "@/features/studio/lib/studio-operating-hours"
 import { useClassCreateDraft, type ClassFormDraftValues } from "@/features/studio/lib/use-class-create-draft"
 import {
   createDefaultCreateClassScheduleDraft, buildCreateClassScheduleDraftSlots,
-  deriveOperatingDraftFromScheduleSlots,
-  summarizeCreateScheduleDraft, summarizeExistingWeeklySchedules
+  normalizeStoredScheduleDraft,
+  validateOperatingScheduleDraft
 } from "@/features/studio/lib/studio-operating-hours"
 import { formatSeoulDateKey } from "@/shared/lib/seoul-datetime"
-import { StudioOperatingHoursModal } from "./studio-operating-hours-modal"
-import { StudioOperatingHoursSummary } from "./studio-operating-hours-summary"
+import { StudioClassOperationEditor } from "./studio-class-operation-editor"
 import { StudioClassFormDialog } from "./studio-class-form-dialog"
 import styles from "./studio-class-form.module.css"
 
@@ -67,6 +70,7 @@ export type StudioClassFormProps = {
   scheduleCalendarMonth?: string
   scheduleCalendarDays?: StudioScheduleCalendarDay[]
   scheduleCalendarError?: string | null
+  initialSection?: "operations"
 }
 
 const initialState: UpsertStudioClassActionState = {
@@ -89,6 +93,22 @@ type ScheduleSlotDraft = {
   applicationCount: number
   isReferencedByApplications: boolean
 }
+
+const ClassPreviewBasicInfo = ({
+  subject,
+  target,
+  classFormat
+}: {
+  subject: string
+  target: string
+  classFormat: string
+}) => (
+  <dl aria-label="기본 수업 정보">
+    <div><dt>과목</dt><dd>{subject}</dd></div>
+    <div><dt>대상</dt><dd>{target}</dd></div>
+    <div><dt>방식</dt><dd>{classFormat}</dd></div>
+  </dl>
+)
 
 const formSections = [
   ["basic", "기본 정보"], ["price", "가격"], ["operations", "체험 운영"],
@@ -134,9 +154,10 @@ const standardizedClassFormatOptions = [
 
 const customClassFormatOptionValue = "__custom__"
 
-const formatSummaryDate = (value: string) => {
-  const matched = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value)
-  return matched ? `${matched[1]}.${matched[2]}.${matched[3]}` : value
+const formatCompactDate = (value: string) => {
+  const matched = /^\d{4}-(\d{2})-(\d{2})$/.exec(value)
+  if (!matched) return value
+  return `${Number(matched[1])}/${Number(matched[2])}`
 }
 
 const resolveClassFormatSelection = (value: string) => {
@@ -192,7 +213,8 @@ export const StudioClassForm = ({
   updateSuccessHref,
   scheduleCalendarMonth,
   scheduleCalendarDays = [],
-  scheduleCalendarError
+  scheduleCalendarError,
+  initialSection
 }: StudioClassFormProps) => {
   const classesHref = useStudioNavigationPath("/studio/classes")
   const router = useRouter()
@@ -213,7 +235,7 @@ export const StudioClassForm = ({
   )
   const [isDirty, setIsDirty] = useState(false)
   const [headerTitle, setHeaderTitle] = useState(initialItem?.title ?? "")
-  const [isActivePreview, setIsActivePreview] = useState(initialItem?.isActive ?? false)
+  const [isActivePreview, setIsActivePreview] = useState(initialItem?.isActive ?? true)
   const [selectedClassId, setSelectedClassId] = useState(initialItem?.id ?? "")
   const [selectedProgramType, setSelectedProgramType] = useState(initialItem?.programType ?? "trial_class")
   const [trialPrice, setTrialPrice] = useState(initialItem ? String(initialItem.trialPrice ?? 0) : "")
@@ -222,9 +244,9 @@ export const StudioClassForm = ({
   const [previewOpen, setPreviewOpen] = useState(false)
   const [operationsOpen, setOperationsOpen] = useState(false)
   const [operationsBusy, setOperationsBusy] = useState(false)
-  const [operatingModalOpen, setOperatingModalOpen] = useState(false)
   const [createScheduleDraft, setCreateScheduleDraft] = useState(createDefaultCreateClassScheduleDraft)
   const [editedOperatingDraft, setEditedOperatingDraft] = useState<CreateClassScheduleDraft | null>(null)
+  const [hasOperatingRuleSelection, setHasOperatingRuleSelection] = useState(Boolean(initialItem?.operatingRule))
   const [operatingRuleRevision, setOperatingRuleRevision] = useState(initialItem?.operatingRule?.revision ?? 0)
   useEffect(() => {
     if (!editedOperatingDraft) setOperatingRuleRevision(initialItem?.operatingRule?.revision ?? 0)
@@ -312,7 +334,6 @@ export const StudioClassForm = ({
     const normalized = raw.trim()
     return normalized || "선생님"
   }
-  const hasNoActiveTeacherOption = safeTeacherOptions.length === 0
   const isTeacherSelectionLockedToInactive = Boolean(
     initialItem?.teacherId && fallbackTeacherOption && !teacherOptionIds.has(initialItem.teacherId)
   )
@@ -371,10 +392,6 @@ export const StudioClassForm = ({
       initialItem?.teacherId,
       initialSubjectSelection?.category.id
     ]
-  )
-  const protectedScheduleCount = useMemo(
-    () => scheduleSlots.filter((slot) => slot.isReferencedByApplications).length,
-    [scheduleSlots]
   )
   const resolvedClassFormat = useMemo(() => {
     if (classFormatSelection === customClassFormatOptionValue) {
@@ -447,6 +464,7 @@ export const StudioClassForm = ({
     setPriceMode(initialFormSnapshot.id ? Number(initialFormSnapshot.trialPrice) === 0 ? "free" : "paid" : "")
     setScheduleEdited(false)
     setEditedOperatingDraft(null)
+    setHasOperatingRuleSelection(Boolean(initialItem?.operatingRule))
     setSelectedAssignmentMode(initialFormSnapshot.assignmentMode)
     setSelectedSubjectCategoryId(initialFormSnapshot.subjectCategoryId)
     setSelectedSubjectId(initialFormSnapshot.subjectId)
@@ -467,8 +485,22 @@ export const StudioClassForm = ({
     setIsUploadingCoverImage(false)
     setScheduleSlots(initialFormSnapshot.scheduleSlots)
     setHeaderTitle(initialItem?.title ?? "")
-    setIsActivePreview(initialItem?.isActive ?? false)
-  }, [initialFormSnapshot, initialItem?.isActive, initialItem?.title])
+    setIsActivePreview(initialItem?.isActive ?? true)
+  }, [initialFormSnapshot, initialItem?.isActive, initialItem?.operatingRule, initialItem?.title])
+
+  useEffect(() => {
+    if (initialSection !== "operations") return
+    const frame = window.requestAnimationFrame(() => {
+      const section = formRef.current?.querySelector<HTMLDetailsElement>(
+        'details[data-class-section="operations"]'
+      )
+      if (!section) return
+      section.open = true
+      section.scrollIntoView({ behavior: "smooth", block: "start" })
+      section.querySelector<HTMLElement>("summary")?.focus({ preventScroll: true })
+    })
+    return () => window.cancelAnimationFrame(frame)
+  }, [initialSection])
 
   useEffect(() => {
     if (selectedAssignmentMode !== "preassigned" || selectedTeacherId) {
@@ -577,16 +609,22 @@ export const StudioClassForm = ({
 
   const operatingDraft = useMemo(() => mode === "create" ? createScheduleDraft
     : editedOperatingDraft ?? (initialItem?.operatingRule ? classOperatingRuleToDraft(initialItem.operatingRule)
-      : deriveOperatingDraftFromScheduleSlots(scheduleSlots, todayKey)),
-    [mode, createScheduleDraft, editedOperatingDraft, initialItem?.operatingRule, scheduleSlots, todayKey])
+      : createDefaultCreateClassScheduleDraft()),
+    [mode, createScheduleDraft, editedOperatingDraft, initialItem?.operatingRule])
   const operatingRulePayload = useMemo(() => {
     if (mode === "update" && !editedOperatingDraft) return ""
+    if (!hasOperatingRuleSelection) return ""
     if (!operatingDraft.groups.length) return ""
     try { return JSON.stringify(classOperatingRuleFromDraft(operatingDraft)) } catch { return "" }
-  }, [mode, editedOperatingDraft, operatingDraft])
-  const operatingSummary = useMemo(() => ({...summarizeCreateScheduleDraft(operatingDraft),
-    ...(operatingDraft.isAlwaysOpen ? {periodLabel:"상시 운영 · 공개 중 앞으로 90일 예약 일정 자동 연장"} : {})}), [operatingDraft])
-  const weeklySummaries = useMemo(() => summarizeExistingWeeklySchedules(scheduleSlots), [scheduleSlots])
+  }, [mode, editedOperatingDraft, hasOperatingRuleSelection, operatingDraft])
+  const operatingPresentation = useMemo(
+    () => presentOperatingDraft(operatingDraft, hasOperatingRuleSelection),
+    [hasOperatingRuleSelection, operatingDraft]
+  )
+  const operatingGroupPresentations = useMemo(
+    () => presentOperatingDraftGroups(operatingDraft),
+    [operatingDraft]
+  )
   const previewSlots = scheduleSlots.filter((slot) => slot.scheduleType === "one_time" && slot.specificDate >= todayKey)
   const subjectLabel = selectedSubjectSelection?.subject.name ?? selectedSubjectCategory?.name ?? "과목 미선택"
   const programLabel = selectedProgramType === "level_test" ? "레벨테스트" : "체험수업"
@@ -597,22 +635,45 @@ export const StudioClassForm = ({
   const nextVisibility = isActivePreview ? "공개" : "비공개"
   const visibilitySummaryLabel = mode === "create" ? `등록 후 ${nextVisibility}`
     : savedVisibility === nextVisibility ? `현재 ${nextVisibility}` : `현재 ${savedVisibility} → 저장 후 ${nextVisibility}`
-  const operatingPeriodSummary = mode === "update" && !initialItem?.operatingRule && !editedOperatingDraft
-    ? {title:"기존 예약 일정",detail:"자동 연장을 사용하려면 운영시간을 확인하고 저장해 주세요."}
-    : operatingDraft.isAlwaysOpen
-    ? {
-        title: "상시 운영",
-        detail: "앞으로 90일간 예약 일정이 자동으로 열립니다."
-      }
-    : operatingDraft.operationStartDate && operatingDraft.operationEndDate
-      ? {
-          title: "기간 운영",
-          detail: `${formatSummaryDate(operatingDraft.operationStartDate)} ~ ${formatSummaryDate(operatingDraft.operationEndDate)}`
-        }
-      : {
-          title: "운영기간 미설정",
-          detail: "예약 일정을 설정해 주세요."
-        }
+  const operationType = hasOperatingRuleSelection
+    ? operatingDraft.isAlwaysOpen ? "rolling" as const : "fixed_period" as const
+    : null
+  const operatingCapacityValues = useMemo(
+    () => new Set(
+      operatingDraft.groups
+        .flatMap((group) => group.timeRanges.map((range) => range.capacity.trim()))
+        .filter(Boolean)
+    ),
+    [operatingDraft.groups]
+  )
+  const singleOperatingCapacity = [...operatingCapacityValues][0] ?? operatingDraft.defaultCapacity
+  const operatingCapacityLabel = !hasOperatingRuleSelection
+    ? "미설정"
+    : operatingCapacityValues.size > 1
+      ? operatingDraft.timeInputMode === "individual" ? "시간별 다름" : "그룹별 다름"
+      : singleOperatingCapacity ? `${singleOperatingCapacity}명` : "미설정"
+  const selectedTeacherOption = mergedTeacherOptions.find((option) => option.teacherId === selectedTeacherId)
+  const teacherSummaryLabel = isPreassignedMode && selectedTeacherOption
+    ? resolveTeacherLabel(selectedTeacherOption)
+    : "신청 후 배정"
+  const operationsSectionSummary = operatingPresentation
+    ? operatingDraft.isAlwaysOpen
+      ? `상시 운영 · ${operatingPresentation.detail}`
+      : operatingDraft.operationStartDate && operatingDraft.operationEndDate
+        ? `기간 지정 · ${formatCompactDate(operatingDraft.operationStartDate)}~${formatCompactDate(operatingDraft.operationEndDate)}`
+        : "기간 지정 · 운영 기간 미설정"
+    : mode === "update" ? "운영 방식 확인 필요" : "운영 방식 미설정"
+
+  const handleOperatingDraftChange = useCallback((next: CreateClassScheduleDraft) => {
+    if (mode === "create") {
+      setCreateScheduleDraft(next)
+    } else {
+      setEditedOperatingDraft(next)
+      setScheduleEdited(true)
+    }
+    setHasOperatingRuleSelection(true)
+    setFieldErrors((current) => ({ ...current, schedule: undefined }))
+  }, [mode])
   const draftValues = useMemo<ClassFormDraftValues>(() => ({
     title: headerTitle, programType: selectedProgramType, subjectCategoryId: selectedSubjectCategoryId,
     subjectId: selectedSubjectId, targetGrades: selectedTargetGrades, classFormat: resolvedClassFormat,
@@ -633,7 +694,8 @@ export const StudioClassForm = ({
     setTrialPrice(draft.trialPrice); setPriceMode(draft.priceMode); setSelectedAssignmentMode(draft.assignmentMode)
     setSelectedTeacherId(draft.teacherId); setDescription(draft.description); setRecommendedFor(draft.recommendedFor)
     setExperiencePoints(draft.experiencePoints); setCurriculum(draft.curriculum); setCoverImageUrl(draft.coverImageUrl)
-    setIsActivePreview(draft.visibility === "public"); setCreateScheduleDraft(draft.scheduleDraft)
+    setIsActivePreview(draft.visibility === "public"); setCreateScheduleDraft(normalizeStoredScheduleDraft(draft.scheduleDraft))
+    setHasOperatingRuleSelection(draft.scheduleDraft.groups.length > 0)
   }, [safeSubjectCatalog])
   const { pendingDraft, chooseDraft, storageUnavailable } = useClassCreateDraft(
     mode === "create", organizationId, draftValues, restoreDraft, state.ok
@@ -653,7 +715,7 @@ export const StudioClassForm = ({
 
   useEffect(() => {
     if (!state.message || state.ok) return
-    const key: FieldErrorKey | null = /예약시간|일정|정원/.test(state.message) ? "schedule"
+    const key: FieldErrorKey | null = /예약시간|일정|정원|운영 방식|운영 규칙/.test(state.message) ? "schedule"
       : /과목/.test(state.message) ? "subject" : /선생님/.test(state.message) ? "teacher"
       : /신청비/.test(state.message) ? "price" : /소개/.test(state.message) ? "description" : null
     if (key) { setFieldErrors((current) => ({ ...current, [key]: state.message })); focusError(key) }
@@ -663,6 +725,9 @@ export const StudioClassForm = ({
 
   const validateForm = (event: React.FormEvent<HTMLFormElement>) => {
     const errors: Partial<Record<FieldErrorKey, string>> = {}
+    const scheduleValidation = mode === "create" || editedOperatingDraft
+      ? validateOperatingScheduleDraft(operatingDraft)
+      : null
     if (headerTitle.trim().length < 2) errors.title = "수업명은 2자 이상 입력해 주세요."
     if (!selectedSubjectCategoryId) errors.subject = "과목 분류를 선택해 주세요."
     if (!selectedTargetGrades.length) errors.targetGrades = "대상 학년을 선택해 주세요."
@@ -672,9 +737,22 @@ export const StudioClassForm = ({
     }
     if (isPreassignedMode && !selectedTeacherId) errors.teacher = "담당 선생님을 선택해 주세요."
     if (description.trim().length < 10) errors.description = "수업 소개는 10자 이상 입력해 주세요."
-    if (mode === "create" && isActivePreview && !scheduleSlots.length) errors.schedule = "공개하려면 예약시간을 1개 이상 설정해 주세요."
-    if ((mode === "create" || editedOperatingDraft) && operatingDraft.groups.length && !operatingRulePayload)
-      errors.schedule = "운영 규칙을 확인해 주세요. 요일·시간·정원을 다시 설정해 주세요."
+    if (mode === "create" && !hasOperatingRuleSelection)
+      errors.schedule = "운영 방식을 선택해 주세요."
+    else if ((mode === "create" || editedOperatingDraft) && !operatingDraft.isAlwaysOpen
+      && (!operatingDraft.operationStartDate || !operatingDraft.operationEndDate
+        || operatingDraft.operationEndDate < operatingDraft.operationStartDate))
+      errors.schedule = "운영 기간을 입력해 주세요."
+    else if (scheduleValidation === "duration") errors.schedule = "체험수업 시간을 선택해 주세요."
+    else if (scheduleValidation === "weekday" || scheduleValidation === "duplicate_weekday")
+      errors.schedule = "운영 요일을 선택해 주세요. 같은 요일은 한 그룹에서만 사용할 수 있어요."
+    else if (scheduleValidation === "capacity") errors.schedule = "회차당 정원을 입력해 주세요."
+    else if (scheduleValidation === "slot_limit") errors.schedule = "주간 예약 가능 시간은 336개 이하로 설정해 주세요."
+    else if (scheduleValidation) errors.schedule = "운영 시간을 확인해 주세요."
+    else if ((mode === "create" || editedOperatingDraft) && !operatingRulePayload)
+      errors.schedule = "운영 요일과 시간을 확인해 주세요."
+    else if (mode === "create" && isActivePreview && !scheduleSlots.length)
+      errors.schedule = "공개하려면 예약시간을 1개 이상 설정해 주세요."
     setFieldErrors(errors)
     const first = Object.keys(errors)[0] as FieldErrorKey | undefined
     if (first || isUploadingCoverImage || pendingDraft) {
@@ -723,7 +801,7 @@ export const StudioClassForm = ({
   const sectionSummaries = {
     basic: [headerTitle || "수업 정보 입력", previewTargetGradeLabel].filter(Boolean).join(" · "),
     price: priceLabel,
-    operations: `${isPreassignedMode ? "담당자 사전 배정" : "신청 후 배정"} · 예약시간 ${previewSlots.length}개`,
+    operations: operationsSectionSummary,
     description: [description.trim() && "소개", recommendedFor.trim() && "추천 대상", experiencePoints.trim() && "경험", curriculum.trim() && "커리큘럼"].filter(Boolean).join(" · ") || "소개·추천 대상·커리큘럼",
     image: previewImageUrl ? "대표 이미지 1개" : "대표 이미지 없음",
     visibility: visibilitySummaryLabel
@@ -743,6 +821,25 @@ export const StudioClassForm = ({
       <span className={styles.sectionChevron} aria-hidden="true" />
     </summary>
   }
+  const teacherAssignmentField = <div className={styles.field} data-field="teacher">
+    <label htmlFor={`${resolvedFormId}-teacher`} className={styles.fieldLabel}>담당 선생님</label>
+    <select id={`${resolvedFormId}-teacher`} name="teacherId" value={isPreassignedMode ? selectedTeacherId : ""} onChange={(event) => {
+      const teacherId = event.target.value
+      setSelectedTeacherId(teacherId)
+      setSelectedAssignmentMode(teacherId ? "preassigned" : "post_assign")
+      setFieldErrors((current) => ({ ...current, teacher: undefined }))
+    }} disabled={isPending} className={styles.select} aria-invalid={Boolean(fieldErrors.teacher)}>
+      <option value="">신청 후 배정</option>
+      {mergedTeacherOptions.map((option) => <option key={option.teacherId} value={option.teacherId}>
+        {resolveTeacherLabel(option)}{fallbackTeacherOption?.teacherId === option.teacherId ? " (현재 비활성 선생님)" : ""}
+      </option>)}
+    </select>
+    <span className={styles.fieldHint}>{teacherOptionsError ? "선생님 목록을 불러오지 못했습니다. 다시 불러온 뒤 확인해 주세요."
+      : isTeacherSelectionLockedToInactive ? "기존 비활성 담당자를 유지하거나 다른 선생님을 선택할 수 있습니다."
+      : isPreassignedMode ? "새 신청은 선택한 선생님에게 자동으로 배정돼요."
+      : "신청이 들어오면 적절한 선생님을 배정해요."}</span>
+    {renderError("teacher")}
+  </div>
 
   return (
     <section id="studio-class-form" className={styles.page}>
@@ -762,6 +859,7 @@ export const StudioClassForm = ({
         <input type="hidden" name="mode" value={mode} />
         <input type="hidden" name="classId" value={selectedClassId} />
         <input type="hidden" name="programType" value={selectedProgramType} />
+        <input type="hidden" name="assignmentMode" value={selectedAssignmentMode} />
         <input type="hidden" name="classFormat" value={resolvedClassFormat} />
         <input type="hidden" name="subjectCategoryId" value={selectedSubjectCategoryId} />
         <input type="hidden" name="subjectId" value={selectedSubjectId} />
@@ -930,44 +1028,34 @@ export const StudioClassForm = ({
           <details data-class-section="operations" open={undefined} id="class-section-operations" className={styles.formSection} aria-labelledby="class-operations-title">
             {renderSectionHeader("operations")}
             <div className={styles.sectionBody}>
-            <div className={styles.field} data-field="teacher"><span className={styles.fieldLabel}>담당자 배정 방식</span>
-              <div className={styles.assignmentChoices}>{([
-                ["post_assign", "신청 후 배정", "신청을 확인한 뒤 담당자를 정합니다."],
-                ["preassigned", "담당자 사전 배정", "선택한 선생님이 신청에 자동 배정됩니다."]
-              ] as const).map(([value, label, hint]) => <label key={value} className={styles.radioCard}>
-                <input type="radio" name="assignmentMode" value={value} checked={selectedAssignmentMode === value} onChange={() => setSelectedAssignmentMode(value)} disabled={isPending} />
-                <span><strong>{label}</strong><small>{hint}</small></span></label>)}</div>
-              <label className={styles.field}><span className={styles.fieldLabel}>담당 선생님 {isPreassignedMode ? "*" : "(선택)"}</span>
-                <select name="teacherId" value={selectedTeacherId} onChange={(event) => setSelectedTeacherId(event.target.value)} disabled={isPending} className={styles.select} aria-invalid={Boolean(fieldErrors.teacher)}>
-                  <option value="">선택 안 함</option>{mergedTeacherOptions.map((option) => <option key={option.teacherId} value={option.teacherId}>{resolveTeacherLabel(option)}{fallbackTeacherOption?.teacherId === option.teacherId ? " (현재 비활성 선생님)" : ""}</option>)}
-                </select>
-              </label>
-              <p className={styles.fieldHint}>{teacherOptionsError ? "선생님 목록을 불러오지 못했습니다. 다시 불러온 뒤 확인해 주세요."
-                : isTeacherSelectionLockedToInactive ? "기존 비활성 담당자를 유지하거나 다른 선생님을 선택할 수 있습니다."
-                : hasNoActiveTeacherOption ? "등록된 선생님이 없어도 신청 후 배정으로 저장할 수 있습니다."
-                : isPreassignedMode ? "새 신청에 적용되는 담당자입니다. 기존 신청 담당자는 유지됩니다." : "기본 담당자를 선택해도 신청 담당자는 신청 후 별도로 배정합니다."}</p>
-              {renderError("teacher")}
-            </div>
             <div className={styles.operationBlock} data-field="schedule">
-              <StudioOperatingHoursSummary variant="inline" title="기본 운영시간" emptyDescription="예약받을 기간, 요일, 시간과 정원을 설정하세요."
-                summary={operatingSummary} actionLabel={operatingSummary.hasValue ? "운영시간 변경" : "운영시간 설정"} onOpen={() => { if (!isPending) setOperatingModalOpen(true) }} />
-              <p className={styles.fieldHint}>기본 운영시간 변경은 {mode === "create" ? "수업 등록" : "변경사항 저장"} 시 반영됩니다.</p>
-              {mode === "update" && !initialItem?.operatingRule && <p className={styles.notice}>기존 수업은 반복 규칙이 등록되어 있지 않습니다. 요일·시간·정원을 확인해 저장하면 새 운영 규칙이 적용됩니다. 기존 예약 일정은 유지됩니다.</p>}
-              {protectedScheduleCount > 0 && <p className={styles.notice}>기존 신청이 연결된 일정 {protectedScheduleCount}개 · 날짜와 시간은 유지됩니다.</p>}
-              {weeklySummaries.length > 0 && <div className={styles.notice}><strong>기존 반복 일정 · 유지</strong>{weeklySummaries.map((item) => <p key={item.weekdayLabel}>{item.weekdayLabel} · {item.timeLabels.join(", ")}</p>)}</div>}
-              {previewSlots.length > 0 && <details className={styles.schedulePreview} open={mode === "create"}>
-                <summary>{mode === "create" ? "생성할" : "현재"} 예약시간 {previewSlots.length}개</summary>
-                <p className={styles.fieldHint}>{operatingSummary.hasValue ? `${operatingDraft.intervalMinutes}분 수업이 같은 간격으로 생성됩니다.` : "저장된 날짜별 예약시간입니다."}</p>
-                <ul>{previewSlots.slice(0, 6).map((slot) => <li key={slot.localId}><span>{slot.specificDate} · {slot.startTime}–{slot.endTime}</span><span>{slot.capacity ? `${slot.capacity}명` : "정원 미설정"} · {slot.bookingStatus === "open" ? "열림" : slot.bookingStatus === "closed" ? "마감" : "숨김"}</span></li>)}</ul>
-                {previewSlots.length > 6 && <p className={styles.fieldHint}>외 {previewSlots.length - 6}개 · 마지막 날짜 {previewSlots.at(-1)?.specificDate}</p>}
-              </details>}
+              {mode === "update" && !initialItem?.operatingRule && !editedOperatingDraft ? <div className={styles.legacyNotice}>
+                <strong>앞으로의 운영 일정을 설정해 주세요.</strong>
+                <p>기존 일정과 예약은 그대로 유지됩니다.</p>
+              </div> : null}
+              <StudioClassOperationEditor
+                value={operatingDraft}
+                operationType={operationType}
+                todayKey={todayKey}
+                disabled={isPending}
+                onChange={handleOperatingDraftChange}
+              />
               {renderError("schedule")}
-              {mode === "update" && <div className={styles.operationsLink}>
-                <div><strong>날짜별 예약시간 운영</strong><p>추가·삭제, 정원, 마감·재개는 별도 창에서 즉시 반영합니다.</p></div>
-                <button type="button" className={styles.secondaryButton} disabled={scheduleEdited || isPending} onClick={() => setOperationsOpen(true)}>예약시간 운영</button>
-              </div>}
-              {scheduleEdited && <div className={styles.notice}><p>기본 운영시간 변경이 대기 중입니다. 저장하거나 변경을 되돌린 뒤 날짜별 운영을 열 수 있습니다.</p>
-                <button type="button" className={styles.textButton} onClick={() => { setScheduleEdited(false); setEditedOperatingDraft(null); setFieldErrors((current) => ({ ...current, schedule: undefined })); router.refresh() }}>저장된 예약시간 다시 불러오기</button></div>}
+              {hasOperatingRuleSelection ? teacherAssignmentField
+                : <input type="hidden" name="teacherId" value={isPreassignedMode ? selectedTeacherId : ""} />}
+              {mode === "update" && (initialItem?.operatingRule || editedOperatingDraft) ? <div className={styles.protectionInfo}>
+                <span aria-hidden="true">i</span>
+                <p>기존에 등록된 일정과 예약은 그대로 유지돼요.</p>
+              </div> : null}
+              {mode === "update" && hasOperatingRuleSelection ? <button type="button" className={styles.dateOverrideAction}
+                disabled={scheduleEdited || isPending} onClick={() => setOperationsOpen(true)}>
+                <span><strong>특정 날짜만 변경하기</strong><small>휴무일이나 특별 운영일의 시간을 변경할 수 있어요.</small></span>
+                <span aria-hidden="true">›</span>
+              </button> : null}
+              {scheduleEdited ? <div className={styles.pendingOperationNote}>
+                <p>운영 일정 변경사항을 저장하면 특정 날짜 변경을 다시 사용할 수 있어요.</p>
+                <button type="button" className={styles.textButton} onClick={() => { setScheduleEdited(false); setEditedOperatingDraft(null); setHasOperatingRuleSelection(Boolean(initialItem?.operatingRule)); setFieldErrors((current) => ({ ...current, schedule: undefined })); router.refresh() }}>운영 일정 변경 되돌리기</button>
+              </div> : null}
             </div>
             </div>
           </details>
@@ -1001,10 +1089,10 @@ export const StudioClassForm = ({
                           name="recommendedFor"
                           value={recommendedFor}
                           onChange={(event) => setRecommendedFor(event.target.value)}
-                          rows={3}
+                          rows={2}
                           disabled={isPending}
                           placeholder={fieldExamples.recommendedFor}
-                          className={styles.textarea}
+                          className={`${styles.textarea} ${styles.compactTextarea}`}
                         />
                       </label>
 
@@ -1015,10 +1103,10 @@ export const StudioClassForm = ({
                           name="experiencePoints"
                           value={experiencePoints}
                           onChange={(event) => setExperiencePoints(event.target.value)}
-                          rows={3}
+                          rows={2}
                           disabled={isPending}
                           placeholder={fieldExamples.experiencePoints}
-                          className={styles.textarea}
+                          className={`${styles.textarea} ${styles.compactTextarea}`}
                         />
                       </label>
 
@@ -1029,10 +1117,10 @@ export const StudioClassForm = ({
                           name="curriculum"
                           value={curriculum}
                           onChange={(event) => setCurriculum(event.target.value)}
-                          rows={4}
+                          rows={2}
                           disabled={isPending}
                           placeholder={fieldExamples.curriculum}
-                          className={styles.textarea}
+                          className={`${styles.textarea} ${styles.compactTextarea}`}
                         />
                       </label>
                     </div>
@@ -1091,8 +1179,10 @@ export const StudioClassForm = ({
           <details data-class-section="visibility" open={undefined} id="class-section-visibility" className={styles.formSection} aria-labelledby="class-visibility-title">
             {renderSectionHeader("visibility")}
             <div className={styles.sectionBody}>
-            <label className={styles.radioCard}><input type="checkbox" name="isActive" checked={isActivePreview} onChange={(event) => setIsActivePreview(event.target.checked)} disabled={isPending} />
-              <span><strong>학부모에게 공개</strong><small>{isActivePreview ? "저장 후 공개 설정이 적용됩니다." : "비공개 수업은 학부모에게 표시되지 않습니다."}</small></span></label>
+            <label className={styles.visibilitySetting}>
+              <span><strong>학부모에게 공개</strong><small>{isActivePreview ? "저장 후 공개 설정이 적용됩니다." : "비공개 수업은 학부모에게 표시되지 않습니다."}</small></span>
+              <input type="checkbox" name="isActive" checked={isActivePreview} onChange={(event) => setIsActivePreview(event.target.checked)} disabled={isPending} />
+            </label>
             {mode === "update" && !scheduleSlots.length && isActivePreview && <p className={styles.fieldHint}>설정된 예약시간이 없습니다. 신청받을 시간을 확인해 주세요.</p>}
             </div>
           </details>
@@ -1112,14 +1202,25 @@ export const StudioClassForm = ({
                 <span className={styles.programBadge}>{programLabel}</span>
               </div>
             <h2>{headerTitle || "수업명을 입력해 주세요"}</h2>
-            <dl><div><dt>과목</dt><dd>{subjectLabel}</dd></div>
-              <div><dt>대상</dt><dd>{previewTargetGradeLabel || "학년 미선택"}</dd></div><div><dt>방식</dt><dd>{resolvedClassFormat || "선택 안 함"}</dd></div></dl>
+            <ClassPreviewBasicInfo
+              subject={subjectLabel}
+              target={previewTargetGradeLabel || "학년 미선택"}
+              classFormat={resolvedClassFormat || "선택 안 함"}
+            />
             <strong className={styles.summaryPrice}>{priceLabel}</strong>
-            <div className={styles.summarySchedule}>
-              <strong>{operatingPeriodSummary.title}</strong>
-              <span>{operatingPeriodSummary.detail}</span>
-            </div>
-            <p className={styles.visibilityStatus}>{visibilitySummaryLabel}</p>
+            {operatingPresentation ? <dl className={styles.operationSummary}>
+              <div><dt>운영 방식</dt><dd>{operatingPresentation.title}</dd></div>
+              {!operatingDraft.isAlwaysOpen ? <div><dt>운영 기간</dt><dd>{operatingDraft.operationStartDate && operatingDraft.operationEndDate
+                ? `${operatingDraft.operationStartDate.replaceAll("-", ".")} ~ ${operatingDraft.operationEndDate.replaceAll("-", ".")}`
+                : "기간 미설정"}</dd></div> : null}
+              <div><dt>체험수업 시간</dt><dd>{operatingDraft.intervalMinutes ? `${operatingDraft.intervalMinutes}분` : "미설정"}</dd></div>
+              <div><dt>운영 시간</dt><dd>{operatingGroupPresentations.length > 0
+                ? operatingGroupPresentations.map((group) => `${group.weekdayLabel} · ${group.timeLabel}`).join(" / ")
+                : "요일·시간 미설정"}</dd></div>
+              <div><dt>회차당 정원</dt><dd>{operatingCapacityLabel}</dd></div>
+              <div><dt>담당 선생님</dt><dd>{teacherSummaryLabel}</dd></div>
+            </dl> : null}
+            <p className={styles.visibilityStatus}><span>공개 상태</span><strong>{visibilitySummaryLabel}</strong></p>
             </div>
             <div className={styles.summaryFooter}>
             <div className={styles.summaryActions}>
@@ -1136,11 +1237,6 @@ export const StudioClassForm = ({
           </div>
         </aside>
       </form>
-      <StudioOperatingHoursModal isOpen={operatingModalOpen} title="기본 운영시간 설정" value={operatingDraft} onClose={() => setOperatingModalOpen(false)} onSave={(draft) => {
-        if (mode === "create") setCreateScheduleDraft(draft)
-        else { setEditedOperatingDraft(draft); setScheduleEdited(true) }
-        setFieldErrors((current) => ({ ...current, schedule: undefined })); setOperatingModalOpen(false)
-      }} />
       {previewOpen && <StudioClassFormDialog title="수업 미리보기" onClose={() => setPreviewOpen(false)}>
         <p className={styles.fieldHint}>작성 중인 내용을 미리 확인하는 화면입니다. 저장 전에는 공개되지 않습니다.</p>
         {previewImageUrl ? (
@@ -1152,8 +1248,8 @@ export const StudioClassForm = ({
         {previewSections.map((section) => <section key={section.title} className={styles.parentPreviewSection}><h3>{section.title}</h3><p>{section.value || section.empty}</p></section>)}
         <section className={styles.parentPreviewSection}><h3>체험 일정</h3>{previewSlots.length ? <ul>{previewSlots.slice(0, 6).map((slot) => <li key={slot.localId}>{slot.specificDate} {slot.startTime}–{slot.endTime}</li>)}</ul> : <p>예약시간이 아직 설정되지 않았습니다.</p>}</section>
       </StudioClassFormDialog>}
-      {operationsOpen && selectedClassId && scheduleCalendarMonth && <StudioClassFormDialog busy={operationsBusy} title="예약시간 운영 · 즉시 반영" onClose={() => { setOperationsOpen(false); router.refresh() }}>
-        <p className={styles.notice}>여기서 실행한 변경은 즉시 저장됩니다. 창을 닫아도 유지됩니다.</p>
+      {operationsOpen && selectedClassId && scheduleCalendarMonth && <StudioClassFormDialog busy={operationsBusy} title="특정 날짜 변경" onClose={() => { setOperationsOpen(false); router.refresh() }}>
+        <p className={styles.notice}>휴무일이나 특별 운영일 변경은 즉시 저장됩니다.</p>
         {scheduleCalendarError ? <p role="alert" className={styles.errorText}>{scheduleCalendarError}</p> : <StudioClassScheduleEditor operationsOnly onPendingChange={setOperationsBusy} classId={selectedClassId} month={scheduleCalendarMonth} days={scheduleCalendarDays} scheduleSlots={scheduleSlots} onChangeScheduleSlots={setScheduleSlots} />}
       </StudioClassFormDialog>}
     </section>

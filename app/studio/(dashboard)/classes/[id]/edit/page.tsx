@@ -15,6 +15,7 @@ type StudioClassEditPageProps = {
   }>
   searchParams?: Promise<{
     month?: string
+    section?: string
   }>
 }
 
@@ -68,6 +69,7 @@ export default async function StudioClassEditPage({ params, searchParams }: Stud
       variant="standalone"
       formId="studio-class-edit-form"
       updateSuccessHref="/studio/classes?success=updated"
+      initialSection={resolvedSearchParams?.section === "operations" ? "operations" : undefined}
     />
   )
 }

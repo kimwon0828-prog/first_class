@@ -177,6 +177,15 @@ export type StudioClassListItem = ClassSubjectReadModel & {
   coverImageUrl: string | null
   isActive: boolean
   scheduleSummary: StudioClassScheduleSummary
+  operatingRuleState:
+    | {
+        status: "loaded"
+        rule: import("@/features/studio/lib/class-operating-rule").ClassOperatingRule | null
+      }
+    | {
+        status: "error"
+        rule: null
+      }
 }
 
 export type OrganizationLocationInfo = {

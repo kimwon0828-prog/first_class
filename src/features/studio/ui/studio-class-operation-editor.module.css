@@ -1,0 +1,71 @@
+.editor { display: grid; gap: 18px; }
+.fieldset { min-width: 0; margin: 0; padding: 0; border: 0; }
+.legend, .subLabel { display: block; margin: 0 0 10px; padding: 0; color: var(--text-1); font-size: 14px; font-weight: 650; line-height: 20px; }
+.operationTypeGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.operationTypeCard { display: flex; align-items: flex-start; gap: 10px; min-height: 76px; padding: 14px; border: 1px solid var(--border); border-radius: var(--r-md); background: var(--surface); cursor: pointer; transition: border-color 150ms, background 150ms; }
+.operationTypeCard:hover { border-color: var(--brand-500); }
+.operationTypeCard.selected { border-color: var(--brand-500); background: var(--brand-50); }
+.operationTypeCard input { flex: 0 0 auto; margin: 3px 0 0; accent-color: var(--brand-500); }
+.operationTypeCard span { display: grid; gap: 3px; }
+.operationTypeCard strong { color: var(--text-1); font-size: 14px; line-height: 20px; }
+.operationTypeCard small, .durationField small, .sectionHeading small { color: var(--text-2); font-size: 12px; line-height: 18px; }
+.dateRange { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 10px; }
+.dateRange > span, .timeRow > span { color: var(--text-3); }
+.dateRange input, .timeRow input, .capacityInputWrap input, .durationField select, .slotCapacity input { box-sizing: border-box; width: 100%; min-height: 42px; padding: 9px 11px; border: 1px solid var(--border); border-radius: var(--r-sm); background: var(--surface); color: var(--text-1); font: inherit; font-size: 14px; }
+.dateRange input:focus, .timeRow input:focus, .capacityInputWrap input:focus, .durationField select:focus, .slotCapacity input:focus { outline: 2px solid var(--brand-100); outline-offset: 1px; border-color: var(--brand-500); }
+.durationField { display: grid; gap: 7px; max-width: 280px; }
+.durationField .legend { margin: 0; }
+.durationField select { width: 148px; }
+.sectionHeading { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; margin-bottom: 12px; }
+.sectionHeading .legend { margin: 0; }
+.groupList { display: grid; gap: 14px; }
+.scheduleGroup { display: grid; gap: 16px; padding: 16px; border: 1px solid var(--border); border-radius: var(--r-md); background: var(--surface-sub); }
+.groupHeader { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.groupHeader strong { color: var(--text-1); font-size: 14px; }
+.groupField { display: grid; gap: 8px; }
+.subLabel { margin: 0; font-size: 13px; }
+.weekdayRow { display: flex; flex-wrap: wrap; gap: 7px; }
+.weekdayButton { width: 38px; height: 38px; padding: 0; border: 1px solid var(--border); border-radius: var(--r-sm); background: var(--surface); color: var(--text-2); font: inherit; font-size: 13px; cursor: pointer; transition: border-color 150ms, background 150ms, color 150ms; }
+.weekdayButton:hover:not(:disabled) { border-color: var(--brand-500); }
+.weekdayButton.weekdaySelected { border-color: var(--brand-500); background: var(--brand-50); color: var(--brand-700); font-weight: 650; }
+.timeList { display: grid; gap: 8px; }
+.timeRow { display: flex; align-items: center; gap: 8px; }
+.timeRow > input { width: 132px; }
+.individualEnd { min-width: 82px; font-size: 13px; }
+.slotCapacity { display: flex; align-items: center; gap: 6px; }
+.slotCapacity input { width: 82px; }
+.slotCapacity span { color: var(--text-2); font-size: 13px; }
+.removeButton, .removeGroupButton { border: 0; background: transparent; color: var(--text-2); font: inherit; font-size: 12px; cursor: pointer; }
+.removeButton { min-height: 40px; padding: 8px; }
+.removeButton:hover:not(:disabled), .removeGroupButton:hover:not(:disabled) { color: var(--red-fg); }
+.addTimeButton, .addGroupButton { width: max-content; min-height: 40px; padding: 8px 12px; border: 1px solid var(--border); border-radius: var(--r-sm); background: var(--surface); color: var(--brand-700); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
+.addTimeButton:hover:not(:disabled), .addGroupButton:hover:not(:disabled) { border-color: var(--brand-500); background: var(--brand-50); }
+.addGroupButton { margin-top: 12px; }
+.actionHint { display: block; width: fit-content; margin-top: 3px; color: var(--text-2); font-size: 11px; line-height: 17px; }
+.previewBlock { display: grid; gap: 9px; padding: 12px; border-radius: var(--r-sm); background: var(--surface); }
+.previewHeading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.previewHeading strong { color: var(--text-1); font-size: 12px; }
+.previewHeading span { color: var(--red-fg); font-size: 12px; }
+.previewChips { display: flex; flex-wrap: wrap; gap: 6px; max-height: 112px; overflow-y: auto; padding-right: 2px; }
+.previewChips span { padding: 5px 8px; border: 1px solid var(--brand-100); border-radius: 999px; background: var(--brand-50); color: var(--brand-700); font-size: 12px; font-weight: 600; }
+.capacityField { display: grid; gap: 8px; }
+.capacityInputWrap { display: flex; align-items: center; gap: 8px; width: 160px; }
+.capacityInputWrap span { color: var(--text-2); font-size: 14px; }
+.individualNotice { display: flex; align-items: center; justify-content: space-between; gap: 18px; padding: 12px 14px; border: 1px solid var(--border); border-radius: var(--r-sm); background: var(--surface-sub); }
+.individualNotice div { display: grid; gap: 3px; }
+.individualNotice strong { color: var(--text-1); font-size: 13px; }
+.individualNotice p { margin: 0; color: var(--text-2); font-size: 12px; }
+.individualNotice button { min-height: 36px; padding: 7px 10px; border: 1px solid var(--border); border-radius: var(--r-sm); background: var(--surface); color: var(--brand-700); font: inherit; font-size: 12px; font-weight: 650; cursor: pointer; }
+.limitError { margin: 10px 0 0; color: var(--red-fg); font-size: 12px; }
+.editor button:disabled, .editor input:disabled, .editor select:disabled { opacity: .55; cursor: not-allowed; }
+
+@media (max-width: 600px) {
+  .operationTypeGrid, .dateRange { grid-template-columns: minmax(0, 1fr); }
+  .dateRange > span { display: none; }
+  .sectionHeading, .individualNotice { align-items: flex-start; flex-direction: column; }
+  .timeRow { flex-wrap: wrap; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .operationTypeCard, .weekdayButton { transition: none; }
+}

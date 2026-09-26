@@ -1,11 +1,10 @@
-"use client"
-
 import {
   addMinutesToTime,
-  formatKoreanMeridiemTime,
+  format24HourTime,
   formatWeekdaySet,
   isValidDateInput,
   isValidTimeValue,
+  splitTimeRangeIntoSlots,
   timeToMinutes,
   toDateKey,
   weekdayLabels
@@ -19,6 +18,9 @@ export type OperatingHoursMode = "same" | "weekdayWeekend" | "custom"
 export type OperatingHoursTimeRangeDraft = {
   id: string
   startTime: string
+  /** New range UX: the academy's closing time, not the last bookable start. */
+  operationEndTime?: string
+  /** Legacy draft compatibility: last bookable start time. */
   lastStartTime: string
   capacity: string
 }
@@ -34,6 +36,7 @@ export type CreateClassScheduleDraft = {
   operationEndDate: string
   isAlwaysOpen: boolean
   intervalMinutes: string
+  timeInputMode?: "range" | "individual"
   defaultCapacity: string
   usePerTimeRangeCapacity: boolean
   operatingMode: OperatingHoursMode
@@ -97,6 +100,7 @@ export const buildSlotKey = (specificDate: string, startTime: string) => `${spec
 export const createOperatingHoursTimeRangeDraft = (capacity = ""): OperatingHoursTimeRangeDraft => ({
   id: createLocalId(),
   startTime: "",
+  operationEndTime: "",
   lastStartTime: "",
   capacity
 })
@@ -116,6 +120,7 @@ export const createDefaultCreateClassScheduleDraft = (): CreateClassScheduleDraf
   operationEndDate: "",
   isAlwaysOpen: false,
   intervalMinutes: "60",
+  timeInputMode: "range",
   defaultCapacity: "",
   usePerTimeRangeCapacity: false,
   operatingMode: "same",
@@ -228,6 +233,156 @@ export const buildSlotsFromStartAndLast = (
   return slots
 }
 
+export const resolveOperatingRangeEndTime = (
+  range: OperatingHoursTimeRangeDraft,
+  durationMinutes: number
+) => range.operationEndTime
+  ?? addMinutesToTime(range.lastStartTime, durationMinutes)
+  ?? ""
+
+/**
+ * The single source for both range previews and the operating-rule payload.
+ * Older drafts have no operationEndTime and retain their last-start semantics.
+ */
+export const buildOperatingTimeRangeSlots = (
+  range: OperatingHoursTimeRangeDraft,
+  durationMinutes: number,
+  inputMode: CreateClassScheduleDraft["timeInputMode"] = "range"
+) => {
+  if (inputMode === "individual") {
+    const endTime = addMinutesToTime(range.startTime, durationMinutes)
+    return isValidTimeValue(range.startTime) && endTime
+      ? [{ startTime: range.startTime, endTime }]
+      : []
+  }
+
+  if (range.operationEndTime !== undefined) {
+    return splitTimeRangeIntoSlots(range.startTime, range.operationEndTime, durationMinutes)
+  }
+
+  return buildSlotsFromStartAndLast(range.startTime, range.lastStartTime, durationMinutes)
+}
+
+export const normalizeStoredScheduleDraft = (
+  draft: CreateClassScheduleDraft
+): CreateClassScheduleDraft => {
+  const durationMinutes = Number(draft.intervalMinutes)
+  const hasExplicitMode = draft.timeInputMode === "range" || draft.timeInputMode === "individual"
+
+  return {
+    ...createDefaultCreateClassScheduleDraft(),
+    ...draft,
+    // Drafts written by the former start-time UI are individual slots. Treating
+    // lastStartTime as a closing time would silently create one extra slot.
+    timeInputMode: hasExplicitMode ? draft.timeInputMode : "individual",
+    groups: (draft.groups ?? []).map((group) => ({
+      ...group,
+      timeRanges: (group.timeRanges ?? []).map((range) => ({
+        ...range,
+        operationEndTime: range.operationEndTime
+          ?? (Number.isInteger(durationMinutes) && durationMinutes > 0
+            ? addMinutesToTime(range.lastStartTime || range.startTime, durationMinutes) ?? ""
+            : "")
+      }))
+    }))
+  }
+}
+
+export type OperatingDraftValidationCode =
+  | "duration"
+  | "weekday"
+  | "time"
+  | "capacity"
+  | "duplicate_weekday"
+  | "overlapping_range"
+  | "duplicate_slot"
+  | "slot_limit"
+
+export const validateOperatingScheduleDraft = (
+  draft: CreateClassScheduleDraft
+): OperatingDraftValidationCode | null => {
+  const durationMinutes = Number(draft.intervalMinutes)
+  if (!Number.isInteger(durationMinutes) || durationMinutes <= 0) return "duration"
+  if (draft.groups.length === 0) return "weekday"
+
+  const assignedWeekdays = new Set<number>()
+  const slotKeys = new Set<string>()
+  let slotCount = 0
+  for (const group of draft.groups) {
+    if (group.weekdays.length === 0) return "weekday"
+    for (const weekday of group.weekdays) {
+      if (assignedWeekdays.has(weekday)) return "duplicate_weekday"
+      assignedWeekdays.add(weekday)
+    }
+    if (group.timeRanges.length === 0) return "time"
+
+    const operationRanges: Array<{ start: number; end: number }> = []
+    const generatedRanges: Array<Array<{ startTime: string; endTime: string }>> = []
+    for (const range of group.timeRanges) {
+      const capacity = Number(draft.usePerTimeRangeCapacity ? range.capacity : draft.defaultCapacity)
+      if (!Number.isInteger(capacity) || capacity < 1) return "capacity"
+      const generated = buildOperatingTimeRangeSlots(range, durationMinutes, draft.timeInputMode)
+      if (generated.length === 0) return "time"
+      generatedRanges.push(generated)
+
+      if ((draft.timeInputMode ?? "range") === "range") {
+        const start = timeToMinutes(range.startTime)
+        const end = timeToMinutes(range.operationEndTime ?? "")
+        if (start == null || end == null || end <= start) return "time"
+        operationRanges.push({ start, end })
+      }
+
+    }
+
+    operationRanges.sort((left, right) => left.start - right.start)
+    if (operationRanges.some((range, index) => index > 0 && range.start < operationRanges[index - 1].end)) {
+      return "overlapping_range"
+    }
+    for (const generated of generatedRanges) for (const weekday of group.weekdays) for (const slot of generated) {
+      const key = `${weekday}:${slot.startTime}`
+      if (slotKeys.has(key)) return "duplicate_slot"
+      slotKeys.add(key)
+      slotCount += 1
+    }
+  }
+  return slotCount > 336 ? "slot_limit" : null
+}
+
+export const expandOperatingHoursTimeRanges = (
+  draft: CreateClassScheduleDraft
+): CreateClassScheduleDraft => {
+  const intervalMinutes = Number(draft.intervalMinutes)
+
+  if (!Number.isInteger(intervalMinutes) || intervalMinutes <= 0) {
+    return draft
+  }
+
+  return {
+    ...draft,
+    groups: draft.groups.map((group) => ({
+      ...group,
+      timeRanges: group.timeRanges.flatMap((range) => {
+        const slots = buildSlotsFromStartAndLast(
+          range.startTime,
+          range.lastStartTime,
+          intervalMinutes
+        )
+
+        if (slots.length === 0) {
+          return [{ ...range }]
+        }
+
+        return slots.map((slot) => ({
+          ...range,
+          id: `${range.id}-${slot.startTime}`,
+          startTime: slot.startTime,
+          lastStartTime: slot.startTime
+        }))
+      })
+    }))
+  }
+}
+
 export const buildCreateClassScheduleDraftSlots = (
   scheduleDraft: CreateClassScheduleDraft
 ): CreateClassScheduleDraftSlot[] => {
@@ -254,7 +409,7 @@ export const buildCreateClassScheduleDraftSlots = (
           for (const range of group.timeRanges) {
             const capacitySource = scheduleDraft.usePerTimeRangeCapacity ? range.capacity : scheduleDraft.defaultCapacity
             const capacity = Number(capacitySource)
-            const slots = buildSlotsFromStartAndLast(range.startTime, range.lastStartTime, intervalMinutes)
+            const slots = buildOperatingTimeRangeSlots(range, intervalMinutes, scheduleDraft.timeInputMode)
 
             if (slots.length === 0 || !Number.isFinite(capacity) || capacity < 1) {
               continue
@@ -332,11 +487,11 @@ const summarizeGroup = (group: OperatingHoursGroupDraft, intervalMinutes: string
   id: group.id,
   weekdayLabel: formatWeekdaySet(group.weekdays).join("·") || "요일 미선택",
   timeLabels: group.timeRanges
-    .filter((range) => range.startTime && range.lastStartTime)
+    .filter((range) => range.startTime && (range.operationEndTime || range.lastStartTime))
     .map(
       (range) =>
-        `${formatKoreanMeridiemTime(range.startTime)} ~ ${formatKoreanMeridiemTime(
-          addMinutesToTime(range.lastStartTime, Number(intervalMinutes)) ?? range.lastStartTime
+        `${format24HourTime(range.startTime)} ~ ${format24HourTime(
+          resolveOperatingRangeEndTime(range, Number(intervalMinutes))
         )}`
     ),
   capacityLabel:
@@ -354,9 +509,9 @@ const summarizeGroup = (group: OperatingHoursGroupDraft, intervalMinutes: string
 export const summarizeCreateScheduleDraft = (draft: CreateClassScheduleDraft): OperatingHoursSummary => {
   const periodLabel =
     draft.operationStartDate && (draft.isAlwaysOpen || draft.operationEndDate)
-      ? `${formatDateText(draft.operationStartDate)} ~ ${
-          draft.isAlwaysOpen ? `${formatDateText(resolveOperationEndDate(draft) ?? "")}까지 생성 (90일)` : formatDateText(draft.operationEndDate)
-        }`
+      ? draft.isAlwaysOpen
+        ? "상시 운영"
+        : `${formatDateText(draft.operationStartDate)} ~ ${formatDateText(draft.operationEndDate)}`
       : "운영 기간을 설정해 주세요."
 
   return {
@@ -539,6 +694,7 @@ export const deriveOperatingDraftFromScheduleSlots = (
     operationEndDate,
     isAlwaysOpen: false,
     intervalMinutes,
+    timeInputMode: "range",
     defaultCapacity: usePerTimeRangeCapacity ? "" : defaultCapacity,
     usePerTimeRangeCapacity,
     operatingMode,
@@ -657,7 +813,7 @@ export const summarizeExistingWeeklySchedules = (scheduleSlots: EditableStudioSc
       weekdayLabel: weekdayLabels[weekday] ?? "",
       timeLabels: slots
         .sort((left, right) => left.startTime.localeCompare(right.startTime))
-        .map((slot) => `${formatKoreanMeridiemTime(slot.startTime)} ~ ${formatKoreanMeridiemTime(slot.endTime)}`)
+        .map((slot) => `${format24HourTime(slot.startTime)} ~ ${format24HourTime(slot.endTime)}`)
     }))
 }
 

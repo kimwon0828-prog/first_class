@@ -86,6 +86,14 @@ export const formatKoreanMeridiemTime = (value: string) => {
   return `${meridiem} ${displayHour}:${String(minutes).padStart(2, "0")}`
 }
 
+export const format24HourTime = (value: string) => {
+  const matched = /^(\d{2}):(\d{2})/.exec(value)
+  if (!matched) return value
+
+  const normalized = `${matched[1]}:${matched[2]}`
+  return isValidTimeValue(normalized) ? normalized : value
+}
+
 export const formatWeekdaySet = (weekdays: number[]) =>
   [...weekdays]
     .sort((left, right) => left - right)

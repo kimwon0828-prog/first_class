@@ -506,7 +506,8 @@ const mapClass = (
 const mapStudioClassListItem = (
   row: StudioClassListRow,
   teacherName: string | null,
-  scheduleSummary: StudioClassScheduleSummary
+  scheduleSummary: StudioClassScheduleSummary,
+  operatingRuleState: StudioClassListItem["operatingRuleState"]
 ): StudioClassListItem => {
   const resolvedTeacherName = teacherName ?? row.teacher_display_name ?? null
 
@@ -529,7 +530,8 @@ const mapStudioClassListItem = (
     teacherName: resolvedTeacherName,
     coverImageUrl: row.cover_image_url ?? null,
     isActive: row.is_active,
-    scheduleSummary
+    scheduleSummary,
+    operatingRuleState
   }
 }
 
@@ -682,6 +684,40 @@ const mapOperatingRule = (row?: Record<string,unknown> | null): import("@/featur
   endDate: row.end_date ? String(row.end_date) : null, rollingDays: 90, revision: Number(row.revision),
   isActive: Boolean(row.is_active), slots: row.slots as import("@/features/studio/lib/class-operating-rule").ClassOperatingRuleInput["slots"]
 }) : null
+
+const getOperatingRuleStateByClassId = async (
+  supabase: Awaited<ReturnType<typeof getSupabaseServerClient>>,
+  classIds: string[]
+): Promise<{
+  status: "loaded" | "error"
+  rules: Map<string, NonNullable<StudioClassListItem["operatingRuleState"]["rule"]>>
+}> => {
+  const uniqueClassIds = Array.from(new Set(classIds.filter(Boolean)))
+  const rules = new Map<string, NonNullable<StudioClassListItem["operatingRuleState"]["rule"]>>()
+
+  for (const ids of chunkArray(uniqueClassIds, 50)) {
+    const { data, error } = await supabase
+      .from("class_operating_rules")
+      .select("id, class_id, operation_type, start_date, end_date, slots, revision, is_active")
+      .in("class_id", ids)
+
+    if (error) {
+      console.error("[listStudioClassListItems] operating rules query failed", {
+        message: error.message ?? null,
+        code: error.code ?? null
+      })
+      return { status: "error", rules: new Map() }
+    }
+
+    for (const row of (data ?? []) as Array<Record<string, unknown>>) {
+      const rule = mapOperatingRule(row)
+      const classId = typeof row.class_id === "string" ? row.class_id : null
+      if (classId && rule) rules.set(classId, rule)
+    }
+  }
+
+  return { status: "loaded", rules }
+}
 
 /** PostgREST 는 한 응답에서 최대 1000 row 만 돌려준다. 그 이상은 나눠 받는다. */
 const SCHEDULE_SUMMARY_PAGE_SIZE = 1000
@@ -2901,21 +2937,28 @@ export const supabaseDataAdapter: DataAdapter = {
       supabase,
       (data ?? []) as StudioClassListRow[]
     )
-    const [scheduleSummaryByClassId, teacherNameMap] = await Promise.all([
+    const [scheduleSummaryByClassId, teacherNameMap, operatingRules] = await Promise.all([
       getScheduleSummaryByClassId(
         supabase,
         classRows.map((row) => row.id)
       ),
       getStudioTeacherDisplayNameMap(
         classRows.map((row) => row.teacher_id).filter((id): id is string => Boolean(id))
-      ).catch(() => new Map<string, string>())
+      ).catch(() => new Map<string, string>()),
+      getOperatingRuleStateByClassId(
+        supabase,
+        classRows.map((row) => row.id)
+      )
     ])
 
     const mapped = classRows.map((row) =>
       mapStudioClassListItem(
         row,
         row.teacher_id ? (teacherNameMap.get(row.teacher_id) ?? null) : null,
-        scheduleSummaryByClassId.get(row.id) ?? EMPTY_STUDIO_CLASS_SCHEDULE_SUMMARY
+        scheduleSummaryByClassId.get(row.id) ?? EMPTY_STUDIO_CLASS_SCHEDULE_SUMMARY,
+        operatingRules.status === "error"
+          ? { status: "error", rule: null }
+          : { status: "loaded", rule: operatingRules.rules.get(row.id) ?? null }
       )
     )
 

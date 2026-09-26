@@ -1,7 +1,11 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
-import { createDefaultCreateClassScheduleDraft, type CreateClassScheduleDraft } from "./studio-operating-hours"
+import {
+  createDefaultCreateClassScheduleDraft,
+  normalizeStoredScheduleDraft,
+  type CreateClassScheduleDraft
+} from "./studio-operating-hours"
 
 export type ClassFormDraftValues = {
   title: string
@@ -28,7 +32,7 @@ type StoredDraft = { version: number; values: ClassFormDraftValues }
 const readDraft = (raw: string | null): StoredDraft | null => {
   try {
     const candidate = JSON.parse(raw ?? "null")
-    if (!candidate || ![1, 2, 3, 4, 5].includes(candidate.version) || !candidate.values) return null
+    if (!candidate || ![1, 2, 3, 4, 5, 6].includes(candidate.version) || !candidate.values) return null
     const values = candidate.values
     const schedule = values.scheduleDraft
     return { version: candidate.version, values: {
@@ -45,7 +49,7 @@ const readDraft = (raw: string | null): StoredDraft | null => {
       curriculum: String(values.curriculum ?? ""), coverImageUrl: String(values.coverImageUrl ?? ""),
       visibility: values.visibility === "public" ? "public" : "private",
       scheduleDraft: schedule && Array.isArray(schedule.groups)
-        ? { ...createDefaultCreateClassScheduleDraft(), ...schedule }
+        ? normalizeStoredScheduleDraft(schedule as CreateClassScheduleDraft)
         : createDefaultCreateClassScheduleDraft()
     } }
   } catch { return null }
@@ -92,7 +96,7 @@ export const useClassCreateDraft = (
     if (!enabled || !ready || pendingDraft || saved) return
     const timer = window.setTimeout(() => {
       try {
-        localStorage.setItem(storageKey, JSON.stringify({ version: 5, values, updatedAt: new Date().toISOString() }))
+        localStorage.setItem(storageKey, JSON.stringify({ version: 6, values, updatedAt: new Date().toISOString() }))
       } catch { setStorageUnavailable(true) }
     }, 700)
     return () => window.clearTimeout(timer)

@@ -264,7 +264,23 @@ const defaultClasses: ClassSummary[] = [
     teacherDisplayName: "김지은 선생님",
     teacherName: "김지은 선생님",
     coverImageUrl: null,
-    isActive: true
+    isActive: true,
+    operatingRule: {
+      id: "10000000-0000-4000-8000-000000000001",
+      operationType: "rolling",
+      startDate: "2026-09-01",
+      endDate: null,
+      rollingDays: 90,
+      revision: 1,
+      isActive: true,
+      slots: [1, 3].map((weekday) => ({
+        weekday,
+        startTime: "15:00",
+        endTime: "16:00",
+        capacity: 4,
+        seriesId: "11000000-0000-4000-8000-000000000001"
+      }))
+    }
   },
   {
     id: "class-2",
@@ -290,7 +306,23 @@ const defaultClasses: ClassSummary[] = [
     teacherDisplayName: "김지은 선생님",
     teacherName: "김지은 선생님",
     coverImageUrl: null,
-    isActive: true
+    isActive: true,
+    operatingRule: {
+      id: "10000000-0000-4000-8000-000000000002",
+      operationType: "fixed_period",
+      startDate: "2026-09-01",
+      endDate: "2026-11-30",
+      rollingDays: 90,
+      revision: 1,
+      isActive: true,
+      slots: [2, 4].map((weekday) => ({
+        weekday,
+        startTime: "17:00",
+        endTime: "18:00",
+        capacity: 5,
+        seriesId: "11000000-0000-4000-8000-000000000002"
+      }))
+    }
   },
   {
     id: "class-3",
@@ -316,7 +348,23 @@ const defaultClasses: ClassSummary[] = [
     teacherDisplayName: "박서현 선생님",
     teacherName: "박서현 선생님",
     coverImageUrl: null,
-    isActive: true
+    isActive: false,
+    operatingRule: {
+      id: "10000000-0000-4000-8000-000000000004",
+      operationType: "rolling",
+      startDate: "2026-09-01",
+      endDate: null,
+      rollingDays: 90,
+      revision: 1,
+      isActive: true,
+      slots: [2, 4].map((weekday) => ({
+        weekday,
+        startTime: "17:00",
+        endTime: "18:00",
+        capacity: 4,
+        seriesId: "11000000-0000-4000-8000-000000000004"
+      }))
+    }
   },
   {
     id: "class-4",
@@ -408,6 +456,9 @@ const teacherSignupRequests =
 
 const cloneClassSummary = (item: ClassSummary): ClassSummary => ({
   ...item,
+  operatingRule: item.operatingRule
+    ? { ...item.operatingRule, slots: item.operatingRule.slots.map((slot) => ({ ...slot })) }
+    : item.operatingRule,
   schedules: item.schedules?.map((schedule) => ({ ...schedule }))
 })
 
@@ -438,6 +489,7 @@ const toStudioClassListItem = (item: ClassSummary): StudioClassListItem => ({
   teacherName: item.teacherName,
   coverImageUrl: item.coverImageUrl,
   isActive: item.isActive,
+  operatingRuleState: { status: "loaded", rule: item.operatingRule ?? null },
   scheduleSummary: summarizeStudioClassSchedules(
     (item.schedules ?? []).map((schedule) => ({
       scheduleType: schedule.scheduleType,

@@ -59,6 +59,56 @@
   gap: var(--s3);
 }
 
+.singleFieldRow {
+  width: min(100%, 340px);
+}
+
+.operationTypeGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--s3);
+}
+
+.operationTypeCard {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  min-height: 112px;
+  padding: 16px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  cursor: pointer;
+}
+
+.operationTypeCardSelected {
+  border-color: var(--brand-700);
+  background: var(--brand-50);
+  box-shadow: 0 0 0 1px var(--brand-700);
+}
+
+.operationTypeCard input {
+  margin-top: 3px;
+  accent-color: var(--brand-700);
+}
+
+.operationTypeCard span {
+  display: grid;
+  gap: 6px;
+}
+
+.operationTypeCard strong {
+  font-size: 15px;
+  line-height: 21px;
+  color: var(--text-1);
+}
+
+.operationTypeCard small {
+  color: var(--text-2);
+  font-size: 12px;
+  line-height: 18px;
+}
+
 .field {
   display: grid;
   gap: var(--s2);
@@ -293,6 +343,7 @@
   }
 
   .rowGrid,
+  .operationTypeGrid,
   .timeRow {
     grid-template-columns: 1fr;
   }

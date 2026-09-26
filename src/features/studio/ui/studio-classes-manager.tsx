@@ -6,6 +6,7 @@ import { useSearchParams } from "next/navigation"
 
 import { formatStoredTargetGrades } from "@/shared/constants/grade-options"
 import { submitToggleStudioClassActiveAction } from "@/features/studio/actions/toggle-studio-class-active"
+import { presentClassOperatingRuleState } from "@/features/studio/lib/class-operation-presentation"
 import type { StudioClassListItem } from "@/shared/lib/db/adapter"
 import { formatClassSubjectDisplayLabel } from "@/shared/lib/subject-master"
 import styles from "@/features/studio/ui/studio-classes-manager.module.css"
@@ -41,6 +42,12 @@ export const StudioClassesManager = ({ items }: StudioClassesManagerProps) => {
   const totalCount = items.length
   const activeCount = items.filter((item) => item.isActive).length
   const inactiveCount = totalCount - activeCount
+  const hasOperatingRuleReadError = items.some((item) => item.operatingRuleState.status === "error")
+  const legacyItems = hasOperatingRuleReadError
+    ? []
+    : items.filter(
+        (item) => item.operatingRuleState.status === "loaded" && !item.operatingRuleState.rule
+      )
   const filteredItems = useMemo(() => {
     const needle = query.trim().toLowerCase()
 
@@ -188,6 +195,26 @@ export const StudioClassesManager = ({ items }: StudioClassesManagerProps) => {
         </div>
       </section>
 
+      {legacyItems.length > 0 ? (
+        <section className={styles.operationNotice} aria-label="운영 방식 확인 안내">
+          <div>
+            <strong>운영 방식 확인이 필요한 수업 {legacyItems.length}개</strong>
+            <p>기존 일정은 그대로 유지되며, 앞으로의 운영 방식을 설정할 수 있습니다.</p>
+          </div>
+          <button
+            type="button"
+            className={styles.operationNoticeAction}
+            onClick={() =>
+              document
+                .getElementById(`studio-class-row-${legacyItems[0]?.id}`)
+                ?.scrollIntoView({ behavior: "smooth", block: "center" })
+            }
+          >
+            대상 수업 보기
+          </button>
+        </section>
+      ) : null}
+
       <section className={styles.workspace} aria-label="수업 목록">
         <p className={styles.resultMeta}>
           전체 {totalCount}개 · 공개 {activeCount}개 · 비공개 {inactiveCount}개
@@ -220,14 +247,15 @@ export const StudioClassesManager = ({ items }: StudioClassesManagerProps) => {
               <span>수업</span>
               <span>대상 · 유형</span>
               <span>담당</span>
-              <span>예약 일정</span>
+              <span>운영 일정</span>
               <span>공개</span>
               <span />
             </div>
 
             <ul className={styles.list}>
-              {visibleItems.map((item) => (
-                <li key={item.id} className={styles.row}>
+              {visibleItems.map((item) => {
+                const operation = presentClassOperatingRuleState(item.operatingRuleState)
+                return <li key={item.id} id={`studio-class-row-${item.id}`} className={styles.row}>
                   <div className={styles.cellClass}>
                     <Link
                       href={studioPath(`/studio/classes/${item.id}/edit`)}
@@ -255,15 +283,31 @@ export const StudioClassesManager = ({ items }: StudioClassesManagerProps) => {
                     )}
                   </div>
 
-                  <div className={styles.cellText}>
-                    {item.scheduleSummary.kind === "none" ? (
-                      <span className={styles.cellMuted}>{item.scheduleSummary.primary}</span>
+                  <div className={`${styles.cellText} ${styles.operationCell}`}>
+                    {operation.kind === "error" ? (
+                      <>
+                        <strong className={styles.operationError}>{operation.title}</strong>
+                        <span className={styles.cellSub}>{operation.detail}</span>
+                      </>
+                    ) : operation.kind === "configured" ? (
+                      <>
+                        <strong className={styles.operationTitle}>{operation.title}</strong>
+                        <span className={styles.cellSub}>{operation.detail}</span>
+                      </>
                     ) : (
                       <>
-                        {item.scheduleSummary.primary}
-                        {item.scheduleSummary.secondary ? (
-                          <span className={styles.cellSub}>{item.scheduleSummary.secondary}</span>
-                        ) : null}
+                        <strong className={styles.operationRequired}>{operation.title}</strong>
+                        <span className={styles.cellSub}>{operation.detail}</span>
+                        <Link
+                          href={studioPath(`/studio/classes/${item.id}/edit?section=operations`)}
+                          className={styles.operationSetupLink}
+                          aria-busy={pendingHref === `/studio/classes/${item.id}/edit?section=operations`}
+                          onClick={() => setPendingHref(`/studio/classes/${item.id}/edit?section=operations`)}
+                        >
+                          {pendingHref === `/studio/classes/${item.id}/edit?section=operations`
+                            ? "이동 중..."
+                            : "운영 일정 설정"}
+                        </Link>
                       </>
                     )}
                   </div>
@@ -314,7 +358,7 @@ export const StudioClassesManager = ({ items }: StudioClassesManagerProps) => {
                     </div>
                   </div>
                 </li>
-              ))}
+              })}
             </ul>
           </>
         )}

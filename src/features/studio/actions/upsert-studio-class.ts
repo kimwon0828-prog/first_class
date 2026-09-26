@@ -482,6 +482,9 @@ export async function upsertStudioClassAction(
         if (!Number.isInteger(operatingRuleRevision) || operatingRuleRevision < 0) throw new Error("invalid_revision")
       } catch { return safeError("운영 규칙을 확인해 주세요. 운영시간을 다시 설정한 뒤 저장해 주세요.") }
     }
+    if (mode === "create" && !operatingRule) {
+      return safeError("운영 방식을 선택하고 시작일, 요일, 시간과 정원을 설정해 주세요.")
+    }
     const parsedSlots = parseScheduleSlots(formData)
     if (!parsedSlots.ok) {
       console.error("[upsertStudioClass validation failed]", {

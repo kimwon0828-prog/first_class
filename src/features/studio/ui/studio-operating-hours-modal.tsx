@@ -26,6 +26,7 @@ type StudioOperatingHoursModalProps = {
   isOpen: boolean
   title: string
   value: CreateClassScheduleDraft
+  operationTypeSelected?: boolean
   onClose: () => void
   onSave: (next: CreateClassScheduleDraft) => void
 }
@@ -171,10 +172,12 @@ export const StudioOperatingHoursModal = ({
   isOpen,
   title,
   value,
+  operationTypeSelected = true,
   onClose,
   onSave
 }: StudioOperatingHoursModalProps) => {
   const [draft, setDraft] = useState<CreateClassScheduleDraft>(value)
+  const [selectedOperationType, setSelectedOperationType] = useState<"rolling" | "fixed_period" | null>(null)
   const [error, setError] = useState<string | null>(null)
   const todayKey = useMemo(() => formatSeoulDateKey(new Date()) ?? "", [])
   const modalRef = useRef<HTMLDivElement>(null)
@@ -184,10 +187,22 @@ export const StudioOperatingHoursModal = ({
       return
     }
 
-    const seeded = value.groups.length > 0 ? cloneDraft(value) : createDraftTemplateForMode(value.operatingMode, value)
+    const template = createDraftTemplateForMode(value.operatingMode, value)
+    const seeded = value.groups.length > 0
+      ? cloneDraft(value)
+      : {
+          ...template,
+          groups: template.groups.map((group) => ({
+            ...group,
+            weekdays: []
+          }))
+        }
     setDraft(seeded)
+    setSelectedOperationType(
+      operationTypeSelected ? (value.isAlwaysOpen ? "rolling" : "fixed_period") : null
+    )
     setError(null)
-  }, [isOpen, value])
+  }, [isOpen, operationTypeSelected, value])
 
   useEffect(() => {
     if (!isOpen) {
@@ -268,6 +283,10 @@ export const StudioOperatingHoursModal = ({
   }
 
   const handleSave = () => {
+    if (!selectedOperationType) {
+      setError("운영 방식을 선택해 주세요.")
+      return
+    }
     const message = validateDraft(draft, todayKey, value.operationStartDate)
     if (message) {
       setError(message)
@@ -280,6 +299,16 @@ export const StudioOperatingHoursModal = ({
     })
   }
 
+  const handleOperationTypeChange = (operationType: "rolling" | "fixed_period") => {
+    setSelectedOperationType(operationType)
+    setDraft((current) => ({
+      ...current,
+      isAlwaysOpen: operationType === "rolling",
+      operationEndDate: operationType === "rolling" ? "" : current.operationEndDate
+    }))
+    setError(null)
+  }
+
   return (
     <div className={styles.overlay} role="dialog" aria-modal="true" aria-label={title}>
       <div ref={modalRef} className={styles.modal}>
@@ -289,7 +318,79 @@ export const StudioOperatingHoursModal = ({
 
         <div className={styles.section}>
           <div className={styles.sectionHeader}>
-            <strong className={styles.sectionTitle}>1. 예약 간격 및 정원</strong>
+            <strong className={styles.sectionTitle}>1. 운영 방식</strong>
+          </div>
+          <div className={styles.operationTypeGrid}>
+            <label
+              className={`${styles.operationTypeCard} ${
+                selectedOperationType === "rolling" ? styles.operationTypeCardSelected : ""
+              }`}
+            >
+              <input
+                type="radio"
+                name="operationType"
+                checked={selectedOperationType === "rolling"}
+                onChange={() => handleOperationTypeChange("rolling")}
+              />
+              <span>
+                <strong>상시 운영</strong>
+                <small>종료일 없이 운영합니다. 공개 중에는 설정한 요일과 시간에 맞춰 체험 일정을 계속 생성해요.</small>
+              </span>
+            </label>
+            <label
+              className={`${styles.operationTypeCard} ${
+                selectedOperationType === "fixed_period" ? styles.operationTypeCardSelected : ""
+              }`}
+            >
+              <input
+                type="radio"
+                name="operationType"
+                checked={selectedOperationType === "fixed_period"}
+                onChange={() => handleOperationTypeChange("fixed_period")}
+              />
+              <span>
+                <strong>기간 지정 운영</strong>
+                <small>정해진 시작일부터 종료일까지 체험을 운영해요.</small>
+              </span>
+            </label>
+          </div>
+        </div>
+
+        {selectedOperationType ? <>
+        <div className={styles.section}>
+          <div className={styles.sectionHeader}>
+            <strong className={styles.sectionTitle}>2. 운영 기간</strong>
+          </div>
+          <div className={selectedOperationType === "fixed_period" ? styles.rowGrid : styles.singleFieldRow}>
+            <label className={styles.field}>
+              <span className={styles.label}>운영 시작일</span>
+              <input
+                className={styles.input}
+                type="date"
+                value={draft.operationStartDate}
+                min={value.operationStartDate && value.operationStartDate < todayKey ? value.operationStartDate : todayKey}
+                onChange={(event) => setDraft((current) => ({ ...current, operationStartDate: event.target.value }))}
+              />
+            </label>
+            {selectedOperationType === "fixed_period" ? <label className={styles.field}>
+              <span className={styles.label}>운영 종료일</span>
+              <input
+                className={styles.input}
+                type="date"
+                value={draft.operationEndDate}
+                min={draft.operationStartDate || todayKey}
+                onChange={(event) => setDraft((current) => ({ ...current, operationEndDate: event.target.value }))}
+              />
+            </label> : null}
+          </div>
+          {selectedOperationType === "rolling" ? (
+            <p className={styles.hint}>종료일 없이 운영합니다. 공개 중에는 설정한 요일과 시간에 맞춰 체험 일정을 계속 생성해요.</p>
+          ) : <p className={styles.hint}>설정한 기간 동안만 예약 가능한 체험 일정을 생성해요.</p>}
+        </div>
+
+        <div className={styles.section}>
+          <div className={styles.sectionHeader}>
+            <strong className={styles.sectionTitle}>3. 예약 간격 및 정원</strong>
           </div>
           <div className={styles.rowGrid}>
             <label className={styles.field}>
@@ -307,7 +408,7 @@ export const StudioOperatingHoursModal = ({
               </select>
             </label>
             <label className={styles.field}>
-              <span className={styles.label}>타임당 정원</span>
+              <span className={styles.label}>회차당 정원</span>
               <input
                 className={styles.input}
                 type="number"
@@ -319,7 +420,7 @@ export const StudioOperatingHoursModal = ({
             </label>
           </div>
           <p className={styles.hint}>
-            {draft.intervalMinutes}분 수업이 같은 간격으로 생성됩니다. · 타임당 정원 {draft.defaultCapacity ? `${draft.defaultCapacity}명` : "정원 입력"}
+            {draft.intervalMinutes}분 수업이 같은 간격으로 생성됩니다. · 회차당 정원 {draft.defaultCapacity ? `${draft.defaultCapacity}명` : "정원 입력"}
           </p>
           <label className={styles.checkboxRow}>
             <input
@@ -333,47 +434,7 @@ export const StudioOperatingHoursModal = ({
 
         <div className={styles.section}>
           <div className={styles.sectionHeader}>
-            <strong className={styles.sectionTitle}>2. 운영 기간</strong>
-          </div>
-          <div className={styles.rowGrid}>
-            <label className={styles.field}>
-              <span className={styles.label}>시작일</span>
-              <input
-                className={styles.input}
-                type="date"
-                value={draft.operationStartDate}
-                min={value.operationStartDate && value.operationStartDate < todayKey ? value.operationStartDate : todayKey}
-                onChange={(event) => setDraft((current) => ({ ...current, operationStartDate: event.target.value }))}
-              />
-            </label>
-            <label className={styles.field}>
-              <span className={styles.label}>종료일</span>
-              <input
-                className={styles.input}
-                type="date"
-                value={draft.operationEndDate}
-                min={draft.operationStartDate || todayKey}
-                disabled={draft.isAlwaysOpen}
-                onChange={(event) => setDraft((current) => ({ ...current, operationEndDate: event.target.value }))}
-              />
-            </label>
-          </div>
-          <label className={styles.checkboxRow}>
-            <input
-              type="checkbox"
-              checked={draft.isAlwaysOpen}
-              onChange={(event) => setDraft((current) => ({ ...current, isAlwaysOpen: event.target.checked }))}
-            />
-            <span>상시 운영 (90일 예약 일정 자동 연장)</span>
-          </label>
-          {draft.isAlwaysOpen ? (
-            <p className={styles.hint}>공개 중인 수업은 앞으로 90일간 예약 일정이 자동으로 열립니다. 비공개로 전환하면 자동 연장이 중단됩니다.</p>
-          ) : null}
-        </div>
-
-        <div className={styles.section}>
-          <div className={styles.sectionHeader}>
-            <strong className={styles.sectionTitle}>3. 운영시간 구분 방식</strong>
+            <strong className={styles.sectionTitle}>4. 운영 요일 구성</strong>
           </div>
           <div className={styles.modeList}>
             {[
@@ -395,7 +456,7 @@ export const StudioOperatingHoursModal = ({
 
         <div className={styles.section}>
           <div className={styles.sectionHeader}>
-            <strong className={styles.sectionTitle}>4. 운영시간 입력</strong>
+            <strong className={styles.sectionTitle}>5. 운영 요일 및 시간</strong>
           </div>
           <p className={styles.helpText}>마지막 시간은 학부모가 선택할 수 있는 마지막 수업 시작 시간입니다.</p>
 
@@ -467,6 +528,7 @@ export const StudioOperatingHoursModal = ({
                           <input
                             className={styles.input}
                             type="time"
+                            lang="en-GB"
                             value={range.startTime}
                             onChange={(event) =>
                               updateGroup(group.id, (current) => ({
@@ -484,6 +546,7 @@ export const StudioOperatingHoursModal = ({
                           <input
                             className={styles.input}
                             type="time"
+                            lang="en-GB"
                             value={range.lastStartTime}
                             onChange={(event) =>
                               updateGroup(group.id, (current) => ({
@@ -572,6 +635,7 @@ export const StudioOperatingHoursModal = ({
             </button>
           ) : null}
         </div>
+        </> : null}
 
         {error ? <p className={styles.errorText}>{error}</p> : null}
 

@@ -1,4 +1,8 @@
-import type { CreateClassScheduleDraft } from "./studio-operating-hours"
+import {
+  buildOperatingTimeRangeSlots,
+  type CreateClassScheduleDraft,
+  type OperatingHoursTimeRangeDraft
+} from "./studio-operating-hours"
 
 export type ClassOperatingRuleInput = {
   operationType: "rolling" | "fixed_period"
@@ -18,7 +22,6 @@ const dateValid = (value: unknown): value is string => typeof value === "string"
 const timeValid = (value: unknown): value is string => typeof value === "string" && /^([01]\d|2[0-3]):[0-5]\d$/.test(value)
 const uuidValid = (value: unknown) => typeof value === "string" && /^[\da-f]{8}(-[\da-f]{4}){3}-[\da-f]{12}$/i.test(value)
 const minutes = (time: string) => Number(time.slice(0,2))*60 + Number(time.slice(3))
-const timeText = (value: number) => `${String(Math.floor(value/60)).padStart(2,"0")}:${String(value%60).padStart(2,"0")}`
 
 export function rollingPreviewDraft(draft: CreateClassScheduleDraft, today: string): CreateClassScheduleDraft {
   return draft.isAlwaysOpen ? {...draft,isAlwaysOpen:false,
@@ -57,12 +60,13 @@ export function parseClassOperatingRule(value: unknown): ClassOperatingRuleInput
 
 export function classOperatingRuleFromDraft(draft: CreateClassScheduleDraft): ClassOperatingRuleInput {
   const slots: ClassOperatingRuleInput["slots"] = []
-  const interval = Number(draft.intervalMinutes)
-  if (!Number.isInteger(interval) || interval <= 0) throw new Error("invalid_operating_interval")
+  const duration = Number(draft.intervalMinutes)
+  if (!Number.isInteger(duration) || duration <= 0) throw new Error("invalid_operating_interval")
   for (const group of draft.groups) for (const day of group.weekdays) for (const range of group.timeRanges) {
-    if (!timeValid(range.startTime) || !timeValid(range.lastStartTime)) throw new Error("invalid_operating_time")
-    for (let start=minutes(range.startTime); start<=minutes(range.lastStartTime); start+=interval) {
-      slots.push({weekday:day,startTime:timeText(start),endTime:timeText(start+interval),
+    const generated = buildOperatingTimeRangeSlots(range,duration,draft.timeInputMode)
+    if (generated.length === 0) throw new Error("invalid_operating_time")
+    for (const slot of generated) {
+      slots.push({weekday:day,startTime:slot.startTime,endTime:slot.endTime,
         capacity:Number(draft.usePerTimeRangeCapacity ? range.capacity : draft.defaultCapacity),seriesId:group.id})
     }
   }
@@ -71,27 +75,40 @@ export function classOperatingRuleFromDraft(draft: CreateClassScheduleDraft): Cl
 }
 
 export function classOperatingRuleToDraft(rule: ClassOperatingRule): CreateClassScheduleDraft {
-  const interval = minutes(rule.slots[0].endTime)-minutes(rule.slots[0].startTime)
-  const groups = new Map<string,CreateClassScheduleDraft["groups"][number]>()
-  for (const slot of rule.slots) {
-    const key = slot.seriesId
-    const group = groups.get(key) ?? {id:slot.seriesId,weekdays:[slot.weekday],timeRanges:[]}
-    if (!group.weekdays.includes(slot.weekday)) group.weekdays.push(slot.weekday)
-    if (!group.timeRanges.some((range)=>range.startTime===slot.startTime))
-      group.timeRanges.push({id:`${slot.weekday}-${slot.startTime}`,startTime:slot.startTime,lastStartTime:slot.startTime,capacity:String(slot.capacity)})
-    groups.set(key,group)
-  }
-  for (const group of groups.values()) {
-    const compact: typeof group.timeRanges=[]
-    for (const range of group.timeRanges.sort((a,b)=>a.startTime.localeCompare(b.startTime))) {
-      const previous=compact.at(-1)
-      if (previous && previous.capacity===range.capacity && minutes(previous.lastStartTime)+interval===minutes(range.startTime)) previous.lastStartTime=range.startTime
-      else compact.push({...range})
+  const duration = minutes(rule.slots[0].endTime)-minutes(rule.slots[0].startTime)
+  const seriesIds = [...new Set(rule.slots.map((slot) => slot.seriesId))]
+  const series = seriesIds.map((seriesId) => {
+    const allSlots = rule.slots.filter((slot) => slot.seriesId === seriesId)
+    const weekdays = [...new Set(allSlots.map((slot) => slot.weekday))].sort((a,b)=>a-b)
+    const firstDaySlots = allSlots.filter((slot) => slot.weekday === weekdays[0])
+      .sort((left,right)=>left.startTime.localeCompare(right.startTime))
+    const firstStart = minutes(firstDaySlots[0].startTime)
+    const regular = new Set(firstDaySlots.map((slot) => slot.capacity)).size === 1
+      && firstDaySlots.every((slot) => (minutes(slot.startTime)-firstStart)%duration===0)
+    return {seriesId,weekdays,slots:firstDaySlots,regular}
+  })
+  const timeInputMode: NonNullable<CreateClassScheduleDraft["timeInputMode"]> =
+    series.every((item)=>item.regular) ? "range" : "individual"
+  const groups = series.map((item) => {
+    const individual = item.slots.map<OperatingHoursTimeRangeDraft>((slot) => ({
+      id:`${item.seriesId}-${slot.startTime}`,startTime:slot.startTime,operationEndTime:slot.endTime,
+      lastStartTime:slot.startTime,capacity:String(slot.capacity)
+    }))
+    if (timeInputMode === "individual") {
+      return {id:item.seriesId,weekdays:item.weekdays,timeRanges:individual}
     }
-    group.timeRanges=compact
-  }
+    const compact: OperatingHoursTimeRangeDraft[]=[]
+    for (const range of individual) {
+      const previous=compact.at(-1)
+      if (previous && minutes(previous.lastStartTime)+duration===minutes(range.startTime)) {
+        previous.lastStartTime=range.startTime
+        previous.operationEndTime=range.operationEndTime
+      } else compact.push({...range})
+    }
+    return {id:item.seriesId,weekdays:item.weekdays,timeRanges:compact}
+  })
   return {operationStartDate:rule.startDate,operationEndDate:rule.endDate ?? "",isAlwaysOpen:rule.operationType === "rolling",
-    intervalMinutes:String(interval),defaultCapacity:String(rule.slots[0].capacity),usePerTimeRangeCapacity:true,
-    operatingMode:groups.size === 1 ? "same" : "custom",groups:[...groups.values()],
+    intervalMinutes:String(duration),timeInputMode,defaultCapacity:String(rule.slots[0].capacity),usePerTimeRangeCapacity:true,
+    operatingMode:groups.length === 1 ? "same" : "custom",groups,
     extraSlots:[],closedDates:[],closedSlotKeys:[]}
 }

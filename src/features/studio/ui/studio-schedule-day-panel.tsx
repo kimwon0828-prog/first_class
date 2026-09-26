@@ -7,8 +7,8 @@ import { createStudioClassScheduleAction } from "@/features/studio/actions/creat
 import { deleteStudioClassScheduleAction } from "@/features/studio/actions/delete-studio-class-schedule"
 import {
   addMinutesToTime,
+  format24HourTime,
   formatDateHeadline,
-  formatKoreanMeridiemTime
 } from "@/features/studio/lib/class-schedule-rule-utils"
 import {
   closeStudioClassSchedulesForDateAction,
@@ -152,6 +152,7 @@ export const StudioScheduleDayPanel = ({
             <input
               className={styles.input}
               type="time"
+              lang="en-GB"
               value={extraStartTime}
               onChange={(event) => setExtraStartTime(event.target.value)}
               disabled={isPending || isPast}
@@ -229,7 +230,7 @@ export const StudioScheduleDayPanel = ({
             <div className={styles.timeHeader}>
               <div>
                 <strong className={styles.timeHeadline}>
-                  {formatKoreanMeridiemTime(item.startTime)} ~ {formatKoreanMeridiemTime(item.endTime)}
+                  {format24HourTime(item.startTime)} ~ {format24HourTime(item.endTime)}
                 </strong>
                 <div className={styles.badgeRow}>
                   <span className={styles.metaBadge}>신청 {item.activeReservationCount}건</span>

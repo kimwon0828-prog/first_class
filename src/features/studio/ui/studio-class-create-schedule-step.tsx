@@ -10,8 +10,8 @@ import {
   summarizeCreateScheduleDraft,
 } from "@/features/studio/lib/studio-operating-hours"
 import {
+  format24HourTime,
   formatDateHeadline,
-  formatKoreanMeridiemTime,
   parseMonth,
   toMonthValue
 } from "@/features/studio/lib/class-schedule-rule-utils"
@@ -202,7 +202,7 @@ export const StudioClassCreateScheduleStep = ({
                       <article key={item.classScheduleId} className={styles.generatedSlotCard}>
                         <div className={styles.generatedSlotHeader}>
                           <strong className={styles.generatedSlotTime}>
-                            {formatKoreanMeridiemTime(item.startTime)} ~ {formatKoreanMeridiemTime(item.endTime)}
+                            {format24HourTime(item.startTime)} ~ {format24HourTime(item.endTime)}
                           </strong>
                           <span
                             className={`${styles.metricChipMuted} ${
