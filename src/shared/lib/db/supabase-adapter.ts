@@ -147,6 +147,9 @@ type ClassRow = {
   curriculum?: string | null
   teacher_intro?: string | null
   trial_price: number
+  regular_price_type?: import("@/shared/lib/regular-price").RegularPriceType | null
+  regular_price_amount?: number | null
+  regular_price_note?: string | null
   teacher_id: string | null
   teacher_display_name?: string | null
   cover_image_url?: string | null
@@ -493,6 +496,9 @@ const mapClass = (
     curriculum: row.curriculum ?? null,
     teacherIntro: row.teacher_intro ?? null,
     trialPrice: row.trial_price,
+    regularPriceType: row.regular_price_type ?? null,
+    regularPriceAmount: row.regular_price_amount ?? null,
+    regularPriceNote: row.regular_price_note ?? null,
     teacherId: row.teacher_id,
     teacherDisplayName: resolvedTeacherName,
     teacherName: resolvedTeacherName,
@@ -2461,6 +2467,8 @@ const LEGACY_CLASS_BASE_SELECT_FIELDS =
 const CLASS_BASE_SELECT_FIELDS =
   `${LEGACY_CLASS_BASE_SELECT_FIELDS}, assignment_mode, subject_category_id, subject_id`
 
+const CLASS_SAVE_SELECT_FIELDS = `${CLASS_BASE_SELECT_FIELDS}, regular_price_type, regular_price_amount, regular_price_note`
+
 const LEGACY_STUDIO_CLASS_LIST_SELECT_FIELDS =
   "id, program_type, title, subject, target_age, trial_price, teacher_id, teacher_display_name, cover_image_url, is_active"
 
@@ -2481,7 +2489,7 @@ const ORGANIZATION_LOCATION_SELECT_FIELDS =
 const ORGANIZATION_BASE_SELECT_FIELDS = "organizations(name, branch_name)"
 
 const CLASS_DETAIL_SELECT_FIELDS =
-  `${CLASS_BASE_SELECT_FIELDS}, class_format, recommended_for, experience_points, curriculum, teacher_intro, ${ORGANIZATION_LOCATION_SELECT_FIELDS}`
+  `${CLASS_BASE_SELECT_FIELDS}, regular_price_type, regular_price_amount, regular_price_note, class_format, recommended_for, experience_points, curriculum, teacher_intro, ${ORGANIZATION_LOCATION_SELECT_FIELDS}`
 
 const CLASS_BASE_FALLBACK_SELECT_FIELDS = `${LEGACY_CLASS_BASE_SELECT_FIELDS}, ${ORGANIZATION_BASE_SELECT_FIELDS}`
 
@@ -3597,6 +3605,11 @@ export const supabaseDataAdapter: DataAdapter = {
       target_age: input.targetAge,
       description: input.description,
       trial_price: input.trialPrice,
+      ...(input.regularPriceType !== undefined ? {
+        regular_price_type: input.regularPriceType,
+        regular_price_amount: input.regularPriceAmount ?? null,
+        regular_price_note: input.regularPriceNote ?? null
+      } : {}),
       teacher_id: input.teacherId,
       teacher_display_name: teacherDisplayName,
       cover_image_url: input.coverImageUrl,
@@ -3637,9 +3650,9 @@ export const supabaseDataAdapter: DataAdapter = {
             .eq("organization_id", input.organizationId)
         : supabase.from("classes").insert(payload)
 
-    const initialResult = await buildQuery(detailPayload).select(CLASS_BASE_SELECT_FIELDS).maybeSingle()
+    const initialResult = await buildQuery(detailPayload).select(CLASS_SAVE_SELECT_FIELDS).maybeSingle()
     const { data, error } = isMissingColumnError(initialResult.error)
-      ? await buildQuery(basePayload).select(CLASS_BASE_SELECT_FIELDS).maybeSingle()
+      ? await buildQuery(basePayload).select(CLASS_SAVE_SELECT_FIELDS).maybeSingle()
       : initialResult
 
     if (error) {

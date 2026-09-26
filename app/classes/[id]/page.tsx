@@ -1,3 +1,4 @@
+import { formatRegularPrice } from "@/shared/lib/regular-price"
 import { formatDiscoveryPrice } from "@/features/classes/lib/class-discovery-results"
 import Link from "next/link"
 import Image from "next/image"
@@ -62,6 +63,7 @@ export default async function ClassDetailPage({ params, searchParams }: ClassDet
   }
   const classesHref = regionQuery.size ? `/classes?${regionQuery.toString()}` : "/classes"
   const { data: classItem, error } = await getPublicClassDetail(resolvedParams.id)
+  const regularPriceLabel = classItem ? formatRegularPrice({ type: classItem.regularPriceType, amount: classItem.regularPriceAmount }) : null
   const session = await getSession()
   const profile = session ? await getMyProfile() : null
   const isParentUser = profile?.role === "parent"
@@ -157,7 +159,16 @@ export default async function ClassDetailPage({ params, searchParams }: ClassDet
                   {classItem.targetAge?.trim() ? <span className={styles.badge}>{targetGradeLabel}</span> : null}
                 </div>
                 <h1 className={styles.title}>{classItem.title}</h1>
-                <p className={styles.price}>{formatDiscoveryPrice(classItem)}</p>
+                <div className={styles.tuition} aria-label="수업료">
+                  <h2 className={styles.tuitionHeading}>수업료</h2>
+                  <p className={styles.price}>{formatDiscoveryPrice(classItem)}</p>
+                  {regularPriceLabel &&
+                    <div className={styles.regularTuition}>
+                      <span className={styles.tuitionLabel}>정규수업</span>
+                      <p className={styles.regularTuitionAmount}>{regularPriceLabel}</p>
+                      {classItem.regularPriceNote?.trim() && <p className={styles.regularTuitionNote}>{classItem.regularPriceNote}</p>}
+                    </div>}
+                </div>
                 {academyHref ? <Link href={academyHref} className={styles.academyEntry}>
                   <span className={styles.academyImage}>
                     {academyImage ? <Image src={academyImage} alt="" fill sizes="64px" style={{ objectFit: "cover" }} unoptimized />

@@ -1,5 +1,7 @@
 "use client"
 
+import { formatRegularPriceInput, parseRegularPrice, REGULAR_PRICE_NOTE_MAX_LENGTH, type RegularPriceType } from "@/shared/lib/regular-price"
+
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { Fragment, useActionState, useCallback, useEffect, useMemo, useRef, useState } from "react"
@@ -114,7 +116,7 @@ const formSections = [
   ["basic", "기본 정보"], ["price", "가격"], ["operations", "체험 운영"],
   ["description", "수업 소개"], ["image", "이미지"], ["visibility", "공개 설정"]
 ] as const
-type FieldErrorKey = "title" | "subject" | "targetGrades" | "price" | "teacher" | "description" | "schedule" | "visibility"
+type FieldErrorKey = "title" | "subject" | "targetGrades" | "price" | "regularPrice" | "teacher" | "description" | "schedule" | "visibility"
 
 const LEARNER_GRADE_ORDER: string[] = LEARNER_GRADES.map((item) => item.value)
 
@@ -239,6 +241,9 @@ export const StudioClassForm = ({
   const [selectedClassId, setSelectedClassId] = useState(initialItem?.id ?? "")
   const [selectedProgramType, setSelectedProgramType] = useState(initialItem?.programType ?? "trial_class")
   const [trialPrice, setTrialPrice] = useState(initialItem ? String(initialItem.trialPrice ?? 0) : "")
+  const [regularPriceType, setRegularPriceType] = useState<RegularPriceType | "">(initialItem?.regularPriceType ?? "")
+  const [regularPriceAmount, setRegularPriceAmount] = useState(initialItem?.regularPriceAmount == null ? "" : String(initialItem.regularPriceAmount))
+  const [regularPriceNote, setRegularPriceNote] = useState(initialItem?.regularPriceNote ?? "")
   const [priceMode, setPriceMode] = useState<"" | "free" | "paid">(initialItem ? initialItem.trialPrice === 0 ? "free" : "paid" : "")
   const [fieldErrors, setFieldErrors] = useState<Partial<Record<FieldErrorKey, string>>>({})
   const [previewOpen, setPreviewOpen] = useState(false)
@@ -358,6 +363,9 @@ export const StudioClassForm = ({
       id: initialItem?.id ?? "",
       programType: initialItem?.programType ?? "trial_class",
       trialPrice: String(initialItem?.trialPrice ?? 0),
+      regularPriceType: initialItem?.regularPriceType ?? ("" as const),
+      regularPriceAmount: initialItem?.regularPriceAmount == null ? "" : String(initialItem.regularPriceAmount),
+      regularPriceNote: initialItem?.regularPriceNote ?? "",
       assignmentMode: initialItem?.assignmentMode ?? "post_assign",
       subjectCategoryId:
         initialItem?.subjectCategoryId ?? initialSubjectSelection?.category.id ?? "",
@@ -384,6 +392,7 @@ export const StudioClassForm = ({
       initialItem?.assignmentMode,
       initialItem?.programType,
       initialItem?.trialPrice,
+      initialItem?.regularPriceType, initialItem?.regularPriceAmount, initialItem?.regularPriceNote,
       initialItem?.recommendedFor,
       initialItem?.schedules,
       initialItem?.subjectId,
@@ -460,6 +469,9 @@ export const StudioClassForm = ({
     initializedSnapshotKeyRef.current = snapshotKey
     setSelectedClassId(initialFormSnapshot.id)
     setSelectedProgramType(initialFormSnapshot.programType)
+    setRegularPriceType(initialFormSnapshot.regularPriceType)
+    setRegularPriceAmount(initialFormSnapshot.regularPriceAmount)
+    setRegularPriceNote(initialFormSnapshot.regularPriceNote)
     setTrialPrice(initialFormSnapshot.id ? initialFormSnapshot.trialPrice : "")
     setPriceMode(initialFormSnapshot.id ? Number(initialFormSnapshot.trialPrice) === 0 ? "free" : "paid" : "")
     setScheduleEdited(false)
@@ -559,6 +571,7 @@ export const StudioClassForm = ({
     selectedProgramType,
     priceMode,
     trialPrice,
+    regularPriceType, regularPriceAmount, regularPriceNote,
     headerTitle,
     isActivePreview,
     selectedSubjectCategoryId,
@@ -677,11 +690,11 @@ export const StudioClassForm = ({
   const draftValues = useMemo<ClassFormDraftValues>(() => ({
     title: headerTitle, programType: selectedProgramType, subjectCategoryId: selectedSubjectCategoryId,
     subjectId: selectedSubjectId, targetGrades: selectedTargetGrades, classFormat: resolvedClassFormat,
-    trialPrice, priceMode, assignmentMode: selectedAssignmentMode, teacherId: selectedTeacherId,
+    trialPrice, priceMode, regularPriceType, regularPriceAmount, regularPriceNote, assignmentMode: selectedAssignmentMode, teacherId: selectedTeacherId,
     description, recommendedFor, experiencePoints, curriculum, coverImageUrl,
     visibility: isActivePreview ? "public" : "private", scheduleDraft: createScheduleDraft
   }), [headerTitle, selectedProgramType, selectedSubjectCategoryId, selectedSubjectId, selectedTargetGrades,
-    resolvedClassFormat, trialPrice, priceMode, selectedAssignmentMode, selectedTeacherId, description,
+    resolvedClassFormat, trialPrice, priceMode, regularPriceType, regularPriceAmount, regularPriceNote, selectedAssignmentMode, selectedTeacherId, description,
     recommendedFor, experiencePoints, curriculum, coverImageUrl, isActivePreview, createScheduleDraft])
   const restoreDraft = useCallback((draft: ClassFormDraftValues) => {
     setHeaderTitle(draft.title); setSelectedProgramType(draft.programType)
@@ -691,6 +704,7 @@ export const StudioClassForm = ({
     setSelectedSubjectId(subject?.category.id === category?.id ? subject?.subject.id ?? "" : "")
     setSelectedTargetGrades(getOrderedTargetGrades(draft.targetGrades))
     setClassFormatSelection(resolveClassFormatSelection(draft.classFormat)); setCustomClassFormat(draft.classFormat)
+    setRegularPriceType(draft.regularPriceType ?? ""); setRegularPriceAmount(draft.regularPriceAmount ?? ""); setRegularPriceNote(draft.regularPriceNote ?? "")
     setTrialPrice(draft.trialPrice); setPriceMode(draft.priceMode); setSelectedAssignmentMode(draft.assignmentMode)
     setSelectedTeacherId(draft.teacherId); setDescription(draft.description); setRecommendedFor(draft.recommendedFor)
     setExperiencePoints(draft.experiencePoints); setCurriculum(draft.curriculum); setCoverImageUrl(draft.coverImageUrl)
@@ -717,7 +731,7 @@ export const StudioClassForm = ({
     if (!state.message || state.ok) return
     const key: FieldErrorKey | null = /예약시간|일정|정원|운영 방식|운영 규칙/.test(state.message) ? "schedule"
       : /과목/.test(state.message) ? "subject" : /선생님/.test(state.message) ? "teacher"
-      : /신청비/.test(state.message) ? "price" : /소개/.test(state.message) ? "description" : null
+      : /정규 수강료/.test(state.message) ? "regularPrice" : /신청비/.test(state.message) ? "price" : /소개/.test(state.message) ? "description" : null
     if (key) { setFieldErrors((current) => ({ ...current, [key]: state.message })); focusError(key) }
     else document.getElementById("class-save-feedback")?.focus()
     if (/다른 작업에서 변경/.test(state.message)) router.refresh()
@@ -735,6 +749,8 @@ export const StudioClassForm = ({
     else if (priceMode === "paid" && (!/^\d+$/.test(trialPrice.trim()) || Number(trialPrice) <= 0)) {
       errors.price = "유료 비용은 1원 이상의 정수로 입력해 주세요. 무료는 무료 항목을 선택해 주세요."
     }
+    const regularPrice = parseRegularPrice({ type: regularPriceType, amount: regularPriceAmount, note: regularPriceNote })
+    if (!regularPrice.ok) errors.regularPrice = regularPrice.message
     if (isPreassignedMode && !selectedTeacherId) errors.teacher = "담당 선생님을 선택해 주세요."
     if (description.trim().length < 10) errors.description = "수업 소개는 10자 이상 입력해 주세요."
     if (mode === "create" && !hasOperatingRuleSelection)
@@ -809,7 +825,7 @@ export const StudioClassForm = ({
   const renderSectionHeader = (id: (typeof formSections)[number][0]) => {
     const index = formSections.findIndex(([key]) => key === id)
     const errorKeys: Record<typeof id, FieldErrorKey[]> = {
-      basic: ["title", "subject", "targetGrades"], price: ["price"], operations: ["teacher", "schedule"],
+      basic: ["title", "subject", "targetGrades"], price: ["price", "regularPrice"], operations: ["teacher", "schedule"],
       description: ["description"], image: [], visibility: ["visibility"]
     }
     const hasError = errorKeys[id].some((key) => fieldErrors[key])
@@ -864,6 +880,9 @@ export const StudioClassForm = ({
         <input type="hidden" name="subjectCategoryId" value={selectedSubjectCategoryId} />
         <input type="hidden" name="subjectId" value={selectedSubjectId} />
         <input type="hidden" name="coverImageUrl" value={coverImageUrl} />
+        <input type="hidden" name="regularPriceType" value={regularPriceType} />
+        <input type="hidden" name="regularPriceAmount" value={regularPriceType === "monthly" || regularPriceType === "per_session" ? regularPriceAmount : ""} />
+        <input type="hidden" name="regularPriceNote" value={regularPriceType ? regularPriceNote : ""} />
         <input type="hidden" name="trialPrice" value={priceMode === "free" ? "0" : trialPrice} />
         <input type="hidden" name="enforcePublicSlotGuard" value={mode === "create" ? "true" : "false"} />
         <input type="hidden" name="scheduleWriteMode" value={scheduleEdited ? "replace" : "preserve"} />
@@ -1022,6 +1041,38 @@ export const StudioClassForm = ({
                 {priceMode === "paid" && <label className={styles.priceInput}><input aria-label={`${programLabel} 유료 비용`} type="number" min={1} step={1} inputMode="numeric" value={trialPrice === "0" ? "" : trialPrice}
                   onChange={(event) => setTrialPrice(event.target.value)} disabled={isPending} className={styles.input} placeholder="금액 입력" aria-invalid={Boolean(fieldErrors.price)} aria-describedby="class-error-price" /><span>원</span></label>}
               </div>{renderError("price")}
+            </div>
+            <div className={styles.regularPriceFields} data-field="regularPrice">
+              <label className={styles.fieldLabel} htmlFor="regular-price-type">정규 수강료 <span className={styles.fieldHint}>(선택)</span></label>
+              <p className={styles.fieldHint}>정규수업의 수강료 안내입니다. 학부모 수업 상세에 표시됩니다.</p>
+              <div className={styles.regularPriceRow}>
+                <select id="regular-price-type" className={styles.select} value={regularPriceType} disabled={isPending}
+                  onChange={(event) => {
+                    const next = event.target.value as RegularPriceType | ""
+                    setRegularPriceType(next)
+                    if (!next || next === "consultation") setRegularPriceAmount("")
+                    if (!next) setRegularPriceNote("")
+                  }}>
+                  <option value="">표시하지 않음</option>
+                  <option value="monthly">월 수강료</option>
+                  <option value="per_session">회당 수강료</option>
+                  <option value="consultation">상담 후 안내</option>
+                </select>
+                {(regularPriceType === "monthly" || regularPriceType === "per_session") && <label className={styles.priceInput}>
+                  <input aria-label="정규 수강료 금액" className={styles.input} inputMode="numeric" type="text"
+                    value={formatRegularPriceInput(regularPriceAmount)} disabled={isPending} placeholder="금액 입력"
+                    onChange={(event) => setRegularPriceAmount(event.target.value.replace(/,/g, ""))}
+                    aria-invalid={Boolean(fieldErrors.regularPrice)} aria-describedby="class-error-regularPrice" />
+                  <span>원</span>
+                </label>}
+              </div>
+              {regularPriceType && <label className={styles.field}>
+                <span className={styles.fieldLabel}>추가 안내 (선택)</span>
+                <input className={styles.input} aria-label="정규 수강료 추가 안내" value={regularPriceNote}
+                  onChange={(event) => setRegularPriceNote(event.target.value)} maxLength={REGULAR_PRICE_NOTE_MAX_LENGTH}
+                  disabled={isPending} placeholder="예: 주 2회 기준, 교재비 별도" />
+              </label>}
+              {renderError("regularPrice")}
             </div>
             </div>
           </details>

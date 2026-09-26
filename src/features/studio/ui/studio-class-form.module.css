@@ -138,3 +138,10 @@
 @media (max-width: 850px) { .unifiedForm { grid-template-columns: minmax(0, 1fr); } .summaryRail { position: static; } .summaryCard { max-height: none; } .pageHeader { align-items: flex-start; flex-direction: column; gap: 12px; } .draftNotice, .pendingOperationNote { flex-wrap: wrap; } .sectionSummary { max-width: 50%; } }
 @media (prefers-reduced-motion: reduce) { .chipButton { transition: none; } }
 @media (max-width: 600px) { .basicInfoGrid > .field { grid-template-columns: minmax(0, 1fr); } .basicInfoGrid > .field > :not(.fieldLabel), .basicInfoGrid > .field > .fieldLabel { grid-column: 1; } .sectionHeading { padding: 12px; gap: 8px; } .sectionBody { padding: 14px; } .sectionSummary { max-width: 45%; } }
+
+/* Display-only regular tuition, separate from the application fee. */
+.regularPriceFields { display: grid; gap: 10px; border-top: 1px solid var(--border); padding-top: 18px; margin-top: 8px; }
+.regularPriceFields p { margin: 0; }
+.regularPriceRow { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; }
+.regularPriceRow > * { min-width: 0; }
+@media (max-width: 600px) { .regularPriceRow { grid-template-columns: 1fr; } }

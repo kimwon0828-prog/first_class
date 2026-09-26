@@ -29,6 +29,9 @@ type PublicClassRow = {
   target_age: string
   description: string
   trial_price: number
+  regular_price_type?: ClassSummary["regularPriceType"]
+  regular_price_amount?: number | null
+  regular_price_note?: string | null
   teacher_id: string | null
   teacher_display_name: string | null
   cover_image_url: string | null
@@ -381,7 +384,7 @@ export const getPublicClassDetailWithSafeProjection = async (
   const serviceRoleClient = getSupabaseServiceRoleClient()
   const initialResult = await serviceRoleClient
     .from("classes")
-    .select(PUBLIC_CLASS_SELECT_FIELDS)
+    .select(`${PUBLIC_CLASS_SELECT_FIELDS}, regular_price_type, regular_price_amount, regular_price_note`)
     .eq("id", classId)
     .eq("is_active", true)
     .maybeSingle()
@@ -415,6 +418,9 @@ export const getPublicClassDetailWithSafeProjection = async (
 
   return {
     ...summary,
+    regularPriceType: classRow.regular_price_type ?? null,
+    regularPriceAmount: classRow.regular_price_amount ?? null,
+    regularPriceNote: classRow.regular_price_note ?? null,
     organization
   }
 }

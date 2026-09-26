@@ -14,6 +14,9 @@ export type ClassFormDraftValues = {
   subjectId: string
   targetGrades: string[]
   classFormat: string
+  regularPriceType?: import("@/shared/lib/regular-price").RegularPriceType | ""
+  regularPriceAmount?: string
+  regularPriceNote?: string
   trialPrice: string
   priceMode: "" | "free" | "paid"
   assignmentMode: "post_assign" | "preassigned"
@@ -43,6 +46,9 @@ const readDraft = (raw: string | null): StoredDraft | null => {
       // A legacy blank price was implicit free, not an intentional choice. Ask again.
       priceMode: values.priceMode === "free" || values.priceMode === "paid" ? values.priceMode
         : String(values.trialPrice ?? "").trim() ? Number(values.trialPrice) === 0 ? "free" : "paid" : "",
+      regularPriceType: ["monthly", "per_session", "consultation"].includes(values.regularPriceType) ? values.regularPriceType : "",
+      regularPriceAmount: ["monthly", "per_session"].includes(values.regularPriceType) ? String(values.regularPriceAmount ?? "") : "",
+      regularPriceNote: values.regularPriceType ? String(values.regularPriceNote ?? "") : "",
       assignmentMode: values.assignmentMode === "preassigned" ? "preassigned" : "post_assign",
       teacherId: String(values.teacherId ?? ""), description: String(values.description ?? ""),
       recommendedFor: String(values.recommendedFor ?? ""), experiencePoints: String(values.experiencePoints ?? ""),
@@ -79,7 +85,7 @@ export const useClassCreateDraft = (
       if (draft && sessionStorage.getItem(sessionKey) === "1") {
         restoreRef.current(draft.values)
       } else if (draft && (draft.values.title || draft.values.description || draft.values.subjectCategoryId ||
-        draft.values.targetGrades.length || draft.values.coverImageUrl || draft.values.priceMode ||
+        draft.values.targetGrades.length || draft.values.coverImageUrl || draft.values.priceMode || draft.values.regularPriceType ||
         draft.values.scheduleDraft.operationStartDate || draft.values.classFormat || draft.values.teacherId ||
         draft.values.recommendedFor || draft.values.experiencePoints || draft.values.curriculum ||
         draft.values.programType === "level_test" || draft.values.assignmentMode === "preassigned" ||

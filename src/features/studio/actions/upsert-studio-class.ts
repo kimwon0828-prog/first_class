@@ -1,5 +1,7 @@
 "use server"
 
+import { parseRegularPrice } from "@/shared/lib/regular-price"
+
 import { revalidatePath } from "next/cache"
 import { resolveClassFormScheduleSave } from "@/features/studio/lib/class-form-schedule-save"
 import { parseClassOperatingRule, type ClassOperatingRuleInput } from "@/features/studio/lib/class-operating-rule"
@@ -351,6 +353,8 @@ export async function upsertStudioClassAction(
     const teacherIntroRaw = formData.has("teacherIntro") ? String(formData.get("teacherIntro") ?? "").trim() : null
     const selectedTeacherIdRaw = String(formData.get("teacherId") ?? "").trim()
     const selectedTeacherId = selectedTeacherIdRaw.length > 0 ? selectedTeacherIdRaw : null
+    const regularPrice = parseRegularPrice({ type: formData.get("regularPriceType"), amount: formData.get("regularPriceAmount"), note: formData.get("regularPriceNote") })
+    if (!regularPrice.ok) return safeError(regularPrice.message)
     const trialPriceRaw = String(formData.get("trialPrice") ?? "").trim()
     const coverImageUrlRaw = String(formData.get("coverImageUrl") ?? "").trim()
     const isActive = String(formData.get("isActive") ?? "") === "on"
@@ -548,6 +552,9 @@ export async function upsertStudioClassAction(
       experiencePoints,
       curriculum,
       teacherIntro,
+      regularPriceType: regularPrice.value.type,
+      regularPriceAmount: regularPrice.value.amount,
+      regularPriceNote: regularPrice.value.note,
       trialPrice,
       teacherId: selectedTeacher?.teacherId ?? null,
       teacherDisplayName: selectedTeacher?.teacherName ?? null,

@@ -140,6 +140,9 @@ export type ClassSummary = ClassSubjectReadModel & {
   curriculum: string | null
   teacherIntro: string | null
   trialPrice: number
+  regularPriceType?: import("@/shared/lib/regular-price").RegularPriceType | null
+  regularPriceAmount?: number | null
+  regularPriceNote?: string | null
   teacherId: string | null
   teacherDisplayName: string | null
   teacherName: string | null
@@ -476,6 +479,9 @@ export type StudioClassInput = {
   curriculum: string | null
   teacherIntro: string | null
   trialPrice: number
+  regularPriceType?: import("@/shared/lib/regular-price").RegularPriceType | null
+  regularPriceAmount?: number | null
+  regularPriceNote?: string | null
   teacherId: string | null
   teacherDisplayName: string | null
   coverImageUrl: string | null

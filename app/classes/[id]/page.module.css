@@ -56,3 +56,10 @@
 .successIcon { display: inline-flex; color: var(--brand-700); flex-shrink: 0; }
 .slotContent { min-width: 0; display: grid; gap: var(--s2); }
 .infoRow svg { flex-shrink: 0; }
+
+.tuition { display: grid; gap: 10px; }
+.tuitionHeading { margin: 0; font-size: var(--font-b1); font-weight: 600; }
+.regularTuition { display: grid; gap: 4px; padding-top: 12px; border-top: 1px solid var(--border); overflow-wrap: anywhere; }
+.tuitionLabel { font-size: var(--font-b2); color: var(--text-2); }
+.regularTuitionAmount { margin: 0; font-size: var(--font-b1); font-weight: 600; }
+.regularTuitionNote { margin: 0; font-size: var(--font-b2); color: var(--text-2); }
