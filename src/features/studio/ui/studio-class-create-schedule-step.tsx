@@ -47,6 +47,8 @@ const buildDraftCalendarDays = (generatedSlots: CreateClassScheduleDraftSlot[]):
       endTime: slot.endTime,
       capacity: slot.capacity,
       activeReservationCount: 0,
+      hasApplicationHistory: false,
+      minimumCapacity: 1,
       remainingCapacity: slot.capacity,
       status: slot.bookingStatus === "closed" ? "closed" : "open",
       seriesId: slot.seriesId

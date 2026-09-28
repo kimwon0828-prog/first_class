@@ -92,7 +92,7 @@ export const StudioClassScheduleEditor = ({
   const protectedCount = useMemo(
     () =>
       days.reduce(
-        (count, day) => count + day.items.filter((item) => item.scheduleType === "one_time" && item.activeReservationCount > 0).length,
+        (count, day) => count + day.items.filter((item) => item.scheduleType === "one_time" && item.hasApplicationHistory).length,
         0
       ),
     [days]

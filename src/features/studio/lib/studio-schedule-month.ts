@@ -37,7 +37,7 @@ export const parseDateKey = (value: string): CivilDate | null => {
   const year = Number(matched[1])
   const month = Number(matched[2])
   const day = Number(matched[3])
-  if (month < 1 || month > 12 || day < 1 || day > 31) {
+  if (month < 1 || month > 12 || day < 1 || day > new Date(Date.UTC(year, month, 0)).getUTCDate()) {
     return null
   }
 

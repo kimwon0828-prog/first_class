@@ -243,7 +243,9 @@ for (const fixture of fixtures) {
   ]
   const detail = STUDIO_APPLICATION_STATUS_LABELS[resolveTrialDisplayStatus(summary, NOW)]
   const dash = dashboardBadges.get(summary.id)
-  const sched = scheduleBadges.get(summary.id)
+  const scheduleLabel = scheduleBadges.get(summary.id)
+  // Schedule V1.1: distinguish a confirmed booking from a requested visit.
+  const sched = scheduleLabel === "예약 확정" ? "일정 확정" : scheduleLabel
 
   // Cases 는 CaseStage 라벨(취소/노쇼), 나머지는 status 라벨(신청 취소/노쇼)이라
   // "체험" 관련 상태만 문자열이 완전히 같아야 한다.

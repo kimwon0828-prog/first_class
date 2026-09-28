@@ -1,3 +1,4 @@
+import { getStudioSchedulePlacement } from "./studio-schedule-range"
 import {
   STUDIO_APPLICATION_STATUS_LABELS,
   STUDIO_APPLICATION_STATUS_TONES,
@@ -10,6 +11,9 @@ import { getSeoulDateTimeParts } from "@/shared/lib/seoul-datetime"
 
 export type StudioScheduleEvent = {
   id: string
+  scheduleKind: "requested" | "confirmed" | "completed" | "canceled" | "no_show"
+  scheduleLabel: string
+  isDateUncertain: boolean
   dateKey: string
   startMinutes: number
   endMinutes: number
@@ -124,27 +128,26 @@ export const buildStudioScheduleEvents = (
   const events: StudioScheduleEvent[] = []
 
   for (const item of items) {
-    if (item.status === "canceled") {
-      continue
-    }
-
-    const scheduledAt = item.confirmedSlotAt ?? item.requestedSlotAt ?? null
-    if (!scheduledAt) {
-      continue
-    }
-
-    const dateKey = toSeoulDateKey(scheduledAt)
-    const seoulParts = getSeoulDateTimeParts(scheduledAt)
-    if (!dateKey || !seoulParts) {
-      continue
-    }
-
-    const startMinutes = seoulParts.hour * 60 + seoulParts.minute
+    const { appointmentAt, recordedAt } = getStudioSchedulePlacement(item)
+    const isDateUncertain = !appointmentAt
+    // A missing visit time is a record, never an inferred requested appointment.
+    if (!appointmentAt && item.status !== "canceled" && item.status !== "completed") continue
+    const scheduledAt = appointmentAt ?? recordedAt
+    const dateKey = scheduledAt ? toSeoulDateKey(scheduledAt) : ""
+    const seoulParts = scheduledAt ? getSeoulDateTimeParts(scheduledAt) : null
+    if (scheduledAt && (!dateKey || !seoulParts)) continue
+    const scheduleKind = item.status === "new" || item.status === "reviewing" ? "requested"
+      : item.status === "canceled" && item.noShowAt ? "no_show" : item.status
+    const scheduleLabel = scheduleKind === "requested" ? "희망 일정 · 확정 필요"
+      : scheduleKind === "confirmed" ? "확정 일정" : scheduleKind === "completed" ? "체험 완료"
+      : scheduleKind === "no_show" ? "노쇼" : "취소"
+    const startMinutes = seoulParts ? seoulParts.hour * 60 + seoulParts.minute : 0
     const duration = getScheduleDuration(item.scheduleStartTime, item.scheduleEndTime)
 
     events.push({
       id: item.id,
-      dateKey,
+      scheduleKind, scheduleLabel, isDateUncertain,
+      dateKey: dateKey ?? "",
       startMinutes,
       endMinutes: startMinutes + duration.durationMinutes,
       durationMinutes: duration.durationMinutes,
@@ -156,8 +159,8 @@ export const buildStudioScheduleEvents = (
       assignedTeacherId: item.assignedTeacherId,
       assignedTeacherName: normalizeText(item.assignedTeacherName),
       status: item.status,
-      statusLabel: STUDIO_APPLICATION_STATUS_LABELS[toDisplayStatus(item, now)],
-      tone: STUDIO_APPLICATION_STATUS_TONES[toDisplayStatus(item, now)],
+      statusLabel: scheduleKind === "requested" ? "확정 필요" : scheduleKind === "confirmed" && toDisplayStatus(item, now) === "confirmed" ? "예약 확정" : STUDIO_APPLICATION_STATUS_LABELS[toDisplayStatus(item, now)],
+      tone: item.status === "canceled" ? "gray" : STUDIO_APPLICATION_STATUS_TONES[toDisplayStatus(item, now)],
       detailHref: `/studio/applications/${item.id}`
     })
   }
@@ -334,17 +337,17 @@ export const buildStudioScheduleTimeRange = (
 
 // ── Calendar filters ────────────────────────────────────────────────
 //
-// 새 query 를 만들지 않는다. 옵션도 필터링도 이미 만들어 둔 event 목록에서만 파생한다.
+// 필터링은 현재 범위 event에서 수행하고, 옵션은 서버의 범위 독립 목록을 사용한다.
 
 /** 미배정 일정을 고르기 위한 예약어. 실제 teacher id 와 섞이지 않는다(uuid 가 아니다). */
 export const UNASSIGNED_TEACHER_FILTER = "unassigned"
 export const ALL_FILTER = "all"
 
-export type StudioScheduleStatusFilter = "all" | "reviewing" | "confirmed" | "completed"
+export type StudioScheduleStatusFilter = "all" | "reviewing" | "confirmed" | "completed" | "canceled" | "no_show"
 
 /**
  * Calendar 는 Application Status 를 쓴다. Case Stage 가 아니다.
- * 취소/노쇼는 캘린더 자체에서 제외되므로 옵션에 넣지 않는다.
+ * 취소/노쇼는 저장 status를 바꾸지 않고 no_show_at으로 구분한다.
  */
 export const STUDIO_SCHEDULE_STATUS_FILTERS: Array<{
   value: StudioScheduleStatusFilter
@@ -352,9 +355,11 @@ export const STUDIO_SCHEDULE_STATUS_FILTERS: Array<{
   statuses: ApplicationStatus[]
 }> = [
   { value: "all", label: "전체", statuses: [] },
-  { value: "reviewing", label: "신청 확인", statuses: ["new", "reviewing"] },
+  { value: "reviewing", label: "확인 필요", statuses: ["new", "reviewing"] },
   { value: "confirmed", label: "일정 확정", statuses: ["confirmed"] },
-  { value: "completed", label: "체험 완료", statuses: ["completed"] }
+  { value: "completed", label: "체험 완료", statuses: ["completed"] },
+  { value: "canceled", label: "취소", statuses: ["canceled"] },
+  { value: "no_show", label: "노쇼", statuses: ["canceled"] }
 ]
 
 const STATUS_FILTER_MAP = new Map(
@@ -457,6 +462,8 @@ export const filterStudioScheduleEvents = (
       return false
     }
 
+    if (filters.status === "canceled" && event.scheduleKind === "no_show") return false
+    if (filters.status === "no_show" && event.scheduleKind !== "no_show") return false
     if (statuses && statuses.size > 0 && !statuses.has(event.status)) {
       return false
     }

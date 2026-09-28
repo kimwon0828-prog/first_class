@@ -308,6 +308,7 @@
 
 .periodLabel {
   margin: 0;
+  white-space: nowrap;
   color: var(--text-1);
   font-size: 20px;
   font-weight: 800;
@@ -338,6 +339,7 @@
 }
 
 .navIconButton {
+  flex-shrink: 0;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -488,7 +490,8 @@
 }
 
 .monthEvent {
-  display: flex;
+  display: grid;
+  grid-template-columns: 3px auto minmax(0, 1fr);
   align-items: center;
   gap: 5px;
   min-width: 0;
@@ -853,3 +856,10 @@
     display: none;
   }
 }
+
+.pastRecord { color: var(--text-muted, #647067); opacity: .75; }
+.uncertainRecords { padding: 16px; border-top: 1px solid #e4e9e6; color: #616b64; font-size: 13px; }
+.uncertainRecords summary { cursor: pointer; }
+.uncertainRecords a { display: block; padding: 8px 0; color: inherit; }
+
+.monthEventKind { grid-column: 2 / -1; color: var(--text-2); font-size: 10px; line-height: 14px; }

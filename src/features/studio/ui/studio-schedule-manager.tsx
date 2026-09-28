@@ -2,7 +2,8 @@
 
 import { StudioQueryRetry } from "./studio-query-retry"
 import { StudioDetailLink } from "./studio-detail-link"
-import { useCallback, useEffect, useMemo, useState, type CSSProperties } from "react"
+import { useRouter } from "next/navigation"
+import { useCallback, useMemo, useState, useTransition, type CSSProperties } from "react"
 
 import type { StudioStatusTone } from "@/features/studio/lib/application-status-labels"
 import {
@@ -18,6 +19,7 @@ import {
   type PositionedStudioScheduleEvent,
   type StudioScheduleEvent,
   type StudioScheduleFilterOption,
+  type StudioScheduleFilterOptions,
   type StudioScheduleFilters
 } from "@/features/studio/lib/studio-schedule-events"
 import {
@@ -39,9 +41,7 @@ import {
 } from "@/features/studio/lib/studio-schedule-month"
 import {
   buildStudioScheduleQuery,
-  parseStudioScheduleUrlState,
   resolveStudioScheduleFilters,
-  searchParamsToRecord,
   type CalendarView,
   type StudioScheduleUrlState
 } from "@/features/studio/lib/studio-schedule-url-state"
@@ -50,6 +50,7 @@ import type { StudioApplicationSummary } from "@/shared/lib/db/adapter"
 import styles from "./studio-schedule-manager.module.css"
 
 type StudioScheduleManagerProps = {
+  filterOptions?: StudioScheduleFilterOptions
   items: StudioApplicationSummary[]
   error?: string | null
   initialUrlState: StudioScheduleUrlState
@@ -160,7 +161,7 @@ const CalendarEventBlock = ({
         <span className={styles.timeEventTime}>{event.timeLabel}</span>
         <span className={styles.timeEventStatus}>{event.statusLabel}</span>
       </span>
-      <span className={styles.timeEventName}>{event.childName}</span>
+      <span className={styles.timeEventName}>{event.scheduleLabel} · {event.childName}</span>
       <span className={styles.timeEventClass}>{event.classTitle}</span>
       <span className={styles.timeEventTeacher}>{event.assignedTeacherName ?? "선생님 미배정"}</span>
     </StudioDetailLink>
@@ -415,32 +416,35 @@ export const StudioScheduleManager = ({
   items,
   error,
   initialUrlState,
-  nowIso
+  nowIso,
+  filterOptions: suppliedFilterOptions
 }: StudioScheduleManagerProps) => {
   // "오늘" 도 서버가 정한 기준 시각에서 뽑는다. 달력 강조와 체험 종료 표시가 같은 시각을 본다.
   const todayKey = useMemo(() => getSeoulTodayKey(new Date(nowIso)), [nowIso])
-  const [anchorDateKey, setAnchorDateKey] = useState(initialUrlState.dateKey ?? todayKey)
-  const [view, setView] = useState<CalendarView>(initialUrlState.view)
-  // Mini Calendar 가 보고 있는 달. anchor 와 따로 움직일 수 있지만 anchor 이동에는 항상 따라간다.
-  const [miniMonthKey, setMiniMonthKey] = useState(() =>
-    toMonthStartKey(initialUrlState.dateKey ?? todayKey)
-  )
+  const router = useRouter()
+  const [isNavigating, startNavigation] = useTransition()
+  const anchorDateKey = initialUrlState.dateKey ?? todayKey
+  const view = initialUrlState.view
+  // Mini/main share the URL anchor; navigating either refetches the same range.
+  const miniMonthKey = toMonthStartKey(anchorDateKey)
 
   const baseEvents = useMemo(
     () => buildStudioScheduleEvents(items, new Date(nowIso)),
     [items, nowIso]
   )
   // 옵션은 필터가 걸리지 않은 전체 event 에서 만든다(§18).
-  const filterOptions = useMemo(() => buildStudioScheduleFilterOptions(baseEvents), [baseEvents])
+  const filterOptions = useMemo(() => suppliedFilterOptions ?? buildStudioScheduleFilterOptions(baseEvents), [suppliedFilterOptions, baseEvents])
   const [filters, setFilters] = useState<StudioScheduleFilters>(() =>
-    resolveStudioScheduleFilters(initialUrlState, buildStudioScheduleFilterOptions(baseEvents))
+    resolveStudioScheduleFilters(initialUrlState, filterOptions)
   )
 
   const calendarEvents = useMemo(
     () => filterStudioScheduleEvents(baseEvents, filters),
     [baseEvents, filters]
   )
-  const eventsByDateKey = useMemo(() => groupEventsByDate(calendarEvents), [calendarEvents])
+  const datedEvents = useMemo(() => calendarEvents.filter(event => !event.isDateUncertain), [calendarEvents])
+  const uncertainEvents = calendarEvents.filter(event => event.isDateUncertain)
+  const eventsByDateKey = useMemo(() => groupEventsByDate(datedEvents), [datedEvents])
   const visibleMonthKey = toMonthStartKey(anchorDateKey)
   const monthCells = useMemo(() => buildMonthGrid(visibleMonthKey), [visibleMonthKey])
   const weekDateKeys = useMemo(() => getWeekDateKeys(anchorDateKey), [anchorDateKey])
@@ -451,12 +455,12 @@ export const StudioScheduleManager = ({
 
   const periodEvents = useMemo(() => {
     if (view === "month") {
-      return calendarEvents.filter((event) => isSameMonth(event.dateKey, visibleMonthKey))
+      return datedEvents.filter((event) => isSameMonth(event.dateKey, visibleMonthKey))
     }
 
     const visibleDates = new Set(visibleDateKeys)
-    return calendarEvents.filter((event) => visibleDates.has(event.dateKey))
-  }, [calendarEvents, view, visibleDateKeys, visibleMonthKey])
+    return datedEvents.filter((event) => visibleDates.has(event.dateKey))
+  }, [datedEvents, view, visibleDateKeys, visibleMonthKey])
 
   const alerts = useMemo(() => {
     let needsReview = 0
@@ -466,7 +470,7 @@ export const StudioScheduleManager = ({
       if (event.status === "new" || event.status === "reviewing") {
         needsReview += 1
       }
-      if (!event.assignedTeacherName) {
+      if (!event.assignedTeacherId && ["new", "reviewing", "confirmed"].includes(event.status)) {
         unassigned += 1
       }
     }
@@ -481,11 +485,7 @@ export const StudioScheduleManager = ({
         ? formatWeekLabel(anchorDateKey)
         : formatDayLabel(anchorDateKey)
 
-  /**
-   * URL 쓰기는 router 대신 history API 를 쓴다.
-   * router.push/replace 는 server component 를 다시 실행해 신청 목록을 매번 재조회하지만,
-   * 여기서 바뀌는 것은 표시 상태뿐이라 서버 왕복이 필요 없다(Next.js 가 공식 지원하는 방식).
-   */
+  // Date/view changes refetch the server range; local filters reuse that bounded result.
   const syncUrl = useCallback(
     (next: { view: CalendarView; dateKey: string; filters: StudioScheduleFilters }, mode: "push" | "replace") => {
       if (typeof window === "undefined") {
@@ -494,12 +494,12 @@ export const StudioScheduleManager = ({
 
       const url = `${window.location.pathname}${buildStudioScheduleQuery(next)}`
       if (mode === "push") {
-        window.history.pushState(null, "", url)
+        startNavigation(() => router.push(url, { scroll: false }))
       } else {
         window.history.replaceState(null, "", url)
       }
     },
-    []
+    [router]
   )
 
   // view 전환과 기간 이동은 뒤로 가기로 되돌릴 수 있어야 한다. 필터는 replace 로 누적을 막는다.
@@ -507,9 +507,6 @@ export const StudioScheduleManager = ({
     const nextView = next.view ?? view
     const nextDateKey = next.dateKey ?? anchorDateKey
 
-    setView(nextView)
-    setAnchorDateKey(nextDateKey)
-    setMiniMonthKey(toMonthStartKey(nextDateKey))
     syncUrl({ view: nextView, dateKey: nextDateKey, filters }, "push")
   }
 
@@ -517,23 +514,6 @@ export const StudioScheduleManager = ({
     setFilters(nextFilters)
     syncUrl({ view, dateKey: anchorDateKey, filters: nextFilters }, "replace")
   }
-
-  // 뒤로/앞으로 가기. URL 이 곧 상태이므로 다시 읽어 반영한다.
-  useEffect(() => {
-    const onPopState = () => {
-      const params = new URLSearchParams(window.location.search)
-      const state = parseStudioScheduleUrlState(searchParamsToRecord(params))
-      const nextDateKey = state.dateKey ?? todayKey
-
-      setView(state.view)
-      setAnchorDateKey(nextDateKey)
-      setMiniMonthKey(toMonthStartKey(nextDateKey))
-      setFilters(resolveStudioScheduleFilters(state, filterOptions))
-    }
-
-    window.addEventListener("popstate", onPopState)
-    return () => window.removeEventListener("popstate", onPopState)
-  }, [filterOptions, todayKey])
 
   const movePeriod = (offset: -1 | 1) => {
     if (view === "month") {
@@ -556,11 +536,12 @@ export const StudioScheduleManager = ({
   }
 
   const moveMiniMonth = (offset: -1 | 1) => {
-    setMiniMonthKey(shiftMonthKey(miniMonthKey, offset))
+    applyNavigation({ dateKey: shiftMonthKey(miniMonthKey, offset) })
   }
 
   return (
-    <div className={styles.root}>
+    <div className={styles.root} aria-busy={isNavigating}>
+      {isNavigating ? <p role="status">일정을 불러오는 중입니다.</p> : null}
       <header className={styles.pageHeader}>
         <div className={styles.pageHeading}>
           <h1 className={styles.pageTitle}>일정 관리</h1>
@@ -644,15 +625,7 @@ export const StudioScheduleManager = ({
 
         <section className={styles.canvas} aria-label={`${periodLabel} 캘린더`}>
           <header className={styles.canvasHeader}>
-            <h2 className={styles.periodLabel}>{periodLabel}</h2>
-            <div className={styles.canvasNav}>
-              <button
-                type="button"
-                className={styles.navButton}
-                onClick={() => applyNavigation({ dateKey: todayKey })}
-              >
-                오늘
-              </button>
+            <div className={styles.canvasNav} aria-label="기간 탐색">
               <button
                 type="button"
                 className={styles.navIconButton}
@@ -661,6 +634,7 @@ export const StudioScheduleManager = ({
               >
                 ‹
               </button>
+              <h2 className={styles.periodLabel}>{periodLabel}</h2>
               <button
                 type="button"
                 className={styles.navIconButton}
@@ -670,6 +644,13 @@ export const StudioScheduleManager = ({
                 ›
               </button>
             </div>
+            <button
+              type="button"
+              className={styles.navButton}
+              onClick={() => applyNavigation({ dateKey: getSeoulTodayKey() })}
+            >
+              오늘
+            </button>
           </header>
 
           {alerts.needsReview > 0 || alerts.unassigned > 0 ? (
@@ -687,7 +668,7 @@ export const StudioScheduleManager = ({
             </div>
           ) : null}
 
-          {view === "month" ? (
+          {error ? null : view === "month" ? (
             <>
               {periodEvents.length === 0 ? (
                 <p className={styles.calendarEmptyNote}>이 달에 예정된 일정이 없습니다.</p>
@@ -733,12 +714,13 @@ export const StudioScheduleManager = ({
                             <StudioDetailLink
                               key={event.id}
                               internalPath={event.detailHref}
-                              className={styles.monthEvent}
+                              className={`${styles.monthEvent} ${event.status === "canceled" ? styles.pastRecord : ""}`}
                               title={`${event.timeLabel} ${event.childName} · ${event.classTitle} · ${event.statusLabel}`}
                             >
                               <span className={`${styles.monthEventTone} ${MONTH_TONE_CLASS[event.tone]}`} />
                               <span className={styles.monthEventTime}>{event.timeLabel}</span>
                               <span className={styles.monthEventName}>{event.childName}</span>
+                              <span className={styles.monthEventKind}>{event.scheduleLabel}</span>
                             </StudioDetailLink>
                           ))}
                           {overflowCount > 0 ? (
@@ -759,6 +741,17 @@ export const StudioScheduleManager = ({
               compact={view === "week"}
             />
             )}
+          {!error && uncertainEvents.length > 0 ? (
+            <details className={styles.uncertainRecords}>
+              <summary>방문 날짜 확인 필요 · {uncertainEvents.length}건</summary>
+              <p>확정 시각이 남아 있지 않은 기록입니다. 표시된 날짜는 처리일이며 방문일이 아닙니다. 처리일도 없는 기록은 기간과 관계없이 표시합니다.</p>
+              {uncertainEvents.map(event => (
+                <StudioDetailLink key={event.id} internalPath={event.detailHref}>
+                  {event.scheduleLabel} · {event.childName} · {event.classTitle} · {event.dateKey ? `처리일 ${event.dateKey}` : "처리일 미확인"}
+                </StudioDetailLink>
+              ))}
+            </details>
+          ) : null}
         </section>
       </div>
     </div>

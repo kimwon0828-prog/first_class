@@ -1,3 +1,5 @@
+import { buildScheduleOccurrenceReservationKey } from "@/shared/lib/schedule-reservation-key"
+import { buildStudioScheduleRangeFilter } from "@/features/studio/lib/studio-schedule-range"
 import { getPublicClassImagesByIds } from "@/features/classes/queries/public-class-safe-projection"
 import {
   canCollectParentDecision,
@@ -1858,36 +1860,40 @@ const getClassScheduleById = async (classScheduleId: string, organizationId: str
   }
 }
 
+type ScheduleApplicationReference = { id: string; class_schedule_id: string; requested_slot_at: string | null; status: ApplicationStatus }
+const getScheduleApplicationReferences = async (ids: string[]): Promise<ScheduleApplicationReference[]> => {
+  const client = getSupabaseServiceRoleClient()
+  const rows: ScheduleApplicationReference[] = []
+  const uniqueIds = [...new Set(ids)]
+  for (let offset = 0; offset < uniqueIds.length; offset += 100) {
+    let received = 0
+    for (;;) {
+      const { data, count, error } = await client.from("trial_applications")
+        .select("id,class_schedule_id,requested_slot_at,status", { count: "exact" })
+        .in("class_schedule_id", uniqueIds.slice(offset, offset + 100))
+        .order("id").range(received, received + 999)
+      if (error) throw new Error("failed_to_fetch_schedule_application_references")
+      const page = (data ?? []) as ScheduleApplicationReference[]
+      rows.push(...page); received += page.length
+      if (!page.length || received >= (count ?? 0)) break
+    }
+  }
+  return rows
+}
+
 const getActiveReservationCountByClassScheduleIds = async (classScheduleIds: string[]) => {
   const counts = new Map<string, number>()
   if (classScheduleIds.length === 0) {
     return counts
   }
 
-  // 예약 수는 전체 집계다. 호출자의 세션으로 세지 않는다 — 위 정원 집계와 같은 이유다.
-  const supabase = getSupabaseServiceRoleClient()
-  const { data, error } = await supabase
-    .from("trial_applications")
-    .select("class_schedule_id, status")
-    .in("class_schedule_id", classScheduleIds)
-    .in("status", ACTIVE_APPLICATION_STATUSES)
-
-  if (error) {
-    throw new Error(formatSupabaseError("failed_to_fetch_class_schedule_application_counts", error))
-  }
-
-  for (const row of (data ?? []) as Array<{ class_schedule_id: string | null }>) {
-    if (!row.class_schedule_id) {
-      continue
-    }
+  for (const row of await getScheduleApplicationReferences(classScheduleIds)) {
+    if (!ACTIVE_APPLICATION_STATUSES.includes(row.status)) continue
     counts.set(row.class_schedule_id, (counts.get(row.class_schedule_id) ?? 0) + 1)
   }
 
   return counts
 }
-
-const buildScheduleOccurrenceReservationKey = (classScheduleId: string, startAt: string) =>
-  `${classScheduleId}::${startAt}`
 
 const getActiveReservationCountByScheduleOccurrenceWithClient = async (
   supabase: SupabaseClient,
@@ -1899,44 +1905,14 @@ const getActiveReservationCountByScheduleOccurrenceWithClient = async (
     return counts
   }
 
-  const targetScheduleIds = new Set(classScheduleIds)
-  const { data, error } = await getSupabaseServiceRoleClient()
-    .from("trial_applications")
-    .select("class_schedule_id, requested_slot_at, status")
-    .eq("class_id", classId)
-    .in("status", ACTIVE_APPLICATION_STATUSES)
-    .not("class_schedule_id", "is", null)
-    .not("requested_slot_at", "is", null)
-
-  if (error) {
-    throw new Error(formatSupabaseError("failed_to_fetch_schedule_occurrence_application_counts", error))
-  }
-
-  for (const row of (data ?? []) as Array<{ class_schedule_id: string | null; requested_slot_at?: string | null }>) {
-    if (!row.class_schedule_id || !row.requested_slot_at) {
-      continue
-    }
-
-    if (!targetScheduleIds.has(row.class_schedule_id)) {
-      continue
-    }
-
+  const rows = await getScheduleApplicationReferences(classScheduleIds)
+  for (const row of rows) {
+    if (!row.requested_slot_at || !ACTIVE_APPLICATION_STATUSES.includes(row.status)) continue
     const key = buildScheduleOccurrenceReservationKey(row.class_schedule_id, row.requested_slot_at)
     counts.set(key, (counts.get(key) ?? 0) + 1)
   }
 
   return counts
-}
-
-const getActiveReservationCountByScheduleOccurrence = async (
-  classId: string,
-  classScheduleIds: string[]
-) => {
-  return getActiveReservationCountByScheduleOccurrenceWithClient(
-    await getSupabaseServerClient(),
-    classId,
-    classScheduleIds
-  )
 }
 
 const buildCalendarItemStatus = (
@@ -1961,7 +1937,9 @@ const buildStudioScheduleCalendarItem = (
     startAt: string
     endAt: string
   },
-  activeReservationCount: number
+  activeReservationCount: number,
+  hasApplicationHistory: boolean,
+  minimumCapacity: number
 ): StudioScheduleCalendarItem => {
   const capacity = Math.max(1, row.capacity ?? 1)
   const teacherId = row.classes.teacher_id ?? null
@@ -1984,6 +1962,8 @@ const buildStudioScheduleCalendarItem = (
     endTime: formatTimeText(row.end_time),
     capacity,
     activeReservationCount,
+    hasApplicationHistory,
+    minimumCapacity,
     remainingCapacity,
     status: buildCalendarItemStatus(capacity, activeReservationCount, bookingStatus),
     seriesId: row.series_id ?? null
@@ -2040,36 +2020,33 @@ const listClassSchedulesInRange = async (
   }
 ) => {
   const supabase = await getSupabaseServerClient()
-  let query = supabase
-    .from("class_schedules")
-    .select(
-      "id, class_id, schedule_type, booking_status, day_of_week, specific_date, series_id, start_time, end_time, capacity, display_label, sort_order, created_at, classes!inner(id, organization_id, title, teacher_id, teacher_display_name)"
-    )
-    .eq("classes.organization_id", organizationId)
-    .order("schedule_type", { ascending: true })
-    .order("start_time", { ascending: true })
-    .order("created_at", { ascending: true })
+  const buildQuery = () => {
+    let query = supabase
+      .from("class_schedules")
+      .select(
+        "id, class_id, schedule_type, booking_status, day_of_week, specific_date, series_id, start_time, end_time, capacity, display_label, sort_order, created_at, classes!inner(id, organization_id, title, teacher_id, teacher_display_name)", { count: "exact" }
+      )
+      .eq("classes.organization_id", organizationId)
+      .or(`schedule_type.eq.weekly,and(schedule_type.eq.one_time,specific_date.gte.${startDate},specific_date.lte.${endDate})`)
+      .order("schedule_type", { ascending: true })
+      .order("start_time", { ascending: true })
+      .order("created_at", { ascending: true }).order("id")
 
-  if (filters?.classId) {
-    query = query.eq("class_id", filters.classId)
+    if (filters?.classId) {
+      query = query.eq("class_id", filters.classId)
+    }
+    if (filters?.teacherId) {
+      query = query.eq("classes.teacher_id", filters.teacherId)
+    }
+    return query
   }
-
-  if (filters?.teacherId) {
-    query = query.eq("classes.teacher_id", filters.teacherId)
-  }
-
-  const { data, error } = await query
-
-  if (error) {
-    throw new Error(
-      formatSupabaseError("failed_to_fetch_class_schedules_in_range", error, {
-        organizationId,
-        startDate,
-        endDate,
-        classId: filters?.classId ?? null,
-        teacherId: filters?.teacherId ?? null
-      })
-    )
+  const data: unknown[] = []
+  for (;;) {
+    const result = await buildQuery().range(data.length, data.length + 999)
+    if (result.error) throw new Error("failed_to_fetch_class_schedules_in_range")
+    const page = result.data ?? []
+    data.push(...page)
+    if (!page.length || data.length >= (result.count ?? 0)) break
   }
 
   return ((data ?? []) as Array<
@@ -3001,10 +2978,20 @@ export const supabaseDataAdapter: DataAdapter = {
       new Set(rows.map((row) => row.classes.teacher_id).filter((teacherId): teacherId is string => Boolean(teacherId)))
     )
     const teacherNameById = await getTeacherNamesByIds(teacherIds)
-    const activeReservationCountByOccurrence = await getActiveReservationCountByScheduleOccurrence(
-      input.classId ?? "",
-      rows.map((row) => row.id)
-    )
+    const references = await getScheduleApplicationReferences(rows.map(row => row.id))
+    const historyIds = new Set(references.map(row => row.class_schedule_id))
+    const activeById = new Map<string, number>()
+    for (const reference of references) {
+      if (ACTIVE_APPLICATION_STATUSES.includes(reference.status)) {
+        activeById.set(reference.class_schedule_id, (activeById.get(reference.class_schedule_id) ?? 0) + 1)
+      }
+    }
+    const activeReservationCountByOccurrence = new Map<string, number>()
+    for (const reference of references) {
+      if (!ACTIVE_APPLICATION_STATUSES.includes(reference.status) || !reference.requested_slot_at) continue
+      const key = buildScheduleOccurrenceReservationKey(reference.class_schedule_id, reference.requested_slot_at)
+      activeReservationCountByOccurrence.set(key, (activeReservationCountByOccurrence.get(key) ?? 0) + 1)
+    }
 
     const items = rows.flatMap((row) =>
       generateClassScheduleOccurrencesWithinRange(row, monthRange.monthStart, monthRange.monthEnd).map((occurrence) =>
@@ -3014,7 +3001,9 @@ export const supabaseDataAdapter: DataAdapter = {
           occurrence,
           activeReservationCountByOccurrence.get(
             buildScheduleOccurrenceReservationKey(row.id, occurrence.startAt)
-          ) ?? 0
+          ) ?? 0,
+          historyIds.has(row.id),
+          Math.max(1, activeById.get(row.id) ?? 0)
         )
       )
     )
@@ -3123,6 +3112,29 @@ export const supabaseDataAdapter: DataAdapter = {
     }
 
     return mapped
+  },
+  async getStudioScheduleFilterOptions(organizationId) {
+    const client = await getSupabaseServerClient()
+    const readAll = async (table: "classes" | "teachers", fields: string) => {
+      const rows: Array<Record<string, string | null>> = []
+      for (;;) {
+        const { data, error, count } = await client.from(table).select(fields, { count: "exact" })
+          .eq("organization_id", organizationId).order("id").range(rows.length, rows.length + 999)
+        if (error) throw new Error("failed_to_fetch_schedule_filters")
+        const page = (data ?? []) as unknown as Array<Record<string, string | null>>
+        rows.push(...page)
+        if (!page.length || rows.length >= (count ?? 0)) return rows
+      }
+    }
+    const [classes, teachers] = await Promise.all([
+      readAll("classes", "id,title"), readAll("teachers", "id,display_name,profile_id")
+    ])
+    const profiles = await getProfileNameMap(teachers.map(row => row.profile_id).filter((id): id is string => Boolean(id)))
+    return {
+      classes: [{ value: "all", label: "전체" }, ...classes.map(row => ({ value: row.id!, label: row.title ?? "수업 정보 없음" }))],
+      teachers: [{ value: "all", label: "전체" }, { value: "unassigned", label: "미배정" },
+        ...teachers.map(row => ({ value: row.id!, label: row.display_name || (row.profile_id ? profiles.get(row.profile_id) : null) || "이름 미정" }))]
+    }
   },
   async listStudioTeacherOptions(organizationId) {
     const supabase = await getSupabaseServerClient()
@@ -4359,11 +4371,11 @@ export const supabaseDataAdapter: DataAdapter = {
 
     // range 마다 같은 조건/정렬로 다시 만든다. Supabase query builder 는 재사용하면
     // 이전 range 가 남으므로 페이지마다 새로 빌드해야 한다.
-    const buildQuery = () => {
+    const buildQuery = (blockOnly = false) => {
       let query = supabase
         .from("studio_trial_applications")
         .select(
-          "id, class_id, parent_id, child_name, child_grade, parent_name, parent_phone, class_schedule_id, requested_schedule_block_id, selected_schedule_label, requested_slot_at, confirmed_slot_at, assigned_teacher_id, contacted_at, scheduled_at, completed_at, enrolled_at, lost_at, canceled_at, no_show_at, goal_type, registration_status, unregistered_reason, status, created_at, updated_at, classes!inner(title, subject, organization_id, program_type, organizations(sido, sigungu, bname)), class_schedules(start_time, end_time), confirmed_block:schedule_blocks!trial_applications_confirmed_schedule_block_id_fkey(start_at, end_at)",
+          "id, class_id, parent_id, child_name, child_grade, parent_name, parent_phone, class_schedule_id, requested_schedule_block_id, selected_schedule_label, requested_slot_at, confirmed_slot_at, assigned_teacher_id, contacted_at, scheduled_at, completed_at, enrolled_at, lost_at, canceled_at, no_show_at, goal_type, registration_status, unregistered_reason, status, created_at, updated_at, classes!inner(title, subject, organization_id, program_type, organizations(sido, sigungu, bname)), class_schedules(start_time, end_time), confirmed_block:schedule_blocks!trial_applications_confirmed_schedule_block_id_fkey(start_at, end_at)".replace("_fkey(start_at", blockOnly ? "_fkey!inner(start_at" : "_fkey(start_at"),
           // 총 개수를 알아야 서버가 page 를 잘라도 끝을 정확히 안다.
           // 같은 request 에 실려 오므로 query 가 늘지 않는다(getStudioCases 와 같은 방식).
           { count: "exact" }
@@ -4371,6 +4383,13 @@ export const supabaseDataAdapter: DataAdapter = {
         // trial_applications 에는 organization_id 가 없다. 조직 스코프는 이 inner join 이 유일하다.
         .eq("classes.organization_id", organizationId)
 
+      if (options.scheduleRange) {
+        if (blockOnly) {
+          query = query.in("status", ["confirmed", "completed", "canceled"]).is("confirmed_slot_at", null)
+            .gte("confirmed_block.start_at", new Date(options.scheduleRange.from).toISOString())
+            .lt("confirmed_block.start_at", new Date(options.scheduleRange.to).toISOString())
+        } else query = query.or(buildStudioScheduleRangeFilter(options.scheduleRange))
+      }
       if (options.teacherId) {
         query = query.eq("assigned_teacher_id", options.teacherId)
       }
@@ -4399,30 +4418,34 @@ export const supabaseDataAdapter: DataAdapter = {
     // 그래서 첫 페이지의 exact count 를 기준으로 삼고, 커서는 실제로 받은
     // row 수만큼만 전진시킨다. 서버가 얼마를 잘라 주든 정확히 이어 붙는다.
     const rows: TrialApplicationRow[] = []
-    let totalCount: number | null = null
+    for (const blockOnly of options.scheduleRange ? [false, true] : [false]) {
+      let totalCount: number | null = null
+      let received = 0
+      for (;;) {
+        const { data, error, count } = await buildQuery(blockOnly).range(
+          received,
+          received + STUDIO_APPLICATION_PAGE_SIZE - 1
+        )
 
-    for (;;) {
-      const { data, error, count } = await buildQuery().range(
-        rows.length,
-        rows.length + STUDIO_APPLICATION_PAGE_SIZE - 1
-      )
+        if (error) {
+          throw new Error("failed_to_fetch_studio_applications")
+        }
 
-      if (error) {
-        throw new Error("failed_to_fetch_studio_applications")
+        if (totalCount === null) {
+          totalCount = count ?? 0
+        }
+
+        const page = (data ?? []) as unknown as TrialApplicationRow[]
+        rows.push(...page)
+        received += page.length
+
+        // 다 받았거나(정상 종료), 서버가 더 줄 게 없으면(방어) 끝낸다.
+        // 두 조건 중 하나는 반드시 성립하므로 무한 loop 이 되지 않는다.
+        if (received >= totalCount || page.length === 0) {
+          break
+        }
       }
 
-      if (totalCount === null) {
-        totalCount = count ?? 0
-      }
-
-      const page = (data ?? []) as TrialApplicationRow[]
-      rows.push(...page)
-
-      // 다 받았거나(정상 종료), 서버가 더 줄 게 없으면(방어) 끝낸다.
-      // 두 조건 중 하나는 반드시 성립하므로 무한 loop 이 되지 않는다.
-      if (rows.length >= totalCount || page.length === 0) {
-        break
-      }
     }
 
     // teacher 이름은 페이지마다가 아니라 전체 row 를 모은 뒤 한 번만 조회한다(N+1 방지).

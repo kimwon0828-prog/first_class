@@ -274,6 +274,9 @@ export type StudioScheduleCalendarItem = {
   endTime: string
   capacity: number
   activeReservationCount: number
+  /** Any application reference, including completed/canceled; deletion protection. */
+  hasApplicationHistory: boolean
+  minimumCapacity: number
   remainingCapacity: number
   status: StudioScheduleCalendarStatus
   seriesId: string | null
@@ -781,6 +784,7 @@ export type StudioApplicationSummary = TrialApplicationSummary & {
 }
 
 export type StudioApplicationListOptions = {
+  scheduleRange?: { from: string; to: string }
   teacherId?: string | null
   createdAtFrom?: string | null
   createdAtTo?: string | null
@@ -1343,6 +1347,7 @@ export interface DataAdapter {
   }>
   listStudioClassListItems(organizationId: string): Promise<StudioClassListItem[]>
   listStudioClasses(organizationId: string): Promise<ClassSummary[]>
+  getStudioScheduleFilterOptions(organizationId: string): Promise<{ teachers: Array<{ value: string; label: string }>; classes: Array<{ value: string; label: string }> }>
   listStudioTeacherOptions(organizationId: string): Promise<StudioTeacherOption[]>
   listStudioDashboardTeacherFilterOptions(
     organizationId: string

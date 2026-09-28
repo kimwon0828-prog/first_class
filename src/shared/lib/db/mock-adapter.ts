@@ -1,3 +1,6 @@
+import { buildMonthGrid, parseDateKey, toDayNumber, toWeekday } from "@/features/studio/lib/studio-schedule-month"
+import { buildScheduleOccurrenceReservationKey } from "@/shared/lib/schedule-reservation-key"
+import { isApplicationInScheduleRange } from "@/features/studio/lib/studio-schedule-range"
 import { reconcileMockOperatingRule, mockScheduleExceptions } from "@/features/studio/lib/reconcile-mock-operating-rule"
 import {
   canCollectParentDecision,
@@ -896,6 +899,12 @@ export const mockDataAdapter: DataAdapter = {
 
     return [...classes].map(toStudioClassListItem).sort((a, b) => (a.title > b.title ? 1 : -1))
   },
+  async getStudioScheduleFilterOptions(organizationId) {
+    const owned = organizationId === mockOrganizationId
+    return { classes: [{ value: "all", label: "전체" }, ...(owned ? classes.map(row => ({ value: row.id, label: row.title })) : [])],
+      teachers: [{ value: "all", label: "전체" }, { value: "unassigned", label: "미배정" },
+        ...(owned ? teacherSummaries.map(row => ({ value: row.id, label: row.displayName })) : [])] }
+  },
   async listStudioTeacherOptions(organizationId) {
     if (organizationId !== mockOrganizationId) {
       return []
@@ -1423,12 +1432,19 @@ export const mockDataAdapter: DataAdapter = {
       .filter((item) => !input.teacherId || item.teacherId === input.teacherId)
       .flatMap((classItem) =>
         (classItem.schedules ?? [])
-          .filter((schedule) => schedule.scheduleType === "one_time" && schedule.specificDate?.startsWith(input.month))
+          .flatMap(schedule => schedule.scheduleType === "weekly"
+            ? buildMonthGrid(`${input.month}-01`).filter(cell => cell.isCurrentMonth &&
+                toWeekday(toDayNumber(parseDateKey(cell.key)!)) === schedule.dayOfWeek)
+              .map(cell => ({ ...schedule, specificDate: cell.key }))
+            : schedule.specificDate?.startsWith(input.month) ? [schedule] : [])
           .map((schedule) => {
             const activeReservationCount = applications.filter(
               (application) =>
                 application.classId === classItem.id &&
                 application.classScheduleId === schedule.id &&
+                Boolean(application.requestedSlotAt) &&
+                buildScheduleOccurrenceReservationKey(schedule.id, application.requestedSlotAt!) ===
+                  buildScheduleOccurrenceReservationKey(schedule.id, `${schedule.specificDate}T${schedule.startTime.slice(0,5)}:00+09:00`) &&
                 ACTIVE_APPLICATION_STATUSES.includes(application.status)
             ).length
             const capacity = Math.max(1, schedule.capacity ?? 1)
@@ -1455,6 +1471,8 @@ export const mockDataAdapter: DataAdapter = {
               endTime: schedule.endTime.slice(0, 5),
               capacity,
               activeReservationCount,
+              hasApplicationHistory: applications.some(application => application.classScheduleId === schedule.id),
+              minimumCapacity: Math.max(1, applications.filter(application => application.classScheduleId === schedule.id && ACTIVE_APPLICATION_STATUSES.includes(application.status)).length),
               remainingCapacity,
               status,
               seriesId: schedule.seriesId ?? null
@@ -1784,6 +1802,7 @@ export const mockDataAdapter: DataAdapter = {
 
         return mapped
       })
+      .filter(item => !options.scheduleRange || isApplicationInScheduleRange(item, options.scheduleRange))
       // supabase adapter 와 같은 정렬이어야 한다: created_at desc, 동률이면 id desc.
       .sort((a, b) =>
         a.createdAt === b.createdAt

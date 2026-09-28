@@ -1,5 +1,6 @@
 "use client"
 
+import { getSeoulTodayKey } from "@/features/studio/lib/studio-schedule-month"
 import { useRouter } from "next/navigation"
 import { useEffect, useState, useTransition } from "react"
 
@@ -48,7 +49,7 @@ export const StudioScheduleDayPanel = ({
   const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
   useEffect(() => { onPendingChange?.(isPending) }, [isPending, onPendingChange])
-  const isPast = selectedDate < new Date().toISOString().slice(0, 10)
+  const isPast = selectedDate < getSeoulTodayKey()
 
   const oneTimeItems = day?.items.filter((item) => item.scheduleType === "one_time") ?? []
   const hasWeeklyItems = Boolean(day?.items.some((item) => item.scheduleType === "weekly"))
@@ -234,13 +235,13 @@ export const StudioScheduleDayPanel = ({
                 </strong>
                 <div className={styles.badgeRow}>
                   <span className={styles.metaBadge}>신청 {item.activeReservationCount}건</span>
-                  {item.activeReservationCount > 0 ? <span className={styles.metaBadgeMuted}>수정 잠금</span> : null}
+                  {item.hasApplicationHistory ? <span className={styles.metaBadgeMuted}>신청 이력 · 삭제 보호</span> : null}
                   <span className={styles.metaBadgeMuted}>{item.scheduleType === "weekly" ? "반복 일정" : "이 날만"}</span>
                   {item.bookingStatus === "closed" ? <span className={styles.metaBadgeWarning}>마감</span> : null}
                   {item.bookingStatus === "hidden" ? <span className={styles.metaBadgeMuted}>예약 화면 숨김</span> : null}
                 </div>
               </div>
-              <span className={getItemStatusClassName(item.status)}>{getItemStatusText(item.status)}</span>
+              <span className={getItemStatusClassName(item.status)}>{item.bookingStatus === "open" && item.status === "closed" ? "정원 마감" : getItemStatusText(item.status)}</span>
             </div>
 
             {item.scheduleType === "one_time" ? (
@@ -253,7 +254,7 @@ export const StudioScheduleDayPanel = ({
                     <button
                       type="button"
                       className={styles.stepperButton}
-                      disabled={isPending || isPast || item.capacity <= Math.max(1, item.activeReservationCount)}
+                      disabled={isPending || isPast || item.capacity <= item.minimumCapacity}
                       onClick={() =>
                         startTransition(async () => {
                           setMessage(null)
@@ -389,7 +390,7 @@ export const StudioScheduleDayPanel = ({
                       예약 화면에서 숨기기
                     </button>
                   ) : null}
-                  {item.activeReservationCount === 0 ? (
+                  {!item.hasApplicationHistory ? (
                     <button
                       type="button"
                       className={styles.buttonDanger}
@@ -422,9 +423,9 @@ export const StudioScheduleDayPanel = ({
               </div>
             )}
 
-            {item.activeReservationCount > 0 ? (
+            {item.hasApplicationHistory ? (
               <p className={styles.warningText}>
-                예약자가 있어 영구 삭제할 수 없습니다. 신규 예약을 중단하려면 예약 화면에서 숨겨주세요.
+                완료·취소를 포함한 신청 이력이 있어 영구 삭제할 수 없습니다. 신규 예약을 중단하려면 예약 화면에서 숨겨주세요.
               </p>
             ) : null}
           </article>
