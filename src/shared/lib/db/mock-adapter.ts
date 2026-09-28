@@ -2009,6 +2009,7 @@ export const mockDataAdapter: DataAdapter = {
         "confirmedScheduleBlockId" in application ? application.confirmedScheduleBlockId : null,
       childSchool: "childSchool" in application ? application.childSchool ?? null : null,
       childNotes: "childNotes" in application ? application.childNotes ?? null : null,
+      interestSubjects: application.interestSubjects ?? null,
       subjectExperienceYn:
         "subjectExperienceYn" in application ? application.subjectExperienceYn ?? null : null,
       subjectExperienceDuration:
@@ -2924,6 +2925,7 @@ export const mockDataAdapter: DataAdapter = {
           : null,
       childSchool: input.childSchool,
       childNotes: input.childNotes,
+      interestSubjects: input.interestSubjects ?? null,
       subjectExperienceYn: input.subjectExperienceYn,
       subjectExperienceDuration: input.subjectExperienceDuration,
       currentLevel: input.currentLevel,

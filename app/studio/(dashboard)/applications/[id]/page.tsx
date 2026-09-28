@@ -366,6 +366,7 @@ export default async function StudioApplicationDetailPage({ params, searchParams
         const parentPhone = normalizeText(data.parentPhone)
         const childGrade = normalizeText(data.childGrade)
         const childSchool = normalizeText(data.childSchool)
+        const interestSubjects = normalizeText(data.interestSubjects)
         const currentLevel = normalizeText(data.currentLevel)
         const childNotes = normalizeText(data.childNotes)
         const parentMemo = normalizeText(data.memo)
@@ -467,6 +468,7 @@ export default async function StudioApplicationDetailPage({ params, searchParams
           parentPhone,
           childGrade,
           childSchool,
+          interestSubjects,
           currentLevel,
           childNotes,
           parentMemo,
@@ -602,7 +604,7 @@ export default async function StudioApplicationDetailPage({ params, searchParams
                 <h2 className={styles.applicationInfoTitle}>신청 참고 정보</h2>
                 <dl className={styles.referenceGrid}>
                   {[
-                    { label: "관심 과목", value: detailView.classSubject },
+                    { label: "관심 과목", value: detailView.interestSubjects },
                     { label: "학습 수준", value: detailView.currentLevel },
                     { label: "신청 시 희망 일정", value: detailView.normalizedPreferredRegularSchedule },
                     { label: "학생 메모", value: detailView.childNotes },

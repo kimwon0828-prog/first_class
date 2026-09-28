@@ -22,7 +22,7 @@ export const createWorkflowApplication = (overrides: Partial<StudioApplicationDe
   unregisteredReason: null, unregisteredReasonNote: null, lostAt: null, followUpNote: null,
   nextContactAt: null, lastActivityAt: null, memo: null, regularSchedulePreference: null,
   regularSchedulePreferenceNote: null, regularSchedulePreferenceUpdatedAt: null,
-  trialResult: null, consultationLogs: [], logs: [], ...overrides
+  interestSubjects: null, trialResult: null, consultationLogs: [], logs: [], ...overrides
 })
 export const createWorkflowRecord = (overrides: Partial<StudioTrialResult> = {}): StudioTrialResult => ({
   id: "test-record", applicationId: "workflow-test", observations: ["active_participation"],

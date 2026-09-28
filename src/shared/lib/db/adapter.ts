@@ -578,6 +578,8 @@ export type TrialApplicationInput = {
   childNotes: string | null
   subjectExperienceYn: boolean | null
   subjectExperienceDuration: string | null
+  /** Selected owned child profile at application creation; absent for legacy/manual callers. */
+  interestSubjects?: string | null
   currentLevel: string | null
   preferredRegularSchedule: string | null
   goalType: string | null
@@ -855,6 +857,8 @@ export type StudioApplicationDetail = StudioApplicationSummary & {
   childNotes: string | null
   subjectExperienceYn: boolean | null
   subjectExperienceDuration: string | null
+  /** Application-time free-text snapshot, never the live child profile or class subject. */
+  interestSubjects: string | null
   currentLevel: string | null
   preferredRegularSchedule: string | null
   goalNote: string | null

@@ -275,6 +275,7 @@ type TrialApplicationRow = {
   subject_experience_yn?: boolean | null
   subject_experience_duration?: string | null
   current_level?: string | null
+  interest_subjects?: string | null
   preferred_regular_schedule?: string | null
   goal_type?: string | null
   goal_note?: string | null
@@ -4713,7 +4714,7 @@ export const supabaseDataAdapter: DataAdapter = {
     const { data, error } = await supabase
       .from("studio_trial_applications")
       .select(
-        "id, class_id, parent_id, child_name, child_grade, parent_name, parent_phone, child_school, child_notes, subject_experience_yn, subject_experience_duration, current_level, preferred_regular_schedule, goal_type, goal_note, class_schedule_id, requested_slot_at, requested_schedule_block_id, selected_schedule_label, confirmed_slot_at, confirmed_schedule_block_id, assigned_teacher_id, contacted_at, scheduled_at, completed_at, enrolled_at, canceled_at, no_show_at, consultation_note, trial_feedback, final_level, final_schedule, registration_status, registered_course, unregistered_reason, unregistered_reason_note, lost_at, follow_up_note, next_contact_at, last_activity_at, regular_schedule_preference, regular_schedule_preference_note, regular_schedule_preference_updated_at, memo, status, created_at, updated_at, class_schedules(start_time, end_time), confirmed_block:schedule_blocks!trial_applications_confirmed_schedule_block_id_fkey(start_at, end_at), classes!inner(title, subject, organization_id, program_type, assignment_mode, organizations(name, sido, sigungu, bname))"
+        "id, class_id, parent_id, child_name, child_grade, parent_name, parent_phone, child_school, child_notes, subject_experience_yn, subject_experience_duration, current_level, interest_subjects, preferred_regular_schedule, goal_type, goal_note, class_schedule_id, requested_slot_at, requested_schedule_block_id, selected_schedule_label, confirmed_slot_at, confirmed_schedule_block_id, assigned_teacher_id, contacted_at, scheduled_at, completed_at, enrolled_at, canceled_at, no_show_at, consultation_note, trial_feedback, final_level, final_schedule, registration_status, registered_course, unregistered_reason, unregistered_reason_note, lost_at, follow_up_note, next_contact_at, last_activity_at, regular_schedule_preference, regular_schedule_preference_note, regular_schedule_preference_updated_at, memo, status, created_at, updated_at, class_schedules(start_time, end_time), confirmed_block:schedule_blocks!trial_applications_confirmed_schedule_block_id_fkey(start_at, end_at), classes!inner(title, subject, organization_id, program_type, assignment_mode, organizations(name, sido, sigungu, bname))"
       )
       .eq("id", applicationId)
       .eq("classes.organization_id", organizationId)
@@ -4783,6 +4784,7 @@ export const supabaseDataAdapter: DataAdapter = {
       subjectExperienceYn: (data as TrialApplicationRow).subject_experience_yn ?? null,
       subjectExperienceDuration: (data as TrialApplicationRow).subject_experience_duration ?? null,
       currentLevel: (data as TrialApplicationRow).current_level ?? null,
+      interestSubjects: (data as TrialApplicationRow).interest_subjects ?? null,
       preferredRegularSchedule: (data as TrialApplicationRow).preferred_regular_schedule ?? null,
       goalNote: (data as TrialApplicationRow).goal_note ?? null,
       consultationNote: (data as TrialApplicationRow).consultation_note ?? null,
@@ -6063,6 +6065,7 @@ export const supabaseDataAdapter: DataAdapter = {
         parent_phone: input.parentPhone,
         child_school: input.childSchool,
         child_notes: input.childNotes,
+        interest_subjects: input.interestSubjects ?? null,
         subject_experience_yn: input.subjectExperienceYn,
         subject_experience_duration: input.subjectExperienceDuration,
         current_level: input.currentLevel,

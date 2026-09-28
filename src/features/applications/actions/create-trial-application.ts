@@ -145,6 +145,7 @@ export async function createTrialApplicationAction(
 
   try {
     let validatedChildId: string | null = null
+    let resolvedInterestSubjects: string | null = null
     let resolvedChildName = validated.childName
     let resolvedChildGrade = validated.childGrade
     let resolvedChildSchool = validated.childSchool
@@ -160,6 +161,8 @@ export async function createTrialApplicationAction(
         }
       }
 
+      // Reuse the owned-child read; never trust a hidden interestSubjects form value.
+      resolvedInterestSubjects = matchedChild.interestSubjects?.trim() || null
       validatedChildId = matchedChild.id
       resolvedChildName = matchedChild.name
       resolvedChildGrade = matchedChild.grade
@@ -194,6 +197,7 @@ export async function createTrialApplicationAction(
       parentPhone: resolvedParentPhone,
       childSchool: resolvedChildSchool,
       childNotes: validated.childNotes,
+      interestSubjects: resolvedInterestSubjects,
       subjectExperienceYn: validated.subjectExperienceYn,
       subjectExperienceDuration: validated.subjectExperienceDuration,
       currentLevel: validated.currentLevel,

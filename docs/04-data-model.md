@@ -95,5 +95,7 @@ Supabase 기본 인증 사용자 테이블
 - `children`는 학부모가 반복 입력 없이 자녀 정보를 재사용하기 위한 프로필 테이블이다.
 - `trial_applications`는 신청 시점 스냅샷을 유지하므로 `child_name`, `child_grade`, `child_school` 컬럼은 유지한다.
 - `trial_applications.child_id`는 nullable로 두고, 기존 데이터 백필 없이 점진적으로 연결한다.
+- `trial_applications.interest_subjects`는 선택한 자녀의 관심 과목을 신청 시점에 보존하는 nullable `text` snapshot이다. 생성 action의 기존 owned-child 조회 결과를 재사용한다. 현재 프로필 live 값이나 수업 과목으로 보완하지 않으며, 기존 신청은 backfill 없이 NULL로 유지하고 Studio에서 행을 숨긴다.
+- 관심 과목 snapshot 코드 배포 전 `20260928120000_add_application_interest_subjects_snapshot.sql`을 적용해야 한다. Studio view도 동일 권한/조직 조건으로 갱신하며 Parent 조회 projection은 확장하지 않는다.
 - 입학고시는 MVP에서 제외하며, 점수/합격/불합격/재응시 구조는 후속 확장으로 미룬다.
 - 노쇼, 결과 기록, 상담, 등록 전환은 현재 `status`에 바로 합치지 않고 후속 phase에서 별도 축으로 분리한다.
