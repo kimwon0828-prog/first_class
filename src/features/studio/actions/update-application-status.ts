@@ -33,14 +33,14 @@ const ACTION_CONFIG: Record<
     label: "신청 확인",
     note: "teacher가 신청을 확인했습니다.",
     nextStatus: "reviewing",
-    allowedCurrentStatuses: ["new"]
+    allowedCurrentStatuses: []
   },
   move_to_confirmed: {
     label: "일정 확정",
     note: "teacher가 체험 신청 일정을 확정했습니다.",
     nextStatus: "confirmed",
-    // new 에서 곧바로 확정할 수 없다. 반드시 신청 확인(reviewing)을 거친다.
-    allowedCurrentStatuses: ["reviewing"]
+    // reviewing 은 기존 신청 호환용이며 신규 신청도 바로 확정한다.
+    allowedCurrentStatuses: ["new", "reviewing"]
   },
   move_to_completed: {
     label: "체험 완료",
@@ -138,14 +138,13 @@ export async function updateApplicationStatusAction(
       }
     }
 
-    if (
-      requestedActionType === "move_to_confirmed" &&
-      current.classAssignmentMode === "post_assign" &&
-      !current.assignedTeacherId
-    ) {
-      return {
-        status: "error",
-        message: "담당 선생님을 먼저 지정해 주세요."
+    const assignedTeacherId = requestedActionType === "move_to_confirmed"
+      ? formData.has("assignedTeacherId") ? String(formData.get("assignedTeacherId") ?? "").trim() || null : current.assignedTeacherId
+      : undefined
+    if (assignedTeacherId) {
+      const options = await dataAdapter.listStudioTeacherOptions(teacher.organizationId)
+      if (!options.some(option => option.teacherId === assignedTeacherId)) {
+        return { status: "error", message: "현재 학원에 속한 선생님만 담당자로 지정할 수 있습니다." }
       }
     }
 
@@ -155,7 +154,9 @@ export async function updateApplicationStatusAction(
       actionType: requestedActionType,
       nextStatus: requestedActionConfig.nextStatus,
       actorId: teacher.id,
-      note: requestedActionConfig.note
+      note: requestedActionConfig.note,
+      assignedTeacherId,
+      expectedUpdatedAt: current.updatedAt
     })
 
     const updated = await dataAdapter
@@ -258,6 +259,10 @@ export async function updateApplicationStatusAction(
       actorId: teacher.id,
       organizationId: teacher.organizationId
     })
+
+    if (message === "slot_capacity_reached" || message === "schedule_booking_closed") {
+      return { status: "error", message: "해당 일정이 마감되었거나 정원이 찼습니다. 일정 관리에서 확인해 주세요." }
+    }
 
     if (message === "application_status_conflict") {
       return {

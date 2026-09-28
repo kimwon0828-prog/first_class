@@ -39,8 +39,7 @@ import {
 import {
   buildSeoulOccurrenceRange,
   formatSeoulDateKey,
-  formatSeoulOccurrenceLabel,
-  resolveRequestedClassScheduleOccurrence
+  formatSeoulOccurrenceLabel
 } from "@/shared/lib/seoul-datetime"
 import {
   buildClassSubjectReadModel,
@@ -4842,58 +4841,13 @@ export const supabaseDataAdapter: DataAdapter = {
   },
   async updateStudioApplicationAssignee(input: UpdateStudioApplicationAssigneeInput) {
     const supabase = await getSupabaseServerClient()
-
-    const { data: applicationData, error: applicationError } = await supabase
-      .from("studio_trial_applications")
-      .select("id, classes!inner(organization_id)")
-      .eq("id", input.applicationId)
-      .eq("classes.organization_id", input.organizationId)
-      .maybeSingle()
-
-    if (applicationError) {
-      throw new Error("failed_to_update_application_assignee")
-    }
-
-    if (!applicationData) {
-      throw new Error("application_not_found_or_forbidden")
-    }
-
-    if (input.assignedTeacherId) {
-      const { data: teacherData, error: teacherError } = await supabase
-        .from("teachers")
-        .select("id, organization_id, is_active, profile_id")
-        .eq("id", input.assignedTeacherId)
-        .eq("organization_id", input.organizationId)
-        .eq("is_active", true)
-        .is("profile_id", null)
-        .maybeSingle()
-
-      if (teacherError) {
-        throw new Error("failed_to_update_application_assignee")
-      }
-
-      if (!teacherData) {
-        throw new Error("invalid_teacher_for_application_organization")
-      }
-    }
-
-    const { data: updatedData, error: updateError } = await supabase
-      .from("studio_trial_applications")
-      .update({
-        assigned_teacher_id: input.assignedTeacherId,
-        updated_at: new Date().toISOString()
-      })
-      .eq("id", input.applicationId)
-      .select("id")
-      .maybeSingle()
-
-    if (updateError) {
-      throw new Error("failed_to_update_application_assignee")
-    }
-
-    if (!updatedData) {
-      throw new Error("application_not_found_or_forbidden")
-    }
+    const { error } = await supabase.rpc("set_studio_application_schedule", {
+      p_application_id: input.applicationId,
+      p_operation: "assign",
+      p_teacher_id: input.assignedTeacherId,
+      p_expected_updated_at: input.expectedUpdatedAt
+    })
+    if (error) throw new Error(error.message)
   },
   async updateStudioApplicationStatus(input: UpdateStudioApplicationStatusInput) {
     const supabase = await getSupabaseServerClient()
@@ -4920,160 +4874,14 @@ export const supabaseDataAdapter: DataAdapter = {
     }
 
     if (input.actionType === "move_to_confirmed") {
-      updatePayload.scheduled_at = nowIso
-      if (input.currentStatus === "new") {
-        updatePayload.contacted_at = nowIso
-      }
-      const { data: currentRow, error: currentError } = await supabase
-        .from("studio_trial_applications")
-        .select("class_id, requested_slot_at, requested_schedule_block_id, class_schedule_id, assigned_teacher_id")
-        .eq("id", input.applicationId)
-        .maybeSingle()
-
-      if (currentError || !currentRow) {
-        throw new Error("failed_to_prepare_application_status_update")
-      }
-
-      const assignedTeacherId = currentRow.assigned_teacher_id ?? null
-
-      if (currentRow.requested_schedule_block_id) {
-        updatePayload.confirmed_slot_at = currentRow.requested_slot_at
-        if (!assignedTeacherId) {
-          updatePayload.confirmed_schedule_block_id = null
-        } else {
-          const { data: requestedBlockData, error: requestedBlockError } = await supabase
-            .from("schedule_blocks")
-            .select("id, teacher_id, class_id, start_at, end_at, capacity, type")
-            .eq("id", currentRow.requested_schedule_block_id)
-            .maybeSingle()
-
-          if (requestedBlockError || !requestedBlockData) {
-            throw new Error("failed_to_prepare_application_status_update")
-          }
-
-          const requestedBlock = requestedBlockData as ScheduleBlockRow
-          const { data: existingBlockData, error: existingBlockError } = await supabase
-            .from("schedule_blocks")
-            .select("id, teacher_id, class_id, start_at, end_at, capacity, type")
-            .eq("class_id", currentRow.class_id)
-            .eq("teacher_id", assignedTeacherId)
-            .eq("start_at", requestedBlock.start_at)
-            .eq("end_at", requestedBlock.end_at)
-
-          if (existingBlockError) {
-            throw new Error("failed_to_prepare_application_status_update")
-          }
-
-          const existingBlocks = (existingBlockData ?? []) as ScheduleBlockRow[]
-          const availableBlock = existingBlocks.find((row) => row.type === "available") ?? null
-          if (!availableBlock && existingBlocks.length > 0) {
-            throw new Error("schedule_block_conflict_for_requested_occurrence")
-          }
-
-          let resolvedBlock = availableBlock
-          if (!resolvedBlock) {
-            const { data: createdBlock, error: createBlockError } = await supabase
-              .from("schedule_blocks")
-              .insert({
-                teacher_id: assignedTeacherId,
-                class_id: currentRow.class_id,
-                type: "available",
-                start_at: requestedBlock.start_at,
-                end_at: requestedBlock.end_at,
-                capacity: Math.max(1, Number(requestedBlock.capacity ?? 1)),
-                updated_at: new Date().toISOString()
-              })
-              .select("id, teacher_id, class_id, start_at, end_at, capacity, type")
-              .single()
-
-            if (createBlockError || !createdBlock) {
-              throw new Error("failed_to_create_schedule_block_for_confirmation")
-            }
-
-            resolvedBlock = createdBlock as ScheduleBlockRow
-          }
-
-          updatePayload.requested_schedule_block_id = resolvedBlock.id
-          updatePayload.confirmed_schedule_block_id = resolvedBlock.id
-        }
-      } else if (currentRow.class_schedule_id) {
-        const { data: classScheduleData, error: classScheduleError } = await supabase
-          .from("class_schedules")
-          .select("id, class_id, start_time, end_time, capacity")
-          .eq("id", currentRow.class_schedule_id)
-          .eq("class_id", currentRow.class_id)
-          .maybeSingle()
-
-        if (classScheduleError || !classScheduleData) {
-          throw new Error("failed_to_prepare_application_status_update")
-        }
-
-        const occurrence = resolveRequestedClassScheduleOccurrence({
-          requestedSlotAt: currentRow.requested_slot_at,
-          startTime: classScheduleData.start_time,
-          endTime: classScheduleData.end_time
-        })
-
-        if (!occurrence) {
-          throw new Error("invalid_requested_class_schedule_occurrence")
-        }
-
-        const requestedSlotAt = occurrence.startAt
-        const requestedEndAt = occurrence.endAt
-        updatePayload.confirmed_slot_at = requestedSlotAt
-
-        if (!assignedTeacherId) {
-          updatePayload.confirmed_schedule_block_id = null
-        } else {
-          const { data: existingBlockData, error: existingBlockError } = await supabase
-            .from("schedule_blocks")
-            .select("id, teacher_id, class_id, start_at, end_at, capacity, type")
-            .eq("class_id", currentRow.class_id)
-            .eq("teacher_id", assignedTeacherId)
-            .eq("start_at", requestedSlotAt)
-            .eq("end_at", requestedEndAt)
-
-          if (existingBlockError) {
-            throw new Error("failed_to_prepare_application_status_update")
-          }
-
-          const existingBlocks = (existingBlockData ?? []) as ScheduleBlockRow[]
-          const availableBlock = existingBlocks.find((row) => row.type === "available") ?? null
-
-          if (!availableBlock && existingBlocks.length > 0) {
-            throw new Error("schedule_block_conflict_for_requested_occurrence")
-          }
-
-          let resolvedBlock = availableBlock
-          if (!resolvedBlock) {
-            const capacity = Math.max(1, Number(classScheduleData.capacity ?? 1))
-            const { data: createdBlock, error: createBlockError } = await supabase
-              .from("schedule_blocks")
-              .insert({
-                teacher_id: assignedTeacherId,
-                class_id: currentRow.class_id,
-                type: "available",
-                start_at: requestedSlotAt,
-                end_at: requestedEndAt,
-                capacity,
-                updated_at: new Date().toISOString()
-              })
-              .select("id, teacher_id, class_id, start_at, end_at, capacity, type")
-              .single()
-
-            if (createBlockError || !createdBlock) {
-              throw new Error("failed_to_create_schedule_block_for_confirmation")
-            }
-
-            resolvedBlock = createdBlock as ScheduleBlockRow
-          }
-
-          updatePayload.requested_schedule_block_id = resolvedBlock.id
-          updatePayload.confirmed_schedule_block_id = resolvedBlock.id
-        }
-      } else {
-        throw new Error("missing_requested_schedule_block")
-      }
+      const { error } = await supabase.rpc("set_studio_application_schedule", {
+        p_application_id: input.applicationId,
+        p_operation: "confirm",
+        p_teacher_id: input.assignedTeacherId ?? null,
+        p_expected_updated_at: input.expectedUpdatedAt
+      })
+      if (error) throw new Error(error.message)
+      return // RPC owns the one confirmed log and the complete transaction.
     }
 
     if (input.actionType === "move_to_completed") {
@@ -5092,13 +4900,13 @@ export const supabaseDataAdapter: DataAdapter = {
       updatePayload.no_show_at = nowIso
     }
 
-    const { data, error } = await supabase
+    let updateQuery = supabase
       .from("studio_trial_applications")
       .update(updatePayload)
       .eq("id", input.applicationId)
       .eq("status", input.currentStatus)
-      .select("id")
-      .maybeSingle()
+    if (input.expectedUpdatedAt) updateQuery = updateQuery.eq("updated_at", input.expectedUpdatedAt)
+    const { data, error } = await updateQuery.select("id").maybeSingle()
 
     if (error) {
       throw new Error("failed_to_update_application_status")

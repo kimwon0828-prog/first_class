@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef, useId } from "react"
+import { useEffect, useRef, useId, useState } from "react"
 import { useActionState } from "react"
 import { useRouter } from "next/navigation"
 
@@ -8,7 +8,10 @@ import {
   updateApplicationStatusAction,
   type UpdateApplicationStatusActionState
 } from "@/features/studio/actions/update-application-status"
-import type { ApplicationStatus, ApplicationStatusActionType } from "@/shared/lib/db/adapter"
+import type { ApplicationStatus, ApplicationStatusActionType, StudioTeacherOption } from "@/shared/lib/db/adapter"
+
+import Link from "next/link"
+import { StudioQueryRetry } from "./studio-query-retry"
 
 import styles from "./application-status-action-form.module.css"
 
@@ -19,8 +22,8 @@ const initialState: UpdateApplicationStatusActionState = {
 }
 
 const STATUS_LABELS: Record<ApplicationStatus, string> = {
-  new: "신규 신청",
-  reviewing: "신청 확인",
+  new: "신청 접수",
+  reviewing: "신청 접수",
   confirmed: "일정 확정",
   completed: "체험 완료",
   canceled: "처리 종료"
@@ -34,12 +37,11 @@ type ActionButtonConfig = {
 
 const ACTIONS_BY_STATUS: Record<ApplicationStatus, ActionButtonConfig[]> = {
   new: [
-    // new 의 진행 액션은 신청 확인 하나다. 일정 확정은 reviewing 에서만 할 수 있다.
-    { actionType: "move_to_reviewing", label: "신청 확인", tone: "primary" },
+    { actionType: "move_to_confirmed", label: "일정 확정하기", tone: "primary" },
     { actionType: "cancel", label: "취소 처리", tone: "danger" }
   ],
   reviewing: [
-    { actionType: "move_to_confirmed", label: "일정 확정", tone: "primary" },
+    { actionType: "move_to_confirmed", label: "일정 확정하기", tone: "primary" },
     { actionType: "cancel", label: "취소 처리", tone: "danger" }
   ],
   confirmed: [
@@ -52,12 +54,11 @@ const ACTIONS_BY_STATUS: Record<ApplicationStatus, ActionButtonConfig[]> = {
 
 const CASE_DETAIL_ACTIONS_BY_STATUS: Record<ApplicationStatus, ActionButtonConfig[]> = {
   new: [
-    // new 의 진행 액션은 신청 확인 하나다. 일정 확정은 reviewing 에서만 할 수 있다.
-    { actionType: "move_to_reviewing", label: "신청 확인", tone: "primary" },
+    { actionType: "move_to_confirmed", label: "일정 확정하기", tone: "primary" },
     { actionType: "cancel", label: "취소 처리", tone: "danger" }
   ],
   reviewing: [
-    { actionType: "move_to_confirmed", label: "일정 확정", tone: "primary" },
+    { actionType: "move_to_confirmed", label: "일정 확정하기", tone: "primary" },
     { actionType: "cancel", label: "취소 처리", tone: "danger" }
   ],
   confirmed: [
@@ -75,6 +76,14 @@ type ApplicationStatusActionFormProps = {
   variant?: "default" | "case-detail"
   primaryTone?: "primary" | "secondary"
   showActions?: boolean
+  confirmation?: {
+    requestedSchedule: string
+    hasSchedule: boolean
+    assignedTeacherId: string | null
+    teachers: StudioTeacherOption[]
+    teachersError: string | null
+    scheduleHref: string
+  }
 }
 
 export const ApplicationStatusActionForm = ({
@@ -83,9 +92,11 @@ export const ApplicationStatusActionForm = ({
   onCompletedSaved,
   variant = "default",
   primaryTone = "primary",
-  showActions = true
+  showActions = true,
+  confirmation
 }: ApplicationStatusActionFormProps) => {
   const router = useRouter()
+  const [selectedTeacher, setSelectedTeacher] = useState(confirmation?.assignedTeacherId ?? "")
   const dialogRef = useRef<HTMLDialogElement>(null)
   const noShowSubmitRef = useRef<HTMLButtonElement>(null)
   const dialogTitleId = useId()
@@ -132,15 +143,33 @@ export const ApplicationStatusActionForm = ({
     ) : (
       <form
         action={formAction}
-        className={`${styles.form} ${isCaseDetail ? styles.compactForm : ""}`}
+        className={`${styles.form} ${isCaseDetail ? styles.compactForm : ""} ${confirmation ? styles.confirmationForm : ""}`}
         aria-label={isCaseDetail ? "다음 할 일 상태 변경" : undefined}
       >
         {state.message ? (
-          <div className={`${styles.message} ${state.status === "error" ? styles.messageError : ""}`}>
+          <div role={state.status === "error" ? "alert" : "status"} className={`${styles.message} ${state.status === "error" ? styles.messageError : ""}`}>
             {state.message}
           </div>
         ) : null}
 
+        {confirmation ? <>
+          <div className={styles.scheduleGrid}>
+            <div className={styles.requestedSchedule}><span>학부모 희망 일정</span><strong>{confirmation.requestedSchedule}</strong></div>
+            <div className={styles.confirmedSchedule}><span>확정 일정</span><strong>{confirmation.requestedSchedule}</strong><small>기존 희망 일정으로 확정합니다.</small></div>
+          </div>
+          {!confirmation.hasSchedule ? <div className={styles.message} role="status">확정 가능한 일정이 없습니다. <Link href={confirmation.scheduleHref}>일정 관리</Link></div> : null}
+          <fieldset className={styles.teacherField} disabled={isPending}>
+            <legend>담당 선생님 <span>(선택)</span></legend>
+            <p>선생님을 선택하지 않아도 일정 확정이 가능해요.</p>
+            {confirmation.teachersError ? <div role="alert">{confirmation.teachersError}<StudioQueryRetry /></div> : null}
+            <div className={styles.teacherOptions}>
+              {[{ teacherId: "", teacherName: "미배정" }, ...confirmation.teachers].map(teacher => <label key={teacher.teacherId} className={styles.teacherOption} data-selected={selectedTeacher === teacher.teacherId}>
+                <input type="radio" name="assignedTeacherId" value={teacher.teacherId} checked={selectedTeacher === teacher.teacherId} onChange={() => setSelectedTeacher(teacher.teacherId)} />
+                <span>{teacher.teacherName}</span>
+              </label>)}
+            </div>
+          </fieldset>
+        </> : null}
         <div className={`${styles.buttonGroup} ${isCaseDetail ? styles.compactButtonGroup : ""}`}>
           {availableActions.map((item) => (
             <button
@@ -152,7 +181,7 @@ export const ApplicationStatusActionForm = ({
               } : undefined}
               name="actionType"
               value={item.actionType}
-              disabled={isPending}
+              disabled={isPending || (item.actionType === "move_to_confirmed" && Boolean(confirmation && !confirmation.hasSchedule))}
               className={
                 item.tone === "danger"
                   ? styles.dangerButton

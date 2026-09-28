@@ -48,8 +48,8 @@ export const CASE_ACTIVE_STAGES = ["new", "reviewing", "confirmed", "in_trial", 
 export const CASE_CLOSED_STAGES = ["enrolled", "not_enrolled", "canceled", "no_show"] as const
 
 export const CASE_STAGE_LABELS: Record<CaseStage, string> = {
-  new: "신규 신청",
-  reviewing: "신청 확인",
+  new: "신청 접수",
+  reviewing: "신청 접수",
   confirmed: "일정 확정",
   in_trial: "체험 중",
   completed: "체험 완료",
@@ -206,9 +206,6 @@ export const getCaseAttentionState = (
     return "NONE"
   }
 
-  if (!input.assignedTeacherId) {
-    return "UNASSIGNED"
-  }
 
   const pipelineGroup =
     stage === "completed"
@@ -314,11 +311,7 @@ export const getCaseNextAction = (
       break
   }
 
-  if (stage === "new") {
-    return { key: "REVIEW_NEW", label: "신청 내용을 확인해 주세요.", tone: "default" }
-  }
-
-  if (stage === "reviewing") {
+  if (stage === "new" || stage === "reviewing") {
     return { key: "CONFIRM_SCHEDULE", label: "체험 일정을 확정해 주세요.", tone: "default" }
   }
 

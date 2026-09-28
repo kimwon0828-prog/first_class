@@ -1,13 +1,14 @@
 // Dashboard performance summary.
 //
 // 기간은 각 milestone 발생일이 아니라 신청 created_at cohort 를 고른다. 그래야
-// 신청 → 신청 확인 → 일정 확정 → 체험 완료 → 등록 숫자가 같은 모집단을 공유하고,
+// 신청 접수 → 일정 확정 → 체험 진행 → 체험 완료 → 등록 결과 숫자가 같은 모집단을 공유하고,
 // 단계 사이 비율도 실제 conversion 으로 읽을 수 있다.
 //
 // application_logs 를 추가 조회하지 않는다. 기본 상태 계약이 순차적이므로 현재 Case
 // stage 로 누적 도달 여부를 판정한다. canceled/no_show 는 어느 단계에서 이탈했는지
 // summary 만으로 알 수 없어 신청 수에만 포함한다.
 
+import { isTrialStarted } from "./trial-completion"
 import { getCaseStage, type CaseStage } from "@/features/studio/lib/case-view-model"
 import type { StudioResolvedDateRange } from "@/features/studio/lib/studio-date-range"
 import type {
@@ -17,7 +18,7 @@ import type {
 
 export type StudioDashboardMetricKey =
   | "application"
-  | "reviewing"
+  | "in_trial"
   | "confirmed"
   | "completed"
   | "enrolled"
@@ -96,7 +97,8 @@ const isCreatedWithinRange = (
 
 export const buildStudioDashboardMetrics = (
   applications: StudioApplicationSummary[],
-  range: StudioResolvedDateRange
+  range: StudioResolvedDateRange,
+  now: Date = new Date()
 ): StudioDashboardMetrics => {
   const cohort = applications.filter((item) => isCreatedWithinRange(item, range))
   const stages = cohort.map((item) =>
@@ -112,17 +114,17 @@ export const buildStudioDashboardMetrics = (
 
   const counts = [
     cohort.length,
-    reachedCount(1),
     reachedCount(2),
+    cohort.filter((item, index) => (STAGE_REACHED_LEVEL[stages[index]] ?? 0) >= 3 || (item.status === "confirmed" && isTrialStarted(item, now))).length,
     reachedCount(3),
     stages.filter((stage) => stage === "enrolled").length
   ]
-  // reviewing 의 Dashboard 표기다. DB status 계약(reviewing)은 그대로다.
-  const labels = ["신청", "신청 확인", "일정 확정", "체험 완료", "등록"]
+  // new/reviewing은 접수 cohort에만 포함. 등록 결과 수치는 기존 등록 완료 건수를 유지한다.
+  const labels = ["신청 접수", "일정 확정", "체험 진행", "체험 완료", "등록 결과"]
   const keys: StudioDashboardMetricKey[] = [
     "application",
-    "reviewing",
     "confirmed",
+    "in_trial",
     "completed",
     "enrolled"
   ]

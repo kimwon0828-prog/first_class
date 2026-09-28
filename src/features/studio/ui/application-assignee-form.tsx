@@ -82,6 +82,7 @@ export const ApplicationAssigneeForm = ({
           <label className={styles.field}>
             <span className={styles.label}>배정할 선생님</span>
             <select
+              key={currentAssignedTeacherId ?? "unassigned"}
               name="assignedTeacherId"
               defaultValue={currentAssignedTeacherId ?? ""}
               disabled={isPending}

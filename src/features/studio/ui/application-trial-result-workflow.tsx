@@ -1,6 +1,6 @@
 "use client"
 
-import { deriveApplicationDetailWorkflow, hasTrialRecordContent, type ApplicationWorkflowEvidence } from "@/features/studio/lib/application-detail-workflow-state"
+import { deriveApplicationDetailWorkflow, getApplicationJourney, hasTrialRecordContent, type ApplicationWorkflowEvidence } from "@/features/studio/lib/application-detail-workflow-state"
 import { StudioQueryRetry } from "./studio-query-retry"
 
 import type { ReactNode } from "react"
@@ -108,6 +108,7 @@ const initialConsultationState: CreateConsultationLogActionState = {
 
 type ApplicationTrialResultWorkflowProps = {
   application: StudioApplicationDetail
+  confirmationSection?: ReactNode
   headerContent?: ReactNode
   referenceSections?: ReactNode
   reportSection?: ReactNode
@@ -134,6 +135,7 @@ export const ApplicationTrialResultWorkflow = ({
   application,
   evidence,
   headerContent,
+  confirmationSection,
   sidebarContent = null,
   referenceSections = null,
   reportSection = null,
@@ -553,14 +555,15 @@ export const ApplicationTrialResultWorkflow = ({
     <summary className={styles.disclosureSummary}>시스템 이력 보기</summary>
     {systemEvents.length ? <ol className={styles.activityList}>{systemEvents.map(event => <li key={event.id} className={styles.activitySystemItem}><span className={styles.activitySystemTitle}>{event.title}{event.meta ? ` · ${event.meta}` : ""}</span><span className={styles.activitySystemTime}>{formatSeoulDateTime(event.at)}</span></li>)}</ol> : <p className={styles.simpleEmptyLine}>시스템 이력이 없습니다.</p>}
   </details>
+  const progressSteps = application.status === "completed" ? workflow.steps : getApplicationJourney(application, new Date(nowIso))
   const stepStateLabels = { done: "완료", current: "진행 중", waiting: "대기", available: "작업 가능", restricted: "제한", error: "조회 실패" }
 
   return (
     <>
-      <div className={styles.workspace}>
+      <div className={`${styles.workspace} ${confirmationSection ? styles.withConfirmation : ""}`}>
         <section className={styles.workspaceHeader} aria-label="신청 작업 헤더">
           {headerContent}
-          {workflow.primary?.action === "status" || (workflow.primary?.action === "assignee" && (application.status === "new" || application.status === "reviewing")) ? (
+          {!confirmationSection && workflow.primary?.action === "status" ? (
             <div className={styles.statusActions}>
               <ApplicationStatusActionForm applicationId={application.id} currentStatus={application.status}
                 variant="case-detail" primaryTone={workflow.primary?.action === "status" ? "primary" : "secondary"} onCompletedSaved={handleCompletedSaved} />
@@ -571,16 +574,21 @@ export const ApplicationTrialResultWorkflow = ({
         <section className={styles.progressCard} aria-labelledby="workflow-progress-title">
           <h2 id="workflow-progress-title" className={styles.sectionTitle}>진행 현황</h2>
           <p className={styles.sectionMetaLine}>체험부터 등록 결과까지의 진행 상황을 한눈에 확인할 수 있습니다.</p>
-          <ol className={styles.stepper} aria-label="체험 후 진행 단계">
-            {workflow.steps.map((step, index) => <li key={step.id} data-state={step.state} aria-current={workflow.currentStep === step.id ? "step" : undefined}>
+          <ol className={`${styles.stepper} ${application.status !== "completed" ? styles.journeyStepper : ""}`} aria-label="신청 진행 단계">
+            {progressSteps.map((step, index) => <li key={step.id} data-state={step.state} aria-current={step.state === "current" ? "step" : undefined}>
               <span className={styles.stepNumber}>{step.state === "done" ? "✓" : index + 1}</span>
               <strong>{step.title}</strong>
               <span className={styles.stepSummary}>{step.id === "parent" && evidence.parentDecision.value && !evidence.parentDecision.error ? formatSeoulDateTime(evidence.parentDecision.createdAt) ?? "응답 완료" : step.summary}</span>
-              <span className={styles.stepState}>{stepStateLabels[step.state]}</span>
+              <span className={styles.stepState}>{application.status !== "completed" && step.state === "current" && step.summary !== "체험 진행 중" ? "다음 단계" : stepStateLabels[step.state]}</span>
             </li>)}
           </ol>
         </section>
 
+        {confirmationSection ? <section id="confirm-schedule" className={`${styles.card} ${styles.confirmationCard}`} aria-label="일정 확정">
+          <h2 className={styles.sectionTitle}>일정 확정</h2>
+          <p className={styles.sectionMetaLine}>체험 일정을 확정해 주세요.</p>
+          {confirmationSection}
+        </section> : null}
         <section className={`${styles.card} ${styles.recordCard}`} aria-labelledby="record-report-title">
           <h2 id="record-report-title" className={styles.sectionTitle}>체험 기록 · 리포트</h2>
           <p className={styles.sectionMetaLine}>수업 후 작성한 체험 기록과 리포트입니다.</p>

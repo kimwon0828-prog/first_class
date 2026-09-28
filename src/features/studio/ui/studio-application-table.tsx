@@ -29,8 +29,7 @@ const PIPELINE_STAGES: Array<{
   label: string
   emphasis?: boolean
 }> = [
-  { key: "new", label: "신규 신청" },
-  { key: "reviewing", label: "상담/확인 중" },
+  { key: "new", label: "신청 접수" },
   { key: "confirmed", label: "일정 확정" },
   { key: "completed", label: "체험 완료" },
   { key: "enrolled", label: "등록 완료", emphasis: true }
@@ -107,7 +106,6 @@ const shouldShowRegistrationBadge = (application: StudioApplicationSummary) =>
 const isTodoApplication = (application: StudioApplicationSummary) =>
   application.status === "new" ||
   application.status === "reviewing" ||
-  (application.status === "confirmed" && !application.assignedTeacherId) ||
   (application.status === "completed" && application.registrationStatus === "undecided")
 
 const isGoneApplication = (application: StudioApplicationSummary) =>
@@ -176,9 +174,6 @@ export const StudioApplicationTable = ({ items, periodLabel }: StudioApplication
     })
   }, [items, query, statusFilter])
 
-  const newUnassignedCount = items.filter(
-    (item) => item.status === "new" && !item.assignedTeacherId
-  ).length
   const completedPendingCount = items.filter(
     (item) => item.status === "completed" && item.registrationStatus === "undecided"
   ).length
@@ -189,7 +184,7 @@ export const StudioApplicationTable = ({ items, periodLabel }: StudioApplication
 
   const getStageDescription = (key: StudioApplicationFilterKey) => {
     if (key === "new") {
-      return newUnassignedCount > 0 ? `${newUnassignedCount}건 선생님 배정 필요` : "확인이 필요한 신청"
+      return "일정 확정 필요"
     }
     if (key === "reviewing") {
       return "상담 및 일정 조율 중"

@@ -5,7 +5,6 @@ import type { RegistrationResult } from "@/features/registration/lib/registratio
 import { formatSeoulDateTime } from "./seoul-datetime"
 import { getTrialProgressState } from "./trial-completion"
 import { formatSeoulDateKey } from "@/shared/lib/seoul-datetime"
-import { getCaseAttentionState } from "./case-view-model"
 
 /** Read-only evidence from the existing queries. Unknown is never equivalent to absent. */
 export type ApplicationWorkflowEvidence = {
@@ -61,8 +60,6 @@ export function deriveApplicationDetailWorkflow({ application: a, evidence: e, n
   const hasRecord = hasTrialRecordContent(a.trialResult)
   const progress = getTrialProgressState(a, new Date(nowIso))
   const inTrial = a.status === "confirmed" && (progress === "in_trial" || progress === "after_scheduled_end")
-  const needsAssignee = getCaseAttentionState({ ...a, trialResultExists: Boolean(a.trialResult),
-    hasAnyConsultationHistory: a.consultationLogs.length > 0 }, new Date(nowIso)) === "UNASSIGNED"
   const today = formatSeoulDateKey(nowIso)
   const contactDay = a.nextContactAt ? formatSeoulDateKey(a.nextContactAt) : null
   const contactDue = Boolean(contactDay && today && contactDay <= today)
@@ -81,9 +78,7 @@ export function deriveApplicationDetailWorkflow({ application: a, evidence: e, n
       result === "enrolled" ? "등록이 완료되었습니다." : "미등록으로 종료되었습니다."
     description = "기존 기록과 이력을 확인할 수 있어요."
   } else if (!completed) {
-    if (needsAssignee && !inTrial) act("assignee", "담당자 배정", "trial", "담당 선생님을 배정해 주세요.")
-    else if (a.status === "new") act("status", "신청 확인", "trial", "신청 내용을 확인해 주세요.")
-    else if (a.status === "reviewing") act("status", "일정 확정", "trial", "체험 일정을 확인하고 확정해 주세요.")
+    if (a.status === "new" || a.status === "reviewing") act("status", "일정 확정하기", "trial", "체험 일정을 확인하고 확정해 주세요.")
     else if (inTrial) act("status", "체험 완료", "trial", "체험이 끝났다면 완료 처리해 주세요.")
     else title = progress === "unknown" ? "확정된 체험 시간을 확인해 주세요." : "확정된 체험 일정이 예정되어 있어요."
     description = "체험 완료 후 기록과 등록 결과를 관리할 수 있어요."
@@ -131,4 +126,24 @@ export function deriveApplicationDetailWorkflow({ application: a, evidence: e, n
     if (step && step.state !== "error") step.state = "current"
   }
   return { closed, result, title, description, primary: selected, currentStep: selected?.step ?? (closed ? null : steps.find(step => step.state === "error")?.id ?? null), steps }
+}
+
+/** Before trial completion the public journey has five steps; DB status is unchanged. */
+export function getApplicationJourney(a: StudioApplicationDetail, now: Date) {
+  const progress = getTrialProgressState(a, now)
+  const closed = a.status === "canceled"
+  const confirmed = a.status === "confirmed" || a.status === "completed"
+  const started = confirmed && (a.status === "completed" || progress === "in_trial" || progress === "after_scheduled_end")
+  const ended = a.status === "completed" || progress === "after_scheduled_end"
+  const current = closed ? -1 : !confirmed ? 1 : !ended ? 2 : a.status === "completed" ? 4 : 3
+  const titles = ["신청 접수", "일정 확정", "체험 진행", "체험 완료", "등록 결과"]
+  return titles.map((title, index) => ({
+    id: String(index), title,
+    state: index === 0 || (index === 1 && confirmed) || (index === 2 && ended) || (index === 3 && a.status === "completed") ? "done" as const : current === index ? "current" as const : "waiting" as const,
+    summary: index === 0 ? formatSeoulDateTime(a.createdAt) ?? "접수 완료"
+      : closed && index === 3 ? a.noShowAt ? "노쇼" : "신청 취소"
+      : index === 1 && !confirmed && !closed ? "체험 일정을 확정해 주세요."
+      : index === 2 && confirmed && !closed ? ended ? "예정 시간 경과" : started ? "체험 진행 중" : "체험 예정"
+      : index === 3 && started && !closed ? a.status === "completed" ? "체험 완료" : "완료 또는 노쇼 처리" : ""
+  }))
 }

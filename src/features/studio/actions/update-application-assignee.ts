@@ -61,7 +61,8 @@ export async function updateApplicationAssigneeAction(
       applicationId,
       organizationId: teacher.organizationId,
       actorId: teacher.id,
-      assignedTeacherId: requestedTeacherId
+      assignedTeacherId: requestedTeacherId,
+      expectedUpdatedAt: current.updatedAt
     })
 
     if (requestedTeacherId) {
@@ -97,6 +98,12 @@ export async function updateApplicationAssigneeAction(
     const message =
       error instanceof Error ? error.message : "failed_to_update_application_assignee"
 
+    if (message === "application_status_conflict") {
+      return { status: "error", message: "다른 작업으로 신청이 변경되었습니다. 새로고침 후 다시 시도해 주세요." }
+    }
+    if (message === "schedule_block_conflict_for_requested_occurrence" || message === "slot_capacity_reached") {
+      return { status: "error", message: "선택한 선생님의 해당 시간에 다른 예약이 있습니다. 다른 선생님을 선택해 주세요." }
+    }
     if (message === "application_not_found_or_forbidden") {
       return {
         status: "error",

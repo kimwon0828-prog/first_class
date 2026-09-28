@@ -66,6 +66,7 @@ type TrialReminderRunResult = {
   parentFailed: number
   teacherSent: number
   teacherSkippedDuplicate: number
+  teacherSkippedUnassigned: number
   teacherFailed: number
   adminSent: number
   adminSkippedDuplicate: number
@@ -260,6 +261,7 @@ export const runTrialReminders = async (authMode: TrialReminderRunResult["authMo
     parentFailed: 0,
     teacherSent: 0,
     teacherSkippedDuplicate: 0,
+    teacherSkippedUnassigned: 0,
     teacherFailed: 0,
     adminSent: 0,
     adminSkippedDuplicate: 0,
@@ -299,6 +301,8 @@ export const runTrialReminders = async (authMode: TrialReminderRunResult["authMo
       existingLogKeys.add(adminLogKey)
       if (sendResult.teacher.status === "sent" || sendResult.teacher.status === "dry_run") {
         result.teacherSent += 1
+      } else if (sendResult.teacher.status === "skipped" && sendResult.teacher.errorMessage === "teacher_not_assigned") {
+        result.teacherSkippedUnassigned += 1
       } else if (sendResult.teacher.status === "skipped") {
         result.teacherSkippedDuplicate += sendResult.teacher.errorMessage === "skipped_duplicate_recipient_phone" ? 1 : 0
         result.teacherFailed += sendResult.teacher.errorMessage === "skipped_duplicate_recipient_phone" ? 0 : 1

@@ -92,7 +92,7 @@ const buildBoth = (
 
 const countOf = (
   model: ReturnType<typeof buildBoth>["model"],
-  key: "application" | "reviewing" | "confirmed" | "completed" | "enrolled"
+  key: "application" | "in_trial" | "confirmed" | "completed" | "enrolled"
 ) => model.funnel.find((step) => step.key === key)?.count ?? -1
 
 const decisionOf = (
@@ -120,7 +120,7 @@ console.log("\n[1] canonical fixture — Dashboard = Report")
   const { metrics, analytics, model } = buildBoth(applications)
 
   check(countOf(model, "application") === 10, `총 신청이 다르다: ${countOf(model, "application")}`)
-  check(countOf(model, "reviewing") === 9, `신청 확인이 다르다: ${countOf(model, "reviewing")}`)
+  check(countOf(model, "in_trial") === 6, `체험 진행이 다르다: ${countOf(model, "in_trial")}`)
   check(countOf(model, "confirmed") === 8, `일정 확정이 다르다: ${countOf(model, "confirmed")}`)
   check(countOf(model, "completed") === 6, `체험 완료가 다르다: ${countOf(model, "completed")}`)
   check(countOf(model, "enrolled") === 3, `등록이 다르다: ${countOf(model, "enrolled")}`)
@@ -231,7 +231,7 @@ console.log("\n[6] 취소·노쇼는 신청 수에만 포함된다")
     application({ id: "3", status: "completed", registrationStatus: "enrolled" })
   ])
   check(countOf(model, "application") === 3, "신청 수에 취소·노쇼가 빠졌다")
-  check(countOf(model, "reviewing") === 1, "취소·노쇼가 이후 단계에 셌다")
+  check(countOf(model, "in_trial") === 1, "취소·노쇼가 이후 단계에 셌다")
   check(model.applicationFootnote.includes("취소·노쇼"), "각주 문구가 없다")
   passLine(before, "취소·노쇼는 신청 수에만 · 각주로 안내")
 }

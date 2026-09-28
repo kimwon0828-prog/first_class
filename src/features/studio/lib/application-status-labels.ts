@@ -14,8 +14,8 @@ import type {
 export type StudioDisplayStatus = ApplicationStatus | "no_show" | "in_trial"
 
 export const STUDIO_APPLICATION_STATUS_LABELS: Record<StudioDisplayStatus, string> = {
-  new: "신규 신청",
-  reviewing: "신청 확인",
+  new: "신청 접수",
+  reviewing: "신청 접수",
   confirmed: "일정 확정",
   in_trial: "체험 중",
   completed: "체험 완료",
@@ -38,7 +38,7 @@ export type StudioStatusTone = "green" | "amber" | "blue" | "gray" | "red"
 
 export const STUDIO_APPLICATION_STATUS_TONES: Record<StudioDisplayStatus, StudioStatusTone> = {
   new: "amber",
-  reviewing: "blue",
+  reviewing: "amber",
   confirmed: "green",
   // 정상 진행이라 경고색을 쓰지 않는다. blue 는 reviewing 처럼 진행 축의 중간 상태에 이미 쓰고 있다.
   in_trial: "blue",

@@ -788,6 +788,36 @@ type MockParentDecision = {
 const parentDecisions: MockParentDecision[] = []
 
 
+/** Prepare all values before mutating the mock store, matching the schedule RPC. */
+const prepareMockConfirmation = (target: MockApplicationRecord, teacherId: string | null, confirm: boolean) => {
+  if (teacherId && !teacherSummaries.some(t => t.id === teacherId && t.organizationId === mockOrganizationId && t.isActive && t.profileId == null)) throw new Error("invalid_teacher_for_application_organization")
+  const classItem = classes.find(c => c.id === target.classId)
+  const schedule = classItem?.schedules?.find(s => s.id === target.classScheduleId)
+  const source = scheduleBlocks.find(b => b.id === (confirm ? target.requestedScheduleBlockId : target.confirmedScheduleBlockId))
+  const startAt = confirm ? target.requestedSlotAt : target.confirmedSlotAt ?? source?.startAt
+  let endAt = source?.endAt
+  let capacity = source?.capacity ?? 1
+  if ((confirm || !source) && target.classScheduleId) {
+    if (!schedule || !startAt) throw new Error("invalid_requested_class_schedule_occurrence")
+    const occurrence = resolveRequestedClassScheduleOccurrence({ requestedSlotAt: startAt, startTime: schedule.startTime, endTime: schedule.endTime })
+    if (!occurrence) throw new Error("invalid_requested_class_schedule_occurrence")
+    const day = new Date(startAt).toLocaleDateString("sv-SE", { timeZone: "Asia/Seoul" })
+    if (schedule.scheduleType === "one_time" && schedule.specificDate !== day) throw new Error("invalid_requested_class_schedule_occurrence")
+    if (confirm && schedule.bookingStatus && schedule.bookingStatus !== "open") throw new Error("schedule_booking_closed")
+    endAt = occurrence.endAt
+    capacity = Math.max(1, schedule.capacity ?? 1)
+    const count = applications.filter(a => a.id !== target.id && a.classScheduleId === target.classScheduleId && ["new", "reviewing", "confirmed"].includes(a.status) && (a.confirmedSlotAt ?? a.requestedSlotAt) === startAt).length
+    if (confirm && count >= capacity) throw new Error("slot_capacity_reached")
+  } else if (!source || (source.classId !== target.classId && source.classId !== null)) throw new Error("missing_requested_schedule_block")
+  if (!startAt || !endAt) throw new Error("missing_requested_schedule_block")
+  if (!teacherId) return { startAt, blockId: target.classScheduleId ? null : source!.id, createdBlock: null }
+  if (scheduleBlocks.some(b => b.teacherId === teacherId && Date.parse(b.startAt) < Date.parse(endAt!) && Date.parse(b.endAt) > Date.parse(startAt) && !(b.type === "available" && b.classId === target.classId && b.startAt === startAt && b.endAt === endAt))) throw new Error("schedule_block_conflict_for_requested_occurrence")
+  const existing = scheduleBlocks.find(b => b.teacherId === teacherId && b.classId === target.classId && b.startAt === startAt && b.endAt === endAt && b.type === "available")
+  if (existing && applications.filter(a => a.id !== target.id && ["new", "reviewing", "confirmed"].includes(a.status) && (a.confirmedScheduleBlockId === existing.id || a.requestedScheduleBlockId === existing.id)).length >= existing.capacity) throw new Error("slot_capacity_reached")
+  const createdBlock: MockScheduleBlock | null = existing ? null : { id: `slot-${crypto.randomUUID()}`, teacherId, classId: target.classId, type: "available", startAt, endAt, capacity, appliedCount: 0, remainingCount: capacity, isClosed: false }
+  return { startAt, blockId: existing?.id ?? createdBlock!.id, createdBlock }
+}
+
 export const mockDataAdapter: DataAdapter = {
   async listClasses(options) {
     const debugEnabled = process.env.NEXT_PUBLIC_DEBUG_DB === "1"
@@ -2011,8 +2041,8 @@ export const mockDataAdapter: DataAdapter = {
           ? application.classRegion
           : formatAdministrativeRegionLabel(mockOrganizationLocation),
       // mock 은 예약 블록 종료 시각을 따로 갖지 않는다. 2순위(수업 길이)로만 판정된다.
-      confirmedBlockStartAt: null,
-      confirmedBlockEndAt: null,
+      confirmedBlockStartAt: scheduleBlocks.find(b => b.id === application.confirmedScheduleBlockId)?.startAt ?? null,
+      confirmedBlockEndAt: scheduleBlocks.find(b => b.id === application.confirmedScheduleBlockId)?.endAt ?? null,
       scheduleStartTime: classSchedule?.startTime ?? null,
       scheduleEndTime: classSchedule?.endTime ?? null,
       assignedTeacherId: "assignedTeacherId" in application ? application.assignedTeacherId : null,
@@ -2085,12 +2115,19 @@ export const mockDataAdapter: DataAdapter = {
       }
     }
 
+    if (target.updatedAt !== input.expectedUpdatedAt || target.status === "canceled") throw new Error("application_status_conflict")
+    if (target.status === "confirmed" || target.status === "completed") {
+      const prepared = prepareMockConfirmation(target, input.assignedTeacherId, false)
+      if (prepared.createdBlock) scheduleBlocks.push(prepared.createdBlock)
+      target.confirmedScheduleBlockId = prepared.blockId
+      target.confirmedSlotAt = prepared.startAt
+    }
     target.assignedTeacherId = input.assignedTeacherId
     target.assignedTeacherName = getTeacherDisplayNameById(input.assignedTeacherId)
     target.updatedAt = new Date().toISOString()
   },
   async updateStudioApplicationStatus(input: UpdateStudioApplicationStatusInput) {
-    const target = applications.find(
+    let target = applications.find(
       (item) => item.id === input.applicationId && item.status === input.currentStatus
     )
 
@@ -2098,83 +2135,25 @@ export const mockDataAdapter: DataAdapter = {
       throw new Error("application_status_conflict")
     }
 
+    if (input.expectedUpdatedAt && target.updatedAt !== input.expectedUpdatedAt) throw new Error("application_status_conflict")
+    // Prepare a copy so validation failures never partially mutate the application.
+    const original = target
+    target = { ...original }
     const nowIso = new Date().toISOString()
     if (input.actionType === "move_to_reviewing") {
       target.contactedAt = nowIso
     }
 
     if (input.actionType === "move_to_confirmed") {
+      if (target.status !== "new" && target.status !== "reviewing") throw new Error("application_status_conflict")
+      const teacherId = input.assignedTeacherId === undefined ? target.assignedTeacherId : input.assignedTeacherId
+      const prepared = prepareMockConfirmation(target, teacherId, true)
+      if (prepared.createdBlock) scheduleBlocks.push(prepared.createdBlock)
       target.scheduledAt = nowIso
-      if (input.currentStatus === "new") {
-        target.contactedAt = nowIso
-      }
-
-      const assignedTeacherId = target.assignedTeacherId ?? null
-
-      if (target.requestedScheduleBlockId) {
-        target.confirmedSlotAt = target.requestedSlotAt
-        if (!assignedTeacherId) {
-          target.confirmedScheduleBlockId = null
-        } else {
-          target.confirmedScheduleBlockId = target.requestedScheduleBlockId
-        }
-      } else if (target.classScheduleId) {
-        const classItem = classes.find((item) => item.id === target.classId)
-        const schedule = classItem?.schedules?.find((item) => item.id === target.classScheduleId) ?? null
-
-        if (!schedule) {
-          throw new Error("failed_to_prepare_application_status_update")
-        }
-
-        const occurrence = resolveRequestedClassScheduleOccurrence({
-          requestedSlotAt: target.requestedSlotAt,
-          startTime: schedule.startTime,
-          endTime: schedule.endTime
-        })
-        if (!occurrence) {
-          throw new Error("invalid_requested_class_schedule_occurrence")
-        }
-
-        target.confirmedSlotAt = occurrence.startAt
-        if (!assignedTeacherId) {
-          target.confirmedScheduleBlockId = null
-        } else {
-          const existingBlocks = scheduleBlocks.filter(
-            (slot) =>
-              slot.classId === target.classId &&
-              slot.teacherId === assignedTeacherId &&
-              slot.startAt === occurrence.startAt &&
-              slot.endAt === occurrence.endAt
-          )
-          const availableBlock = existingBlocks.find((slot) => slot.type === "available") ?? null
-
-          if (!availableBlock && existingBlocks.length > 0) {
-            throw new Error("schedule_block_conflict_for_requested_occurrence")
-          }
-
-          let resolvedBlock = availableBlock
-          if (!resolvedBlock) {
-            resolvedBlock = {
-              id: `slot-${scheduleBlocks.length + 1}`,
-              teacherId: assignedTeacherId,
-              classId: target.classId,
-              type: "available",
-              startAt: occurrence.startAt,
-              endAt: occurrence.endAt,
-              capacity: Math.max(1, schedule.capacity ?? 1),
-              appliedCount: 0,
-              remainingCount: Math.max(1, schedule.capacity ?? 1),
-              isClosed: false
-            }
-            scheduleBlocks.push(resolvedBlock)
-          }
-
-          target.requestedScheduleBlockId = resolvedBlock.id
-          target.confirmedScheduleBlockId = resolvedBlock.id
-        }
-      } else {
-        throw new Error("missing_requested_schedule_block")
-      }
+      target.assignedTeacherId = teacherId
+      target.assignedTeacherName = getTeacherDisplayNameById(teacherId)
+      target.confirmedSlotAt = prepared.startAt
+      target.confirmedScheduleBlockId = prepared.blockId
     }
 
     if (input.actionType === "move_to_completed") {
@@ -2195,6 +2174,7 @@ export const mockDataAdapter: DataAdapter = {
 
     target.status = input.nextStatus
     target.updatedAt = nowIso
+    Object.assign(original, target)
 
     applicationLogs.unshift({
       id: `log-${applicationLogs.length + 1}`,

@@ -49,7 +49,7 @@ export type StudioDashboardActionKind =
 const ACTION_LABELS: Record<StudioDashboardActionKind, string> = {
   UNASSIGNED: "담당자를 배정해 주세요.",
   NEEDS_COMPLETION: "체험 완료 처리 후 결과를 기록해 주세요.",
-  REVIEW_NEW: "신청 내용을 확인해 주세요.",
+  REVIEW_NEW: "체험 일정을 확정해 주세요.",
   NEEDS_REGISTRATION: "체험 결과와 등록 여부를 기록해 주세요.",
   CONFIRM_SCHEDULE: "체험 일정을 확정해 주세요."
 }
@@ -172,9 +172,6 @@ const resolveActionKind = (
     return null
   }
 
-  if (!item.assignedTeacherId) {
-    return "UNASSIGNED"
-  }
 
   if (stage === "confirmed") {
     // 여기 남았다는 건 아직 안 끝났거나 종료 시각을 모른다는 뜻이다.
@@ -182,11 +179,7 @@ const resolveActionKind = (
     return null
   }
 
-  if (stage === "new") {
-    return "REVIEW_NEW"
-  }
-
-  if (stage === "reviewing") {
+  if (stage === "new" || stage === "reviewing") {
     return "CONFIRM_SCHEDULE"
   }
 

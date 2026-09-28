@@ -46,7 +46,7 @@ run("trial result load failure is not missing", {}, e => { e.trialResultError = 
 run("registration unknown prevents false record CTA", {}, e => { e.registration.error = "fixture load error" }, null)
 run("new", { status: "new", completedAt: null }, noop, "status")
 run("reviewing", { status: "reviewing", completedAt: null }, noop, "status")
-run("unassigned reviewing", { status: "reviewing", assignedTeacherId: null }, noop, "assignee")
+run("unassigned reviewing", { status: "reviewing", assignedTeacherId: null }, noop, "status")
 run("in-trial unassigned may complete", { status: "confirmed", assignedTeacherId: null, completedAt: null }, noop, "status")
 run("contact today KST before scheduled hour", { ...record, nextContactAt: "2026-09-27T14:00:00.000Z" }, e => { e.report.canPublish = true }, "consultation")
 run("contact previous KST date", { ...record, nextContactAt: "2026-09-26T14:59:00.000Z" }, noop, "consultation")
@@ -79,7 +79,7 @@ for (const file of ["update-application-status", "update-application-assignee", 
 console.log("PASS presentation-only partial read; mutation callers retain strict reads")
 
 // Final layout: progress exists once; detail and actions have a single home.
-assert.equal((workflow.match(/aria-label="체험 후 진행 단계"/g) ?? []).length, 1)
+assert.equal((workflow.match(/aria-label="신청 진행 단계"/g) ?? []).length, 1)
 assert.ok(!workflow.includes('aria-label="지금 할 일"'))
 assert.ok(!workflow.includes('aria-expanded={shownStep'))
 assert.equal((workflow.match(/\{parentDecisionSection\}/g) ?? []).length, 1)

@@ -33,8 +33,8 @@ const attention: CaseAttentionInput = {
   hasAnyConsultationHistory: true, nextContactAt: "2026-09-21T06:00:00Z"
 }
 const nextAction = getCaseNextAction(attention, now)
-assert.equal(nextAction.key, "UNASSIGNED")
-assert.equal(getCaseListActionLabel({ ...attention, nextAction }), "담당자 배정")
+assert.equal(nextAction.key, "OVERDUE_CONTACT")
+assert.equal(getCaseListActionLabel({ ...attention, nextAction }), "후속 연락")
 assert.equal(contact(attention.nextContactAt)?.tone, "danger")
 assert.equal(getCaseNextAction({ ...attention, assignedTeacherId: "teacher" }, now).key, "OVERDUE_CONTACT")
 assert.equal(getChildGradeLabel("elem_3"), "초3")

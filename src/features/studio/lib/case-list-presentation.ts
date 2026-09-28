@@ -10,8 +10,8 @@ import { formatSeoulDateKey, getSeoulDateTimeParts } from "@/shared/lib/seoul-da
 export const getCaseListActionLabel = (item: Pick<StudioCaseListItem, "nextAction" | "status">): string => {
   switch (item.nextAction.key) {
     case "UNASSIGNED": return "담당자 배정"
-    case "REVIEW_NEW": return "신청 확인"
-    case "CONFIRM_SCHEDULE": return "일정 확정"
+    case "REVIEW_NEW": return "일정 확정 필요"
+    case "CONFIRM_SCHEDULE": return "일정 확정 필요"
     case "NEEDS_TRIAL_RESULT":
       return item.status === "confirmed" ? "체험 완료·결과 기록" : "체험 결과 기록"
     case "NEEDS_CONSULTATION": return "첫 상담 기록"

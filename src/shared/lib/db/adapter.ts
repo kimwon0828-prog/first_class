@@ -947,6 +947,9 @@ export type StudioTrialResultSaveContext = {
 }
 
 export type UpdateStudioApplicationStatusInput = {
+  /** 확정과 같은 row UPDATE로 저장. undefined는 기존 배정 유지. */
+  assignedTeacherId?: string | null
+  expectedUpdatedAt?: string
   applicationId: string
   currentStatus: ApplicationStatus
   actionType: ApplicationStatusActionType
@@ -1190,6 +1193,7 @@ export type UpdateStudioApplicationLatestConsultationSnapshotInput = {
 }
 
 export type UpdateStudioApplicationAssigneeInput = {
+  expectedUpdatedAt: string
   applicationId: string
   organizationId: string
   actorId: string

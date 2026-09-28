@@ -946,3 +946,14 @@
 }
 
 .recordPreview { margin: 0; color: var(--text-1); font-size: 14px; line-height: 24px; white-space: pre-wrap; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+
+.confirmationCard { grid-column: 1; grid-row: 3; padding: 24px; display: grid; gap: 16px; scroll-margin-top: 24px; }
+.withConfirmation .recordCard { grid-row: 4; }
+.withConfirmation .workspaceAside { grid-row: 3 / 6; }
+.withConfirmation .supplementary { grid-row: 5; }
+@media (max-width: 900px) {
+  .confirmationCard, .withConfirmation .recordCard, .withConfirmation .workspaceAside, .withConfirmation .supplementary { grid-column: auto; grid-row: auto; }
+}
+
+.journeyStepper { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+@media (max-width: 540px) { .journeyStepper { grid-template-columns: minmax(0, 1fr); } }

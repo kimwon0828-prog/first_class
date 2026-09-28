@@ -355,7 +355,7 @@ export const STUDIO_SCHEDULE_STATUS_FILTERS: Array<{
   statuses: ApplicationStatus[]
 }> = [
   { value: "all", label: "전체", statuses: [] },
-  { value: "reviewing", label: "확인 필요", statuses: ["new", "reviewing"] },
+  { value: "reviewing", label: "일정 확정 필요", statuses: ["new", "reviewing"] },
   { value: "confirmed", label: "일정 확정", statuses: ["confirmed"] },
   { value: "completed", label: "체험 완료", statuses: ["completed"] },
   { value: "canceled", label: "취소", statuses: ["canceled"] },

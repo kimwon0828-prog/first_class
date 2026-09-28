@@ -3,6 +3,7 @@ import { resolveStudioDetailReturn } from "@/features/studio/lib/studio-detail-n
 import { getParentCrossProductHref } from "@/shared/config/cross-product-navigation"
 import { getRequestHostname } from "@/shared/lib/request-host"
 import Link from "next/link"
+import { Fragment } from "react"
 import { notFound } from "next/navigation"
 
 import {
@@ -14,6 +15,7 @@ import { CASE_STAGE_LABELS, getCaseDisplayStage } from "@/features/studio/lib/ca
 import { requireTeacherStudioAccess } from "@/features/studio/lib/require-teacher-studio-access"
 import { getStudioApplicationAssigneeOptions } from "@/features/studio/queries/get-studio-application-assignee-options"
 import { getStudioApplicationDetail } from "@/features/studio/queries/get-studio-application-detail"
+import { ApplicationStatusActionForm } from "@/features/studio/ui/application-status-action-form"
 import { ApplicationAssigneeForm } from "@/features/studio/ui/application-assignee-form"
 import { getStudioEntitlementsForDisplay } from "@/features/billing/queries/get-organization-entitlements"
 import { ApplicationReportPublishing, type ReportPublishBlocker } from "@/features/studio/ui/application-report-publishing"
@@ -511,8 +513,16 @@ export default async function StudioApplicationDetailPage({ params, searchParams
         <>
           <ApplicationTrialResultWorkflow
             application={data}
+            confirmationSection={data.status === "new" || data.status === "reviewing" ? <ApplicationStatusActionForm
+              key={`${data.id}:${data.updatedAt}`}
+              applicationId={data.id} currentStatus={data.status} variant="case-detail"
+              confirmation={{requestedSchedule: detailView.requestedSchedule,
+                hasSchedule: Boolean(data.classScheduleId || data.requestedScheduleBlockId),
+                assignedTeacherId: data.assignedTeacherId, teachers: assigneeOptionsResult.data,
+                teachersError: assigneeOptionsResult.error, scheduleHref: studioPath("/studio/schedule")}}
+            /> : null}
             headerContent={
-              <div className={styles.caseHeader}>
+              <div key="application-header" className={styles.caseHeader}>
                 <div className={styles.caseHeaderTop}>
                   <div className={styles.caseIdentity}>
                     <div className={styles.identityLine}>
@@ -535,7 +545,7 @@ export default async function StudioApplicationDetailPage({ params, searchParams
                         <Link href={getParentCrossProductHref({ pathname: `/classes/${data.classId}`, hostname })} className={styles.caseInlineLink}>수업 미리보기</Link>
                       </details> : null}
                     </div>
-                    <div className={styles.teacherBlock}>
+                    {data.status !== "new" && data.status !== "reviewing" ? <div className={styles.teacherBlock}>
                       <div><span className={styles.summaryLabel}>담당 선생님</span><p>{data.assignedTeacherName ?? "미배정"}</p></div>
                       <details id="case-assignee" className={styles.assigneeDisclosure}>
                         <summary>변경</summary>
@@ -548,7 +558,7 @@ export default async function StudioApplicationDetailPage({ params, searchParams
                           defaultExpanded
                         />
                       </details>
-                    </div>
+                    </div> : <a href="#confirm-schedule" className={styles.actionButtonTint}>일정 확정하기</a>}
                   </div>
                 </div>
               </div>
@@ -600,7 +610,7 @@ export default async function StudioApplicationDetailPage({ params, searchParams
               ) : null
             }
             referenceSections={
-              <section className={styles.applicationInfoSection} aria-label="신청 참고 정보">
+              <section key="application-reference" className={styles.applicationInfoSection} aria-label="신청 참고 정보">
                 <h2 className={styles.applicationInfoTitle}>신청 참고 정보</h2>
                 <dl className={styles.referenceGrid}>
                   {[
@@ -617,7 +627,7 @@ export default async function StudioApplicationDetailPage({ params, searchParams
                 <p className={styles.referenceHint}>신청 당시 입력한 정보입니다.</p>
               </section>
             }
-            sidebarContent={<>
+            sidebarContent={<Fragment key="application-sidebar">
         <section key="basic-info" className={styles.applicationInfoSection} aria-labelledby="application-info-title">
             <div className={styles.applicationInfoHeader}>
               <h2 id="application-info-title" className={styles.applicationInfoTitle}>
@@ -666,7 +676,7 @@ export default async function StudioApplicationDetailPage({ params, searchParams
           </div>
           <p className={styles.scheduleDate}>{detailView.confirmedSchedule ?? `희망 · ${detailView.requestedSchedule}`}</p>
           <Link href={studioPath("/studio/schedule")} className={styles.caseInlineLink}>일정 관리 →</Link>
-        </section></>
+        </section></Fragment>
             }
           />
         </>

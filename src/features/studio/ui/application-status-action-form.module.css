@@ -214,3 +214,23 @@
 .confirmDialog p { margin: var(--s3) 0 var(--s6); color: var(--text-2); font-size: 14px; line-height: 22px; }
 .confirmActions { display: flex; gap: var(--s2); }
 .confirmActions .secondaryButton { background: var(--surface); color: var(--text-2); border-color: var(--border); }
+
+.scheduleGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.requestedSchedule, .confirmedSchedule { display: grid; gap: 12px; border-radius: var(--r-md); padding: 18px; min-width: 0; }
+.requestedSchedule { background: var(--surface-sub); }
+.confirmedSchedule { border: 1px solid var(--border); }
+.scheduleGrid span { font-size: 13px; color: var(--text-2); }
+.scheduleGrid strong { font-size: 15px; overflow-wrap: anywhere; }
+.scheduleGrid small { font-size: 12px; color: var(--text-2); }
+.teacherField { border: 0; padding: 0; margin: 4px 0 8px; min-width: 0; }
+.teacherField legend { font-size: 14px; font-weight: 700; }
+.teacherField legend span, .teacherField p { color: var(--text-2); font-size: 13px; }
+.teacherOptions { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; }
+.teacherOption { display: flex; align-items: center; gap: 12px; border: 1px solid var(--border); border-radius: var(--r-md); padding: 18px 12px; cursor: pointer; }
+.teacherOption[data-selected="true"] { border-color: var(--brand-700); background: var(--green-bg); }
+.teacherOption input { accent-color: var(--brand-700); }
+.teacherOption:focus-within { outline: 2px solid var(--brand-700); outline-offset: 2px; }
+@media (max-width: 540px) { .scheduleGrid { grid-template-columns: minmax(0, 1fr); } }
+
+.confirmationForm .compactButtonGroup { display: flex; }
+.confirmationForm .primaryButton { flex: 1; }

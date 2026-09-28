@@ -31,8 +31,8 @@ const rows: StudioApplicationSummary[] = [
   { ...base, id: "no-show", status: "canceled", noShowAt: now.toISOString() },
   { ...base, id: "old-action", createdAt: "2026-08-01T00:00:00Z" }
 ]
-const metrics = buildStudioDashboardMetrics(rows, range)
-assert.deepEqual(metrics.steps.map(step => step.count), [8, 5, 4, 3, 1])
+const metrics = buildStudioDashboardMetrics(rows, range, now)
+assert.deepEqual(metrics.steps.map(step => step.count), [8, 4, 4, 3, 1])
 assert.deepEqual(metrics.trialOutcomes, { completed: 3, noShow: 1, canceled: 1, pending: 3 })
 assert.equal(metrics.registrationConversionRate, 50)
 const analytics = buildStudioDashboardAnalytics(metrics)
@@ -57,4 +57,4 @@ for (const [input, expected] of [
   [rows[6], "canceled"],
   [rows[7], "no_show"]
 ] as const) assert.equal(getCaseDisplayStage(input, now), expected)
-console.log("PASS: unchanged funnel and denominators, no-show partition, period-independent work, real result dates, empty data, KST presets, five lifecycle states")
+console.log("PASS: simplified funnel and denominators, no-show partition, period-independent work, real result dates, empty data, KST presets, five lifecycle states")

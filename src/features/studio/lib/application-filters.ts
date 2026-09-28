@@ -16,8 +16,7 @@ export const STUDIO_APPLICATION_FILTERS: Array<{
   label: string
 }> = [
   { key: "all", label: "전체" },
-  { key: "new", label: "신규" },
-  { key: "reviewing", label: "상담/확인 중" },
+  { key: "new", label: "신청 접수" },
   { key: "confirmed", label: "일정 확정" },
   { key: "completed", label: "체험 완료" },
   { key: "canceled", label: "취소" },
@@ -40,9 +39,8 @@ export const matchesStudioApplicationFilter = (
     case "all":
       return true
     case "new":
-      return item.status === "new"
     case "reviewing":
-      return item.status === "reviewing"
+      return item.status === "new" || item.status === "reviewing"
     case "confirmed":
       return item.status === "confirmed"
     case "completed":

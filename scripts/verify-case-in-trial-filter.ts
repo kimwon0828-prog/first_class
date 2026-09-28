@@ -66,7 +66,7 @@ console.log("\n[1] 진행 중 필터 목록")
 const filterListBefore = failures
 const keys = CASE_ACTIVE_FILTERS.map((option) => option.key)
 check(
-  JSON.stringify(keys) === JSON.stringify(["all", "new", "reviewing", "confirmed", "post_trial"]),
+  JSON.stringify(keys) === JSON.stringify(["all", "new", "confirmed", "post_trial"]),
   `진행 중 필터가 바뀌었다: ${keys.join(" · ")}`
 )
 check(

@@ -64,8 +64,7 @@ export type CaseFilterOption<K extends string> = {
 
 export const CASE_ACTIVE_FILTERS: Array<CaseFilterOption<CaseActiveFilterKey>> = [
   { key: "all", label: "전체" },
-  { key: "new", label: "신규 신청" },
-  { key: "reviewing", label: "신청 확인" },
+  { key: "new", label: "신청 접수" },
   { key: "confirmed", label: "일정 확정" },
   { key: "post_trial", label: "체험 후 관리", description: "체험을 마치고 아직 등록 결론이 나지 않은 Case" }
 ]
@@ -97,8 +96,8 @@ export const CASE_CLOSED_FILTERS: Array<CaseFilterOption<CaseClosedFilterKey>> =
  */
 const ACTIVE_FILTER_PREDICATES: Record<CaseActiveFilterKey, CaseFilterPredicate> = {
   all: CASE_VIEW_PREDICATES.active,
-  new: { statusIn: ["new"] },
-  reviewing: { statusIn: ["reviewing"] },
+  new: { statusIn: ["new", "reviewing"] },
+  reviewing: { statusIn: ["new", "reviewing"] },
   confirmed: { statusIn: ["confirmed"] },
   post_trial: {
     statusIn: ["completed"],
@@ -130,6 +129,7 @@ export const resolveCaseFilter = (view: CaseViewKey, value: string | null | unde
       : "all"
   }
 
+  if (value === "reviewing") return "new" // 기존 북마크 호환
   return CASE_ACTIVE_FILTERS.some((option) => option.key === value)
     ? (value as CaseActiveFilterKey)
     : "all"
