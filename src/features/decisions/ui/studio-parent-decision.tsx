@@ -6,7 +6,7 @@ import {
   getParentDecisionLabel,
   type ParentDecisionSummary
 } from "@/features/decisions/lib/parent-decision"
-import { getSeoulDateTimeParts } from "@/shared/lib/seoul-datetime"
+import { formatSeoulDateTime } from "@/features/studio/lib/seoul-datetime"
 
 import styles from "./studio-parent-decision.module.css"
 
@@ -22,19 +22,8 @@ type StudioParentDecisionProps = {
   loadError: string | null
 }
 
-const formatDecisionDate = (value: string) => {
-  const parts = getSeoulDateTimeParts(value)
-  if (!parts) {
-    return null
-  }
-
-  const month = `${parts.month}`.padStart(2, "0")
-  const day = `${parts.day}`.padStart(2, "0")
-  return `${parts.year}.${month}.${day}`
-}
-
 export const StudioParentDecision = ({ decision, loadError }: StudioParentDecisionProps) => {
-  const writtenAt = decision ? formatDecisionDate(decision.createdAt) : null
+  const writtenAt = decision ? formatSeoulDateTime(decision.createdAt) : null
   const preferredSchedule = decision
     ? formatPreferredSchedule({
         days: decision.preferredDays,

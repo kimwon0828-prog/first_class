@@ -427,3 +427,16 @@
   align-content: center;
   cursor: pointer;
 }
+
+/* Embedded in the single record/report step; report documents stay opt-in. */
+.embedded { border-top: 1px solid var(--border); padding: 18px 0 0; min-width: 0; }
+.embedded .sectionTitle { font-size: 15px; line-height: 22px; }
+.embedded .sectionHead { align-items: flex-start; flex-wrap: wrap; gap: 8px; }
+.embedded .notice, .embedded .lockedNotice { padding: 12px; }
+.embedded .blockLabel { cursor: pointer; min-height: 44px; align-content: center; }
+.reportSummary { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 14px; line-height: 24px; color: var(--text-1); }
+
+.publishedPreview { display: grid; gap: 12px; padding: 16px 0 0; }
+.publishedPreview h3 { font-size: 17px; line-height: 26px; margin: 0; color: var(--text-1); }
+.publishedPreview ul { margin: 0; padding-left: 18px; display: grid; gap: 6px; font-size: 14px; line-height: 22px; color: var(--text-2); }
+.previewSummary { margin: 0; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; white-space: pre-wrap; font-size: 14px; line-height: 24px; color: var(--text-1); }

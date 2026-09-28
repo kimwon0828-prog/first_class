@@ -216,7 +216,7 @@ export default async function StudioApplicationDetailPage({ params, searchParams
   const hostname = await getRequestHostname()
   const teacher = await requireTeacherStudioAccess()
   const resolvedParams = await params
-  const { data, error } = await getStudioApplicationDetail(resolvedParams.id, teacher.organizationId)
+  const { data, error } = await getStudioApplicationDetail(resolvedParams.id, teacher.organizationId, { allowPartialTrialResult: true })
   const assigneeOptionsResult = data
     ? await getStudioApplicationAssigneeOptions(teacher.organizationId)
     : { data: [], error: null }
@@ -344,8 +344,7 @@ export default async function StudioApplicationDetailPage({ params, searchParams
   const detailView = data
     ? (() => {
         const requestedSchedule =
-          normalizeText(data.selectedScheduleLabel) ??
-          resolveScheduleSummary(data.requestedSlotAt, null, null).primary
+          resolveScheduleSummary(data.requestedSlotAt, null, data.selectedScheduleLabel).primary
         const confirmedSchedule = data.confirmedSlotAt
           ? resolveScheduleSummary(data.requestedSlotAt, data.confirmedSlotAt, data.selectedScheduleLabel).primary
           : null
@@ -496,6 +495,8 @@ export default async function StudioApplicationDetailPage({ params, searchParams
             {back.label}
           </Link>
         </div>
+        <h1 className={styles.pageTitle}>신청 상세</h1>
+        <p className={styles.pageDescription}>학생의 상담부터 등록까지의 과정을 한눈에 확인할 수 있습니다.</p>
       </header>
 
       {error ? (
@@ -506,88 +507,62 @@ export default async function StudioApplicationDetailPage({ params, searchParams
 
       {data && detailView ? (
         <>
-          {/* 1. Case Header — 상태와 관계없이 항상 같은 구조다. */}
-          <section className={styles.caseHeader} aria-label="Case 요약">
-            <div className={styles.caseHeaderTop}>
-              <div className={styles.caseIdentity}>
-                <h1 className={styles.caseTitle}>
-                  {data.childName}
-                  {detailView.childGrade ? (
-                    <span className={styles.caseTitleSub}>· {detailView.childGrade}</span>
-                  ) : null}
-                </h1>
-
-                <p className={styles.caseSubline}>
-                  <span className={styles.caseClassName}>{detailView.classTitle}</span>
-                  {data.classId ? (
-                    <Link href={getParentCrossProductHref({ pathname: `/classes/${data.classId}`, hostname })} className={styles.caseInlineLink}>
-                      미리보기
-                    </Link>
-                  ) : null}
-                  <span className={styles.caseDivider}>·</span>
-                  담당 {data.assignedTeacherName ?? "미배정"}
-                </p>
-
-                <p className={styles.caseGuardian}>
-                  {detailViewSubjectAndProgramLabel(detailView.classSubject, detailView.programTypeLabel)}
-
-                </p>
-              </div>
-
-              {detailView.showRegistrationBadge ? (
-                <div className={styles.caseBadgeWrap}>
-                  <StudioStatusBadge tone={detailView.registrationTone}>
-                    등록 상태 · {detailView.registrationLabel}
-                  </StudioStatusBadge>
-                </div>
-              ) : null}
-            </div>
-
-            <details id="case-assignee" className={styles.assigneeDisclosure}>
-              <summary>담당 선생님 배정 / 변경</summary>
-              <ApplicationAssigneeForm
-                applicationId={data.id}
-                currentAssignedTeacherId={data.assignedTeacherId}
-                currentAssignedTeacherName={data.assignedTeacherName}
-                options={assigneeOptionsResult.data}
-                optionsError={assigneeOptionsResult.error}
-                defaultExpanded
-              />
-            </details>
-
-            {detailView.phoneHref || detailView.smsHref ? (
-              <div className={styles.caseActions}>
-                {detailView.phoneHref ? (
-                  <a href={detailView.phoneHref} className={styles.actionButtonTint}>
-                    전화 걸기
-                  </a>
-                ) : null}
-                {detailView.smsHref ? (
-                  <a href={detailView.smsHref} className={styles.actionButtonSecondary}>
-                    문자
-                  </a>
-                ) : null}
-              </div>
-            ) : null}
-
-            {/* 큰 Stepper 를 대신하는 컴팩트 진행 상태. */}
-            <div className={styles.progressStrip}>
-              <span className={styles.progressLabel}>진행 상태</span>
-              {detailView.progressSteps.length > 0 ? (
-                <span className={styles.progressSteps}>{detailView.progressSteps.join("  ·  ")}</span>
-              ) : null}
-              <span className={`${styles.progressCurrent} ${data.status === "canceled" ? styles.progressTerminal : ""}`}>신청 상태 · {detailView.statusLabel}</span>
-            </div>
-          </section>
-
-          {/*
-            다음 할 일 → 기본 정보/체험 일정 → 상담 → 결과/리포트 → 부모 응답/등록 → 시스템 이력.
-            기본 정보와 체험 일정은 workflow 에 slot 으로 넘겨
-            "다음 할 일" 바로 아래에 렌더한다(디자인 시스템 §4.2).
-            CSS order 가 아니라 DOM 순서를 바꾸므로 탭 순서와 모바일 읽기 순서가 함께 맞는다.
-          */}
           <ApplicationTrialResultWorkflow
             application={data}
+            headerContent={
+              <div className={styles.caseHeader}>
+                <div className={styles.caseHeaderTop}>
+                  <div className={styles.caseIdentity}>
+                    <div className={styles.identityLine}>
+                      <h2 className={styles.caseTitle}>{data.childName}<span className={styles.caseTitleSub}>{detailView.childGrade ? `· ${detailView.childGrade}` : ""}</span></h2>
+                      <StudioStatusBadge tone={data.status === "canceled" ? "red" : "green"}>
+                        {detailView.caseStageLabel}
+                      </StudioStatusBadge>
+                    </div>
+                    <p className={styles.caseSubline}>{detailView.classTitle}{data.academyName ? ` · ${data.academyName}` : ""}</p>
+                    <p className={styles.caseGuardian}>
+                      {detailView.confirmedSchedule ? `${detailView.confirmedSchedule} · 확정` : `희망 · ${detailView.requestedSchedule}`}
+                    </p>
+                  </div>
+                  <div className={styles.headerControls}>
+                    <div className={styles.caseActions}>
+                      {detailView.phoneHref ? <a href={detailView.phoneHref} className={styles.actionButtonTint}>전화하기</a> : null}
+                      {detailView.smsHref ? <a href={detailView.smsHref} className={styles.actionButtonSecondary}>문자하기</a> : null}
+                      {data.classId ? <details className={styles.moreDisclosure}>
+                        <summary aria-label="더보기">더보기</summary>
+                        <Link href={getParentCrossProductHref({ pathname: `/classes/${data.classId}`, hostname })} className={styles.caseInlineLink}>수업 미리보기</Link>
+                      </details> : null}
+                    </div>
+                    <div className={styles.teacherBlock}>
+                      <div><span className={styles.summaryLabel}>담당 선생님</span><p>{data.assignedTeacherName ?? "미배정"}</p></div>
+                      <details id="case-assignee" className={styles.assigneeDisclosure}>
+                        <summary>변경</summary>
+                        <ApplicationAssigneeForm
+                          applicationId={data.id}
+                          currentAssignedTeacherId={data.assignedTeacherId}
+                          currentAssignedTeacherName={data.assignedTeacherName}
+                          options={assigneeOptionsResult.data}
+                          optionsError={assigneeOptionsResult.error}
+                          defaultExpanded
+                        />
+                      </details>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            }
+            evidence={{
+              trialResultError: data.trialResultLoadError ?? null,
+              report: {
+                error: publishedReportResult.error,
+                version: reportView?.published?.version ?? null,
+                publishedAt: reportView?.published?.publishedAt ?? null,
+                changed: reportView?.assessmentChangedSincePublish ?? false,
+                canPublish: Boolean(entitlements.canPublishParentReport && reportView?.preview && reportView.assessmentUpdatedAt && !publishedReportResult.error && reportView.blockers.length === 0)
+              },
+              parentDecision: { error: parentDecisionResult.error, value: parentDecisionResult.data?.decision ?? null, createdAt: parentDecisionResult.data?.createdAt ?? null },
+              registration: { error: registrationResult.error, result: registrationResult.data?.result ?? null, resolvedAt: registrationResult.data?.resolvedAt ?? null }
+            }}
             nowIso={nowIso}
             canWriteTrialResults={entitlements.canWriteTrialResults}
             canWriteConsultations={entitlements.canWriteConsultations}
@@ -607,6 +582,8 @@ export default async function StudioApplicationDetailPage({ params, searchParams
                 reportView.blockers.length > 0) ? (
                 <ApplicationReportPublishing
                   key="parent-report"
+                  embedded
+                  emphasizePublish={(!reportView.published || reportView.assessmentChangedSincePublish) && data.status === "completed" && data.registrationStatus !== "enrolled" && data.registrationStatus !== "not_enrolled" && !registrationResult.data && !registrationResult.error}
                   applicationId={data.id}
                   preview={reportView.preview}
                   publishedSnapshot={reportView.published?.content ?? null}
@@ -620,15 +597,34 @@ export default async function StudioApplicationDetailPage({ params, searchParams
                 />
               ) : null
             }
-            referenceSections={<>
+            referenceSections={
+              <section className={styles.applicationInfoSection} aria-label="신청 참고 정보">
+                <h2 className={styles.applicationInfoTitle}>신청 참고 정보</h2>
+                <dl className={styles.referenceGrid}>
+                  {[
+                    { label: "관심 과목", value: detailView.classSubject },
+                    { label: "학습 수준", value: detailView.currentLevel },
+                    { label: "신청 시 희망 일정", value: detailView.normalizedPreferredRegularSchedule },
+                    { label: "학생 메모", value: detailView.childNotes },
+                    { label: "학부모 메모", value: detailView.parentMemo },
+                    { label: "희망 사항", value: detailView.normalizedGoalNote }
+                  ].filter(item => item.value).map(item => <div key={item.label} className={styles.infoCell}>
+                    <dt className={styles.summaryLabel}>{item.label}</dt><dd className={styles.summaryValueMultiline}>{item.value}</dd>
+                  </div>)}
+                </dl>
+                <p className={styles.referenceHint}>신청 당시 입력한 정보입니다.</p>
+              </section>
+            }
+            sidebarContent={<>
         <section key="basic-info" className={styles.applicationInfoSection} aria-labelledby="application-info-title">
             <div className={styles.applicationInfoHeader}>
               <h2 id="application-info-title" className={styles.applicationInfoTitle}>
-                학생 / 학부모 기본 정보
+                학생 / 학부모 정보
               </h2>
             </div>
             <div className={styles.applicationInfoBody}>
               <dl className={styles.applicationInfoGrid}>
+                <div className={styles.infoCell}><dt className={styles.summaryLabel}>학생</dt><dd className={styles.summaryValue}>{data.childName}{detailView.childGrade ? ` · ${detailView.childGrade}` : ""}</dd></div>
                 {detailView.parentName ? (
                   <div className={styles.infoCell}>
                     <dt className={styles.summaryLabel}>보호자</dt>
@@ -654,84 +650,21 @@ export default async function StudioApplicationDetailPage({ params, searchParams
                   </div>
                 ) : null}
               </dl>
-              {detailView.currentLevel || detailView.classRegion || detailView.normalizedPreferredRegularSchedule || detailView.childNotes || detailView.parentMemo || detailView.normalizedGoalNote ? (
-                <details className={styles.assigneeDisclosure}>
-                  <summary>신청 당시 참고 정보</summary>
-                  <dl className={styles.applicationInfoGrid}>
-                {detailView.currentLevel ? (
-                  <div className={styles.infoCell}>
-                    <dt className={styles.summaryLabel}>현재 수준</dt>
-                    <dd className={styles.summaryValue}>{detailView.currentLevel}</dd>
-                  </div>
-                ) : null}
-                {detailView.classRegion ? (
-                  <div className={styles.infoCell}>
-                    <dt className={styles.summaryLabel}>지역</dt>
-                    <dd className={styles.summaryValue}>{detailView.classRegion}</dd>
-                  </div>
-                ) : null}
-                {detailView.normalizedPreferredRegularSchedule ? (
-                  <div className={styles.infoCell}>
-                    {/*
-                      세 일정 값이 비슷해 보이므로 라벨로 출처를 못 박는다.
-                        · 여기          — 신청 당시 학부모 자유 입력 (참고)
-                        · 등록 상담     — 체험 후 원장이 확인한 정규수업 희망 일정 (구조화)
-                        · 체험 결과     — 학원이 추천하는 일정
-                    */}
-                    <dt className={styles.summaryLabel}>신청 시 입력한 선호 일정</dt>
-                    <dd className={styles.summaryValue}>
-                      {detailView.normalizedPreferredRegularSchedule}
-                      <span className={styles.scheduleSourceHint}>
-                        학부모가 신청서에 직접 적은 참고 정보입니다.
-                      </span>
-                    </dd>
-                  </div>
-                ) : null}
-                {detailView.childNotes ? (
-                  <div className={`${styles.infoCell} ${styles.infoCellWide}`}>
-                    <dt className={styles.summaryLabel}>학생 메모</dt>
-                    <dd className={styles.summaryValueMultiline}>{detailView.childNotes}</dd>
-                  </div>
-                ) : null}
-                {detailView.parentMemo ? (
-                  <div className={`${styles.infoCell} ${styles.infoCellWide}`}>
-                    <dt className={styles.summaryLabel}>학부모 메모</dt>
-                    <dd className={styles.summaryValueMultiline}>{detailView.parentMemo}</dd>
-                  </div>
-                ) : null}
-                {detailView.normalizedGoalNote ? (
-                  <div className={`${styles.infoCell} ${styles.infoCellWide}`}>
-                    <dt className={styles.summaryLabel}>상담 목표</dt>
-                    <dd className={styles.summaryValueMultiline}>{detailView.normalizedGoalNote}</dd>
-                  </div>
-                ) : null}
-                  </dl>
-                </details>
-              ) : null}
+
 
 
 
             </div>
         </section>
-        <section key="trial-schedule" className={styles.applicationInfoSection} aria-label="체험 일정"><div className={styles.applicationInfoHeader}><h2 className={styles.applicationInfoTitle}>체험 일정</h2></div><div className={styles.applicationInfoBody}><dl className={styles.applicationInfoGrid}>
-                <div className={styles.infoCell}>
-                  {/* 체험수업 예약 일시다. 등록 상담의 `정규수업 희망 일정` 과 다른 값이라
-                      "희망 일정" 이라는 말을 공유하지 않는다. */}
-                  <dt className={styles.summaryLabel}>체험 희망 일시</dt>
-                  <dd className={styles.summaryValue}>
-                    {detailView.requestedSchedule}
-                    <Link href={studioPath("/studio/schedule")} className={styles.caseInlineLink}>
-                      일정 관리
-                    </Link>
-                  </dd>
-                </div>
-                {detailView.confirmedSchedule ? (
-                  <div className={styles.infoCell}>
-                    <dt className={styles.summaryLabel}>확정 일정</dt>
-                    <dd className={styles.summaryValue}>{detailView.confirmedSchedule}</dd>
-                  </div>
-                ) : null}
-</dl></div></section></>
+        <section id="detail-trial-schedule" key="trial-schedule" className={styles.applicationInfoSection} aria-label="체험 일정">
+          <div className={styles.scheduleHead}><h2 className={styles.applicationInfoTitle}>체험 일정</h2>
+            <StudioStatusBadge tone={data.status === "canceled" ? "red" : detailView.confirmedSchedule ? "green" : "gray"}>
+              {data.status === "canceled" ? detailView.caseStageLabel : data.status === "completed" ? "완료" : detailView.confirmedSchedule ? "확정" : "미확정"}
+            </StudioStatusBadge>
+          </div>
+          <p className={styles.scheduleDate}>{detailView.confirmedSchedule ?? `희망 · ${detailView.requestedSchedule}`}</p>
+          <Link href={studioPath("/studio/schedule")} className={styles.caseInlineLink}>일정 관리 →</Link>
+        </section></>
             }
           />
         </>

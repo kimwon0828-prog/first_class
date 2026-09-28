@@ -2034,6 +2034,7 @@ export const mockDataAdapter: DataAdapter = {
       lastActivityAt: "lastActivityAt" in application ? application.lastActivityAt ?? null : null,
       memo: "memo" in application ? application.memo ?? null : null,
       trialResult,
+      trialResultLoadError: null,
       consultationLogs: itemConsultationLogs,
       logs
     }

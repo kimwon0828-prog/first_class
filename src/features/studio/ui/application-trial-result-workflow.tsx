@@ -1,7 +1,7 @@
 "use client"
 
-import { getCaseAttentionState } from "@/features/studio/lib/case-view-model"
-import { StudioSectionLink } from "./studio-section-link"
+import { deriveApplicationDetailWorkflow, hasTrialRecordContent, type ApplicationWorkflowEvidence } from "@/features/studio/lib/application-detail-workflow-state"
+import { StudioQueryRetry } from "./studio-query-retry"
 
 import type { ReactNode } from "react"
 import { useActionState, useCallback, useEffect, useMemo, useRef, useState } from "react"
@@ -24,12 +24,9 @@ import {
   formatRegularSchedulePreference,
   parseRegularSchedulePreference
 } from "@/features/studio/lib/regular-schedule-preference"
-import { getTrialProgressState } from "@/features/studio/lib/trial-completion"
 import {
   CONSULTATION_CHANNEL_OPTIONS,
-  CONSULTATION_SENTIMENT_OPTIONS,
-  getConsultationChannelLabel,
-  getConsultationSentimentLabel
+  CONSULTATION_SENTIMENT_OPTIONS
 } from "@/features/studio/lib/consultation-log-options"
 import {
   formatSeoulDateTime
@@ -111,30 +108,12 @@ const initialConsultationState: CreateConsultationLogActionState = {
 
 type ApplicationTrialResultWorkflowProps = {
   application: StudioApplicationDetail
-  /**
-   * 신청 정보 / 담당 선생님처럼 "이미 아는 참조 정보" 섹션.
-   *
-   * 다음 할 일 바로 아래에 놓기 위해 서버에서 만들어 넘긴다.
-   * 원장이 상세로 들어오는 이유는 "지금 무엇을 할지" 하나라서
-   * 참조 정보가 그보다 먼저 오면 안 된다(디자인 시스템 §4.2).
-   */
+  headerContent?: ReactNode
   referenceSections?: ReactNode
-  /**
-   * 부모 리포트 발행 Section.
-   *
-   * 체험 결과 바로 다음에 온다 — 원장이 평가를 확인한 흐름 그대로
-   * 발행으로 이어지게 한다(디자인 시스템 §4.2 Section 순서).
-   * 서버에서 공개 snapshot 을 만들어 넘기므로 slot 으로 받는다.
-   */
   reportSection?: ReactNode
-  /**
-   * 학부모가 남긴 현재 생각(읽기 전용).
-   *
-   * 등록 상담 바로 앞에 둔다 — 원장이 상담을 적기 전에 학부모가 지금 무슨
-   * 생각인지 먼저 보는 순서다. 학원은 이 값을 고칠 수 없다.
-   */
   parentDecisionSection?: ReactNode
   sidebarContent?: ReactNode
+  evidence: ApplicationWorkflowEvidence
   /** 서버가 정한 기준 시각. 체험 종료 판정이 hydration 전후로 갈리지 않게 한다. */
   nowIso: string
   /**
@@ -151,219 +130,10 @@ type ApplicationTrialResultWorkflowProps = {
   canReopenConsultation: boolean
 }
 
-type NextActionState = {
-  title: string
-  description: string | null
-  tone: "default" | "warning" | "success"
-  actionLabel?: string
-  actionType?: "trial_result" | "consultation"
-}
-
-const getCompletedNextActionState = (application: StudioApplicationDetail): NextActionState => {
-  const hasConsultationHistory = application.consultationLogs.length > 0
-  const nextContactAt = application.nextContactAt
-
-  if (!application.trialResult) {
-    return {
-      title: "체험 결과를 먼저 기록해 주세요.",
-      description: "체험 직후 1회 기록이 먼저 있어야 이후 상담 흐름을 이어갈 수 있습니다.",
-      tone: "warning",
-      actionLabel: "체험 결과 기록",
-      actionType: "trial_result"
-    }
-  }
-
-  if (application.registrationStatus === "enrolled") {
-    return {
-      title: "등록이 완료되었습니다.",
-      description: null,
-      tone: "success"
-    }
-  }
-
-  if (application.registrationStatus === "not_enrolled") {
-    return {
-      title: "미등록으로 종료했어요.",
-      description: "학부모가 다시 문의하면 등록 상담에서 상담을 재개할 수 있습니다.",
-      tone: "default"
-    }
-  }
-
-  if (nextContactAt) {
-    const nextContactLabel = formatSeoulDateTime(nextContactAt)
-    if (new Date(nextContactAt).getTime() <= Date.now()) {
-      return {
-        title: "연락할 시간이 되었어요.",
-        description: nextContactLabel ? `다음 연락 예정 ${nextContactLabel}` : null,
-        tone: "warning"
-      }
-    }
-
-    return {
-      title: "다음 연락",
-      description: nextContactLabel,
-      tone: "default"
-    }
-  }
-
-  if (!hasConsultationHistory) {
-    return {
-      title: "상담 기록이 필요해요.",
-      description: "첫 상담 내용을 남기면 다음 연락 일정과 등록 전환 흐름을 이어서 관리할 수 있습니다.",
-      tone: "warning",
-      actionLabel: "상담 기록 추가",
-      actionType: "consultation"
-    }
-  }
-
-  return {
-    title: "다음 연락 일정이 없습니다.",
-    description: "다음 연락 예정이 비어 있어 후속 관리가 필요합니다.",
-    tone: "warning",
-    actionLabel: "상담 기록 추가",
-    actionType: "consultation"
-  }
-}
-
-const getNextActionState = (application: StudioApplicationDetail, now: Date): NextActionState => {
-  if (application.status === "new" || application.status === "reviewing") {
-    const requestedScheduleLabel =
-      application.selectedScheduleLabel?.trim() ||
-      formatSeoulDateTime(application.requestedSlotAt) ||
-      "희망 일정 확인 필요"
-
-    return {
-      title: requestedScheduleLabel,
-      description: "체험수업 일정으로 확정할까요?",
-      tone: "default"
-    }
-  }
-
-  if (application.status === "confirmed") {
-    const scheduleAt = application.confirmedSlotAt ?? application.requestedSlotAt
-    // 진행 상태는 trial-completion 하나만 판단한다. 여기서 다시 계산하지 않는다.
-    // 배지는 어느 경우든 "체험 중" 이다. 여기서는 다음 행동 문구만 고른다.
-    const progress = getTrialProgressState(
-      {
-        confirmedBlockStartAt: application.confirmedBlockStartAt,
-        confirmedBlockEndAt: application.confirmedBlockEndAt,
-        confirmedSlotAt: application.confirmedSlotAt,
-        scheduleStartTime: application.scheduleStartTime,
-        scheduleEndTime: application.scheduleEndTime
-      },
-      now
-    )
-
-    return {
-      title:
-        progress === "after_scheduled_end"
-          ? "체험이 끝났다면 완료 처리해 주세요."
-          : progress === "in_trial"
-            ? "체험이 진행 중입니다."
-            : `${formatSeoulDateTime(scheduleAt) ?? "확정된 일정"} 체험수업 예정`,
-      description: null,
-      tone: "default"
-    }
-  }
-
-  if (application.status === "completed") {
-    return getCompletedNextActionState(application)
-  }
-
-  return {
-    title:
-      application.status === "canceled"
-        ? "이미 종료된 신청이라 추가 상태 변경은 필요하지 않습니다."
-        : "종료된 신청입니다. 이력만 확인할 수 있습니다.",
-    description: null,
-    tone: "default"
-  }
-}
-
-const formatMonthDay = (value: string | null | undefined) => {
-  if (!value) {
-    return null
-  }
-
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) {
-    return null
-  }
-
-  return `${date.getMonth() + 1}월 ${date.getDate()}일`
-}
-
-const getCompletedDaysSinceLabel = (value: string | null | undefined) => {
-  if (!value) {
-    return null
-  }
-
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) {
-    return null
-  }
-
-  const elapsed = Math.max(0, Math.floor((Date.now() - date.getTime()) / (1000 * 60 * 60 * 24)))
-  return `${elapsed}일`
-}
-
-const getCompletedTodoCardCopy = (
-  application: StudioApplicationDetail,
-  hasConsultationHistory: boolean
-): { title: string; description: string | null } => {
-  if (!application.trialResult) {
-    return {
-      title: "체험 결과가 아직 기록되지 않았어요.",
-      description: "수업에서 관찰한 내용을 먼저 남기면 이후 상담 흐름을 이어갈 수 있어요."
-    }
-  }
-
-  if (application.registrationStatus === "enrolled") {
-    return {
-      title: "등록이 완료된 신청이에요.",
-      description: "후속 상담은 종료되었고, 현재 상태만 확인할 수 있어요."
-    }
-  }
-
-  if (application.registrationStatus === "not_enrolled") {
-    return {
-      // 상담 재개가 가능하므로 "추가 상담을 하지 말라" 는 의미를 남기지 않는다.
-      title: "미등록으로 종료했어요.",
-      description: "학부모가 다시 문의하면 등록 상담에서 상담을 재개할 수 있습니다."
-    }
-  }
-
-  if (application.nextContactAt && new Date(application.nextContactAt).getTime() <= Date.now()) {
-    return {
-      title: "다시 연락할 시간이 지났어요.",
-      description: formatSeoulDateTime(application.nextContactAt)
-    }
-  }
-
-  if (!application.nextContactAt && !hasConsultationHistory) {
-    return {
-      title: "첫 상담 기록을 남겨 주세요.",
-      description: "체험 직후 반응을 남겨 두면 다음 연락 흐름을 이어서 관리할 수 있어요."
-    }
-  }
-
-  if (!application.nextContactAt) {
-    return {
-      title: "다음 연락 일정이 없어요.",
-      description: application.lastActivityAt
-        ? `${formatMonthDay(application.lastActivityAt) ?? "최근"} 상담 이후 후속 일정이 비어 있어요.`
-        : "다음 연락 일정을 정해 두면 후속 관리가 쉬워져요."
-    }
-  }
-
-  return {
-    title: "다음 연락이 예정되어 있어요.",
-    description: formatSeoulDateTime(application.nextContactAt)
-  }
-}
-
 export const ApplicationTrialResultWorkflow = ({
   application,
+  evidence,
+  headerContent,
   sidebarContent = null,
   referenceSections = null,
   reportSection = null,
@@ -597,239 +367,50 @@ export const ApplicationTrialResultWorkflow = ({
 
   const hasTrialResult = Boolean(application.trialResult)
   const isCompletedView = application.status === "completed"
-  // 상담을 새로 쓸 수 있는 Case 인가(업무 조건) + 쓸 수 있는 권한인가.
-  const isConsultationWritableCase =
-    application.status === "completed" &&
-    application.registrationStatus !== "enrolled" &&
-    application.registrationStatus !== "not_enrolled"
-  const canAddConsultation = isConsultationWritableCase && canWriteConsultations
-  // 재개는 미등록 종결에만 연다. 등록 완료(enrolled)는 취소/환불이라는 다른 의미라 대상이 아니다.
-  const canReopenRegistration =
-    application.status === "completed" &&
-    application.registrationStatus === "not_enrolled" &&
-    canReopenConsultation
-  const canWriteTrialResult = canWriteTrialResults
+  const workflow = deriveApplicationDetailWorkflow({ application, evidence, nowIso, canWriteTrialResults, canWriteConsultations })
+  const canAddConsultation = isCompletedView && !workflow.closed && !evidence.registration.error &&
+    application.registrationStatus !== "enrolled" && application.registrationStatus !== "not_enrolled" && canWriteConsultations
+  const canReopenRegistration = isCompletedView && application.registrationStatus === "not_enrolled" &&
+    !evidence.registration.error && canReopenConsultation
+  const canWriteTrialResult = canWriteTrialResults && !evidence.trialResultError
   const unregisteredReasonLabel = getTrialResultUnregisteredReasonLabel(application.unregisteredReason)
-  const now = useMemo(() => new Date(nowIso), [nowIso])
-  const nextActionState = getNextActionState(application, now)
-  const needsAssignee = getCaseAttentionState({ ...application, trialResultExists: hasTrialResult, hasAnyConsultationHistory: application.consultationLogs.length > 0 }, now) === "UNASSIGNED"
-  // Header와 같은 확정 블록/확정 시각 우선순위. 희망 시각으로 시작을 추정하지 않는다.
-  const trialProgress = getTrialProgressState(application, now)
-  const isInTrial = application.status === "confirmed" &&
-    (trialProgress === "in_trial" || trialProgress === "after_scheduled_end")
-  const shouldShowStatusActions = application.status !== "confirmed" || isInTrial
-  const consultationOnlyLogs = useMemo(
-    () => application.consultationLogs.filter((item) => item.activityType === "CONSULTATION"),
-    [application.consultationLogs]
-  )
-  const latestConsultationLog = consultationOnlyLogs[0] ?? null
-  const completedTodoCard = getCompletedTodoCardCopy(application, consultationOnlyLogs.length > 0)
-  const isCompletedTodoWarning = Boolean(
-    application.registrationStatus !== "enrolled" &&
-      application.registrationStatus !== "not_enrolled" &&
-      ((!application.nextContactAt && hasTrialResult) ||
-        (application.nextContactAt && new Date(application.nextContactAt).getTime() <= Date.now()))
-  )
-  // KPI 카드 3개를 없애고 한 줄 메타데이터로 대체한다.
-  const completedDaysSinceLabel = getCompletedDaysSinceLabel(application.completedAt)
-  const activityMetaLine = useMemo(() => {
-    if (consultationOnlyLogs.length === 0) {
-      return null
-    }
-
-    const parts = [`상담 ${consultationOnlyLogs.length}회`]
-    const lastChannelLabel = getConsultationChannelLabel(latestConsultationLog?.channel)
-    if (lastChannelLabel) {
-      parts.push(`마지막 상담 ${lastChannelLabel}`)
-    }
-
-    const sentimentLabel = getConsultationSentimentLabel(latestConsultationLog?.sentiment)
-    if (sentimentLabel) {
-      parts.push(`반응 ${sentimentLabel}`)
-    }
-
-    if (completedDaysSinceLabel) {
-      parts.push(`체험 후 ${completedDaysSinceLabel}`)
-    }
-
-    return parts.join("  ·  ")
-  }, [consultationOnlyLogs.length, latestConsultationLog, completedDaysSinceLabel])
-
-  const hasVisibleTrialResultContent = Boolean(
-    (application.trialResult?.observations.length ?? 0) > 0 ||
-      recommendationSummary ||
-      application.trialResult?.note?.trim()
-  )
-  const phoneHref =
-    typeof application.parentPhone === "string" && application.parentPhone.trim().length > 0
-      ? `tel:${application.parentPhone.trim()}`
-      : null
-
-  const handleCompletedSaved = useCallback(() => {
-    setIsPromptOpen(true)
-  }, [])
-
+  const hasVisibleTrialResultContent = hasTrialRecordContent(application.trialResult)
+  const handleCompletedSaved = useCallback(() => { setIsPromptOpen(true) }, [])
   const activityEvents = useMemo(() => buildCaseActivityEvents(application), [application])
   const consultationEvents = activityEvents.filter(event => event.kind === "consultation")
   const systemEvents = activityEvents.filter(event => event.kind !== "consultation")
-
-  // 상태가 달라도 같은 순서(다음 할 일 → 활동 기록 → 체험 결과)가 되도록 섹션을 한 번만 만든다.
-  // 각 섹션은 카드 하나로 끝낸다(바깥 wrapper + 안쪽 callout 중첩을 만들지 않는다).
-  const todoIsWarning = isCompletedView ? isCompletedTodoWarning : false
-
-  // 완료 Case 의 버튼 위계: 지금 가장 중요한 것 하나만 Primary 로 둔다.
-  const completedPrimaryAction = !hasTrialResult
-    ? canWriteTrialResult
-      ? "trial_result"
-      : null
-    : canAddConsultation
-      ? "consultation"
-      : null
-
-  const nextTodoSection = (
-    <section className={`${styles.card} ${styles.sectionCard}`} aria-label="다음 할 일">
-      <div className={styles.sectionHead}>
-        <h2 className={styles.sectionTitle}>다음 할 일</h2>
-      </div>
-
-      {needsAssignee && !isInTrial ? (
-        <div className={styles.todoBlock}>
-          <p className={styles.todoTitle}>담당 선생님을 배정해 주세요.</p>
-          <StudioSectionLink target="case-assignee" className={styles.primaryButton}>담당자 배정</StudioSectionLink>
-          {shouldShowStatusActions ? (
-            <details>
-              <summary className={styles.disclosureSummary}>신청 상태 처리</summary>
-              {application.status === "reviewing" ? <p className={styles.sectionMetaLine}>확정할 체험 일시 · {formatSeoulDateTime(application.requestedSlotAt) ?? application.selectedScheduleLabel ?? "일정 확인 필요"}</p> : null}
-              <ApplicationStatusActionForm applicationId={application.id} currentStatus={application.status} variant="case-detail" onCompletedSaved={handleCompletedSaved} />
-            </details>
-          ) : null}
-        </div>
-      ) : isCompletedView ? (
-        <div
-          className={`${styles.todoBlock} ${
-            todoIsWarning
-              ? styles.todoBlockWarning
-              : application.registrationStatus === "enrolled"
-                ? styles.todoBlockSuccess
-                : ""
-          }`}
-        >
-          <p className={styles.todoTitle}>{completedTodoCard.title}</p>
-          {completedTodoCard.description ? (
-            <p className={styles.todoDescription}>{completedTodoCard.description}</p>
-          ) : null}
-          {completedPrimaryAction || phoneHref ? (
-            <div className={styles.todoActionRow}>
-              {completedPrimaryAction === "trial_result" ? (
-                <button type="button" className={styles.primaryButton} onClick={() => openEditor()}>
-                  결과 기록
-                </button>
-              ) : completedPrimaryAction === "consultation" ? (
-                <button type="button" className={styles.primaryButton} onClick={openConsultationEditor}>
-                  상담 기록
-                </button>
-              ) : null}
-              {phoneHref ? (
-                <a href={phoneHref} className={styles.secondaryButton}>
-                  전화 걸기
-                </a>
-              ) : null}
-            </div>
-          ) : null}
-        </div>
-      ) : application.status === "canceled" ? (
-        <p className={styles.todoTitle}>{nextActionState.title}</p>
-      ) : (
-        <div className={styles.todoBlock}>
-          <p className={styles.todoTitle}>{application.status === "new" ? "신청 내용을 확인해 주세요." : nextActionState.title}</p>
-          {nextActionState.description ? (
-            <p className={styles.todoDescription}>{application.status === "new" ? "학생 정보와 희망 일정을 확인한 뒤 신청 확인을 진행해 주세요." : nextActionState.description}</p>
-          ) : null}
-          {application.status === "reviewing" ? <p className={styles.sectionMetaLine}>확정할 체험 일시 · {formatSeoulDateTime(application.requestedSlotAt) ?? application.selectedScheduleLabel ?? "일정 확인 필요"}</p> : null}
-          {isInTrial && needsAssignee ? <StudioSectionLink target="case-assignee" className={styles.inlineTextButton}>담당자 배정 필요 →</StudioSectionLink> : null}
-          <ApplicationStatusActionForm
-            applicationId={application.id}
-            currentStatus={application.status}
-            onCompletedSaved={handleCompletedSaved}
-            variant="case-detail"
-            showActions={shouldShowStatusActions}
-          />
-        </div>
-      )}
-    </section>
-  )
-
   const activitySection = (
     <section className={`${styles.card} ${styles.sectionCard}`} aria-label="상담 이력">
-      <div className={styles.sectionHead}>
-        <h2 className={styles.sectionTitle}>상담 이력</h2>
-        <div className={styles.sectionHeadActions}>
-          {application.consultationLogs.length > 0 ? (
-            <button type="button" className={styles.inlineTextButton} onClick={openConsultationHistory}>
-              상담 {application.consultationLogs.length}건 전체 보기
-            </button>
-          ) : null}
-          {canAddConsultation ? (
-            <button type="button" className={styles.inlineTextButton} onClick={openConsultationEditor}>
-              + 상담 기록
-            </button>
-          ) : null}
-        </div>
+      <div className={styles.sectionHead}><h2 className={styles.sectionTitle}>상담 이력</h2>
+        {canAddConsultation ? <button type="button" className={workflow.primary?.action === "consultation" ? styles.primaryButton : styles.inlineTextButton} onClick={openConsultationEditor}>상담 기록</button> : null}
       </div>
-
-      {activityMetaLine ? <p className={styles.sectionMetaLine}>{activityMetaLine}</p> : null}
-
-      {application.nextContactAt ? <p className={styles.sectionMetaLine}>현재 다음 연락 · {formatSeoulDateTime(application.nextContactAt)}</p> : null}
-      {consultationEvents.length === 0 ? (
-        <p className={styles.simpleEmptyLine}>아직 상담 기록이 없어요.</p>
-      ) : (
-        <ol className={styles.activityList}>
-          {consultationEvents.slice(0, 1).map((event) => {
-            const timeText = formatSeoulDateTime(event.at)
-
-            const detailLine = event.details
-              .filter((item): item is string => Boolean(item))
-              .join("  ·  ")
-
-            return (
-              <li key={event.id} className={styles.activityItem}>
-                <span
-                  className={`${styles.activityMarker} ${styles.activityMarkerConsultation}`}
-                  aria-hidden="true"
-                />
-                <div className={styles.activityContent}>
-                  <p className={styles.activityHeadline}>
-                    <span className={styles.activityTitle}>{event.title}</span>
-                    <span className={styles.activityTime}>{timeText}</span>
-                  </p>
-                  {event.note ? <p className={styles.activityNote}>{event.note}</p> : null}
-                  {detailLine ? <p className={styles.activityDetails}>{detailLine}</p> : null}
-                </div>
-              </li>
-            )
-          })}
-        </ol>
-      )}
+      {application.nextContactAt ? <p className={styles.sectionMetaLine}>다음 연락 · {formatSeoulDateTime(application.nextContactAt)}</p> : null}
+      {consultationEvents.length ? <><p className={styles.sectionMetaLine}>{formatSeoulDateTime(consultationEvents[0].at)} · {consultationEvents[0].title}</p>
+        <p className={styles.asideNote}>{consultationEvents[0].note}</p></> : <p className={styles.simpleEmptyLine}>아직 상담 기록이 없어요.</p>}
+      {application.consultationLogs.length ? <button type="button" className={styles.inlineTextButton} onClick={openConsultationHistory}>상담 {application.consultationLogs.length}건 전체 보기 →</button> : null}
     </section>
   )
-
-  // 등록 상담과 같은 기준이다. 실제 status 가 completed 일 때만 연다.
-  // 아직 할 수 없는 일을 위한 빈 카드를 미리 만들지 않는다(디자인 시스템 §4.2).
-  const trialResultSection = !isCompletedView ? null : (
-    <section className={`${styles.card} ${styles.sectionCard}`} aria-label="체험 결과">
-      <div className={styles.sectionHead}>
-        <h2 className={styles.sectionTitle}>체험 결과</h2>
+  const trialResultSection = !isCompletedView && !hasVisibleTrialResultContent ? null : (
+    <section className={styles.recordContent} aria-label="체험 기록">
+      {hasVisibleTrialResultContent ? <div className={styles.sectionHead}>
+        <h4 className={styles.sectionTitle}>기록 내용</h4>
         {hasTrialResult && isCompletedView && canWriteTrialResult ? (
           <div className={styles.sectionHeadActions}>
             <button type="button" className={styles.inlineTextButton} onClick={() => openEditor()}>
-              수정
+              기록 수정
             </button>
           </div>
         ) : null}
-      </div>
+      </div> : null}
 
+      {hasVisibleTrialResultContent && !evidence.report.version ? <p className={styles.recordSummary}>
+        관찰 {application.trialResult?.observations.length ?? 0}개
+        {recommendationSummary ? ` · ${recommendationSummary}` : ""}
+        {application.trialResult?.publicSummary?.trim() ? " · 공개 총평 작성" : ""}
+      </p> : null}
+      {hasVisibleTrialResultContent && !evidence.report.version && application.trialResult?.publicSummary?.trim() ? <p className={styles.recordPreview}>{application.trialResult.publicSummary}</p> : null}
       {hasTrialResult && hasVisibleTrialResultContent ? (
-        <details className={styles.resultCompact}><summary className={styles.disclosureSummary}>작성한 체험 결과 보기</summary>
+        <details className={styles.resultCompact}><summary className={styles.disclosureSummary}>작성한 체험 기록 보기</summary>
           {storedObservations.canonical.length ? (
             <div className={styles.chipWrap}>
               {storedObservations.canonical.map((code) => (
@@ -858,6 +439,7 @@ export const ApplicationTrialResultWorkflow = ({
           ) : null}
 
           <dl className={styles.resultGrid}>
+            <div className={styles.resultGridRow}><dt className={styles.resultGridLabel}>공개 총평</dt><dd className={styles.resultGridValue}>{application.trialResult?.publicSummary?.trim() || "-"}</dd></div>
             <div className={styles.resultGridRow}>
               <dt className={styles.resultGridLabel}>추천 과정</dt>
               <dd className={styles.resultGridValue}>
@@ -877,7 +459,7 @@ export const ApplicationTrialResultWorkflow = ({
               </dd>
             </div>
             <div className={styles.resultGridRow}>
-              <dt className={styles.resultGridLabel}>메모</dt>
+              <dt className={styles.resultGridLabel}>내부 메모 · 비공개</dt>
               <dd className={styles.resultGridValue}>
                 {application.trialResult?.note?.trim() || "-"}
               </dd>
@@ -886,10 +468,10 @@ export const ApplicationTrialResultWorkflow = ({
         </details>
       ) : isCompletedView ? (
         <div className={styles.compactEmpty}>
-          <p className={styles.simpleEmptyLine}>체험 결과가 아직 기록되지 않았어요.</p>
+          <p className={styles.simpleEmptyLine}>관찰 내용과 추천 사항을 기록하면 학부모 리포트로 전달할 수 있어요.</p>
           {canWriteTrialResult ? (
-            <button type="button" className={styles.secondaryButton} onClick={() => openEditor()}>
-              결과 기록
+            <button type="button" className={workflow.closed ? styles.secondaryButton : styles.primaryButton} onClick={() => openEditor()}>
+              체험 기록 작성
             </button>
           ) : null}
         </div>
@@ -897,8 +479,6 @@ export const ApplicationTrialResultWorkflow = ({
     </section>
   )
 
-  // 체험 결과(관찰)와 등록 상담(결정)을 카드로 분리한다.
-  // 실제 DB status 가 completed 일 때만 노출한다 — `체험 중` 에는 열지 않는다.
   const preferenceParsed = parseRegularSchedulePreference(application.regularSchedulePreference)
 
   const registrationConsultationSection = isCompletedView ? (
@@ -920,31 +500,32 @@ export const ApplicationTrialResultWorkflow = ({
         ) : null}
       </div>
 
+      {evidence.registration.error ? <div role="alert"><p>등록 결과 정보를 불러오지 못했어요.</p><StudioQueryRetry /></div> : <>
+      <p className={styles.sectionMetaLine}>{workflow.result ? "학원에서 확인한 실제 등록 결과입니다." : "아직 등록 결과가 입력되지 않았습니다."}</p>
+      {canAddConsultation ? <button type="button" className={workflow.primary?.action === "registration" ? styles.primaryButton : styles.secondaryButton} onClick={openConsultationEditor}>등록 결과 입력</button> : null}
       <dl className={styles.resultGrid}>
         <div className={styles.resultGridRow}>
           <dt className={styles.resultGridLabel}>등록 상태</dt>
           <dd className={styles.resultGridValue}>
-            <StudioStatusBadge tone={getStudioRegistrationStatusTone(application.registrationStatus)}>
-              {getStudioRegistrationStatusLabel(application.registrationStatus)}
+            <StudioStatusBadge tone={getStudioRegistrationStatusTone(workflow.result ?? application.registrationStatus)}>
+              {workflow.result ? getStudioRegistrationStatusLabel(workflow.result) : "미입력"}
             </StudioStatusBadge>
           </dd>
         </div>
 
-        <div className={styles.resultGridRow}>
+        {preferenceParsed.status !== "empty" ? <div className={styles.resultGridRow}>
           <dt className={styles.resultGridLabel}>정규수업 희망 일정</dt>
           <dd className={styles.resultGridValue}>
             {preferenceParsed.status === "valid"
               ? formatRegularSchedulePreference(preferenceParsed.value)
-              : preferenceParsed.status === "empty"
-                ? "아직 기록하지 않았어요."
-                : "표시할 수 없는 기록"}
+              : "표시할 수 없는 기록"}
             {preferenceParsed.status === "valid" && application.regularSchedulePreferenceNote ? (
               <span className={styles.resultGridHint}>
                 {application.regularSchedulePreferenceNote}
               </span>
             ) : null}
           </dd>
-        </div>
+        </div> : null}
 
         {application.registrationStatus === "not_enrolled" ? (
           <div className={styles.resultGridRow}>
@@ -962,46 +543,72 @@ export const ApplicationTrialResultWorkflow = ({
 
 
       </dl>
+      {evidence.registration.resolvedAt ? <p className={styles.sectionMetaLine}>{formatSeoulDateTime(evidence.registration.resolvedAt)} 확정</p> : null}
+      </>}
     </section>
   ) : null
 
-  const systemSection = <details className={`${styles.card} ${styles.sectionCard}`} aria-label="시스템 이력">
-    <summary className={styles.disclosureSummary}>시스템 이력</summary>
+
+  const systemSection = <details className={styles.systemDisclosure} aria-label="시스템 이력">
+    <summary className={styles.disclosureSummary}>시스템 이력 보기</summary>
     {systemEvents.length ? <ol className={styles.activityList}>{systemEvents.map(event => <li key={event.id} className={styles.activitySystemItem}><span className={styles.activitySystemTitle}>{event.title}{event.meta ? ` · ${event.meta}` : ""}</span><span className={styles.activitySystemTime}>{formatSeoulDateTime(event.at)}</span></li>)}</ol> : <p className={styles.simpleEmptyLine}>시스템 이력이 없습니다.</p>}
   </details>
+  const stepStateLabels = { done: "완료", current: "진행 중", waiting: "대기", available: "작업 가능", restricted: "제한", error: "조회 실패" }
 
   return (
     <>
-      {nextTodoSection}
-      {referenceSections}
-      {activitySection}
-      {trialResultSection}
-      {isCompletedView ? reportSection : null}
-      {isCompletedView ? parentDecisionSection : null}
-      {registrationConsultationSection}
-      {systemSection}
+      <div className={styles.workspace}>
+        <section className={styles.workspaceHeader} aria-label="신청 작업 헤더">
+          {headerContent}
+          {workflow.primary?.action === "status" || (workflow.primary?.action === "assignee" && (application.status === "new" || application.status === "reviewing")) ? (
+            <div className={styles.statusActions}>
+              <ApplicationStatusActionForm applicationId={application.id} currentStatus={application.status}
+                variant="case-detail" primaryTone={workflow.primary?.action === "status" ? "primary" : "secondary"} onCompletedSaved={handleCompletedSaved} />
+            </div>
+          ) : null}
+        </section>
 
-      {sidebarContent ? <div className={styles.prioritySidebar}>{sidebarContent}</div> : null}
+        <section className={styles.progressCard} aria-labelledby="workflow-progress-title">
+          <h2 id="workflow-progress-title" className={styles.sectionTitle}>진행 현황</h2>
+          <p className={styles.sectionMetaLine}>체험부터 등록 결과까지의 진행 상황을 한눈에 확인할 수 있습니다.</p>
+          <ol className={styles.stepper} aria-label="체험 후 진행 단계">
+            {workflow.steps.map((step, index) => <li key={step.id} data-state={step.state} aria-current={workflow.currentStep === step.id ? "step" : undefined}>
+              <span className={styles.stepNumber}>{step.state === "done" ? "✓" : index + 1}</span>
+              <strong>{step.title}</strong>
+              <span className={styles.stepSummary}>{step.id === "parent" && evidence.parentDecision.value && !evidence.parentDecision.error ? formatSeoulDateTime(evidence.parentDecision.createdAt) ?? "응답 완료" : step.summary}</span>
+              <span className={styles.stepState}>{stepStateLabels[step.state]}</span>
+            </li>)}
+          </ol>
+        </section>
 
-      {isCompletedView && !needsAssignee && (phoneHref || completedPrimaryAction) ? (
-        <div className={styles.mobileActionBar} aria-label="모바일 빠른 액션">
-          {phoneHref ? (
-            <a href={phoneHref} className={styles.mobileActionButtonSecondary}>
-              전화 걸기
-            </a>
-          ) : null}
-          {completedPrimaryAction === "trial_result" ? (
-            <button type="button" className={styles.mobileActionButtonPrimary} onClick={() => openEditor()}>
-              결과 기록
-            </button>
-          ) : null}
-          {completedPrimaryAction === "consultation" ? (
-            <button type="button" className={styles.mobileActionButtonPrimary} onClick={openConsultationEditor}>
-              상담 기록
-            </button>
-          ) : null}
+        <section className={`${styles.card} ${styles.recordCard}`} aria-labelledby="record-report-title">
+          <h2 id="record-report-title" className={styles.sectionTitle}>체험 기록 · 리포트</h2>
+          <p className={styles.sectionMetaLine}>수업 후 작성한 체험 기록과 리포트입니다.</p>
+          {evidence.trialResultError ? <div role="alert"><p>체험 기록 정보를 불러오지 못했어요.</p><StudioQueryRetry /></div>
+            : trialResultSection ?? <p className={styles.simpleEmptyLine}>{application.status === "canceled" ? "남아 있는 체험 기록이 없습니다." : "체험을 완료한 뒤 기록할 수 있어요."}</p>}
+          {/* 기록 조회 실패와 발행본 조회는 독립적이다. 확인된 발행본은 계속 보여 준다. */}
+          {hasVisibleTrialResultContent || evidence.report.version || evidence.report.error ? reportSection : null}
+        </section>
+
+        <aside className={styles.workspaceAside} aria-label="신청 참고 패널">
+          {sidebarContent}
+          {activitySection}
+          {isCompletedView ? <>
+            {parentDecisionSection}
+            {!application.parentId ? <p className={styles.sectionMetaLine}>학부모 계정이 연결되어 있지 않아요. 학원 등록 결과는 계속 기록할 수 있어요.</p> : null}
+            {registrationConsultationSection}
+          </> : null}
+        </aside>
+
+        <div className={styles.supplementary}>
+          <section className={`${styles.card} ${styles.sectionCard}`} aria-label="최근 활동">
+            <h2 className={styles.sectionTitle}>최근 활동</h2>
+            {activityEvents.length ? <ol className={styles.activityList}>{activityEvents.slice(0, 3).map(event => <li key={event.id} className={styles.activityItem}><span className={styles.activityMarker} aria-hidden="true" /><div className={styles.activityContent}><p className={styles.activityTitle}>{event.title}</p><p className={styles.activityTime}>{formatSeoulDateTime(event.at)}</p></div></li>)}</ol> : <p className={styles.simpleEmptyLine}>아직 활동 내역이 없습니다.</p>}
+          </section>
+          {referenceSections}
         </div>
-      ) : null}
+        {systemSection}
+      </div>
 
       {isPromptOpen ? (
         <div className={styles.dialogOverlay} role="presentation">
@@ -1016,7 +623,7 @@ export const ApplicationTrialResultWorkflow = ({
             </button>
             <div className={styles.dialogBody}>
               <h3 id="trial-result-prompt-title" className={styles.dialogTitle}>
-                체험 결과를 기록할까요?
+                체험 기록을 작성할까요?
               </h3>
               <p className={styles.dialogDescription}>
                 수업 직후 간단히 남겨두면 이후 상담에 바로 활용할 수 있습니다.
@@ -1047,10 +654,10 @@ export const ApplicationTrialResultWorkflow = ({
 
             <div className={styles.dialogBody}>
               <h3 id="trial-result-editor-title" className={styles.dialogTitle}>
-                {hasTrialResult ? "체험 결과 수정" : "체험 결과 기록"}
+                {hasTrialResult ? "체험 기록 수정" : "체험 기록 작성"}
               </h3>
               <p className={styles.dialogDescription}>
-                수업에서 관찰한 내용과 추천 사항을 간단히 남겨두세요.
+                관찰·추천·공개 총평은 학부모 리포트에 포함됩니다. 내부 메모는 공개되지 않아요.
               </p>
             </div>
 
@@ -1171,7 +778,7 @@ export const ApplicationTrialResultWorkflow = ({
                 <p className={styles.fieldHint}>학부모가 리포트에서 읽습니다.</p>
               </Field>
 
-              <Field label="체험 메모">
+              <Field label="내부 메모 · 비공개">
                 <textarea
                   name="note"
                   defaultValue={application.trialResult?.note ?? ""}
@@ -1444,7 +1051,7 @@ export const ApplicationTrialResultWorkflow = ({
           >
             <div className={styles.dialogBody}>
               <h3 id="trial-result-success-title" className={styles.dialogTitle}>
-                체험 결과가 저장되었습니다.
+                체험 기록이 저장되었습니다.
               </h3>
               <p className={styles.dialogDescription}>
                 저장한 내용은 상담과 등록 전환에 활용됩니다.
@@ -1461,7 +1068,7 @@ export const ApplicationTrialResultWorkflow = ({
 
       {trialResultErrorMessage !== null ? (
         <SaveErrorDialog
-          title="체험 결과를 저장하지 못했습니다"
+          title="체험 기록을 저장하지 못했습니다"
           message={trialResultErrorMessage}
           onConfirm={() => {
             setTrialResultErrorMessage(null)

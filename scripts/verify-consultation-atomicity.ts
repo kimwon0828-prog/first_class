@@ -23,7 +23,7 @@ const JWT_SECRET =
   process.env.SUPABASE_LOCAL_JWT_SECRET ??
   "super-secret-jwt-token-with-at-least-32-characters-long"
 
-if (!REST_URL.includes("127.0.0.1") && !REST_URL.includes("localhost")) {
+if (!["127.0.0.1", "localhost"].includes(new URL(REST_URL).hostname)) {
   console.error("이 스크립트는 로컬 Supabase 전용이다. hosted URL 로 실행하지 않는다.")
   process.exit(1)
 }
@@ -189,6 +189,9 @@ const teardown = async () => {
   await admin(`consultation_logs?id=in.(${["1", "2", "3", "4", "5", "6"].map(SUB).join(",")})`, {
     method: "DELETE"
   })
+  // RPC creates immutable registration history. Delete only this local fixture namespace
+  // before its application FK; no schema/trigger/grant changes are needed.
+  await admin(`registration_results?application_id=${filter}`, { method: "DELETE" })
   await admin(`trial_applications?id=${filter}`, { method: "DELETE" })
   await admin(`classes?id=eq.${OTHER_CLASS_ID}`, { method: "DELETE" })
   await admin(`teachers?id=eq.${OTHER_TEACHER_ID}`, { method: "DELETE" })

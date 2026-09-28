@@ -4708,7 +4708,7 @@ export const supabaseDataAdapter: DataAdapter = {
 
     return count ?? 0
   },
-  async getStudioApplicationDetail(applicationId, organizationId) {
+  async getStudioApplicationDetail(applicationId, organizationId, options) {
     const supabase = await getSupabaseServerClient()
     const { data, error } = await supabase
       .from("studio_trial_applications")
@@ -4755,7 +4755,7 @@ export const supabaseDataAdapter: DataAdapter = {
       .eq("application_id", applicationId)
       .maybeSingle()
 
-    if (trialResultError) {
+    if (trialResultError && !options?.allowPartialTrialResult) {
       throw new Error("failed_to_fetch_trial_result")
     }
 
@@ -4807,7 +4807,8 @@ export const supabaseDataAdapter: DataAdapter = {
       nextContactAt: (data as TrialApplicationRow).next_contact_at ?? null,
       lastActivityAt: (data as TrialApplicationRow).last_activity_at ?? null,
       memo: (data as TrialApplicationRow).memo ?? null,
-      trialResult: trialResultData ? mapStudioTrialResult(trialResultData as TrialResultRow) : null,
+      trialResult: !trialResultError && trialResultData ? mapStudioTrialResult(trialResultData as TrialResultRow) : null,
+      trialResultLoadError: trialResultError ? "체험 기록 정보를 불러오지 못했어요." : null,
       consultationLogs: ((consultationLogData ?? []) as ConsultationLogRow[]).map(mapStudioConsultationLog),
       logs: logRows.map((row) => mapApplicationLog(row, actorNameById))
     }

@@ -11,7 +11,7 @@
  */
 .page > * {
   width: 100%;
-  max-width: min(var(--studio-max), 1040px);
+  max-width: var(--studio-max);
   margin-left: auto;
   margin-right: auto;
 }
@@ -369,3 +369,59 @@
 
 .progressTerminal { color: var(--red-fg); }
 @media (max-width: 640px) { .caseHeader { grid-template-columns: minmax(0, 1fr); } }
+
+/* V2 slots: the workflow owns the workspace surface and column layout. */
+.pageTitle { margin: 0 0 6px; font-size: 25px; line-height: 34px; color: var(--text-1); }
+.pageDescription { margin: 0; font-size: 13px; line-height: 22px; color: var(--text-2); }
+.headerTopRow { margin-bottom: 12px; }
+.backLink { border: 0; padding: 0; min-height: 28px; background: transparent; font-weight: 600; }
+.caseHeader { padding: 0; border: 0; border-radius: 0; display: block; }
+.caseHeaderTop { flex-wrap: nowrap; }
+.identityLine { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.caseTitle { font-size: 26px; }
+.caseGuardian { gap: 14px; font-size: 13px; margin-top: 6px; }
+.caseActions { align-items: flex-start; flex-shrink: 0; }
+.assigneeDisclosure { font-size: 13px; color: var(--text-2); }
+.caseActions .assigneeDisclosure { max-width: 280px; }
+.caseActions .assigneeDisclosure > summary { min-height: 42px; padding: 0 10px; border: 1px solid var(--border); border-radius: var(--r-md); }
+.caseActions .assigneeDisclosure[open] { flex-basis: 100%; }
+.applicationInfoSection { padding: 18px; min-width: 0; }
+.applicationInfoHeader { padding: 0; margin-bottom: 12px; }
+.applicationInfoTitle { font-size: 16px; line-height: 24px; margin: 0; }
+.applicationInfoBody { padding: 0; }
+.applicationInfoGrid { display: grid; grid-template-columns: minmax(0, 1fr); margin: 0; gap: 12px; }
+.infoCell { padding: 0; border: 0; display: grid; grid-template-columns: 62px minmax(0, 1fr); gap: 10px; align-items: baseline; }
+.summaryLabel { font-size: 12px; font-weight: 500; }
+.summaryValue, .summaryValueStrong, .summaryValueMultiline { font-size: 13px; line-height: 21px; font-weight: 600; overflow-wrap: anywhere; }
+.summaryValueStrong { color: var(--text-1); }
+.referenceHint { color: var(--text-2); font-size: 12px; margin: 10px 0 0; }
+.scheduleSourceHint { display: block; margin-top: 4px; font-size: 12px; font-weight: 400; }
+@media (max-width: 720px) {
+  .page { padding: 20px 12px 32px; }
+  .caseHeaderTop { flex-direction: column; gap: 12px; }
+  .caseTitle { font-size: 24px; }
+  .caseActions { flex-wrap: wrap; width: 100%; }
+  .caseActions .assigneeDisclosure { max-width: 100%; }
+}
+.header { margin-inline: auto; }
+.applicationInfoGrid .infoCell { padding: 0; border: 0; }
+.applicationInfoGrid { gap: 14px; }
+.applicationInfoHeader { border: 0; }
+.summaryValue .caseInlineLink { display: block; margin-top: 6px; }
+
+/* Final detail header: actions and a collapsed assignee editor. */
+.headerControls { display: grid; gap: 16px; min-width: 250px; }
+.teacherBlock { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; padding-top: 12px; border-top: 1px solid var(--border); }
+.teacherBlock p { margin: 4px 0 0; font-size: 14px; font-weight: 700; }
+.teacherBlock .assigneeDisclosure > summary { min-height: 32px; color: var(--green-fg); font-weight: 700; }
+.teacherBlock:has(.assigneeDisclosure[open]) { flex-wrap: wrap; }
+.teacherBlock .assigneeDisclosure[open] { width: 100%; }
+.moreDisclosure { position: relative; font-size: 13px; }
+.moreDisclosure > summary { min-height: 42px; align-content: center; padding: 0 12px; border: 1px solid var(--border); border-radius: var(--r-md); cursor: pointer; }
+.moreDisclosure > a { position: absolute; top: calc(100% + 6px); right: 0; white-space: nowrap; background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-md); padding: 12px; z-index: 2; }
+.applicationInfoBody { border: 0; }
+.referenceGrid { display: grid; gap: 14px; margin: 18px 0 0; }
+.referenceGrid .infoCell { grid-template-columns: 105px minmax(0, 1fr); }
+.scheduleHead { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.scheduleDate { color: var(--text-1); font-size: 14px; line-height: 24px; margin: 14px 0; overflow-wrap: anywhere; }
+@media (max-width: 860px) { .headerControls { width: 100%; min-width: 0; } }

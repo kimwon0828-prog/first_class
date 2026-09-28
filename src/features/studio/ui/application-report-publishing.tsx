@@ -16,7 +16,7 @@ import {
 } from "@/features/studio/actions/withdraw-experience-report"
 import { formatSeoulDateTime } from "@/features/studio/lib/seoul-datetime"
 import { useStudioNavigationPathFactory } from "@/features/studio/ui/studio-navigation-provider"
-import type { ExperienceReportSnapshotV1 } from "@/features/reports/lib/experience-report-snapshot"
+import { getExperienceReportSummary, type ExperienceReportSnapshotV1 } from "@/features/reports/lib/experience-report-snapshot"
 import { SEOUL_TIME_ZONE } from "@/shared/lib/seoul-datetime"
 
 import styles from "./application-report-publishing.module.css"
@@ -36,6 +36,8 @@ export type ReportPublishBlocker =
 
 type ApplicationReportPublishingProps = {
   applicationId: string
+  embedded?: boolean
+  emphasizePublish?: boolean
   /** 지금 저장된 평가로 만든 미리보기. 막힌 상태면 null 이다. */
   preview: ExperienceReportSnapshotV1 | null
   /** 지금 부모에게 공개돼 있는 발행본의 snapshot. 미리보기와 섞지 않는다. */
@@ -105,6 +107,7 @@ const formatReportDate = (value: string | null) => {
  */
 const ReportBody = ({ snapshot }: { snapshot: ExperienceReportSnapshotV1 }) => {
   const dateText = formatReportDate(snapshot.experience.date)
+  const summary = getExperienceReportSummary(snapshot)
   const { course, level, schedule } = snapshot.recommendation
   // 값이 없는 항목에 "-" 를 채워 넣지 않는다. 없는 것은 그냥 보이지 않는다.
   const recommendations = [
@@ -141,6 +144,8 @@ const ReportBody = ({ snapshot }: { snapshot: ExperienceReportSnapshotV1 }) => {
           <p className={styles.reportEmpty}>등록된 관찰 내용이 없습니다.</p>
         )}
       </section>
+
+      {summary ? <section className={styles.reportSection} aria-label="공개 총평"><h3 className={styles.reportSectionTitle}>총평</h3><p className={styles.reportSummary}>{summary}</p></section> : null}
 
       {recommendations.length > 0 ? (
         <section className={styles.reportSection} aria-label="추천">
@@ -184,6 +189,8 @@ const BLOCKER_TEXT: Record<ReportPublishBlocker["kind"], { title: string; body: 
 
 export const ApplicationReportPublishing = ({
   applicationId,
+  embedded = false,
+  emphasizePublish = !embedded,
   preview,
   publishedSnapshot,
   publishedVersion,
@@ -265,10 +272,10 @@ export const ApplicationReportPublishing = ({
   const publishedDateText = publishedAt ? formatSeoulDateTime(publishedAt) : null
 
   return (
-    <section className={`${styles.card} ${styles.sectionCard}`} aria-labelledby="report-publishing-title">
+    <section className={`${embedded ? styles.embedded : styles.card} ${styles.sectionCard}`} aria-labelledby="report-publishing-title">
       <div className={styles.sectionHead}>
         <h2 id="report-publishing-title" className={styles.sectionTitle}>
-          부모 리포트
+          학부모에게 전달하기
         </h2>
         {publishedReportLoadError ? (
           // 모르는 상태다. "없음" 이라고 말하지 않는다.
@@ -290,20 +297,24 @@ export const ApplicationReportPublishing = ({
         )}
       </div>
 
-      <p className={styles.sectionDescription}>
-        체험 결과를 부모님께 전달하기 전에 실제로 보여질 내용을 확인해 주세요.
-      </p>
+      {!publishedSnapshot ? <p className={styles.sectionDescription}>체험 결과를 부모님께 전달하기 전에 실제로 보여질 내용을 확인해 주세요.</p> : null}
 
       {/*
         지금 공개돼 있는 것은 발행 시점에 얼어붙은 snapshot 이다.
         평가를 다시 조립해서 "현재 발행본" 이라고 보여 주지 않는다.
       */}
-      {publishedSnapshot ? (
-        <details className={styles.block} open={!assessmentChangedSincePublish}>
-          <summary className={styles.blockLabel}>현재 부모님께 공개된 내용 보기</summary>
+      {publishedSnapshot ? <>
+        {embedded ? <div className={styles.publishedPreview} aria-label="발행된 리포트 요약">
+          <h3>{publishedSnapshot.experience.child.displayName} 학생 체험 수업 리포트</h3>
+          {getExperienceReportSummary(publishedSnapshot) ? <p className={styles.previewSummary}>{getExperienceReportSummary(publishedSnapshot)}</p> : null}
+          {publishedSnapshot.observations.length ? <ul>{publishedSnapshot.observations.slice(0, 3).map(item => <li key={item.code}>{item.label}</li>)}</ul> : null}
+          {Object.values(publishedSnapshot.recommendation).some(Boolean) ? <p className={styles.previewSummary}>추천 · {Object.values(publishedSnapshot.recommendation).filter(Boolean).join(" · ")}</p> : null}
+        </div> : null}
+        <details className={styles.block}>
+          <summary className={styles.blockLabel}>{embedded ? "자세히 보기" : "리포트 미리보기"}</summary>
           <ReportBody snapshot={publishedSnapshot} />
         </details>
-      ) : null}
+      </> : null}
 
       {publishedReportLoadError ? (
         <div className={styles.notice} role="alert">
@@ -319,15 +330,15 @@ export const ApplicationReportPublishing = ({
         <div className={styles.notice} role="status">
           <p className={styles.noticeTitle}>체험 결과가 마지막 리포트 발행 이후 수정되었습니다.</p>
           <p className={styles.noticeBody}>
-            변경 내용을 부모님께 전달하려면 새 버전으로 다시 발행해 주세요.
+            공개 내용이 달라졌는지 미리보기로 확인한 뒤 필요한 경우 새 버전을 발행해 주세요.
           </p>
         </div>
       ) : null}
 
       {preview ? (
-        <details className={styles.block} open={!publishedSnapshot || assessmentChangedSincePublish}>
+        <details data-report-preview className={styles.block}>
           <summary className={styles.blockLabel}>
-            {publishedSnapshot ? "현재 작성본 미리보기" : "부모님께 보일 내용 확인"}
+            {publishedSnapshot ? "현재 작성본 미리보기" : "발행 전 미리보기"}
           </summary>
           <ReportBody snapshot={preview} />
         </details>
@@ -396,14 +407,14 @@ export const ApplicationReportPublishing = ({
               />
               <button
                 type="submit"
-                className={styles.primaryButton}
+                className={emphasizePublish ? styles.primaryButton : styles.secondaryButton}
                 disabled={!canPublish || isPublishing || isWithdrawing}
               >
                 {isPublishing
                   ? "발행 중..."
                   : publishedVersion
-                    ? "새 버전으로 발행"
-                    : "부모에게 리포트 발행"}
+                    ? "새 버전 발행"
+                    : "학부모에게 발행"}
               </button>
             </form>
           ) : null}

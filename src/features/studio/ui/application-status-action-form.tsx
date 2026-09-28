@@ -73,6 +73,7 @@ type ApplicationStatusActionFormProps = {
   currentStatus: ApplicationStatus
   onCompletedSaved?: () => void
   variant?: "default" | "case-detail"
+  primaryTone?: "primary" | "secondary"
   showActions?: boolean
 }
 
@@ -81,6 +82,7 @@ export const ApplicationStatusActionForm = ({
   currentStatus,
   onCompletedSaved,
   variant = "default",
+  primaryTone = "primary",
   showActions = true
 }: ApplicationStatusActionFormProps) => {
   const router = useRouter()
@@ -154,7 +156,7 @@ export const ApplicationStatusActionForm = ({
               className={
                 item.tone === "danger"
                   ? styles.dangerButton
-                  : item.tone === "secondary"
+                  : item.tone === "secondary" || primaryTone === "secondary"
                     ? styles.secondaryButton
                     : styles.primaryButton
               }

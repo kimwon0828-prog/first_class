@@ -845,6 +845,10 @@ export type StudioConsultationPipelineApplicationItem = {
   pipelineGroup: StudioConsultationPipelineGroup
 }
 
+/** Only the detail presentation may tolerate a trial-record read failure.
+ * Mutation callers omit this option and retain the existing fail-closed behavior. */
+export type StudioApplicationDetailReadOptions = { allowPartialTrialResult?: boolean }
+
 export type StudioApplicationDetail = StudioApplicationSummary & {
   confirmedScheduleBlockId: string | null
   childSchool: string | null
@@ -877,6 +881,7 @@ export type StudioApplicationDetail = StudioApplicationSummary & {
   regularSchedulePreferenceNote: string | null
   regularSchedulePreferenceUpdatedAt: string | null
   trialResult: StudioTrialResult | null
+  trialResultLoadError?: string | null
   consultationLogs: StudioConsultationLog[]
   logs: ApplicationLogEntry[]
 }
@@ -1384,7 +1389,8 @@ export interface DataAdapter {
   getStudioConsultationPipelineActiveCount(organizationId: string): Promise<number>
   getStudioApplicationDetail(
     applicationId: string,
-    organizationId: string
+    organizationId: string,
+    options?: StudioApplicationDetailReadOptions
   ): Promise<StudioApplicationDetail | null>
   updateStudioApplicationAssignee(input: UpdateStudioApplicationAssigneeInput): Promise<void>
   updateStudioApplicationStatus(input: UpdateStudioApplicationStatusInput): Promise<void>
