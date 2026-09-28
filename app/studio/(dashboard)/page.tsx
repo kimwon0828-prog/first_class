@@ -17,6 +17,7 @@ import {
   buildStudioDashboardAnalytics
 } from "@/features/studio/lib/studio-dashboard-analytics"
 import { buildStudioDashboardMetrics } from "@/features/studio/lib/studio-dashboard-metrics"
+import { buildStudioDonutArcs } from "@/features/studio/lib/studio-dashboard-donut"
 import { requireTeacherStudioAccess } from "@/features/studio/lib/require-teacher-studio-access"
 import {
   buildStudioDashboardView
@@ -92,16 +93,17 @@ export default async function StudioIndexPage({ searchParams }: StudioIndexPageP
     { key: "pending", label: "진행 전·진행 중", count: metrics.trialOutcomes.pending }
   ] : []
   const renderDonut = (segments: Array<{ key: string; label: string; count: number }>, total: number, centerLabel: string) => {
-    let consumed = 0
+    const arcs = buildStudioDonutArcs(segments.map(segment => segment.count), total)
     return <div className={styles.donutLayout}>
       <div className={styles.donutWrap}>
         <svg className={styles.donut} viewBox={`0 0 ${STUDIO_DONUT_VIEWBOX} ${STUDIO_DONUT_VIEWBOX}`} aria-hidden="true">
           <circle className={styles.donutTrack} cx={donutCenter} cy={donutCenter} r={STUDIO_DONUT_RADIUS} strokeWidth={STUDIO_DONUT_STROKE} />
-          {segments.map(segment => {
-            const length = total ? segment.count / total * 100 : 0
-            const offset = -consumed
-            consumed += length
-            return <circle key={segment.key} className={styles[segment.key]} cx={donutCenter} cy={donutCenter} r={STUDIO_DONUT_RADIUS} strokeWidth={STUDIO_DONUT_STROKE} fill="none" pathLength="100" strokeDasharray={`${length} ${100 - length}`} strokeDashoffset={offset} transform={`rotate(-90 ${donutCenter} ${donutCenter})`} />
+          {segments.map((segment, index) => {
+            const arc = arcs[index]
+            if (!arc) return null
+            return arc.fullCircle
+              ? <circle key={segment.key} className={styles[segment.key]} cx={donutCenter} cy={donutCenter} r={STUDIO_DONUT_RADIUS} strokeWidth={STUDIO_DONUT_STROKE} fill="none" />
+              : <path key={segment.key} className={styles[segment.key]} d={arc.path} strokeWidth={STUDIO_DONUT_STROKE} fill="none" strokeLinecap="butt" />
           })}
         </svg>
         <div className={styles.donutCenter}><strong>{total}</strong><span>{centerLabel}</span></div>

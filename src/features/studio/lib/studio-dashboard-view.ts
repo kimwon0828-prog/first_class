@@ -265,7 +265,11 @@ const buildScheduleSection = (
   now: Date
 ) => {
   const gradeById = new Map(applications.map(item => [item.id, item.childGrade]))
-  const events = buildStudioScheduleEvents(applications, now)
+  // Calendar records include cancellations/completion actions with no visit time.
+  // Dashboard appointments must have an actual confirmed occurrence.
+  const events = buildStudioScheduleEvents(
+    applications.filter(item => item.status === "confirmed" || item.status === "completed"), now
+  ).filter(event => !event.isDateUncertain)
   const todayEvents = events.filter((event) => event.dateKey === todayKey)
   const isToday = todayEvents.length > 0
   const visible = isToday

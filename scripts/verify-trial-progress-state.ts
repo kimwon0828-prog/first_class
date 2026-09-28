@@ -242,7 +242,8 @@ for (const fixture of fixtures) {
     )
   ]
   const detail = STUDIO_APPLICATION_STATUS_LABELS[resolveTrialDisplayStatus(summary, NOW)]
-  const dash = dashboardBadges.get(summary.id)
+  const dashboardLabel = dashboardBadges.get(summary.id)
+  const dash = dashboardLabel === "예약 확정" ? "일정 확정" : dashboardLabel
   const scheduleLabel = scheduleBadges.get(summary.id)
   // Schedule V1.1: distinguish a confirmed booking from a requested visit.
   const sched = scheduleLabel === "예약 확정" ? "일정 확정" : scheduleLabel
