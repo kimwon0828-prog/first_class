@@ -4,8 +4,6 @@ import Link from "next/link"
 import { notFound } from "next/navigation"
 import { unstable_noStore as noStore } from "next/cache"
 
-import { getMyCurrentParentDecision } from "@/features/decisions/queries/get-my-current-parent-decision"
-import { ParentDecisionForm } from "@/features/decisions/ui/parent-decision-form"
 import { requireParentAccess } from "@/features/my/lib/require-parent-access"
 import {
   getExperienceStageLabel,
@@ -20,7 +18,6 @@ import { getSeoulDateTimeParts } from "@/shared/lib/seoul-datetime"
 
 import { getMyChildren } from "@/features/children/queries/get-my-children"
 import { getExperienceReportSummary } from "@/features/reports/lib/experience-report-snapshot"
-import { formatPreferredSchedule, formatLegacyPreferredDate, getParentDeclineReasonLabel } from "@/features/decisions/lib/parent-decision"
 
 import { RecordDetailRetry } from "@/features/record/ui/record-detail-retry"
 
@@ -84,26 +81,15 @@ export default async function ExperienceDetailPage({
   const backHref = withRecordChild(isCompletedExperience ? "/record" : "/my/applications", selectedChildId)
   const backLabel = isCompletedExperience ? "기록" : "신청 현황"
 
-  /*
-   * 리포트와 부모의 생각은 완료 경험에서만 읽는다.
-   *
-   * Report 는 published snapshot 만, ParentDecision 은 부모가 직접 남긴 현재 생각만
-   * 읽는다. RegistrationResult 원문은 이 화면에 가져오지 않는다. 결과 존재 여부는
-   * 기존 canCollectParentDecision boolean 에 이미 접혀 있다.
-   */
+  // 완료 경험의 관찰 미리보기는 발행 snapshot만 읽는다. 입력은 리포트 상세에 둔다.
   const reportResult = isCompletedExperience ? await getMyExperienceReport(experienceId) : null
   const hasPublishedReport = reportResult?.status === "ok"
   const reportLoadFailed = reportResult?.status === "error"
-  const showDecision = isCompletedExperience && experience.canCollectParentDecision
-  const decisionResult = isCompletedExperience ? await getMyCurrentParentDecision(experienceId) : null
-  const decision = decisionResult?.status === "ok" ? decisionResult.decision : null
   const childrenResult = isCompletedExperience && experience.childId ? await getMyChildren() : null
   const profileChildId = !childrenResult?.error && childrenResult?.data.some(child => child.id === experience.childId)
     ? experience.childId : null
   const snapshot = reportResult?.status === "ok" ? reportResult.report.content : null
   const summary = snapshot ? getExperienceReportSummary(snapshot) : null
-  const preferredSchedule = decision ? formatPreferredSchedule({ days: decision.preferredDays, startTime: decision.preferredStartTime, endTime: decision.preferredEndTime, mode: decision.preferredTimeMode }) : null
-  const legacySchedule = decision?.preferredDate ? formatLegacyPreferredDate(decision.preferredDate, decision.preferredTimeNote) : null
 
   const typeLabel = getExperienceTypeLabel(experience.classProgramType)
   const primaryDate = resolveParentExperienceDate(experience)
@@ -162,30 +148,6 @@ export default async function ExperienceDetailPage({
                 : <p className={styles.muted}>아직 등록된 리포트가 없어요.</p>}
             </section>
 
-            <section className={styles.section} aria-labelledby="decision-title">
-              <h2 id="decision-title" className={styles.sectionTitle}>이번 경험 후의 생각</h2>
-              {decisionResult?.status === "error" ? <p className={styles.muted} role="status">{decisionResult.message} <RecordDetailRetry /></p> : <>
-                {decision ? <div className={styles.decisionSummary}>
-                  <p className={styles.caption}>현재 선택</p>
-                  <span className={styles.statusBadge}>{{ planned: "등록 의향 있음", considering: "고민 중", declined: "등록하지 않음" }[decision.decision]}</span>
-                  {decision.declineReason ? <p className={styles.body}>{getParentDeclineReasonLabel(decision.declineReason)}</p> : null}
-                  {preferredSchedule || legacySchedule ? <p className={styles.muted}>가능 일정 · {preferredSchedule ?? legacySchedule}</p> : null}
-                </div> : <p className={styles.muted}>아직 남긴 생각이 없어요.</p>}
-                {showDecision && decisionResult?.status === "ok" ? <details className={styles.editor} key={decision?.createdAt ?? "empty"}>
-                  <summary>{decision ? "생각 변경하기" : "생각 남기기"}</summary>
-                  <ParentDecisionForm
-                    experienceId={experience.id}
-                    currentDecision={decision?.decision ?? null}
-                    currentDeclineReason={decision?.declineReason ?? null}
-                    currentPreferredDays={decision?.preferredDays ?? null}
-                    currentPreferredStartTime={decision?.preferredStartTime ?? null}
-                    currentPreferredEndTime={decision?.preferredEndTime ?? null}
-                    currentPreferredTimeMode={decision?.preferredTimeMode ?? null}
-                    loadError={null}
-                  />
-                </details> : null}
-              </>}
-            </section>
             {profileChildId ? <Link href={withRecordChild("/record/profile", profileChildId)} className={styles.profile}>
               <div><h2 className={styles.sectionTitle}>교육 프로필</h2><p className={styles.muted}>아이의 다른 교육 경험도 함께 살펴보세요.</p></div>
               <span aria-hidden="true">›</span>

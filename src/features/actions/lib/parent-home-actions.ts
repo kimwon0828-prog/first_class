@@ -48,8 +48,8 @@ export function selectParentHomeActions(input: {
         classTitle: item.classTitle, academyName: item.academyName,
         title: kind === "report_review" ? "체험 리포트가 도착했어요" : "이번 체험은 어떠셨나요?",
         description: kind === "report_review" ? "선생님이 남긴 관찰을 확인해보세요." : "등록 여부와 학원에 대한 생각을 남겨주세요.",
-        ctaLabel: kind === "report_review" ? "리포트 확인하기" : "등록 여부 남기기",
-        href: kind === "report_review" ? report.href : `/record/${item.id}#decision-title`,
+        ctaLabel: kind === "report_review" ? "리포트 확인하기" : "피드백 남기기",
+        href: kind === "report_review" ? report.href : `/record/${item.id}/report#experience-feedback`,
         notificationKey: kind === "report_review" ? report.id : undefined
       }]
     })

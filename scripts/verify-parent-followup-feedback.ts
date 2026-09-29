@@ -219,7 +219,7 @@ check("다른 이유에는 묻지 않는다", requiresPreferredSchedule("price")
 check("모양이 어긋난 코드는 거절한다", !isParentDeclineReason("made_up") && !isParentDeclineReason(""))
 check(
   "화면이 declined 를 바로 저장하지 않는다",
-  clean(read(PARENT_FORM_PATH)).includes('type={isDecline ? "button" : "submit"}')
+  clean(read(PARENT_FORM_PATH)).includes('type="button"') && !clean(read(PARENT_FORM_PATH)).includes('type="submit"')
 )
 check(
   "이유가 필수 입력이다",
@@ -449,7 +449,7 @@ console.log("\n── 8-b. 희망 일정은 날짜가 아니라 요일·시간�
 {
   const form = clean(read(PARENT_FORM_PATH))
   const studio = clean(read(STUDIO_DECISION_PATH))
-  const action = clean(read("src/features/decisions/actions/set-parent-decision.ts"))
+  const action = clean(read("src/features/feedback/actions/save-parent-feedback.ts"))
   const domain = clean(read("src/features/decisions/lib/parent-decision.ts"))
 
   check(
@@ -468,14 +468,14 @@ console.log("\n── 8-b. 희망 일정은 날짜가 아니라 요일·시간�
   )
   check(
     "끝 시각은 range 에만 묻는다",
-    form.includes("requiresPreferredEndTime(timeMode)") &&
+    form.includes('value.preferredTimeMode === "range"') &&
       domain.includes('mode === "range"')
   )
   check(
     "action 이 새 field 를 넘긴다",
-    action.includes('formData.getAll("preferredDays")') &&
-      action.includes('formData.get("preferredStartTime")') &&
-      action.includes('formData.get("preferredTimeMode")') &&
+    action.includes('form.getAll("preferredDays")') &&
+      action.includes('form.get("preferredStartTime")') &&
+      action.includes('form.get("preferredTimeMode")') &&
       !action.includes("preferredDate")
   )
 

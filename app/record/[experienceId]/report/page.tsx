@@ -1,3 +1,7 @@
+import { getParentExperienceFeedback } from "@/features/feedback/queries/get-experience-feedback"
+import { ParentFeedbackForm } from "@/features/feedback/ui/parent-feedback-form"
+import { getMyCurrentParentDecision } from "@/features/decisions/queries/get-my-current-parent-decision"
+import { ReportViewTracker } from "@/features/reports/ui/report-view-tracker"
 import { withRecordChild } from "@/features/record/lib/record-href"
 import { getRecordChildContext } from "@/features/record/queries/get-record-child-context"
 import Link from "next/link"
@@ -17,7 +21,7 @@ import styles from "./page.module.css"
 
 // 학원이 발행한 체험 리포트를 학부모가 보는 화면.
 //
-// ⚠️ 이 화면은 experience_reports.content 만 본다.
+// ⚠️ 리포트 본문은 experience_reports.content 만 본다.
 //    trial_results 를 다시 읽어 조립하지 않는다 — 그러면 학원이 평가를 고치는 순간
 //    학부모가 이미 본 리포트가 같이 바뀐다. 발행본은 발행 시점에 얼어붙은 것이다.
 //
@@ -72,7 +76,7 @@ export default async function ExperienceReportPage({ params, searchParams }: {
   const childQuery = (await searchParams)?.child
   // Return navigation carries context only; ownership is validated after authentication.
   const returnTo = withRecordChild(`/record/${experienceId}/report`, typeof childQuery === "string" ? childQuery : null)
-  await requireParentAccess({ returnTo })
+  const parent = await requireParentAccess({ returnTo })
   const result = await getMyExperienceReport(experienceId)
   if (result.status === "not_found") notFound()
 
@@ -89,7 +93,11 @@ export default async function ExperienceReportPage({ params, searchParams }: {
     </ReportFrame>
   }
 
-  const { report } = result
+  const { report, experience } = result
+  const [feedbackResult, decisionResult] = await Promise.all([
+    getParentExperienceFeedback(experienceId, parent.id),
+    getMyCurrentParentDecision(experienceId)
+  ])
   const snapshot = report.content
   const summary = getExperienceReportSummary(snapshot)
   const experienceDate = formatReportDate(snapshot.experience.date)
@@ -102,6 +110,7 @@ export default async function ExperienceReportPage({ params, searchParams }: {
   ].filter((item): item is { label: string; value: string } => Boolean(item.value))
 
   return <ReportFrame backHref={backHref}>
+    <ReportViewTracker reportId={report.id} />
     <section className={styles.summary} aria-label="경험 요약">
       {snapshot.experience.child.displayName ? <p className={styles.childName}>
         {snapshot.experience.child.displayName}
@@ -144,5 +153,10 @@ export default async function ExperienceReportPage({ params, searchParams }: {
       <p className={styles.caption}>이 리포트는 체험 당시 학원에서 기록하고 발행한 내용을 바탕으로 보여드려요.</p>
       <Link href={backHref} className={styles.primaryAction}>체험 기록으로 돌아가기</Link>
     </footer>
+    <section id="experience-feedback" tabIndex={-1} className={styles.feedback} aria-label="학부모 체험 피드백">
+      <h2 className={styles.blockTitle}>체험은 어떠셨나요?</h2>
+      <ParentFeedbackForm applicationId={experienceId} result={feedbackResult} decisionResult={decisionResult}
+        showDecision={experience.status === "completed" && experience.canCollectParentDecision} showTitle={false} />
+    </section>
   </ReportFrame>
 }

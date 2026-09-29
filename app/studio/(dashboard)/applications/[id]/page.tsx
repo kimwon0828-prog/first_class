@@ -1,3 +1,5 @@
+import { getStudioExperienceFeedback } from "@/features/feedback/queries/get-experience-feedback"
+import { StudioFeedback } from "@/features/feedback/ui/studio-feedback"
 import { StudioQueryRetry } from "@/features/studio/ui/studio-query-retry"
 import { resolveStudioDetailReturn } from "@/features/studio/lib/studio-detail-navigation"
 import { getParentCrossProductHref } from "@/shared/config/cross-product-navigation"
@@ -238,6 +240,7 @@ export default async function StudioApplicationDetailPage({ params, searchParams
       : { data: null, error: null }
 
   // 학부모가 남긴 현재 생각. 읽기 전용이며 등록 결과와 별개다.
+  const feedbackResult = data ? await getStudioExperienceFeedback(data.id, teacher.organizationId) : { feedback: null, error: false }
   const parentDecisionResult =
     data && data.status === "completed"
       ? await getStudioParentDecision(data.id)
@@ -579,6 +582,7 @@ export default async function StudioApplicationDetailPage({ params, searchParams
             canWriteTrialResults={entitlements.canWriteTrialResults}
             canWriteConsultations={entitlements.canWriteConsultations}
             canReopenConsultation={entitlements.canReopenConsultation}
+            feedbackSection={<StudioFeedback {...feedbackResult} />}
             parentDecisionSection={
               <StudioParentDecision
                 key="parent-decision"

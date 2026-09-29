@@ -1,3 +1,5 @@
+import type { ExperienceSubmissionInput } from "@/features/feedback/lib/experience-submission"
+import type { ParentFeedbackContext, StudioExperienceFeedback, PublicFeedbackSummary } from "@/features/feedback/lib/experience-feedback"
 import type {
   ExperienceReportSnapshotV1,
   ExperienceReportStatus
@@ -1340,6 +1342,13 @@ export type WithdrawExperienceReportResult = {
 }
 
 export interface DataAdapter {
+  getParentFeedbackContext(applicationId: string, parentId: string): Promise<ParentFeedbackContext>
+  submitParentExperience(applicationId: string, parentId: string, input: ExperienceSubmissionInput): Promise<void>
+  /** @deprecated Final submission only; always rejects. */
+  saveParentExperienceFeedback(applicationId: string, parentId: string, selectedChipIds: string[], privateNote: string | null): Promise<void>
+  getStudioExperienceFeedback(applicationId: string, organizationId: string): Promise<StudioExperienceFeedback | null>
+  getPublicClassFeedbackSummary(classId: string): Promise<PublicFeedbackSummary>
+  getPublicAcademyFeedbackSummary(organizationId: string): Promise<PublicFeedbackSummary>
   listClasses(options?: ListClassesOptions): Promise<ClassSummary[]>
   getClassById(classId: string): Promise<ClassDetail | null>
   listAvailableScheduleSlotsByClassId(classId: string): Promise<AvailableScheduleSlot[]>
@@ -1446,7 +1455,7 @@ export interface DataAdapter {
    *    어긋날 수 있는 자리가 생긴다.
    */
   getCurrentRegistrationResult(applicationId: string): Promise<RegistrationResultSummary | null>
-  /** 학부모가 선택을 남긴다. 값이 바뀐 경우에만 기록이 이어진다. */
+  /** @deprecated Final submission only; always rejects. */
   setParentDecision(
     applicationId: string,
     decision: ParentDecision,

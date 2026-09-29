@@ -1,14 +1,12 @@
+import { decisionDraftError } from "@/features/feedback/lib/experience-submission"
+import { isFeedbackProgramType, normalizeFeedbackNote, summarizeFeedback, validateFeedbackInput, type FeedbackChipId, type FeedbackProgramType, type ParentExperienceFeedback } from "@/features/feedback/lib/experience-feedback"
 import { buildMonthGrid, parseDateKey, toDayNumber, toWeekday } from "@/features/studio/lib/studio-schedule-month"
 import { buildScheduleOccurrenceReservationKey } from "@/shared/lib/schedule-reservation-key"
 import { isApplicationInScheduleRange } from "@/features/studio/lib/studio-schedule-range"
 import { reconcileMockOperatingRule, mockScheduleExceptions } from "@/features/studio/lib/reconcile-mock-operating-rule"
 import {
   canCollectParentDecision,
-  isParentDeclineReason,
-  isPreferredDay,
-  isPreferredTimeMode,
   sortPreferredDays,
-  isParentDecision,
   type ParentDecision,
   type ParentDeclineReason,
   type PreferredDay,
@@ -25,7 +23,6 @@ import {
 } from "@/features/reports/lib/experience-report-snapshot"
 import type {
   ParentChildPublishedReport,
-  ParentDecisionMetadataInput,
   ActivateStudioTeacherInput,
   DeleteStudioTeacherInput,
   ApplicationLogEntry,
@@ -439,6 +436,10 @@ const scheduleBlocks =
       type: "available"
     }
   ])
+type MockFeedback = ParentExperienceFeedback & { applicationId: string; parentId: string; classId: string; organizationId: string; programType: FeedbackProgramType }
+const feedbackStore = globalThis as typeof globalThis & { __firstClassMockFeedback__?: MockFeedback[] }
+const experienceFeedback = feedbackStore.__firstClassMockFeedback__ ?? (feedbackStore.__firstClassMockFeedback__ = [])
+const privateFeedbackDto = (row: MockFeedback): ParentExperienceFeedback => ({ selectedChipIds: [...row.selectedChipIds], privateNote: row.privateNote, createdAt: row.createdAt, updatedAt: row.updatedAt })
 const applications =
   globalMockStore.__firstClassMockApplications__ ??
   (globalMockStore.__firstClassMockApplications__ = [])
@@ -819,6 +820,51 @@ const prepareMockConfirmation = (target: MockApplicationRecord, teacherId: strin
 }
 
 export const mockDataAdapter: DataAdapter = {
+  async getParentFeedbackContext(applicationId, parentId) {
+    const a = applications.find(row => row.id === applicationId && row.parentId === parentId)
+    if (!a) throw new Error("feedback_forbidden")
+    const c = classes.find(row => row.id === a.classId)
+    const f = experienceFeedback.find(row => row.applicationId === applicationId)
+    if (f && (f.parentId !== parentId || f.classId !== a.classId || f.organizationId !== mockOrganizationId)) throw new Error("feedback_context_changed")
+    const programType = f?.programType ?? c?.programType
+    return { eligible: a.status === "completed" && !a.noShowAt && !a.canceledAt && isFeedbackProgramType(programType), programType: isFeedbackProgramType(programType) ? programType : null, feedback: f ? privateFeedbackDto(f) : null }
+  },
+  async saveParentExperienceFeedback() { throw new Error("feedback_use_final_submission") },
+  async submitParentExperience(applicationId, parentId, input) {
+    const context = await this.getParentFeedbackContext(applicationId, parentId)
+    if (!experienceReports.some(row => row.applicationId === applicationId && row.status === "published")) throw new Error("feedback_report_required")
+    const a = applications.find(row => row.id === applicationId && row.parentId === parentId)!
+    // No await between existence checks and mutations: mirror the DB lock in mock.
+    const f = experienceFeedback.find(row => row.applicationId === applicationId)
+    const d = parentDecisions.find(row => row.applicationId === applicationId && !row.supersededAt)
+    if (d && d.parentId !== parentId) throw new Error("feedback_context_changed")
+    if (!d && parentDecisions.some(row => row.applicationId === applicationId)) throw new Error("feedback_context_changed")
+    if (f && d) throw new Error("feedback_already_submitted")
+    if (!context.eligible || !context.programType) throw new Error("feedback_not_eligible")
+    if (f && (input.selectedChipIds !== null || input.privateNote !== null)) throw new Error("feedback_existing_feedback_readonly")
+    if (d && input.decision) throw new Error("feedback_existing_decision_readonly")
+    if (!f && (input.selectedChipIds === null || validateFeedbackInput(context.programType, input.selectedChipIds, input.privateNote))) throw new Error("feedback_invalid_input")
+    if (!d && isRegistrationResult(a.registrationStatus)) throw new Error("feedback_decision_closed")
+    if (!d && (!input.decision || decisionDraftError(input.decision))) throw new Error("feedback_invalid_input")
+    const now = new Date().toISOString()
+    const draft = input.decision
+    const reason = draft?.decision === "declined" ? draft.declineReason : null
+    const schedule = reason === "schedule_mismatch"
+    if (!f) experienceFeedback.push({ applicationId, parentId, classId: a.classId, organizationId: mockOrganizationId, programType: context.programType, selectedChipIds: [...input.selectedChipIds!] as FeedbackChipId[], privateNote: normalizeFeedbackNote(input.privateNote), createdAt: now, updatedAt: now })
+    if (!d && draft?.decision) parentDecisions.push({ id: crypto.randomUUID(), applicationId, parentId, decision: draft.decision, createdAt: now, supersededAt: null, declineReason: reason, preferredDays: schedule ? sortPreferredDays(draft.preferredDays) : null, preferredStartTime: schedule ? draft.preferredStartTime : null, preferredEndTime: schedule && draft.preferredTimeMode === "range" ? draft.preferredEndTime : null, preferredTimeMode: schedule ? draft.preferredTimeMode : null })
+  },
+  async getStudioExperienceFeedback(applicationId, organizationId) {
+    const f = experienceFeedback.find(row => row.applicationId === applicationId && row.organizationId === organizationId)
+    const a = applications.find(row => row.id === applicationId)
+    return f && a?.parentId === f.parentId && a.classId === f.classId && organizationId === mockOrganizationId ? privateFeedbackDto(f) : null
+  },
+  async getPublicClassFeedbackSummary(classId) {
+    if (!classes.some(row => row.id === classId && row.isActive)) return { chips: [] }
+    return summarizeFeedback(experienceFeedback.filter(f => f.classId === classId && applications.some(a => a.id === f.applicationId && a.parentId === f.parentId && a.classId === f.classId && a.status === "completed" && !a.noShowAt && !a.canceledAt)), "CLASS")
+  },
+  async getPublicAcademyFeedbackSummary(organizationId) {
+    return summarizeFeedback(experienceFeedback.filter(f => f.organizationId === organizationId && organizationId === mockOrganizationId && applications.some(a => a.id === f.applicationId && a.parentId === f.parentId && a.classId === f.classId && a.status === "completed" && !a.noShowAt && !a.canceledAt)), "ACADEMY")
+  },
   async listClasses(options) {
     const debugEnabled = process.env.NEXT_PUBLIC_DEBUG_DB === "1"
     const searchTerm = options?.query?.trim() ? options.query.trim() : ""
@@ -2564,116 +2610,7 @@ export const mockDataAdapter: DataAdapter = {
       createdAt: application?.updatedAt ?? new Date().toISOString()
     }
   },
-  async setParentDecision(
-    applicationId: string,
-    decision: ParentDecision,
-    input?: ParentDecisionMetadataInput
-  ) {
-    const application = applications.find((item) => item.id === applicationId)
-    if (!application) {
-      throw new Error("application_not_found_or_forbidden")
-    }
-
-    if (application.status !== "completed") {
-      throw new Error("application_not_completed")
-    }
-
-    if (!isParentDecision(decision)) {
-      throw new Error("invalid_parent_decision")
-    }
-
-    // DB 함수와 같은 정리 규칙이다. declined 가 아니면 이유를 붙이지 않는다.
-    const declineReason =
-      decision === "declined" && isParentDeclineReason(input?.declineReason)
-        ? input.declineReason
-        : null
-    if (decision === "declined" && !declineReason) {
-      throw new Error("decline_reason_required")
-    }
-    // DB 함수와 같은 규칙이다. 시간대가 이유일 때만 요일·시각이 붙는다.
-    const isScheduleReason = declineReason === "schedule_mismatch"
-    const preferredDays = isScheduleReason
-      ? sortPreferredDays((input?.preferredDays ?? []).filter(isPreferredDay))
-      : []
-    const preferredStartTime = isScheduleReason ? input?.preferredStartTime?.trim() || null : null
-    const preferredTimeMode =
-      isScheduleReason && isPreferredTimeMode(input?.preferredTimeMode)
-        ? input.preferredTimeMode
-        : null
-    const preferredEndTime =
-      preferredTimeMode === "range" ? input?.preferredEndTime?.trim() || null : null
-
-    if (isScheduleReason) {
-      if (preferredDays.length === 0) {
-        throw new Error("preferred_days_required")
-      }
-      if (!preferredStartTime) {
-        throw new Error("preferred_time_required")
-      }
-      if (!preferredTimeMode) {
-        throw new Error("preferred_time_mode_required")
-      }
-      if (preferredTimeMode === "range" && !preferredEndTime) {
-        throw new Error("preferred_end_time_required")
-      }
-    }
-
-    const nowIso = new Date().toISOString()
-    const current = parentDecisions.find(
-      (item) => item.applicationId === applicationId && item.supersededAt === null
-    )
-
-    // 같은 생각을 같은 말로 다시 고른 것은 바뀐 것이 아니다. 기록을 늘리지 않는다.
-    if (
-      current &&
-      current.decision === decision &&
-      current.declineReason === declineReason &&
-      String(current.preferredDays ?? "") === String(isScheduleReason ? preferredDays : "") &&
-      current.preferredStartTime === preferredStartTime &&
-      current.preferredEndTime === preferredEndTime &&
-      current.preferredTimeMode === preferredTimeMode
-    ) {
-      return {
-        decision: current.decision,
-        createdAt: current.createdAt,
-        changed: false,
-        declineReason: current.declineReason,
-        preferredDays: current.preferredDays,
-        preferredStartTime: current.preferredStartTime,
-        preferredEndTime: current.preferredEndTime,
-        preferredTimeMode: current.preferredTimeMode
-      }
-    }
-
-    if (current) {
-      current.supersededAt = nowIso
-    }
-
-    parentDecisions.push({
-      id: `parent-decision-${parentDecisions.length + 1}`,
-      applicationId,
-      parentId: application.parentId ?? "mock-parent",
-      decision,
-      createdAt: nowIso,
-      supersededAt: null,
-      declineReason,
-      preferredDays: isScheduleReason ? preferredDays : null,
-      preferredStartTime,
-      preferredEndTime,
-      preferredTimeMode
-    })
-
-    return {
-      decision,
-      createdAt: nowIso,
-      changed: true,
-      declineReason,
-      preferredDays: isScheduleReason ? preferredDays : null,
-      preferredStartTime,
-      preferredEndTime,
-      preferredTimeMode
-    }
-  },
+  async setParentDecision() { throw new Error("feedback_use_final_submission") },
   async getPublishedExperienceReport(applicationId: string) {
     return (
       experienceReports.find(

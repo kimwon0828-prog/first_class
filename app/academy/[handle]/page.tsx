@@ -1,3 +1,5 @@
+import { getPublicAcademyFeedback } from "@/features/feedback/queries/get-public-feedback"
+import { PublicFeedback } from "@/features/feedback/ui/public-feedback"
 import { PARENT_ORIGIN } from "@/shared/config/site-origins"
 
 import type { Metadata } from "next"
@@ -88,7 +90,7 @@ export default async function AcademyPage({ params }: AcademyPageProps) {
   const { handle } = await params
   const academy = await getPublicAcademyPageByHandle(handle)
   if (!academy) notFound()
-  const classes = await getPublicAcademyClasses(academy.organizationId)
+  const [classes, feedbackSummary] = await Promise.all([getPublicAcademyClasses(academy.organizationId), getPublicAcademyFeedback(academy.organizationId)])
   const name = buildAcademyDisplayName(academy.name, academy.branchName)
   const subjects = [...new Set(classes.map(item => item.subjectLabel).filter(Boolean))]
   const details = [
@@ -129,6 +131,7 @@ export default async function AcademyPage({ params }: AcademyPageProps) {
       </li>)}</ul> : <p className={styles.empty}>현재 공개된 수업이 없어요.</p>}
     </section>
     {academy.description ? <section className={styles.section}><h2>학원 소개</h2><div className={styles.textBlock}>{splitMultilineItems(academy.description).map((text, index) => <p key={index}>{text}</p>)}</div></section> : null}
+    <PublicFeedback summary={feedbackSummary} scope="ACADEMY" className={styles.section} />
     {hasVisitInfo ? <section className={styles.section}><h2>위치 및 방문 안내</h2>
       <dl className={styles.visit}>{details.map(item => <div key={item.label}><dt>{item.label}</dt><dd>{item.value}</dd></div>)}
         {academy.phone ? <div><dt>전화</dt><dd><span>{academy.phone}</span><a className={styles.phone} href={`tel:${academy.phone.replace(/[^0-9+]/g, "")}`}>전화하기</a></dd></div> : null}

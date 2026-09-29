@@ -72,3 +72,5 @@
 .primaryAction:active { background: var(--brand-action-pressed); }
 .emptyState { padding-block: var(--s8); }
 .skeleton { height: 160px; margin-bottom: var(--s8); background: var(--surface-sub); border-radius: var(--r-lg); }
+
+.feedback { margin-top: var(--s8); padding-top: var(--s8); border-top: 1px solid var(--border); scroll-margin-top: 88px; }

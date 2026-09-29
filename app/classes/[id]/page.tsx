@@ -1,3 +1,5 @@
+import { getPublicClassFeedback } from "@/features/feedback/queries/get-public-feedback"
+import { PublicFeedback } from "@/features/feedback/ui/public-feedback"
 import { formatRegularPrice } from "@/shared/lib/regular-price"
 import { formatDiscoveryPrice } from "@/features/classes/lib/class-discovery-results"
 import Link from "next/link"
@@ -63,6 +65,7 @@ export default async function ClassDetailPage({ params, searchParams }: ClassDet
   }
   const classesHref = regionQuery.size ? `/classes?${regionQuery.toString()}` : "/classes"
   const { data: classItem, error } = await getPublicClassDetail(resolvedParams.id)
+  const feedbackSummary = classItem ? await getPublicClassFeedback(classItem.id) : { chips: [] }
   const regularPriceLabel = classItem ? formatRegularPrice({ type: classItem.regularPriceType, amount: classItem.regularPriceAmount }) : null
   const session = await getSession()
   const profile = session ? await getMyProfile() : null
@@ -238,6 +241,8 @@ export default async function ClassDetailPage({ params, searchParams }: ClassDet
                 {classItem.description?.trim() ? <DetailIntroduction text={classItem.description} />
                   : <p className={styles.mutedText}>수업 소개가 준비 중입니다.</p>}
               </section>
+
+              <PublicFeedback summary={feedbackSummary} scope="CLASS" className={styles.section} />
 
               <section className={styles.section}>
                 <h2 className={styles.sectionTitle}>수업을 더 알아보세요</h2>

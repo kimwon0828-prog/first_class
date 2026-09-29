@@ -15,6 +15,7 @@ import { formatSeoulDateKey, getSeoulDateTimeParts } from "@/shared/lib/seoul-da
  */
 export type ParentNotificationKind =
   | "report_published"
+  | "feedback_reminder"
   | "schedule_confirmed"
   | "application_reviewing"
   | "application_canceled"
@@ -31,6 +32,7 @@ export type ParentNotification = {
   /** 어느 아이의 일인가. 모르면 null 이고, 지어내지 않는다. */
   childName: string | null
   /** 수업명 · 학원명. 있는 것만 잇는다. */
+  description?: string
   contextLabel: string | null
   classTitle?: string | null
   academyName?: string | null
@@ -67,7 +69,8 @@ const NOTIFIABLE_STATUSES: Record<string, ParentNotificationKind | undefined> = 
 }
 
 const STATUS_TITLES: Record<ParentNotificationKind, string> = {
-  report_published: "체험 리포트가 도착했어요.",
+  report_published: "체험수업 리포트가 도착했어요",
+  feedback_reminder: "체험은 어떠셨나요?",
   schedule_confirmed: "체험 일정이 확정됐어요.",
   application_reviewing: "학원이 신청을 확인하고 있어요.",
   application_canceled: "신청이 취소됐어요.",
@@ -123,6 +126,7 @@ export const selectParentNotifications = (input: {
   statusEvents: readonly ParentApplicationStatusEvent[]
   publishedReports: readonly ParentPublishedReportEvent[]
   parentProfileId: string
+  feedbackReminders?: readonly { applicationId: string; occurredAt: string }[]
 }): ParentNotification[] => {
   const applicationById = new Map(input.applications.map((item) => [item.id, item]))
   const items: ParentNotification[] = []
@@ -142,6 +146,18 @@ export const selectParentNotifications = (input: {
       classTitle: application.classTitle,
       academyName: application.academyName,
       href: `/record/${application.id}/report`
+    })
+  }
+
+  for (const event of input.feedbackReminders ?? []) {
+    const application = applicationById.get(event.applicationId)
+    if (!application || !hasRealTimestamp(event.occurredAt)) continue
+    items.push({
+      id: `feedback_reminder:${application.id}`, kind: "feedback_reminder",
+      occurredAt: event.occurredAt, title: STATUS_TITLES.feedback_reminder,
+      description: "짧게 의견을 남겨주세요.", childName: resolveChildName(application),
+      contextLabel: buildContextLabel(application), classTitle: application.classTitle,
+      academyName: application.academyName, href: resolveNotificationHref("feedback_reminder", application.id)
     })
   }
 
@@ -166,7 +182,7 @@ export const selectParentNotifications = (input: {
     })
   }
 
-  return items.sort(
+  return Array.from(new Map(items.map(item => [item.id, item])).values()).sort(
     (left, right) =>
       Date.parse(right.occurredAt) - Date.parse(left.occurredAt) ||
       right.id.localeCompare(left.id)
@@ -183,6 +199,7 @@ export const resolveNotificationHref = (
   kind: ParentNotificationKind,
   experienceId: string
 ): string => {
+  if (kind === "feedback_reminder") return `/record/${experienceId}/report#experience-feedback`
   if (kind === "report_published") return `/record/${experienceId}/report`
   if (kind === "schedule_confirmed") return "/my/schedule"
   if (kind === "experience_completed") return `/record/${experienceId}`

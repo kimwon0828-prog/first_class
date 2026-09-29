@@ -112,6 +112,7 @@ type ApplicationTrialResultWorkflowProps = {
   headerContent?: ReactNode
   referenceSections?: ReactNode
   reportSection?: ReactNode
+  feedbackSection?: ReactNode
   parentDecisionSection?: ReactNode
   sidebarContent?: ReactNode
   evidence: ApplicationWorkflowEvidence
@@ -139,6 +140,7 @@ export const ApplicationTrialResultWorkflow = ({
   sidebarContent = null,
   referenceSections = null,
   reportSection = null,
+  feedbackSection = null,
   parentDecisionSection = null,
   nowIso,
   canWriteTrialResults,
@@ -603,6 +605,7 @@ export const ApplicationTrialResultWorkflow = ({
           {activitySection}
           {isCompletedView ? <>
             {parentDecisionSection}
+            {feedbackSection}
             {!application.parentId ? <p className={styles.sectionMetaLine}>학부모 계정이 연결되어 있지 않아요. 학원 등록 결과는 계속 기록할 수 있어요.</p> : null}
             {registrationConsultationSection}
           </> : null}

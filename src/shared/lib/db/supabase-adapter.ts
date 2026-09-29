@@ -1,3 +1,4 @@
+import { decodeParentFeedbackContext, decodePrivateFeedback, decodePublicFeedback } from "@/features/feedback/lib/feedback-decode"
 import { buildScheduleOccurrenceReservationKey } from "@/shared/lib/schedule-reservation-key"
 import { buildStudioScheduleRangeFilter } from "@/features/studio/lib/studio-schedule-range"
 import { getPublicClassImagesByIds } from "@/features/classes/queries/public-class-safe-projection"
@@ -58,7 +59,6 @@ import type { StudioClassScheduleSummaryInput } from "@/features/studio/lib/clas
 import { isApplicationUnregisteredReason } from "@/shared/lib/db/adapter"
 import type {
   CreatedTrialApplication,
-  ParentDecisionMetadataInput,
   ParentChildPublishedReport,
   ParentApplicationSummary,
   StudioConsultationTransactionResult,
@@ -2699,6 +2699,49 @@ const mapExperienceReport = (row: ExperienceReportRow): ExperienceReportSummary 
 }
 
 export const supabaseDataAdapter: DataAdapter = {
+  async getParentFeedbackContext(applicationId) {
+    const client = await getSupabaseServerClient()
+    const { data, error } = await client.rpc("get_parent_experience_feedback_context", { p_application_id: applicationId })
+    if (error) throw new Error("feedback_load_failed")
+    return decodeParentFeedbackContext(data)
+  },
+  async saveParentExperienceFeedback() { throw new Error("feedback_use_final_submission") },
+  async submitParentExperience(applicationId, _parentId, input) {
+    const client = await getSupabaseServerClient()
+    const d = input.decision
+    const { error } = await client.rpc("submit_parent_experience", {
+      p_application_id: applicationId, p_selected_chip_ids: input.selectedChipIds, p_private_note: input.privateNote,
+      p_decision: d?.decision ?? null, p_decline_reason: d?.declineReason ?? null,
+      p_preferred_days: d?.preferredDays.length ? d.preferredDays : null,
+      p_preferred_start_time: d?.preferredStartTime || null, p_preferred_end_time: d?.preferredEndTime || null,
+      p_preferred_time_mode: d?.declineReason === "schedule_mismatch" ? d.preferredTimeMode : null
+    })
+    if (error) {
+      // Return only known policy errors, never raw database/private content.
+      const known = ["feedback_already_submitted", "feedback_not_eligible", "feedback_decision_closed", "feedback_existing_feedback_readonly", "feedback_existing_decision_readonly", "feedback_context_changed", "feedback_report_required"]
+      throw new Error(known.includes(error.message) ? error.message : "feedback_save_failed")
+    }
+  },
+  async getStudioExperienceFeedback(applicationId, organizationId) {
+    const client = await getSupabaseServerClient()
+    const { data, error } = await client.from("experience_feedback")
+      .select("selected_chip_ids,private_note,created_at,updated_at")
+      .eq("application_id", applicationId).eq("organization_id", organizationId).maybeSingle()
+    if (error) throw new Error("feedback_load_failed")
+    return data ? decodePrivateFeedback({ selectedChipIds: data.selected_chip_ids, privateNote: data.private_note, createdAt: data.created_at, updatedAt: data.updated_at }) : null
+  },
+  async getPublicClassFeedbackSummary(classId) {
+    const client = await getSupabaseServerClient()
+    const { data, error } = await client.rpc("get_public_class_feedback_summary", { p_class_id: classId })
+    if (error) throw new Error("feedback_summary_failed")
+    return decodePublicFeedback(data)
+  },
+  async getPublicAcademyFeedbackSummary(organizationId) {
+    const client = await getSupabaseServerClient()
+    const { data, error } = await client.rpc("get_public_academy_feedback_summary", { p_organization_id: organizationId })
+    if (error) throw new Error("feedback_summary_failed")
+    return decodePublicFeedback(data)
+  },
   async listClasses(options) {
     const debugEnabled = shouldDebugDb()
     const searchTerm = options?.query?.trim() ? options.query.trim() : ""
@@ -5487,55 +5530,7 @@ export const supabaseDataAdapter: DataAdapter = {
       createdAt: data.created_at as string
     }
   },
-  async setParentDecision(
-    applicationId: string,
-    decision: ParentDecision,
-    input?: ParentDecisionMetadataInput
-  ) {
-    const supabase = await getSupabaseServerClient()
-    // parent_id 를 넘기지 않는다. 함수가 auth.uid() 로 채운다 —
-    // 호출자가 남의 이름으로 선택을 남길 방법이 없다.
-    const { data, error } = await supabase.rpc("set_parent_decision", {
-      p_application_id: applicationId,
-      p_decision: decision,
-      // 이유와 희망 일정도 함수가 정리한다. 화면이 비운 것과 안 보낸 것을
-      // 여기서 구분하지 않는다 — 규칙이 두 곳에 생기지 않게.
-      p_decline_reason: input?.declineReason ?? null,
-      p_preferred_days: input?.preferredDays ?? null,
-      p_preferred_start_time: input?.preferredStartTime ?? null,
-      p_preferred_end_time: input?.preferredEndTime ?? null,
-      p_preferred_time_mode: input?.preferredTimeMode ?? null
-    })
-
-    if (error) {
-      throw new Error(error.message)
-    }
-
-    const result = data as {
-      decision: ParentDecision
-      createdAt: string
-      changed: boolean
-      declineReason: string | null
-      preferredDays: string[] | null
-      preferredStartTime: string | null
-      preferredEndTime: string | null
-      preferredTimeMode: string | null
-    }
-    return {
-      decision: result.decision,
-      createdAt: result.createdAt,
-      changed: result.changed,
-      declineReason: isParentDeclineReason(result.declineReason) ? result.declineReason : null,
-      preferredDays: Array.isArray(result.preferredDays)
-        ? result.preferredDays.filter(isPreferredDay)
-        : null,
-      preferredStartTime: result.preferredStartTime ?? null,
-      preferredEndTime: result.preferredEndTime ?? null,
-      preferredTimeMode: isPreferredTimeMode(result.preferredTimeMode)
-        ? result.preferredTimeMode
-        : null
-    }
-  },
+  async setParentDecision() { throw new Error("feedback_use_final_submission") },
   async getPublishedExperienceReport(applicationId: string) {
     const supabase = await getSupabaseServerClient()
     // RLS 가 학부모에게는 자기 신청의 published 만, 학원에는 자기 조직만 준다.

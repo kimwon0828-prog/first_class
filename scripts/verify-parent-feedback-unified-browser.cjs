@@ -1,0 +1,130 @@
+// Actual Record route + local TEST fixtures. No migration or Production access.
+// PLAYWRIGHT_MODULE_PATH=/path/to/playwright node scripts/verify-parent-feedback-unified-browser.cjs
+const assert = require('node:assert/strict')
+const fs = require('node:fs'), cp = require('node:child_process')
+const { chromium } = require(process.env.PLAYWRIGHT_MODULE_PATH || 'playwright')
+const { createClient } = require('@supabase/supabase-js')
+const out = '/tmp/parent-feedback-ui-merge'
+fs.mkdirSync(out, { recursive: true })
+const fixtures = JSON.parse(fs.readFileSync('/tmp/parent-feedback-v1/fixtures.json'))
+const env = Object.fromEntries(cp.execFileSync('npx', ['supabase', 'status', '-o', 'env'], { encoding: 'utf8', stdio: ['ignore','pipe','pipe'] }).split('\n').filter(s => s.includes('=')).map(s => { const i=s.indexOf('='); return [s.slice(0,i),s.slice(i+1).replace(/^"|"$/g,'')] }))
+assert(['localhost','127.0.0.1'].includes(new URL(env.API_URL).hostname))
+const db = createClient(env.API_URL, env.SERVICE_ROLE_KEY, { auth: { persistSession: false, autoRefreshToken: false } })
+const account = fixtures.accounts.find(a => a.label === 'parent1')
+assert(account.email.includes('test') || account.email.includes('feedback'))
+const id = require('node:crypto').randomUUID()
+const results = [], errors = []
+let browser, cleanFixture = false
+const check = (name) => { results.push(name); console.log('PASS ' + name) }
+const sql = s => cp.execFileSync('docker', ['exec','-i','supabase_db_first-class-mvp','psql','-X','-U','postgres','-d','postgres','-v','ON_ERROR_STOP=1'], { input: s, stdio: ['pipe','pipe','pipe'] })
+async function rows(table) { const r=await db.from(table).select('*').eq('application_id',id); if(r.error)throw Error(r.error.message); return r.data }
+async function clear(table) { const r=await db.from(table).delete().eq('application_id',id); if(r.error)throw Error(r.error.message) }
+async function until(fn) { for(let i=0;i<80;i++){ if(await fn())return; await new Promise(r=>setTimeout(r,100)) } throw Error('Expected saved state did not arrive') }
+async function fault(revoke, restore, test) { try { sql(revoke); await test() } finally { sql(restore) } }
+;(async () => {
+ // A separate TEST application preserves the existing reviewer's saved response.
+ const fixture=await db.from('trial_applications').insert({id,parent_id:account.id,class_id:fixtures.classes['미제출'],child_name:'TEST 통합 카드 검증',child_grade:'초3',requested_slot_at:new Date().toISOString(),status:'completed',completed_at:new Date().toISOString()})
+ if(fixture.error)throw Error(fixture.error.message)
+ cleanFixture = true
+ const client=createClient(env.API_URL,env.ANON_KEY,{auth:{persistSession:false,autoRefreshToken:false}})
+ const auth=await client.auth.signInWithPassword({email:account.email,password:fixtures.password}); assert(!auth.error)
+ browser=await chromium.launch({channel:'chrome',headless:true})
+ const context=await browser.newContext({viewport:{width:390,height:844}})
+ await context.addCookies([{name:'sb-127-auth-token',value:'base64-'+Buffer.from(JSON.stringify(auth.data.session)).toString('base64url'),domain:'localhost',path:'/',sameSite:'Lax'}])
+ const page=await context.newPage(); page.on('pageerror',e=>errors.push(e.message))
+ const feedback=page.locator('[data-parent-feedback]'), decision=page.locator('#decision-title')
+ const note=feedback.getByRole('textbox'), planned=decision.getByRole('button',{name:'등록할 생각이에요',exact:true})
+ const declined=decision.getByRole('button',{name:'이번에는 등록하지 않을게요',exact:true})
+ const shot=async name=>{
+  await page.evaluate(()=>window.scrollTo(0,0)); await page.evaluate(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))))
+  assert(!await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),'horizontal overflow')
+  assert.equal(await page.locator('#experience-feedback h2').count(),1)
+  assert.equal(await page.locator('#experience-feedback section, #experience-feedback details, form form').count(),0)
+  await page.screenshot({path:`${out}/${name}.png`,fullPage:true})
+ }
+ await page.goto(`http://localhost:3000/record/${id}`)
+ await planned.waitFor()
+ assert.equal(await page.getByRole('heading',{name:'체험은 어떠셨나요?',exact:true}).count(),1)
+ assert.equal(await decision.locator('button[aria-pressed]').count(),3)
+ assert.equal(await decision.locator('[aria-pressed="true"]').count(),0)
+ for(const text of ['이번 경험 후의 생각','아직 남긴 생각이 없어요.','생각 남기기','생각 변경하기'])assert.equal(await page.getByText(text,{exact:true}).count(),0)
+ await shot('01-both-empty'); check('one outer card; three immediate choices; no disclosure')
+ await note.fill('작성 중인 피드백을 유지해 주세요.')
+ const chip=feedback.getByRole('button',{name:'아이가 즐거워했어요',exact:true})
+ await chip.focus(); await page.keyboard.press('Space')
+ assert.equal(await chip.getAttribute('aria-pressed'),'true')
+ assert.equal(await chip.evaluate(e=>getComputedStyle(e).outlineStyle),'solid')
+ await planned.focus(); await page.keyboard.press('Enter')
+ await until(async()=> (await rows('parent_decisions')).some(r=>!r.superseded_at&&r.decision==='planned'))
+ await page.waitForLoadState('networkidle')
+ assert.equal(await planned.getAttribute('aria-pressed'),'true')
+ assert.equal(await note.inputValue(),'작성 중인 피드백을 유지해 주세요.')
+ assert.equal(await chip.getAttribute('aria-pressed'),'true')
+ assert.equal((await rows('experience_feedback')).length,0)
+ check('Decision saves without Feedback; keyboard selection; Feedback draft survives refresh')
+ await clear('parent_decisions'); await page.reload(); await planned.waitFor()
+ await note.fill('의견만 작성해도 독립적으로 제출할 수 있어요.')
+ // Open an unsaved decision draft before the other form saves.
+ await declined.click(); await decision.getByLabel('시간대가 맞지 않아요',{exact:true}).check()
+ await decision.getByRole('checkbox',{name:'화요일',exact:true}).focus(); await page.keyboard.press('Space')
+ const start=decision.locator('[name="preferredStartTime"]'), end=decision.locator('[name="preferredEndTime"]')
+ await start.fill('16:00'); await decision.getByLabel('이 사이라면 괜찮아요',{exact:true}).check(); await end.fill('15:00')
+ await fault('revoke execute on function public.save_parent_experience_feedback(uuid,text[],text) from authenticated;',
+  'grant execute on function public.save_parent_experience_feedback(uuid,text[],text) to authenticated;',async()=>{
+   await feedback.getByRole('button',{name:'피드백 보내기',exact:true}).click(); await feedback.getByRole('alert').waitFor()
+   assert.equal(await note.inputValue(),'의견만 작성해도 독립적으로 제출할 수 있어요.'); assert.equal(await start.inputValue(),'16:00')
+  })
+ check('Feedback save failure preserves both drafts')
+ await feedback.getByRole('button',{name:'피드백 보내기',exact:true}).click(); await feedback.getByRole('button',{name:'수정하기',exact:true}).waitFor()
+ assert.equal(await start.inputValue(),'16:00'); assert.equal(await end.inputValue(),'15:00')
+ assert(await decision.getByRole('checkbox',{name:'화요일',exact:true}).isChecked())
+ assert.equal((await rows('parent_decisions')).length,0)
+ assert.deepEqual((await rows('experience_feedback'))[0].selected_chip_ids,[])
+ await shot('02-feedback-saved-decision-draft'); check('note-only Feedback saves without Decision; Decision draft survives refresh')
+ await decision.getByRole('button',{name:'이대로 남기기',exact:true}).click(); await decision.getByRole('alert').waitFor()
+ assert.equal(await start.inputValue(),'16:00'); assert.equal(await end.inputValue(),'15:00')
+ assert(await decision.getByLabel('시간대가 맞지 않아요',{exact:true}).isChecked())
+ assert(await decision.getByRole('checkbox',{name:'화요일',exact:true}).isChecked())
+ await shot('03-decision-save-error'); check('Decision save failure retains reason, days and both times')
+ await page.reload(); await planned.waitFor()
+ assert.equal(await decision.locator('[aria-pressed="true"]').count(),0)
+ await shot('04-feedback-saved-decision-empty'); check('saved Feedback + no Decision')
+ await declined.click(); await decision.getByLabel('시간대가 맞지 않아요',{exact:true}).check(); await decision.getByRole('checkbox',{name:'화요일',exact:true}).focus(); await page.keyboard.press('Space')
+ await start.fill('16:00'); await decision.getByLabel('이 사이라면 괜찮아요',{exact:true}).check(); await end.fill('18:00')
+ await page.keyboard.press('Tab'); await decision.getByRole('checkbox',{name:'화요일',exact:true}).focus()
+ assert.equal(await decision.getByRole('checkbox',{name:'화요일',exact:true}).evaluate(e=>getComputedStyle(e.parentElement).outlineStyle),'solid')
+ await page.keyboard.press('Space'); assert(!await decision.getByRole('checkbox',{name:'화요일',exact:true}).isChecked()); await page.keyboard.press('Space')
+ assert.notEqual(await decision.getByRole('button',{name:'이대로 남기기',exact:true}).evaluate(e=>getComputedStyle(e).backgroundColor),'rgba(0, 0, 0, 0)')
+ await shot('05-decline-reason-schedule')
+ await decision.getByRole('button',{name:'이대로 남기기',exact:true}).click()
+ await until(async()=> (await rows('parent_decisions')).some(r=>!r.superseded_at&&r.decision==='declined'))
+ await page.reload(); await planned.waitFor()
+ assert.equal(await declined.getAttribute('aria-pressed'),'true'); assert.equal(await start.inputValue(),'16:00'); assert.equal(await end.inputValue(),'18:00')
+ await shot('06-both-saved'); check('saved Decision is directly selected/editable; decline schedule persists')
+ const considering=decision.getByRole('button',{name:'조금 더 고민 중이에요',exact:true})
+ await page.keyboard.press('Tab'); await considering.focus(); assert.equal(await considering.evaluate(e=>getComputedStyle(e).outlineStyle),'solid'); await page.keyboard.press('Enter')
+ await until(async()=> (await rows('parent_decisions')).some(r=>!r.superseded_at&&r.decision==='considering'))
+ await page.reload(); await planned.waitFor(); assert.equal(await considering.getAttribute('aria-pressed'),'true')
+ check('existing Decision changes in place with keyboard and visible focus')
+ await fault('revoke execute on function public.get_parent_experience_feedback_context(uuid) from authenticated;',
+  'grant execute on function public.get_parent_experience_feedback_context(uuid) to authenticated;',async()=>{
+   await page.reload(); await feedback.getByText('피드백을 불러오지 못했어요. 다시 확인해 주세요.').waitFor()
+   assert.equal(await decision.locator('button[aria-pressed]').count(),3); assert.equal(await considering.getAttribute('aria-pressed'),'true')
+   await shot('07-feedback-read-error')
+  })
+ check('Feedback read error leaves Decision visible and selected')
+ await fault('revoke select on public.parent_decisions from authenticated;',
+  'grant select on public.parent_decisions to authenticated;',async()=>{
+   await page.reload(); await decision.getByText('선택 정보를 불러오지 못했습니다. 잠시 후 다시 확인해 주세요.').waitFor()
+   await feedback.getByRole('button',{name:'수정하기',exact:true}).click(); assert.equal(await note.inputValue(),'의견만 작성해도 독립적으로 제출할 수 있어요.')
+   await shot('08-decision-read-error')
+  })
+ check('Decision read error leaves Feedback independently editable')
+ await page.reload(); await planned.waitFor()
+ for(const width of [390,768]) { await page.setViewportSize({width,height:844}); await shot(`09-width-${width}`) }
+ assert.deepEqual(errors,[]); check('390/768 no overflow or nested cards; no browser runtime errors')
+ fs.writeFileSync(`${out}/results.json`,JSON.stringify({passed:results.length,results,errors},null,2))
+})().catch(e=>{console.error(e);process.exitCode=1}).finally(async()=>{
+ await browser?.close()
+ if(cleanFixture) { await clear('parent_decisions'); await clear('experience_feedback'); const removed=await db.from('trial_applications').delete().eq('id',id); if(removed.error)throw Error(removed.error.message) }
+})

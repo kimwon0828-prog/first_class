@@ -20,6 +20,8 @@ const stripJsxComments = (source: string) => source.replace(/\{\/\*[\s\S]*?\*\/\
 const codeOf = (path: string) => stripComments(stripJsxComments(read(path)))
 
 const page = codeOf(PAGE_PATH)
+const reportPage = codeOf("app/record/[experienceId]/report/page.tsx")
+const feedbackForm = codeOf("src/features/feedback/ui/parent-feedback-form.tsx")
 const css = stripComments(read(CSS_PATH))
 const detailQuery = stripComments(read(DETAIL_QUERY_PATH))
 const reportQuery = stripComments(read(REPORT_QUERY_PATH))
@@ -87,11 +89,11 @@ console.log("\n[5] ParentDecision · RegistrationResult 계약")
 
 check(
   "결정 입력은 완료 + 기존 capability boolean 으로만 연다",
-  page.includes("isCompletedExperience && experience.canCollectParentDecision")
+  reportPage.includes('experience.status === "completed" && experience.canCollectParentDecision')
 )
-check("부모의 현재 결정 query 를 그대로 쓴다", page.includes("getMyCurrentParentDecision(experienceId)"))
-check("조회 실패를 빈 선택으로 접지 않는다", decisionQuery.includes('status: "error"') && page.includes("loadError="))
-check("기존 ParentDecisionForm 을 그대로 쓴다", page.includes("<ParentDecisionForm"))
+check("부모의 현재 결정 query 를 그대로 쓴다", reportPage.includes("getMyCurrentParentDecision(experienceId)"))
+check("조회 실패를 빈 선택으로 접지 않는다", decisionQuery.includes('status: "error"') && feedbackForm.includes('decisionResult.status !== "ok"'))
+check("기존 ParentDecisionForm 을 그대로 쓴다", feedbackForm.includes("<ParentDecisionForm"))
 check(
   "RegistrationResult 원문·라벨·query 를 부모 상세로 가져오지 않는다",
   !page.includes("RegistrationResult") &&
@@ -112,8 +114,8 @@ for (const term of ["별점", "점수", "순위", "랭킹", "적합도", "성향
 }
 
 check("조회 실패는 notFound와 분리한다", page.includes('if (detailResult.error) throw') && detailQuery.includes('error ? null'))
-check("생각 조회는 수정 가능 여부와 독립적이다", page.includes('isCompletedExperience ? await getMyCurrentParentDecision(experienceId) : null'))
-check("읽기 전용 생각도 표시하고 변경 폼은 capability로 제한한다", page.includes('{decision ? <div') && page.includes('showDecision && decisionResult?.status === "ok"'))
+check("생각 조회는 수정 가능 여부와 독립적이다", reportPage.includes('getMyCurrentParentDecision(experienceId)') && !page.includes('ParentFeedbackForm'))
+check("읽기 전용 생각도 표시하고 변경 폼은 capability로 제한한다", feedbackForm.includes('decision ? <div') && feedbackForm.includes('showDecision ? <ParentDecisionForm'))
 check("프로필 자녀는 해당 경험과 owned children의 교집합이다", page.includes('child.id === experience.childId') && page.includes('!childrenResult?.error'))
 check("관찰은 snapshot 원문만 미리 보여준다", page.includes('observation.label') && page.includes('getExperienceReportSummary(snapshot)'))
 check("리포트 없음과 조회 실패를 구분한다", page.includes('아직 등록된 리포트가 없어요.') && page.includes('reportLoadFailed'))

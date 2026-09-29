@@ -14,10 +14,11 @@ import type { ApplicationStatus } from "@/shared/lib/db/adapter"
 /**
  * 알림함이 읽는 것.
  *
- * 사건은 기존 두 source에서 생성하며 읽음 상태만 별도 parent receipt로 조회한다.
+ * 사건은 domain source에서 생성하며 읽음 상태만 별도 parent receipt로 조회한다.
  *      application_logs   — 상태가 실제로 바뀐 사건과 그 시각(created_at)
  *      experience_reports — 발행된 리포트와 그 시각(published_at)
- *    둘 다 학부모 본인 것만 보이도록 RLS 가 이미 좁혀 준다
+ *      parent_report_engagement — 한 번 생성된 웹 피드백 리마인더 사건
+ *    각 source는 학부모 본인 것만 보이도록 RLS 가 좁혀 준다
  *    (application_logs_parent_select_self · experience_reports_parent_read_published).
  *
  * ⚠️ sms_logs 는 쓰지 않는다. RLS 가 teacher/operator 에게만 열려 있고,
@@ -62,7 +63,7 @@ export const getParentNotifications = async (
   try {
     const supabase = await getSupabaseServerClient()
 
-    const [logResult, reportResult] = await Promise.all([
+    const [logResult, reportResult, reminderResult] = await Promise.all([
       supabase
         .from("application_logs")
         .select("id, application_id, from_status, to_status, actor_id, created_at")
@@ -71,11 +72,13 @@ export const getParentNotifications = async (
         .from("experience_reports")
         .select("id, application_id, published_at")
         .in("application_id", applicationIds)
-        .eq("status", "published")
+        .eq("status", "published"),
+      supabase.from("parent_report_engagement").select("application_id,feedback_reminder_sent_at")
+        .in("application_id", applicationIds).not("feedback_reminder_sent_at", "is", null)
     ])
 
-    if (logResult.error || reportResult.error) {
-      logNotificationQueryError("events", logResult.error ?? reportResult.error)
+    if (logResult.error || reportResult.error || reminderResult.error) {
+      logNotificationQueryError("events", logResult.error ?? reportResult.error ?? reminderResult.error)
       return { notifications: [], error: READ_FAILED, readStateStatus: "unavailable" }
     }
 
@@ -98,7 +101,10 @@ export const getParentNotifications = async (
       }))
 
     const notifications = selectParentNotifications({
-      applications: applications.data, statusEvents, publishedReports, parentProfileId
+      applications: applications.data, statusEvents, publishedReports, parentProfileId,
+      feedbackReminders: (reminderResult.data ?? [])
+        .filter(row => publishedReports.some(report => report.applicationId === row.application_id))
+        .map(row => ({ applicationId: row.application_id as string, occurredAt: row.feedback_reminder_sent_at as string }))
     })
     // Read receipts are optional enhancement. Never discard successfully loaded events.
     try {

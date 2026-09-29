@@ -40,11 +40,14 @@ const stripComments = (source: string) =>
   source.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/[^\n]*/g, "")
 
 const migration = read(MIGRATION_PATH)
-const action = read(ACTION_PATH)
+const retiredAction = read(ACTION_PATH)
+const action = read("src/features/feedback/actions/save-parent-feedback.ts")
+const finalUi = read("src/features/feedback/ui/parent-feedback-form.tsx")
 const query = read(QUERY_PATH)
 const parentUi = read(PARENT_UI_PATH)
 const studioUi = read(STUDIO_UI_PATH)
 const detailPage = read(DETAIL_PAGE_PATH)
+const reportPage = read("app/record/[experienceId]/report/page.tsx")
 
 let failures = 0
 const check = (label: string, ok: boolean, detail = "") => {
@@ -104,7 +107,7 @@ check("값이 없어도 묻는다", canCollectParentDecision(null) === true)
 check("undefined 여도 묻는다", canCollectParentDecision(undefined) === true)
 check(
   "학부모 화면이 boolean 만 본다",
-  detailPage.includes("experience.canCollectParentDecision") &&
+  reportPage.includes("experience.canCollectParentDecision") &&
     !stripComments(detailPage).includes("registrationStatus")
 )
 check(
@@ -209,7 +212,7 @@ check(
 console.log("\n── 8. 화면·action 계약 ──")
 check("action 이 학부모 인증을 요구한다", action.includes("requireParentAccess("))
 check("action 이 값을 검증한다", action.includes("isParentDecision(decision)"))
-check("action 이 원문 오류를 그대로 올리지 않는다", action.includes("선택을 저장하지 못했습니다"))
+check("action 이 원문 오류를 그대로 올리지 않는다", action.includes("입력한 내용을 유지했으니"))
 check("action 이 캐시를 되살린다", action.includes("revalidatePath("))
 check("query 가 소유 확인을 먼저 한다", query.indexOf("getMyExperienceDetail") < query.indexOf("getCurrentParentDecision"))
 check(
@@ -228,10 +231,12 @@ const decisionOptionsForm = parentUi.slice(
 check("선택지가 강제되지 않는다", !decisionOptionsForm.includes("required"))
 check(
   "이유 패널은 고른 뒤에만 열린다",
-  parentUi.includes("{declineOpen ? (") && parentUi.includes("setDeclineOpen(true)")
+  parentUi.includes("{declined ?") && parentUi.includes("update({ decision: option.value })")
 )
 check("modal 이 아니다", !parentUi.includes('role="dialog"'))
-check("나중에 바꿀 수 있다고 말한다", parentUi.includes("현재 생각은 나중에 바꿀 수 있어요"))
+check("최종 제출 후 변경 불가를 알린다", finalUi.includes("제출한 내용은 수정할 수 없어요"))
+check("예전 action은 인증 후 저장 없이 거부한다", retiredAction.includes("requireParentAccess") && !retiredAction.includes("dataAdapter"))
+check("선택은 client draft이며 action이 없다", !parentUi.includes("useActionState") && !parentUi.includes('type="submit"'))
 check("색만으로 선택을 말하지 않는다", parentUi.includes("aria-pressed") && parentUi.includes("optionMark"))
 check("mock 도 같은 판정을 한다", read(MOCK_PATH).includes('throw new Error("application_not_completed")'))
 check(

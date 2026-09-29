@@ -24,10 +24,7 @@
 .reportLink { margin-top: var(--s4); color: var(--brand-700); background: var(--brand-50); }
 .primaryLink { color: var(--surface); background: var(--brand-action); }
 .primaryLink:hover { background: var(--brand-action-hover); }
-.decisionSummary { margin-top: var(--s4); }
-.editor { margin-top: var(--s4); }
-.editor summary { display: flex; align-items: center; justify-content: center; min-height: 44px; border: 1px solid var(--border); border-radius: var(--r-md); cursor: pointer; font-size: var(--font-b2); font-weight: 600; }
-.editor[open] summary { margin-bottom: var(--s4); }
+.feedbackContent { margin-top: var(--s4); }
 .profile { display: flex; align-items: center; justify-content: space-between; gap: var(--s4); padding: var(--s5); border-radius: var(--r-lg); background: var(--brand-50); color: var(--text-1); text-decoration: none; }
 .profile .sectionTitle { color: var(--brand-700); }
 .notice { padding: var(--s4); border-radius: var(--r-lg); background: var(--surface-sub); font-size: var(--font-b2); }

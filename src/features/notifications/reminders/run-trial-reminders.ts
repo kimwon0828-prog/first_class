@@ -71,6 +71,8 @@ type TrialReminderRunResult = {
   adminSent: number
   adminSkippedDuplicate: number
   adminFailed: number
+  feedbackRemindersCreated: number
+  feedbackRemindersFailed: boolean
   notes: string[]
 }
 
@@ -266,6 +268,8 @@ export const runTrialReminders = async (authMode: TrialReminderRunResult["authMo
     adminSent: 0,
     adminSkippedDuplicate: 0,
     adminFailed: 0,
+    feedbackRemindersCreated: 0,
+    feedbackRemindersFailed: false,
     notes: [
       "기준 시간대는 Asia/Seoul(KST) 입니다.",
       "teacher_trial_reminder 이벤트 타입은 sms_logs 제약 migration 적용 여부를 별도로 확인해야 합니다."
@@ -326,5 +330,14 @@ export const runTrialReminders = async (authMode: TrialReminderRunResult["authMo
     }
   }
 
+  // Web inbox only. Failure stays isolated from existing trial SMS/alimtalk work.
+  try {
+    const { data, error } = await getSupabaseServiceRoleClient().rpc("create_parent_feedback_reminders")
+    if (error) throw error
+    result.feedbackRemindersCreated = typeof data === "number" ? data : 0
+  } catch {
+    result.feedbackRemindersFailed = true
+    result.ok = false
+  }
   return result
 }
