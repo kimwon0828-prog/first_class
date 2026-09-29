@@ -2,6 +2,7 @@
 .page {
   min-height: 100dvh;
   padding: 28px 24px 56px;
+  background: #fff;
 }
 
 .container {
@@ -14,6 +15,20 @@
 .header {
   display: grid;
   gap: 10px;
+}
+
+.topRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.topActions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
 }
 
 .backLink {
@@ -220,21 +235,26 @@
 
 .imageGrid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
   gap: 14px;
 }
 
 .imageCard {
+  grid-template-columns: minmax(0, 1fr);
+  align-content: start;
   border: 1px solid #eef0ee;
   border-radius: 16px;
-  padding: 14px;
+  padding: 12px;
   background: #ffffff;
   display: grid;
-  gap: 12px;
+  gap: 10px;
   min-width: 0;
 }
 
 .imagePlaceholder {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
   border: 1px dashed #cfd5cf;
   border-radius: 16px;
   background: #f8faf8;
@@ -243,15 +263,17 @@
 }
 
 .logoPlaceholder {
-  width: 100%;
+  width: min(100%, 144px);
   aspect-ratio: 1 / 1;
-  max-height: 220px;
+  justify-self: center;
+  border-radius: 50%;
+  overflow: hidden;
 }
 
 .coverPlaceholder {
   width: 100%;
   aspect-ratio: 16 / 9;
-  max-height: 220px;
+  padding: 0;
 }
 
 .placeholderText {
@@ -268,18 +290,30 @@
   color: #2f3a2f;
 }
 
+/* The image's aspect ratio limits the preview-only zoom so its corners remain visible. */
 .logoImage {
+  padding: 15%;
+  box-sizing: border-box;
+  position: absolute;
+  inset: 0;
+  display: block;
   width: 100%;
   height: 100%;
-  object-fit: cover;
-  border-radius: 999px;
+  object-fit: contain;
+  object-position: center;
+  transform: scale(var(--logo-preview-scale, 1));
+  transform-origin: center;
 }
 
 .coverImage {
+  position: absolute;
+  inset: 0;
+  display: block;
   width: 100%;
   height: 100%;
-  object-fit: cover;
-  border-radius: 16px;
+  object-fit: contain;
+  padding: 0;
+  object-position: center;
 }
 
 .imageMeta {
@@ -607,3 +641,22 @@
     gap: 4px;
   }
 }
+
+.visitFieldset { display: grid; gap: 12px; min-width: 0; margin: 0; padding: 0; border: 0; }
+.visitFieldset legend { padding: 0; margin-bottom: 12px; }
+.visitChoices { display: flex; flex-wrap: wrap; gap: 8px; }
+.visitChoices button { min-width: 44px; min-height: 44px; padding: 8px 12px; border: 1px solid #d8ddd8; border-radius: 10px; background: #fff; color: #4a4a4a; font: inherit; font-size: 13px; cursor: pointer; }
+.visitChoices button[aria-pressed="true"] { border-color: var(--brand-700); background: #edf7ee; color: var(--brand-700); font-weight: 700; }
+.visitChoices button:disabled { cursor: not-allowed; opacity: .5; }
+.visitTimeRow { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.legacyInfo { padding: 12px; border: 1px solid #e7eae7; border-radius: 10px; font-size: 13px; color: #6b716b; }
+.legacyInfo p { white-space: pre-wrap; overflow-wrap: anywhere; }
+.urlDetails summary { cursor: pointer; min-height: 44px; font-size: 14px; font-weight: 700; }
+.urlDetails:not([open]) { display: block; }
+.urlDetails[open] { display: block; }
+.urlDetails[open] > :not(summary) { margin-top: 14px; }
+.visitChoices button:focus-visible, .urlDetails summary:focus-visible { outline: 2px solid var(--brand-700); outline-offset: 3px; }
+
+.imageCard .imageMeta { display: grid; align-content: start; gap: 8px; }
+.imageCard .rowTitle { margin: 0 0 4px; }
+.imageCard .imageActionColumn { justify-items: start; }

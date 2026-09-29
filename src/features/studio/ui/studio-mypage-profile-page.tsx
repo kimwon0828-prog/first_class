@@ -22,6 +22,7 @@ import { formatAdministrativeRegionLabel } from "@/features/location/lib/region-
 import type { StudioAcademyPublicProfile } from "@/features/studio/queries/get-studio-academy-public-profile"
 import type { StudioSettingsOrganization } from "@/features/studio/queries/get-studio-settings-organization"
 import { getSupabaseBrowserClient } from "@/integrations/supabase/client"
+import { OPERATING_DAYS, PARKING_PREFIX, parseHours, formatHours, hoursError, parseParking, formatParking, type HoursDraft, type ParkingDraft } from "@/features/studio/lib/academy-profile-visit-info"
 import styles from "./studio-mypage-profile-page.module.css"
 
 const toNullableText = (value: string | null | undefined) => {
@@ -202,7 +203,6 @@ export function StudioMypageProfilePage({
   const [state, formAction, isPending] = useActionState(saveAcademyPublicProfileAction, initialActionState)
   const disableFormByQueryError = Boolean(publicProfileError)
   const readOnlyFields = !disableFormByQueryError && (!canEditPublicProfile || isPending)
-  const disableSaveButton = !canEditPublicProfile || isPending || disableFormByQueryError
   const refreshHandledRef = useRef<string | null>(null)
   const logoFileInputRef = useRef<HTMLInputElement | null>(null)
   const coverFileInputRef = useRef<HTMLInputElement | null>(null)
@@ -213,6 +213,21 @@ export function StudioMypageProfilePage({
   const initialFormValuesKey = useMemo(() => JSON.stringify(initialFormValues), [initialFormValues])
   const formValuesKeyRef = useRef<string | null>(null)
   const [formValues, setFormValues] = useState<PublicProfileFormValues>(initialFormValues)
+  const [hoursDraft, setHoursDraft] = useState<HoursDraft>(() => parseHours(initialFormValues.operatingHours) ?? { days: [], start: "", end: "" })
+  const [hoursChanged, setHoursChanged] = useState(false)
+  const [parkingDraft, setParkingDraft] = useState<ParkingDraft>(() => parseParking(initialFormValues.parkingInfo) ?? { available: null, detail: initialFormValues.parkingInfo })
+  const visitError = (hoursChanged ? hoursError(hoursDraft) : null) || (formValues.parkingInfo.length > 500 ? "주차 안내는 500자 이하로 입력해 주세요." : null)
+  const disableSaveButton = !canEditPublicProfile || isPending || disableFormByQueryError || Boolean(visitError)
+  const disableVisitControls = readOnlyFields || disableFormByQueryError
+  const updateHours = (next: HoursDraft) => {
+    setHoursDraft(next)
+    setHoursChanged(true)
+    if (!hoursError(next)) setFormValues(current => ({ ...current, operatingHours: formatHours(next) ?? "" }))
+  }
+  const updateParking = (next: ParkingDraft) => {
+    setParkingDraft(next)
+    setFormValues(current => ({ ...current, parkingInfo: next.available === null ? next.detail : formatParking(next) ?? "" }))
+  }
   const [currentLogoImagePath, setCurrentLogoImagePath] = useState(initialLogoImagePath)
   const [currentCoverImagePath, setCurrentCoverImagePath] = useState(initialCoverImagePath)
   const [isLogoUploading, setIsLogoUploading] = useState(false)
@@ -242,6 +257,9 @@ export function StudioMypageProfilePage({
     }
 
     setFormValues(initialFormValues)
+    setHoursDraft(parseHours(initialFormValues.operatingHours) ?? { days: [], start: "", end: "" })
+    setHoursChanged(false)
+    setParkingDraft(parseParking(initialFormValues.parkingInfo) ?? { available: null, detail: initialFormValues.parkingInfo })
     formValuesKeyRef.current = initialFormValuesKey
   }, [initialFormValues, initialFormValuesKey])
 
@@ -621,6 +639,60 @@ export function StudioMypageProfilePage({
     }
   }
 
+  const renderProfileField = (field: PublicProfileField) => {
+    const value = formValues[field.key]
+
+    return (
+      <label
+        key={field.name}
+        className={`${styles.field} ${field.type === "textarea" ? styles.fullWidthField : ""}`}
+      >
+        <span className={styles.fieldHeader}>
+          <span className={styles.fieldLabel}>{field.label}</span>
+          <span className={styles.fieldCount}>
+            {value.length}/{field.maxLength}
+          </span>
+        </span>
+        {field.type === "input" ? (
+          <input
+            name={field.name}
+            type="text"
+            className={styles.input}
+            placeholder={field.placeholder}
+            maxLength={field.maxLength}
+            value={value}
+            readOnly={readOnlyFields}
+            disabled={disableFormByQueryError}
+            onChange={(event) =>
+              setFormValues((current) => ({
+                ...current,
+                [field.key]: event.target.value
+              }))
+            }
+          />
+        ) : (
+          <textarea
+            name={field.name}
+            className={styles.textarea}
+            placeholder={field.placeholder}
+            rows={field.rows ?? 4}
+            maxLength={field.maxLength}
+            value={value}
+            readOnly={readOnlyFields}
+            disabled={disableFormByQueryError}
+            onChange={(event) =>
+              setFormValues((current) => ({
+                ...current,
+                [field.key]: event.target.value
+              }))
+            }
+          />
+        )}
+        {field.hint ? <span className={styles.fieldHint}>{field.hint}</span> : null}
+      </label>
+    )
+  }
+
   return (
     <div className={styles.page}>
       <div className={styles.container}>
@@ -631,36 +703,30 @@ export function StudioMypageProfilePage({
             </span>
             마이페이지
           </Link>
-          <h1 className={styles.title}>프로필 수정</h1>
+          <div className={styles.topRow}>
+            <div className={styles.sectionHeaderStack}>
+              <h1 className={styles.title}>학원 프로필</h1>
+              <p className={styles.sectionDescription}>학원 소개와 방문에 필요한 정보를 관리해요.</p>
+            </div>
+            <div className={styles.topActions}>
+              <a href={buildAcademyPublicPageUrl(initialSlug, organizationId)} target="_blank" rel="noopener noreferrer" className={styles.secondaryLink}>공개 페이지 보기</a>
+              <button type="submit" form="academy-profile-form" className={styles.primaryButton} disabled={disableSaveButton}>
+                {isPending ? "저장 중..." : "저장"}
+              </button>
+            </div>
+          </div>
         </header>
 
-        <section className={styles.sectionCard} aria-label="공개 페이지 링크">
-          <div className={styles.sectionHeader}>
-            <div className={styles.sectionHeaderStack}>
-              <h2 className={styles.sectionTitle}>공개 페이지 링크</h2>
-              <p className={styles.sectionDescription}>학부모에게 전달할 학원 공개 페이지 주소입니다.</p>
-            </div>
-            <button type="button" className={styles.secondaryButton} onClick={handleCopyPublicLink}>
-              {copyButtonLabel}
-            </button>
-          </div>
-          <div className={styles.linkCard}>
-            <p className={styles.linkLabel}>현재 주소</p>
-            <p className={styles.linkValue}>{publicPageUrl}</p>
-            <p className={styles.linkHint}>slug를 비워두면 UUID 주소가 유지됩니다.</p>
-          </div>
-        </section>
-
-        <section className={styles.sectionCard} aria-label="기본 정보">
+        <section className={styles.sectionCard} aria-label="공식 학원정보">
           <div className={styles.sectionHeader}>
             <div>
-              <h2 className={styles.sectionTitle}>기본 정보</h2>
+              <h2 className={styles.sectionTitle}>공식 학원정보</h2>
               <p className={styles.sectionDescription}>
                 학원명, 대표자명, 사업자정보, 주소와 연락처는 관리자 승인 후 변경됩니다.
               </p>
             </div>
             <Link href={studioPath("/studio/settings")} prefetch={false} className={styles.secondaryLink}>
-              학원 공식정보 수정
+              공식정보 수정 요청
             </Link>
           </div>
 
@@ -698,10 +764,10 @@ export function StudioMypageProfilePage({
           )}
         </section>
 
-        <section className={styles.sectionCard} aria-label="프로필 수정">
+        <section className={styles.sectionCard} aria-label="대표 이미지">
           <div className={styles.sectionHeaderStack}>
-            <h2 className={styles.sectionTitle}>프로필 수정</h2>
-            <p className={styles.sectionDescription}>학부모에게 공개되는 소개와 운영 정보를 관리합니다.</p>
+            <h2 className={styles.sectionTitle}>대표 이미지</h2>
+            <p className={styles.sectionDescription}>학원의 로고와 대표 이미지를 설정해요.</p>
           </div>
 
           {publicProfileError ? (
@@ -725,6 +791,14 @@ export function StudioMypageProfilePage({
                     src={logoPublicUrl}
                     alt={`${academyName} 로고`}
                     className={styles.logoImage}
+                    onLoad={event => {
+                      const image = event.currentTarget
+                      if (!image.naturalWidth || !image.naturalHeight) return
+                      const ratio = Math.min(image.naturalWidth, image.naturalHeight) / Math.max(image.naturalWidth, image.naturalHeight)
+                      // Fit every image corner inside the circle; never blindly enlarge a square logo.
+                      const scale = Math.min(1.1, 0.995 / (0.7 * Math.hypot(1, ratio)))
+                      image.style.setProperty("--logo-preview-scale", String(scale))
+                    }}
                     onError={() => setIsLogoImageBroken(true)}
                   />
                 </div>
@@ -741,7 +815,7 @@ export function StudioMypageProfilePage({
                 <div>
                   <p className={styles.rowTitle}>학원 로고</p>
                   <p className={styles.metaText}>권장 크기 500×500 · JPG, PNG, WEBP · 최대 5MB</p>
-                  <p className={styles.metaText}>저장된 로고가 없으면 학원명 첫 글자가 표시됩니다.</p>
+                  <p className={styles.metaText}>이미지가 잘리지 않게 원본 비율로 전체가 표시돼요.</p>
                 </div>
                 <div className={styles.imageActionColumn}>
                   <input
@@ -793,7 +867,7 @@ export function StudioMypageProfilePage({
                 <div>
                   <p className={styles.rowTitle}>대표 이미지</p>
                   <p className={styles.metaText}>권장 크기 1600×900 · 16:9 · JPG, PNG, WEBP · 최대 10MB</p>
-                  <p className={styles.metaText}>학원 소개 상단에 노출될 가로형 이미지를 등록해 주세요.</p>
+                  <p className={styles.metaText}>이미지가 잘리지 않게 원본 비율로 전체가 표시돼요.</p>
                 </div>
                 <div className={styles.imageActionColumn}>
                   <input
@@ -822,8 +896,75 @@ export function StudioMypageProfilePage({
             </article>
           </div>
 
-          <form action={formAction} className={styles.profileForm}>
-            <div className={styles.formGrid}>
+        </section>
+
+        <form id="academy-profile-form" action={formAction} className={styles.profileForm} onSubmit={event => { if (visitError) event.preventDefault() }}>
+          <section className={styles.sectionCard} aria-label="학원 소개">
+            <h2 className={styles.sectionTitle}>학원 소개</h2>
+            <div className={styles.formGrid}>{publicProfileFields.filter(field => field.key === "shortDescription" || field.key === "description").map(renderProfileField)}</div>
+          </section>
+          <section className={styles.sectionCard} aria-label="방문 정보">
+            <h2 className={styles.sectionTitle}>방문 정보</h2>
+            <input type="hidden" name="operatingHours" value={formValues.operatingHours} />
+            <input type="hidden" name="parkingInfo" value={formValues.parkingInfo} />
+            <fieldset className={styles.visitFieldset} disabled={disableVisitControls}>
+              <legend className={styles.fieldLabel}>운영 요일</legend>
+              {!hoursChanged && parseHours(formValues.operatingHours) === null ? <div className={styles.legacyInfo}>
+                <span>직접 입력된 기존 안내</span><p>{formValues.operatingHours}</p>
+                <small>요일과 시간을 선택하기 전까지 기존 안내가 유지돼요.</small>
+              </div> : null}
+              <div className={styles.visitChoices}>{OPERATING_DAYS.map(day => <button key={day} type="button" aria-label={`${day}요일`} aria-pressed={hoursDraft.days.includes(day)} onClick={() => updateHours({ ...hoursDraft, days: hoursDraft.days.includes(day) ? hoursDraft.days.filter(value => value !== day) : [...hoursDraft.days, day] })}>{day}</button>)}</div>
+              <div className={styles.visitTimeRow}>
+                <label className={styles.field}><span className={styles.fieldLabel}>시작 시간</span><input className={styles.input} type="time" value={hoursDraft.start} aria-describedby={visitError ? "visit-input-error" : undefined} onChange={event => updateHours({ ...hoursDraft, start: event.target.value })} /></label>
+                <label className={styles.field}><span className={styles.fieldLabel}>종료 시간</span><input className={styles.input} type="time" value={hoursDraft.end} aria-describedby={visitError ? "visit-input-error" : undefined} onChange={event => updateHours({ ...hoursDraft, end: event.target.value })} /></label>
+              </div>
+            </fieldset>
+            <fieldset className={styles.visitFieldset} disabled={disableVisitControls}>
+              <legend className={styles.fieldLabel}>주차</legend>
+              <div className={styles.visitChoices}>
+                <button type="button" aria-pressed={parkingDraft.available === true} onClick={() => updateParking({ ...parkingDraft, available: true })}>주차 가능</button>
+                <button type="button" aria-pressed={parkingDraft.available === false} onClick={() => updateParking({ ...parkingDraft, available: false })}>주차 불가</button>
+              </div>
+              <label className={styles.field}>
+                <span className={styles.fieldHeader}><span className={styles.fieldLabel}>주차 안내</span><span className={styles.fieldCount}>{formValues.parkingInfo.length}/500</span></span>
+                <textarea className={styles.textarea} rows={3} placeholder="예: 건물 지하주차장 2시간 무료" maxLength={parkingDraft.available === true ? 500 - PARKING_PREFIX.length : 500} value={parkingDraft.available === false ? "" : parkingDraft.detail} disabled={parkingDraft.available === false} onChange={event => updateParking({ ...parkingDraft, detail: event.target.value })} />
+                {parkingDraft.available === false ? <span className={styles.fieldHint}>주차 불가로 안내해요.</span> : null}
+                {parkingDraft.available === null && formValues.parkingInfo ? <span className={styles.fieldHint}>주차 선택을 바꾸기 전까지 기존 안내를 유지해요.</span> : null}
+              </label>
+            </fieldset>
+            {visitError ? <p id="visit-input-error" className={styles.errorText} role="alert">{visitError}</p> : null}
+            {publicProfileFields.filter(field => field.key === "directions").map(renderProfileField)}
+          </section>
+
+            <div className={styles.saveBar}>
+              <div className={styles.saveMeta}>
+                {state.message ? (
+                  <p className={feedbackClassName} role="status">
+                    {state.message}
+                  </p>
+                ) : null}
+                <p className={styles.saveHint}>텍스트 정보 저장과 이미지 업로드는 서로 독립적으로 동작합니다.</p>
+              </div>
+              <button type="submit" className={styles.primaryButton} disabled={disableSaveButton}>
+                {isPending ? "저장 중..." : "변경사항 저장"}
+              </button>
+            </div>
+          <details className={`${styles.sectionCard} ${styles.urlDetails}`}><summary>공개 URL</summary>
+          <div className={styles.sectionHeader}>
+            <div className={styles.sectionHeaderStack}>
+
+              <p className={styles.sectionDescription}>학원 공개 페이지 주소를 확인하고 공유할 수 있어요.</p>
+            </div>
+            <button type="button" className={styles.secondaryButton} onClick={handleCopyPublicLink}>
+              {copyButtonLabel}
+            </button>
+          </div>
+          <div className={styles.linkCard}>
+            <p className={styles.linkLabel}>현재 주소</p>
+            <p className={styles.linkValue}>{publicPageUrl}</p>
+            <p className={styles.linkHint}>slug를 비워두면 UUID 주소가 유지됩니다.</p>
+          </div>
+
               <label className={`${styles.field} ${styles.fullWidthField}`}>
                 <span className={styles.fieldHeader}>
                   <span className={styles.fieldLabel}>페이지 주소</span>
@@ -854,77 +995,8 @@ export function StudioMypageProfilePage({
                 </div>
                 <span className={styles.fieldHint}>소문자 영문, 숫자, 하이픈만 허용하며 2~50자까지 저장됩니다.</span>
               </label>
-
-              {publicProfileFields.map((field) => {
-                const value = formValues[field.key]
-
-                return (
-                  <label
-                    key={field.name}
-                    className={`${styles.field} ${field.type === "textarea" ? styles.fullWidthField : ""}`}
-                  >
-                    <span className={styles.fieldHeader}>
-                      <span className={styles.fieldLabel}>{field.label}</span>
-                      <span className={styles.fieldCount}>
-                        {value.length}/{field.maxLength}
-                      </span>
-                    </span>
-                    {field.type === "input" ? (
-                      <input
-                        name={field.name}
-                        type="text"
-                        className={styles.input}
-                        placeholder={field.placeholder}
-                        maxLength={field.maxLength}
-                        value={value}
-                        readOnly={readOnlyFields}
-                        disabled={disableFormByQueryError}
-                        onChange={(event) =>
-                          setFormValues((current) => ({
-                            ...current,
-                            [field.key]: event.target.value
-                          }))
-                        }
-                      />
-                    ) : (
-                      <textarea
-                        name={field.name}
-                        className={styles.textarea}
-                        placeholder={field.placeholder}
-                        rows={field.rows ?? 4}
-                        maxLength={field.maxLength}
-                        value={value}
-                        readOnly={readOnlyFields}
-                        disabled={disableFormByQueryError}
-                        onChange={(event) =>
-                          setFormValues((current) => ({
-                            ...current,
-                            [field.key]: event.target.value
-                          }))
-                        }
-                      />
-                    )}
-                    {field.hint ? <span className={styles.fieldHint}>{field.hint}</span> : null}
-                  </label>
-                )
-              })}
-            </div>
-
-            <div className={styles.saveBar}>
-              <div className={styles.saveMeta}>
-                {state.message ? (
-                  <p className={feedbackClassName} role="status">
-                    {state.message}
-                  </p>
-                ) : null}
-                <p className={styles.saveHint}>텍스트 정보 저장과 이미지 업로드는 서로 독립적으로 동작합니다.</p>
-              </div>
-              <button type="submit" className={styles.primaryButton} disabled={disableSaveButton}>
-                {isPending ? "저장 중..." : "저장"}
-              </button>
-            </div>
-          </form>
-        </section>
+          </details>
+        </form>
       </div>
     </div>
   )
