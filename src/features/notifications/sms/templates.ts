@@ -156,6 +156,25 @@ export const renderSmsTemplate = ({
             "변경이 필요하신 경우 학원으로 문의해 주세요."
           ])
         }
+      case "trial_report_published":
+        return {
+          templateKey: eventType,
+          messagePreview: joinSections([
+            "[첫수업] 체험 리포트가 도착했어요.",
+            joinLines([`${resolveStudentText(context)} 학생의 체험 리포트를 확인해 주세요.`])
+          ])
+        }
+      case "trial_feedback_reminder":
+        return {
+          templateKey: eventType,
+          messagePreview: joinSections([
+            "[첫수업] 체험은 어떠셨나요?",
+            joinLines([
+              `${resolveStudentText(context)} 학생의 체험수업에 대한`,
+              "짧은 피드백과 등록 의향을 남겨주세요."
+            ])
+          ])
+        }
       default:
         throw new Error("unsupported_parent_sms_event")
     }

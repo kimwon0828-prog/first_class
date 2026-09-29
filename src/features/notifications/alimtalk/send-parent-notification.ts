@@ -7,6 +7,16 @@ import { logSmsEventSafely } from "@/features/notifications/sms/log-sms-event"
 const shouldFallbackToSms = (status: ParentNotificationResult["alimtalk"]["status"]) =>
   status === "disabled" || status === "failed" || status === "skipped"
 
+const shouldWaitForFeedbackAlimtalkConfiguration = (
+  context: ParentNotificationContext,
+  result: ParentNotificationResult["alimtalk"]
+) =>
+  context.eventType === "trial_feedback_reminder" &&
+  (result.status === "disabled" ||
+    result.errorMessage === "alimtalk_template_missing" ||
+    result.errorMessage === "alimtalk_provider_not_supported" ||
+    result.errorMessage === "ncloud_alimtalk_env_missing_or_invalid")
+
 const resolveSafeNotificationError = (error: unknown) => ({
   message: error instanceof Error ? error.message : "unknown_error",
   code:
@@ -37,11 +47,23 @@ export const sendParentNotification = async (
 
     return {
       channel: "alimtalk",
-      alimtalk
+      alimtalk,
+      fallbackStatus: null
     }
   }
 
-  await logSmsEventSafely({
+  // 피드백 리마인더는 알림톡으로 보내야 한다. 템플릿 승인이나 운영 설정이
+  // 아직 끝나지 않은 상태를 SMS 발송으로 조용히 대체하지 않고 다음 cron에서
+  // 다시 시도한다. 실제 provider 요청 실패에는 기존 SMS fallback을 유지한다.
+  if (shouldWaitForFeedbackAlimtalkConfiguration(context, alimtalk)) {
+    return {
+      channel: "alimtalk",
+      alimtalk,
+      fallbackStatus: null
+    }
+  }
+
+  const fallback = await logSmsEventSafely({
     organizationId: context.organizationId,
     application: {
       id: context.trialApplicationId,
@@ -71,7 +93,8 @@ export const sendParentNotification = async (
 
   return {
     channel: "sms_fallback",
-    alimtalk
+    alimtalk,
+    fallbackStatus: fallback?.status ?? "failed"
   }
 }
 

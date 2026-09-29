@@ -297,7 +297,7 @@ export const logSmsEvent = async ({
       throw new Error("failed_to_insert_parent_sms_log")
     }
 
-    return
+    return sendResult
   }
 
   const recipient = await resolveTeacherRecipient(
@@ -344,11 +344,13 @@ export const logSmsEvent = async ({
   if (error) {
     throw new Error("failed_to_insert_teacher_sms_log")
   }
+
+  return sendResult
 }
 
 export const logSmsEventSafely = async (input: LogSmsEventInput) => {
   try {
-    await logSmsEvent(input)
+    return await logSmsEvent(input)
   } catch (error) {
     console.error("[sms dry-run log failed]", error)
 
@@ -357,5 +359,7 @@ export const logSmsEventSafely = async (input: LogSmsEventInput) => {
     } catch (fallbackError) {
       console.error("[sms fallback log failed]", fallbackError)
     }
+
+    return null
   }
 }

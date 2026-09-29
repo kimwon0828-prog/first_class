@@ -28,7 +28,9 @@ Report의 client mount effect가 document visible일 때 별도 POST를 보낸�
 
 발행 알림은 기존 `report_published:<report UUID>`를 재사용하며 문구는 `체험수업 리포트가 도착했어요`, 링크는 `/record/:id/report`다. 동일 event key를 selector에서 중복 제거한다. 읽음과 발행 알림의 존재는 분리되어 있다.
 
-`create_parent_feedback_reminders()`는 service_role에만 실행 권한이 있다. 기존 `/api/cron/trial-reminders`의 인증/스케줄을 재사용한다. 새로운 push/notification 시스템이나 cron endpoint는 만들지 않는다. 조건은 published, 최초 열람 ≥24시간, 두 응답이 모두 존재하지 않음, completed이고 canceled/no-show 아님, reminder timestamp 없음이다. `FOR UPDATE … SKIP LOCKED`와 조건부 UPDATE로 제출·다중 cron 실행과 직렬화한다.
+`claim_parent_feedback_reminders()`와 `complete_parent_feedback_reminder()`는 service_role에만 실행 권한이 있다. 기존 `/api/cron/trial-reminders`의 인증/스케줄을 재사용한다. 조건은 published, 최초 열람 ≥24시간, 두 응답이 모두 존재하지 않음, completed이고 canceled/no-show 아님, reminder timestamp 없음이다. `FOR UPDATE … SKIP LOCKED`로 대상을 선점하고 15분 lease로 중복 발송을 막는다. 알림톡 또는 SMS fallback이 provider에서 수락된 뒤에만 `feedback_reminder_sent_at`을 기록하며, 실패 시 claim을 해제해 다음 실행에서 재시도한다.
+
+학부모 리마인더의 기본 채널은 카카오 알림톡 `trial_feedback_reminder`다. 버튼은 `/record/{applicationId}/report#experience-feedback`으로 연결한다. Ncloud에서 동일한 본문과 `피드백 남기기` 웹링크 버튼을 승인받은 뒤 `ALIMTALK_TEMPLATE_TRIAL_FEEDBACK_REMINDER`에 template code를 설정해야 실제 발송된다. 템플릿·provider·환경 설정이 없으면 SMS로 조용히 바꾸지 않고 다음 cron에서 재시도한다. 설정이 완료된 뒤 실제 provider 요청이 실패하는 경우에만 기존 Parent 알림 정책대로 SMS fallback을 시도한다. 외부 발송 실패는 리포트 열람이나 피드백 제출을 실패시키지 않는다.
 
 기존 알림함은 **DB의 확정된 사건 자체가 알림**이므로 reminder timestamp의 성공적인 transaction commit이 알림 생성이다. 별도 전송을 시도하기 전에 sent flag를 먼저 쓰는 구조가 아니다. UPDATE/transaction 실패 시 사건과 timestamp 모두 없고 재시도 가능하다. 한 번 생성된 사건은 제출 후에도 이력으로 남으며 링크의 결과는 readonly다. 철회되어 현재 발행본이 없으면 기존 발행 알림과 마찬가지로 표시되지 않는다.
 

@@ -4,6 +4,7 @@ import { sendParentNotification } from "@/features/notifications/alimtalk/send-p
 import { sendStudioNotification } from "@/features/notifications/sms/send-studio-notification"
 import type { SmsEventType } from "@/features/notifications/sms/types"
 import { getSupabaseServiceRoleClient } from "@/integrations/supabase/service-role"
+import { toParentUrl } from "@/shared/config/site-origins"
 
 type EmbeddedClassRow = {
   title: string
@@ -56,6 +57,21 @@ type TrialReminderRange = {
   dayAfterTomorrowStartIso: string
 }
 
+type FeedbackReminderCandidateRow = {
+  application_id: string
+  organization_id: string
+  class_id: string
+  parent_id: string
+  parent_name: string | null
+  parent_phone: string | null
+  student_name: string
+  academy_name: string
+  class_title: string
+  requested_slot_at: string
+  confirmed_slot_at: string | null
+  selected_schedule_label: string | null
+}
+
 type TrialReminderRunResult = {
   ok: boolean
   authMode: "public_dev" | "shared_secret"
@@ -72,6 +88,9 @@ type TrialReminderRunResult = {
   adminSkippedDuplicate: number
   adminFailed: number
   feedbackRemindersCreated: number
+  feedbackRemindersClaimed: number
+  feedbackRemindersAlimtalkSent: number
+  feedbackRemindersSmsFallbackSent: number
   feedbackRemindersFailed: boolean
   notes: string[]
 }
@@ -80,6 +99,7 @@ const KST_OFFSET_MS = 9 * 60 * 60 * 1000
 const PARENT_REMINDER_EVENT: SmsEventType = "trial_reminder"
 const TEACHER_REMINDER_EVENT: SmsEventType = "teacher_trial_reminder"
 const ADMIN_REMINDER_EVENT: SmsEventType = "admin_trial_reminder"
+const FEEDBACK_REMINDER_EVENT = "trial_feedback_reminder" as const
 
 const getEmbeddedClass = (value: TrialReminderCandidateRow["classes"]) => {
   if (!value) {
@@ -245,6 +265,118 @@ const sendTeacherTrialReminder = async (candidate: TrialReminderCandidate) => {
   })
 }
 
+const completeFeedbackReminder = async ({
+  applicationId,
+  delivered,
+  channel,
+  errorMessage
+}: {
+  applicationId: string
+  delivered: boolean
+  channel: "alimtalk" | "sms_fallback" | null
+  errorMessage: string | null
+}) => {
+  const { data, error } = await getSupabaseServiceRoleClient().rpc(
+    "complete_parent_feedback_reminder",
+    {
+      p_application_id: applicationId,
+      p_delivered: delivered,
+      p_channel: channel,
+      p_error: errorMessage
+    }
+  )
+
+  if (error || data !== true) {
+    throw new Error("failed_to_complete_parent_feedback_reminder")
+  }
+}
+
+const runFeedbackReminders = async (result: TrialReminderRunResult) => {
+  const { data, error } = await getSupabaseServiceRoleClient().rpc(
+    "claim_parent_feedback_reminders",
+    { p_limit: 500 }
+  )
+
+  if (error) {
+    throw new Error("failed_to_claim_parent_feedback_reminders")
+  }
+
+  const candidates = (data ?? []) as FeedbackReminderCandidateRow[]
+  result.feedbackRemindersClaimed = candidates.length
+
+  for (const candidate of candidates) {
+    try {
+      const sent = await sendParentNotification({
+        eventType: FEEDBACK_REMINDER_EVENT,
+        organizationId: candidate.organization_id,
+        trialApplicationId: candidate.application_id,
+        createdBy: null,
+        parentId: candidate.parent_id,
+        parentPhone: candidate.parent_phone,
+        parentName: candidate.parent_name,
+        studentName: candidate.student_name,
+        academyName: candidate.academy_name,
+        classId: candidate.class_id,
+        classTitle: candidate.class_title,
+        requestedSlotAt: candidate.requested_slot_at,
+        confirmedSlotAt: candidate.confirmed_slot_at,
+        selectedScheduleLabel: candidate.selected_schedule_label,
+        reportUrl: toParentUrl(
+          `/record/${candidate.application_id}/report#experience-feedback`
+        )
+      })
+      const deliveredViaAlimtalk = sent.channel === "alimtalk" && sent.alimtalk.status === "sent"
+      const deliveredViaSms = sent.channel === "sms_fallback" && sent.fallbackStatus === "sent"
+      const delivered = deliveredViaAlimtalk || deliveredViaSms
+      const channel = deliveredViaAlimtalk
+        ? "alimtalk"
+        : deliveredViaSms
+          ? "sms_fallback"
+          : null
+      const errorMessage = delivered
+        ? null
+        : sent.alimtalk.errorMessage ?? `sms_fallback_${sent.fallbackStatus ?? "failed"}`
+
+      await completeFeedbackReminder({
+        applicationId: candidate.application_id,
+        delivered,
+        channel,
+        errorMessage
+      })
+
+      if (deliveredViaAlimtalk) {
+        result.feedbackRemindersAlimtalkSent += 1
+        result.feedbackRemindersCreated += 1
+      } else if (deliveredViaSms) {
+        result.feedbackRemindersSmsFallbackSent += 1
+        result.feedbackRemindersCreated += 1
+      } else {
+        result.feedbackRemindersFailed = true
+        result.ok = false
+      }
+    } catch (error) {
+      console.error("[feedback reminder][parent] failed", candidate.application_id, error)
+      result.feedbackRemindersFailed = true
+      result.ok = false
+
+      try {
+        await completeFeedbackReminder({
+          applicationId: candidate.application_id,
+          delivered: false,
+          channel: null,
+          errorMessage: error instanceof Error ? error.message : "unknown_error"
+        })
+      } catch (completeError) {
+        console.error(
+          "[feedback reminder][parent] failed to release claim",
+          candidate.application_id,
+          completeError
+        )
+      }
+    }
+  }
+}
+
 export const runTrialReminders = async (authMode: TrialReminderRunResult["authMode"]) => {
   const range = resolveTodayRangeInKst()
   const candidates = await listReminderCandidates(range)
@@ -269,6 +401,9 @@ export const runTrialReminders = async (authMode: TrialReminderRunResult["authMo
     adminSkippedDuplicate: 0,
     adminFailed: 0,
     feedbackRemindersCreated: 0,
+    feedbackRemindersClaimed: 0,
+    feedbackRemindersAlimtalkSent: 0,
+    feedbackRemindersSmsFallbackSent: 0,
     feedbackRemindersFailed: false,
     notes: [
       "기준 시간대는 Asia/Seoul(KST) 입니다.",
@@ -330,11 +465,10 @@ export const runTrialReminders = async (authMode: TrialReminderRunResult["authMo
     }
   }
 
-  // Web inbox only. Failure stays isolated from existing trial SMS/alimtalk work.
+  // The durable web-inbox event is committed only after Alimtalk (or its SMS
+  // fallback) is accepted. A failed delivery releases the claim for a later run.
   try {
-    const { data, error } = await getSupabaseServiceRoleClient().rpc("create_parent_feedback_reminders")
-    if (error) throw error
-    result.feedbackRemindersCreated = typeof data === "number" ? data : 0
+    await runFeedbackReminders(result)
   } catch {
     result.feedbackRemindersFailed = true
     result.ok = false

@@ -7,6 +7,8 @@ const hardening=fs.readFileSync('supabase/migrations/20260929090000_harden_paren
 const feature=fs.readFileSync('supabase/migrations/20260929091000_parent_experience_feedback.sql','utf8')
 const final=fs.readFileSync('supabase/migrations/20260929092000_finalize_parent_experience_submission.sql','utf8')
 const reportFlow=fs.readFileSync("supabase/migrations/20260929093000_parent_report_feedback_flow.sql","utf8")
+const reminderFlow=fs.readFileSync("supabase/migrations/20260929100000_send_parent_feedback_reminder_alimtalk.sql","utf8")
+const reminderRollback=fs.readFileSync("docs/sql/manual/rollback_parent_feedback_reminder_alimtalk.sql","utf8").replace(/^begin;|^commit;/gm,"")
 const reportRollback=fs.readFileSync("docs/sql/manual/rollback_parent_report_feedback_flow.sql","utf8").replace(/^begin;|^commit;/gm,"")
 const safeRollback=fs.readFileSync('docs/sql/manual/rollback_parent_experience_final_submission.sql','utf8').replace(/^begin;|^commit;/gm,'')
 const rollback=fs.readFileSync('docs/sql/manual/rollback_parent_experience_feedback.sql','utf8').replace(/^begin;|^commit;/gm,'')
@@ -18,15 +20,27 @@ ${hardening}
 ${feature}
 ${final}
 ${reportFlow}
+${reminderFlow}
 ${hardening}
 ${feature}
 ${final}
 ${reportFlow}
+${reminderFlow}
 do $$ begin
  assert not has_function_privilege('authenticated','public.save_parent_experience_feedback(uuid,text[],text)','EXECUTE'),'old feedback path revoked';
  assert not has_function_privilege('authenticated','public.set_parent_decision(uuid,text)','EXECUTE'),'old decision path revoked';
  assert has_function_privilege('authenticated','public.submit_parent_experience(uuid,text[],text,text,text,text[],time,time,text)','EXECUTE'),'new command available';
  assert has_function_privilege('service_role','app.valid_experience_feedback_chips(text[],text)','EXECUTE'),'service CHECK helper';
+ assert has_function_privilege('service_role','public.claim_parent_feedback_reminders(integer)','EXECUTE'),'service claim command';
+ assert has_function_privilege('service_role','public.complete_parent_feedback_reminder(uuid,boolean,text,text)','EXECUTE'),'service completion command';
+ assert not has_function_privilege('authenticated','public.claim_parent_feedback_reminders(integer)','EXECUTE'),'parent cannot claim reminders';
+end $$;
+${reminderRollback}
+do $$ begin
+ assert to_regprocedure('public.claim_parent_feedback_reminders(integer)') is null,'outbound claim suspended';
+ assert to_regprocedure('public.complete_parent_feedback_reminder(uuid,boolean,text,text)') is null,'outbound completion suspended';
+ assert to_regprocedure('public.create_parent_feedback_reminders()') is not null,'web-only job restored';
+ assert not exists(select 1 from information_schema.columns where table_schema='public' and table_name='parent_report_engagement' and column_name='feedback_reminder_claimed_at'),'claim columns removed';
 end $$;
 ${reportRollback}
 do $$ begin
@@ -35,6 +49,7 @@ do $$ begin
  assert to_regclass('public.parent_report_engagement') is not null,'engagement data retained';
 end $$;
 ${reportFlow}
+${reminderFlow}
 ${safeRollback}
 do $$ begin
  assert to_regprocedure('public.submit_parent_experience(uuid,text[],text,text,text,text[],time,time,text)') is null,'safe rollback removes command';
@@ -42,6 +57,9 @@ do $$ begin
 end $$;
 ${final}
 ${reportFlow}
+${reminderFlow}
+${reminderRollback}
+${reportRollback}
 ${rollback}
 do $$ begin
  assert to_regclass('public.experience_feedback') is null,'feedback rollback';
@@ -52,6 +70,7 @@ end $$;
 ${feature}
 ${final}
 ${reportFlow}
+${reminderFlow}
 rollback;`
 const r=cp.spawnSync('docker',['exec','-e',`PGPASSWORD=${process.env.FEEDBACK_TEST_PASSWORD||'isolated-rolling-test'}`,'-i',container,'psql','-X','-q','-U','supabase_admin','-d','postgres','-v','ON_ERROR_STOP=1'],{input:sql,encoding:'utf8'})
 if(r.status!==0){process.stderr.write(r.stderr);process.exitCode=1}else console.log('PASS clean feature apply, reapply, rollback keeps security/old data, reapply after rollback; all test changes rolled back')

@@ -384,7 +384,8 @@ console.log("\n── 7-b. 실제 CTA 버튼 ──")
   )
   check(
     "버튼 이름이 계약대로다",
-    templates.includes('name: "체험 리포트 확인하기"')
+    templates.includes('? "피드백 남기기"') &&
+      templates.includes(': "체험 리포트 확인하기"')
   )
   check(
     "모바일 · PC 링크가 리포트 주소다",
@@ -392,8 +393,9 @@ console.log("\n── 7-b. 실제 CTA 버튼 ──")
   )
   check("웹 링크 타입이다", templates.includes('type: "WL"'))
   check(
-    "리포트 알림에만 버튼을 붙인다",
-    templates.includes('if (context.eventType !== "trial_report_published") {') &&
+    "리포트와 피드백 알림에만 버튼을 붙인다",
+    templates.includes('context.eventType !== "trial_report_published" &&') &&
+      templates.includes('context.eventType !== "trial_feedback_reminder"') &&
       templates.includes("return undefined")
   )
   check(

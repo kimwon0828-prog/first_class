@@ -9,7 +9,9 @@ export const PARENT_SMS_EVENT_TYPES = [
   "trial_enrolled",
   "trial_reminder",
   // 체험 리포트가 발행돼 부모가 읽을 수 있게 된 순간.
-  "trial_report_published"
+  "trial_report_published",
+  // 리포트 열람 후 24시간이 지나도 피드백을 제출하지 않은 경우.
+  "trial_feedback_reminder"
 ] as const
 export type ParentSmsEventType = (typeof PARENT_SMS_EVENT_TYPES)[number]
 

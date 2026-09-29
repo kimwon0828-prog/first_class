@@ -5,7 +5,8 @@ export const PARENT_ALIMTALK_EVENT_TYPES = [
   "trial_rejected",
   "trial_completed",
   "trial_reminder",
-  "trial_report_published"
+  "trial_report_published",
+  "trial_feedback_reminder"
 ] as const
 
 export type ParentAlimtalkEventType = (typeof PARENT_ALIMTALK_EVENT_TYPES)[number]
@@ -78,4 +79,5 @@ export type AlimtalkSendResult = {
 export type ParentNotificationResult = {
   channel: "alimtalk" | "sms_fallback"
   alimtalk: AlimtalkSendResult
+  fallbackStatus: "sent" | "dry_run" | "failed" | "skipped" | null
 }

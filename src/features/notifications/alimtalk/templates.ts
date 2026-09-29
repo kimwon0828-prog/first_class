@@ -26,6 +26,8 @@ const resolveTemplateCode = (eventType: ParentNotificationContext["eventType"]) 
       return process.env.ALIMTALK_TEMPLATE_TRIAL_REMINDER?.trim() ?? ""
     case "trial_report_published":
       return process.env.ALIMTALK_TEMPLATE_TRIAL_REPORT_PUBLISHED?.trim() ?? ""
+    case "trial_feedback_reminder":
+      return process.env.ALIMTALK_TEMPLATE_TRIAL_FEEDBACK_REMINDER?.trim() ?? ""
   }
 }
 
@@ -73,7 +75,15 @@ export const renderAlimtalkContent = (context: ParentNotificationContext): strin
   const academyName = resolveTemplateValue(context.academyName)
   const classTitle = resolveTemplateValue(context.classTitle)
 
-  if (!parentName || !studentName || !academyName || !classTitle) {
+  if (!studentName || !academyName) {
+    return null
+  }
+
+  if (
+    context.eventType !== "trial_report_published" &&
+    context.eventType !== "trial_feedback_reminder" &&
+    (!parentName || !classTitle)
+  ) {
     return null
   }
 
@@ -161,6 +171,20 @@ export const renderAlimtalkContent = (context: ParentNotificationContext): strin
         `선생님의 총평을 확인해 보세요.`
       ].join("\n")
     }
+    case "trial_feedback_reminder": {
+      if (!resolveTemplateValue(context.reportUrl ?? null)) {
+        return null
+      }
+
+      return [
+        `[첫수업] 체험은 어떠셨나요?`,
+        ``,
+        `${studentName}님의 ${academyName} 체험수업은 어떠셨나요?`,
+        ``,
+        `리포트를 확인하셨다면`,
+        `짧은 피드백과 등록 의향을 남겨주세요.`
+      ].join("\n")
+    }
   }
 }
 
@@ -176,7 +200,10 @@ export const renderAlimtalkContent = (context: ParentNotificationContext): strin
 const resolveTemplateButtons = (
   context: ParentNotificationContext
 ): AlimtalkButton[] | undefined => {
-  if (context.eventType !== "trial_report_published") {
+  if (
+    context.eventType !== "trial_report_published" &&
+    context.eventType !== "trial_feedback_reminder"
+  ) {
     return undefined
   }
 
@@ -188,7 +215,10 @@ const resolveTemplateButtons = (
   return [
     {
       type: "WL",
-      name: "체험 리포트 확인하기",
+      name:
+        context.eventType === "trial_feedback_reminder"
+          ? "피드백 남기기"
+          : "체험 리포트 확인하기",
       // 반응형 한 화면이라 모바일과 PC 가 같은 주소다.
       linkMobile: reportUrl,
       linkPc: reportUrl
