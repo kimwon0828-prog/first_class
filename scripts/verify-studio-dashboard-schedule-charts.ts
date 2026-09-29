@@ -4,8 +4,7 @@ import { readFileSync } from "node:fs"
 import { createWorkflowApplication } from "./fixtures/application-detail-workflow"
 import { buildStudioDashboardView } from "@/features/studio/lib/studio-dashboard-view"
 import { buildStudioDashboardMetrics } from "@/features/studio/lib/studio-dashboard-metrics"
-import { buildStudioDonutArcs } from "@/features/studio/lib/studio-dashboard-donut"
-import { STUDIO_DONUT_RADIUS as radius, STUDIO_DONUT_VIEWBOX as viewBox } from "@/features/studio/lib/studio-dashboard-analytics"
+import "./verify-studio-dashboard-donut"
 import { resolveStudioDateRange } from "@/features/studio/lib/studio-date-range"
 
 const now = new Date("2026-09-29T09:00:00Z")
@@ -39,21 +38,6 @@ const metrics=buildStudioDashboardMetrics(rows,resolveStudioDateRange({preset:"a
 assert.deepEqual(metrics.steps.map(s=>s.label),["신청 접수","일정 확정","체험 진행","체험 완료","등록 결과"])
 assert.equal(metrics.steps[0].count,rows.length)
 
-for(const counts of [[50,50],[100,0],[0,100],[25,25,25,25],[50,25,25,0],[1,99],[0,0,0,0],[50,0,0,50],[4,0,0,5]]) {
-  const arcs=buildStudioDonutArcs(counts,counts.reduce((a,b)=>a+b,0))
-  assert.equal(arcs.filter(Boolean).length,counts.filter(n=>n>0).length)
-  let previousEnd: number[] | null=null
-  for(const arc of arcs) {
-    if(!arc)continue
-    if(arc.fullCircle){assert.equal(arcs.filter(Boolean).length,1);continue}
-    const values=arc.path.match(/-?\d+(?:\.\d+)?/g)!.map(Number)
-    assert.ok(values.every(Number.isFinite))
-    const start=values.slice(0,2),end=values.slice(-2)
-    if(previousEnd)assert.deepEqual(start,previousEnd)
-    for(const [x,y] of [start,end])assert.ok(Math.abs(Math.hypot(x-viewBox/2,y-viewBox/2)-radius)<1e-7)
-    previousEnd=end
-  }
-}
 const page=readFileSync("app/studio/(dashboard)/page.tsx","utf8")
-assert.ok(!page.includes("strokeDasharray") && page.includes('strokeLinecap="butt"'))
+assert.ok(!page.includes("strokeDasharray") && page.includes("styles.donutSegment"))
 console.log("PASS: confirmed occurrences only, cancellation timestamps excluded, KST day boundaries, five-stage unique cohort, all donut distributions and shared radial endpoints")
