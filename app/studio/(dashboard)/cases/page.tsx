@@ -9,24 +9,9 @@ import {
   sanitizeCaseSearchQuery,
   type CaseViewKey
 } from "@/features/studio/lib/case-filters"
-import {
-  getStudioRegistrationStatusLabel,
-  type StudioStatusTone
-} from "@/features/studio/lib/application-status-labels"
-import {
-  CASE_STAGE_LABELS,
-  getCaseClosedAt,
-  getCaseStageTone,
-  isCaseClosedStage,
-  type StudioCaseListItem
-} from "@/features/studio/lib/case-view-model"
-import {
-  formatCaseRecordDate,
-  getCaseContactPresentation,
-  getCaseLatestRecord,
-  getCaseListActionLabel,
-  getCaseTrialScheduleLabel
-} from "@/features/studio/lib/case-list-presentation"
+import type { StudioStatusTone } from "@/features/studio/lib/application-status-labels"
+import { CASES_ACTIONS, formatCasesDate, getCasesResultSummary, getCasesScheduleLabel, type CasesListItem } from "@/features/studio/lib/cases-workflow"
+import { ApplicationDetailIcon } from "@/features/studio/ui/application-detail-icon"
 import { requireTeacherStudioAccess } from "@/features/studio/lib/require-teacher-studio-access"
 import { getStudioCases } from "@/features/studio/queries/get-studio-cases"
 import { StudioQueryRetry } from "@/features/studio/ui/studio-query-retry"
@@ -47,12 +32,6 @@ const VIEW_TABS: Array<{ key: CaseViewKey; label: string }> = [
   { key: "closed", label: "완료·종료" }
 ]
 
-const CONTACT_TONE_CLASS = {
-  default: "",
-  warning: styles.contactWarning,
-  danger: styles.contactDanger
-}
-
 const STAGE_TONE_CLASS: Record<StudioStatusTone, string> = {
   amber: styles.stageBadgeAmber,
   blue: styles.stageBadgeBlue,
@@ -71,7 +50,7 @@ const buildHref = (params: { view: CaseViewKey; filter?: string; q?: string; pag
   return queryString ? `${CASE_BASE_PATH}?${queryString}` : CASE_BASE_PATH
 }
 
-const resolveClassText = (item: StudioCaseListItem) =>
+const resolveClassText = (item: CasesListItem) =>
   item.klass.title?.trim() || (item.klass.subject ? getSubjectLabel(item.klass.subject) : null) || "수업 정보 준비 중"
 
 function Chevron({ previous = false }: { previous?: boolean }) {
@@ -80,15 +59,6 @@ function Chevron({ previous = false }: { previous?: boolean }) {
 
 function CalendarIcon() {
   return <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2" /><path d="M16 3v4M8 3v4M3 11h18M8 15h3" /></svg>
-}
-
-function ActionIcon({ actionKey }: { actionKey: StudioCaseListItem["nextAction"]["key"] }) {
-  const path = actionKey === "UNASSIGNED"
-    ? <><circle cx="10" cy="7" r="3" /><path d="M3 21v-2a7 7 0 0 1 14 0v2M20 8v6m-3-3h6" /></>
-    : ["OVERDUE_CONTACT", "TODAY_CONTACT", "UPCOMING_CONTACT", "NO_NEXT_CONTACT"].includes(actionKey)
-      ? <path d="M7 3H4a1 1 0 0 0-1 1c0 9.4 7.6 17 17 17a1 1 0 0 0 1-1v-3l-5-2-2 2a14 14 0 0 1-7-7l2-2-2-5Z" />
-      : <><path d="M14 3H5v18h14V8l-5-5ZM14 3v5h5M8 12h8M8 16h6" /></>
-  return <svg className={styles.actionIcon} width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{path}</svg>
 }
 
 function CasePagination({ page, totalPages, previousHref, nextHref, compact = false }: {
@@ -114,7 +84,6 @@ export default async function StudioCasesPage({ searchParams }: StudioCasesPageP
   const page = resolveCasePage(resolvedSearchParams?.page)
   const { data, error } = await getStudioCases(teacher.organizationId, { view, filter, query: searchQuery, page })
   const filterOptions = getCaseFilterOptions(view)
-  const now = new Date()
   const rangeStart = data.items.length > 0 ? (data.page - 1) * CASE_PAGE_SIZE + 1 : 0
   const rangeEnd = data.items.length > 0 ? Math.min(data.page * CASE_PAGE_SIZE, data.totalCount) : 0
   const paginationProps = {
@@ -129,8 +98,8 @@ export default async function StudioCasesPage({ searchParams }: StudioCasesPageP
       <header className={styles.header}>
         <div className={styles.headerRow}>
           <div>
-            <h1 className={styles.title}>상담·등록</h1>
-            <p className={styles.subtitle}>신청부터 등록까지, 모든 상담 진행 상황을 한눈에 관리하세요.</p>
+            <h1 className={styles.title}>신청 관리</h1>
+            <p className={styles.subtitle}>신청부터 등록까지, 모든 진행 상황을 한눈에 관리하세요.</p>
           </div>
           <Link href={studioPath("/studio/cases/import")} className={styles.headerAction}><CalendarIcon />기존 예약 가져오기</Link>
         </div>
@@ -170,10 +139,10 @@ export default async function StudioCasesPage({ searchParams }: StudioCasesPageP
             <CasePagination {...paginationProps} compact />
           </div>
           <div className={styles.tableSurface}>
-            <div className={`${styles.listHead} ${view === "closed" ? styles.listHeadClosed : ""}`} aria-hidden="true">
-              <span>학생</span><span>{view === "closed" ? "결과" : "현재 단계"}</span><span>체험수업 / 일정</span>
-              {view === "active" ? <span>다음 행동</span> : null}
-              <span>담당자</span><span>{view === "closed" ? "종료일" : "최근 기록"}</span><span />
+            <div className={styles.listHead} aria-hidden="true">
+              <span>학생</span><span>진행 상태</span><span>체험수업 / 일정</span>
+              <span>{view === "closed" ? "결과 요약" : "다음 행동"}</span><span>등록 상태</span>
+              <span>담당자</span><span>최근 기록</span><span />
             </div>
             {data.items.length === 0 ? (
               <div className={styles.empty}>
@@ -183,38 +152,47 @@ export default async function StudioCasesPage({ searchParams }: StudioCasesPageP
             ) : (
               <ul className={styles.list}>
                 {data.items.map((item) => {
-                  const closed = isCaseClosedStage(item.stage)
-                  const schedule = getCaseTrialScheduleLabel(item)
-                  const closedAt = closed ? getCaseClosedAt(item) : null
-                  const record = getCaseLatestRecord(item)
-                  const actionLabel = getCaseListActionLabel(item)
-                  const contact = getCaseContactPresentation(item, now)
-                  const registrationLabel = !closed && item.status === "completed"
-                    ? getStudioRegistrationStatusLabel(item.registrationStatus) : null
+                  const schedule = getCasesScheduleLabel(item)
+                  const record = item.latestRecord
+                  const summary = view === "closed" ? getCasesResultSummary(item) : null
+                  const action = item.workflow.action ? CASES_ACTIONS[item.workflow.action] : null
+                  const progressTone: StudioStatusTone = item.workflow.progress === "신청 접수" ? "amber" : ["일정 확정", "체험 예정"].includes(item.workflow.progress) ? "green" : "gray"
+                  const registrationTone: StudioStatusTone = ["취소", "노쇼"].includes(item.workflow.registration) ? "gray" : item.registrationStatus === "enrolled" ? "green" : item.registrationStatus === "pending" ? "amber" : item.registrationStatus === "not_enrolled" ? "red" : "gray"
                   return (
                     <li key={item.id} className={styles.row}>
-                      <StudioDetailLink className={`${styles.rowLink} ${closed ? styles.rowLinkClosed : ""}`} internalPath={`/studio/applications/${item.id}`}>
+                      <StudioDetailLink className={styles.rowLink} internalPath={`/studio/applications/${item.id}`}>
                         <span className={styles.cellStudent}>
                           <span className={styles.studentHeading}><strong className={styles.studentName}>{item.student.name}</strong><span className={styles.studentMeta}>{getChildGradeLabel(item.student.grade) ?? "학년 미기록"}</span></span>
                           {item.guardian.phone ? <span className={styles.studentPhone}><span className={styles.srOnly}>보호자 연락처 </span>{item.guardian.phone}</span> : null}
                         </span>
                         <span className={styles.cellStage}>
-                          <span className={`${styles.stageBadge} ${STAGE_TONE_CLASS[getCaseStageTone(item.stage)]}`}>{CASE_STAGE_LABELS[item.stage]}</span>
-                          {registrationLabel ? <span className={styles.registrationLabel}>{registrationLabel}</span> : null}
+                          <span className={`${styles.stageBadge} ${STAGE_TONE_CLASS[progressTone]}`}>{item.workflow.progress}</span>
                         </span>
                         <span className={styles.cellClass}>
                           <span className={styles.classTitle} title={resolveClassText(item)}>{resolveClassText(item)}</span>
                           {schedule ? <span className={styles.classMeta}>{schedule}</span> : null}
                         </span>
-                        {!closed ? (
-                          <span className={styles.cellNextAction}>
-                            <span className={styles.actionHeading}>{actionLabel ? <ActionIcon actionKey={item.nextAction.key} /> : null}<span>{actionLabel || "—"}</span></span>
-                            {contact ? <span className={`${styles.nextContactMeta} ${CONTACT_TONE_CLASS[contact.tone]}`}>{contact.label}</span> : null}
-                          </span>
-                        ) : null}
+                        <span className={styles.cellNextAction}>
+                          {summary ? (
+                            <span className={styles.resultSummary}>
+                              <span className={styles.srOnly}>결과 요약: </span>
+                              {summary.reasons.length ? summary.reasons.map((reason, index) => (
+                                <span className={styles.reasonLine} key={reason.id}>
+                                  <span className={styles.reasonChip} title={reason.label}>{reason.label}</span>
+                                  {index === 1 && summary.remaining > 0 ? <span className={styles.reasonMore} aria-label={`추가 사유 ${summary.remaining}개`}>+{summary.remaining}</span> : null}
+                                </span>
+                              )) : summary.label}
+                              {action ? <span className={styles.remainingAction}><ApplicationDetailIcon name={action.icon} /><span><span className={styles.srOnly}>남은 업무: </span>{action.title}</span></span> : null}
+                            </span>
+                          ) : <>
+                            <span className={styles.actionHeading}>{action ? <ApplicationDetailIcon name={action.icon} /> : null}<span>{action?.title ?? "—"}</span></span>
+                            {action ? <span className={styles.actionDescription}>{action.description}</span> : null}
+                          </>}
+                        </span>
+                        <span className={styles.cellRegistration}><span className={`${styles.stageBadge} ${STAGE_TONE_CLASS[registrationTone]}`}>{item.workflow.registration}</span></span>
                         <span className={styles.cellAssignee}><span className={styles.assigneeBadge}><span className={styles.srOnly}>담당자 </span>{item.assignee.teacherName ?? "미배정"}</span></span>
                         <span className={styles.cellRecord}>
-                          {closed ? (closedAt ? <time dateTime={closedAt}>{formatCaseRecordDate(closedAt) ?? "—"}</time> : "—") : record ? <><time dateTime={record.at}>{record.dateLabel}</time><span>{record.label}</span></> : "—"}
+                          {record ? <><time dateTime={record.at}>{formatCasesDate(record.at)}</time><span>{record.label}</span></> : "—"}
                         </span>
                         <span className={styles.chevron}><Chevron /><span className={styles.srOnly}>신청 상세 보기</span></span>
                       </StudioDetailLink>

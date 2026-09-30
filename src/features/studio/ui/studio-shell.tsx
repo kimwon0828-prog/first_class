@@ -143,7 +143,7 @@ export const StudioShell = ({ children, organizationName, logoImagePath, footer 
   // 두 route 는 롤백/기능 비교를 위해 살아 있고, 메뉴에서만 감춘다(NAV_ALIAS_PATHS 참고).
   const navItems: NavItem[] = [
     { href: "/studio", label: "대시보드", icon: DashboardIcon },
-    { href: "/studio/cases", label: "상담·등록", icon: CasesIcon },
+    { href: "/studio/cases", label: "신청 관리", icon: CasesIcon },
     { href: "/studio/classes", label: "수업 관리", icon: ClassesIcon },
     { href: "/studio/schedule", label: "일정 관리", icon: ScheduleIcon },
     { href: "/studio/teachers", label: "선생님 관리", icon: TeachersIcon }

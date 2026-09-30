@@ -66,7 +66,7 @@ console.log("\n[1] 진행 중 필터 목록")
 const filterListBefore = failures
 const keys = CASE_ACTIVE_FILTERS.map((option) => option.key)
 check(
-  JSON.stringify(keys) === JSON.stringify(["all", "new", "confirmed", "post_trial"]),
+  JSON.stringify(keys) === JSON.stringify(["all", "new", "schedule_needed", "confirmed", "post_trial"]),
   `진행 중 필터가 바뀌었다: ${keys.join(" · ")}`
 )
 check(
@@ -92,10 +92,10 @@ passLine(startAxisBefore, "어떤 필터도 체험 시작 시각으로 Case 를 
 const confirmedBefore = failures
 const confirmedPredicate = getCaseFilterPredicate("active", "confirmed")
 check(
-  JSON.stringify(confirmedPredicate) === JSON.stringify({ statusIn: ["confirmed"] }),
+  confirmedPredicate.orExpression.includes("status.eq.confirmed") && !/\.(gt|lt|gte|lte)\./.test(confirmedPredicate.orExpression),
   `\`일정 확정\` 이 status=confirmed 전체가 아니다: ${JSON.stringify(confirmedPredicate)}`
 )
-passLine(confirmedBefore, "`일정 확정` = status=confirmed 전체(체험 중 Case 를 숨기지 않는다)")
+passLine(confirmedBefore, "`일정 확정` = 확정 일정이 있는 confirmed 전체(체험 중 Case 를 숨기지 않는다)")
 
 // ─────────────────────────────────────────────────────────────
 console.log("\n[2] confirmed_slot_at 근사는 배지와 같지 않다")
