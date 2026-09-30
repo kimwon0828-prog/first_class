@@ -1,4 +1,5 @@
 import { StudioQueryRetry } from "@/features/studio/ui/studio-query-retry"
+import type { ReactNode } from "react"
 import {
   formatLegacyPreferredDate,
   formatPreferredSchedule,
@@ -20,9 +21,10 @@ import styles from "./studio-parent-decision.module.css"
 type StudioParentDecisionProps = {
   decision: ParentDecisionSummary | null
   loadError: string | null
+  titleIcon?: ReactNode
 }
 
-export const StudioParentDecision = ({ decision, loadError }: StudioParentDecisionProps) => {
+export const StudioParentDecision = ({ decision, loadError, titleIcon }: StudioParentDecisionProps) => {
   const writtenAt = decision ? formatSeoulDateTime(decision.createdAt) : null
   const preferredSchedule = decision
     ? formatPreferredSchedule({
@@ -43,7 +45,7 @@ export const StudioParentDecision = ({ decision, loadError }: StudioParentDecisi
     <section className={`${styles.card} ${styles.sectionCard}`} aria-labelledby="parent-decision-title">
       <div className={styles.sectionHead}>
         <h2 id="parent-decision-title" className={styles.sectionTitle}>
-          학부모 현재 생각
+          {titleIcon}학부모 현재 생각
         </h2>
       </div>
 

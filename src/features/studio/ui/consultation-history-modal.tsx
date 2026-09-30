@@ -50,7 +50,7 @@ const isEditedLog = (item: StudioConsultationLog) => {
 
 const getConsultationMeta = (item: StudioConsultationLog) => {
   if (item.activityType === "LEGACY_IMPORT") {
-    return "이전 기록"
+    return "이전 연락 기록"
   }
 
   const occurredAt = formatSeoulDateTime(item.occurredAt)
@@ -240,6 +240,7 @@ export const ConsultationHistoryModal = ({
                     )
                   })()}
 
+                  {item.timeFlexibility ? <p className={styles.fieldHint}>시간 유연성 · {({exact: "해당 시간만 가능", plus_minus_30: "±30분 가능", same_day_flexible: "같은 요일이면 시간 조정 가능", flexible: "요일·시간 협의 가능"} as Record<string, string>)[item.timeFlexibility]}</p> : null}
                   {item.nextContactAt ? (
                     <div className={styles.consultationNextContact}>
                       <span className={styles.consultationNextContactLabel}>다음 연락</span>

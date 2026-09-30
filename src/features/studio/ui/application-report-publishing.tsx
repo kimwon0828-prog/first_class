@@ -1,8 +1,9 @@
 "use client"
 
 import { StudioQueryRetry } from "./studio-query-retry"
+import { ApplicationDetailIcon } from "./application-detail-icon"
 
-import { useActionState, useEffect, useRef, useState } from "react"
+import { useActionState, useEffect, useRef } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 
@@ -10,10 +11,6 @@ import {
   publishExperienceReportAction,
   type PublishExperienceReportActionState
 } from "@/features/studio/actions/publish-experience-report"
-import {
-  withdrawExperienceReportAction,
-  type WithdrawExperienceReportActionState
-} from "@/features/studio/actions/withdraw-experience-report"
 import { formatSeoulDateTime } from "@/features/studio/lib/seoul-datetime"
 import { useStudioNavigationPathFactory } from "@/features/studio/ui/studio-navigation-provider"
 import { getExperienceReportSummary, type ExperienceReportSnapshotV1 } from "@/features/reports/lib/experience-report-snapshot"
@@ -42,6 +39,7 @@ type ApplicationReportPublishingProps = {
   preview: ExperienceReportSnapshotV1 | null
   /** 지금 부모에게 공개돼 있는 발행본의 snapshot. 미리보기와 섞지 않는다. */
   publishedSnapshot: ExperienceReportSnapshotV1 | null
+  everSent?: boolean
   publishedVersion: number | null
   publishedAt: string | null
   /**
@@ -75,11 +73,6 @@ const initialPublishState: PublishExperienceReportActionState = {
   successToken: null
 }
 
-const initialWithdrawState: WithdrawExperienceReportActionState = {
-  status: "idle",
-  message: "",
-  successToken: null
-}
 
 const formatReportDate = (value: string | null) => {
   if (!value) {
@@ -193,11 +186,11 @@ export const ApplicationReportPublishing = ({
   emphasizePublish = !embedded,
   preview,
   publishedSnapshot,
+  everSent = false,
   publishedVersion,
   publishedAt,
   publishedReportLoadError,
   assessmentUpdatedAt,
-  assessmentChangedSincePublish,
   blockers,
   canPublishReport
 }: ApplicationReportPublishingProps) => {
@@ -208,15 +201,7 @@ export const ApplicationReportPublishing = ({
     publishAction,
     initialPublishState
   )
-  const withdrawAction = withdrawExperienceReportAction.bind(null, applicationId)
-  const [withdrawState, submitWithdraw, isWithdrawing] = useActionState(
-    withdrawAction,
-    initialWithdrawState
-  )
-  const [isWithdrawOpen, setIsWithdrawOpen] = useState(false)
-  const withdrawButtonRef = useRef<HTMLButtonElement | null>(null)
   const handledPublishTokenRef = useRef<string | null>(null)
-  const handledWithdrawTokenRef = useRef<string | null>(null)
 
   // 발행에 성공하면 화면을 다시 읽는다. 발행본 version 과 공개 내용이
   // 서버가 가진 값으로 바뀌어야 한다 — 화면이 스스로 지어내지 않는다.
@@ -230,18 +215,6 @@ export const ApplicationReportPublishing = ({
     handledPublishTokenRef.current = publishState.successToken
     router.refresh()
   }, [publishState.status, publishState.successToken, router])
-
-  useEffect(() => {
-    if (withdrawState.status !== "success" || !withdrawState.successToken) {
-      return
-    }
-    if (handledWithdrawTokenRef.current === withdrawState.successToken) {
-      return
-    }
-    handledWithdrawTokenRef.current = withdrawState.successToken
-    setIsWithdrawOpen(false)
-    router.refresh()
-  }, [withdrawState.status, withdrawState.successToken, router])
 
   // 평가가 바뀐 뒤의 발행 실패는 사용자가 고칠 수 있는 상황이다.
   // 최신 내용을 다시 확인하도록 화면을 새로 읽는다 — 자동으로 다시 발행하지 않는다.
@@ -259,24 +232,21 @@ export const ApplicationReportPublishing = ({
   // 현재 발행 상태를 모르면 어떤 발행 동작도 하지 않는다.
   // 미리보기는 그대로 보여 준다 — 그건 평가에서 만든 것이라 발행본과 무관하다.
   const canPublish =
-    canPublishReport &&
+    canPublishReport && !publishedVersion && !everSent &&
     !publishedReportLoadError &&
     !activeBlocker &&
     Boolean(preview) &&
     Boolean(assessmentUpdatedAt)
-  // 철회에는 요금제 조건이 없다. 지금 공개 중인 발행본이 있고 그 사실을 알고 있으면 된다.
-  // Free 로 내려온 학원도 이미 나간 리포트를 거둘 수 있어야 한다.
-  const canWithdraw = !publishedReportLoadError && Boolean(publishedVersion)
-  // 발행은 못 해도 철회할 것이 남아 있으면 조작 영역을 보여 준다.
-  const hasActions = canPublishReport || Boolean(publishedVersion)
   const publishedDateText = publishedAt ? formatSeoulDateTime(publishedAt) : null
+  const needsRecord = blockers.some(blocker => blocker.kind === "no_assessment")
+  const Heading = embedded ? "h3" : "h2"
 
   return (
     <section className={`${embedded ? styles.embedded : styles.card} ${styles.sectionCard}`} aria-labelledby="report-publishing-title">
       <div className={styles.sectionHead}>
-        <h2 id="report-publishing-title" className={styles.sectionTitle}>
-          학부모에게 전달하기
-        </h2>
+        <Heading id="report-publishing-title" className={styles.sectionTitle}>
+          <ApplicationDetailIcon name="report" />학부모 리포트
+        </Heading>
         {publishedReportLoadError ? (
           // 모르는 상태다. "없음" 이라고 말하지 않는다.
           <p className={styles.statusLine}>
@@ -284,7 +254,7 @@ export const ApplicationReportPublishing = ({
           </p>
         ) : publishedVersion ? (
           <p className={styles.statusLine}>
-            <span className={styles.statusBadge}>리포트 발행 완료</span>
+            <span className={styles.statusBadge}>✓ 발송 완료</span>
             <span className={styles.statusMeta}>
               v{publishedVersion}
               {publishedDateText ? ` · ${publishedDateText}` : ""}
@@ -292,26 +262,26 @@ export const ApplicationReportPublishing = ({
           </p>
         ) : (
           <p className={styles.statusLine}>
-            <span className={styles.statusMuted}>현재 공개 중인 리포트가 없습니다.</span>
+            <span className={styles.statusMuted}>{everSent ? "이전에 발송한 리포트입니다. 재발송할 수 없습니다." : "미발송"}</span>
           </p>
         )}
       </div>
 
-      {!publishedSnapshot ? <p className={styles.sectionDescription}>체험 결과를 부모님께 전달하기 전에 실제로 보여질 내용을 확인해 주세요.</p> : null}
+      {!publishedSnapshot && !everSent ? <p className={styles.sectionDescription}>{needsRecord ? "체험 기록 확정 후 리포트를 발송할 수 있어요." : "학부모에게 전달할 내용을 미리 확인해 주세요."}</p> : null}
 
       {/*
         지금 공개돼 있는 것은 발행 시점에 얼어붙은 snapshot 이다.
         평가를 다시 조립해서 "현재 발행본" 이라고 보여 주지 않는다.
       */}
       {publishedSnapshot ? <>
+        <details className={styles.block}>
+          <summary className={styles.blockLabel}>리포트 보기</summary>
         {embedded ? <div className={styles.publishedPreview} aria-label="발행된 리포트 요약">
           <h3>{publishedSnapshot.experience.child.displayName} 학생 체험 수업 리포트</h3>
           {getExperienceReportSummary(publishedSnapshot) ? <p className={styles.previewSummary}>{getExperienceReportSummary(publishedSnapshot)}</p> : null}
           {publishedSnapshot.observations.length ? <ul>{publishedSnapshot.observations.slice(0, 3).map(item => <li key={item.code}>{item.label}</li>)}</ul> : null}
           {Object.values(publishedSnapshot.recommendation).some(Boolean) ? <p className={styles.previewSummary}>추천 · {Object.values(publishedSnapshot.recommendation).filter(Boolean).join(" · ")}</p> : null}
         </div> : null}
-        <details className={styles.block}>
-          <summary className={styles.blockLabel}>{embedded ? "자세히 보기" : "리포트 미리보기"}</summary>
           <ReportBody snapshot={publishedSnapshot} />
         </details>
       </> : null}
@@ -326,19 +296,10 @@ export const ApplicationReportPublishing = ({
         </div>
       ) : null}
 
-      {assessmentChangedSincePublish ? (
-        <div className={styles.notice} role="status">
-          <p className={styles.noticeTitle}>체험 결과가 마지막 리포트 발행 이후 수정되었습니다.</p>
-          <p className={styles.noticeBody}>
-            공개 내용이 달라졌는지 미리보기로 확인한 뒤 필요한 경우 새 버전을 발행해 주세요.
-          </p>
-        </div>
-      ) : null}
-
-      {preview ? (
+      {preview && !everSent && !publishedVersion ? (
         <details data-report-preview className={styles.block}>
           <summary className={styles.blockLabel}>
-            {publishedSnapshot ? "현재 작성본 미리보기" : "발행 전 미리보기"}
+            리포트 미리보기
           </summary>
           <ReportBody snapshot={preview} />
         </details>
@@ -351,7 +312,7 @@ export const ApplicationReportPublishing = ({
         아무것도 못 찾으면 화면이 고장난 것처럼 보인다(디자인 시스템 §10.2).
         잠긴 것은 발행 하나이고, 작성·미리보기·철회는 그대로 돌아간다.
       */}
-      {!canPublishReport ? (
+      {!canPublishReport && !publishedVersion && !everSent ? (
         <div className={styles.lockedNotice} role="status">
           <p className={styles.noticeTitle}>학부모 리포트 발행은 스탠다드 플랜에서 사용할 수 있어요.</p>
           <p className={styles.noticeBody}>
@@ -365,7 +326,7 @@ export const ApplicationReportPublishing = ({
       ) : null}
 
       {/* 잠긴 상태에서는 발행 준비 안내를 띄우지 않는다. 지금 할 수 없는 일의 준비물이다. */}
-      {canPublishReport && activeBlocker ? (
+      {canPublishReport && activeBlocker && !needsRecord && !everSent && !publishedVersion ? (
         <div className={styles.notice} role="status">
           <p className={styles.noticeTitle}>{BLOCKER_TEXT[activeBlocker.kind].title}</p>
           <p className={styles.noticeBody}>{BLOCKER_TEXT[activeBlocker.kind].body}</p>
@@ -389,99 +350,13 @@ export const ApplicationReportPublishing = ({
           {publishState.message}
         </div>
       ) : null}
-      {withdrawState.status === "error" && withdrawState.message ? (
-        <div className={`${styles.message} ${styles.messageError}`} role="alert">
-          {withdrawState.message}
-        </div>
-      ) : null}
-
-      {hasActions ? (
-        <div className={styles.actions}>
-          {canPublishReport ? (
-            <form action={submitPublish} className={styles.publishForm}>
-              {/* 원장이 확인한 revision. 그 사이 평가가 바뀌었으면 서버가 거절한다. */}
-              <input
-                type="hidden"
-                name="expectedAssessmentUpdatedAt"
-                value={assessmentUpdatedAt ?? ""}
-              />
-              <button
-                type="submit"
-                className={emphasizePublish ? styles.primaryButton : styles.secondaryButton}
-                disabled={!canPublish || isPublishing || isWithdrawing}
-              >
-                {isPublishing
-                  ? "발행 중..."
-                  : publishedVersion
-                    ? "새 버전 발행"
-                    : "학부모에게 발행"}
-              </button>
-            </form>
-          ) : null}
-
-          {publishedVersion ? (
-            <button
-              ref={withdrawButtonRef}
-              type="button"
-              className={styles.textButton}
-              onClick={() => setIsWithdrawOpen(true)}
-              disabled={!canWithdraw || isPublishing || isWithdrawing}
-            >
-              리포트 발행 철회
-            </button>
-          ) : null}
-        </div>
-      ) : null}
-
-      {canPublishReport && !publishedReportLoadError ? (
-        <p className={styles.footnote}>
-          {publishedVersion
-            ? "기존 리포트는 과거 발행 기록으로 보존됩니다."
-            : "발행된 리포트는 부모 공개 데이터로 저장됩니다."}
-        </p>
-      ) : null}
-
-      {isWithdrawOpen ? (
-        <div className={styles.dialogOverlay} role="presentation">
-          <div
-            className={styles.dialogCard}
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="withdraw-report-title"
-          >
-            <div className={styles.dialogBody}>
-              <h3 id="withdraw-report-title" className={styles.dialogTitle}>
-                리포트 발행을 철회할까요?
-              </h3>
-              <p className={styles.dialogDescription}>
-                철회하면 부모님이 현재 리포트를 볼 수 없게 됩니다. 발행 기록은 삭제되지 않고
-                보관됩니다.
-              </p>
-              {withdrawState.status === "error" && withdrawState.message ? (
-                <div className={`${styles.message} ${styles.messageError}`}>
-                  {withdrawState.message}
-                </div>
-              ) : null}
-            </div>
-            <form action={submitWithdraw} className={styles.dialogActions}>
-              <button
-                type="button"
-                className={styles.secondaryButton}
-                onClick={() => {
-                  setIsWithdrawOpen(false)
-                  withdrawButtonRef.current?.focus()
-                }}
-                disabled={isWithdrawing}
-              >
-                취소
-              </button>
-              <button type="submit" className={styles.dangerButton} disabled={isWithdrawing}>
-                {isWithdrawing ? "철회 중..." : "발행 철회"}
-              </button>
-            </form>
-          </div>
-        </div>
-      ) : null}
+      {!everSent && !publishedVersion && canPublishReport && !needsRecord ? <form action={submitPublish} className={styles.publishForm}>
+        <input type="hidden" name="expectedAssessmentUpdatedAt" value={assessmentUpdatedAt ?? ""} />
+        <p className={styles.footnote}>발송 후 수정하거나 다시 발송할 수 없어요.</p>
+        <button type="submit" className={emphasizePublish ? styles.primaryButton : styles.secondaryButton} disabled={!canPublish || isPublishing}>
+          {isPublishing ? "발송 중..." : "리포트 발송"}
+        </button>
+      </form> : null}
     </section>
   )
 }

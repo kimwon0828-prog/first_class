@@ -1,9 +1,8 @@
+import { dataAdapter } from "@/shared/lib/db"
 import { getStudioExperienceFeedback } from "@/features/feedback/queries/get-experience-feedback"
 import { StudioFeedback } from "@/features/feedback/ui/studio-feedback"
 import { StudioQueryRetry } from "@/features/studio/ui/studio-query-retry"
 import { resolveStudioDetailReturn } from "@/features/studio/lib/studio-detail-navigation"
-import { getParentCrossProductHref } from "@/shared/config/cross-product-navigation"
-import { getRequestHostname } from "@/shared/lib/request-host"
 import Link from "next/link"
 import { Fragment } from "react"
 import { notFound } from "next/navigation"
@@ -18,10 +17,11 @@ import { requireTeacherStudioAccess } from "@/features/studio/lib/require-teache
 import { getStudioApplicationAssigneeOptions } from "@/features/studio/queries/get-studio-application-assignee-options"
 import { getStudioApplicationDetail } from "@/features/studio/queries/get-studio-application-detail"
 import { ApplicationStatusActionForm } from "@/features/studio/ui/application-status-action-form"
-import { ApplicationAssigneeForm } from "@/features/studio/ui/application-assignee-form"
+import { ApplicationAssigneeControl } from "@/features/studio/ui/application-assignee-control"
 import { getStudioEntitlementsForDisplay } from "@/features/billing/queries/get-organization-entitlements"
 import { ApplicationReportPublishing, type ReportPublishBlocker } from "@/features/studio/ui/application-report-publishing"
 import { ApplicationTrialResultWorkflow } from "@/features/studio/ui/application-trial-result-workflow"
+import { ApplicationDetailIcon } from "@/features/studio/ui/application-detail-icon"
 import {
   buildExperienceReportSnapshotV2,
   hasPublishableReportContent
@@ -217,7 +217,6 @@ const formatProgressDate = (value: string | null | undefined) => {
 export default async function StudioApplicationDetailPage({ params, searchParams }: StudioApplicationDetailPageProps) {
   const studioPath = await getStudioNavigationPathResolver()
   const back = resolveStudioDetailReturn((await searchParams)?.returnTo)
-  const hostname = await getRequestHostname()
   const teacher = await requireTeacherStudioAccess()
   const resolvedParams = await params
   const { data, error } = await getStudioApplicationDetail(resolvedParams.id, teacher.organizationId, { allowPartialTrialResult: true })
@@ -238,6 +237,10 @@ export default async function StudioApplicationDetailPage({ params, searchParams
     data && data.status === "completed"
       ? await getPublishedExperienceReport(data.id)
       : { data: null, error: null }
+
+  const reportHistory = data && data.status === "completed"
+    ? await dataAdapter.listExperienceReportVersions(data.id).then(rows => ({ everSent: rows.length > 0, error: false })).catch(() => ({ everSent: false, error: true }))
+    : { everSent: false, error: false }
 
   // 학부모가 남긴 현재 생각. 읽기 전용이며 등록 결과와 별개다.
   const feedbackResult = data ? await getStudioExperienceFeedback(data.id, teacher.organizationId) : { feedback: null, error: false }
@@ -503,7 +506,7 @@ export default async function StudioApplicationDetailPage({ params, searchParams
           </Link>
         </div>
         <h1 className={styles.pageTitle}>신청 상세</h1>
-        <p className={styles.pageDescription}>학생의 상담부터 등록까지의 과정을 한눈에 확인할 수 있습니다.</p>
+        <p className={styles.pageDescription}>체험 일정부터 기록과 등록 결과까지 한눈에 확인할 수 있습니다.</p>
       </header>
 
       {error ? (
@@ -536,32 +539,22 @@ export default async function StudioApplicationDetailPage({ params, searchParams
                     </div>
                     <p className={styles.caseSubline}>{detailView.classTitle}{data.academyName ? ` · ${data.academyName}` : ""}</p>
                     <p className={styles.caseGuardian}>
+                      <ApplicationDetailIcon name="calendar" />
                       {detailView.confirmedSchedule ? `${detailView.confirmedSchedule} · 확정` : `희망 · ${detailView.requestedSchedule}`}
                     </p>
                   </div>
                   <div className={styles.headerControls}>
                     <div className={styles.caseActions}>
-                      {detailView.phoneHref ? <a href={detailView.phoneHref} className={styles.actionButtonTint}>전화하기</a> : null}
-                      {detailView.smsHref ? <a href={detailView.smsHref} className={styles.actionButtonSecondary}>문자하기</a> : null}
-                      {data.classId ? <details className={styles.moreDisclosure}>
-                        <summary aria-label="더보기">더보기</summary>
-                        <Link href={getParentCrossProductHref({ pathname: `/classes/${data.classId}`, hostname })} className={styles.caseInlineLink}>수업 미리보기</Link>
-                      </details> : null}
+                      {detailView.phoneHref ? <a href={detailView.phoneHref} className={styles.actionButtonTint}><ApplicationDetailIcon name="phone" />전화하기</a> : null}
+                      {detailView.smsHref ? <a href={detailView.smsHref} className={styles.actionButtonSecondary}><ApplicationDetailIcon name="message" />문자하기</a> : null}
                     </div>
-                    {data.status !== "new" && data.status !== "reviewing" ? <div className={styles.teacherBlock}>
-                      <div><span className={styles.summaryLabel}>담당 선생님</span><p>{data.assignedTeacherName ?? "미배정"}</p></div>
-                      <details id="case-assignee" className={styles.assigneeDisclosure}>
-                        <summary>변경</summary>
-                        <ApplicationAssigneeForm
+                    {data.status !== "new" && data.status !== "reviewing" ? <ApplicationAssigneeControl
                           applicationId={data.id}
                           currentAssignedTeacherId={data.assignedTeacherId}
                           currentAssignedTeacherName={data.assignedTeacherName}
                           options={assigneeOptionsResult.data}
                           optionsError={assigneeOptionsResult.error}
-                          defaultExpanded
-                        />
-                      </details>
-                    </div> : <a href="#confirm-schedule" className={styles.actionButtonTint}>일정 확정하기</a>}
+                        /> : <a href="#confirm-schedule" className={styles.actionButtonTint}>일정 확정하기</a>}
                   </div>
                 </div>
               </div>
@@ -573,7 +566,7 @@ export default async function StudioApplicationDetailPage({ params, searchParams
                 version: reportView?.published?.version ?? null,
                 publishedAt: reportView?.published?.publishedAt ?? null,
                 changed: reportView?.assessmentChangedSincePublish ?? false,
-                canPublish: Boolean(entitlements.canPublishParentReport && reportView?.preview && reportView.assessmentUpdatedAt && !publishedReportResult.error && reportView.blockers.length === 0)
+                canPublish: Boolean(!reportHistory.everSent && !reportHistory.error && entitlements.canPublishParentReport && reportView?.preview && reportView.assessmentUpdatedAt && !publishedReportResult.error && reportView.blockers.length === 0)
               },
               parentDecision: { error: parentDecisionResult.error, value: parentDecisionResult.data?.decision ?? null, createdAt: parentDecisionResult.data?.createdAt ?? null },
               registration: { error: registrationResult.error, result: registrationResult.data?.result ?? null, resolvedAt: registrationResult.data?.resolvedAt ?? null }
@@ -586,6 +579,7 @@ export default async function StudioApplicationDetailPage({ params, searchParams
             parentDecisionSection={
               <StudioParentDecision
                 key="parent-decision"
+                titleIcon={<ApplicationDetailIcon name="thought" />}
                 decision={parentDecisionResult.data}
                 loadError={parentDecisionResult.error}
               />
@@ -597,6 +591,7 @@ export default async function StudioApplicationDetailPage({ params, searchParams
                 reportView.publishedReportLoadError ||
                 reportView.blockers.length > 0) ? (
                 <ApplicationReportPublishing
+                  everSent={reportHistory.everSent}
                   key="parent-report"
                   embedded
                   emphasizePublish={(!reportView.published || reportView.assessmentChangedSincePublish) && data.status === "completed" && data.registrationStatus !== "enrolled" && data.registrationStatus !== "not_enrolled" && !registrationResult.data && !registrationResult.error}
@@ -605,7 +600,7 @@ export default async function StudioApplicationDetailPage({ params, searchParams
                   publishedSnapshot={reportView.published?.content ?? null}
                   publishedVersion={reportView.published?.version ?? null}
                   publishedAt={reportView.published?.publishedAt ?? null}
-                  publishedReportLoadError={reportView.publishedReportLoadError}
+                  publishedReportLoadError={reportHistory.error ? "발송 이력을 확인하지 못했습니다." : reportView.publishedReportLoadError}
                   assessmentUpdatedAt={reportView.assessmentUpdatedAt}
                   assessmentChangedSincePublish={reportView.assessmentChangedSincePublish}
                   blockers={reportView.blockers}
@@ -615,7 +610,7 @@ export default async function StudioApplicationDetailPage({ params, searchParams
             }
             referenceSections={
               <section key="application-reference" className={styles.applicationInfoSection} aria-label="신청 참고 정보">
-                <h2 className={styles.applicationInfoTitle}>신청 참고 정보</h2>
+                <h2 className={styles.applicationInfoTitle}><ApplicationDetailIcon name="info" />신청 참고 정보</h2>
                 <dl className={styles.referenceGrid}>
                   {[
                     { label: "관심 과목", value: detailView.interestSubjects },
@@ -635,7 +630,7 @@ export default async function StudioApplicationDetailPage({ params, searchParams
         <section key="basic-info" className={styles.applicationInfoSection} aria-labelledby="application-info-title">
             <div className={styles.applicationInfoHeader}>
               <h2 id="application-info-title" className={styles.applicationInfoTitle}>
-                학생 / 학부모 정보
+                <ApplicationDetailIcon name="person" />학생 / 학부모 정보
               </h2>
             </div>
             <div className={styles.applicationInfoBody}>
@@ -673,7 +668,7 @@ export default async function StudioApplicationDetailPage({ params, searchParams
             </div>
         </section>
         <section id="detail-trial-schedule" key="trial-schedule" className={styles.applicationInfoSection} aria-label="체험 일정">
-          <div className={styles.scheduleHead}><h2 className={styles.applicationInfoTitle}>체험 일정</h2>
+          <div className={styles.scheduleHead}><h2 className={styles.applicationInfoTitle}><ApplicationDetailIcon name="calendar" />체험 일정</h2>
             <StudioStatusBadge tone={data.status === "canceled" ? "red" : detailView.confirmedSchedule ? "green" : "gray"}>
               {data.status === "canceled" ? detailView.caseStageLabel : data.status === "completed" ? "완료" : detailView.confirmedSchedule ? "확정" : "미확정"}
             </StudioStatusBadge>

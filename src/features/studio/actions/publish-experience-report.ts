@@ -32,6 +32,7 @@ const defaultState: PublishExperienceReportActionState = {
  * 같은 버튼을 다시 누르는 것 말고 할 수 있는 일이 없다.
  */
 const PUBLISH_ERROR_MESSAGES: Record<string, string> = {
+  report_already_sent: "이미 발송한 리포트는 다시 발송할 수 없습니다.",
   parent_not_linked: "학부모 계정이 연결되어 있지 않습니다. 연결 후 리포트를 발행할 수 있어요.",
   legacy_observations_require_review:
     "기존 기준으로 작성된 관찰 기록입니다. 현재 기준의 관찰 항목을 다시 확인한 뒤 발행해 주세요.",

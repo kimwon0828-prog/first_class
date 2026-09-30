@@ -440,6 +440,9 @@ type MockFeedback = ParentExperienceFeedback & { applicationId: string; parentId
 const feedbackStore = globalThis as typeof globalThis & { __firstClassMockFeedback__?: MockFeedback[] }
 const experienceFeedback = feedbackStore.__firstClassMockFeedback__ ?? (feedbackStore.__firstClassMockFeedback__ = [])
 const privateFeedbackDto = (row: MockFeedback): ParentExperienceFeedback => ({ selectedChipIds: [...row.selectedChipIds], privateNote: row.privateNote, createdAt: row.createdAt, updatedAt: row.updatedAt })
+const registrationDetails = new Map<string, {reasonIds: string[]; note: string | null}>()
+const enrollmentNotified = new Set<string>()
+
 const applications =
   globalMockStore.__firstClassMockApplications__ ??
   (globalMockStore.__firstClassMockApplications__ = [])
@@ -2131,6 +2134,8 @@ export const mockDataAdapter: DataAdapter = {
       memo: "memo" in application ? application.memo ?? null : null,
       trialResult,
       trialResultLoadError: null,
+      registrationReasonIds: registrationDetails.get(applicationId)?.reasonIds ?? [],
+      registrationNote: registrationDetails.get(applicationId)?.note ?? null,
       consultationLogs: itemConsultationLogs,
       logs
     }
@@ -2343,6 +2348,18 @@ export const mockDataAdapter: DataAdapter = {
     void organizationId
     return { subscription: null, override: null } satisfies OrganizationBillingSnapshot
   },
+  async saveStudioRegistrationResult(input) {
+    const target = applications.find(a => a.id === input.applicationId)
+    if (!target || target.status !== "completed" || target.noShowAt) throw new Error("application_not_completed")
+    if (target.registrationStatus === "enrolled") enrollmentNotified.add(input.applicationId)
+    const prior = registrationDetails.get(input.applicationId)
+    const changed = target.registrationStatus !== input.status || JSON.stringify(prior?.reasonIds ?? []) !== JSON.stringify(input.reasonIds) || (prior?.note ?? null) !== input.note
+    const enrollmentTransition = changed && input.status === "enrolled" && target.registrationStatus !== "enrolled" && !enrollmentNotified.has(input.applicationId)
+    if (enrollmentTransition) enrollmentNotified.add(input.applicationId)
+    target.registrationStatus = input.status
+    registrationDetails.set(input.applicationId, { reasonIds: input.reasonIds, note: input.note })
+    return { changed, enrollmentTransition }
+  },
   async createStudioConsultationTransaction(input: CreateStudioConsultationTransactionInput) {
     // in-memory 라 원자성은 구조적으로 보장된다. supabase 함수와 같은 순서·같은 판정을 쓴다.
     const target = applications.find((item) => item.id === input.applicationId)
@@ -2369,31 +2386,9 @@ export const mockDataAdapter: DataAdapter = {
       throw new Error("application_not_completed")
     }
 
-    if (target.registrationStatus === "enrolled" || target.registrationStatus === "not_enrolled") {
-      throw new Error("application_registration_terminal")
-    }
-
     const now = new Date().toISOString()
-    const reason = input.registrationStatus === "not_enrolled" ? input.unregisteredReason : null
-    const reasonNote =
-      input.registrationStatus === "not_enrolled" && input.unregisteredReason === "other"
-        ? input.unregisteredReasonNote
-        : null
-    const outcomeUpdated =
-      target.registrationStatus !== input.registrationStatus ||
-      target.unregisteredReason !== reason ||
-      target.unregisteredReasonNote !== reasonNote
-
-    if (outcomeUpdated) {
-      target.registrationStatus = input.registrationStatus
-      target.enrolledAt = input.registrationStatus === "enrolled" ? now : null
-      // 위 종결 guard 를 지났으므로 이전 상태는 undecided | pending 이다.
-      // "이미 미등록이던 Case 의 lost_at 유지" 분기는 여기서 도달할 수 없다.
-      target.lostAt = input.registrationStatus === "not_enrolled" ? now : null
-      target.unregisteredReason = reason
-      target.unregisteredReasonNote = reasonNote
-    }
-
+    const reason = target.unregisteredReason
+    const reasonNote = target.unregisteredReasonNote
     if (input.preferenceProvided) {
       const changed =
         JSON.stringify(target.regularSchedulePreference ?? null) !==
@@ -2417,7 +2412,8 @@ export const mockDataAdapter: DataAdapter = {
       activityType: "CONSULTATION",
       channel: input.channel,
       sentiment: input.sentiment,
-      registrationStatusSnapshot: input.registrationStatus,
+      timeFlexibility: input.timeFlexibility ?? null,
+      registrationStatusSnapshot: target.registrationStatus,
       regularSchedulePreferenceSnapshot: target.regularSchedulePreference,
       regularSchedulePreferenceNoteSnapshot: target.regularSchedulePreferenceNote,
       unregisteredReasonSnapshot: reason,
@@ -2430,23 +2426,10 @@ export const mockDataAdapter: DataAdapter = {
       updatedAt: input.occurredAt
     })
 
-    if (outcomeUpdated) {
-      applicationLogs.unshift({
-        id: `log-${applicationLogs.length + 1}`,
-        applicationId: input.applicationId,
-        fromStatus: target.status,
-        toStatus: target.status,
-        actorId: mockStudioActorProfileId,
-        actorName: "테스트 선생님",
-        note: input.outcomeNote,
-        createdAt: now
-      })
-    }
-
     return {
       mode: "created" as const,
-      outcomeUpdated,
-      enrollmentTransition: outcomeUpdated && input.registrationStatus === "enrolled",
+      outcomeUpdated: false,
+      enrollmentTransition: false,
       registrationStatus: target.registrationStatus
     }
   },
@@ -2522,18 +2505,7 @@ export const mockDataAdapter: DataAdapter = {
     const existing = trialResults.find((item) => item.applicationId === input.applicationId) ?? null
     const nowIso = new Date().toISOString()
 
-    if (existing) {
-      existing.observations = normalizedObservations
-      existing.parentReaction = input.parentReaction
-      existing.publicSummary = input.publicSummary
-      existing.recommendedCourse = input.recommendedCourse
-      existing.recommendedLevel = input.recommendedLevel
-      existing.recommendedSchedule = input.recommendedSchedule
-      existing.nextAction = input.nextAction
-      existing.note = input.note
-      existing.updatedAt = nowIso
-      return "updated"
-    }
+    if (existing) throw new Error("trial_result_already_finalized")
 
     trialResults.push({
       id: `trial-result-${trialResults.length + 1}`,
@@ -2652,6 +2624,7 @@ export const mockDataAdapter: DataAdapter = {
       .sort((left, right) => right.version - left.version)
   },
   async publishExperienceReport(applicationId: string, expectedAssessmentUpdatedAt: string) {
+    if (experienceReports.some(r => r.applicationId === applicationId)) throw new Error("report_already_sent")
     const application = applications.find((item) => item.id === applicationId)
     if (!application) {
       throw new Error("application_not_found_or_forbidden")

@@ -2,22 +2,14 @@
 
 import { revalidatePath } from "next/cache"
 
-import { logSmsEventSafely } from "@/features/notifications/sms/log-sms-event"
 import { readRegularSchedulePreferenceInput } from "@/features/studio/lib/regular-schedule-preference-input"
 import { requireStudioEntitlement } from "@/features/billing/lib/require-entitlement"
 import { requireTeacherStudioAccess } from "@/features/studio/lib/require-teacher-studio-access"
 import { parseSeoulDateTimeLocalToIso } from "@/features/studio/lib/seoul-datetime"
-import {
-  TRIAL_RESULT_REGISTRATION_OPTIONS,
-  TRIAL_RESULT_UNREGISTERED_REASON_OPTIONS
-} from "@/features/studio/lib/trial-result-options"
 import { getStudioApplicationDetail } from "@/features/studio/queries/get-studio-application-detail"
 import { dataAdapter } from "@/shared/lib/db"
 import type {
-  ApplicationRegistrationStatus,
-  ApplicationUnregisteredReason,
   ConsultationLogChannel,
-  ConsultationLogNextAction,
   ConsultationSentiment
 } from "@/shared/lib/db/adapter"
 
@@ -38,12 +30,6 @@ const defaultState: CreateConsultationLogActionState = {
   successToken: null
 }
 
-const REGISTRATION_STATUS_VALUES = new Set(
-  TRIAL_RESULT_REGISTRATION_OPTIONS.map((item) => item.value)
-)
-const UNREGISTERED_REASON_VALUES = new Set(
-  TRIAL_RESULT_UNREGISTERED_REASON_OPTIONS.map((item) => item.value)
-)
 const CHANNEL_VALUES = new Set<ConsultationLogChannel>(["PHONE", "KAKAO", "SMS", "VISIT", "OTHER"])
 const SENTIMENT_VALUES = new Set<ConsultationSentiment>(["POSITIVE", "NEUTRAL", "NEGATIVE"])
 
@@ -54,30 +40,6 @@ const normalizeOptionalText = (value: FormDataEntryValue | null) => {
 
   const normalized = value.trim()
   return normalized.length > 0 ? normalized : null
-}
-
-const normalizeRegistrationStatus = (
-  value: FormDataEntryValue | null
-): ApplicationRegistrationStatus | null => {
-  if (typeof value !== "string" || value.trim().length === 0) {
-    return null
-  }
-
-  return REGISTRATION_STATUS_VALUES.has(value as ApplicationRegistrationStatus)
-    ? (value as ApplicationRegistrationStatus)
-    : null
-}
-
-const normalizeUnregisteredReason = (
-  value: FormDataEntryValue | null
-): ApplicationUnregisteredReason | null => {
-  if (typeof value !== "string" || value.trim().length === 0) {
-    return null
-  }
-
-  return UNREGISTERED_REASON_VALUES.has(value as ApplicationUnregisteredReason)
-    ? (value as ApplicationUnregisteredReason)
-    : null
 }
 
 const normalizeChannel = (value: FormDataEntryValue | null): ConsultationLogChannel | null => {
@@ -94,25 +56,6 @@ const normalizeSentiment = (value: FormDataEntryValue | null): ConsultationSenti
   }
 
   return SENTIMENT_VALUES.has(value as ConsultationSentiment) ? (value as ConsultationSentiment) : null
-}
-
-const resolveConsultationNextAction = (
-  registrationStatus: ApplicationRegistrationStatus,
-  nextContactAt: string | null
-): ConsultationLogNextAction => {
-  if (registrationStatus === "enrolled") {
-    return "REGISTER"
-  }
-
-  if (registrationStatus === "not_enrolled") {
-    return "LOST"
-  }
-
-  if (nextContactAt) {
-    return "FOLLOW_UP"
-  }
-
-  return "NONE"
 }
 
 export async function createConsultationLogAction(
@@ -151,9 +94,7 @@ export async function createConsultationLogAction(
     }
   }
 
-  // 종결 여부는 여기서 판정하지 않는다. transaction 안에서 잠근 row 를 보고,
-  // 그것도 submissionId 중복 확인 다음이다. 첫 저장이 commit 됐는데 응답만 유실된 재시도는
-  // "종결된 신청" 오류가 아니라 duplicate 로 끝나야 하기 때문이다.
+  // Registration state never gates optional contact records. DB checks lifecycle and ownership.
 
   const submissionId = normalizeOptionalText(formData.get("submissionId"))
   if (!submissionId) {
@@ -187,58 +128,13 @@ export async function createConsultationLogAction(
     }
   }
 
-  const registrationStatus = normalizeRegistrationStatus(formData.get("registrationStatus"))
-  if (!registrationStatus) {
-    return {
-      status: "error",
-      message: "등록 상태 값이 올바르지 않습니다."
-    }
-  }
-
-  const unregisteredReason = normalizeUnregisteredReason(formData.get("unregisteredReason"))
-  const unregisteredReasonNote = normalizeOptionalText(formData.get("unregisteredReasonNote"))
-
-  if (formData.get("unregisteredReason") && !unregisteredReason) {
-    return {
-      status: "error",
-      message: "미등록 사유 값이 올바르지 않습니다."
-    }
-  }
-
-  if (registrationStatus === "not_enrolled" && !unregisteredReason) {
-    return {
-      status: "error",
-      message: "미등록 사유를 선택해 주세요."
-    }
-  }
-
-  if (
-    registrationStatus === "not_enrolled" &&
-    unregisteredReason === "other" &&
-    !unregisteredReasonNote
-  ) {
-    return {
-      status: "error",
-      message: "기타 사유를 입력해 주세요."
-    }
-  }
-
   const nextContactInput = normalizeOptionalText(formData.get("nextContactAt"))
-  const nextContactAt =
-    registrationStatus === "enrolled" || registrationStatus === "not_enrolled"
-      ? null
-      : nextContactInput
-        ? parseSeoulDateTimeLocalToIso(nextContactInput)
-        : null
-
-  if (nextContactInput && registrationStatus !== "enrolled" && registrationStatus !== "not_enrolled" && !nextContactAt) {
-    return {
-      status: "error",
-      message: "다음 연락일 형식이 올바르지 않습니다."
-    }
-  }
-
-  // 희망 일정은 선택 입력이다. 지금 UI 에는 필드가 없으므로 대부분 "미전달"로 들어온다.
+  const nextContactAt = nextContactInput ? parseSeoulDateTimeLocalToIso(nextContactInput) : current.nextContactAt
+  if (nextContactInput && !nextContactAt) return { status: "error", message: "다음 연락일 형식이 올바르지 않습니다." }
+  const timeFlexibility = normalizeOptionalText(formData.get("timeFlexibility"))
+  if (timeFlexibility && !["exact", "plus_minus_30", "same_day_flexible", "flexible"].includes(timeFlexibility))
+    return { status: "error", message: "시간 유연성을 확인해 주세요." }
+  // 희망 일정은 선택 입력이다. 건드리지 않은 값은 미전달로 보존한다.
   // "미전달"과 "undecided"를 절대 같게 처리하지 않는다.
   const preferenceInput = readRegularSchedulePreferenceInput(formData)
   if (preferenceInput.status === "invalid") {
@@ -248,17 +144,11 @@ export async function createConsultationLogAction(
     }
   }
 
-  const occurredAt = new Date().toISOString()
-  const resolvedUnregisteredReason =
-    registrationStatus === "not_enrolled" ? unregisteredReason : null
-  const resolvedUnregisteredReasonNote =
-    registrationStatus === "not_enrolled" && unregisteredReason === "other"
-      ? unregisteredReasonNote
-      : null
-  const nextAction = resolveConsultationNextAction(registrationStatus, nextContactAt)
-
+  const occurredInput = normalizeOptionalText(formData.get("occurredAt"))
+  const occurredAt = occurredInput ? parseSeoulDateTimeLocalToIso(occurredInput) : new Date().toISOString()
+  if (!occurredAt) return { status: "error", message: "상담 일시를 확인해 주세요." }
   try {
-    // 등록 결과 · 상담 로그 · Case 스냅샷 · 감사 로그를 하나의 transaction 으로 저장한다.
+    // 상담 로그와 희망 일정/다음 연락 스냅샷만 하나의 transaction으로 저장한다.
     // 조직 스코프, 상태 guard, 멱등 판정은 전부 잠근 row 기준으로 여기 안에서 다시 확인된다.
     // 위에서 읽은 current 는 form 문맥과 희망 일정 비교용이지 transaction 의 근거가 아니다.
     const result = await dataAdapter.createStudioConsultationTransaction({
@@ -268,36 +158,14 @@ export async function createConsultationLogAction(
       channel,
       sentiment,
       note,
-      registrationStatus,
-      unregisteredReason: resolvedUnregisteredReason,
-      unregisteredReasonNote: resolvedUnregisteredReasonNote,
-      nextAction,
+      nextAction: nextContactAt ? "FOLLOW_UP" : "NONE",
+      timeFlexibility,
       nextContactAt,
       // 미전달이면 Case 의 희망 일정을 건드리지 않는다. undecided 와 같게 처리하지 않는다.
       preferenceProvided: preferenceInput.status === "present",
       preference: preferenceInput.status === "present" ? preferenceInput.preference : null,
-      preferenceNote: preferenceInput.status === "present" ? preferenceInput.note : null,
-      outcomeNote: "상담 기록에서 등록 전환을 저장했습니다."
+      preferenceNote: preferenceInput.status === "present" ? preferenceInput.note : null
     })
-
-    // 저장 commit 이후에만 보낸다. rollback 이면 여기까지 오지 않는다.
-    // 같은 submissionId 재제출(duplicate)은 첫 제출에서 이미 발송했으므로 다시 보내지 않는다.
-    // logSmsEventSafely 는 실패해도 throw 하지 않아 저장을 되돌리지 않는다.
-    if (result.mode === "created" && result.enrollmentTransition) {
-      const updated = await dataAdapter
-        .getStudioApplicationDetail(applicationId, teacher.organizationId)
-        .catch(() => null)
-
-      if (updated) {
-        await logSmsEventSafely({
-          organizationId: teacher.organizationId,
-          application: updated,
-          createdBy: teacher.id,
-          recipientType: "parent",
-          eventType: "trial_enrolled"
-        })
-      }
-    }
 
     // 저장은 이미 commit 됐다. 화면 갱신이 실패해도 "저장 실패"로 보고하지 않는다.
     try {
@@ -335,14 +203,6 @@ export async function createConsultationLogAction(
       return {
         status: "error",
         message: "체험 완료 이후에만 상담 기록을 추가할 수 있습니다."
-      }
-    }
-
-    // 저장 직전에 다른 창에서 종결됐다는 뜻이다. 진입 guard 와 같은 문구를 쓴다.
-    if (message === "application_registration_terminal") {
-      return {
-        status: "error",
-        message: "종결된 신청에는 새 상담 기록을 추가할 수 없습니다."
       }
     }
 

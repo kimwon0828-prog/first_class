@@ -200,6 +200,8 @@ export async function upsertTrialResultAction(
     }
   }
 
+  if (current.trialResult) return { status: "error", message: "이미 확정된 체험 기록은 수정할 수 없습니다." }
+
   const submitted = normalizeObservationValues(formData.getAll("observations"))
   if (submitted.status === "legacy") {
     return {
@@ -216,17 +218,8 @@ export async function upsertTrialResultAction(
     }
   }
 
-  // 관찰 항목을 건드리지 않은 저장은 기존 값을 그대로 다시 쓴다.
-  //
-  // 문구를 저장하던 시절의 값이 들어 있는 row 는 폼의 canonical 토글로 표현할 수
-  // 없다. 추천 과정만 고치는 저장에서 폼이 보낸 빈 목록으로 덮으면, 원장이 건드린
-  // 적도 없는 과거 관찰 기록이 조용히 사라진다.
-  //
-  // 반대로 원장이 관찰 항목을 실제로 선택했다면 그 선택이 기준이다. 이때 legacy
-  // 값은 대체된다 — 폼이 그렇게 안내한다.
-  const observationsTouched = formData.get("observationsTouched") === "true"
-  const preservedObservations = current.trialResult?.observations ?? []
-  const observations = observationsTouched ? submitted.values : preservedObservations
+  // Existing rows were rejected above; a new finalization stores the submitted canonical values.
+  const observations = submitted.values
 
   // 한 row 는 한 표기만 쓴다. 위 두 갈래는 각각 canonical 전용 · 기존 배열 그대로라
   // 여기까지 섞인 배열이 오지 않는다. DB CHECK 도 같은 것을 막는다.
@@ -247,8 +240,8 @@ export async function upsertTrialResultAction(
     note: normalizeOptionalText(formData.get("note")),
     // 총평은 note 와 다른 칸이다. 같은 값을 복사하지 않는다.
     publicSummary: normalizeOptionalText(formData.get("publicSummary")),
-    parentReaction: current.trialResult?.parentReaction ?? null,
-    nextAction: current.trialResult?.nextAction ?? null
+    parentReaction: null,
+    nextAction: null
   }
 
   const changedFieldLabels = getChangedFieldLabels(current, nextValue)
@@ -278,9 +271,7 @@ export async function upsertTrialResultAction(
     return {
       status: "success",
       message:
-        mode === "created"
-          ? `체험 결과를 기록했습니다${suffix}.`
-          : `체험 결과를 수정했습니다${suffix}.`,
+        `체험 기록을 확정했습니다${suffix}.`,
       mode,
       successToken: crypto.randomUUID()
     }

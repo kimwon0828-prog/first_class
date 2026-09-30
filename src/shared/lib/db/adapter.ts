@@ -72,6 +72,7 @@ export type ConsultationSentiment = "POSITIVE" | "NEUTRAL" | "NEGATIVE"
 export type ConsultationLogNextAction = "REGISTER" | "LOST" | "FOLLOW_UP" | "NONE"
 
 export type StudioConsultationLog = {
+  timeFlexibility?: string | null
   id: string
   applicationId: string
   occurredAt: string
@@ -858,6 +859,8 @@ export type StudioConsultationPipelineApplicationItem = {
 export type StudioApplicationDetailReadOptions = { allowPartialTrialResult?: boolean }
 
 export type StudioApplicationDetail = StudioApplicationSummary & {
+  registrationReasonIds?: string[]
+  registrationNote?: string | null
   confirmedScheduleBlockId: string | null
   childSchool: string | null
   childNotes: string | null
@@ -1145,6 +1148,7 @@ export type CreateStudioConsultationLogInput = {
  * updated_at bump 여부는 호출자가 정하지 않는다. DB 가 기존 값과 직접 비교한다.
  */
 export type CreateStudioConsultationTransactionInput = {
+  timeFlexibility?: string | null
   /** consultation_logs.id 로 쓰이는 멱등 키. */
   submissionId: string
   applicationId: string
@@ -1152,16 +1156,11 @@ export type CreateStudioConsultationTransactionInput = {
   channel: ConsultationLogChannel
   sentiment: ConsultationSentiment
   note: string
-  registrationStatus: ApplicationRegistrationStatus
-  unregisteredReason: ApplicationUnregisteredReason | null
-  unregisteredReasonNote: string | null
   nextAction: ConsultationLogNextAction
   nextContactAt: string | null
   preferenceProvided: boolean
   preference: RegularSchedulePreference | null
   preferenceNote: string | null
-  /** 등록 결과가 실제로 바뀔 때만 application_logs 에 남는 문구. */
-  outcomeNote: string
 }
 
 export type StudioConsultationTransactionResult = {
@@ -1427,6 +1426,7 @@ export interface DataAdapter {
   /** 등록 결과 + 상담 로그 + Case 스냅샷 + 감사 로그를 한 transaction 으로 저장한다. */
   /** 요금제 사실과 내부 override 를 그대로 읽는다. 해석은 billing resolver 가 한다. */
   getOrganizationBillingSnapshot(organizationId: string): Promise<OrganizationBillingSnapshot>
+  saveStudioRegistrationResult(input: { applicationId: string; status: ApplicationRegistrationStatus; reasonIds: string[]; note: string | null }): Promise<{ changed: boolean; enrollmentTransition: boolean }>
   createStudioConsultationTransaction(
     input: CreateStudioConsultationTransactionInput
   ): Promise<StudioConsultationTransactionResult>

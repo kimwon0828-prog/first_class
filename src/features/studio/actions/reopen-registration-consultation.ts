@@ -133,23 +133,7 @@ export async function reopenRegistrationConsultationAction(
     // registration_status 를 pending 으로 되돌리면 기존 outcome 계약에 따라
     // lost_at / unregistered_reason / unregistered_reason_note 가 정리된다.
     // completed_at, 희망 일정, 체험 결과는 이 UPDATE 의 대상이 아니라 그대로 남는다.
-    await dataAdapter.updateStudioApplicationOutcome({
-      applicationId,
-      actorId: teacher.id,
-      currentStatus: current.status,
-      previousRegistrationStatus: current.registrationStatus,
-      previousLostAt: current.lostAt,
-      consultationNote: current.consultationNote,
-      trialFeedback: current.trialFeedback,
-      registeredCourse: current.registeredCourse,
-      finalLevel: current.finalLevel,
-      finalSchedule: current.finalSchedule,
-      followUpNote: current.followUpNote,
-      registrationStatus: "pending",
-      unregisteredReason: null,
-      unregisteredReasonNote: null,
-      note: "등록 상담을 다시 시작했습니다."
-    })
+    await dataAdapter.saveStudioRegistrationResult({ applicationId, status: "pending", reasonIds: [], note: null })
 
     revalidatePath("/studio")
     revalidatePath("/studio/cases")

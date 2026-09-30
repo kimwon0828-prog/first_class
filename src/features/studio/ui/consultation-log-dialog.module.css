@@ -1,0 +1,53 @@
+dialog.dialog {
+  width: min(600px, calc(100vw - 32px));
+  max-width: none;
+  max-height: calc(100dvh - 32px);
+  margin: auto;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  color: var(--text-1);
+  box-shadow: 0 12px 40px #172d231a;
+}
+.dialog[open] { display: flex; flex-direction: column; }
+.dialog::backdrop { background: #172d2366; }
+.header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: var(--s5) var(--s5) var(--s4); flex-shrink: 0; }
+.header h3 { margin: 0; font-size: 20px; font-weight: 700; }
+.header p, .hint { margin: 6px 0 0; color: var(--text-2); font-size: 12px; line-height: 1.55; }
+.close { border: 0; background: transparent; color: var(--text-2); font-size: 24px; line-height: 1; padding: 4px; cursor: pointer; }
+.form { display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
+.body { display: grid; gap: var(--s4); padding: 0 var(--s5) var(--s5); overflow-y: auto; min-height: 0; overscroll-behavior: contain; }
+.group { margin: 0; padding: 0; border: 0; min-width: 0; }
+.group legend, .field > span, .schedule h4 { margin: 0 0 8px; padding: 0; font-size: 13px; font-weight: 700; }
+.chips { display: flex; flex-wrap: wrap; gap: var(--s2); }
+.chips button, .actions button, .addButton { border: 1px solid var(--border-strong); border-radius: var(--r-sm); background: var(--surface); color: var(--text-2); padding: 9px 14px; font: inherit; font-size: 13px; cursor: pointer; }
+.chips button[aria-pressed="true"] { border-color: var(--brand-700); background: var(--brand-50); color: var(--brand-700); font-weight: 700; }
+.field { display: grid; min-width: 0; }
+.field > span { display: block; }
+.dialog input, .dialog select, .dialog textarea { width: 100%; min-width: 0; box-sizing: border-box; border: 1px solid var(--border-strong); border-radius: var(--r-sm); background: var(--surface); padding: 10px 11px; color: inherit; font: inherit; font-size: 13px; }
+.dialog textarea { resize: vertical; line-height: 1.6; }
+.dialog textarea::placeholder { color: var(--text-3); }
+.field input[type="datetime-local"] { max-width: 310px; }
+.schedule { border-top: 1px solid var(--border); padding-top: var(--s4); min-width: 0; }
+.schedule h4 { margin-bottom: 0; }
+.schedule h4 span, .secondary > span { color: var(--text-2); font-weight: 500; }
+.rowGroup { margin-top: 10px; }
+.row { display: grid; grid-template-columns: minmax(70px, 1fr) minmax(82px, 1fr) 12px minmax(82px, 1fr) 36px; align-items: center; gap: var(--s2); }
+.separator { color: var(--text-3); text-align: center; font-size: 12px; }
+.textButton { padding: 4px 0; border: 0; color: var(--text-2); background: transparent; font: inherit; font-size: 12px; cursor: pointer; }
+.addButton { margin-top: 10px; padding: 8px 11px; color: var(--brand-700); }
+.footer { flex-shrink: 0; padding: 14px 24px; border-top: 1px solid var(--border); background: var(--surface); }
+.actions { display: flex; justify-content: flex-end; gap: 8px; }
+.actions .primary { background: var(--brand-700); border-color: var(--brand-700); color: var(--surface); font-weight: 700; min-width: 94px; }
+.error { margin: 6px 0; color: var(--red-fg); font-size: 12px; line-height: 1.5; overflow-wrap: anywhere; }
+.dialog :is(button, input, select, textarea):focus-visible { outline: 2px solid var(--brand-700); outline-offset: 2px; }
+.dialog :disabled { opacity: .55; cursor: not-allowed; }
+@media (max-width: 480px) {
+  .header { padding: 18px 16px 14px; }
+  .body { padding: 0 16px 18px; }
+  .footer { padding: 12px 16px; }
+  .row { grid-template-columns: minmax(60px, 1fr) minmax(68px, 1fr) 8px minmax(68px, 1fr) 28px; gap: 4px; }
+  .row select { padding: 9px 3px; }
+}

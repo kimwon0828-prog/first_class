@@ -373,6 +373,7 @@ type TrialResultRow = TrialResultFieldsRow & {
 }
 
 type ConsultationLogRow = {
+  time_flexibility?: string | null
   id: string
   application_id: string
   occurred_at: string
@@ -1087,6 +1088,7 @@ const mapStudioTrialResult = (row: TrialResultRow): StudioTrialResult => ({
 })
 
 const mapStudioConsultationLog = (row: ConsultationLogRow): StudioConsultationLog => ({
+  timeFlexibility: row.time_flexibility ?? null,
   id: row.id,
   applicationId: row.application_id,
   occurredAt: row.occurred_at,
@@ -4779,7 +4781,7 @@ export const supabaseDataAdapter: DataAdapter = {
     const { data, error } = await supabase
       .from("studio_trial_applications")
       .select(
-        "id, class_id, parent_id, child_name, child_grade, parent_name, parent_phone, child_school, child_notes, subject_experience_yn, subject_experience_duration, current_level, interest_subjects, preferred_regular_schedule, goal_type, goal_note, class_schedule_id, requested_slot_at, requested_schedule_block_id, selected_schedule_label, confirmed_slot_at, confirmed_schedule_block_id, assigned_teacher_id, contacted_at, scheduled_at, completed_at, enrolled_at, canceled_at, no_show_at, consultation_note, trial_feedback, final_level, final_schedule, registration_status, registered_course, unregistered_reason, unregistered_reason_note, lost_at, follow_up_note, next_contact_at, last_activity_at, regular_schedule_preference, regular_schedule_preference_note, regular_schedule_preference_updated_at, memo, status, created_at, updated_at, class_schedules(start_time, end_time), confirmed_block:schedule_blocks!trial_applications_confirmed_schedule_block_id_fkey(start_at, end_at), classes!inner(title, subject, organization_id, program_type, assignment_mode, organizations(name, sido, sigungu, bname))"
+        "id, class_id, parent_id, child_name, child_grade, parent_name, parent_phone, child_school, child_notes, subject_experience_yn, subject_experience_duration, current_level, interest_subjects, preferred_regular_schedule, goal_type, goal_note, class_schedule_id, requested_slot_at, requested_schedule_block_id, selected_schedule_label, confirmed_slot_at, confirmed_schedule_block_id, assigned_teacher_id, contacted_at, scheduled_at, completed_at, enrolled_at, canceled_at, no_show_at, consultation_note, trial_feedback, final_level, final_schedule, registration_status, registration_reason_ids, registration_note, registered_course, unregistered_reason, unregistered_reason_note, lost_at, follow_up_note, next_contact_at, last_activity_at, regular_schedule_preference, regular_schedule_preference_note, regular_schedule_preference_updated_at, memo, status, created_at, updated_at, class_schedules(start_time, end_time), confirmed_block:schedule_blocks!trial_applications_confirmed_schedule_block_id_fkey(start_at, end_at), classes!inner(title, subject, organization_id, program_type, assignment_mode, organizations(name, sido, sigungu, bname))"
       )
       .eq("id", applicationId)
       .eq("classes.organization_id", organizationId)
@@ -4828,7 +4830,7 @@ export const supabaseDataAdapter: DataAdapter = {
     const { data: consultationLogData, error: consultationLogError } = await supabase
       .from("consultation_logs")
       .select(
-        "id, application_id, occurred_at, activity_type, channel, sentiment, registration_status_snapshot, regular_schedule_preference_snapshot, regular_schedule_preference_note_snapshot, unregistered_reason_snapshot, unregistered_reason_note_snapshot, next_action, next_contact_at, note, created_by, created_at, updated_at"
+        "id, application_id, time_flexibility, occurred_at, activity_type, channel, sentiment, registration_status_snapshot, regular_schedule_preference_snapshot, regular_schedule_preference_note_snapshot, unregistered_reason_snapshot, unregistered_reason_note_snapshot, next_action, next_contact_at, note, created_by, created_at, updated_at"
       )
       .eq("application_id", applicationId)
       .order("occurred_at", { ascending: false })
@@ -4858,6 +4860,8 @@ export const supabaseDataAdapter: DataAdapter = {
       finalSchedule: (data as TrialApplicationRow).final_schedule ?? null,
       registrationStatus:
         (data as TrialApplicationRow).registration_status ?? "undecided",
+      registrationReasonIds: (data as unknown as { registration_reason_ids: string[] }).registration_reason_ids,
+      registrationNote: (data as unknown as { registration_note: string | null }).registration_note,
       registeredCourse: (data as TrialApplicationRow).registered_course ?? null,
       unregisteredReason:
         (data as TrialApplicationRow).unregistered_reason ?? null,
@@ -5229,22 +5233,18 @@ export const supabaseDataAdapter: DataAdapter = {
     const supabase = await getSupabaseServerClient()
     // 등록 결과 / 상담 로그 / Case 스냅샷 / 감사 로그를 하나의 transaction 으로 쓴다.
     // 조직 스코프·상태 guard·멱등 판정은 전부 함수 안의 잠근 row 기준이다.
-    const { data, error } = await supabase.rpc("create_studio_consultation", {
+    const { data, error } = await supabase.rpc("record_studio_contact", {
       p_submission_id: input.submissionId,
       p_application_id: input.applicationId,
       p_occurred_at: input.occurredAt,
       p_channel: input.channel,
       p_sentiment: input.sentiment,
       p_note: input.note,
-      p_registration_status: input.registrationStatus,
-      p_unregistered_reason: input.unregisteredReason,
-      p_unregistered_reason_note: input.unregisteredReasonNote,
-      p_next_action: input.nextAction,
       p_next_contact_at: input.nextContactAt,
       p_preference_provided: input.preferenceProvided,
       p_preference: input.preference,
       p_preference_note: input.preferenceNote,
-      p_outcome_note: input.outcomeNote
+      p_flexibility: input.timeFlexibility ?? null
     })
 
     if (error) {
@@ -5338,78 +5338,24 @@ export const supabaseDataAdapter: DataAdapter = {
   },
   async upsertStudioTrialResult(input: UpsertStudioTrialResultInput) {
     const supabase = await getSupabaseServerClient()
-    const nowIso = new Date().toISOString()
-    const { data: existing, error: existingError } = await supabase
-      .from("trial_results")
-      .select("id")
-      .eq("application_id", input.applicationId)
-      .maybeSingle()
-
-    if (existingError) {
-      throw new Error("failed_to_check_trial_result")
-    }
-
-    const normalizedObservations = Array.from(new Set(input.observations.filter((item) => item.trim().length > 0)))
-    const payload = {
-      application_id: input.applicationId,
-      observations: normalizedObservations,
-      parent_reaction: input.parentReaction,
-      recommended_course: input.recommendedCourse,
-      recommended_level: input.recommendedLevel,
-      recommended_schedule: input.recommendedSchedule,
-      next_action: input.nextAction,
-      note: input.note,
-      // 총평은 note 와 다른 칸이다. 같은 값을 복사하지 않는다.
-      public_summary: input.publicSummary,
-      // created_by 는 최초 저장자로 남긴다. 여기는 "마지막으로 고친 사람" 이다.
-      updated_by: input.actorId,
-      updated_at: nowIso
-    }
-
-    if (existing) {
-      const { data, error } = await supabase
-        .from("trial_results")
-        .update(payload)
-        .eq("application_id", input.applicationId)
-        .select("id")
-        .maybeSingle()
-
-      if (error || !data) {
-        throw new Error("failed_to_update_trial_result")
+    const { error } = await supabase.rpc("finalize_studio_trial_result", {
+      p_application_id: input.applicationId, p_content: {
+        observations: input.observations, recommendedCourse: input.recommendedCourse,
+        recommendedLevel: input.recommendedLevel, recommendedSchedule: input.recommendedSchedule,
+        publicSummary: input.publicSummary, note: input.note
       }
-
-      return "updated"
-    }
-
-    const { data, error } = await supabase
-      .from("trial_results")
-      .insert({
-        ...payload,
-        created_by: input.actorId
-      })
-      .select("id")
-      .maybeSingle()
-
-    if (error?.code === "23505") {
-      const { data: conflictedData, error: conflictedError } = await supabase
-        .from("trial_results")
-        .update(payload)
-        .eq("application_id", input.applicationId)
-        .select("id")
-        .maybeSingle()
-
-      if (conflictedError || !conflictedData) {
-        throw new Error("failed_to_update_trial_result")
-      }
-
-      return "updated"
-    }
-
-    if (error || !data) {
-      throw new Error("failed_to_create_trial_result")
-    }
-
+    })
+    if (error) throw new Error(error.message.includes("trial_result_already_finalized") ? "trial_result_already_finalized" : "failed_to_finalize_trial_result")
     return "created"
+  },
+  async saveStudioRegistrationResult(input) {
+    const supabase = await getSupabaseServerClient()
+    const { data, error } = await supabase.rpc("set_studio_registration_result", {
+      p_application_id: input.applicationId, p_status: input.status,
+      p_reason_ids: input.reasonIds, p_note: input.note
+    })
+    if (error || !data) throw new Error("failed_to_save_registration_result")
+    return data as { changed: boolean; enrollmentTransition: boolean }
   },
   async listStudioConversionSources(applicationIds: string[]) {
     if (applicationIds.length === 0) {

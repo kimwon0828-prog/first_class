@@ -297,7 +297,11 @@
 }
 
 .publishForm {
-  display: contents;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
 }
 
 .footnote {
@@ -426,6 +430,8 @@
   min-height: 44px;
   align-content: center;
   cursor: pointer;
+  color: var(--green-fg);
+  font-size: 13px;
 }
 
 /* Embedded in the single record/report step; report documents stay opt-in. */

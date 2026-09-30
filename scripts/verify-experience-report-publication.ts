@@ -354,7 +354,7 @@ for (const method of [
 check("adapter 가 raw jsonb 를 올려보내지 않는다", adapter.includes("decodeExperienceReportSnapshot"))
 check(
   "publish 가 content 를 파라미터로 받지 않는다",
-  adapter.includes("p_application_id: applicationId") && !adapter.includes("p_content")
+  adapter.includes("p_application_id: applicationId") && !adapter.slice(adapter.indexOf("  async publishExperienceReport("), adapter.indexOf("  async withdrawExperienceReport(")).includes("p_content")
 )
 
 console.log("\n── 17. Studio 발행 화면 계약 ──")
@@ -455,21 +455,21 @@ check(
 )
 check(
   "차단 상태면 발행 버튼이 비활성이다",
-  reportUi.includes("disabled={!canPublish || isPublishing || isWithdrawing}")
+  reportUi.includes("disabled={!canPublish || isPublishing}")
 )
 check(
   "처리 중에는 다시 누를 수 없다",
   reportUi.includes('isPublishing\n                ? "발행 중..."') ||
-    reportUi.includes('"발행 중..."')
+    reportUi.includes('"발송 중..."')
 )
-check("철회에 확인 단계가 있다", reportUi.includes("리포트 발행을 철회할까요?"))
+check("발송 후 재발행 UI 없음", !reportUi.includes("새 버전 발행"))
 check(
-  "철회가 삭제가 아니라고 말한다",
-  reportUi.includes("발행 기록은 삭제되지 않고")
+  "발송 후 수정 불가 안내",
+  reportUi.includes("발송 후 수정하거나 다시 발송할 수 없어요.")
 )
 check(
-  "평가 수정 이후 재발행을 안내한다",
-  reportUi.includes("마지막 리포트 발행 이후 수정되었습니다")
+  "발송 이력이 있으면 재발송 불가",
+  reportUi.includes("!publishedVersion && !everSent")
 )
 check("Parent 화면 링크를 만들지 않는다", !reportUi.includes("/record"))
 
@@ -484,7 +484,7 @@ check(
 )
 check(
   "오류를 화면까지 넘긴다",
-  detailPage.includes("publishedReportLoadError={reportView.publishedReportLoadError}")
+  detailPage.includes("publishedReportLoadError={reportHistory.error ?")
 )
 check(
   "오류만 있어도 Section 을 렌더한다",
@@ -508,27 +508,17 @@ check(
   "오류일 때 발행이 막힌다",
   /const canPublish =[\s\S]{0,160}!publishedReportLoadError/.test(reportUi)
 )
-check(
-  "오류일 때 철회가 막힌다",
-  /const canWithdraw =[\s\S]{0,80}!publishedReportLoadError/.test(reportUi) &&
-    reportUi.includes("disabled={!canWithdraw || isPublishing || isWithdrawing}")
-)
-check(
-  "오류일 때 발행 안내 문구를 띄우지 않는다",
-  reportUi.includes("canPublishReport && !publishedReportLoadError ? (")
-)
+check("이력을 읽지 못하면 발행 차단", detailPage.includes('!reportHistory.error'))
+check("발송 이후에는 읽기 전용 UI", !reportUi.includes('submitWithdraw') && reportUi.includes('리포트 보기'))
 check(
   "화면이 발행 권한과 작성 권한을 섞지 않는다",
   reportUi.includes("canPublishReport: boolean") && !reportUi.includes("canWrite:")
 )
-check(
-  "철회 버튼이 발행 권한에 묶이지 않는다",
-  /const canWithdraw =(?![\s\S]{0,80}canPublishReport)/.test(reportUi)
-)
+check("운영 철회 action의 기존 무료 권한 유지", !withdrawAction.includes("requireStudioEntitlement("))
 // 무료 학원은 여기까지 와서 발행만 막힌다. 버튼만 사라지면 화면이 고장난 것처럼 보인다.
 check(
   "발행이 잠기면 이유를 글자로 말한다",
-  reportUi.includes("{!canPublishReport ? (") &&
+  reportUi.includes("{!canPublishReport && !publishedVersion && !everSent ? (") &&
     reportUi.includes("학부모 리포트 발행은 스탠다드 플랜에서 사용할 수 있어요.")
 )
 check(

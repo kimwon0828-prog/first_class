@@ -157,9 +157,9 @@ const deduped = Array.from(
 )
 check("중복 canonical 은 하나로 접힌다", deduped.length === 2, `actual ${deduped.length}`)
 check(
-  "action 과 adapter 둘 다 dedup 한다",
+  "action 과 DB finalize 둘 다 dedup 한다",
   actionSource.includes("Array.from(new Set(normalized))") &&
-    readSource(ADAPTER_PATH).includes("Array.from(new Set(input.observations")
+    readSource("supabase/migrations/20260930110000_studio_experience_workflow_phase1_expand.sql").includes("group by value order by min(ordinality)")
 )
 
 console.log("\n── 6. 기존 legacy 배열이 원문 그대로 보존된다 ──")
@@ -171,9 +171,8 @@ check(
 )
 check("legacy 로 분류된다", describedRow.every((item) => item?.kind === "legacy"))
 check(
-  "관찰을 건드리지 않은 저장은 기존 배열을 다시 쓴다",
-  actionSource.includes('formData.get("observationsTouched") === "true"') &&
-    actionSource.includes("observationsTouched ? submitted.values : preservedObservations")
+  "기존 기록은 재저장을 막아 그대로 보존한다",
+  actionSource.includes('if (current.trialResult) return') && actionSource.includes("const observations = submitted.values")
 )
 
 console.log("\n── 7. legacy row 가 Studio 에서 사라지지 않는다 ──")
@@ -198,7 +197,7 @@ check(
   /add column if not exists updated_by uuid/i.test(migrationSource)
 )
 check("기존 row 를 채우지 않는다(backfill 없음)", !/set\s+updated_by/i.test(migrationSource))
-check("adapter 가 저장할 때 actor 를 넣는다", readSource(ADAPTER_PATH).includes("updated_by: input.actorId"))
+check("DB가 인증된 actor를 직접 기록한다", readSource("supabase/migrations/20260930110000_studio_experience_workflow_phase1_expand.sql").includes("auth.uid(),auth.uid()"))
 
 console.log("\n── 9. 학부모 노출 0 ──")
 // trial_results 는 Studio 전용이다. 학부모 화면 어디에서도 읽지 않는다.
