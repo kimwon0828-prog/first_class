@@ -1,7 +1,10 @@
-"use server"
+import "server-only"
 
 import { normalizeProfileRole } from "@/features/auth/lib/profile-sync"
-import type { TeacherStudioAccess } from "@/features/studio/lib/require-teacher-studio-access"
+import {
+  requireTeacherStudioAccess,
+  type TeacherStudioAccess
+} from "@/features/studio/lib/require-teacher-studio-access"
 import { getSupabaseServiceRoleClient } from "@/integrations/supabase/service-role"
 
 export type StudioSettingsOrganization = {
@@ -55,12 +58,17 @@ type OrganizationRow = {
 export const getStudioSettingsOrganization = async (
   access: TeacherStudioAccess
 ): Promise<StudioSettingsOrganization> => {
+  const currentAccess = await requireTeacherStudioAccess()
+  if (access.id !== currentAccess.id || access.organizationId !== currentAccess.organizationId) {
+    throw new Error("forbidden_studio_organization")
+  }
+
   const serviceRoleClient = getSupabaseServiceRoleClient()
 
   const { data: profileData, error: profileError } = await serviceRoleClient
     .from("profiles")
     .select("role")
-    .eq("id", access.id)
+    .eq("id", currentAccess.id)
     .maybeSingle()
 
   if (profileError || !profileData) {
@@ -91,7 +99,7 @@ export const getStudioSettingsOrganization = async (
         "bcode"
       ].join(", ")
     )
-    .eq("id", access.organizationId)
+    .eq("id", currentAccess.organizationId)
     .maybeSingle()
 
   if (organizationError || !organizationData) {

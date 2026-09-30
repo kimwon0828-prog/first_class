@@ -208,10 +208,12 @@ check("범위) Studio 내부 redirect 도 helper 를 거친다", studioGuard.inc
  * 부르지 않도록 provider 의 훅 하나로 모았다. 그 진입점까지가 허용 범위다.
  */
 const CROSS_PRODUCT_ENTRY_POINTS = [
-  "app/studio/(dashboard)/applications/[id]/page.tsx",
   ...STUDIO_TO_PARENT_SITES,
   PARENT_GUARD,
   "src/features/studio/ui/studio-navigation-provider.tsx",
+  /* MyPage/footer 정책 링크는 Studio host에서 공용 Parent 원문으로 이동한다. */
+  "src/features/studio/ui/studio-mypage-page.tsx",
+  "src/features/studio/ui/studio-workspace-footer.tsx",
   /* S4B: Parent 화면은 이 server resolver 를 거친다. 각자 pure helper 를 부르지 않는다. */
   "src/shared/lib/cross-product-navigation-server.ts"
 ]

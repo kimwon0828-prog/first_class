@@ -1,5 +1,6 @@
-"use server"
+import "server-only"
 
+import { requireTeacherStudioAccess } from "@/features/studio/lib/require-teacher-studio-access"
 import { getSupabaseServiceRoleClient } from "@/integrations/supabase/service-role"
 
 export type AcademyUpdateSnapshot = {
@@ -97,6 +98,11 @@ const parseSnapshot = (value: unknown): AcademyUpdateSnapshot => {
 export const getPendingAcademyUpdateRequest = async (
   organizationId: string
 ): Promise<PendingAcademyUpdateRequest | null> => {
+  const access = await requireTeacherStudioAccess()
+  if (organizationId !== access.organizationId) {
+    throw new Error("forbidden_studio_organization")
+  }
+
   const serviceRoleClient = getSupabaseServiceRoleClient()
   const { data, error } = await serviceRoleClient
     .from("academy_update_requests")
@@ -123,7 +129,7 @@ export const getPendingAcademyUpdateRequest = async (
         "updated_at"
       ].join(", ")
     )
-    .eq("organization_id", organizationId)
+    .eq("organization_id", access.organizationId)
     .eq("status", "pending")
     .maybeSingle()
 

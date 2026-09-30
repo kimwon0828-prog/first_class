@@ -6,6 +6,8 @@ import {
   COMPANY_PHONE_HREF
 } from "@/shared/config/company-info"
 import { LEGAL_LINKS } from "@/shared/config/legal-links"
+import { getParentCrossProductHref } from "@/shared/config/cross-product-navigation"
+import { getRequestHostname } from "@/shared/lib/request-host"
 
 import styles from "./studio-workspace-footer.module.css"
 
@@ -15,7 +17,8 @@ import styles from "./studio-workspace-footer.module.css"
  * 서버 컴포넌트다. 연도를 서버에서 한 번 계산해 hydration 이 필요 없게 한다.
  * 회사 / 고객센터 정보는 shared/config/company-info 하나만 본다 — 여기 다시 적지 않는다.
  */
-export const StudioWorkspaceFooter = () => {
+export const StudioWorkspaceFooter = async () => {
+  const hostname = await getRequestHostname()
   const year = new Date().getFullYear()
 
   return (
@@ -53,7 +56,11 @@ export const StudioWorkspaceFooter = () => {
 
       <nav className={styles.links} aria-label="정책 문서">
         {LEGAL_LINKS.map((link) => (
-          <Link key={link.href} href={link.href} className={styles.link}>
+          <Link
+            key={link.href}
+            href={getParentCrossProductHref({ pathname: link.href, hostname })}
+            className={styles.link}
+          >
             {link.label}
           </Link>
         ))}

@@ -1,5 +1,7 @@
 import type { Metadata } from "next"
 
+import { COMPANY_INFO } from "@/shared/config/company-info"
+
 import { LegalPageLayout } from "../legal-page-layout"
 
 export const metadata: Metadata = {
@@ -131,10 +133,9 @@ export default function TermsPage() {
           body: (
             <>
               <p>
-                서비스 이용과 관련한 문의는 아래 사업자 정보 및 고객 문의 채널이 확정되는 대로
-                업데이트될 예정입니다.
+                서비스 이용과 관련한 문의는 아래 고객센터 이메일로 보내주세요.
               </p>
-              <p>문의 이메일: TODO</p>
+              <p>문의 이메일: {COMPANY_INFO.customerCenterEmail}</p>
             </>
           )
         }

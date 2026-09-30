@@ -1,6 +1,9 @@
 import Link from "next/link"
 
+import { COMPANY_EMAIL_HREF } from "@/shared/config/company-info"
+import { getParentCrossProductHref } from "@/shared/config/cross-product-navigation"
 import { LEGAL_LINKS } from "@/shared/config/legal-links"
+import { getRequestHostname } from "@/shared/lib/request-host"
 import { getStudioNavigationPathResolver } from "@/shared/lib/studio-navigation-server"
 
 import styles from "./studio-mypage-page.module.css"
@@ -35,6 +38,7 @@ type StudioMypagePageProps = {
  */
 export async function StudioMypagePage({ academyName }: StudioMypagePageProps) {
   const studioPath = await getStudioNavigationPathResolver()
+  const hostname = await getRequestHostname()
   return (
     <div className={styles.page}>
       <header className={styles.header}>
@@ -57,8 +61,8 @@ export async function StudioMypagePage({ academyName }: StudioMypagePageProps) {
             href={studioPath("/studio/mypage/profile")}
           />
           <LinkRow
-            title="학원 설정"
-            description="등록된 학원 정보를 확인하고 수정을 요청합니다."
+            title="학원 공식정보"
+            description="등록된 학원 정보를 확인하고 수정 요청합니다."
             href={studioPath("/studio/settings")}
           />
           <LinkRow
@@ -78,7 +82,11 @@ export async function StudioMypagePage({ academyName }: StudioMypagePageProps) {
 
         <div className={styles.list}>
           {LEGAL_LINKS.map((link) => (
-            <LinkRow key={link.href} title={link.label} href={link.href} />
+            <LinkRow
+              key={link.href}
+              title={link.label}
+              href={getParentCrossProductHref({ pathname: link.href, hostname })}
+            />
           ))}
         </div>
       </section>
@@ -91,6 +99,11 @@ export async function StudioMypagePage({ academyName }: StudioMypagePageProps) {
         </div>
 
         <div className={styles.list}>
+          <LinkRow
+            title="서비스 이용 종료 문의"
+            description="서비스 이용 종료가 필요한 경우 고객센터로 문의해 주세요."
+            href={COMPANY_EMAIL_HREF}
+          />
           <Link href={studioPath("/studio/sign-out")} prefetch={false} className={styles.signOutRow}>
             로그아웃
           </Link>
