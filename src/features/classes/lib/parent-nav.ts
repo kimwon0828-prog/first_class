@@ -26,22 +26,7 @@ export const resolveParentNavTab = (pathname: string): ParentNavTab | null => {
     return "record"
   }
 
-  // 관심수업은 IA 상 마이페이지 아래다. 탭에는 없지만 여기서 마이페이지로 읽는다.
-  if (startsWithSegment(pathname, "/my") || startsWithSegment(pathname, "/favorites")) {
-    return "my"
-  }
-
-  // 수업찾기 · 학원찾기는 Home 에서 시작하는 발견 흐름이다. 독립 탭이 아니다.
-  // 알림함도 같다 — Home 상단 종에서 펼치는 상세 화면이라 독립 화면이며 하단 탭을 렌더하지 않는다.
-  if (
-    pathname === "/" ||
-    startsWithSegment(pathname, "/classes") ||
-    startsWithSegment(pathname, "/academies") ||
-    startsWithSegment(pathname, "/academy") ||
-    startsWithSegment(pathname, "/notifications")
-  ) {
-    return "home"
-  }
-
-  return null
+  if (startsWithSegment(pathname, "/my")) return "my"
+  // Only the actual Home root owns the Home tab. Discovery routes have no active tab.
+  return pathname === "/" ? "home" : null
 }

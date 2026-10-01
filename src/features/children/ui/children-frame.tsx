@@ -1,22 +1,15 @@
-import Link from "next/link"
+import { ParentAppShell } from "@/features/classes/ui/parent-app-shell"
+import { ParentHeader } from "@/features/classes/ui/parent-header"
 import type { ReactNode } from "react"
-import { ParentBottomNav } from "@/features/classes/ui/parent-bottom-nav"
 import styles from "../../../../app/my/children/page.module.css"
 
 export function ChildrenFrame({ children }: { children: ReactNode }) {
-  return <main className={styles.page} data-parent-design="v1">
+  return <ParentAppShell className={styles.page} data-parent-design="v1">
     <div className={styles.shell}>
-      <header className={styles.header}>
-        <Link href="/my" aria-label="뒤로가기" className={styles.backButton}>
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m14 6-6 6 6 6M8 12h12" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>
-        </Link>
-        <h1 className={styles.title}>자녀 관리</h1>
-        <span aria-hidden="true" />
-      </header>
+      <ParentHeader title="자녀 관리" backHref="/my" sticky />
       <div className={styles.content}>{children}</div>
     </div>
-    <ParentBottomNav designVersion="v1" />
-  </main>
+  </ParentAppShell>
 }
 
 export function ChildrenSkeleton() {

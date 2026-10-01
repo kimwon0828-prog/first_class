@@ -77,3 +77,7 @@
 .v1 .summary { display: list-item; min-height: 44px; padding-block: var(--s3); font-size: var(--font-c1); color: var(--text-2); font-weight: 500; }
 .v1 .infoBlock { margin: 0 0 var(--s3); gap: var(--s1); overflow-wrap: anywhere; }
 .v1 .infoText, .v1 .notice, .v1 .copyright { font-size: var(--font-c1); line-height: 1.5; color: var(--text-3); }
+
+/* The mobile app keeps policy access in My's service menu. Desktop retains corporate information. */
+@media (max-width: 480px) { .v1 { display: none; } }
+.v1 .link { min-height: 44px; align-items: center; }

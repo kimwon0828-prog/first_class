@@ -1,0 +1,10 @@
+.page { min-height: 100dvh; background: var(--bg); }
+.shell { max-width: var(--col); margin-inline: auto; min-height: 100dvh; background: var(--surface); }
+.body { display: grid; gap: var(--s6); padding: var(--s5); }
+.summary, .field { display: grid; gap: var(--s3); }
+.summary { padding: var(--s4); border: 1px solid var(--border); border-radius: var(--r-lg); }
+.summary span, .field span, .field div, .button { background: var(--neutral-100); border-radius: var(--r-md); }
+.summary span { height: 20px; }
+.summary span:last-child { width: 60%; }
+.field span { width: 30%; height: 16px; }
+.field div, .button { height: 48px; }

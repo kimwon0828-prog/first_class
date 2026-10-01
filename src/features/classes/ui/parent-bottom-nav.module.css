@@ -7,7 +7,7 @@
 .bottomNav {
   position: fixed;
   left: 50%;
-  bottom: calc(var(--parent-nav-inset) + env(safe-area-inset-bottom));
+  bottom: calc(var(--parent-nav-inset) + env(safe-area-inset-bottom, 0px));
   transform: translateX(-50%);
   z-index: 60;
   display: flex;
@@ -72,13 +72,24 @@
   padding: var(--s1);
   gap: var(--s1);
   border-radius: var(--r-sheet);
-  border: 1px solid var(--border);
-  background: var(--parent-glass);
-  -webkit-backdrop-filter: blur(var(--parent-blur));
-  backdrop-filter: blur(var(--parent-blur));
-  box-shadow: none;
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 6px 28px rgba(32, 35, 33, 0.07);
+  transition: transform 180ms ease-out, opacity 180ms ease-out;
 }
-.v1 .navItem { color: var(--text-3); gap: var(--s1); }
+.v1 .navItem { position: relative; z-index: 1; color: var(--text-2); gap: var(--s1); }
 .v1 .navItem svg { width: 24px; height: 24px; }
 .v1 .navLabel { font-size: var(--font-c1); font-weight: 500; line-height: 1.5; letter-spacing: 0; }
 .v1 .navItemActive { color: var(--brand-700); background: transparent; }
+
+@supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .v1 { background: var(--parent-glass); -webkit-backdrop-filter: blur(var(--parent-blur)) saturate(160%); backdrop-filter: blur(var(--parent-blur)) saturate(160%); }
+}
+.bottomNav[data-hidden="true"] { transform: translate(-50%, calc(100% + var(--parent-nav-inset) + env(safe-area-inset-bottom, 0px) + 24px)); opacity: 0; pointer-events: none; }
+.icon { display: grid; place-items: center; width: 24px; height: 24px; }
+.spinner { width: 18px; height: 18px; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: nav-spin 700ms linear infinite; }
+@keyframes nav-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .bottomNav { transition: none; } .spinner { animation: none; } }
+
+/* A fine top reflection; no opaque inner panel or selected pill. */
+.v1::before { content: ""; position: absolute; inset: 0; border-radius: inherit; border-top: 1px solid rgba(255, 255, 255, 0.75); background: linear-gradient(180deg, rgba(255, 255, 255, 0.08), transparent 55%); pointer-events: none; }

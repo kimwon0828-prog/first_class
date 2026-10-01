@@ -1,3 +1,4 @@
+import { parentEntryHref } from "@/features/classes/lib/parent-navigation"
 import { getParentExperienceFeedback } from "@/features/feedback/queries/get-experience-feedback"
 import { ParentFeedbackForm } from "@/features/feedback/ui/parent-feedback-form"
 import { getMyCurrentParentDecision } from "@/features/decisions/queries/get-my-current-parent-decision"
@@ -73,9 +74,10 @@ export default async function ExperienceReportPage({ params, searchParams }: {
 }) {
   noStore()
   const { experienceId } = await params
-  const childQuery = (await searchParams)?.child
+  const navigationParams = await searchParams
+  const childQuery = navigationParams?.child
   // Return navigation carries context only; ownership is validated after authentication.
-  const returnTo = withRecordChild(`/record/${experienceId}/report`, typeof childQuery === "string" ? childQuery : null)
+  const returnTo = parentEntryHref(`/record/${experienceId}/report`, navigationParams)
   const parent = await requireParentAccess({ returnTo })
   const result = await getMyExperienceReport(experienceId)
   if (result.status === "not_found") notFound()

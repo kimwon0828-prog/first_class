@@ -1,3 +1,4 @@
+import { parentEntryHref } from "@/features/classes/lib/parent-navigation"
 import { Suspense } from "react"
 import { unstable_noStore as noStore } from "next/cache"
 import { getMyApplications } from "@/features/applications/queries/get-my-applications"
@@ -16,9 +17,9 @@ export default function RecordPage(props: RecordPageProps) {
 }
 async function RecordContent({ searchParams }: RecordPageProps) {
   noStore()
-  await requireParentAccess({ returnTo: "/record" })
-  const [applications, children] = await Promise.all([getMyApplications(), getMyChildren()])
   const params = await searchParams
+  await requireParentAccess({ returnTo: parentEntryHref("/record", params) })
+  const [applications, children] = await Promise.all([getMyApplications(), getMyChildren()])
   const selectedChildId = resolveSelectedChildId(typeof params.child === "string" ? params.child : null, children.data)
   const completed = selectCompletedExperiences(applications.data)
   // Legacy childId=null belongs only to the all-children view, never matched by name.

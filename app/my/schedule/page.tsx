@@ -1,3 +1,4 @@
+import { parentEntryHref } from "@/features/classes/lib/parent-navigation"
 import type { Metadata } from "next"
 import { unstable_noStore as noStore } from "next/cache"
 import { getMyApplications } from "@/features/applications/queries/get-my-applications"
@@ -19,9 +20,9 @@ export const revalidate = 0
 type SchedulePageProps = { searchParams?: Promise<Record<string, string | string[] | undefined>> }
 export default async function ParentSchedulePage({ searchParams }: SchedulePageProps) {
   noStore()
-  await requireParentAccess({ returnTo: "/my/schedule" })
-  const [applications, children] = await Promise.all([getMyApplications(), getMyChildren()])
   const params = await searchParams
+  await requireParentAccess({ returnTo: parentEntryHref("/my/schedule", params) })
+  const [applications, children] = await Promise.all([getMyApplications(), getMyChildren()])
   const selectedChildId = resolveSelectedChildId(typeof params?.child === "string" ? params.child : null, children.data)
   const now = new Date()
   return <ParentScheduleScreen model={buildScheduleView(applications.data, selectedChildId, now.getTime())}

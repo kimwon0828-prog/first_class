@@ -202,7 +202,7 @@ check("빈 상태 CTA 는 child를 유지해 수업찾기로 간다", page.inclu
 console.log("\n[9] route · 탭 · 건드리지 않은 것")
 
 check("I) /record 는 기록 탭이다", resolveParentNavTab("/record") === "record")
-check("공용 nav 를 쓴다", page.includes('<ParentBottomNav designVersion="v1" />'))
+check("공용 nav 를 쓴다", page.includes('<ParentAppShell'))
 for (const route of [
   "app/record/[experienceId]/page.tsx",
   "app/record/[experienceId]/report/page.tsx",

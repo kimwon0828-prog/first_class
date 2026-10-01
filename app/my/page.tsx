@@ -1,3 +1,4 @@
+import { withParentChild } from "@/features/classes/lib/parent-navigation"
 import { unstable_noStore as noStore } from "next/cache"
 import { ParentFooter } from "@/features/classes/ui/parent-footer"
 import { getMyChildren } from "@/features/children/queries/get-my-children"
@@ -14,10 +15,10 @@ import { MyFrame } from "./my-frame"
 export const dynamic = "force-dynamic"
 export const revalidate = 0
 
-export default async function MyPage({ searchParams }: { searchParams: Promise<{ edit?: string }> }) {
+export default async function MyPage({ searchParams }: { searchParams: Promise<{ edit?: string; child?: string }> }) {
   noStore()
   const params = await searchParams
-  const returnTo = params.edit === "profile" ? "/my?edit=profile" : "/my"
+  const returnTo = withParentChild(params.edit === "profile" ? "/my?edit=profile" : "/my", typeof params.child === "string" ? params.child : null)
   if (await isMyParentAccountDeletionPending()) return <MyFrame><ParentAccountDeletion recovery /></MyFrame>
   await requireParentAccess({ returnTo })
   const [profile, children, auth] = await Promise.all([

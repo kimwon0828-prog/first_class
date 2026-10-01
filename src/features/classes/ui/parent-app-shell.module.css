@@ -1,0 +1,2 @@
+/* A minimum, not an extra spacer: frames with an existing larger CTA reserve keep it. */
+.withNavigation > div:first-of-type { padding-bottom: max(var(--parent-nav-space), var(--parent-content-bottom, 0px)); }

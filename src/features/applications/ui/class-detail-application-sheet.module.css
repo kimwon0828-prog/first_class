@@ -88,7 +88,7 @@
 .sheetFooter {
   border-top: 1px solid var(--border);
   background: var(--surface);
-  padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+  padding: 12px 16px calc(12px + env(safe-area-inset-bottom, 0px));
 }
 
 .sectionStack {
@@ -520,3 +520,10 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* Only keyboard-open geometry changes; the existing form and sticky footer stay intact. */
+.sheet[data-keyboard="true"] { bottom: var(--application-keyboard-offset); max-height: calc(var(--application-visible-height) - 12px); }
+.sheet[data-keyboard="true"] .sheetLayout { min-height: 0; max-height: calc(var(--application-visible-height) - 12px); }
+.sheet[data-keyboard="true"] .sheetBody { min-height: 0; overscroll-behavior: contain; scroll-padding-block: 12px; }
+.sheet[data-keyboard="true"] .sheetFooter { padding-bottom: 12px; }
+@media (prefers-reduced-motion: reduce) { .progressValue { transition: none; } }

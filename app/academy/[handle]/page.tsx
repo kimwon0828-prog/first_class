@@ -1,9 +1,9 @@
+import { ParentDetailLink } from "@/features/classes/ui/parent-detail-link"
 import { getPublicAcademyFeedback } from "@/features/feedback/queries/get-public-feedback"
 import { PublicFeedback } from "@/features/feedback/ui/public-feedback"
 import { PARENT_ORIGIN } from "@/shared/config/site-origins"
 
 import type { Metadata } from "next"
-import Link from "next/link"
 import { notFound } from "next/navigation"
 
 import { getPublicAcademyClasses } from "@/features/academies/queries/get-public-academy-classes"
@@ -119,7 +119,7 @@ export default async function AcademyPage({ params }: AcademyPageProps) {
     <section className={styles.section}>
       <h2>공개된 수업 {classes.length}개</h2>
       {classes.length ? <ul className={styles.classList}>{classes.map(item => <li key={item.id}>
-        <Link href={`/classes/${item.id}`} className={styles.classCard}>
+        <ParentDetailLink href={`/classes/${item.id}`} className={styles.classCard}>
           <div className={styles.classBody}>
             <span className={styles.type}>{item.programTypeLabel}</span>
             <h3>{item.title}</h3>
@@ -127,7 +127,7 @@ export default async function AcademyPage({ params }: AcademyPageProps) {
             {item.scheduleLabel && item.scheduleLabel !== "요일·시간 확인 필요" ? <p className={styles.schedule}>{item.scheduleLabel}</p> : null}
           </div>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m9 6 6 6-6 6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>
-        </Link>
+        </ParentDetailLink>
       </li>)}</ul> : <p className={styles.empty}>현재 공개된 수업이 없어요.</p>}
     </section>
     {academy.description ? <section className={styles.section}><h2>학원 소개</h2><div className={styles.textBlock}>{splitMultilineItems(academy.description).map((text, index) => <p key={index}>{text}</p>)}</div></section> : null}

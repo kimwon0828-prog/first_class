@@ -1,4 +1,6 @@
 "use client"
+
+import { ParentDetailLink } from "@/features/classes/ui/parent-detail-link"
 import { useRef, useState, useTransition, type KeyboardEvent } from "react"
 import Link from "next/link"
 import Image from "next/image"
@@ -20,7 +22,7 @@ function Thumbnail({ url, title }: { url?: string | null; title: string }) {
 function ApplicationCard({ item, image }: { item: ParentApplicationSummary; image?: string | null }) {
   const status = resolveApplicationStatusDisplay({ status: item.status, scheduledAt: item.confirmedSlotAt })
   const schedule = applicationSchedule(item)
-  return <li><Link href={`/record/${item.id}`} className={styles.card}>
+  return <li><ParentDetailLink href={`/record/${item.id}`} className={styles.card}>
     <div className={styles.cardTop}><Thumbnail url={image} title={item.classTitle ?? "수업"} /><div className={styles.cardInfo}>
       <div className={styles.badges}><span className={styles.typeBadge}>{getExperienceTypeLabel(item.classProgramType)}</span><span className={`${styles.statusBadge} ${item.status === "confirmed" ? styles.confirmed : item.status === "canceled" ? styles.canceled : styles.pending}`}>{status.label}</span></div>
       <h2>{item.classTitle ?? "수업 정보 준비 중"}</h2>{item.academyName ? <p className={styles.academy}>{item.academyName}</p> : null}
@@ -28,7 +30,7 @@ function ApplicationCard({ item, image }: { item: ParentApplicationSummary; imag
     <div className={styles.cardDetails}><div className={styles.detailRows}><p className={styles.detailRow}><Icon kind="child" /><span>{applicationChildLabel(item)}</span></p>
       {schedule ? <div className={styles.detailRow}><Icon kind="calendar" /><div><time dateTime={schedule.value}>{schedule.text}</time><p className={styles.scheduleLabel}>{schedule.label}</p></div></div> : null}
     </div><Icon kind="chevron" /></div>
-  </Link></li>
+  </ParentDetailLink></li>
 }
 export function ApplicationsFailure({ reload = false }: { reload?: boolean }) {
   const router = useRouter()

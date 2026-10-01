@@ -1,11 +1,15 @@
 "use client"
 
+import { ParentDetailLink } from "@/features/classes/ui/parent-detail-link"
+
+import { ParentAppShell } from "@/features/classes/ui/parent-app-shell"
+import { ParentHeader } from "@/features/classes/ui/parent-header"
+
 import Link from "next/link"
 import { useId, useState } from "react"
 import { useRouter } from "next/navigation"
 import { HomeChildSelector } from "@/features/children/ui/home-child-selector"
 import type { ChildSelectorOption } from "@/features/children/lib/child-selection"
-import { ParentBottomNav } from "@/features/classes/ui/parent-bottom-nav"
 import { buildClassesHref } from "@/features/classes/lib/classes-href"
 import { formatScheduleDateLabel, formatScheduleTimeLabel } from "@/features/schedule/lib/parent-schedule"
 import { groupScheduleMonths, type buildScheduleView } from "@/features/schedule/lib/schedule-view"
@@ -27,9 +31,9 @@ function OutlineIcon({ person = false }: { person?: boolean }) {
   </svg>
 }
 export function ScheduleFrame({ children }: { children: React.ReactNode }) {
-  return <main data-parent-design="v1" className={styles.page}><div className={styles.shell}>
-    <header className={styles.header}><h1>내 일정</h1></header>{children}
-  </div><ParentBottomNav designVersion="v1" /></main>
+  return <ParentAppShell data-parent-design="v1" className={styles.page}><div className={styles.shell}>
+    <ParentHeader title="내 일정" inset />{children}
+  </div></ParentAppShell>
 }
 export function ScheduleFailure({ retry }: { retry: () => void }) {
   return <section className={styles.empty} role="alert"><h2>일정을 불러오지 못했어요.</h2>
@@ -68,7 +72,7 @@ export function ParentScheduleScreen({ model, childOptions, selectedChildId, tod
             const date = getSeoulDateTimeParts(item.startAt)!
             return <li key={item.id}>
               {item.dateKey === today && month.items[index - 1]?.dateKey !== today && <h3 className={styles.today}>오늘</h3>}
-              <Link href={item.href} className={styles.card}>
+              <ParentDetailLink href={item.href} className={styles.card}>
                 <time dateTime={item.startAt} className={styles.date} aria-label={formatScheduleDateLabel(item.startAt) ?? undefined}>
                   <strong>{date.day}</strong><span>{weekdays[date.weekday]}</span>
                 </time>
@@ -80,7 +84,7 @@ export function ParentScheduleScreen({ model, childOptions, selectedChildId, tod
                   <span className={styles.meta}><span className={tab === "upcoming" ? styles.upcoming : styles.completed}>{tab === "upcoming" ? "예정" : "완료"}</span>
                     {!selectedChildId && childOptions.length > 1 && <span>{item.childName}</span>}</span>
                 </span><span aria-hidden="true" className={styles.chevron}>›</span>
-              </Link>
+              </ParentDetailLink>
             </li>
           })}</ul>
         </section>)}
@@ -89,7 +93,7 @@ export function ParentScheduleScreen({ model, childOptions, selectedChildId, tod
   </ScheduleFrame>
 }
 export function ScheduleSkeleton() {
-  return <ScheduleFrame><div className={styles.skeleton} role="status" aria-label="일정 불러오는 중">
+  return <ScheduleFrame><div className={styles.skeleton} role="status" aria-busy="true" aria-label="일정 불러오는 중">
     <div className={styles.skeletonChild} /><div className={styles.skeletonTabs} />
     {[0, 1, 2].map((key) => <div key={key} className={styles.skeletonCard}><span /><div><span /><span /><span /></div></div>)}
   </div></ScheduleFrame>

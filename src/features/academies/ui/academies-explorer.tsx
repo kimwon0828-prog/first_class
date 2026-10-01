@@ -1,5 +1,7 @@
 "use client"
 
+import { ParentDetailLink } from "@/features/classes/ui/parent-detail-link"
+
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useTransition } from "react"
@@ -115,7 +117,7 @@ export function AcademiesExplorer({
         <p>{filtered ? "검색어나 지역, 과목, 학년을 바꿔 다시 찾아보세요." : "지역, 과목, 학년으로 학원을 찾아보세요."}</p>
         {conditions.length > 0 ? <Link href={resetHref} replace className={styles.secondaryButton}>검색 조건 초기화</Link> : null}
       </div> : <ul className={styles.academyList}>{academies.map(academy => <li key={academy.id}>
-        <Link href={`/academy/${academy.id}`} className={styles.academyCard}>
+        <ParentDetailLink href={`/academy/${academy.id}`} className={styles.academyCard}>
           <span className={styles.academyIcon}><AcademyIcon /></span>
           <div className={styles.academyBody}>
             <h3 className={styles.academyName}>{academy.displayName}</h3>
@@ -125,7 +127,7 @@ export function AcademiesExplorer({
             {academy.address || academy.addressDetail ? <p className={styles.address}>{academy.address || academy.addressDetail}</p> : null}
           </div>
           <svg className={styles.cardChevron} width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m9 6 6 6-6 6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>
-        </Link>
+        </ParentDetailLink>
       </li>)}</ul>}
     </>}
   </section>

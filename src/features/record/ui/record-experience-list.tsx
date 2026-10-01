@@ -1,4 +1,4 @@
-import Link from "next/link"
+import { ParentDetailLink } from "@/features/classes/ui/parent-detail-link"
 import { withRecordChild } from "@/features/record/lib/record-href"
 
 import {
@@ -114,7 +114,7 @@ export const RecordExperienceList = ({
 
               return (
                 <li key={experience.id} className={styles.card}>
-                  <Link href={withRecordChild(`/record/${experience.id}`, selectedChildId)} className={styles.cardMain}>
+                  <ParentDetailLink href={withRecordChild(`/record/${experience.id}`, selectedChildId)} className={styles.cardMain}>
                     <time dateTime={date} className={styles.dateBlock} aria-label={dayLabel ?? undefined}>
                       <strong>{parts?.day}</strong>
                       <span>{parts ? SEOUL_WEEKDAY_SHORT[parts.weekday] : null}</span>
@@ -136,14 +136,14 @@ export const RecordExperienceList = ({
                       ) : null}
                     </span>
                     <span className={styles.chevron} aria-hidden="true">›</span>
-                  </Link>
+                  </ParentDetailLink>
 
                   {showReport || hasDecision(experience.id) ? (
                     <div className={styles.signalRow}>
                       {showReport ? (
-                        <Link href={withRecordChild(`/record/${experience.id}/report`, selectedChildId)} className={styles.reportCta}>
+                        <ParentDetailLink href={withRecordChild(`/record/${experience.id}/report`, selectedChildId)} className={styles.reportCta}>
                           리포트 보기 <span aria-hidden="true">›</span>
-                        </Link>
+                        </ParentDetailLink>
                       ) : null}
                       {hasDecision(experience.id) ? <span className={styles.signalMuted}>내 생각 남김</span> : null}
                     </div>

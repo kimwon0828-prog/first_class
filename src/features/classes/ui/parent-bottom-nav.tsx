@@ -1,12 +1,15 @@
 "use client"
 
-import Link from "next/link"
-import { usePathname } from "next/navigation"
-import { useEffect, useState } from "react"
+import Link, { useLinkStatus } from "next/link"
+import { usePathname, useSearchParams } from "next/navigation"
+import { Suspense, type ReactNode } from "react"
 
 import { resolveParentNavTab } from "@/features/classes/lib/parent-nav"
 
+import { withParentChild } from "../lib/parent-navigation"
+
 import styles from "./parent-bottom-nav.module.css"
+import { useParentNavVisibility } from "./use-parent-nav-visibility"
 
 /**
  * 학부모 화면의 하단 탭. 모든 학부모 route 가 이 하나를 쓴다.
@@ -17,8 +20,7 @@ import styles from "./parent-bottom-nav.module.css"
  *   기록     — 끝난 경험 · 리포트 · 교육 프로필
  *   마이페이지 — 자녀 · 관심수업 · 프로필 · 설정
  *
- * ⚠️ /classes 는 탭이 아니다. Home 에서 시작하는 검색의 결과 화면이라
- *    거기서는 홈이 active 다. route 는 그대로 살아 있다.
+ * 탐색/관심수업은 독립 화면이며 어느 탭도 active로 표시하지 않는다.
  */
 type ParentBottomNavProps = {
   designVersion?: "v1"
@@ -79,30 +81,28 @@ const MyIcon = () => (
   </svg>
 )
 
-export const ParentBottomNav = ({
+const BottomNav = ({
   designVersion,
   scheduleHref = "/my/schedule",
   recordHref = "/record",
-  myPageHref = "/my"
-}: ParentBottomNavProps) => {
+  myPageHref = "/my",
+  child = null
+}: ParentBottomNavProps & { child?: string | null }) => {
   const pathname = usePathname() ?? ""
-  const [pendingHref, setPendingHref] = useState<string | null>(null)
-
-  useEffect(() => {
-    setPendingHref(null)
-  }, [pathname])
+  const { hidden, keyboard } = useParentNavVisibility(pathname)
 
   const activeTab = resolveParentNavTab(pathname)
 
   const navItems = [
-    { tab: "home", href: "/", label: "홈", icon: <HomeIcon /> },
-    { tab: "schedule", href: scheduleHref, label: "일정", icon: <ScheduleIcon /> },
-    { tab: "record", href: recordHref, label: "기록", icon: <RecordIcon /> },
-    { tab: "my", href: myPageHref, label: "마이페이지", icon: <MyIcon /> }
+    { tab: "home", href: withParentChild("/", child), label: "홈", icon: <HomeIcon /> },
+    { tab: "schedule", href: withParentChild(scheduleHref, child), label: "일정", icon: <ScheduleIcon /> },
+    { tab: "record", href: withParentChild(recordHref, child), label: "기록", icon: <RecordIcon /> },
+    { tab: "my", href: withParentChild(myPageHref, child), label: "마이페이지", icon: <MyIcon /> }
   ] as const
 
   return (
-    <nav className={`${styles.bottomNav} ${designVersion === "v1" ? styles.v1 : ""}`} aria-label="하단 탭">
+    <nav className={`${styles.bottomNav} ${designVersion === "v1" ? styles.v1 : ""}`} aria-label="하단 탭"
+      data-hidden={hidden || undefined} data-keyboard={keyboard || undefined} aria-hidden={hidden || undefined} inert={hidden}>
       {navItems.map((item) => {
         const isActive = activeTab === item.tab
         return (
@@ -111,20 +111,30 @@ export const ParentBottomNav = ({
             href={item.href}
             className={`${styles.navItem} ${isActive ? styles.navItemActive : ""}`}
             aria-current={isActive ? "page" : undefined}
-            aria-busy={pendingHref === item.href}
-            onClick={() => {
-              if (!isActive) {
-                setPendingHref(item.href)
-              }
+            onClick={(event) => {
+              if (event.currentTarget.querySelector('[aria-busy="true"]') && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey) event.preventDefault()
             }}
           >
-            {item.icon}
-            <span className={styles.navLabel}>
-              {pendingHref === item.href ? "이동 중" : item.label}
-            </span>
+            <NavContent icon={item.icon} label={item.label} />
           </Link>
         )
       })}
     </nav>
   )
+}
+
+function NavContent({ icon, label }: { icon: ReactNode; label: string }) {
+  const { pending } = useLinkStatus()
+  return <>
+    <span className={styles.icon} aria-busy={pending}>{pending ? <span className={styles.spinner} aria-hidden="true" /> : icon}</span>
+    <span className={styles.navLabel}>{label}</span>
+  </>
+}
+
+function ContextualBottomNav(props: ParentBottomNavProps) {
+  const params = useSearchParams()
+  return <BottomNav {...props} child={params.get("child")} />
+}
+export function ParentBottomNav(props: ParentBottomNavProps) {
+  return <Suspense fallback={<BottomNav {...props} />}><ContextualBottomNav {...props} /></Suspense>
 }

@@ -1,7 +1,8 @@
 "use client"
 
 import Link from "next/link"
-import { useEffect, useId, useMemo, useRef, useState } from "react"
+import { useParentKeyboard } from "@/features/classes/ui/use-parent-keyboard"
+import { useEffect, useId, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react"
 
 import {
   clearTrialApplicationDraft,
@@ -29,6 +30,7 @@ type ClassDetailApplicationSheetProps = TrialApplicationFormProps & {
   hasSession: boolean
   isParentUser: boolean
   signInHref: string
+  secondaryAction?: ReactNode
   fixedCtaClassName: string
   ctaButtonClassName: string
 }
@@ -154,6 +156,7 @@ export function ClassDetailApplicationSheet({
   hasSession,
   isParentUser,
   signInHref,
+  secondaryAction,
   fixedCtaClassName,
   ctaButtonClassName
 }: ClassDetailApplicationSheetProps) {
@@ -161,6 +164,15 @@ export function ClassDetailApplicationSheet({
   const dialogRef = useRef<HTMLDivElement>(null)
   const ctaRef = useRef<HTMLButtonElement>(null)
   const [isOpen, setIsOpen] = useState(false)
+  const viewport = useParentKeyboard(isOpen)
+  useEffect(() => {
+    if (!isOpen || !viewport.keyboard) return
+    const frame = requestAnimationFrame(() => {
+      const active = document.activeElement
+      if (active instanceof HTMLElement && dialogRef.current?.contains(active)) active.scrollIntoView({ block: "nearest" })
+    })
+    return () => cancelAnimationFrame(frame)
+  }, [isOpen, viewport.keyboard, viewport.height, viewport.bottom])
   const [step, setStep] = useState<Step>(1)
   const [isCalendarView, setIsCalendarView] = useState(false)
   const groupedDateSlots = useMemo(() => buildGroupedDateSlots(availableSlots), [availableSlots])
@@ -377,7 +389,8 @@ export function ClassDetailApplicationSheet({
 
   return (
     <>
-      <div className={fixedCtaClassName}>
+      <div className={fixedCtaClassName} data-parent-action-dock role="group" aria-label="수업 신청 및 관심수업">
+        {secondaryAction}
         <button ref={ctaRef} type="button" className={ctaButtonClassName} onClick={openSheet}
           aria-haspopup="dialog" aria-expanded={isOpen} aria-controls={dialogId}>
           체험수업 신청하기
@@ -388,6 +401,8 @@ export function ClassDetailApplicationSheet({
         <div className={styles.overlay} onClick={closeSheet}>
           <div
             className={styles.sheet}
+            data-keyboard={viewport.keyboard || undefined}
+            style={viewport.keyboard ? { "--application-visible-height": `${viewport.height}px`, "--application-keyboard-offset": `${viewport.bottom}px` } as CSSProperties : undefined}
             ref={dialogRef} id={dialogId} tabIndex={-1}
             role="dialog"
             aria-modal="true"

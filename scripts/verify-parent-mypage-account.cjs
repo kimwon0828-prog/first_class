@@ -46,14 +46,15 @@ async function verifyAction() {
 
 async function main() {
   await verifyAction()
-  const redirectApi = {}
-  vm.runInNewContext(ts.transpileModule(read('app/my/profile/page.tsx'), { compilerOptions: { module: ts.ModuleKind.CommonJS } }).outputText, { exports: redirectApi, require: () => ({ redirect: target => { throw new Error(target) } }) })
-  assert.throws(() => redirectApi.default(), /\/my\?edit=profile/)
+  const redirectApi = {}, navigationApi = {}
+  vm.runInNewContext(ts.transpileModule(read('src/features/classes/lib/parent-navigation.ts'), { compilerOptions: { module: ts.ModuleKind.CommonJS } }).outputText, { exports: navigationApi, URL })
+  vm.runInNewContext(ts.transpileModule(read('app/my/profile/page.tsx'), { compilerOptions: { module: ts.ModuleKind.CommonJS } }).outputText, { exports: redirectApi, require: name => name === 'next/navigation' ? ({ redirect: target => { throw new Error(target) } }) : navigationApi })
+  await assert.rejects(() => redirectApi.default({ searchParams: Promise.resolve({}) }), /\/my\?edit=profile/)
   const pageSource = read('app/my/page.tsx')
   assert(pageSource.includes('profile.error || !profile.data')); assert(pageSource.includes('getMyParentProfileDetail()')); assert(pageSource.includes('requireParentAccess({ returnTo })'))
   assert(!read('app/page.tsx').includes('ParentProfileAvatar')); assert(read('app/page.tsx').includes('<NotificationBell'))
-  assert(read('app/classes/page.tsx').includes('ParentProfileAvatar'))
-  pass('legacy route redirects to edit state; query failure guarded; Home bell retained; Classes profile entry retained')
+  assert(!read('app/classes/page.tsx').includes('ParentProfileAvatar'))
+  pass('legacy route redirects to edit state; query failure guarded; Home bell retained; Classes duplicate profile entry removed')
   await build({
     stdin: { contents: `import React from 'react'; import { createRoot } from 'react-dom/client'; import { MyHub } from './src/features/my/ui/my-hub'; import { MyFrame } from './app/my/my-frame'; import './app/globals.css'; createRoot(document.getElementById('root')).render(<MyFrame><MyHub profile={{id:'fixture-parent',name:'검수 학부모',phone:'01012345678',parentBirthDate:'1990-01-02'}} email='parent@example.test' childrenCount={2} childrenError={null}/></MyFrame>);`, resolveDir: root, loader: 'tsx' },
     bundle: true, outfile: path.join(out, 'ui.js'), jsx: 'automatic', define: { 'process.env.NODE_ENV': '"development"' },
@@ -61,7 +62,7 @@ async function main() {
       builder.onResolve({ filter: /(delete-parent-account|integrations\/supabase\/client)$/ }, args => ({ path: args.path, namespace: 'mock' }))
       builder.onResolve({ filter: /^next\/(navigation|link)$/ }, args => ({ path: args.path, namespace: 'mock' }))
       builder.onResolve({ filter: /features\/my\/actions\/update-parent-profile$/ }, args => ({ path: args.path, namespace: 'mock' }))
-      builder.onLoad({ filter: /.*/, namespace: 'mock' }, args => ({ loader: 'jsx', resolveDir: root, contents: args.path.endsWith('delete-parent-account') ? `export async function deleteMyParentAccountAction(){return {status:'error',message:'검증용 탈퇴 실패'}}` : args.path.endsWith('supabase/client') ? `export function getSupabaseBrowserClient(){return {auth:{signOut:async()=>({error:null})}}}` : args.path === 'next/link' ? `import React from 'react'; export default function Link({href,children,prefetch,scroll,...props}){return <a href={href} {...props}>{children}</a>}` : args.path === 'next/navigation' ? `
+      builder.onLoad({ filter: /.*/, namespace: 'mock' }, args => ({ loader: 'jsx', resolveDir: root, contents: args.path.endsWith('delete-parent-account') ? `export async function deleteMyParentAccountAction(){return {status:'error',message:'검증용 탈퇴 실패'}}` : args.path.endsWith('supabase/client') ? `export function getSupabaseBrowserClient(){return {auth:{signOut:async()=>({error:null})}}}` : args.path === 'next/link' ? `import React from 'react';export function useLinkStatus(){return {pending:false}}; export default function Link({href,children,prefetch,scroll,...props}){return <a href={href} {...props}>{children}</a>}` : args.path === 'next/navigation' ? `
         import {useSyncExternalStore} from 'react';
         for(const key of ['pushState','replaceState']){const original=history[key].bind(history); history[key]=(...args)=>{original(...args);window.dispatchEvent(new Event('mock-navigation'));};}
         function subscribe(fn){window.addEventListener('popstate',fn);window.addEventListener('mock-navigation',fn);return()=>{window.removeEventListener('popstate',fn);window.removeEventListener('mock-navigation',fn);};}

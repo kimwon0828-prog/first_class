@@ -197,9 +197,9 @@ check(
   "Home 은 앞의 몇 개만 미리 본다",
   homeQuery.includes("allActions.slice(0, PARENT_ACTION_PREVIEW_LIMIT)") && PARENT_ACTION_PREVIEW_LIMIT === 3
 )
-check("Home은 리포트 한 건을 별도 안내한다", home.includes("const report = parentHome?.actions[0]") && home.includes('aria-label={report.kind === "report_review"'))
-check("리포트가 없으면 리포트 안내를 숨긴다", home.includes("{report ? (") && !home.includes("parentHome.actions.map"))
-check("Home 리포트는 기존 목적지로 간다", home.includes("href={report.href}"))
+check("Home은 리포트 한 건을 별도 안내한다", home.includes("const report = parentHome?.actions[0]") && home.includes("<HomeReportCta report={report}") && read("src/features/classes/ui/home-report-cta.tsx").includes('aria-label={report.kind === "report_review"'))
+check("리포트가 없으면 리포트 안내를 숨긴다", home.includes("{report ? <HomeReportCta") && !home.includes("parentHome.actions.map"))
+check("Home 리포트는 기존 목적지로 간다", read("src/features/classes/ui/home-report-cta.tsx").includes("href={report.href}"))
 /*
  * 실패했으면 빈 목록을 그리는 게 아니라 Action 영역 자체를 접는다.
  * 뒤에 아이 필터가 붙어도 "실패 → []" 라는 분기 자체는 그대로여야 한다.

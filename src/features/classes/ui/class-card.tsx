@@ -1,5 +1,5 @@
+import { ParentDetailLink } from "@/features/classes/ui/parent-detail-link"
 import Image from "next/image"
-import Link from "next/link"
 import { BookmarkButton } from "@/features/favorites/ui/bookmark-button"
 import { ImageFallback } from "@/shared/ui/image-fallback"
 import styles from "./class-card.module.css"
@@ -22,7 +22,7 @@ export type ClassCardProps = {
 export function ClassCard({ href, thumbnailUrl, thumbnailAlt, title, academyName,
   secondaryLabel, regionLabel, gradeLabel, priceLabel, classId }: ClassCardProps) {
   return <article className={styles.card}>
-    <Link href={href} className={styles.link}>
+    <ParentDetailLink href={href} className={styles.link}>
       <div className={styles.thumbnail}>
         {thumbnailUrl ? <Image src={thumbnailUrl} alt={thumbnailAlt} fill sizes="112px" style={{ objectFit: "cover" }} unoptimized />
           : <ImageFallback label="수업 이미지 없음" />}
@@ -36,7 +36,7 @@ export function ClassCard({ href, thumbnailUrl, thumbnailAlt, title, academyName
         <p className={styles.price}>{priceLabel}</p>
         {academyName || regionLabel ? <p className={styles.academy}>{[academyName, regionLabel].filter(Boolean).join(" · ")}</p> : null}
       </div>
-    </Link>
+    </ParentDetailLink>
     <BookmarkButton classId={classId} className={styles.bookmarkButton} activeClassName={styles.bookmarkButtonActive} iconSize={20} variant="heart" />
   </article>
 }

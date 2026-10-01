@@ -1,0 +1,9 @@
+.header { box-sizing: border-box; display: flex; align-items: center; gap: var(--s2); min-height: 64px; padding: calc(var(--s2) + env(safe-area-inset-top, 0px)) var(--gutter) var(--s2); background: var(--surface); color: var(--text-1); }
+.inset { margin-inline: calc(-1 * var(--gutter)); }
+.sticky { position: sticky; top: 0; z-index: 20; }
+.title { flex: 1; min-width: 0; margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--font-h3); font-weight: 600; line-height: 1.5; }
+.brand { flex: 1; min-width: 0; }
+.brand > a, .back, .actions a, .actions button { display: inline-flex; align-items: center; justify-content: center; min-width: 44px; min-height: 44px; }
+.back { flex-shrink: 0; color: inherit; text-decoration: none; border-radius: var(--r-md); }
+.actions { flex-shrink: 0; display: flex; align-items: center; gap: var(--s2); }
+.back:focus-visible, .actions a:focus-visible, .actions button:focus-visible { outline: 2px solid var(--brand-700); outline-offset: 2px; }

@@ -44,7 +44,7 @@ check(
 )
 check(
   "인증 returnTo 가 상세 route 다",
-  page.includes("requireParentAccess({ returnTo: `/record/${experienceId}` })")
+  page.includes("requireParentAccess({ returnTo: parentEntryHref(`/record/${experienceId}`, navigationParams) })")
 )
 check("detail query 는 기존 parent-safe 목록을 재사용한다", detailQuery.includes("getMyApplications()"))
 check("detail page 가 adapter · Supabase 를 직접 부르지 않는다", !page.includes("dataAdapter") && !page.includes("supabase"))
@@ -55,7 +55,7 @@ check("완료 여부는 canonical completed 로만 가른다", page.includes('ex
 check(
   "완료 경험은 기록으로, 나머지는 신청 현황으로 돌아간다",
   page.includes('isCompletedExperience ? "/record" : "/my/applications"') &&
-    page.includes('isCompletedExperience ? "기록" : "신청 현황"')
+    page.includes('<ParentHeader title={isCompletedExperience ? "체험 기록" : "신청 정보"} backHref={backHref}')
 )
 check("완료 경험은 통합 경험 정보 카드다", page.includes('isCompletedExperience ? "경험 정보" : "신청 정보"'))
 check("완료 경험은 처리 단계 라벨을 만들지 않는다", page.includes("!isCompletedExperience") && page.includes("stageLabel"))

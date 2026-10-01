@@ -1,3 +1,5 @@
+import { ParentAppShell } from "@/features/classes/ui/parent-app-shell"
+import { ParentHeader } from "@/features/classes/ui/parent-header"
 import type { Metadata } from "next"
 import { Suspense } from "react"
 import Link from "next/link"
@@ -12,7 +14,6 @@ import {
 } from "@/features/classes/queries/resolve-class-discovery-context"
 import { ClassCard } from "@/features/classes/ui/class-card"
 import { ClassesSearchPill } from "@/features/classes/ui/classes-region-select"
-import { ParentProfileAvatar } from "@/features/classes/ui/parent-profile-avatar"
 import { formatAdministrativeRegionLabel } from "@/features/location/lib/region-selection"
 import { formatDistanceLabel, nextWiderSearchRadiusKm } from "@/features/location/lib/search-location"
 import { LocationFilter } from "@/features/location/ui/location-filter"
@@ -115,7 +116,6 @@ async function ClassesSearchContent({ searchParams }: ClassesPageProps) {
   const { authenticated, isStudioUser } = auth
   /* Studio 는 다른 origin 이다. 상대 경로로는 그 자리를 가리킬 수 없다. */
   const studioHref = await getStudioCrossProductHrefResolver()
-  const profileHref = authenticated ? (isStudioUser ? studioHref("/studio") : "/my/profile") : "/auth/sign-in"
   const notificationsHref = authenticated ? (isStudioUser ? studioHref("/studio") : "/notifications") : "/auth/sign-in?returnTo=%2Fnotifications"
 
   /** 이 화면 안에서 필터를 바꾸는 링크. 지금 걸린 조건을 유지한 채 한 칸만 바꾼다. */
@@ -197,24 +197,11 @@ async function ClassesSearchContent({ searchParams }: ClassesPageProps) {
   const hasMultipleFilters = activeFilters.length > 1 && Boolean(selectedQuery || selectedSubjectCategory || selectedSubject)
 
   return (
-    <main className={homeStyles.page} data-parent-design="v1" data-parent-classes>
+    <ParentAppShell className={homeStyles.page} data-parent-classes>
       <div className={homeStyles.shell}>
-        <header className={styles.header}>
-          <Link href="/" className={styles.backLink} aria-label="홈으로 이동">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m15 6-6 6 6 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
-          </Link>
-          <h1 className={styles.searchTitle}>수업찾기</h1>
-          <div className={styles.accountActions} role="group" aria-label="학부모 계정">
-            <Link href={notificationsHref} className={homeStyles.headerIconButton} aria-label="알림">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                <path d="M18 8a6 6 0 1 0-12 0c0 5-2 6-2 6h16s-2-1-2-6ZM10 19a2 2 0 0 0 4 0" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            </Link>
-            <Link href={profileHref} className={homeStyles.headerIconButton} aria-label={authenticated ? "프로필" : "로그인"}>
-              <ParentProfileAvatar imageUrl={null} name={auth.isParentUser ? auth.profile?.name : undefined} />
-            </Link>
-          </div>
-        </header>
+        <ParentHeader title="수업찾기" inset actions={<Link href={notificationsHref} className={homeStyles.headerIconButton} aria-label="알림">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M18 8a6 6 0 1 0-12 0c0 5-2 6-2 6h16s-2-1-2-6ZM10 19a2 2 0 0 0 4 0" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
+        </Link>} />
         <div className={styles.content}>
           <div className={homeStyles.headerContext} role="group" aria-label="탐색 지역과 자녀 선택">
             <LocationFilter mode={context.locationMode}
@@ -359,7 +346,7 @@ async function ClassesSearchContent({ searchParams }: ClassesPageProps) {
         </div>
       </div>
 
-    </main>
+    </ParentAppShell>
   )
 }
 

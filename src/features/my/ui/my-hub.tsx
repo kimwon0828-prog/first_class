@@ -107,6 +107,7 @@ export const MyHub = ({ profile, email, childrenCount, childrenError }: MyHubPro
         <Link href="/terms" className={styles.menuItem}><MenuIcon kind="terms" /><span className={styles.menuLabel}>이용약관</span><ChevronIcon /></Link>
         <Link href="/privacy" className={styles.menuItem}><MenuIcon kind="privacy" /><span className={styles.menuLabel}>개인정보처리방침</span><ChevronIcon /></Link>
         <Link href="/third-party-consent" className={styles.menuItem}><MenuIcon kind="consent" /><span className={styles.menuLabel}>제3자 제공 동의</span><ChevronIcon /></Link>
+        <Link href="/terms#business-info" className={styles.menuItem}><MenuIcon kind="terms" /><span className={styles.menuLabel}>사업자 정보</span><ChevronIcon /></Link>
         <button type="button" className={`${styles.menuButton} ${styles.withdrawal}`} onClick={() => setWithdrawalOpen(true)} aria-haspopup="dialog"><MenuIcon kind="withdrawal" /><span className={styles.menuLabel}>회원탈퇴</span><ChevronIcon /></button>
       </div>
     </section>

@@ -3,7 +3,7 @@
 //   npx tsx scripts/verify-parent-academy-discovery.ts
 //
 // 여기서 고정하는 것.
-//   1. 학원 탐색은 secondary discovery 다 — Home 용 섹션을 들이지 않고, 홈 탭이 켜진다.
+//   1. 학원 탐색은 secondary discovery 다 — Home 용 섹션을 들이지 않고, Nav만 표시하며 active는 없다.
 //   2. 학원명 · 지점명 · 붙여 쓴 형태 · 지역으로 검색된다(/classes 와 같은 규칙).
 //   3. 지역 계약은 Home · Search 와 같은 catalog · canonicalization 을 쓴다.
 //   4. 카드는 실제 공개 값만 그린다 — 별점 · 리뷰 · 순위 · BEST · 매칭률 없음.
@@ -64,9 +64,9 @@ for (const [label, needle] of [
 ] as const) {
   check(`Home 용 ${label} 을 들이지 않는다`, !listPage.includes(needle) && !explorer.includes(needle))
 }
-check("J) /academies 는 홈 탭이다", resolveParentNavTab("/academies") === "home")
-check("J) /academy/* 도 홈 탭이다", resolveParentNavTab("/academy/some-handle") === "home")
-check("독립 탐색 화면은 Bottom Nav 없음", !listPage.includes("<ParentBottomNav"))
+check("J) /academies 는 active 없음", resolveParentNavTab("/academies") === null)
+check("J) /academy/* 는 active 없음", resolveParentNavTab("/academy/some-handle") === null)
+check("탐색 화면은 공통 Shell의 Nav를 사용한다", !listPage.includes("<ParentBottomNav") && read("src/features/academies/ui/academies-frame.tsx").includes("<ParentAppShell"))
 
 console.log("\n[2] 학원 검색")
 

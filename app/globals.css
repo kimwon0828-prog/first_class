@@ -50,7 +50,7 @@
   --parent-nav-h: 64px;
   --parent-nav-inset: 14px;
   --parent-nav-space: calc(
-    var(--parent-nav-h) + var(--parent-nav-inset) * 2 + env(safe-area-inset-bottom)
+    var(--parent-nav-h) + var(--parent-nav-inset) * 2 + env(safe-area-inset-bottom, 0px)
   );
 }
 
@@ -119,8 +119,8 @@ body:has([data-parent-design="v1"]) .firstclass-bottom-sheet__overlay {
   --s16: 64px;
   --gutter: 20px;
   --parent-nav-inset: 12px;
-  --parent-nav-space: calc(96px + env(safe-area-inset-bottom));
-  --parent-glass: rgba(255,255,255,0.92);
+  --parent-nav-space: calc(96px + env(safe-area-inset-bottom, 0px));
+  --parent-glass: rgba(255,255,255,0.5);
   --parent-blur: 20px;
   --motion-fast: 120ms;
   --parent-card-width: 272px;

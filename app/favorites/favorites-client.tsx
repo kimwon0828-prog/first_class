@@ -1,5 +1,7 @@
 "use client"
 
+import { ParentDetailLink } from "@/features/classes/ui/parent-detail-link"
+
 import Image from "next/image"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
@@ -21,7 +23,7 @@ function FavoriteCard({ item, onError }: { item: ClassSummary; onError: () => vo
   const academy = item.organization ? [item.organization.name, item.organization.branchName].filter(Boolean).join(" ") : null
   const region = item.organization ? formatAdministrativeRegionLabel(item.organization) : null
   return <article className={card.card}>
-    <Link href={`/classes/${item.id}`} className={card.link}>
+    <ParentDetailLink href={`/classes/${item.id}`} className={card.link}>
       <div className={card.thumbnail}>{item.coverImageUrl && item.coverImageUrl !== failedUrl ? <Image src={item.coverImageUrl} alt={`${item.title} 대표 이미지`} fill sizes="112px" unoptimized style={{objectFit:"cover"}} onError={() => setFailedUrl(item.coverImageUrl)} /> : <ImageFallback label="수업 이미지 없음" />}</div>
       <div className={card.body}>
         <div className={card.metadata}><span className={card.chip}>{formatClassSubjectDisplayLabel(item)}</span><span className={card.meta}>{formatStoredTargetGrades(item.targetAge)}</span></div>
@@ -31,7 +33,7 @@ function FavoriteCard({ item, onError }: { item: ClassSummary; onError: () => vo
         {region ? <p className={card.academy}>{region}</p> : null}
       </div>
       <svg className={styles.chevron} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path d="m9 6 6 6-6 6" /></svg>
-    </Link>
+    </ParentDetailLink>
     <BookmarkButton classId={item.id} className={card.bookmarkButton} activeClassName={card.bookmarkButtonActive} variant="heart" iconSize={20} onError={onError} />
   </article>
 }

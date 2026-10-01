@@ -1,6 +1,6 @@
+import { ParentDetailLink } from "@/features/classes/ui/parent-detail-link"
 import { ImageFallback } from "@/shared/ui/image-fallback"
 import Image from "next/image"
-import Link from "next/link"
 
 import { BookmarkButton } from "@/features/favorites/ui/bookmark-button"
 import styles from "./home-class-card.module.css"
@@ -41,14 +41,14 @@ export function HomeClassCard({
 }: HomeClassCardProps) {
   return (
     <article className={styles.card}>
-      <Link href={href} className={styles.cardLink}>
+      <ParentDetailLink href={href} className={styles.cardLink}>
       <span className={styles.thumbnail}>
         {thumbnailUrl ? (
           <Image
             src={thumbnailUrl}
             alt={thumbnailAlt}
             fill
-            sizes="272px"
+            sizes="(max-width: 480px) 56.5vw, 260px"
             style={{ objectFit: "cover" }}
             unoptimized
           />
@@ -66,7 +66,7 @@ export function HomeClassCard({
           {distanceLabel ? <span className={styles.distance}>{distanceLabel}</span> : null}
         </span>
       </span>
-      </Link>
+      </ParentDetailLink>
         <BookmarkButton
           classId={classId}
           className={styles.bookmark}

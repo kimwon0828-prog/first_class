@@ -1,3 +1,6 @@
+import { safeParentReturnTo } from "@/features/classes/lib/parent-navigation"
+import { ParentAppShell } from "@/features/classes/ui/parent-app-shell"
+import { ParentHeader } from "@/features/classes/ui/parent-header"
 import { getPublicClassFeedback } from "@/features/feedback/queries/get-public-feedback"
 import { PublicFeedback } from "@/features/feedback/ui/public-feedback"
 import { formatRegularPrice } from "@/shared/lib/regular-price"
@@ -30,6 +33,7 @@ type ClassDetailPageProps = {
     id: string
   }>
   searchParams?: Promise<{
+    returnTo?: string
     child?: string
     sido?: string
     sigungu?: string
@@ -71,8 +75,11 @@ export default async function ClassDetailPage({ params, searchParams }: ClassDet
   const profile = session ? await getMyProfile() : null
   const isParentUser = profile?.role === "parent"
   const favoritesEnabled = !session || profile?.role === "parent"
-  const detailHref = regionQuery.size
-    ? `/classes/${resolvedParams.id}?${regionQuery.toString()}`
+  const detailQuery = new URLSearchParams(regionQuery)
+  const returnTo = safeParentReturnTo(resolvedSearchParams?.returnTo)
+  if (returnTo) detailQuery.set("returnTo", returnTo)
+  const detailHref = detailQuery.size
+    ? `/classes/${resolvedParams.id}?${detailQuery.toString()}`
     : `/classes/${resolvedParams.id}`
   const signInHref = `/auth/sign-in?${new URLSearchParams({ returnTo: detailHref }).toString()}`
   const [{ data: slots, error: slotsError }, { data: children, error: childrenError }] = await Promise.all([
@@ -118,19 +125,9 @@ export default async function ClassDetailPage({ params, searchParams }: ClassDet
   const earliestSlot = selectEarliestDetailSlot(slots, Date.now())
   const earliestTiming = formatDetailSchedule(earliestSlot)
   return (
-    <main className={styles.page} data-parent-design="v1" data-parent-class-detail>
+    <ParentAppShell className={styles.page} data-parent-class-detail>
       <div className={styles.shell}>
-        <header className={styles.topBar}>
-          <Link href={classesHref} className={styles.iconButton} aria-label="뒤로가기">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-              <path d="m15 18-6-6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </Link>
-          <p className={styles.headerTitle}>수업 상세</p>
-          {classItem && favoritesEnabled ? <BookmarkButton classId={classItem.id}
-            className={styles.iconButton} activeClassName={styles.favoriteActive} iconSize={20} variant="heart" />
-            : <span className={styles.headerSpacer} aria-hidden="true" />}
-        </header>
+        <ParentHeader title="수업 상세" inset backHref={classesHref} />
 
         {error ? (
           <section className={styles.sectionState} role="alert">
@@ -283,7 +280,9 @@ export default async function ClassDetailPage({ params, searchParams }: ClassDet
         parentName={profile?.name ?? ""} parentPhone={profile?.phone ?? null}
         academyName={organizationLabel || null} trialPriceLabel={formatDiscoveryPrice(classItem)}
         hasSession={Boolean(session)} isParentUser={isParentUser} signInHref={signInHref}
+        secondaryAction={favoritesEnabled ? <BookmarkButton key="favorite" classId={classItem.id}
+          className={styles.dockFavorite} activeClassName={styles.favoriteActive} iconSize={24} variant="heart" /> : null}
         fixedCtaClassName={styles.fixedCta} ctaButtonClassName={styles.ctaButton} /> : null}
-    </main>
+    </ParentAppShell>
   )
 }

@@ -1,9 +1,11 @@
+import { ParentHeader } from "@/features/classes/ui/parent-header"
+import { ParentAppShell } from "@/features/classes/ui/parent-app-shell"
 import styles from "./page.module.css"
 
 export default function ClassDetailLoading() {
-  return <main className={styles.page} data-parent-design="v1" aria-busy="true" aria-label="수업 상세 불러오는 중">
+  return <ParentAppShell className={styles.page} data-parent-design="v1" aria-busy="true" aria-label="수업 상세 불러오는 중">
     <div className={styles.shell}>
-      <div className={styles.topBar}><p className={styles.headerTitle}>수업 상세</p></div>
+      <ParentHeader title="수업 상세" backHref="/classes" inset />
       <div className={styles.heroSection} aria-hidden="true">
         <div className={styles.imageFrame} />
         <div className={`${styles.skeleton} ${styles.skeletonTitle}`} />
@@ -14,5 +16,5 @@ export default function ClassDetailLoading() {
         <div className={styles.section}><div className={`${styles.skeleton} ${styles.skeletonShort}`} /><div className={styles.skeleton} /></div>
       </div>
     </div>
-  </main>
+  </ParentAppShell>
 }

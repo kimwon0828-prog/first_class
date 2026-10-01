@@ -1,5 +1,6 @@
+import { ParentDetailLink } from "@/features/classes/ui/parent-detail-link"
+import { parentEntryHref } from "@/features/classes/lib/parent-navigation"
 import { Suspense } from "react"
-import Link from "next/link"
 import { notFound } from "next/navigation"
 import { unstable_noStore as noStore } from "next/cache"
 import { requireParentAccess } from "@/features/my/lib/require-parent-access"
@@ -21,7 +22,7 @@ export default async function EducationProfilePage({ searchParams }: {
   noStore()
   const params = await searchParams
   const childId = typeof params.child === "string" ? params.child : null
-  await requireParentAccess({ returnTo: childId ? withRecordChild("/record/profile", childId) : "/record" })
+  await requireParentAccess({ returnTo: childId ? parentEntryHref("/record/profile", params) : "/record" })
   if (!childId) notFound()
   return <EducationProfileFrame childId={childId}>
     <Suspense fallback={<EducationProfileSkeleton />}><EducationProfileContent childId={childId} /></Suspense>
@@ -74,9 +75,9 @@ async function EducationProfileContent({ childId }: { childId: string }) {
                   {source.observations.map((observation, index) => <li key={`${observation.code}-${index}`}>{observation.label}</li>)}
                 </ul> : <div className={styles.noObservations}><p>이 리포트에는 남겨진 관찰이 없어요.</p><p>수업에 대한 전체 내용은 리포트에서 확인해보세요.</p></div>}
               </section>
-              <Link href={withRecordChild(`/record/${source.experienceId}/report`, childId)} className={styles.reportLink} aria-label={`${source.classTitle} 리포트 보기`}>
+              <ParentDetailLink href={withRecordChild(`/record/${source.experienceId}/report`, childId)} className={styles.reportLink} aria-label={`${source.classTitle} 리포트 보기`}>
                 <DocumentIcon />리포트 보기 <svg className={styles.chevron} aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="m9 6 6 6-6 6" /></svg>
-              </Link>
+              </ParentDetailLink>
             </article>
           </li>
         })}</ol>

@@ -10,3 +10,14 @@
 .stateText { margin: var(--s2) 0 var(--s4); color: var(--text-2); font-size: var(--font-b2); }
 .skeletons { display: grid; gap: var(--s6); padding: 0 var(--gutter); }
 .skeleton { height: 120px; border-radius: var(--r-lg); background: var(--surface-sub); }
+
+.skeletonProfile { display: flex; align-items: center; gap: var(--s4); }
+.skeletonProfile > span { width: 64px; height: 64px; border-radius: 50%; background: var(--neutral-100); }
+.skeletonProfile > div { display: grid; flex: 1; gap: var(--s3); }
+.skeletonProfile i, .skeletonGroup i, .skeletonGroup span { display: block; height: 16px; border-radius: var(--r-sm); background: var(--neutral-100); }
+.skeletonProfile i:first-child { width: 55%; }
+.skeletonGroup { display: grid; gap: var(--s4); }
+.skeletonGroup > i { width: 30%; }
+.skeletonGroup > div { display: flex; align-items: center; gap: var(--s4); min-height: 52px; }
+.skeletonGroup span { width: 24px; height: 24px; }
+.skeletonGroup div i { width: 55%; }

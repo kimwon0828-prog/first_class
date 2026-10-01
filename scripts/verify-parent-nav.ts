@@ -6,7 +6,7 @@
 //   1. 탭은 넷이다: 홈 / · 일정 /my/schedule · 기록 /record · 마이페이지 /my.
 //   2. "수업찾기" 는 탭이 아니다. /classes route 와 화면은 그대로 살아 있다.
 //   3. active 는 언제나 최대 하나다. /my/schedule 은 마이페이지보다 우선한다.
-//   4. /favorites 는 탭에 없지만 마이페이지로 읽는다(route 는 유지).
+//   4. /favorites 는 탭에 없지만 홈으로 읽는다(route 는 유지).
 //   5. 모든 학부모 화면이 이 하나의 nav 를 쓴다. 화면별 nav 를 다시 만들지 않는다.
 //   6. 탭마다 touch target 이 44px 아래로 내려가지 않는다.
 //   7. floating nav 가 본문을 가리지 않도록 공통 token 으로 아래를 비운다.
@@ -52,7 +52,7 @@ check("홈 · 일정 · 기록 · 마이페이지", labels.join(",") === "홈,�
 check('"수업찾기" 탭이 없다', !labels.includes("수업찾기"))
 check('"관심수업" 탭이 없다', !labels.includes("관심수업"))
 check('"내 신청" 탭이 없다', !labels.includes("내 신청"))
-check('홈 탭은 "/" 다', nav.includes('tab: "home", href: "/"'))
+check('홈 탭은 "/" 다', nav.includes('tab: "home", href: withParentChild("/", child)'))
 check("일정 탭은 /my/schedule 이다", nav.includes('scheduleHref = "/my/schedule"'))
 check("기록 탭은 /record 다", nav.includes('recordHref = "/record"'))
 check("마이페이지 탭은 /my 다", nav.includes('myPageHref = "/my"'))
@@ -61,10 +61,10 @@ console.log("\n[2] route 별 active 계약")
 
 const EXPECTED: ReadonlyArray<readonly [string, ParentNavTab | null]> = [
   ["/", "home"],
-  ["/classes", "home"],
-  ["/classes/abc-123", "home"],
-  ["/academies", "home"],
-  ["/academy/some-handle", "home"],
+  ["/classes", null],
+  ["/classes/abc-123", null],
+  ["/academies", null],
+  ["/academy/some-handle", null],
   ["/my/schedule", "schedule"],
   // Action Center 는 Home 흐름의 상세 화면이다. 마이페이지가 아니다.
   ["/my/actions", "my"],
@@ -76,10 +76,11 @@ const EXPECTED: ReadonlyArray<readonly [string, ParentNavTab | null]> = [
   ["/my/children", "my"],
   ["/my/profile", "my"],
   ["/my/applications", "my"],
-  ["/favorites", "my"],
+  ["/favorites", null],
+  ["/notifications", null],
   // 탭 밖의 화면은 아무 탭도 켜지 않는다.
   ["/auth/sign-in", null],
-  ["/classes/abc/apply", "home"],
+  ["/classes/abc/apply", null],
   ["/partner", null],
   ["/terms", null],
   ["/studio", null]
@@ -110,7 +111,7 @@ check("active 를 밖에서 주입하지 않는다", !nav.includes("active?:") &
 
 console.log("\n[3] 모든 학부모 화면이 같은 nav 를 쓴다")
 
-check("수업찾기는 하단 nav 를 렌더하지 않는다", !codeOf("app/classes/page.tsx").includes("<ParentBottomNav"))
+check("수업찾기는 공통 shell에서 nav를 제공한다", codeOf("app/classes/page.tsx").includes("<ParentAppShell"))
 
 const NAV_SCREENS = [
   "app/page.tsx",
@@ -121,11 +122,11 @@ const NAV_SCREENS = [
   "src/features/children/ui/children-frame.tsx"
 ]
 for (const path of NAV_SCREENS) {
-  check(`${path} 가 공용 nav 를 쓴다`, codeOf(path).includes("<ParentBottomNav"))
+  check(`${path} 가 공용 nav 를 쓴다`, codeOf(path).includes("<ParentAppShell"))
   check(`${path} 에 직접 만든 탭이 없다`, !codeOf(path).includes('aria-label="하단 탭"'))
 }
 
-check("학원찾기는 하단 nav 를 렌더하지 않는다", !codeOf("app/academies/page.tsx").includes("ParentBottomNav") && !codeOf("src/features/academies/ui/academies-frame.tsx").includes("ParentBottomNav"))
+check("학원찾기는 공통 shell에서 nav를 제공한다", codeOf("src/features/academies/ui/academies-frame.tsx").includes("<ParentAppShell"))
 
 console.log("\n[4] 삭제 금지 route")
 

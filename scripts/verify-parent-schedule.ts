@@ -217,7 +217,7 @@ console.log("\n[6] 화면 계약")
 check("route 가 있다", exists(PAGE_PATH))
 check(
   "로그인 정책은 기존 것을 쓴다",
-  page.includes('requireParentAccess({ returnTo: "/my/schedule" })')
+  page.includes('requireParentAccess({ returnTo: parentEntryHref("/my/schedule", params) })')
 )
 check("기존 parent-safe 조회를 쓴다", page.includes("getMyApplications()") && page.includes("getMyChildren()"))
 check("새 adapter method 를 만들지 않았다", !page.includes("dataAdapter."))
@@ -228,7 +228,7 @@ check("조회 실패와 빈 상태 분리", page.includes("applications.error ||
 check("실패 및 retry", screen.includes("일정을 불러오지 못했어요.") && screen.includes("router.refresh()"))
 check("예정/완료 빈 상태", screen.includes("예정된 체험수업이 없어요.") && screen.includes("완료한 일정이 없어요."))
 check("탐색 CTA child 유지", screen.includes("buildClassesHref({ child: selectedChildId })"))
-check("공용 V1 nav", screen.includes('<ParentBottomNav designVersion="v1" />'))
+check("공용 V1 nav", screen.includes('<ParentAppShell'))
 check("접근 가능한 키보드 tabs", screen.includes('role="tablist"') && screen.includes("aria-selected") && screen.includes("ArrowRight") && screen.includes("ArrowLeft"))
 check("로딩 및 오류 경계", exists("app/my/schedule/loading.tsx") && exists("app/my/schedule/error.tsx"))
 check("일정 탭이 active 다", resolveParentNavTab("/my/schedule") === "schedule")
@@ -242,7 +242,7 @@ console.log("\n[7] Home 연동 · 기존 route 보존")
 
 check(
   'Home 일정 탭은 /my/schedule 이다',
-  home.includes('scheduleHref={scheduleEntryHref}') && home.includes('"/my/schedule"')
+  home.includes('scheduleHref: scheduleEntryHref') && home.includes('"/my/schedule"')
 )
 check("Home 카드는 경험 상세로 그대로 간다", home.includes("href={upcoming.href}"))
 check("/my/applications 가 남아 있다", exists("app/my/applications/page.tsx"))

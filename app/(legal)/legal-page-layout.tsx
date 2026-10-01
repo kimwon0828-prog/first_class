@@ -69,7 +69,7 @@ export function LegalPageLayout({
               {lastUpdatedDate ? <p>최종 수정일: {lastUpdatedDate}</p> : null}
             </div>
 
-            <div className={styles.businessBox}>
+            <div id="business-info" className={styles.businessBox}>
               <h2 className={styles.businessTitle}>사업자 정보</h2>
               <ul className={styles.businessList}>
                 <li>상호명: {COMPANY_INFO.name}</li>

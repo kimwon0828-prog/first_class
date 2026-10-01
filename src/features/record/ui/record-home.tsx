@@ -1,8 +1,10 @@
+import { ParentDetailLink } from "@/features/classes/ui/parent-detail-link"
+import { ParentAppShell } from "@/features/classes/ui/parent-app-shell"
+import { ParentHeader } from "@/features/classes/ui/parent-header"
 import Link from "next/link"
 import type { ReactNode } from "react"
 import { HomeChildSelector } from "@/features/children/ui/home-child-selector"
 import type { ChildSelectorOption } from "@/features/children/lib/child-selection"
-import { ParentBottomNav } from "@/features/classes/ui/parent-bottom-nav"
 import { buildClassesHref } from "@/features/classes/lib/classes-href"
 import type { ParentExperience } from "@/features/record/lib/experience-view"
 import { withRecordChild } from "@/features/record/lib/record-href"
@@ -17,10 +19,10 @@ function RecordIcon({ person = false }: { person?: boolean }) {
   </svg>
 }
 export function RecordFrame({ children }: { children: ReactNode }) {
-  return <main data-parent-design="v1" className={styles.page}><div className={styles.shell}>
-    <header className={styles.header}><h1 className={styles.title}>기록</h1><p className={styles.subcopy}>아이의 경험과 남겨진 기록을 확인해보세요.</p></header>
+  return <ParentAppShell data-parent-design="v1" className={styles.page}><div className={styles.shell}>
+    <ParentHeader title="기록" inset /><p className={styles.subcopy}>아이의 경험과 남겨진 기록을 확인해보세요.</p>
     {children}
-  </div><ParentBottomNav designVersion="v1" /></main>
+  </div></ParentAppShell>
 }
 type RecordHomeProps = {
   experiences: ParentExperience[]
@@ -44,11 +46,11 @@ export function RecordHome({ experiences, childOptions, selectedChildId, error, 
         triggerContent={<><span className={contextStyles.avatar}><RecordIcon person /></span><span className={contextStyles.childText}>
           <span>{selected?.name ?? "모든 아이"}</span><span className={contextStyles.grade}>{selected ? selected.grade : `총 ${childOptions.length}명의 자녀`}</span>
         </span></>} />}
-      {profileChild ? <Link href={withRecordChild("/record/profile", profileChild.id)} className={styles.profileCta}>
+      {profileChild ? <ParentDetailLink href={withRecordChild("/record/profile", profileChild.id)} className={styles.profileCta}>
         <span className={styles.profileIcon}><RecordIcon /></span><span className={styles.profileBody}>
           <strong>교육 프로필</strong><span>아이의 교육 경험을 한눈에 살펴보세요.</span>
         </span><span aria-hidden="true">›</span>
-      </Link> : null}
+      </ParentDetailLink> : null}
       <div className={styles.content}>
         <h2 className={styles.count}>교육 기록 {experiences.length}개</h2>
         {signalsFailed && <p className={styles.signalNotice}>리포트와 생각 기록 정보를 불러오지 못했어요. 경험 상세에서 다시 확인해주세요.</p>}
@@ -64,7 +66,7 @@ export function RecordHome({ experiences, childOptions, selectedChildId, error, 
   </RecordFrame>
 }
 export function RecordSkeleton() {
-  return <RecordFrame><div className={styles.skeleton} role="status" aria-label="교육 기록 불러오는 중">
+  return <RecordFrame><div className={styles.skeleton} role="status" aria-busy="true" aria-label="교육 기록 불러오는 중">
     <div className={styles.skeletonContext} />
     {[0, 1, 2].map(key => <div className={styles.skeletonCard} key={key}><span /><div><span /><span /><span /></div></div>)}
   </div></RecordFrame>

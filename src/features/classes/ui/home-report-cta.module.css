@@ -1,0 +1,16 @@
+.surface { display: grid; grid-template-columns: 32px minmax(0, 1fr); align-items: start; gap: var(--s2); padding: var(--s3); border-radius: var(--r-lg); background: var(--brand-50); }
+.icon { display: grid; place-items: center; width: 32px; height: 32px; color: var(--brand-700); background: var(--brand-100); border-radius: var(--r-full); }
+.icon svg { width: 20px; height: 20px; }
+.copy { display: grid; gap: var(--s1); min-width: 0; }
+.copy h2 { margin: 0; color: var(--text-1); font-size: var(--font-b1); line-height: 1.5; font-weight: 600; word-break: keep-all; overflow-wrap: anywhere; }
+.copy p { margin: 0; color: var(--text-2); font-size: var(--font-b2); line-height: 1.5; word-break: keep-all; overflow-wrap: anywhere; }
+.copy .context { font-size: var(--font-c1); }
+.action { grid-column: 2; justify-self: end; display: inline-flex; align-items: center; justify-content: center; gap: var(--s2); min-height: 44px; padding: var(--s2) var(--s3); border-radius: var(--r-md); background: var(--brand-action); color: var(--surface); text-decoration: none; font-size: var(--font-b2); font-weight: 600; }
+.action:hover { background: var(--brand-action-hover); }
+.action:active { background: var(--brand-action-pressed); }
+.action:focus-visible { outline: 2px solid var(--brand-700); outline-offset: 3px; }
+
+@media (min-width: 480px) {
+  .surface { grid-template-columns: 32px minmax(0, 1fr) auto; align-items: center; }
+  .action { grid-column: 3; white-space: nowrap; }
+}

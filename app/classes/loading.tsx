@@ -1,10 +1,12 @@
+import { ParentHeader } from "@/features/classes/ui/parent-header"
+import { ParentAppShell } from "@/features/classes/ui/parent-app-shell"
 import homeStyles from "../page.module.css"
 import styles from "./page.module.css"
 
 export default function ClassesLoading() {
-  return <main className={homeStyles.page} data-parent-design="v1" aria-busy="true" aria-label="수업 목록 불러오는 중">
+  return <ParentAppShell className={homeStyles.page} data-parent-design="v1" aria-busy="true" aria-label="수업 목록 불러오는 중">
     <div className={homeStyles.shell}>
-      <h1 className={styles.searchTitle}>수업찾기</h1>
+      <ParentHeader title="수업찾기" inset />
       <p className={homeStyles.srOnly} role="status">수업을 불러오는 중이에요.</p>
       <div className={styles.content} aria-hidden="true">
         <div className={`${styles.skeleton} ${styles.skeletonControl}`} />
@@ -16,5 +18,5 @@ export default function ClassesLoading() {
         </div>)}
       </div>
     </div>
-  </main>
+  </ParentAppShell>
 }

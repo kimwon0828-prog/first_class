@@ -72,17 +72,17 @@ for (const [label, needle] of [
 ] as const) {
   check(`Search 에 ${label} 이(가) 없다`, !search.includes(needle))
 }
-check("Search 는 자기 이름을 말한다", search.includes("수업찾기</h1>"))
-/* /classes 는 Home 에서 시작하는 검색의 결과 화면이라 홈 탭이 켜진다. */
-check("독립 탐색 화면은 하단 nav 없이 뒤로 이동한다", !search.includes("<ParentBottomNav") && search.includes('aria-label="홈으로 이동"'))
-check("/classes 에서는 홈 탭이 active 다", resolveParentNavTab("/classes") === "home")
-check("검색 결과에서도 홈 탭이다", resolveParentNavTab("/classes/abc") === "home")
+check("Search 는 자기 이름을 말한다", search.includes('<ParentHeader title="수업찾기"'))
+/* 탐색 화면은 공통 Nav를 표시하되 active 탭은 없다. */
+check("탐색 화면은 공통 Shell/Header를 사용한다", search.includes("<ParentAppShell") && search.includes("<ParentHeader") && !search.includes("<ParentBottomNav"))
+check("/classes 는 active 없음", resolveParentNavTab("/classes") === null)
+check("수업 상세에서도 active 없음", resolveParentNavTab("/classes/abc") === null)
 check('하단 탭에 "수업찾기" 라벨이 없다', !navCode.includes('label: "수업찾기"'))
 
 console.log("\n[2] 화면 순서")
 
 const SECTION_ORDER = [
-  "searchTitle",
+  '<ParentHeader title="수업찾기"',
   "<LocationFilter",
   "<ClassesSearchPill",
   'aria-label="과목 대분류"',

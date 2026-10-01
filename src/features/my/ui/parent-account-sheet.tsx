@@ -22,9 +22,15 @@ export function ParentAccountSheet({ open, title, onClose, children, restoreFocu
     const focusTarget = restoreFocusRef?.current ?? previousFocus
     const previousOverflow = document.body.style.overflow
     const viewport = window.visualViewport
+    let frame = 0
     const resize = () => {
       dialog.style.setProperty("--account-viewport-height", `${viewport?.height ?? window.innerHeight}px`)
       dialog.style.setProperty("--account-keyboard-offset", `${Math.max(0, window.innerHeight - (viewport?.height ?? window.innerHeight) - (viewport?.offsetTop ?? 0))}px`)
+      cancelAnimationFrame(frame)
+      frame = requestAnimationFrame(() => {
+        const active = document.activeElement
+        if (active instanceof HTMLElement && dialog.contains(active)) active.scrollIntoView({ block: "nearest" })
+      })
     }
     resize()
     dialog.showModal()
@@ -33,6 +39,7 @@ export function ParentAccountSheet({ open, title, onClose, children, restoreFocu
     viewport?.addEventListener("scroll", resize)
     window.addEventListener("resize", resize)
     return () => {
+      cancelAnimationFrame(frame)
       dialog.close()
       document.body.style.overflow = previousOverflow
       viewport?.removeEventListener("resize", resize)

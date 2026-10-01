@@ -1,5 +1,5 @@
 .page { min-height: 100vh; background: var(--bg); }
-.shell { max-width: var(--col); margin-inline: auto; min-height: 100vh; background: var(--surface); padding: var(--s4) var(--gutter); padding-bottom: var(--parent-nav-space); }
+.shell { max-width: var(--col); margin-inline: auto; min-height: 100vh; background: var(--surface); padding: 0 var(--gutter); padding-bottom: var(--parent-nav-space); }
 .header { display: grid; gap: var(--s3); }
 .headerTop, .headerContext, .sectionHeading { display: flex; align-items: center; justify-content: space-between; gap: var(--s3); min-width: 0; }
 .brand { display: inline-flex; align-items: center; min-height: 44px; margin-right: auto; }
@@ -88,3 +88,34 @@
 
 .reportBody { display: grid; gap: var(--s2); min-width: 0; overflow-wrap: anywhere; }
 .reportDescription { font-size: var(--font-b2); color: var(--text-2); line-height: 1.6; }
+
+/* Approved App Experience V1: Home opt-in only; Phase 1 chrome stays shared. */
+.experience { --parent-card-width: clamp(216px, 56.5vw, 260px); }
+.hero { margin: var(--s5) 0 var(--s5); font-size: 28px; line-height: 1.4; font-weight: 600; letter-spacing: 0; color: var(--text-1); }
+.hero > span { color: var(--brand-700); }
+.experience .header { gap: var(--s3); }
+.experience .headerContext { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; gap: var(--s3); padding: 0; border: 0; }
+.experience .filterInlineTrigger, .experience .childContext { width: 100%; min-height: 48px; margin: 0; padding: 0 var(--s3); border: 1px solid var(--border); border-radius: var(--r-md); background: var(--neutral-50); }
+.experience .filterInlineTrigger { display: flex; gap: var(--s2); }
+.experience .filterInlineLabel { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--font-b2); }
+.experience .filterInlineChevron { margin-left: auto; }
+.experience .childContext { min-width: 0; }
+.experience .childChip { width: 100%; gap: var(--s2); margin: 0; padding: 0; justify-content: space-between; min-width: 0; }
+.experience .childChip > svg { flex-shrink: 0; }
+.experience .childChipLabel { display: flex; align-items: center; gap: var(--s2); min-width: 0; }
+.experience .childChipLabel > svg { flex-shrink: 0; }
+.experience .childChipLabel > span, .experience .childChip > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.experience .radiusRail { flex-wrap: wrap; margin-top: var(--s2); }
+.experience .searchPill { height: 48px; background: var(--neutral-50); }
+.experience .searchPlaceholder { font-size: var(--font-b2); }
+.experience .subjectChipRail { gap: var(--s2); margin-right: calc(-1 * var(--gutter)); padding-right: var(--gutter); scrollbar-width: none; }
+.experience .subjectChipRail::-webkit-scrollbar { display: none; }
+.experience .subjectChip { flex: 0 0 64px; min-width: 0; padding-inline: var(--s1); white-space: normal; word-break: keep-all; overflow-wrap: anywhere; line-height: 1.5; gap: var(--s2); }
+.experience .sectionHeadingTitle { font-size: 20px; font-weight: 700; }
+.experience .homeCardRail { margin-right: calc(-1 * var(--gutter)); padding-right: var(--gutter); scrollbar-width: none; }
+.experience .homeCardRail::-webkit-scrollbar { display: none; }
+.experience .academyImage { flex-basis: 56px; height: 56px; background: var(--neutral-50); }
+.experience .academyList > li + li { border-top: 0; }
+.experience .academyBody .muted { font-size: var(--font-b2); }
+.experience .academyName { font-size: var(--font-b1); }
+.experience .academyCard { gap: var(--s4); }

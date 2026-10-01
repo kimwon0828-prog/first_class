@@ -1,6 +1,9 @@
+import { parentEntryHref } from "@/features/classes/lib/parent-navigation"
+import { ParentDetailLink } from "@/features/classes/ui/parent-detail-link"
+import { ParentAppShell } from "@/features/classes/ui/parent-app-shell"
+import { ParentHeader } from "@/features/classes/ui/parent-header"
 import { withRecordChild } from "@/features/record/lib/record-href"
 import { getRecordChildContext } from "@/features/record/queries/get-record-child-context"
-import Link from "next/link"
 import { notFound } from "next/navigation"
 import { unstable_noStore as noStore } from "next/cache"
 
@@ -67,7 +70,8 @@ export default async function ExperienceDetailPage({
 }) {
   noStore()
   const { experienceId } = await params
-  await requireParentAccess({ returnTo: `/record/${experienceId}` })
+  const navigationParams = await searchParams
+  await requireParentAccess({ returnTo: parentEntryHref(`/record/${experienceId}`, navigationParams) })
 
   const detailResult = await getMyExperienceDetailResult(experienceId)
   if (detailResult.error) throw new Error("경험 정보를 불러오지 못했어요.")
@@ -77,9 +81,8 @@ export default async function ExperienceDetailPage({
   }
 
   const isCompletedExperience = experience.status === "completed"
-  const selectedChildId = await getRecordChildContext((await searchParams)?.child)
+  const selectedChildId = await getRecordChildContext(navigationParams?.child)
   const backHref = withRecordChild(isCompletedExperience ? "/record" : "/my/applications", selectedChildId)
-  const backLabel = isCompletedExperience ? "기록" : "신청 현황"
 
   // 완료 경험의 관찰 미리보기는 발행 snapshot만 읽는다. 입력은 리포트 상세에 둔다.
   const reportResult = isCompletedExperience ? await getMyExperienceReport(experienceId) : null
@@ -107,14 +110,9 @@ export default async function ExperienceDetailPage({
     : null
 
   return (
-    <main className={styles.page} data-parent-design="v1">
+    <ParentAppShell className={styles.page}>
       <div className={styles.shell}>
-        <header className={styles.header}>
-          <Link href={backHref} className={styles.back} aria-label={`${backLabel}으로 돌아가기`}>
-            <span aria-hidden="true">←</span>
-          </Link>
-          <h1 className={styles.headerTitle}>{isCompletedExperience ? "체험 기록" : "신청 정보"}</h1>
-        </header>
+        <ParentHeader title={isCompletedExperience ? "체험 기록" : "신청 정보"} backHref={backHref} sticky />
         <div className={styles.content}>
           <section className={styles.section} aria-label={isCompletedExperience ? "경험 정보" : "신청 정보"}>
             <p className={styles.child}>{childLabel}</p>
@@ -140,31 +138,31 @@ export default async function ExperienceDetailPage({
                 <>
                   {snapshot?.observations.slice(0, 2).map((observation, index) => <p className={styles.body} key={`${observation.code}-${index}`}>{observation.label}</p>)}
                   {summary ? <p className={styles.body}>{summary}</p> : null}
-                  <Link href={withRecordChild(`/record/${experience.id}/report`, selectedChildId)} className={styles.reportLink}>
+                  <ParentDetailLink href={withRecordChild(`/record/${experience.id}/report`, selectedChildId)} className={styles.reportLink}>
                     리포트 전체 보기 <span aria-hidden="true">→</span>
-                  </Link>
+                  </ParentDetailLink>
                 </>
               ) : reportLoadFailed ? <p className={styles.muted} role="status">리포트 정보를 불러오지 못했어요. <RecordDetailRetry /></p>
                 : <p className={styles.muted}>아직 등록된 리포트가 없어요.</p>}
             </section>
 
-            {profileChildId ? <Link href={withRecordChild("/record/profile", profileChildId)} className={styles.profile}>
+            {profileChildId ? <ParentDetailLink href={withRecordChild("/record/profile", profileChildId)} className={styles.profile}>
               <div><h2 className={styles.sectionTitle}>교육 프로필</h2><p className={styles.muted}>아이의 다른 교육 경험도 함께 살펴보세요.</p></div>
               <span aria-hidden="true">›</span>
-            </Link> : null}
+            </ParentDetailLink> : null}
           </> : <aside className={styles.notice}>
             <p>{experience.status === "canceled" ? "취소된 신청이에요." : "아직 완료된 교육 경험이 아니에요."}</p>
             <p className={styles.muted}>완료된 경험은 교육 기록으로 남으며, 발행된 리포트가 있으면 함께 확인할 수 있어요.</p>
           </aside>}
 
           <section className={styles.related} aria-label="관련 정보">
-            {experience.classId ? <Link href={withRecordChild(`/classes/${experience.classId}`, selectedChildId)} className={styles.primaryLink}>
+            {experience.classId ? <ParentDetailLink href={withRecordChild(`/classes/${experience.classId}`, selectedChildId)} className={styles.primaryLink}>
               수업 다시 보기 <span aria-hidden="true">→</span>
-            </Link> : null}
+            </ParentDetailLink> : null}
             {experience.canCancel ? <ExperienceCancelButton experienceId={experience.id} confirmDescription={`${experience.classTitle ?? "이 수업"} 신청을 취소할까요?`} /> : null}
           </section>
         </div>
       </div>
-    </main>
+    </ParentAppShell>
   )
 }

@@ -199,14 +199,14 @@ check(
 )
 
 console.log("\n[4] Home Design V1.1 정보 위계")
-check("과목 → 일정 → 별도 리포트 → 수업 → 학원", orderIn(homeCode, ['aria-label="과목별 둘러보기"', 'id="home-upcoming-title"', 'aria-label={report.kind === "report_review"', 'id="home-classes-title"', 'id="home-academies-title"']))
+check("과목 → 일정 → 별도 리포트 → 수업 → 학원", orderIn(homeCode, ['aria-label="과목별 둘러보기"', 'id="home-upcoming-title"', '<HomeReportCta report={report}', 'id="home-classes-title"', 'id="home-academies-title"']))
 check("배너와 근거 없는 개인화 문구가 없다", !homeCode.includes("hero-banner") && !homeCode.includes("우리 아이에게 맞는 첫수업"))
-check("선택한 자녀 일정과 리포트는 독립적이다", homeCode.includes("selectedChild && upcoming ? (") && homeCode.includes("{report ? (") && !homeCode.includes("의 지금"))
+check("선택한 자녀 일정과 리포트는 독립적이다", homeCode.includes("selectedChild && upcoming ? (") && homeCode.includes("{report ? <HomeReportCta") && !homeCode.includes("의 지금"))
 check("개인화 카드를 나열하지 않는다", !homeCode.includes("parentHome.actions.map") && !homeCode.includes("parentHome.upcoming.map"))
 check("가로 slider는 키보드로 접근 가능하다", homeCode.includes("tabIndex={0}") && homeCss.includes("scroll-snap-type: x mandatory"))
 check("지역과 자녀 선택을 유지한다", homeCode.includes("<LocationFilter") && homeCode.includes("<HomeChildSelector"))
 check("학원은 별도 실제 조회를 쓴다", homeCode.includes("getHomeAcademies(context)"))
-check("Home에만 새 토큰을 적용한다", homeCode.includes('data-parent-design="v1"'))
+check("Home이 V1 공통 shell을 사용한다", homeCode.includes("<ParentAppShell") && codeOf("src/features/classes/ui/parent-app-shell.tsx").includes('data-parent-design="v1"'))
 
 check("Search 에는 개인화 문구가 없다", !searchCode.includes("우리 아이에게 맞는"))
 /*
@@ -258,7 +258,7 @@ for (const [label, path] of [
   ["my", "app/my/my-frame.tsx"],
   ["favorites", "app/favorites/favorites-frame.tsx"]
 ] as const) {
-  check(`${label} 화면이 공용 ParentBottomNav 를 쓴다`, codeOf(path).includes("<ParentBottomNav"))
+  check(`${label} 화면이 공용 ParentBottomNav 를 쓴다`, codeOf(path).includes("<ParentAppShell"))
 }
 check(
   "화면별 nav component 를 다시 만들지 않았다",
