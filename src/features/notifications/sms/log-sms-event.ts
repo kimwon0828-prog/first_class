@@ -1,4 +1,5 @@
 import "server-only"
+import { hasLiveParentAccountRecipient } from "../lib/parent-account-recipient"
 
 import { sendSms } from "@/features/notifications/sms/sender"
 import { renderSmsTemplate } from "@/features/notifications/sms/templates"
@@ -252,6 +253,7 @@ export const logSmsEvent = async ({
   })
 
   if (recipientType === "parent") {
+    if (!await hasLiveParentAccountRecipient(application.id, application.parentId)) return
     const recipient = await resolveParentRecipient(
       application.parentId ?? null,
       application.parentName ?? null,

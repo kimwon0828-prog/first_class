@@ -60,3 +60,21 @@ export const readFavoriteClassIds = (): { ids: string[]; error: boolean } => {
     return { ids: [], error: true }
   }
 }
+
+
+const OWNER_KEY = "firstclass_favorites_account"
+
+export function clearParentFavoriteData() {
+  window.localStorage.removeItem(STORAGE_KEY)
+  window.localStorage.removeItem(OWNER_KEY)
+  window.dispatchEvent(new Event("firstclass_favorites_updated"))
+}
+
+// Favorites are browser-local. Never transfer a previous/unknown account's list
+// to a newly signed-in UUID, including a rejoined account with the same email.
+export function bindFavoriteAccount(userId: string | null) {
+  const previous = window.localStorage.getItem(OWNER_KEY)
+  if (previous === userId) return
+  clearParentFavoriteData()
+  if (userId) window.localStorage.setItem(OWNER_KEY, userId)
+}

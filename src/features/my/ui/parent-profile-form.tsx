@@ -1,6 +1,8 @@
 "use client"
 
-import { useActionState, useState, type FormEvent } from "react"
+import { useActionState, useEffect, useRef, useState, type FormEvent } from "react"
+
+import { unstable_rethrow } from "next/navigation"
 
 import {
   updateParentProfileAction,
@@ -13,7 +15,17 @@ import {
 } from "@/shared/lib/parent-birth-date"
 import styles from "./parent-profile-form.module.css"
 
+export type ParentProfileValues = {
+  name: string
+  phone: string | null
+  parentBirthDate: string | null
+}
+
 type ParentProfileFormProps = {
+  email?: string | null
+  onCancel?: () => void
+  onSaved?: (values: ParentProfileValues) => void
+  onPendingChange?: (pending: boolean) => void
   initialName: string
   initialPhone: string | null
   initialParentBirthDate: string | null
@@ -24,14 +36,41 @@ const initialState: UpdateParentProfileActionState = {
   message: ""
 }
 
+// Keep transport failures in the sheet too; preserve Next auth redirects.
+async function saveProfile(previous: UpdateParentProfileActionState, formData: FormData): Promise<UpdateParentProfileActionState> {
+  try {
+    return await updateParentProfileAction(previous, formData)
+  } catch (error) {
+    unstable_rethrow(error)
+    return { status: "error", message: "보호자 정보를 저장하지 못했어요. 잠시 후 다시 시도해 주세요." }
+  }
+}
+
 export const ParentProfileForm = ({
   initialName,
   initialPhone,
-  initialParentBirthDate
+  initialParentBirthDate,
+  email, onCancel, onSaved, onPendingChange
 }: ParentProfileFormProps) => {
-  const [state, formAction, isPending] = useActionState(updateParentProfileAction, initialState)
+  const [state, formAction, isPending] = useActionState(saveProfile, initialState)
   const [clientMessage, setClientMessage] = useState("")
+  const [name, setName] = useState(initialName)
+  const [phone, setPhone] = useState(initialPhone ?? "")
+  const [birthDate, setBirthDate] = useState(initialParentBirthDate ?? "")
+  const submitted = useRef<ParentProfileValues | null>(null)
   const maxBirthDate = getTodayDateValue()
+
+  useEffect(() => {
+    onPendingChange?.(isPending)
+    return () => onPendingChange?.(false)
+  }, [isPending, onPendingChange])
+  useEffect(() => {
+    if (state.status === "success" && submitted.current) {
+      const values = submitted.current
+      submitted.current = null
+      onSaved?.(values)
+    }
+  }, [state, onSaved])
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     if (isPending) {
@@ -50,6 +89,11 @@ export const ParentProfileForm = ({
       return
     }
 
+    submitted.current = {
+      name: String(formData.get("name") ?? "").trim(),
+      phone: String(formData.get("phone") ?? "").trim() || null,
+      parentBirthDate: parentBirthDateResult.parentBirthDate
+    }
     setClientMessage("")
   }
 
@@ -64,7 +108,8 @@ export const ParentProfileForm = ({
           required
           minLength={2}
           maxLength={30}
-          defaultValue={initialName}
+          value={name}
+          onChange={(event) => setName(event.target.value)}
           disabled={isPending}
           className={styles.input}
         />
@@ -77,7 +122,8 @@ export const ParentProfileForm = ({
           autoComplete="tel"
           type="tel"
           maxLength={20}
-          defaultValue={initialPhone ?? ""}
+          value={phone}
+          onChange={(event) => setPhone(event.target.value)}
           disabled={isPending}
           placeholder="010-0000-0000"
           className={styles.input}
@@ -93,13 +139,16 @@ export const ParentProfileForm = ({
           type="date"
           min={MIN_PARENT_BIRTH_DATE}
           max={maxBirthDate}
-          defaultValue={initialParentBirthDate ?? ""}
+          value={birthDate}
+          onChange={(event) => setBirthDate(event.target.value)}
           disabled={isPending}
           className={styles.input}
         />
       </label>
 
       <p id="profile-birth-note" className={styles.note}>카카오 로그인으로 가입한 경우 생년월일이 비어 있을 수 있어요.</p>
+
+      {email ? <div className={styles.field}><span className={styles.label}>이메일</span><p className={styles.readOnly}>{email}</p></div> : null}
 
       {clientMessage || state.message ? (
         <p
@@ -110,9 +159,12 @@ export const ParentProfileForm = ({
         </p>
       ) : null}
 
+      <div className={styles.actions}>
+      {onCancel ? <button type="button" disabled={isPending} onClick={onCancel} className={styles.cancelButton}>취소</button> : null}
       <button type="submit" disabled={isPending} className={styles.submitButton}>
-        {isPending ? "저장 중..." : "저장하기"}
+        {isPending ? "저장 중..." : "저장"}
       </button>
+      </div>
     </form>
   )
 }

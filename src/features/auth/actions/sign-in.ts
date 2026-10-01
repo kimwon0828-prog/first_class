@@ -1,5 +1,6 @@
 "use server"
 
+import { isParentAccountDeletionEnabled } from "@/features/my/lib/parent-account-deletion-server"
 import { createClient } from "@supabase/supabase-js"
 import { redirect } from "next/navigation"
 
@@ -111,6 +112,12 @@ export async function signInAction(
       autoRefreshToken: false
     }
   })
+
+  if (isParentAccountDeletionEnabled()) {
+    const pending = await tokenClient.rpc("get_my_parent_account_deletion_status")
+    if (pending.error) return { status: "error", message: "계정 상태를 확인하지 못했습니다. 잠시 후 다시 시도해 주세요." }
+    if (pending.data === true) redirect("/my")
+  }
 
   const { data: existingProfile, error: existingProfileError } = await tokenClient
     .from("profiles")

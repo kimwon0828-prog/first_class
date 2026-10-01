@@ -16,7 +16,6 @@ import { redirect } from "next/navigation"
 import { resolveCurrentAuth } from "@/features/auth/lib/current-auth"
 import { buildClassesHref, decodeQueryValue } from "@/features/classes/lib/classes-href"
 import { selectHomeDiscoveryClasses } from "@/features/classes/lib/parent-home"
-import { ParentProfileAvatar } from "@/features/classes/ui/parent-profile-avatar"
 import { getHomeAcademies } from "@/features/classes/queries/get-home-academies"
 import { SubjectIcon } from "@/features/classes/ui/home-subject-icon"
 import { CHILD_QUERY_KEY } from "@/features/children/lib/child-selection"
@@ -223,12 +222,7 @@ async function ParentHomeContent({ searchParams }: HomePageProps) {
             >
               <NotificationBell hasUnreadNotifications={hasUnreadNotifications} />
             </Link>
-            {!isStudioUser ? (
-              <Link href={isParentUser ? "/my/profile" : myPageEntryHref} className={styles.headerIconButton}
-                aria-label={isParentUser ? `${auth.profile?.name || "학부모"}님 프로필` : "로그인"}>
-                <ParentProfileAvatar imageUrl={null} name={isParentUser ? auth.profile?.name : undefined} />
-              </Link>
-            ) : null}
+
             </div>
           </div>
 

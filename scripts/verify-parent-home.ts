@@ -411,7 +411,7 @@ check("일정은 실제 cover image와 실제 목적지를 쓴다", homeCode.inc
 const cardCode = codeOf("src/features/classes/ui/home-class-card.tsx")
 check("카드 정보 순서 title → price → academy", orderIn(cardCode, ["className={styles.title}", "className={styles.price}", "className={styles.academy}"]))
 check("가격 overlay 스타일이 없다", !read("src/features/classes/ui/home-class-card.module.css").match(/\.price\s*\{[^}]*position:/))
-check("부모 프로필은 child 정보와 분리", homeCode.includes("<ParentProfileAvatar imageUrl={null}") && homeCode.includes("auth.profile?.name"))
+check("Home 상단 프로필 중복 진입 제거, 알림 유지", !homeCode.includes("ParentProfileAvatar") && !homeCode.includes('"/my/profile"') && homeCode.includes("<NotificationBell"))
 
 console.log(failures === 0 ? "\nALL PASS" : `\nFAIL: ${failures}건 실패`)
 process.exit(failures === 0 ? 0 : 1)

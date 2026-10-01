@@ -1,0 +1,10 @@
+.content { padding: var(--s5) var(--gutter); color: var(--text-2); font-size: var(--font-b2); overflow-wrap: anywhere; }
+.content p { margin: 0 0 var(--s4); }
+.title { margin: 0 0 var(--s4); font-size: var(--font-h3); color: var(--text-1); }
+.actions { display: flex; gap: var(--s3); margin-top: var(--s5); }
+.actions button { flex: 1; min-height: 48px; padding: var(--s3); border: 1px solid var(--border); border-radius: var(--r-md); font: inherit; font-weight: 600; cursor: pointer; }
+.cancel { background: var(--surface); color: var(--text-1); }
+.continue { background: var(--brand-700); color: white; }
+.destructive { background: var(--red-fg); color: white; }
+.actions button:disabled { opacity: .6; cursor: wait; }
+.error { color: var(--red-fg); padding: var(--s3); background: var(--red-bg); border-radius: var(--r-md); }

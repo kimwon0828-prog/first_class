@@ -89,7 +89,7 @@ export const StudioParentDecision = ({ decision, loadError, titleIcon }: StudioP
         </>
       ) : (
         // 아직 고르지 않은 것도 상태다. 재촉하는 문구를 쓰지 않는다.
-        <p className={styles.muted}>아직 학부모가 선택을 남기지 않았습니다.</p>
+        <p className={styles.muted}>학부모 응답 정보가 없습니다.</p>
       )}
 
       <p className={styles.footnote}>

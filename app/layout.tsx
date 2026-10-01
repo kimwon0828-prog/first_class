@@ -1,3 +1,4 @@
+import { FavoriteAccountBoundary } from "@/features/favorites/ui/favorite-account-boundary"
 import { PARENT_ORIGIN } from "@/shared/config/site-origins"
 
 import type { Metadata } from "next"
@@ -22,7 +23,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
   return (
     <html lang="ko">
       <head />
-      <body>{children}</body>
+      <body><FavoriteAccountBoundary />{children}</body>
     </html>
   )
 }

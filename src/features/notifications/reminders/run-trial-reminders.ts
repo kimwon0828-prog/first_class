@@ -14,7 +14,7 @@ type EmbeddedClassRow = {
 type TrialReminderCandidateRow = {
   id: string
   class_id: string
-  parent_id: string
+  parent_id: string | null
   child_name: string
   parent_name: string | null
   parent_phone: string | null
@@ -41,7 +41,7 @@ type TrialReminderCandidate = {
   academyName: string | null
   classId: string
   classTitle: string | null
-  parentId: string
+  parentId: string | null
   parentName: string | null
   parentPhone: string | null
   childName: string
@@ -61,7 +61,7 @@ type FeedbackReminderCandidateRow = {
   application_id: string
   organization_id: string
   class_id: string
-  parent_id: string
+  parent_id: string | null
   parent_name: string | null
   parent_phone: string | null
   student_name: string
@@ -79,6 +79,7 @@ type TrialReminderRunResult = {
   totalCandidates: number
   parentSent: number
   parentSkippedDuplicate: number
+  parentSkippedDetached: number
   parentFailed: number
   teacherSent: number
   teacherSkippedDuplicate: number
@@ -223,7 +224,7 @@ const getExistingReminderLogKeys = async (
 }
 
 const sendParentTrialReminder = async (candidate: TrialReminderCandidate) => {
-  await sendParentNotification({
+  return sendParentNotification({
     eventType: PARENT_REMINDER_EVENT,
     organizationId: candidate.organizationId,
     trialApplicationId: candidate.id,
@@ -325,6 +326,8 @@ const runFeedbackReminders = async (result: TrialReminderRunResult) => {
           `/record/${candidate.application_id}/report#experience-feedback`
         )
       })
+      // A claimed reminder may outlive Parent ownership. Never deliver it after detach.
+      if (!sent) continue
       const deliveredViaAlimtalk = sent.channel === "alimtalk" && sent.alimtalk.status === "sent"
       const deliveredViaSms = sent.channel === "sms_fallback" && sent.fallbackStatus === "sent"
       const delivered = deliveredViaAlimtalk || deliveredViaSms
@@ -392,6 +395,7 @@ export const runTrialReminders = async (authMode: TrialReminderRunResult["authMo
     totalCandidates: candidates.length,
     parentSent: 0,
     parentSkippedDuplicate: 0,
+    parentSkippedDetached: 0,
     parentFailed: 0,
     teacherSent: 0,
     teacherSkippedDuplicate: 0,
@@ -417,9 +421,11 @@ export const runTrialReminders = async (authMode: TrialReminderRunResult["authMo
       result.parentSkippedDuplicate += 1
     } else {
       try {
-        await sendParentTrialReminder(candidate)
-        existingLogKeys.add(parentLogKey)
-        result.parentSent += 1
+        const sent = await sendParentTrialReminder(candidate)
+        if (sent) {
+          existingLogKeys.add(parentLogKey)
+          result.parentSent += 1
+        } else result.parentSkippedDetached += 1
       } catch (error) {
         console.error("[trial reminder][parent] failed", candidate.id, error)
         result.parentFailed += 1

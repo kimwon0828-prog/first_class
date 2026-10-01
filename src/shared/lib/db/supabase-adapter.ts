@@ -343,7 +343,7 @@ type ApplicationLogRow = {
   application_id: string
   from_status: TrialApplicationSummary["status"] | null
   to_status: TrialApplicationSummary["status"]
-  actor_id: string
+  actor_id: string | null
   note: string | null
   created_at: string
 }
@@ -1053,7 +1053,7 @@ const mapApplicationLog = (
   fromStatus: row.from_status,
   toStatus: row.to_status,
   actorId: row.actor_id,
-  actorName: actorNameById.get(row.actor_id) ?? null,
+  actorName: row.actor_id ? actorNameById.get(row.actor_id) ?? null : "탈퇴한 사용자",
   note: row.note,
   createdAt: row.created_at
 })
@@ -4833,7 +4833,7 @@ export const supabaseDataAdapter: DataAdapter = {
     }
 
     const logRows = (logData ?? []) as ApplicationLogRow[]
-    const actorIds = Array.from(new Set(logRows.map((row) => row.actor_id)))
+    const actorIds = Array.from(new Set(logRows.map((row) => row.actor_id).filter((id): id is string => id !== null)))
     const actorNameById = await getActorNameMap(actorIds)
 
     const { data: trialResultData, error: trialResultError } = await supabase

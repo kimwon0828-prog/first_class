@@ -1,4 +1,4 @@
-.form { display: grid; gap: var(--s6); }
+.form { display: grid; gap: var(--s4); padding: var(--s5) var(--gutter); }
 .field { display: grid; gap: var(--s2); min-width: 0; }
 .label { display: flex; align-items: center; gap: var(--s2); font-size: var(--font-b2); font-weight: 600; color: var(--text-1); }
 .optional, .required { font-size: var(--font-c1); font-weight: 400; color: var(--text-3); }
@@ -12,3 +12,9 @@
 .infoMessage { color: var(--brand-700); background: var(--brand-50); }
 .submitButton { width: 100%; min-height: 48px; padding: var(--s3) var(--s4); border: 0; border-radius: var(--r-md); background: var(--brand-700); color: var(--neutral-0); font: inherit; font-size: var(--font-b2); font-weight: 600; cursor: pointer; }
 .submitButton:disabled { opacity: .6; cursor: wait; }
+
+.actions { display: flex; gap: var(--s3); position: sticky; bottom: -1px; padding-block: var(--s3); background: var(--surface); }
+.actions > button { flex: 1; }
+.cancelButton { min-height: 48px; padding: var(--s3) var(--s4); border: 1px solid var(--border); border-radius: var(--r-md); background: var(--surface); color: var(--text-1); font: inherit; font-size: var(--font-b2); font-weight: 600; cursor: pointer; }
+.cancelButton:disabled { opacity: .6; cursor: wait; }
+.readOnly { margin: 0; color: var(--text-2); font-size: var(--font-b2); overflow-wrap: anywhere; }

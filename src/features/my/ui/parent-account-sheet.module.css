@@ -1,0 +1,21 @@
+.sheet {
+  position: fixed;
+  inset: auto 0 var(--account-keyboard-offset, 0px);
+  width: 100%;
+  max-width: 480px;
+  max-height: min(760px, calc(var(--account-viewport-height, 100dvh) - 24px));
+  margin: 0 auto;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-bottom: 0;
+  border-radius: var(--r-sheet) var(--r-sheet) 0 0;
+  background: var(--surface);
+  color: var(--text-1);
+  overflow: hidden;
+}
+.sheet[open] { display: flex; flex-direction: column; }
+.sheet::backdrop { background: rgb(17 19 18 / 40%); }
+.header { display: flex; align-items: center; justify-content: space-between; gap: var(--s3); flex-shrink: 0; padding: var(--s2) var(--gutter); border-bottom: 1px solid var(--border); }
+.header h2 { margin: 0; font-size: var(--font-h3); font-weight: 600; }
+.header button { width: 44px; height: 44px; border: 0; background: transparent; color: var(--text-2); font: inherit; cursor: pointer; }
+.content { min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding-bottom: env(safe-area-inset-bottom); }

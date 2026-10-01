@@ -1,4 +1,5 @@
 import "server-only"
+import { hasLiveParentAccountRecipient } from "../lib/parent-account-recipient"
 
 import { sendAlimtalk } from "@/features/notifications/alimtalk/send-alimtalk"
 import type { ParentNotificationContext, ParentNotificationResult } from "@/features/notifications/alimtalk/types"
@@ -35,7 +36,8 @@ const resolveSafeNotificationError = (error: unknown) => ({
 
 export const sendParentNotification = async (
   context: ParentNotificationContext
-): Promise<ParentNotificationResult> => {
+): Promise<ParentNotificationResult | null> => {
+  if (!await hasLiveParentAccountRecipient(context.trialApplicationId, context.parentId)) return null
   const alimtalk = await sendAlimtalk(context)
 
   if (!shouldFallbackToSms(alimtalk.status)) {

@@ -1,3 +1,4 @@
+import { isMyParentAccountDeletionPending } from "@/features/my/lib/parent-account-deletion-server"
 import { NextResponse } from "next/server"
 
 import { detectOAuthEmailConflict } from "@/features/auth/lib/oauth-account-conflict"
@@ -94,6 +95,8 @@ export async function GET(request: Request) {
       new URL(`/auth/account-conflict?reason=${encodeURIComponent(emailConflictResult.reason)}`, requestUrl.origin)
     )
   }
+
+  if (await isMyParentAccountDeletionPending()) return NextResponse.redirect(new URL("/my", requestUrl.origin))
 
   const preferredName = normalizeName(user)
   const preferredPhone =

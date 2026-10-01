@@ -759,7 +759,7 @@ export type ApplicationLogEntry = {
   applicationId: string
   fromStatus: ApplicationStatus | null
   toStatus: ApplicationStatus
-  actorId: string
+  actorId: string | null
   actorName: string | null
   note: string | null
   createdAt: string
