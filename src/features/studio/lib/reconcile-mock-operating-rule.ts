@@ -6,7 +6,7 @@ export const mockScheduleExceptions: ScheduleException[] = []
 // Mock parity only. Production reconciliation is transactional SQL, not a fetch/write replay.
 export function reconcileMockOperatingRule(item: ClassSummary, today: string, reconcile: boolean) {
   const rule = item.operatingRule
-  if (!rule?.isActive) return
+  if (item.archivedAt || !rule?.isActive) return
   const now = Date.now()
   const isFuture = (s:StudioClassScheduleItem)=>s.specificDate && s.specificDate>=today && Date.parse(`${s.specificDate}T${s.startTime.slice(0,5)}:00+09:00`)>now
   const exceptions = mockScheduleExceptions.filter(e=>e.classId===item.id)
@@ -21,7 +21,7 @@ export function reconcileMockOperatingRule(item: ClassSummary, today: string, re
     s.capacity=match.capacity
     return true
   })
-  if (!item.isActive && rule.operationType==='rolling') return
+  if (!item.isActive && rule.operationType === 'rolling') return
   const end=rule.endDate ?? new Date(Date.parse(`${today}T00:00:00Z`)+89*86400000).toISOString().slice(0,10)
   const schedules=item.schedules ?? []
   for (let day=rule.startDate>today ? rule.startDate : today;day<=end;day=new Date(Date.parse(`${day}T00:00:00Z`)+86400000).toISOString().slice(0,10)) {

@@ -129,6 +129,7 @@ export type StudioClassScheduleItem = {
 }
 
 export type ClassSummary = ClassSubjectReadModel & {
+  archivedAt?: string | null
   operatingRule?: import("@/features/studio/lib/class-operating-rule").ClassOperatingRule | null
   id: string
   programType: ClassProgramType
@@ -170,6 +171,8 @@ export type StudioClassScheduleSummary = {
 }
 
 export type StudioClassListItem = ClassSubjectReadModel & {
+  archivedAt?: string | null
+  canPermanentlyDelete?: boolean
   id: string
   programType: ClassProgramType
   assignmentMode: ClassAssignmentMode
@@ -1372,6 +1375,7 @@ export interface DataAdapter {
   activateStudioTeacher(input: ActivateStudioTeacherInput): Promise<void>
   deleteStudioTeacher(input: DeleteStudioTeacherInput): Promise<void>
   upsertStudioClass(input: StudioClassInput): Promise<ClassSummary>
+  mutateStudioClassLifecycle(classId: string, organizationId: string, action: "archive" | "restore" | "delete"): Promise<void>
   updateStudioClassActive(
     classId: string,
     organizationId: string,

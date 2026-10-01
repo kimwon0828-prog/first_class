@@ -41,3 +41,14 @@ const count=item.schedules!.length
 reconcileMockOperatingRule(item,new Date(Date.parse(today)+20*86400000).toISOString().slice(0,10),false)
 assert.equal(item.schedules!.length,count)
 console.log("PASS: rule serialization/restore, Seoul civil 90-day preview, invalid rules, mock idempotence/protection/private pause")
+
+// Lifecycle hardening must retain nonarchived private fixed_period behavior.
+const privateFixed = {...item, id: "private-fixed-compat", isActive: false, archivedAt: null, schedules: [],
+  operatingRule: {...stored, operationType: "fixed_period" as const, startDate: today, endDate: new Date(Date.parse(today)+14*86400000).toISOString().slice(0,10)} } as ClassSummary
+reconcileMockOperatingRule(privateFixed, today, false)
+assert.ok(privateFixed.schedules!.length > 0)
+const fixedBefore = structuredClone(privateFixed.schedules)
+privateFixed.archivedAt = new Date().toISOString()
+reconcileMockOperatingRule(privateFixed, today, true)
+assert.deepEqual(privateFixed.schedules, fixedBefore)
+console.log("PASS: private fixed_period still generates; archived fixed_period preserves schedules and never generates")

@@ -187,7 +187,7 @@ export const getAcademiesForList = async (
   let classQuery = serviceRoleClient
     .from("classes")
     .select(PUBLIC_CLASS_SELECT_FIELDS)
-    .eq("is_active", true)
+    .eq("is_active", true).is("archived_at", null)
     .order("created_at", { ascending: false })
 
   // organization 후보가 정해져 있으면 classes 조회 단계로 밀어 스캔량을 줄인다.

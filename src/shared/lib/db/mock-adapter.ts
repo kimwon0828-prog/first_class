@@ -477,6 +477,18 @@ const toPublicVisibleClassSummary = (item: ClassSummary): ClassSummary => ({
   schedules: filterPublicVisibleSchedules(item.schedules)
 })
 
+const mockClassHasOperatingHistory = (item: ClassSummary) => {
+  const scheduleIds = new Set((item.schedules ?? []).map(schedule => schedule.id))
+  const blocks = scheduleBlocks.filter(block => block.classId === item.id)
+  const blockIds = new Set(blocks.map(block => block.id))
+  return applications.some(application => application.classId === item.id ||
+    (application.classScheduleId != null && scheduleIds.has(application.classScheduleId)) ||
+    (application.requestedScheduleBlockId != null && blockIds.has(application.requestedScheduleBlockId)) ||
+    (application.confirmedScheduleBlockId != null && blockIds.has(application.confirmedScheduleBlockId))) ||
+    blocks.some(block => block.type === "trial_booked" || block.type === "regular") ||
+    (item.schedules ?? []).some(schedule => schedule.isReferencedByApplications || (schedule.applicationCount ?? 0) > 0)
+}
+
 const toStudioClassListItem = (item: ClassSummary): StudioClassListItem => ({
   id: item.id,
   programType: item.programType,
@@ -496,6 +508,8 @@ const toStudioClassListItem = (item: ClassSummary): StudioClassListItem => ({
   teacherName: item.teacherName,
   coverImageUrl: item.coverImageUrl,
   isActive: item.isActive,
+  archivedAt: item.archivedAt ?? null,
+  canPermanentlyDelete: !mockClassHasOperatingHistory(item),
   operatingRuleState: { status: "loaded", rule: item.operatingRule ?? null },
   scheduleSummary: summarizeStudioClassSchedules(
     (item.schedules ?? []).map((schedule) => ({
@@ -862,7 +876,7 @@ export const mockDataAdapter: DataAdapter = {
     return f && a?.parentId === f.parentId && a.classId === f.classId && organizationId === mockOrganizationId ? privateFeedbackDto(f) : null
   },
   async getPublicClassFeedbackSummary(classId) {
-    if (!classes.some(row => row.id === classId && row.isActive)) return { chips: [] }
+    if (!classes.some(row => row.id === classId && row.isActive && !row.archivedAt)) return { chips: [] }
     return summarizeFeedback(experienceFeedback.filter(f => f.classId === classId && applications.some(a => a.id === f.applicationId && a.parentId === f.parentId && a.classId === f.classId && a.status === "completed" && !a.noShowAt && !a.canceledAt)), "CLASS")
   },
   async getPublicAcademyFeedbackSummary(organizationId) {
@@ -892,7 +906,7 @@ export const mockDataAdapter: DataAdapter = {
 
     const mapped = classes
       .filter((item) => {
-      if (!item.isActive) {
+      if (!item.isActive || item.archivedAt) {
         return false
       }
 
@@ -949,7 +963,7 @@ export const mockDataAdapter: DataAdapter = {
   },
   async getClassById(classId) {
     const found = classes.find((item) => item.id === classId) ?? null
-    if (!found || !found.isActive) {
+    if (!found || !found.isActive || found.archivedAt) {
       return null
     }
 
@@ -1189,6 +1203,7 @@ export const mockDataAdapter: DataAdapter = {
       throw new Error("studio_class_not_found_or_forbidden")
     }
     const existingClass = existingIndex >= 0 ? classes[existingIndex] : null
+    if (existingClass?.archivedAt) throw new Error("class_restore_required")
     const explicitMasterCategory = input.subjectCategoryId
       ? mockMasterCategoryById.get(input.subjectCategoryId) ?? null
       : null
@@ -1299,6 +1314,19 @@ export const mockDataAdapter: DataAdapter = {
 
     return nextValue
   },
+  async mutateStudioClassLifecycle(classId, organizationId, action) {
+    const target = classes.find(c => c.id === classId)
+    if (organizationId !== mockOrganizationId || !target) throw new Error("studio_class_not_found_or_forbidden")
+    if (action === "delete") {
+      if (mockClassHasOperatingHistory(target)) throw new Error("class_has_operating_history")
+      classes.splice(classes.indexOf(target), 1)
+      for (let i = mockScheduleExceptions.length - 1; i >= 0; i--) if (mockScheduleExceptions[i].classId === classId) mockScheduleExceptions.splice(i, 1)
+      for (let i = scheduleBlocks.length - 1; i >= 0; i--) if (scheduleBlocks[i].classId === classId) scheduleBlocks.splice(i, 1)
+    } else {
+      target.archivedAt = action === "archive" ? target.archivedAt ?? new Date().toISOString() : null
+      target.isActive = false
+    }
+  },
   async updateStudioClassActive(classId, organizationId, isActive) {
     if (organizationId !== mockOrganizationId) {
       throw new Error("studio_class_not_found_or_forbidden")
@@ -1309,6 +1337,7 @@ export const mockDataAdapter: DataAdapter = {
       throw new Error("studio_class_not_found_or_forbidden")
     }
 
+    if (target.archivedAt) throw new Error("class_restore_required")
     target.isActive = isActive
     if (isActive) reconcileMockOperatingRule(target,formatSeoulDateKey(new Date())!,false)
   },
@@ -1417,6 +1446,7 @@ export const mockDataAdapter: DataAdapter = {
     return summary
   },
   async listAvailableScheduleSlotsByClassId(classId) {
+    if (!classes.some(c => c.id === classId && c.isActive && !c.archivedAt)) return []
     const classItem = classes.find((item) => item.id === classId)
     if (!classItem) {
       return []
@@ -1584,6 +1614,8 @@ export const mockDataAdapter: DataAdapter = {
     if (!target || input.organizationId !== mockOrganizationId) {
       throw new Error("studio_class_not_found_or_forbidden")
     }
+
+    if (target.archivedAt) throw new Error("class_restore_required")
 
     const created: StudioClassScheduleItem = {
       id: `class-schedule-${Date.now()}`,
@@ -1759,6 +1791,8 @@ export const mockDataAdapter: DataAdapter = {
     if (!target) {
       throw new Error("studio_class_not_found_or_forbidden")
     }
+
+    if (target.archivedAt) throw new Error("class_restore_required")
 
     const seriesId = `series-${Date.now()}`
     const insertedScheduleIds: string[] = []
@@ -2743,6 +2777,7 @@ export const mockDataAdapter: DataAdapter = {
     return { id: current.id, version: current.version, withdrawnAt: nowIso }
   },
   async createTrialApplication(input: TrialApplicationInput) {
+    if (!classes.some(c => c.id === input.classId && c.isActive && !c.archivedAt)) throw new Error("class_not_available")
     const parsedScheduleOption = parseSelectedScheduleOptionId(
       input.selectedScheduleOptionId ??
         (input.selectedScheduleBlockId ? `schedule_block:${input.selectedScheduleBlockId}` : undefined)

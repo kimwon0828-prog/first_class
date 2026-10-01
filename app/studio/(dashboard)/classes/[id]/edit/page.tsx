@@ -1,3 +1,7 @@
+import Link from "next/link"
+import { StudioClassesManager } from "@/features/studio/ui/studio-classes-manager"
+import { getStudioClassListItems } from "@/features/studio/queries/get-studio-classes"
+import { getStudioNavigationPathResolver } from "@/shared/lib/studio-navigation-server"
 import { notFound } from "next/navigation"
 
 import { requireTeacherStudioAccess } from "@/features/studio/lib/require-teacher-studio-access"
@@ -46,6 +50,15 @@ export default async function StudioClassEditPage({ params, searchParams }: Stud
 
   if (!targetClass) {
     notFound()
+  }
+
+  if (targetClass.archivedAt) {
+    const studioPath = await getStudioNavigationPathResolver()
+    const { data: items, error } = await getStudioClassListItems(teacher.organizationId)
+    if (error) throw new Error(error)
+    return <section><Link href={studioPath("/studio/classes")}>수업 목록</Link><h1>{targetClass.title}</h1>
+      <p>종료된 수업입니다. 기존 일정과 운영 기록은 보관됩니다. 복구 후 비공개 상태에서 정보를 수정할 수 있습니다.</p>
+      <p>{targetClass.description}</p><StudioClassesManager items={items.filter(item => item.id === id)} initialStatus="archived" /></section>
   }
 
   const { data: scheduleCalendar, error: scheduleCalendarError } = await getStudioScheduleCalendar({

@@ -9,8 +9,8 @@ export async function runRollingSchedules() {
   const started = Date.now()
   let cursor = "", processed = 0, inserted = 0
   for (;;) {
-    let query = client.from("class_operating_rules").select("class_id,classes!inner(is_active)")
-      .eq("operation_type","rolling").eq("is_active",true).eq("classes.is_active",true)
+    let query = client.from("class_operating_rules").select("class_id,classes!inner(is_active,archived_at)")
+      .eq("operation_type","rolling").eq("is_active",true).eq("classes.is_active",true).is("classes.archived_at",null)
       .or(`last_generated_on.is.null,last_generated_on.lt.${today}`)
       .order("class_id").limit(100)
     if (cursor) query = query.gt("class_id",cursor)

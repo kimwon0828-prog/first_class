@@ -5,13 +5,14 @@ import { useEffect, useMemo, useState } from "react"
 import { useSearchParams } from "next/navigation"
 
 import { formatStoredTargetGrades } from "@/shared/constants/grade-options"
-import { submitToggleStudioClassActiveAction } from "@/features/studio/actions/toggle-studio-class-active"
+import { StudioClassLifecycleActions } from "./studio-class-lifecycle-actions"
 import { presentClassOperatingRuleState } from "@/features/studio/lib/class-operation-presentation"
 import type { StudioClassListItem } from "@/shared/lib/db/adapter"
 import { formatClassSubjectDisplayLabel } from "@/shared/lib/subject-master"
 import styles from "@/features/studio/ui/studio-classes-manager.module.css"
 
 type StudioClassesManagerProps = {
+  initialStatus?: "all" | "archived"
   items: StudioClassListItem[]
 }
 
@@ -30,28 +31,30 @@ const PROGRAM_TYPE_LABELS: Record<StudioClassListItem["programType"], string> = 
 
 import { useStudioNavigationPathFactory } from "@/features/studio/ui/studio-navigation-provider"
 
-export const StudioClassesManager = ({ items }: StudioClassesManagerProps) => {
+export const StudioClassesManager = ({ items, initialStatus = "all" }: StudioClassesManagerProps) => {
   const studioPath = useStudioNavigationPathFactory()
   const searchParams = useSearchParams()
-  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive">("all")
+  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive" | "archived">(initialStatus)
   const [query, setQuery] = useState("")
   const [toastState, setToastState] = useState<null | "created" | "updated">(null)
   const [pendingHref, setPendingHref] = useState<string | null>(null)
   // 한 번에 하나의 행 메뉴만 열린다.
   const [openMenuId, setOpenMenuId] = useState<string | null>(null)
   const totalCount = items.length
-  const activeCount = items.filter((item) => item.isActive).length
-  const inactiveCount = totalCount - activeCount
+  const activeCount = items.filter((item) => item.isActive && !item.archivedAt).length
+  const archivedCount = items.filter(item => item.archivedAt).length
+  const inactiveCount = totalCount - activeCount - archivedCount
   const hasOperatingRuleReadError = items.some((item) => item.operatingRuleState.status === "error")
   const legacyItems = hasOperatingRuleReadError
     ? []
     : items.filter(
-        (item) => item.operatingRuleState.status === "loaded" && !item.operatingRuleState.rule
+        (item) => !item.archivedAt && item.operatingRuleState.status === "loaded" && !item.operatingRuleState.rule
       )
   const filteredItems = useMemo(() => {
     const needle = query.trim().toLowerCase()
 
     return items.filter((item) => {
+      if (statusFilter === "archived" ? !item.archivedAt : item.archivedAt) return false
       if (statusFilter === "active" && !item.isActive) {
         return false
       }
@@ -176,14 +179,14 @@ export const StudioClassesManager = ({ items }: StudioClassesManagerProps) => {
             onClick={() => setStatusFilter("all")}
             className={`${styles.pill} ${statusFilter === "all" ? styles.pillActive : ""}`}
           >
-            전체
+            전체 운영 수업
           </button>
           <button
             type="button"
             onClick={() => setStatusFilter("active")}
             className={`${styles.pill} ${statusFilter === "active" ? styles.pillActive : ""}`}
           >
-            공개
+            운영 중
           </button>
           <button
             type="button"
@@ -192,10 +195,11 @@ export const StudioClassesManager = ({ items }: StudioClassesManagerProps) => {
           >
             비공개
           </button>
+          <button type="button" onClick={() => setStatusFilter("archived")} className={`${styles.pill} ${statusFilter === "archived" ? styles.pillActive : ""}`}>종료된 수업</button>
         </div>
       </section>
 
-      {legacyItems.length > 0 ? (
+      {statusFilter !== "archived" && legacyItems.length > 0 ? (
         <section className={styles.operationNotice} aria-label="운영 방식 확인 안내">
           <div>
             <strong>운영 방식 확인이 필요한 수업 {legacyItems.length}개</strong>
@@ -217,7 +221,7 @@ export const StudioClassesManager = ({ items }: StudioClassesManagerProps) => {
 
       <section className={styles.workspace} aria-label="수업 목록">
         <p className={styles.resultMeta}>
-          전체 {totalCount}개 · 공개 {activeCount}개 · 비공개 {inactiveCount}개
+          전체 {totalCount}개 · 공개 {activeCount}개 · 비공개 {inactiveCount}개 · 종료 {archivedCount}개
           {filteredItems.length !== totalCount ? ` · 조건에 맞는 수업 ${filteredItems.length}개` : ""}
         </p>
 
@@ -284,7 +288,9 @@ export const StudioClassesManager = ({ items }: StudioClassesManagerProps) => {
                   </div>
 
                   <div className={`${styles.cellText} ${styles.operationCell}`}>
-                    {operation.kind === "error" ? (
+                    {item.archivedAt ? (
+                      <><strong className={styles.operationTitle}>운영 기록 보관</strong><span className={styles.cellSub}>{operation.kind === "configured" ? operation.detail : "복구 후 운영 정보를 확인해 주세요."}</span></>
+                    ) : operation.kind === "error" ? (
                       <>
                         <strong className={styles.operationError}>{operation.title}</strong>
                         <span className={styles.cellSub}>{operation.detail}</span>
@@ -314,9 +320,9 @@ export const StudioClassesManager = ({ items }: StudioClassesManagerProps) => {
 
                   <div className={styles.cellStatus}>
                     <span
-                      className={`${styles.badge} ${item.isActive ? styles.badgeActive : styles.badgeInactive}`}
+                      className={`${styles.badge} ${item.archivedAt ? styles.badgeArchived : item.isActive ? styles.badgeActive : styles.badgeInactive}`}
                     >
-                      {item.isActive ? "공개 중" : "비공개"}
+                      {item.archivedAt ? "종료" : item.isActive ? "운영 중" : "비공개"}
                     </span>
                   </div>
 
@@ -327,7 +333,7 @@ export const StudioClassesManager = ({ items }: StudioClassesManagerProps) => {
                       aria-busy={pendingHref === `/studio/classes/${item.id}/edit`}
                       onClick={() => setPendingHref(`/studio/classes/${item.id}/edit`)}
                     >
-                      {pendingHref === `/studio/classes/${item.id}/edit` ? "이동 중..." : "수정"}
+                      {pendingHref === `/studio/classes/${item.id}/edit` ? "이동 중..." : item.archivedAt ? "보관 정보" : "수정"}
                     </Link>
 
                     <div
@@ -349,10 +355,10 @@ export const StudioClassesManager = ({ items }: StudioClassesManagerProps) => {
 
                       {openMenuId === item.id ? (
                         <div className={styles.rowMenuList} role="menu">
-                          <Link href={`/classes/${item.id}`} className={styles.rowMenuItem} role="menuitem">
+                          {!item.archivedAt && <Link href={`/classes/${item.id}`} className={styles.rowMenuItem} role="menuitem">
                             미리보기
-                          </Link>
-                          <ToggleClassActiveButton classId={item.id} isActive={item.isActive} />
+                          </Link>}
+                          <StudioClassLifecycleActions item={item} />
                         </div>
                       ) : null}
                     </div>
@@ -364,18 +370,5 @@ export const StudioClassesManager = ({ items }: StudioClassesManagerProps) => {
         )}
       </section>
     </div>
-  )
-}
-
-const ToggleClassActiveButton = ({ classId, isActive }: { classId: string; isActive: boolean }) => {
-  return (
-    <form action={submitToggleStudioClassActiveAction} className={styles.rowMenuForm}>
-      <input type="hidden" name="classId" value={classId} />
-      <input type="hidden" name="nextIsActive" value={String(!isActive)} />
-      {/* 상태 배지("공개 중"/"비공개")와 헷갈리지 않도록 행동형으로 적는다. */}
-      <button type="submit" className={styles.rowMenuItem} role="menuitem">
-        {isActive ? "비공개하기" : "공개하기"}
-      </button>
-    </form>
   )
 }

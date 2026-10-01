@@ -17,7 +17,7 @@ const readGetAcademiesRegionCatalog = async (): Promise<RegionCatalog> => {
   const { data: classRows, error: classError } = await serviceRoleClient
     .from("classes")
     .select("organization_id")
-    .eq("is_active", true)
+    .eq("is_active", true).is("archived_at", null)
 
   if (classError) {
     throw new Error("failed_to_fetch_public_academy_organizations")

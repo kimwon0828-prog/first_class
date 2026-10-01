@@ -179,7 +179,7 @@ const buildPublicClassesQuery = (
   let query = serviceRoleClient
     .from("classes")
     .select(selectFields)
-    .eq("is_active", true)
+    .eq("is_active", true).is("archived_at", null)
     .order("created_at", { ascending: false })
 
   if (options?.subjectCategoryId) {
@@ -386,14 +386,14 @@ export const getPublicClassDetailWithSafeProjection = async (
     .from("classes")
     .select(`${PUBLIC_CLASS_SELECT_FIELDS}, regular_price_type, regular_price_amount, regular_price_note`)
     .eq("id", classId)
-    .eq("is_active", true)
+    .eq("is_active", true).is("archived_at", null)
     .maybeSingle()
   const { data, error } = isMissingColumnError(initialResult.error)
     ? await serviceRoleClient
         .from("classes")
         .select(LEGACY_PUBLIC_CLASS_SELECT_FIELDS)
         .eq("id", classId)
-        .eq("is_active", true)
+        .eq("is_active", true).is("archived_at", null)
         .maybeSingle()
     : initialResult
 
@@ -430,7 +430,7 @@ export const getPublicClassImagesByIds = async (classIds: readonly string[]): Pr
   const ids = [...new Set(classIds.filter(Boolean))]
   if (!ids.length) return new Map()
   const { data, error } = await getSupabaseServiceRoleClient()
-    .from("classes").select("id, cover_image_url").in("id", ids).eq("is_active", true)
+    .from("classes").select("id, cover_image_url").in("id", ids).eq("is_active", true).is("archived_at", null)
   if (error) throw new Error("failed_to_fetch_public_class_images", { cause: error })
   return new Map((data ?? []).map(row => [row.id, row.cover_image_url ?? null]))
 }

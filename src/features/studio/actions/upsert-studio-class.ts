@@ -440,6 +440,8 @@ export async function upsertStudioClassAction(
       return { ok: false, message: "프로그램 정보를 찾을 수 없거나 수정 권한이 없습니다." }
     }
 
+    if (existingClass?.archivedAt) return { ok: false, message: "종료된 수업은 먼저 복구해 주세요." }
+
     const teacherIntro = teacherIntroRaw == null ? existingClass?.teacherIntro ?? null : teacherIntroRaw || null
 
     const teacherOptions = await (async () => {

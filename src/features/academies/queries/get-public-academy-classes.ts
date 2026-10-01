@@ -176,7 +176,7 @@ export const getPublicAcademyClasses = async (organizationId: string): Promise<P
     .from("classes")
     .select("id, title, subject_category_id, subject_id, subject, target_age, program_type")
     .eq("organization_id", organizationId)
-    .eq("is_active", true)
+    .eq("is_active", true).is("archived_at", null)
     .order("created_at", { ascending: false })
 
   if (classesError) {

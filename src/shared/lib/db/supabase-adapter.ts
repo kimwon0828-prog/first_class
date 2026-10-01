@@ -131,6 +131,7 @@ import type {
 } from "@/shared/lib/db/adapter"
 
 type ClassRow = {
+  archived_at: string | null
   operating_rule?: import("@/features/studio/lib/class-operating-rule").ClassOperatingRule | null
   id: string
   organization_id?: string
@@ -162,6 +163,7 @@ type ClassRow = {
 }
 
 type StudioClassListRow = {
+  archived_at: string | null
   id: string
   program_type: ClassProgramType
   assignment_mode?: ClassAssignmentMode | null
@@ -507,6 +509,7 @@ const mapClass = (
     teacherName: resolvedTeacherName,
     coverImageUrl: row.cover_image_url ?? null,
     isActive: row.is_active,
+    archivedAt: row.archived_at,
     ...(row.operating_rule !== undefined ? {operatingRule: row.operating_rule} : {}),
     schedules: (row.class_schedules ?? []).map(mapClassSchedule)
   }
@@ -539,6 +542,7 @@ const mapStudioClassListItem = (
     teacherName: resolvedTeacherName,
     coverImageUrl: row.cover_image_url ?? null,
     isActive: row.is_active,
+    archivedAt: row.archived_at,
     scheduleSummary,
     operatingRuleState
   }
@@ -2404,8 +2408,9 @@ const cleanupCreatedStudioClass = async (
   classId: string,
   organizationId: string
 ) => {
-  await supabase.from("class_schedules").delete().eq("class_id", classId)
-  await supabase.from("classes").delete().eq("id", classId).eq("organization_id", organizationId)
+  void organizationId // RPC derives ownership and checks history before touching derivatives.
+  const { error } = await supabase.rpc("mutate_studio_class_lifecycle", { p_class_id: classId, p_action: "delete" })
+  if (error) console.error("[cleanupCreatedStudioClass] cleanup retained class", { classId, message: error.message })
 }
 
 const isProtectedClassScheduleChanged = (
@@ -2441,7 +2446,7 @@ const summarizeStudioClassScheduleSlots = (slots: StudioClassInput["scheduleSlot
   }))
 
 const LEGACY_CLASS_BASE_SELECT_FIELDS =
-  "id, organization_id, program_type, title, subject, target_age, description, trial_price, teacher_id, teacher_display_name, cover_image_url, is_active"
+  "id, organization_id, program_type, title, subject, target_age, description, trial_price, teacher_id, teacher_display_name, cover_image_url, is_active, archived_at"
 
 const CLASS_BASE_SELECT_FIELDS =
   `${LEGACY_CLASS_BASE_SELECT_FIELDS}, assignment_mode, subject_category_id, subject_id`
@@ -2449,7 +2454,7 @@ const CLASS_BASE_SELECT_FIELDS =
 const CLASS_SAVE_SELECT_FIELDS = `${CLASS_BASE_SELECT_FIELDS}, regular_price_type, regular_price_amount, regular_price_note`
 
 const LEGACY_STUDIO_CLASS_LIST_SELECT_FIELDS =
-  "id, program_type, title, subject, target_age, trial_price, teacher_id, teacher_display_name, cover_image_url, is_active"
+  "id, program_type, title, subject, target_age, trial_price, teacher_id, teacher_display_name, cover_image_url, is_active, archived_at"
 
 type StudioTeacherAssignmentRow = {
   id: string
@@ -2510,6 +2515,7 @@ export const listAvailableScheduleSlotsByClassIdWithClient = async ({
     .select("teacher_id")
     .eq("id", classId)
     .eq("is_active", true)
+      .is("archived_at", null)
     .maybeSingle()
 
   if (classError) {
@@ -2767,6 +2773,7 @@ export const supabaseDataAdapter: DataAdapter = {
       .from("classes")
       .select(CLASS_BASE_SELECT_FIELDS)
       .eq("is_active", true)
+      .is("archived_at", null)
       .order("created_at", { ascending: false })
 
     if (options?.subjectCategoryId) {
@@ -2880,6 +2887,7 @@ export const supabaseDataAdapter: DataAdapter = {
       .select(CLASS_DETAIL_SELECT_FIELDS)
       .eq("id", classId)
       .eq("is_active", true)
+      .is("archived_at", null)
       .maybeSingle()
 
     if (isMissingColumnError(error)) {
@@ -2888,6 +2896,7 @@ export const supabaseDataAdapter: DataAdapter = {
         .select(CLASS_BASE_FALLBACK_SELECT_FIELDS)
         .eq("id", classId)
         .eq("is_active", true)
+      .is("archived_at", null)
         .maybeSingle()
 
       if (retry.error) {
@@ -3000,7 +3009,11 @@ export const supabaseDataAdapter: DataAdapter = {
       })
     }
 
-    return mapped
+    const eligibility = await supabase.rpc("get_studio_class_delete_eligibility")
+    if (eligibility.error) throw new Error("failed_to_fetch_class_delete_eligibility")
+    const deletable = new Set((eligibility.data as Array<{class_id: string; can_permanently_delete: boolean}> ?? [])
+      .filter(row => row.can_permanently_delete).map(row => row.class_id))
+    return mapped.map(item => ({...item, canPermanentlyDelete: deletable.has(item.id)}))
   },
   async getStudioScheduleCalendar(input) {
     const monthRange = getMonthRange(input.month)
@@ -3256,6 +3269,7 @@ export const supabaseDataAdapter: DataAdapter = {
       .select("id, title, teacher_id, subject, subject_category_id, subject_id")
       .eq("organization_id", organizationId)
       .eq("is_active", true)
+      .is("archived_at", null)
       .not("teacher_id", "is", null)
       .order("created_at", { ascending: false })
 
@@ -4001,6 +4015,12 @@ export const supabaseDataAdapter: DataAdapter = {
       savedClassRow.teacher_id ? (teacherNameMap.get(savedClassRow.teacher_id) ?? null) : null
     )
   },
+  async mutateStudioClassLifecycle(classId, organizationId, action) {
+    void organizationId // Authorization is derived from auth.uid() inside the RPC.
+    const supabase = await getSupabaseServerClient()
+    const { error } = await supabase.rpc("mutate_studio_class_lifecycle", { p_class_id: classId, p_action: action })
+    if (error) throw new Error(error.message)
+  },
   async updateStudioClassActive(classId, organizationId, isActive) {
     const supabase = await getSupabaseServerClient()
     const { data, error } = await supabase
@@ -4011,6 +4031,7 @@ export const supabaseDataAdapter: DataAdapter = {
       })
       .eq("id", classId)
       .eq("organization_id", organizationId)
+      .is("archived_at", null)
       .select("id")
       .maybeSingle()
 
@@ -5657,6 +5678,7 @@ export const supabaseDataAdapter: DataAdapter = {
       .select("teacher_id, assignment_mode")
       .eq("id", input.classId)
       .eq("is_active", true)
+      .is("archived_at", null)
       .maybeSingle()
     const classLookup = isMissingColumnError(classQuery.error)
       ? await supabase
@@ -5664,6 +5686,7 @@ export const supabaseDataAdapter: DataAdapter = {
           .select("teacher_id")
           .eq("id", input.classId)
           .eq("is_active", true)
+      .is("archived_at", null)
           .maybeSingle()
       : classQuery
     const { data: classData, error: classError } = classLookup

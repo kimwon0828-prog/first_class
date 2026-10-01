@@ -121,7 +121,7 @@ export async function createTrialApplicationAction(
   }
 
   const classItem = await dataAdapter.getClassById(classId)
-  if (!classItem) {
+  if (!classItem || !classItem.isActive || classItem.archivedAt) {
     return {
       status: "error",
       message: "신청할 프로그램 정보를 찾을 수 없습니다."
