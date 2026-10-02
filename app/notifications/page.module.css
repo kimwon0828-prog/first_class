@@ -17,7 +17,7 @@
 .state { display: grid; justify-items: center; gap: var(--s3); padding-block: var(--s16); text-align: center; }
 .state h2 { margin: 0; font-size: var(--font-h3); font-weight: 600; }
 .state p { margin: 0; color: var(--text-2); font-size: var(--font-b2); line-height: 1.7; }
-.state button { margin-top: var(--s4); min-height: 48px; width: 100%; border: 1px solid var(--brand-700); border-radius: var(--r-md); background: var(--brand-700); color: var(--surface); padding: var(--s3); font: inherit; cursor: pointer; }
+.state button { margin-top: var(--s4); min-height: 48px; width: 100%; border: 1px solid var(--brand-action); border-radius: var(--r-md); background: var(--brand-action); color: var(--surface); padding: var(--s3); font: inherit; cursor: pointer; }
 .state button:disabled { opacity: .4; }
 .page a:focus-visible, .page button:focus-visible { outline: 2px solid var(--brand-700); outline-offset: 2px; }
 .skeletons { display: grid; gap: var(--s3); }
@@ -30,11 +30,14 @@
 .reportHeader h3, .reportHeader p { margin: 0; }
 .reportCard .icon { background: var(--brand-100); }
 .reportDescription { margin: 0; color: var(--text-2); font-size: var(--font-b2); line-height: 1.6; }
-.reportButton { display: flex; justify-content: center; align-items: center; min-height: 44px; padding: var(--s2) var(--s3); border-radius: var(--r-md); background: var(--brand-700); color: var(--surface); text-decoration: none; font-size: var(--font-b2); font-weight: 600; }
-.reportButton:hover { background: var(--brand-800); }
+.reportButton { display: flex; justify-content: center; align-items: center; min-height: 44px; padding: var(--s2) var(--s3); border-radius: var(--r-md); background: var(--brand-action); color: var(--surface); text-decoration: none; font-size: var(--font-b2); font-weight: 600; }
+.reportButton:hover { background: var(--brand-action-hover); }
 
 .read { background: var(--surface); }
 .itemTitle { font-weight: 500; }
 .unread .itemTitle { font-weight: 600; }
 .item.unread { background: var(--brand-50); }
 .unreadDot { display: inline-block; width: 6px; height: 6px; margin-left: var(--s2); vertical-align: middle; border-radius: var(--r-full); background: var(--red-fg); }
+
+.state button:hover:not(:disabled) { background: var(--brand-action-hover); }
+.state button:active:not(:disabled), .reportButton:active { background: var(--brand-action-pressed); }

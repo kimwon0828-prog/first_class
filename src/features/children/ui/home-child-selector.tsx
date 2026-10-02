@@ -67,6 +67,7 @@ export function HomeChildSelector({
 
   const triggerLabel = !selectedChildId && unselectedLabel && options.length > 0
     ? unselectedLabel : formatChildTriggerLabel(options, selectedChildId)
+  const triggerChild = options.find(child => child.id === selectedChildId) ?? (!unselectedLabel && options.length === 1 ? options[0] : null)
   if (!triggerLabel) {
     return null
   }
@@ -101,11 +102,14 @@ export function HomeChildSelector({
         type="button"
         className={`${styles.trigger} ${className ?? ""}`.trim()}
         aria-haspopup="dialog"
+        aria-label={triggerLabel}
         aria-expanded={open}
         aria-busy={isPending}
         onClick={() => setOpen(true)}
       >
-        <span className={`${styles.triggerLabel} ${labelClassName ?? ""}`.trim()}>{triggerContent ?? triggerLabel}</span>
+        <span className={`${styles.triggerLabel} ${labelClassName ?? ""}`.trim()}>{triggerContent ?? (triggerChild
+          ? <span className={styles.triggerText}><span className={styles.name}>{triggerChild.name}</span>{triggerChild.grade && <span className={styles.grade}>{triggerChild.grade}</span>}</span>
+          : <span className={styles.name}>{triggerLabel}</span>)}</span>
         <ChevronIcon />
       </button>
 
@@ -135,10 +139,11 @@ export function HomeChildSelector({
                 type="button"
                 className={styles.option}
                 aria-current={selectedChildId === child.id ? "true" : undefined}
+                aria-label={formatChildOptionLabel(child)}
                 onClick={() => select(child.id)}
               >
                 {/* 실제 등록된 이름과 학년만 쓴다. 비어 있으면 이름만 나온다. */}
-                <span className={styles.optionName}>{formatChildOptionLabel(child)}</span>
+                <span className={styles.optionName}><span className={styles.name}>{child.name}</span>{child.grade && <span className={styles.grade}> · {child.grade}</span>}</span>
                 {selectedChildId === child.id ? (
                   <span className={styles.check} aria-label="선택됨">
                     <CheckIcon />

@@ -7,6 +7,7 @@ import { Suspense, type ReactNode } from "react"
 import { resolveParentNavTab } from "@/features/classes/lib/parent-nav"
 
 import { withParentChild } from "../lib/parent-navigation"
+import { rememberParentNavigation } from "../lib/parent-navigation-history"
 
 import styles from "./parent-bottom-nav.module.css"
 import { useParentLinkPrefetch } from "./use-parent-link-prefetch"
@@ -127,7 +128,8 @@ const BottomNav = ({
 
 function PreparedNavLink({ idle, ...props }: React.ComponentProps<typeof Link> & { idle: boolean; href: string }) {
   const { prefetch, prepare, cancel } = useParentLinkPrefetch(props.href, idle)
-  return <Link {...props} prefetch={prefetch} onClick={event => { cancel(); props.onClick?.(event) }} onPointerEnter={prepare} onTouchStart={prepare} onFocus={prepare} />
+  return <Link {...props} prefetch={prefetch} onClick={event => { cancel(); props.onClick?.(event) }} onPointerEnter={prepare} onTouchStart={prepare} onFocus={prepare}
+    onNavigate={() => { if (!props.replace) rememberParentNavigation(props.href) }} />
 }
 
 function NavContent({ icon, label }: { icon: ReactNode; label: string }) {

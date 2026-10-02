@@ -259,3 +259,6 @@
 
 .option:focus-visible, .input:focus-visible, .declineSubmit:focus-visible, .reasonItem input:focus-visible { outline: 2px solid var(--brand-700); outline-offset: 3px; }
 .dayChip:has(input:focus-visible) { outline: 2px solid var(--brand-700); outline-offset: 3px; }
+
+.declineSubmit:hover:not(:disabled) { background: var(--brand-action-hover); }
+.declineSubmit:active:not(:disabled) { background: var(--brand-action-pressed); }

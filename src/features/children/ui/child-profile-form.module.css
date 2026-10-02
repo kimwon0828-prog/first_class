@@ -12,6 +12,10 @@
 .infoMessage { margin: 0; font-size: var(--font-c1); color: var(--text-2); }
 .buttonStack { display: flex; gap: var(--s3); }
 .primaryButton, .secondaryButton { flex: 1; min-width: 0; min-height: 48px; padding: var(--s3); border: 1px solid var(--border); border-radius: var(--r-md); background: var(--surface); color: var(--text-2); font: inherit; font-size: var(--font-b2); font-weight: 600; cursor: pointer; }
-.primaryButton { background: var(--brand-700); color: var(--surface); border-color: var(--brand-700); }
-.primaryButton:hover { background: var(--brand-800); }
+.primaryButton { background: var(--brand-action); color: var(--surface); border-color: var(--brand-action); }
+.primaryButton:hover { background: var(--brand-action-hover); }
 .primaryButton:disabled, .secondaryButton:disabled { opacity: .4; cursor: wait; }
+
+/* Parent primary action states; retain disabled and layout contracts. */
+.primaryButton:hover:not(:disabled) { background: var(--brand-action-hover); }
+.primaryButton:active:not(:disabled) { background: var(--brand-action-pressed); }

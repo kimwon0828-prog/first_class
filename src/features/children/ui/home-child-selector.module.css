@@ -14,6 +14,8 @@
 }
 
 .triggerLabel {
+  min-width: 0;
+  word-break: keep-all;
   font-size: var(--font-b2);
   font-weight: 700;
   letter-spacing: 0;
@@ -53,8 +55,16 @@
   font-weight: 700;
   letter-spacing: 0;
   color: var(--text-1);
-  overflow-wrap: anywhere;
+  display: flex;
+  flex-wrap: wrap;
+  min-width: 0;
+  word-break: keep-all;
 }
+
+.trigger > svg { flex-shrink: 0; }
+.triggerText { display: flex; flex-wrap: wrap; align-items: baseline; column-gap: 4px; min-width: 0; }
+.name { white-space: nowrap; }
+.grade { white-space: normal; word-break: keep-all; }
 
 /* 고른 줄은 체크 하나로만 구분한다. 점수 · 순위 · 대표 자녀 같은 개념은 없다. */
 .check {

@@ -45,9 +45,9 @@
 .dockFavorite.favoriteActive { color: var(--brand-700); }
 .fixedCta > [role="alert"] { flex-basis: 100%; order: 1; font-size: var(--font-c1); color: var(--text-2); }
 @media (prefers-reduced-motion: reduce) { .fixedCta { transition: none; } }
-.ctaButton { display: inline-flex; align-items: center; justify-content: center; flex: 1; min-width: 0; min-height: 52px; padding: var(--s3); border: 0; border-radius: var(--r-md); background: var(--brand-700); color: var(--surface); font: inherit; font-size: var(--font-b1); font-weight: 600; text-decoration: none; cursor: pointer; }
+.ctaButton { display: inline-flex; align-items: center; justify-content: center; flex: 1; min-width: 0; min-height: 52px; padding: var(--s3); border: 0; border-radius: var(--r-md); background: var(--brand-action); color: var(--surface); font: inherit; font-size: var(--font-b1); font-weight: 600; text-decoration: none; cursor: pointer; }
 @media (hover: hover) { .ctaButton:hover { background: var(--brand-800); } }
-.ctaButton:active { background: var(--brand-900); }
+.ctaButton:active { background: var(--brand-action-pressed); }
 .page :is(a, button):focus-visible { outline: 2px solid var(--brand-700); outline-offset: 2px; }
 .skeleton { background: var(--surface-sub); border-radius: var(--r-sm); height: var(--s5); }
 .skeletonTitle { width: 75%; height: var(--s8); }
@@ -70,3 +70,7 @@
 .tuitionLabel { font-size: var(--font-b2); color: var(--text-2); }
 .regularTuitionAmount { margin: 0; font-size: var(--font-b1); font-weight: 600; }
 .regularTuitionNote { margin: 0; font-size: var(--font-b2); color: var(--text-2); }
+
+/* Parent primary action states; retain disabled and layout contracts. */
+.ctaButton:hover:not(:disabled) { background: var(--brand-action-hover); }
+.ctaButton:active:not(:disabled) { background: var(--brand-action-pressed); }

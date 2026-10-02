@@ -10,7 +10,7 @@
 .errorMessage, .infoMessage { margin: 0; padding: var(--s3) var(--s4); border-radius: var(--r-md); font-size: var(--font-b2); }
 .errorMessage { color: var(--red-fg); background: var(--red-bg); }
 .infoMessage { color: var(--brand-700); background: var(--brand-50); }
-.submitButton { width: 100%; min-height: 48px; padding: var(--s3) var(--s4); border: 0; border-radius: var(--r-md); background: var(--brand-700); color: var(--neutral-0); font: inherit; font-size: var(--font-b2); font-weight: 600; cursor: pointer; }
+.submitButton { width: 100%; min-height: 48px; padding: var(--s3) var(--s4); border: 0; border-radius: var(--r-md); background: var(--brand-action); color: var(--neutral-0); font: inherit; font-size: var(--font-b2); font-weight: 600; cursor: pointer; }
 .submitButton:disabled { opacity: .6; cursor: wait; }
 
 .actions { display: flex; gap: var(--s3); position: sticky; bottom: -1px; padding-block: var(--s3); background: var(--surface); }
@@ -18,3 +18,7 @@
 .cancelButton { min-height: 48px; padding: var(--s3) var(--s4); border: 1px solid var(--border); border-radius: var(--r-md); background: var(--surface); color: var(--text-1); font: inherit; font-size: var(--font-b2); font-weight: 600; cursor: pointer; }
 .cancelButton:disabled { opacity: .6; cursor: wait; }
 .readOnly { margin: 0; color: var(--text-2); font-size: var(--font-b2); overflow-wrap: anywhere; }
+
+/* Parent primary action states; retain disabled and layout contracts. */
+.submitButton:hover:not(:disabled) { background: var(--brand-action-hover); }
+.submitButton:active:not(:disabled) { background: var(--brand-action-pressed); }

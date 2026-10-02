@@ -4,6 +4,26 @@ Authoritative Parent specification. First adoption: Home `/` (2026-09-20).
 CSS source: `app/globals.css`, `[data-parent-design="v1"]`.
 The existing `STUDIO_DESIGN_SYSTEM.md` remains Studio-only. No global replacement of legacy Parent or Studio tokens.
 
+## Parent Header and short Korean labels — local polish (2026-10-02)
+
+- All non-brand ParentHeader instances share a viewport-centered title, symmetric layout columns and a left chevron with a minimum 44px target. Home keeps its brand header. Loading/error frames inherit the same header.
+- Root headers default to Parent Home with child context. Proven Parent tab/detail history uses browser back; history.length alone is not trusted. Existing explicit detail returnTo and fallback URL contracts remain intact.
+- HomeChildSelector keeps URL-owned child selection. Names and short labels stay on one line, while grade metadata can wrap independently. Schedule/Record rich child context takes the remaining flex width; remove anywhere wrapping that lets WebKit shrink Korean text to individual characters.
+- Keep nowrap scoped to names, selector labels, tabs, short CTA/status labels. Preserve normal wrapping for descriptions and avoid clipping text to conceal layout errors.
+- Browser verifier: scripts/verify-parent-header-labels-browser.cjs (Chromium/WebKit, 390/430/1280; actual components with inert transport).
+
+## Parent Brand Green — local polish (2026-10-02)
+
+This color-only section supersedes older Green action values below. Opt-in remains `[data-parent-design="v1"]` and its existing sheet portals; Studio/Admin and the legacy status palette are unchanged.
+
+- Exact brand key: `--parent-brand-green: #2AAD38`. Use for decorative brand/active icons. White-on-key contrast is 2.94:1, so it is not the white-text CTA fill.
+- Accessible action: `--parent-primary-action: #21882C` (white contrast 4.54:1), hover `#20822A` (4.90:1), pressed `#1F7E29` (5.15:1). The existing `--brand-action`, `--brand-action-hover`, and `--brand-action-pressed` aliases point to these Parent tokens.
+- Action variant preserves the brand hue/saturation while reducing HSL lightness to the nearest passing 8-bit step. `#21892C` would be only 4.48785:1 and must not be rounded to a pass.
+- Small active text and the Hero accent use the accessible variant. Bottom Nav's redundant/decorative icon uses exact key Green; its label uses the action variant. Focus rings, success/completed/system status, category/academy colors, original image/logo assets, and active red hearts remain unchanged.
+- Parent CTA fills/interaction colors are updated by reviewed selector, never by replacing the Green 700 palette globally. The shared feedback button falls back to its existing token outside Parent. The legacy `/classes/[id]/apply` form uses equivalent fallback values because it does not opt in to V1 tokens.
+- Preserve all App Feel behavior, Hero copy, heart `#C62828`, Glass 44%/blur20/saturate160, dimensions/offsets, and skeletons. No function/auth/data/native changes.
+- Contrast reference: [WCAG 2.2 SC 1.4.3](https://www.w3.org/WAI/WCAG22/Understanding/contrast-minimum.html). Enabled normal-size CTA text must meet 4.5:1 without rounding.
+
 ## Parent App Experience V1 — approved Home visual language
 
 2026-10-01 approved source: the user-provided “Parent Home App Experience” image and accompanying Home redesign request. The image defines hierarchy and visual tone, not production content. This section is the visual baseline for future `/classes`, `/classes/[id]`, `/academies`, `/academy/[handle]`, `/my/schedule`, `/record*`, `/my*` adoption. **This implementation adopts it on Home only.** Existing Phase 1 App Shell/Header/Bottom Nav work stays in place; no other screen is preemptively redesigned.

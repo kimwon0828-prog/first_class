@@ -80,7 +80,7 @@
 .v1 .navItem { position: relative; z-index: 1; color: var(--text-2); gap: var(--s1); }
 .v1 .navItem svg { width: 24px; height: 24px; }
 .v1 .navLabel { font-size: var(--font-c1); font-weight: 500; line-height: 1.5; letter-spacing: 0; }
-.v1 .navItemActive { color: var(--brand-700); background: transparent; }
+.v1 .navItemActive { color: var(--parent-primary-action); background: transparent; }
 
 @supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
   .v1 { background: var(--parent-glass); -webkit-backdrop-filter: blur(var(--parent-blur)) saturate(160%); backdrop-filter: blur(var(--parent-blur)) saturate(160%); }
@@ -93,3 +93,6 @@
 
 /* A fine top reflection; no opaque inner panel or selected pill. */
 .v1::before { content: ""; position: absolute; inset: 0; border-radius: inherit; border-top: 1px solid rgba(255, 255, 255, 0.82); background: linear-gradient(180deg, rgba(255, 255, 255, 0.06), transparent 45%); pointer-events: none; }
+
+/* Decorative icon uses key Green; its text label keeps accessible contrast. */
+.v1 .navItemActive svg { color: var(--parent-brand-green); }

@@ -76,7 +76,7 @@
 
 .progressValue {
   height: 100%;
-  background: var(--brand-700);
+  background: var(--parent-brand-green);
   transition: width 160ms ease;
 }
 
@@ -325,7 +325,7 @@
 }
 
 .calendarCellSelected {
-  background: var(--brand-700);
+  background: var(--brand-action);
   color: #ffffff;
 }
 
@@ -356,7 +356,7 @@
 .primaryButton,
 .primaryLinkButton {
   border: 0;
-  background: var(--brand-700);
+  background: var(--brand-action);
   color: #ffffff;
 }
 
@@ -416,7 +416,7 @@
 }
 
 .childCardSelected {
-  border-color: var(--brand-700);
+  border-color: var(--parent-brand-green);
   background: var(--brand-50);
 }
 
@@ -511,7 +511,7 @@
 .agreeRow input {
   width: 18px;
   height: 18px;
-  accent-color: var(--brand-700);
+  accent-color: var(--brand-action);
   margin-top: 2px;
 }
 
@@ -527,3 +527,7 @@
 .sheet[data-keyboard="true"] .sheetBody { min-height: 0; overscroll-behavior: contain; scroll-padding-block: 12px; }
 .sheet[data-keyboard="true"] .sheetFooter { padding-bottom: 12px; }
 @media (prefers-reduced-motion: reduce) { .progressValue { transition: none; } }
+
+/* Parent primary action states; retain disabled and layout contracts. */
+.completeButton:hover:not(:disabled), .primaryButton:hover:not(:disabled), .primaryLinkButton:hover:not(:disabled) { background: var(--brand-action-hover); }
+.completeButton:active:not(:disabled), .primaryButton:active:not(:disabled), .primaryLinkButton:active:not(:disabled) { background: var(--brand-action-pressed); }

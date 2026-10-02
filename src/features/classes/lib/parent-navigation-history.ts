@@ -16,3 +16,10 @@ export function canUseParentHistoryBack(destination: string) {
   const entry = history.state?.[key]
   return entry?.from === destination && entry?.to === location.pathname + location.search + location.hash
 }
+
+/** Only a previous entry recorded during an actual Parent push is eligible. */
+export function getParentHistoryBack(): string | null {
+  const entry = history.state?.[key]
+  const current = location.pathname + location.search + location.hash
+  return typeof entry?.from === "string" && entry.from !== current && entry.to === current ? entry.from : null
+}

@@ -38,7 +38,7 @@
 .empty { padding: var(--s8) var(--s4); border: 1px solid var(--border); border-radius: var(--r-lg); text-align: center; }
 .empty h2 { margin: 0; font-size: var(--font-h4); font-weight: 700; }
 .empty p { margin: var(--s3) 0 0; font-size: var(--font-b2); color: var(--text-2); }
-.retry { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: var(--s2) var(--s5); margin-top: var(--s5); background: var(--brand-700); color: var(--neutral-0); border: 0; border-radius: var(--r-md); font: inherit; font-size: var(--font-b2); cursor: pointer; }
+.retry { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: var(--s2) var(--s5); margin-top: var(--s5); background: var(--brand-action); color: var(--neutral-0); border: 0; border-radius: var(--r-md); font: inherit; font-size: var(--font-b2); cursor: pointer; }
 .retry:disabled { opacity: .6; cursor: wait; }
 .loading { display: grid; gap: var(--s8); }
 .skeletonContext, .skeletonHeading, .skeletonCard { background: var(--neutral-50); border-radius: var(--r-lg); }
@@ -52,3 +52,7 @@
 .experienceHeader { display: flex; align-items: flex-start; gap: var(--s3); }
 .experienceInfo { min-width: 0; }
 .thumbnail { position: relative; display: block; flex: 0 0 var(--s16); width: var(--s16); height: var(--s16); overflow: hidden; border-radius: var(--r-md); background: var(--neutral-50); }
+
+/* Parent primary action states; retain disabled and layout contracts. */
+.retry:hover:not(:disabled) { background: var(--brand-action-hover); }
+.retry:active:not(:disabled) { background: var(--brand-action-pressed); }

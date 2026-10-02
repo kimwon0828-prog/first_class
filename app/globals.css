@@ -112,9 +112,14 @@ body:has([data-parent-design="v1"]) .firstclass-bottom-sheet__overlay {
   --surface-sub: var(--neutral-50);
   --border: var(--neutral-200);
   --border-strong: var(--neutral-300);
-  --brand-action: var(--brand-700);
-  --brand-action-hover: var(--brand-800);
-  --brand-action-pressed: var(--brand-900);
+  /* Parent-only brand expression and accessible white-text actions. */
+  --parent-brand-green: #2AAD38;
+  --parent-primary-action: #21882C;
+  --parent-primary-action-hover: #20822A;
+  --parent-primary-action-pressed: #1F7E29;
+  --brand-action: var(--parent-primary-action);
+  --brand-action-hover: var(--parent-primary-action-hover);
+  --brand-action-pressed: var(--parent-primary-action-pressed);
   --r-sheet: 24px;
   --s12: 48px;
   --s16: 64px;

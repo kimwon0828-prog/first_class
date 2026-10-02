@@ -31,7 +31,7 @@
 .state p { margin: var(--s3) 0 0; color: var(--text-2); font-size: var(--font-b2); }
 .emptyIcon { display: grid; place-items: center; width: var(--s16); height: var(--s16); background: var(--neutral-50); color: var(--text-3); border-radius: var(--r-full); }
 .emptyIcon svg { width: var(--s8); height: var(--s8); }
-.primary { display: flex; align-items: center; justify-content: center; gap: var(--s2); width: 100%; min-height: 48px; margin-top: var(--s6); padding: var(--s3) var(--s4); background: var(--brand-700); color: var(--neutral-0); border: 0; border-radius: var(--r-md); font: inherit; font-size: var(--font-b2); font-weight: 600; text-decoration: none; cursor: pointer; }
+.primary { display: flex; align-items: center; justify-content: center; gap: var(--s2); width: 100%; min-height: 48px; margin-top: var(--s6); padding: var(--s3) var(--s4); background: var(--brand-action); color: var(--neutral-0); border: 0; border-radius: var(--r-md); font: inherit; font-size: var(--font-b2); font-weight: 600; text-decoration: none; cursor: pointer; }
 .primary:disabled { opacity: .6; cursor: wait; }
 .skeleton { display: grid; gap: var(--s4); }
 .skeletonTabs { height: 52px; background: var(--neutral-50); border-radius: var(--r-lg); }
@@ -42,3 +42,7 @@
 .skeleton i { display: block; height: var(--s4); background: var(--neutral-50); border-radius: var(--r-sm); margin-bottom: var(--s2); }
 .skeletonLines { margin-top: var(--s4); padding-top: var(--s3); border-top: 1px solid var(--border); }
 .skeletonLines i { width: 80%; }
+
+/* Parent primary action states; retain disabled and layout contracts. */
+.primary:hover:not(:disabled) { background: var(--brand-action-hover); }
+.primary:active:not(:disabled) { background: var(--brand-action-pressed); }

@@ -92,7 +92,7 @@
 /* Approved App Experience V1: Home opt-in only; Phase 1 chrome stays shared. */
 .experience { --parent-card-width: clamp(216px, 56.5vw, 260px); }
 .hero { margin: var(--s5) 0 var(--s5); font-size: 28px; line-height: 1.4; font-weight: 600; letter-spacing: 0; color: var(--text-1); }
-.hero > span { color: var(--brand-700); }
+.hero > span { color: var(--parent-primary-action); }
 .experience .header { gap: var(--s3); }
 .experience .headerContext { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; gap: var(--s3); padding: 0; border: 0; }
 .experience .filterInlineTrigger, .experience .childContext { width: 100%; min-height: 48px; margin: 0; padding: 0 var(--s3); border: 1px solid var(--border); border-radius: var(--r-md); background: var(--neutral-50); }
@@ -104,7 +104,7 @@
 .experience .childChip > svg { flex-shrink: 0; }
 .experience .childChipLabel { display: flex; align-items: center; gap: var(--s2); min-width: 0; }
 .experience .childChipLabel > svg { flex-shrink: 0; }
-.experience .childChipLabel > span, .experience .childChip > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.experience .childChipLabel > span, .experience .childChip > span { min-width: 0; }
 .experience .radiusRail { flex-wrap: wrap; margin-top: var(--s2); }
 .experience .searchPill { height: 48px; background: var(--neutral-50); }
 .experience .searchPlaceholder { font-size: var(--font-b2); }

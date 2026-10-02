@@ -48,8 +48,12 @@
 .state p { margin: 0 0 var(--s4); color: var(--text-2); font-size: var(--font-b2); }
 .stateIcon { width: 64px; height: 64px; margin-bottom: var(--s3); font-size: var(--font-h1); }
 .primaryButton, .secondaryButton { display: flex; justify-content: center; align-items: center; min-height: 48px; width: 100%; padding: var(--s3); border: 1px solid var(--border); border-radius: var(--r-md); color: var(--text-2); background: var(--surface); font: inherit; font-size: var(--font-b2); text-decoration: none; cursor: pointer; }
-.primaryButton { background: var(--brand-700); border-color: var(--brand-700); color: var(--surface); }
+.primaryButton { background: var(--brand-action); border-color: var(--brand-action); color: var(--surface); }
 .primaryButton:disabled { opacity: .4; }
 .skeletons { display: grid; gap: var(--s4); }
 .skeletonControls { height: 160px; border-radius: var(--r-md); background: var(--surface-sub); }
 .skeletonCard { height: 144px; border-radius: var(--r-lg); background: var(--surface-sub); }
+
+/* Parent primary action states; retain disabled and layout contracts. */
+.primaryButton:hover:not(:disabled) { background: var(--brand-action-hover); }
+.primaryButton:active:not(:disabled) { background: var(--brand-action-pressed); }

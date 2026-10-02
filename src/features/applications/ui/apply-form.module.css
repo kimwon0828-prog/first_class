@@ -270,14 +270,14 @@
   height: 52px;
   border: 0;
   border-radius: 12px;
-  background: #2aad38;
+  background: var(--parent-primary-action, #21882C);
   color: #ffffff;
   font-size: 16px;
   font-weight: 700;
 }
 
 .ctaButton:active {
-  background: #249b31;
+  background: var(--parent-primary-action-pressed, #1F7E29);
 }
 
 .ctaButton:disabled {
@@ -291,3 +291,7 @@
     font-size: 16px;
   }
 }
+
+/* Parent primary action states; retain disabled and layout contracts. */
+.ctaButton:hover:not(:disabled) { background: var(--parent-primary-action-hover, #20822A); }
+.ctaButton:active:not(:disabled) { background: var(--parent-primary-action-pressed, #1F7E29); }

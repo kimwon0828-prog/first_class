@@ -26,3 +26,8 @@
 .skeletonCard span { background: var(--surface-sub); border-radius: var(--r-sm); }
 .skeletonCard > div span { height: var(--s4); }
 .skeletonCard > div span:last-child { width: 60%; }
+
+/* Parent primary action states; retain disabled and layout contracts. */
+.primaryButton:hover:not(:disabled) { background: var(--brand-action-hover); }
+.primaryButton:active:not(:disabled) { background: var(--brand-action-pressed); }
+.primaryButton, .profileBody strong { white-space: nowrap; }

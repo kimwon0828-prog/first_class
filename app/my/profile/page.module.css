@@ -8,8 +8,12 @@
 .state { padding: var(--s8) var(--s4); border: 1px solid var(--border); border-radius: var(--r-lg); text-align: center; }
 .state h2 { margin: 0; font-size: var(--font-h4); font-weight: 600; }
 .state p { margin: var(--s3) 0 0; font-size: var(--font-b2); color: var(--text-2); }
-.state button { min-height: 48px; width: 100%; margin-top: var(--s6); border: 0; border-radius: var(--r-md); background: var(--brand-700); color: var(--neutral-0); font: inherit; font-size: var(--font-b2); cursor: pointer; }
+.state button { min-height: 48px; width: 100%; margin-top: var(--s6); border: 0; border-radius: var(--r-md); background: var(--brand-action); color: var(--neutral-0); font: inherit; font-size: var(--font-b2); cursor: pointer; }
 .state button:disabled { opacity: .6; }
 .skeleton { display: grid; gap: var(--s6); }
 .skeleton span { display: block; width: 30%; height: var(--s4); margin-bottom: var(--s2); background: var(--neutral-50); border-radius: var(--r-sm); }
 .skeleton > div > div, .skeletonButton { height: 52px; background: var(--neutral-50); border-radius: var(--r-md); }
+
+/* Parent primary action states; retain disabled and layout contracts. */
+.state button:hover:not(:disabled) { background: var(--brand-action-hover); }
+.state button:active:not(:disabled) { background: var(--brand-action-pressed); }

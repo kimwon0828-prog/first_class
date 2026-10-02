@@ -4,7 +4,11 @@
 .actions { display: flex; gap: var(--s3); margin-top: var(--s5); }
 .actions button { flex: 1; min-height: 48px; padding: var(--s3); border: 1px solid var(--border); border-radius: var(--r-md); font: inherit; font-weight: 600; cursor: pointer; }
 .cancel { background: var(--surface); color: var(--text-1); }
-.continue { background: var(--brand-700); color: white; }
+.continue { background: var(--brand-action); color: white; }
 .destructive { background: var(--red-fg); color: white; }
 .actions button:disabled { opacity: .6; cursor: wait; }
 .error { color: var(--red-fg); padding: var(--s3); background: var(--red-bg); border-radius: var(--r-md); }
+
+/* Parent primary action states; retain disabled and layout contracts. */
+.continue:hover:not(:disabled) { background: var(--brand-action-hover); }
+.continue:active:not(:disabled) { background: var(--brand-action-pressed); }
