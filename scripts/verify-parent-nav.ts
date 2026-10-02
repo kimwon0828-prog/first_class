@@ -142,7 +142,7 @@ check("/my/actions 화면 제거", !exists("app/my/actions/page.tsx"))
 
 console.log("\n[5] floating navigation")
 
-check("바닥에 붙이지 않고 띄운다", navCss.includes("position: fixed") && navCss.includes("bottom: calc(var(--parent-nav-inset)"))
+check("공통 safe-area offset으로 위치를 정한다", navCss.includes("position: fixed") && navCss.includes("bottom: var(--parent-bottom-nav-offset)"))
 check("좌우로 inset 을 준다", navCss.includes("width: calc(100% - var(--parent-nav-inset) * 2)"))
 check("둥근 컨테이너다", /border-radius:\s*2\dpx/.test(navCss))
 check("반투명 surface 다", navCss.includes("background: rgba(255, 255, 255, 0.86)"))

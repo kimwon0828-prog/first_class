@@ -7,7 +7,7 @@
 .bottomNav {
   position: fixed;
   left: 50%;
-  bottom: calc(var(--parent-nav-inset) + env(safe-area-inset-bottom, 0px));
+  bottom: var(--parent-bottom-nav-offset);
   transform: translateX(-50%);
   z-index: 60;
   display: flex;
@@ -85,7 +85,7 @@
 @supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
   .v1 { background: var(--parent-glass); -webkit-backdrop-filter: blur(var(--parent-blur)) saturate(160%); backdrop-filter: blur(var(--parent-blur)) saturate(160%); }
 }
-.bottomNav[data-hidden="true"] { transform: translate(-50%, calc(100% + var(--parent-nav-inset) + env(safe-area-inset-bottom, 0px) + 24px)); opacity: 0; pointer-events: none; }
+.bottomNav[data-hidden="true"] { transform: translate(-50%, calc(100% + var(--parent-bottom-nav-offset) + 24px)); opacity: 0; pointer-events: none; }
 .icon { display: grid; place-items: center; width: 24px; height: 24px; }
 .spinner { width: 18px; height: 18px; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: nav-spin 700ms linear infinite; }
 @keyframes nav-spin { to { transform: rotate(360deg); } }

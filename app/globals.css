@@ -49,6 +49,7 @@
    */
   --parent-nav-h: 64px;
   --parent-nav-inset: 14px;
+  --parent-bottom-nav-offset: calc(var(--parent-nav-inset) + env(safe-area-inset-bottom, 0px));
   --parent-nav-space: calc(
     var(--parent-nav-h) + var(--parent-nav-inset) * 2 + env(safe-area-inset-bottom, 0px)
   );
@@ -119,6 +120,7 @@ body:has([data-parent-design="v1"]) .firstclass-bottom-sheet__overlay {
   --s16: 64px;
   --gutter: 20px;
   --parent-nav-inset: 12px;
+  --parent-bottom-nav-offset: calc(var(--parent-nav-inset) + env(safe-area-inset-bottom, 0px));
   --parent-nav-space: calc(96px + env(safe-area-inset-bottom, 0px));
   --parent-glass: rgba(255,255,255,0.5);
   --parent-blur: 20px;
@@ -183,5 +185,13 @@ body:has([data-parent-design="v1"]) .firstclass-bottom-sheet__overlay :focus-vis
 @media (width > 480px) {
   [data-parent-design="v1"] {
     --bg: var(--neutral-50);
+  }
+}
+
+/* Mobile Nav and Class Detail Dock share the browser's safe-area baseline.
+ * Native SafeAreaView already protects WebViews that report a zero inset. */
+@media (max-width: 480px) {
+  [data-parent-design="v1"] {
+    --parent-bottom-nav-offset: env(safe-area-inset-bottom, 0px);
   }
 }
