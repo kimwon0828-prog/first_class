@@ -245,8 +245,9 @@ check(
   read("src/features/classes/ui/class-card.tsx").includes("export function ClassCard")
 )
 check(
-  "예약 가능 일정은 Search 결과 카드에 남아 있다",
-  searchCode.includes("getPublicClassCardScheduleSummaries") && searchCode.includes("scheduleLabel=")
+  "일정을 표시하지 않는 Search 카드는 일정 요약을 조회하지 않는다",
+  !searchCode.includes("getPublicClassCardScheduleSummaries") && !searchCode.includes("scheduleLabel=") &&
+    !read("src/features/classes/ui/class-card.tsx").includes("{scheduleLabel}")
 )
 
 console.log("\n[7] 하단 탭")

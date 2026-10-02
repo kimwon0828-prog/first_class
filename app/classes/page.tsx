@@ -7,7 +7,6 @@ import { redirect } from "next/navigation"
 
 import { resolveCurrentAuth } from "@/features/auth/lib/current-auth"
 import { buildClassesHref } from "@/features/classes/lib/classes-href"
-import { getPublicClassCardScheduleSummaries } from "@/features/classes/queries/get-public-class-card-schedule-summaries"
 import {
   resolveClassDiscoveryContext,
   type ClassDiscoverySearchParams
@@ -55,7 +54,6 @@ type ClassesPageProps = {
   searchParams?: Promise<ClassDiscoverySearchParams>
 }
 
-const SCHEDULE_SUMMARY_LIMIT = 20
 
 const getClassSubjectLabel = (item: ClassSummary) =>
   formatClassSubjectDisplayLabel(item) || "과목 정보 준비 중"
@@ -147,12 +145,6 @@ async function ClassesSearchContent({ searchParams }: ClassesPageProps) {
   const widerRadiusHref =
     widerRadiusKm && isNearbyMode ? buildSearchHref({ radius: String(widerRadiusKm) }) : null
   const clearRegionHref = buildSearchHref({ radius: null, sido: null, sigungu: null, bname: null })
-
-  const scheduleSummaryTargets = classes.slice(0, SCHEDULE_SUMMARY_LIMIT)
-  const scheduleSummaryByClassId =
-    !error && scheduleSummaryTargets.length > 0
-      ? await getPublicClassCardScheduleSummaries(scheduleSummaryTargets.map((item) => item.id)).catch(() => new Map())
-      : new Map()
 
   /*
    * 결과 메타.
@@ -314,7 +306,7 @@ async function ClassesSearchContent({ searchParams }: ClassesPageProps) {
           ) : (
             <section className={styles.sectionBlock}>
               <ul className={styles.resultGrid}>
-                {classes.map((item) => {
+                {classes.map((item, index) => {
                   const academyName = item.organization
                     ? [item.organization.name, item.organization.branchName].filter(Boolean).join(" ").trim()
                     : null
@@ -323,6 +315,7 @@ async function ClassesSearchContent({ searchParams }: ClassesPageProps) {
                   return (
                     <li key={item.id} className={styles.resultGridItem}>
                       <ClassCard
+                        priority={index < 2}
                         href={detailHrefForClass(item.id)}
                         thumbnailUrl={item.coverImageUrl}
                         thumbnailAlt={`${item.title} 대표 이미지`}
@@ -333,7 +326,6 @@ async function ClassesSearchContent({ searchParams }: ClassesPageProps) {
                         /* 수업에 실제로 적혀 있을 때만 학년을 말한다. */
                         gradeLabel={gradeLabel === "정보 준비 중" ? null : gradeLabel}
                         priceLabel={formatDiscoveryPrice(item)}
-                        scheduleLabel={scheduleSummaryByClassId.get(item.id)?.summaryLabel ?? null}
                         distanceLabel={distanceLabelForClass(item)}
                         classId={item.id}
                       />

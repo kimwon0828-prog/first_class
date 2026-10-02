@@ -1,3 +1,4 @@
+import { canOptimizeParentImage } from "@/features/classes/lib/parent-image"
 import { ParentDetailLink } from "@/features/classes/ui/parent-detail-link"
 import { ImageFallback } from "@/shared/ui/image-fallback"
 import Image from "next/image"
@@ -25,6 +26,7 @@ export type HomeClassCardProps = {
   locationLabel?: string | null
   distanceLabel?: string | null
   classId: string
+  priority?: boolean
 }
 
 export function HomeClassCard({
@@ -37,7 +39,8 @@ export function HomeClassCard({
   priceLabel,
   locationLabel,
   distanceLabel,
-  classId
+  classId,
+  priority = false
 }: HomeClassCardProps) {
   return (
     <article className={styles.card}>
@@ -50,7 +53,8 @@ export function HomeClassCard({
             fill
             sizes="(max-width: 480px) 56.5vw, 260px"
             style={{ objectFit: "cover" }}
-            unoptimized
+            priority={priority}
+            unoptimized={!canOptimizeParentImage(thumbnailUrl)}
           />
         ) : (
           <ImageFallback label="수업 이미지 없음" />

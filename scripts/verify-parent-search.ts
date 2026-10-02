@@ -241,8 +241,8 @@ check("Search 는 기존 ClassCard 를 쓴다", search.includes("<ClassCard"))
 check("Home 카드를 쓰지 않는다", !search.includes("<HomeClassCard"))
 check("대상 학년은 적혀 있을 때만 말한다", search.includes('gradeLabel === "정보 준비 중" ? null : gradeLabel'))
 check(
-  "예약 가능 일정은 실제 일정이 있을 때만 붙는다",
-  search.includes("scheduleSummaryByClassId.get(item.id)?.summaryLabel ?? null") &&
+  "일정을 표시하지 않는 결과 카드는 불필요한 일정 조회를 하지 않는다",
+  !search.includes("getPublicClassCardScheduleSummaries") && !search.includes("scheduleSummaryByClassId") &&
     !schedule.includes("예약 가능 일정 확인")
 )
 check("관심수업 기능이 살아 있다", card.includes("<BookmarkButton"))

@@ -1,5 +1,6 @@
 "use client"
 
+import { canOptimizeParentImage } from "@/features/classes/lib/parent-image"
 import Image from "next/image"
 import { useState } from "react"
 import { ImageFallback } from "@/shared/ui/image-fallback"
@@ -8,7 +9,7 @@ import { ImageFallback } from "@/shared/ui/image-fallback"
 export function HomeAcademyLogo({ url, name }: { url: string | null; name: string }) {
   const [failedUrl, setFailedUrl] = useState<string | null>(null)
   return url && failedUrl !== url
-    ? <Image src={url} alt={`${name} 로고`} width={64} height={64} unoptimized
+    ? <Image src={url} alt={`${name} 로고`} width={64} height={64} sizes="56px" unoptimized={!canOptimizeParentImage(url)}
         style={{ width: "100%", height: "100%", objectFit: "contain" }} onError={() => setFailedUrl(url)} />
     : <ImageFallback label={`${name} 로고 없음`} />
 }

@@ -312,12 +312,13 @@ export const listPublicClassesWithSafeProjection = async (
     throw new Error("failed_to_fetch_public_classes")
   }
 
-  const classRows = await attachSubjectMaster(((data ?? []) as unknown) as PublicClassRow[])
-  const organizationById = await toOrganizationMap(
-    classRows
+  const rawRows = ((data ?? []) as unknown) as PublicClassRow[]
+  const [classRows, organizationById] = await Promise.all([
+    attachSubjectMaster(rawRows),
+    toOrganizationMap(rawRows
       .map((row) => row.organization_id)
-      .filter((organizationId): organizationId is string => Boolean(organizationId))
-  )
+      .filter((organizationId): organizationId is string => Boolean(organizationId)))
+  ])
 
   const needle = normalizeText(options?.query)
   const normalizedSubject = normalizeSubjectCategory(options?.subject)
@@ -405,11 +406,11 @@ export const getPublicClassDetailWithSafeProjection = async (
     return null
   }
 
-  const [classRow] = await attachSubjectMaster([data as unknown as PublicClassRow])
-  const organizationById = await toOrganizationMap(
-    classRow.organization_id ? [classRow.organization_id] : [],
-    true
-  )
+  const rawRow = data as unknown as PublicClassRow
+  const [[classRow], organizationById] = await Promise.all([
+    attachSubjectMaster([rawRow]),
+    toOrganizationMap(rawRow.organization_id ? [rawRow.organization_id] : [], true)
+  ])
 
   const summary = mapPublicClassSummary(classRow)
   const organization = classRow.organization_id

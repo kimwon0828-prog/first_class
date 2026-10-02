@@ -1,3 +1,4 @@
+import { canOptimizeParentImage } from "@/features/classes/lib/parent-image"
 import { ParentDetailLink } from "@/features/classes/ui/parent-detail-link"
 import { ParentAppShell } from "@/features/classes/ui/parent-app-shell"
 import { ParentHeader } from "@/features/classes/ui/parent-header"
@@ -298,7 +299,7 @@ async function ParentHomeContent({ searchParams }: HomePageProps) {
               <ParentDetailLink href={upcoming.href} className={styles.scheduleCard}>
                 <span className={styles.scheduleImage}>
                   {upcoming.coverImageUrl ? (
-                    <Image src={upcoming.coverImageUrl} alt={`${upcoming.classTitle} 수업 이미지`} fill sizes="(max-width: 480px) calc(100vw - 40px), 440px" unoptimized style={{ objectFit: "cover" }} />
+                    <Image src={upcoming.coverImageUrl} alt={`${upcoming.classTitle} 수업 이미지`} fill sizes="(max-width: 480px) calc(100vw - 40px), 440px" unoptimized={!canOptimizeParentImage(upcoming.coverImageUrl)} priority={!report} style={{ objectFit: "cover" }} />
                   ) : <ImageFallback label="수업 이미지 없음" />}
                 </span>
                 <h3 className={styles.scheduleTitle}>{upcoming.classTitle}</h3>
@@ -328,9 +329,9 @@ async function ParentHomeContent({ searchParams }: HomePageProps) {
               </div>
             ) : (
               <ul className={styles.homeCardRail} tabIndex={0} aria-label="수업 목록, 좌우로 스크롤하여 더 보기">
-                {homeDiscoveryClasses.map((item) => (
+                {homeDiscoveryClasses.map((item, index) => (
                   <li key={item.id} className={styles.homeCardItem}>
-                    <HomeClassCard href={`/classes/${item.id}`} thumbnailUrl={item.coverImageUrl} thumbnailAlt={`${item.title} 대표 이미지`} title={item.title}
+                    <HomeClassCard priority={index === 0 && !upcoming && !report} href={`/classes/${item.id}`} thumbnailUrl={item.coverImageUrl} thumbnailAlt={`${item.title} 대표 이미지`} title={item.title}
                       academyName={item.organization ? [item.organization.name, item.organization.branchName].filter(Boolean).join(" ") : null}
                       subjectLabel={getClassSubjectLabel(item)} priceLabel={formatDiscoveryPrice(item)}
                       locationLabel={item.organization?.bname || item.organization?.sigungu || item.organization?.sido || null}

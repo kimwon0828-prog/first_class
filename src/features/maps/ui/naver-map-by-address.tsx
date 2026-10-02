@@ -432,10 +432,28 @@ export const NaverMapByAddress = ({
       }
     }
 
-    void boot()
+    // Keep the existing map frame, but fetch the SDK only near the viewport.
+    let observer: IntersectionObserver | undefined
+    let started = false
+    const start = () => {
+      if (started || cancelled) return
+      started = true
+      observer?.disconnect()
+      void boot()
+    }
+    const container = containerRef.current
+    if (!container || typeof IntersectionObserver === "undefined") {
+      start()
+    } else {
+      observer = new IntersectionObserver((entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) start()
+      }, { rootMargin: "300px" })
+      observer.observe(container)
+    }
 
     return () => {
       cancelled = true
+      observer?.disconnect()
     }
   }, [displayAddress, geocodeAddress, latitude, longitude, markerLabel, naverMapClientId])
 

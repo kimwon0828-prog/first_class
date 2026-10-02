@@ -1,3 +1,4 @@
+import { canOptimizeParentImage } from "@/features/classes/lib/parent-image"
 import { ParentDetailLink } from "@/features/classes/ui/parent-detail-link"
 import Image from "next/image"
 import { BookmarkButton } from "@/features/favorites/ui/bookmark-button"
@@ -17,14 +18,15 @@ export type ClassCardProps = {
   scheduleLabel?: string | null
   distanceLabel?: string | null
   classId: string
+  priority?: boolean
 }
 
 export function ClassCard({ href, thumbnailUrl, thumbnailAlt, title, academyName,
-  secondaryLabel, regionLabel, gradeLabel, priceLabel, classId }: ClassCardProps) {
+  secondaryLabel, regionLabel, gradeLabel, priceLabel, classId, priority = false }: ClassCardProps) {
   return <article className={styles.card}>
     <ParentDetailLink href={href} className={styles.link}>
       <div className={styles.thumbnail}>
-        {thumbnailUrl ? <Image src={thumbnailUrl} alt={thumbnailAlt} fill sizes="112px" style={{ objectFit: "cover" }} unoptimized />
+        {thumbnailUrl ? <Image src={thumbnailUrl} alt={thumbnailAlt} fill sizes="112px" style={{ objectFit: "cover" }} priority={priority} unoptimized={!canOptimizeParentImage(thumbnailUrl)} />
           : <ImageFallback label="수업 이미지 없음" />}
       </div>
       <div className={styles.body}>

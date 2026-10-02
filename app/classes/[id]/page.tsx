@@ -1,3 +1,4 @@
+import { canOptimizeParentImage } from "@/features/classes/lib/parent-image"
 import { safeParentReturnTo } from "@/features/classes/lib/parent-navigation"
 import { ParentAppShell } from "@/features/classes/ui/parent-app-shell"
 import { ParentHeader } from "@/features/classes/ui/parent-header"
@@ -68,12 +69,23 @@ export default async function ClassDetailPage({ params, searchParams }: ClassDet
     }
   }
   const classesHref = regionQuery.size ? `/classes?${regionQuery.toString()}` : "/classes"
-  const { data: classItem, error } = await getPublicClassDetail(resolvedParams.id)
-  const feedbackSummary = classItem ? await getPublicClassFeedback(classItem.id) : { chips: [] }
-  const regularPriceLabel = classItem ? formatRegularPrice({ type: classItem.regularPriceType, amount: classItem.regularPriceAmount }) : null
-  const session = await getSession()
-  const profile = session ? await getMyProfile() : null
+  const [{ data: classItem, error }, { session, profile }] = await Promise.all([
+    getPublicClassDetail(resolvedParams.id),
+    (async () => {
+      const session = await getSession()
+      const profile = session ? await getMyProfile() : null
+      return { session, profile }
+    })()
+  ])
+  const organization = classItem?.organization ?? null
   const isParentUser = profile?.role === "parent"
+  const [feedbackSummary, { data: slots, error: slotsError }, { data: children, error: childrenError }, academy] = await Promise.all([
+    classItem ? getPublicClassFeedback(classItem.id) : Promise.resolve({ chips: [] }),
+    getPublicClassAvailableSlots(resolvedParams.id),
+    isParentUser ? getMyChildren() : Promise.resolve({ data: [], error: null }),
+    organization?.id ? getPublicAcademyPageByHandle(organization.id).catch(() => null) : Promise.resolve(null)
+  ])
+  const regularPriceLabel = classItem ? formatRegularPrice({ type: classItem.regularPriceType, amount: classItem.regularPriceAmount }) : null
   const favoritesEnabled = !session || profile?.role === "parent"
   const detailQuery = new URLSearchParams(regionQuery)
   const returnTo = safeParentReturnTo(resolvedSearchParams?.returnTo)
@@ -82,11 +94,6 @@ export default async function ClassDetailPage({ params, searchParams }: ClassDet
     ? `/classes/${resolvedParams.id}?${detailQuery.toString()}`
     : `/classes/${resolvedParams.id}`
   const signInHref = `/auth/sign-in?${new URLSearchParams({ returnTo: detailHref }).toString()}`
-  const [{ data: slots, error: slotsError }, { data: children, error: childrenError }] = await Promise.all([
-    getPublicClassAvailableSlots(resolvedParams.id),
-    isParentUser ? getMyChildren() : Promise.resolve({ data: [], error: null })
-  ])
-  const organization = classItem?.organization ?? null
   const organizationLabel = organization
     ? [organization.name, organization.branchName].filter(Boolean).join(" ")
     : ""
@@ -112,8 +119,6 @@ export default async function ClassDetailPage({ params, searchParams }: ClassDet
   const classSubjectLabel = classItem
     ? formatClassSubjectDisplayLabel(classItem) || "과목 정보 준비 중"
     : null
-  const academy = organization?.id
-    ? await getPublicAcademyPageByHandle(organization.id).catch(() => null) : null
   const academyHref = organization?.id ? `/academy/${academy?.slug ?? organization.id}` : null
   const academyImage = academy?.logoImageUrl ?? academy?.coverImageUrl
   const eligibility = isParentUser && !childrenError && classItem
@@ -150,7 +155,7 @@ export default async function ClassDetailPage({ params, searchParams }: ClassDet
             <section className={styles.heroSection}>
               <div className={styles.imageFrame}>
                 {classItem.coverImageUrl ? <Image src={classItem.coverImageUrl} alt={`${classItem.title} 대표 이미지`}
-                  fill sizes="(max-width: 480px) calc(100vw - 40px), 440px" style={{ objectFit: "cover" }} unoptimized priority />
+                  fill sizes="(max-width: 480px) calc(100vw - 40px), 440px" style={{ objectFit: "cover" }} unoptimized={!canOptimizeParentImage(classItem.coverImageUrl)} priority />
                   : <ImageFallback label="수업 이미지 없음" />}
               </div>
               <div className={styles.titleBlock}>
@@ -171,7 +176,7 @@ export default async function ClassDetailPage({ params, searchParams }: ClassDet
                 </div>
                 {academyHref ? <Link href={academyHref} className={styles.academyEntry}>
                   <span className={styles.academyImage}>
-                    {academyImage ? <Image src={academyImage} alt="" fill sizes="64px" style={{ objectFit: "cover" }} unoptimized />
+                    {academyImage ? <Image src={academyImage} alt="" fill sizes="64px" style={{ objectFit: "cover" }} unoptimized={!canOptimizeParentImage(academyImage)} />
                       : <ImageFallback label="학원 이미지 없음" />}
                   </span>
                   <span className={styles.academySummary}>
