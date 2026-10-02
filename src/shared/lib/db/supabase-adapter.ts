@@ -1900,26 +1900,6 @@ const getActiveReservationCountByClassScheduleIds = async (classScheduleIds: str
   return counts
 }
 
-const getActiveReservationCountByScheduleOccurrenceWithClient = async (
-  supabase: SupabaseClient,
-  classId: string,
-  classScheduleIds: string[]
-) => {
-  const counts = new Map<string, number>()
-  if (classScheduleIds.length === 0) {
-    return counts
-  }
-
-  const rows = await getScheduleApplicationReferences(classScheduleIds)
-  for (const row of rows) {
-    if (!row.requested_slot_at || !ACTIVE_APPLICATION_STATUSES.includes(row.status)) continue
-    const key = buildScheduleOccurrenceReservationKey(row.class_schedule_id, row.requested_slot_at)
-    counts.set(key, (counts.get(key) ?? 0) + 1)
-  }
-
-  return counts
-}
-
 const buildCalendarItemStatus = (
   capacity: number,
   activeReservationCount: number,
@@ -2501,6 +2481,43 @@ const getActorNameMap = async (actorIds: string[]) => {
   }
 }
 
+// Parent availability needs both block and occurrence counts for the same class.
+// Read active reservations once; keep the existing aggregate-only service client
+// boundary and never return reservation rows in the public slot DTO.
+const getParentSlotReservationCounts = async (
+  classId: string,
+  scheduleRows: ScheduleBlockRow[],
+  classScheduleIds: string[]
+) => {
+  const byBlock = new Map<string, number>()
+  const byOccurrence = new Map<string, number>()
+  const slotIdByStartAt = new Map(scheduleRows.map((row) => [row.start_at, row.id]))
+  const scheduleIds = new Set(classScheduleIds)
+  const client = getSupabaseServiceRoleClient()
+  let received = 0
+  for (;;) {
+    const { data, count, error } = await client.from("trial_applications")
+      .select("id,requested_schedule_block_id,requested_slot_at,class_schedule_id", { count: "exact" })
+      .eq("class_id", classId)
+      .in("status", ACTIVE_APPLICATION_STATUSES)
+      .order("id").range(received, received + 999)
+    if (error) throw new Error("failed_to_fetch_available_schedule_slots")
+    const rows = data ?? []
+    for (const row of rows) {
+      const blockId = row.requested_schedule_block_id ?? slotIdByStartAt.get(row.requested_slot_at)
+      if (blockId) byBlock.set(blockId, (byBlock.get(blockId) ?? 0) + 1)
+      if (row.requested_slot_at && scheduleIds.has(row.class_schedule_id)) {
+        const key = buildScheduleOccurrenceReservationKey(row.class_schedule_id, row.requested_slot_at)
+        byOccurrence.set(key, (byOccurrence.get(key) ?? 0) + 1)
+      }
+    }
+    received += rows.length
+    // Advance by actual rows: PostgREST can cap a requested page below 1000.
+    if (!rows.length || (count !== null && received >= count)) break
+  }
+  return { byBlock, byOccurrence }
+}
+
 export const listAvailableScheduleSlotsByClassIdWithClient = async ({
   classId,
   supabase
@@ -2559,14 +2576,9 @@ export const listAvailableScheduleSlotsByClassIdWithClient = async ({
 
     const existingBlocks = (existingBlockData ?? []) as ScheduleBlockRow[]
     const availableBlocks = existingBlocks.filter((row) => row.type === "available")
-    const appliedCountBySlotId = await getAppliedCountByClassScheduleBlockIdWithClient(
-      supabase,
+    const { byBlock: appliedCountBySlotId, byOccurrence: appliedCountByOccurrence } = await getParentSlotReservationCounts(
       classId,
-      availableBlocks
-    )
-    const appliedCountByOccurrence = await getActiveReservationCountByScheduleOccurrenceWithClient(
-      supabase,
-      classId,
+      availableBlocks,
       visibleClassScheduleRows.map((row) => row.id)
     )
     const blockByRange = new Map<string, ScheduleBlockRow>()

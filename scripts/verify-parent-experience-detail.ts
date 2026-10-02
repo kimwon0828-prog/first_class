@@ -79,7 +79,7 @@ check("학원명과 장소가 없으면 줄을 만들지 않는다", page.includ
 
 console.log("\n[4] Report 계약")
 
-check("완료 경험에서만 리포트를 조회한다", page.includes("isCompletedExperience ? await getMyExperienceReport(experienceId) : null"))
+check("완료 경험에서만 리포트를 조회한다", page.includes("isCompletedExperience ? getMyExperienceReport(experienceId) : Promise.resolve(null)"))
 check("발행본이 있을 때만 CTA 를 그린다", page.includes("{hasPublishedReport ? (") && page.includes("`/record/${experience.id}/report`"))
 check("조회 실패와 미발행을 구분한다", page.includes("reportLoadFailed") && !page.includes("리포트가 아직 없"))
 check("리포트 query 는 published source 를 그대로 쓴다", reportQuery.includes("getPublishedExperienceReport(experienceId)"))

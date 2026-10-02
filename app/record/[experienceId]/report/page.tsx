@@ -79,10 +79,12 @@ export default async function ExperienceReportPage({ params, searchParams }: {
   // Return navigation carries context only; ownership is validated after authentication.
   const returnTo = parentEntryHref(`/record/${experienceId}/report`, navigationParams)
   const parent = await requireParentAccess({ returnTo })
-  const result = await getMyExperienceReport(experienceId)
+  const [result, selectedChildId] = await Promise.all([
+    getMyExperienceReport(experienceId),
+    getRecordChildContext(childQuery)
+  ])
   if (result.status === "not_found") notFound()
 
-  const selectedChildId = await getRecordChildContext(childQuery)
   const backHref = withRecordChild(`/record/${experienceId}`, selectedChildId)
   if (result.status !== "ok") {
     const isError = result.status === "error"

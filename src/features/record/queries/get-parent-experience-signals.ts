@@ -44,38 +44,24 @@ export const getParentExperienceSignals = async (
     if (children.error) throw new Error("failed_to_fetch_signal_children")
     const reportedExperienceIds = new Set<string>()
 
-    if (!children.error && children.data.length > 0) {
-      queryStage = "listMyPublishedReportsByChild"
-      const perChild = await Promise.all(
-        children.data.map((child) => dataAdapter.listMyPublishedReportsByChild(child.id))
-      )
-      for (const reports of perChild) {
-        for (const report of reports) {
-          if (candidateIds.has(report.experienceId)) {
-            reportedExperienceIds.add(report.experienceId)
-          }
-        }
+    // Both paths remain session/RLS scoped. Legacy reports do not depend on
+    // the child report results; wait for both before querying decisions.
+    queryStage = "publishedReports"
+    const legacyCandidates = candidates.filter((item) => !item.childId)
+    const [perChild, legacyReports] = await Promise.all([
+      Promise.all(children.data.map((child) => dataAdapter.listMyPublishedReportsByChild(child.id))),
+      Promise.all(legacyCandidates.map(async (item) => {
+        const report = await dataAdapter.getPublishedExperienceReport(item.id)
+        return report ? item.id : null
+      }))
+    ])
+    for (const reports of perChild) {
+      for (const report of reports) {
+        if (candidateIds.has(report.experienceId)) reportedExperienceIds.add(report.experienceId)
       }
     }
-
-    /*
-     * child_id 가 없는 legacy 신청은 아이 단위 조회에 걸리지 않는다.
-     * 그 몇 건만 개별로 확인한다 — 빠뜨리면 그 리포트는 영영 안 뜬다.
-     */
-    const legacyCandidates = candidates.filter((item) => !item.childId)
-    if (legacyCandidates.length > 0) {
-      queryStage = "getPublishedExperienceReport"
-      const legacyReports = await Promise.all(
-        legacyCandidates.map(async (item) => {
-          const report = await dataAdapter.getPublishedExperienceReport(item.id)
-          return report ? item.id : null
-        })
-      )
-      for (const experienceId of legacyReports) {
-        if (experienceId) {
-          reportedExperienceIds.add(experienceId)
-        }
-      }
+    for (const experienceId of legacyReports) {
+      if (experienceId) reportedExperienceIds.add(experienceId)
     }
 
     if (reportedExperienceIds.size === 0) {

@@ -81,14 +81,17 @@ export default async function ExperienceDetailPage({
   }
 
   const isCompletedExperience = experience.status === "completed"
-  const selectedChildId = await getRecordChildContext(navigationParams?.child)
+  // Ownership above remains the gate; these reads are independent afterwards.
+  const [selectedChildId, reportResult, childrenResult] = await Promise.all([
+    getRecordChildContext(navigationParams?.child),
+    isCompletedExperience ? getMyExperienceReport(experienceId) : Promise.resolve(null),
+    isCompletedExperience && experience.childId ? getMyChildren() : Promise.resolve(null)
+  ])
   const backHref = withRecordChild(isCompletedExperience ? "/record" : "/my/applications", selectedChildId)
 
   // 완료 경험의 관찰 미리보기는 발행 snapshot만 읽는다. 입력은 리포트 상세에 둔다.
-  const reportResult = isCompletedExperience ? await getMyExperienceReport(experienceId) : null
   const hasPublishedReport = reportResult?.status === "ok"
   const reportLoadFailed = reportResult?.status === "error"
-  const childrenResult = isCompletedExperience && experience.childId ? await getMyChildren() : null
   const profileChildId = !childrenResult?.error && childrenResult?.data.some(child => child.id === experience.childId)
     ? experience.childId : null
   const snapshot = reportResult?.status === "ok" ? reportResult.report.content : null

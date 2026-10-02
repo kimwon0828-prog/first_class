@@ -214,6 +214,10 @@ export const MyChildrenClient = () => {
   useEffect(() => {
     const supabase = createSupabaseBrowserClient()
     const { data: subscription } = supabase.auth.onAuthStateChange((event, session) => {
+      // loadChildren owns the initial session/user verification and data read.
+      // Replaying INITIAL_SESSION here starts the same profile/children queries
+      // twice; subsequent sign-in and token events still refresh normally.
+      if (event === "INITIAL_SESSION") return
       logAuthDebug({
         phase: "change",
         event,
