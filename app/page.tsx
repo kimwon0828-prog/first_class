@@ -223,7 +223,7 @@ async function ParentHomeContent({ searchParams }: HomePageProps) {
             </Link>
 
             </div>} />
-        <h1 className={styles.hero}>우리 아이의<br />가능성을 발견하는<br /><span>첫수업</span>이에요</h1>
+        <h1 className={styles.hero}>우리 아이에게 맞는<br /><span>수업의 시작</span></h1>
         <div className={styles.header}>
           <div className={styles.headerContext} role="group" aria-label="탐색 지역과 자녀 선택">
             <LocationFilter

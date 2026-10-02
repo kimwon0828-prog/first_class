@@ -122,7 +122,7 @@ body:has([data-parent-design="v1"]) .firstclass-bottom-sheet__overlay {
   --parent-nav-inset: 12px;
   --parent-bottom-nav-offset: calc(var(--parent-nav-inset) + env(safe-area-inset-bottom, 0px));
   --parent-nav-space: calc(96px + env(safe-area-inset-bottom, 0px));
-  --parent-glass: rgba(255,255,255,0.5);
+  --parent-glass: rgba(255,255,255,0.44);
   --parent-blur: 20px;
   --motion-fast: 120ms;
   --parent-card-width: 272px;
@@ -195,3 +195,6 @@ body:has([data-parent-design="v1"]) .firstclass-bottom-sheet__overlay :focus-vis
     --parent-bottom-nav-offset: env(safe-area-inset-bottom, 0px);
   }
 }
+
+/* Immediate touch feedback, without replacing route loading boundaries. */
+a[data-parent-detail-link]:active { opacity: 0.8; }

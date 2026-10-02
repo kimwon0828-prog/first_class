@@ -92,4 +92,4 @@
 @media (prefers-reduced-motion: reduce) { .bottomNav { transition: none; } .spinner { animation: none; } }
 
 /* A fine top reflection; no opaque inner panel or selected pill. */
-.v1::before { content: ""; position: absolute; inset: 0; border-radius: inherit; border-top: 1px solid rgba(255, 255, 255, 0.75); background: linear-gradient(180deg, rgba(255, 255, 255, 0.08), transparent 55%); pointer-events: none; }
+.v1::before { content: ""; position: absolute; inset: 0; border-radius: inherit; border-top: 1px solid rgba(255, 255, 255, 0.82); background: linear-gradient(180deg, rgba(255, 255, 255, 0.06), transparent 45%); pointer-events: none; }

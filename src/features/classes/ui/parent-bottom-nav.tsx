@@ -9,6 +9,7 @@ import { resolveParentNavTab } from "@/features/classes/lib/parent-nav"
 import { withParentChild } from "../lib/parent-navigation"
 
 import styles from "./parent-bottom-nav.module.css"
+import { useParentLinkPrefetch } from "./use-parent-link-prefetch"
 import { useParentNavVisibility } from "./use-parent-nav-visibility"
 
 /**
@@ -106,7 +107,8 @@ const BottomNav = ({
       {navItems.map((item) => {
         const isActive = activeTab === item.tab
         return (
-          <Link
+          <PreparedNavLink
+            idle={pathname === "/" && item.tab !== "home"}
             key={item.tab}
             href={item.href}
             className={`${styles.navItem} ${isActive ? styles.navItemActive : ""}`}
@@ -116,11 +118,16 @@ const BottomNav = ({
             }}
           >
             <NavContent icon={item.icon} label={item.label} />
-          </Link>
+          </PreparedNavLink>
         )
       })}
     </nav>
   )
+}
+
+function PreparedNavLink({ idle, ...props }: React.ComponentProps<typeof Link> & { idle: boolean; href: string }) {
+  const { prefetch, prepare, cancel } = useParentLinkPrefetch(props.href, idle)
+  return <Link {...props} prefetch={prefetch} onClick={event => { cancel(); props.onClick?.(event) }} onPointerEnter={prepare} onTouchStart={prepare} onFocus={prepare} />
 }
 
 function NavContent({ icon, label }: { icon: ReactNode; label: string }) {
