@@ -224,7 +224,8 @@ export function ClassDetailApplicationSheet({
     legacyChildGradeValue,
     canSubmit,
     requiredAgreementsChecked,
-    handleSubmit
+    handleSubmit,
+    formRef
   } = useTrialApplicationForm(
     {
       classId,
@@ -349,6 +350,9 @@ export function ClassDetailApplicationSheet({
   }, [availableSlots, classId, hasSession, isParentUser, setSelectedOptionId])
 
   const openSheet = () => {
+    setPrivacyAgreed(false)
+    setThirdPartyAgreed(false)
+    setGuardianAgreed(false)
     setIsOpen(true)
     setStep(1)
     setIsCalendarView(false)
@@ -409,7 +413,7 @@ export function ClassDetailApplicationSheet({
             aria-label="체험수업 신청"
             onClick={(event) => event.stopPropagation()}
           >
-            <form action={formAction} onSubmit={handleSubmit} className={styles.sheetLayout}>
+            <form ref={formRef} action={formAction} onSubmit={handleSubmit} className={styles.sheetLayout}>
               <div className={styles.sheetHeader}>
                 <div className={styles.sheetHandle} />
                 <div className={styles.headerRow}>

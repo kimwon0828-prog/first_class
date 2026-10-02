@@ -1,7 +1,7 @@
 "use client"
 
-import { useRouter } from "next/navigation"
-import { useActionState, useEffect, useMemo, useState, type FormEvent } from "react"
+import { unstable_rethrow, useRouter } from "next/navigation"
+import { useActionState, useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react"
 
 import {
   createTrialApplicationAction,
@@ -100,7 +100,20 @@ export const useTrialApplicationForm = (
 ) => {
   const router = useRouter()
   const boundAction = createTrialApplicationAction.bind(null, classId)
-  const [state, formAction, isPending] = useActionState(boundAction, initialState)
+  const submissionInFlight = useRef(false)
+  const [state, formAction, isPending] = useActionState(
+    async (previous: CreateTrialApplicationActionState, formData: FormData): Promise<CreateTrialApplicationActionState> => {
+      try {
+        return await boundAction(previous, formData)
+      } catch (error) {
+        unstable_rethrow(error)
+        return { status: "error", message: "체험수업 신청에 실패했습니다. 잠시 후 다시 시도해주세요." }
+      } finally {
+        submissionInFlight.current = false
+      }
+    },
+    initialState
+  )
   const [selectedChildId, setSelectedChildId] = useState("")
   const [selectedOptionId, setSelectedOptionId] = useState("")
   const [childName, setChildName] = useState("")
@@ -190,6 +203,11 @@ export const useTrialApplicationForm = (
   }, [router, state.redirectTo, state.status])
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+    if (isPending || submissionInFlight.current) {
+      event.preventDefault()
+      return
+    }
+
     if (!requiredAgreementsChecked) {
       event.preventDefault()
       setClientMessage("체험수업 신청에 필요한 필수 동의 항목을 확인해주세요.")
@@ -202,8 +220,19 @@ export const useTrialApplicationForm = (
       return
     }
 
+    submissionInFlight.current = true
     setClientMessage("")
   }
+
+  // React resets action forms during commit, including resolved error responses.
+  // Synthetic onReset is disabled during that commit; cancel the native reset on
+  // this form only so its DOM stays aligned with the controlled retry values.
+  const formRef = useCallback((form: HTMLFormElement | null) => {
+    if (!form) return
+    const preserveValues = (event: Event) => event.preventDefault()
+    form.addEventListener("reset", preserveValues)
+    return () => form.removeEventListener("reset", preserveValues)
+  }, [])
 
   return {
     state,
@@ -251,6 +280,7 @@ export const useTrialApplicationForm = (
     hasSelectableSlots,
     canSubmit,
     requiredAgreementsChecked,
-    handleSubmit
+    handleSubmit,
+    formRef
   }
 }

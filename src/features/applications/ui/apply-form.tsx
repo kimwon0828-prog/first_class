@@ -69,7 +69,9 @@ export const ApplyForm = ({
     legacyChildGradeValue,
     hasSelectableSlots,
     canSubmit,
-    handleSubmit
+    requiredAgreementsChecked,
+    handleSubmit,
+    formRef
   } = useTrialApplicationForm({
     classId,
     classTargetAge,
@@ -79,7 +81,7 @@ export const ApplyForm = ({
   })
 
   return (
-    <form action={formAction} onSubmit={handleSubmit} className={styles.form}>
+    <form ref={formRef} action={formAction} onSubmit={handleSubmit} className={styles.form}>
       <section className={styles.card}>
         <div className={styles.contactSummary}>
           <p className={styles.contactTitle}>보호자 정보</p>
@@ -480,7 +482,7 @@ export const ApplyForm = ({
       ) : null}
 
       <div className={styles.fixedCta}>
-        <button type="submit" disabled={isPending || !canSubmit} className={styles.ctaButton}>
+        <button type="submit" disabled={isPending || !canSubmit || !requiredAgreementsChecked} className={styles.ctaButton}>
           {/* 누르기 전에는 "완료"·"확정"이라고 부르지 않는다. 접수되는 것은 신청이다. */}
           {isPending ? "신청 제출 중..." : "체험 신청하기"}
         </button>
