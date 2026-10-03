@@ -37,7 +37,6 @@ const LIB = "src/features/notifications/lib/parent-notifications.ts"
 const QUERY = "src/features/notifications/queries/get-parent-notifications.ts"
 const HOME = "app/page.tsx"
 const HOME_CSS = "app/page.module.css"
-const NAV_LIB = "src/features/classes/lib/parent-nav.ts"
 const ACTIONS_LIB = "src/features/actions/lib/parent-actions.ts"
 
 const read = (path: string) => readFileSync(resolve(process.cwd(), path), "utf8")
@@ -53,7 +52,6 @@ const lib = codeOf(LIB)
 const query = codeOf(QUERY)
 const home = codeOf(HOME)
 const homeCss = read(HOME_CSS)
-const navLib = codeOf(NAV_LIB)
 
 let failures = 0
 const check = (label: string, ok: boolean, detail = "") => {
@@ -93,9 +91,9 @@ check("C) 종의 터치 타깃이 44px 이상이다", iconWidth >= 44 && iconHei
 
 console.log("\n[D] nav active")
 
-check("D) /notifications → 홈 탭", resolveParentNavTab("/notifications") === "home")
-check("D) 하위 경로도 홈 탭", resolveParentNavTab("/notifications/anything") === "home")
-check("D) nav 계약에 명시돼 있다", navLib.includes('"/notifications"'))
+check("D) /notifications 는 독립 화면", resolveParentNavTab("/notifications") === null)
+check("D) 하위 경로도 활성 탭 없음", resolveParentNavTab("/notifications/anything") === null)
+check("D) 공통 shell 에서 nav 를 제외한다", read("src/features/notifications/ui/notifications-frame.tsx").includes("navigation={false}"))
 check("D) 독립 알림 화면은 nav 없음", !page.includes("<ParentBottomNav"))
 check("D) 직접 만든 탭이 없다", !page.includes('aria-label="하단 탭"'))
 /* 마이페이지가 같이 켜지지 않는다. */

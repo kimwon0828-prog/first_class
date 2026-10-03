@@ -112,7 +112,7 @@ check(
   "단계 라벨 helper 를 쓰지 않는다",
   !list.includes("getExperienceStageLabel") && !list.includes("resolveExperienceStage")
 )
-check("헤더 문구가 경험을 말한다", page.includes("아이의 경험과 남겨진 기록을 확인해보세요."))
+check("헤더 문구가 경험을 말한다", page.includes("아이의 체험 기록을 한눈에 확인해보세요."))
 check("섹션 제목이 있다", page.includes("교육 기록 {experiences.length}개"))
 check("통계 · 그래프를 만들지 않는다", !page.includes("chart") && !page.includes("그래프") && !pageCss.includes("chart"))
 
@@ -132,7 +132,7 @@ check("D) /record/profile 로 간다", page.includes('withRecordChild("/record/p
 check("아이가 정해졌을 때만 보인다", page.includes("{profileChild ?"))
 check(
   "경험 카드와 다르게 보인다",
-  pageCss.includes(".profileCta {") && pageCss.includes("background: var(--brand-50);")
+  pageCss.includes(".profileCta {") && pageCss.includes("background: var(--surface-sub);")
 )
 for (const term of ["적합도", "성향", "분석 완료", "%", "유형이에요"]) {
   check(`진단 표현 "${term}" 을 쓰지 않는다`, !page.includes(term))

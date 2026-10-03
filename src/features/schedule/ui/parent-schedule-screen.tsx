@@ -1,5 +1,6 @@
 "use client"
 
+import { ParentExperienceThumbnail } from "@/features/classes/ui/parent-experience-thumbnail"
 import { ParentDetailLink } from "@/features/classes/ui/parent-detail-link"
 
 import { ParentAppShell } from "@/features/classes/ui/parent-app-shell"
@@ -47,10 +48,10 @@ export function ParentScheduleScreen({ model, childOptions, selectedChildId, tod
   const months = groupScheduleMonths(model[tab])
   return <ScheduleFrame>
     {failed ? <ScheduleFailure retry={() => router.refresh()} /> : <>
-      {childOptions.length > 0 && <HomeChildSelector options={childOptions} selectedChildId={selectedChildId} manageSheetFocus
+      {childOptions.length > 0 && <HomeChildSelector options={childOptions} selectedChildId={selectedChildId} manageSheetFocus unselectedLabel="모든 아이" allChildrenLabel="모든 아이"
         className={styles.childSelector} labelClassName={styles.childLabel}
         triggerContent={<><span className={styles.avatar}><OutlineIcon person /></span><span className={styles.childText}>
-          <span>{selected?.name ?? "우리 아이 전체"}</span><span className={styles.grade}>{selected?.grade || `${childOptions.length}명의 일정`}</span>
+          <span>{selected?.name ?? "모든 아이"}</span><span className={styles.grade}>{selected?.grade || `${childOptions.length}명의 일정`}</span>
         </span></>} />}
       <div className={styles.tabs} role="tablist" aria-label="일정 상태">
         {tabs.map((value, index) => <button key={value} type="button" role="tab" id={`${id}-${value}`} aria-controls={`${id}-panel`}
@@ -76,14 +77,15 @@ export function ParentScheduleScreen({ model, childOptions, selectedChildId, tod
                 <time dateTime={item.startAt} className={styles.date} aria-label={formatScheduleDateLabel(item.startAt) ?? undefined}>
                   <strong>{date.day}</strong><span>{weekdays[date.weekday]}</span>
                 </time>
+                <ParentExperienceThumbnail src={item.thumbnailUrl} size="schedule" />
                 <span className={styles.details}>
-                  <span className={styles.time}>{formatScheduleTimeLabel(item.startAt)}</span>
+                  <span className={styles.meta}><span className={tab === "upcoming" ? styles.upcoming : styles.completed}>{tab === "upcoming" ? "예정" : "완료"}</span></span>
                   <span className={styles.title}>{item.title ?? "수업 정보 준비 중"}</span>
                   {item.academy && <span className={styles.academy}>{item.academy}</span>}
+                  <span className={styles.time}>{formatScheduleTimeLabel(item.startAt)}</span>
                   {item.address && <span className={styles.address}>{item.address}</span>}
-                  <span className={styles.meta}><span className={tab === "upcoming" ? styles.upcoming : styles.completed}>{tab === "upcoming" ? "예정" : "완료"}</span>
-                    {!selectedChildId && childOptions.length > 1 && <span>{item.childName}</span>}</span>
-                </span><span aria-hidden="true" className={styles.chevron}>›</span>
+                  <span className={styles.childMeta}><span>{item.childName}</span>{item.childGrade && <span> · {item.childGrade}</span>}</span>
+                </span>
               </ParentDetailLink>
             </li>
           })}</ul>

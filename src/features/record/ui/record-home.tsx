@@ -20,7 +20,7 @@ function RecordIcon({ person = false }: { person?: boolean }) {
 }
 export function RecordFrame({ children }: { children: ReactNode }) {
   return <ParentAppShell data-parent-design="v1" className={styles.page}><div className={styles.shell}>
-    <ParentHeader title="기록" inset /><p className={styles.subcopy}>아이의 경험과 남겨진 기록을 확인해보세요.</p>
+    <ParentHeader title="기록" inset /><p className={styles.subcopy}>아이의 체험 기록을 한눈에 확인해보세요.</p>
     {children}
   </div></ParentAppShell>
 }

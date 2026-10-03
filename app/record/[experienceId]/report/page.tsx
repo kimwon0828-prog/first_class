@@ -1,3 +1,4 @@
+import { ParentExperienceThumbnail } from "@/features/classes/ui/parent-experience-thumbnail"
 import { parentEntryHref } from "@/features/classes/lib/parent-navigation"
 import { getParentExperienceFeedback } from "@/features/feedback/queries/get-experience-feedback"
 import { ParentFeedbackForm } from "@/features/feedback/ui/parent-feedback-form"
@@ -68,6 +69,17 @@ const formatPublishedDate = (value: string) => {
   return `${parts.year}.${month}.${day}`
 }
 
+function SectionIcon({ kind }: { kind: "observation" | "summary" | "course" | "schedule" | "feedback" }) {
+  const paths = {
+    observation: "M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12Zm10-3a3 3 0 1 0 0 6 3 3 0 0 0 0-6",
+    summary: "M6 3h9l3 3v15H6V3Zm3 6h6M9 13h6M9 17h4",
+    course: "m3 6 9-3 9 3v14l-9-3-9 3V6Zm9-3v14",
+    schedule: "M4 5h16v16H4V5Zm4-2v4m8-4v4M4 10h16",
+    feedback: "M5 4h14v12H9l-4 4V4Zm4 4h6m-6 4h4"
+  }
+  return <svg className={styles.sectionIcon} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={paths[kind]} /></svg>
+}
+
 export default async function ExperienceReportPage({ params, searchParams }: {
   params: Promise<{ experienceId: string }>
   searchParams?: Promise<Record<string, string | string[] | undefined>>
@@ -116,6 +128,8 @@ export default async function ExperienceReportPage({ params, searchParams }: {
   return <ReportFrame backHref={backHref}>
     <ReportViewTracker reportId={report.id} />
     <section className={styles.summary} aria-label="경험 요약">
+      <ParentExperienceThumbnail src={experience.classCoverImageUrl} size="report" />
+      <div className={styles.summaryText}>
       {snapshot.experience.child.displayName ? <p className={styles.childName}>
         {snapshot.experience.child.displayName}
         {snapshot.experience.child.grade ? <span className={styles.grade}> · {snapshot.experience.child.grade}</span> : null}
@@ -124,22 +138,23 @@ export default async function ExperienceReportPage({ params, searchParams }: {
       {snapshot.experience.class.title ? <h2 className={styles.classTitle}>{snapshot.experience.class.title}</h2> : null}
       {snapshot.experience.academy.name ? <p className={styles.muted}>{snapshot.experience.academy.name}</p> : null}
       {experienceDate ? <p className={styles.experienceDate}><time dateTime={snapshot.experience.date}>{experienceDate}</time></p> : null}
+      </div>
     </section>
 
     {snapshot.observations.length > 0 ? <section className={styles.block} aria-labelledby="observations-title">
-      <h2 id="observations-title" className={styles.blockTitle}>선생님이 남긴 관찰</h2>
+      <h2 id="observations-title" className={styles.blockTitle}><SectionIcon kind="observation" />선생님이 남긴 관찰</h2>
       <ul className={styles.observationList}>
         {snapshot.observations.map((item, index) => <li key={`${item.code}-${index}`} className={styles.prose}>{item.label}</li>)}
       </ul>
     </section> : null}
 
     {summary ? <section className={styles.block} aria-labelledby="report-summary-title">
-      <h2 id="report-summary-title" className={styles.blockTitle}>선생님 총평</h2>
+      <h2 id="report-summary-title" className={styles.blockTitle}><SectionIcon kind="summary" />선생님 총평</h2>
       <p className={styles.prose}>{summary}</p>
     </section> : null}
 
     {recommendations.length > 0 ? <section className={styles.block} aria-labelledby="recommendation-title">
-      <h2 id="recommendation-title" className={styles.blockTitle}>선생님이 제안한 과정 · 레벨</h2>
+      <h2 id="recommendation-title" className={styles.blockTitle}><SectionIcon kind="course" />선생님이 제안한 과정 · 레벨</h2>
       <dl className={styles.recommendationList}>
         {recommendations.map(item => <div key={item.label} className={styles.recommendationRow}>
           <dt>{item.label}</dt><dd className={styles.prose}>{item.value}</dd>
@@ -148,7 +163,7 @@ export default async function ExperienceReportPage({ params, searchParams }: {
     </section> : null}
 
     {snapshot.recommendation.schedule ? <section className={styles.block} aria-labelledby="schedule-title">
-      <h2 id="schedule-title" className={styles.blockTitle}>선생님이 제안한 일정</h2>
+      <h2 id="schedule-title" className={styles.blockTitle}><SectionIcon kind="schedule" />선생님이 제안한 일정</h2>
       <p className={styles.prose}>{snapshot.recommendation.schedule}</p>
     </section> : null}
 
@@ -158,7 +173,7 @@ export default async function ExperienceReportPage({ params, searchParams }: {
       <Link href={backHref} className={styles.primaryAction}>체험 기록으로 돌아가기</Link>
     </footer>
     <section id="experience-feedback" tabIndex={-1} className={styles.feedback} aria-label="학부모 체험 피드백">
-      <h2 className={styles.blockTitle}>체험은 어떠셨나요?</h2>
+      <h2 className={styles.blockTitle}><SectionIcon kind="feedback" />체험은 어떠셨나요?</h2>
       <ParentFeedbackForm applicationId={experienceId} result={feedbackResult} decisionResult={decisionResult}
         showDecision={experience.status === "completed" && experience.canCollectParentDecision} showTitle={false} />
     </section>

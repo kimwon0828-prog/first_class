@@ -237,6 +237,7 @@ type EmbeddedConfirmedBlockRow = {
 type MyTrialApplicationRow = {
   id: string
   class_id: string
+  classes?: { cover_image_url: string | null } | { cover_image_url: string | null }[] | null
   parent_id: string | null
   child_id?: string | null
   child_name: string
@@ -942,6 +943,7 @@ const mapMyApplication = (
   id: row.id,
   classId: row.class_id,
   classTitle: row.class_title ?? null,
+  classCoverImageUrl: (Array.isArray(row.classes) ? row.classes[0] : row.classes)?.cover_image_url ?? null,
   classProgramType: row.class_program_type ?? null,
   academyName: organization
     ? [organization.name, organization.branchName].filter(Boolean).join(" ").trim() || null
@@ -4418,7 +4420,7 @@ export const supabaseDataAdapter: DataAdapter = {
     const { data, error } = await supabase
       .from("my_trial_applications")
       .select(
-        "id, class_id, child_id, child_name, child_grade, class_schedule_id, requested_schedule_block_id, selected_schedule_label, requested_slot_at, confirmed_slot_at, completed_at, canceled_at, status, created_at, updated_at, class_title, class_program_type, class_organization_id, has_current_registration_result, can_cancel"
+        "id, class_id, child_id, child_name, child_grade, class_schedule_id, requested_schedule_block_id, selected_schedule_label, requested_slot_at, confirmed_slot_at, completed_at, canceled_at, status, created_at, updated_at, class_title, class_program_type, class_organization_id, has_current_registration_result, can_cancel, classes(cover_image_url)"
       )
       .eq("parent_id", parentId)
       .order("created_at", { ascending: false })

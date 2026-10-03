@@ -1837,6 +1837,7 @@ export const mockDataAdapter: DataAdapter = {
         id: item.id,
         classId: item.classId,
         classTitle: item.classTitle,
+        classCoverImageUrl: classes.find((row) => row.id === item.classId)?.coverImageUrl ?? null,
         classProgramType: item.classProgramType,
         academyName:
           [mockOrganizationLocation.name, mockOrganizationLocation.branchName]

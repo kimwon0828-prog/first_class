@@ -4,6 +4,19 @@ Authoritative Parent specification. First adoption: Home `/` (2026-09-20).
 CSS source: `app/globals.css`, `[data-parent-design="v1"]`.
 The existing `STUDIO_DESIGN_SYSTEM.md` remains Studio-only. No global replacement of legacy Parent or Studio tokens.
 
+## Parent content screens — local redesign (2026-10-03)
+
+Applies only to Schedule, Record home, published Report and Notifications. This section supersedes their older card/header descriptions below; Home, shared Nav, loading skeletons, status and ownership contracts are unchanged.
+
+- Schedule/Record use the existing HomeChildSelector with the same neutral rich trigger. Names and short labels do not wrap; grades may wrap separately. Schedule retains its accessible keyboard tabs, now compact with a Brand Green underline.
+- Lists use a narrow date column, a horizontal class cover and flexible information, with thin separators and no nested cards. Schedule covers are 88×66; Record 96×72; Report 120×90. All are 4:3, rounded, object-fit cover. Missing, failed or non-optimizable media uses the existing neutral ImageFallback.
+- Covers come from the existing `classes.cover_image_url` through a left embed in the owned `my_trial_applications` read. No item queries, RPC or schema change. Existing application/location round trips remain one for an empty list and two for populated lists, independent of item count. DTO adds optional `classCoverImageUrl`; all other fields/guards remain intact.
+- ParentExperienceThumbnail uses Next Image, explicit 88/96/120px sizes and default lazy loading. Only existing approved public-storage URLs are loaded; no large original fallback downloads.
+- Record intro: `아이의 체험 기록을 한눈에 확인해보세요.` (14px neutral, 8px top / 24px bottom). Report and decision links/states retain their original destinations and child/returnTo context.
+- Report summary uses the current class cover beside the published snapshot text. Only the image is live; observations, summary, recommendations and dates still use the published snapshot. Small outline section icons, soft grouped observations/recommendations and whitespace establish hierarchy. Feedback/decision and return actions retain their existing behavior and order.
+- All notification kinds share one compact row, their existing icon and actual title/context/time. Only unread rows show a small exact Brand Green dot. No separate report CTA card, new read-all action or Bottom Nav; read keys and target hrefs are unchanged.
+- Verification: `verify-parent-content-screens-browser.cjs` renders actual four-screen modules with inert data/auth/action transport and actual Next Image (Chromium/WebKit, 390/430/480/1280). `verify-parent-experience-thumbnails.cjs` executes the adapter with 0/1/50 applications to protect mapping, ownership and query count.
+
 ## Parent Header and short Korean labels — local polish (2026-10-02)
 
 - All non-brand ParentHeader instances share a viewport-centered title, symmetric layout columns and a left chevron with a minimum 44px target. Home keeps its brand header. Loading/error frames inherit the same header.

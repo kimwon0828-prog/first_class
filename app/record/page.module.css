@@ -2,12 +2,12 @@
 .shell { max-width: var(--col); min-height: 100dvh; margin-inline: auto; padding: 0 var(--gutter); padding-bottom: var(--parent-nav-space); background: var(--surface); }
 .header { margin-bottom: var(--s6); }
 .title { margin: 0; font-size: var(--font-h1); font-weight: 600; }
-.subcopy { margin: var(--s2) 0 0; font-size: var(--font-b2); color: var(--text-2); }
-.profileCta { display: flex; align-items: center; gap: var(--s3); min-height: 44px; padding: var(--s4); border-radius: var(--r-lg); background: var(--brand-50); color: var(--brand-700); text-decoration: none; }
+.subcopy { margin: 8px 0 24px; font-size: 14px; line-height: 1.6; color: var(--text-2); word-break: keep-all; }
+.profileCta { display: flex; align-items: center; gap: var(--s3); min-height: 44px; padding: var(--s3); border-radius: var(--r-lg); background: var(--surface-sub); color: var(--text-1); text-decoration: none; }
 .profileIcon { display: grid; place-items: center; flex: 0 0 var(--s10); height: var(--s10); }
 .profileBody { flex: 1; min-width: 0; display: grid; gap: var(--s1); }
 .profileBody strong { font-size: var(--font-b1); font-weight: 600; }
-.profileBody > span { font-size: var(--font-c1); color: var(--text-2); overflow-wrap: anywhere; }
+.profileBody > span { font-size: var(--font-c1); color: var(--text-2); word-break: keep-all; }
 .content { display: grid; gap: var(--s6); margin-top: var(--s8); }
 .count { margin: 0; font-size: var(--font-b2); font-weight: 600; color: var(--neutral-700); }
 .signalNotice { margin: 0; color: var(--text-2); font-size: var(--font-c1); }

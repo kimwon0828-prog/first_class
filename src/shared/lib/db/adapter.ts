@@ -697,6 +697,8 @@ export type ParentApplicationSummary = {
   id: string
   classId: string
   classTitle: string | null
+  /** Existing public class cover; unavailable/deleted class media stays neutral. */
+  classCoverImageUrl?: string | null
   classProgramType: ClassProgramType | null
   academyName: string | null
   organizationAddress: string | null

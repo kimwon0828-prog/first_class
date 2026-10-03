@@ -11,6 +11,8 @@ export type ScheduleCard = {
   academy: string | null
   address: string | null
   childName: string
+  childGrade: string
+  thumbnailUrl: string | null
   href: string
 }
 export type ScheduleMonth = { key: string; label: string; items: ScheduleCard[] }
@@ -21,7 +23,8 @@ function cards(rows: readonly ParentApplicationSummary[], completed: boolean): S
     const dateKey = startAt ? formatSeoulDateKey(startAt) : null
     if (!startAt || !dateKey) return []
     return [{ id: row.id, startAt, dateKey, title: row.classTitle, academy: row.academyName,
-      address: row.organizationAddress, childName: row.childName, href: `/record/${row.id}` }]
+      address: row.organizationAddress, childName: row.childName, childGrade: row.childGrade,
+      thumbnailUrl: row.classCoverImageUrl ?? null, href: `/record/${row.id}` }]
   })
 }
 

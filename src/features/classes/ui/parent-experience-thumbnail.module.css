@@ -1,0 +1,4 @@
+.frame { position: relative; display: block; flex-shrink: 0; overflow: hidden; border-radius: 12px; background: var(--surface-sub); }
+.schedule { width: 88px; height: 66px; }
+.record { width: 96px; height: 72px; }
+.report { width: 120px; height: 90px; }

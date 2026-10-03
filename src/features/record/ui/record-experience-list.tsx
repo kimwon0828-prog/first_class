@@ -1,3 +1,4 @@
+import { ParentExperienceThumbnail } from "@/features/classes/ui/parent-experience-thumbnail"
 import { ParentDetailLink } from "@/features/classes/ui/parent-detail-link"
 import { withRecordChild } from "@/features/record/lib/record-href"
 
@@ -119,6 +120,7 @@ export const RecordExperienceList = ({
                       <strong>{parts?.day}</strong>
                       <span>{parts ? SEOUL_WEEKDAY_SHORT[parts.weekday] : null}</span>
                     </time>
+                    <ParentExperienceThumbnail src={experience.classCoverImageUrl} />
                     <span className={styles.cardBody}>
                       <span className={styles.typeLabel}>
                         {getExperienceTypeLabel(experience.classProgramType)}
@@ -129,9 +131,7 @@ export const RecordExperienceList = ({
                       {academyName ? <span className={styles.cardAcademy}>{academyName}</span> : null}
                       {showChildName ? (
                         <span className={styles.cardChild}>
-                          {experience.childGrade
-                            ? `${experience.childName} · ${experience.childGrade}`
-                            : experience.childName}
+                          <span>{experience.childName}</span>{experience.childGrade ? <span> · {experience.childGrade}</span> : null}
                         </span>
                       ) : null}
                     </span>

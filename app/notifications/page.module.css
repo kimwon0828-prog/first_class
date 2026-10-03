@@ -5,11 +5,11 @@
 .backButton { display: grid; place-items: center; width: 44px; height: 44px; flex-shrink: 0; color: var(--text-1); border-radius: var(--r-md); }
 .content { display: grid; gap: var(--s8); padding: var(--s4) var(--gutter) calc(var(--s8) + env(safe-area-inset-bottom)); }
 .group h2 { margin: 0 0 var(--s4); font-size: var(--font-b2); font-weight: 600; color: var(--text-2); }
-.group ul { margin: 0; padding: 0; list-style: none; display: grid; gap: var(--s3); }
-.item { display: flex; align-items: flex-start; gap: var(--s3); padding: var(--s4); min-height: 44px; border: 1px solid var(--border); border-radius: var(--r-lg); text-decoration: none; color: var(--text-1); }
-.item:hover { border-color: var(--border-strong); }
-.icon { display: grid; place-items: center; width: 40px; height: 40px; flex: 0 0 40px; border-radius: var(--r-full); color: var(--brand-700); background: var(--brand-50); }
-.itemBody { display: grid; gap: var(--s1); min-width: 0; flex: 1; overflow-wrap: anywhere; }
+.group ul { margin: 0; padding: 0; list-style: none; }
+.item { display: flex; align-items: flex-start; gap: 12px; padding: 20px 0; min-height: 44px; border-bottom: 1px solid var(--border); text-decoration: none; color: var(--text-1); }
+.item:hover { background: var(--surface-sub); }
+.icon { display: grid; place-items: center; width: 36px; height: 36px; flex: 0 0 36px; border-radius: 12px; color: var(--text-2); background: var(--surface-sub); }
+.itemBody { display: grid; gap: 6px; min-width: 0; flex: 1; word-break: keep-all; overflow-wrap: break-word; }
 .itemTitle { font-size: var(--font-b2); font-weight: 600; }
 .itemMeta { font-size: var(--font-c1); color: var(--text-2); }
 .time { margin-top: var(--s2); font-size: var(--font-c1); color: var(--text-2); }
@@ -36,8 +36,8 @@
 .read { background: var(--surface); }
 .itemTitle { font-weight: 500; }
 .unread .itemTitle { font-weight: 600; }
-.item.unread { background: var(--brand-50); }
-.unreadDot { display: inline-block; width: 6px; height: 6px; margin-left: var(--s2); vertical-align: middle; border-radius: var(--r-full); background: var(--red-fg); }
+.item.unread { background: var(--surface); }
+.unreadDot { display: inline-block; width: 6px; height: 6px; margin-left: var(--s2); vertical-align: middle; border-radius: var(--r-full); background: var(--parent-brand-green); }
 
 .state button:hover:not(:disabled) { background: var(--brand-action-hover); }
 .state button:active:not(:disabled), .reportButton:active { background: var(--brand-action-pressed); }
