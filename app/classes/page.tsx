@@ -15,7 +15,7 @@ import { ClassCard } from "@/features/classes/ui/class-card"
 import { ClassesSearchPill } from "@/features/classes/ui/classes-region-select"
 import { formatAdministrativeRegionLabel } from "@/features/location/lib/region-selection"
 import { formatDistanceLabel, nextWiderSearchRadiusKm } from "@/features/location/lib/search-location"
-import { LocationFilter } from "@/features/location/ui/location-filter"
+import { ParentLaunchLocation } from "@/features/location/ui/parent-launch-location"
 import type { ClassSummary } from "@/shared/lib/db/adapter"
 import { formatClassSubjectDisplayLabel } from "@/shared/lib/subject-master"
 import { formatStoredTargetGrades } from "@/shared/constants/grade-options"
@@ -196,14 +196,7 @@ async function ClassesSearchContent({ searchParams }: ClassesPageProps) {
         </Link>} />
         <div className={styles.content}>
           <div className={homeStyles.headerContext} role="group" aria-label="탐색 지역과 자녀 선택">
-            <LocationFilter mode={context.locationMode}
-              label={context.locationMode === "all" ? "전체 지역" : context.locationFilterLabel}
-              regionCatalog={context.regionCatalog} regionSelection={context.regionSelection} radiusKm={radiusKm}
-              className={homeStyles.filterInlineItem} triggerClassName={homeStyles.filterInlineTrigger}
-              labelClassName={homeStyles.filterInlineLabel} iconClassName={homeStyles.filterInlineIcon}
-              chevronWrapClassName={homeStyles.filterInlineChevron} openChevronClassName={homeStyles.filterInlineChevronOpen}
-              radiusRailClassName={homeStyles.radiusRail} radiusChipClassName={homeStyles.radiusChip}
-              radiusChipActiveClassName={homeStyles.radiusChipActive} manageSheetFocus />
+            <div className={homeStyles.filterInlineItem}><ParentLaunchLocation className={`${homeStyles.filterInlineTrigger} ${homeStyles.launchLocation}`} /></div>
             <div className={homeStyles.childContext} role="group" aria-label="자녀 선택">
               {childrenResult.data.length > 0 ? <HomeChildSelector
                 options={toChildSelectorOptions(childrenResult.data)} selectedChildId={selectedChildId}

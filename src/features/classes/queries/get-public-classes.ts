@@ -1,3 +1,4 @@
+import { isInParentLaunchRegion, type ParentLaunchRegion } from "@/features/location/lib/parent-launch-region"
 import "server-only"
 
 import type { ClassSummary } from "@/shared/lib/db/adapter"
@@ -32,6 +33,7 @@ export const getPublicClasses = async (
     query?: string
     organizationIds?: readonly string[]
     distanceByOrganizationId?: ReadonlyMap<string, number>
+    launchRegion?: ParentLaunchRegion
     limit?: number
   }
 ): Promise<QueryResult<ClassSummary[]>> => {
@@ -58,6 +60,7 @@ export const getPublicClasses = async (
             query: options?.query,
             organizationIds: options?.organizationIds,
             distanceByOrganizationId: options?.distanceByOrganizationId,
+            launchRegion: options?.launchRegion,
             limit: options?.limit
           })
         : await (await import("@/shared/lib/db")).dataAdapter.listClasses({
@@ -71,7 +74,10 @@ export const getPublicClasses = async (
         `[getPublicClasses] ${JSON.stringify({ returned: data.length })}`
       )
     }
-    return { data, error: null }
+    const scopedData = publicClassDataSource !== "supabase" && options?.launchRegion
+      ? data.filter(item => isInParentLaunchRegion(item.organization, options.launchRegion!))
+      : data
+    return { data: publicClassDataSource !== "supabase" && options?.limit ? scopedData.slice(0, options.limit) : scopedData, error: null }
   } catch {
     if (shouldDebugDb()) {
       console.error(`[getPublicClasses] ${JSON.stringify({ ok: false })}`)

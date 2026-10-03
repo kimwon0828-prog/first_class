@@ -5,7 +5,7 @@
 .backButton { display: grid; place-items: center; width: 44px; height: 44px; color: var(--text-1); border-radius: var(--r-md); }
 .title { margin: 0; font-size: var(--font-h3); font-weight: 600; }
 .content { padding: var(--s4) var(--gutter) calc(var(--s8) + env(safe-area-inset-bottom)); }
-.explorer { display: grid; gap: var(--s4); min-width: 0; }
+.explorer { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--s4); min-width: 0; }
 .locationRow, .locationFilter { min-width: 0; }
 .locationFilter { display: grid; gap: var(--s2); }
 .locationButton { display: flex; align-items: center; gap: var(--s2); min-height: 44px; max-width: 100%; padding: 0; border: 0; background: transparent; text-align: left; color: var(--text-1); cursor: pointer; }
@@ -35,8 +35,8 @@
 .academyList { display: grid; gap: var(--s3); padding: 0; margin: 0; list-style: none; min-width: 0; }
 .academyCard { display: flex; align-items: flex-start; gap: var(--s3); padding: var(--s4); border: 1px solid var(--border); border-radius: var(--r-lg); color: var(--text-1); background: var(--surface); text-decoration: none; }
 .academyCard:hover { border-color: var(--border-strong); }
-.academyIcon, .stateIcon { display: grid; place-items: center; width: 48px; height: 48px; flex-shrink: 0; border-radius: var(--r-full); background: var(--brand-50); color: var(--brand-700); }
-.academyBody { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.stateIcon { display: grid; place-items: center; width: 48px; height: 48px; flex-shrink: 0; border-radius: var(--r-full); background: var(--brand-50); color: var(--brand-700); }
+.academyBody { flex: 1; min-width: 0; word-break: keep-all; overflow-wrap: normal; }
 .academyName { margin: 0; font-size: var(--font-h4); font-weight: 700; }
 .locationMeta, .address, .targetAge { margin: var(--s1) 0 0; color: var(--text-2); font-size: var(--font-c1); }
 .address { margin-top: var(--s2); }
@@ -57,3 +57,9 @@
 /* Parent primary action states; retain disabled and layout contracts. */
 .primaryButton:hover:not(:disabled) { background: var(--brand-action-hover); }
 .primaryButton:active:not(:disabled) { background: var(--brand-action-pressed); }
+
+.academyIcon { display: grid; place-items: center; width: 56px; height: 56px; flex-shrink: 0; border-radius: 16px; background: var(--surface-sub); color: var(--text-2); overflow: hidden; }
+.launchLocation { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; font-weight: 600; white-space: nowrap; }
+.launchLocation svg { flex-shrink: 0; }
+.launchNotice { margin: 0; color: var(--text-2); font-size: var(--font-c1); word-break: keep-all; }
+.subjectTag { white-space: nowrap; }

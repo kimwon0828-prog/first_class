@@ -204,7 +204,7 @@ check("배너와 근거 없는 개인화 문구가 없다", !homeCode.includes("
 check("선택한 자녀 일정과 리포트는 독립적이다", homeCode.includes("selectedChild && upcoming ? (") && homeCode.includes("{report ? <HomeReportCta") && !homeCode.includes("의 지금"))
 check("개인화 카드를 나열하지 않는다", !homeCode.includes("parentHome.actions.map") && !homeCode.includes("parentHome.upcoming.map"))
 check("가로 slider는 키보드로 접근 가능하다", homeCode.includes("tabIndex={0}") && homeCss.includes("scroll-snap-type: x mandatory"))
-check("지역과 자녀 선택을 유지한다", homeCode.includes("<LocationFilter") && homeCode.includes("<HomeChildSelector"))
+check("노원구 표시와 자녀 선택을 유지한다", homeCode.includes("<ParentLaunchLocation") && homeCode.includes("<HomeChildSelector"))
 check("학원은 별도 실제 조회를 쓴다", homeCode.includes("getHomeAcademies(context)"))
 check("Home이 V1 공통 shell을 사용한다", homeCode.includes("<ParentAppShell") && codeOf("src/features/classes/ui/parent-app-shell.tsx").includes('data-parent-design="v1"'))
 
@@ -233,7 +233,7 @@ for (const [label, needle] of [
   check(`Search 에 ${label} 이(가) 없다`, !searchCode.includes(needle))
 }
 check("Search 는 검색 · 지역 · 과목 · 세부 과목 · 결과를 갖는다",
-  ["<ClassesSearchPill", "<LocationFilter", "과목 대분류", "<ClassesSubjectFilter", "resultGrid"].every((part) =>
+  ["<ClassesSearchPill", "<ParentLaunchLocation", "과목 대분류", "<ClassesSubjectFilter", "resultGrid"].every((part) =>
     searchCode.includes(part)
   )
 )
@@ -272,8 +272,8 @@ check('/ 의 canonical 은 "/" 다', homeCode.includes('canonical: "/"'))
 check('/classes 의 canonical 은 "/classes" 다', searchCode.includes('canonical: "/classes"'))
 check("두 canonical 이 서로 다르다", !searchCode.includes('canonical: "/"\n'))
 check(
-  "query canonicalization 은 그대로다",
-  contextCode.includes("canonicalizeRegionSelection") &&
+  "과목 canonicalization과 launch 지역 URL 정규화",
+  contextCode.includes("LEGACY_PARENT_LOCATION_KEYS") &&
     contextCode.includes("resolveSubjectQuerySelection") &&
     contextCode.includes("shouldCanonicalize") &&
     homeCode.includes("context.shouldCanonicalize") &&
@@ -286,7 +286,7 @@ for (const key of ["subjectCategory", "subject", "q", "radius", "sido", "sigungu
   check(`${key} query 가 그대로 있다`, contextCode.includes(key))
 }
 check("상세 링크는 /classes/[id] 그대로다", searchCode.includes("`/classes/${classId}`"))
-check("legacy region query 는 제거만 한다", contextCode.includes("hasLegacyRegionQuery"))
+check("legacy region query 는 제거만 한다", contextCode.includes("LEGACY_PARENT_LOCATION_KEYS.some"))
 
 console.log("\n[10] 삭제 금지 route")
 

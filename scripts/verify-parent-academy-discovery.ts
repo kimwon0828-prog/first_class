@@ -5,7 +5,7 @@
 // 여기서 고정하는 것.
 //   1. 학원 탐색은 secondary discovery 다 — Home 용 섹션을 들이지 않고, Nav만 표시하며 active는 없다.
 //   2. 학원명 · 지점명 · 붙여 쓴 형태 · 지역으로 검색된다(/classes 와 같은 규칙).
-//   3. 지역 계약은 Home · Search 와 같은 catalog · canonicalization 을 쓴다.
+//   3. 지역 계약은 Home · Search 와 같은 launch scope · canonicalization 을 쓴다.
 //   4. 카드는 실제 공개 값만 그린다 — 별점 · 리뷰 · 순위 · BEST · 매칭률 없음.
 //   5. 학원 카드와 수업 상세가 /academy/[handle] 로 연결된다. 깨진 주소를 만들지 않는다.
 //   6. 학원 상세는 공개 수업(is_active = true)만 보여 준다.
@@ -70,7 +70,7 @@ check("탐색 화면은 공통 Shell의 Nav를 사용한다", !listPage.includes
 
 console.log("\n[2] 학원 검색")
 
-check("B) q query 를 받는다", listPage.includes("q?: string") && listPage.includes("resolvedSearchParams?.q"))
+check("B) q query 를 받는다", listPage.includes("resolvedSearchParams?.q"))
 check("B) 조회로 검색어를 넘긴다", listPage.includes("query: selectedQuery"))
 check("canonical redirect 가 검색어를 잃지 않는다", listPage.includes("q: selectedQuery"))
 check(
@@ -90,17 +90,9 @@ check(
 
 console.log("\n[3] 지역 계약")
 
-/*
- * 지역 catalog 자체는 화면마다 다르다 — 학원 목록은 학원 커버리지를 읽는다.
- * 같아야 하는 것은 URL 값을 해석하는 규칙과 위치 cookie 다.
- */
-check(
-  "C) 지역 해석 규칙이 Home · Search 와 같다",
-  listPage.includes("canonicalizeRegionSelection(regionCatalog, rawRegionSelection)") &&
-    listPage.includes("normalizeSearchRadiusKm")
-)
-check("C) 같은 위치 cookie 를 읽는다", listPage.includes("readParentSearchLocation"))
-check("적용 중인 지역이 화면에 보인다", explorer.includes("<LocationFilter") && explorer.includes("label={locationLabel}"))
+check("C) Home · Classes와 같은 launch scope", listPage.includes("launchRegion: PARENT_LAUNCH_REGION") && read("src/features/classes/queries/resolve-class-discovery-context.ts").includes("launchRegion: PARENT_LAUNCH_REGION"))
+check("C) 남은 위치 cookie가 범위를 넓히지 않는다", !listPage.includes("readParentSearchLocation"))
+check("적용 중인 지역이 화면에 보인다", explorer.includes("<ParentLaunchLocation") && explorer.includes("PARENT_LAUNCH_REGION.notice"))
 check("legacy region query 는 제거만 한다", listPage.includes("hasLegacyRegionQuery"))
 
 console.log("\n[4] 카드는 실제 값만 그린다")
@@ -145,7 +137,7 @@ check(
   "8) 자리표시자 전용 CSS 가 남아 있지 않다",
   !read("app/academies/page.module.css").includes("academyBookmark")
 )
-check("빈 결과 문구가 있다", explorer.includes("검색 결과가 없어요.") && explorer.includes("아직 공개된 학원이 없어요."))
+check("빈 결과 문구가 있다", explorer.includes("조건에 맞는 학원을 찾지 못했어요.") && explorer.includes("아직 공개된 학원이 없어요."))
 
 console.log("\n[5] 학원 상세 연결")
 

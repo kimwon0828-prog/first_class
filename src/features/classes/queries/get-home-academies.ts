@@ -1,3 +1,4 @@
+import { PARENT_LAUNCH_REGION } from "@/features/location/lib/parent-launch-region"
 import "server-only"
 
 import { getSupabaseServiceRoleClient } from "@/integrations/supabase/service-role"
@@ -42,7 +43,7 @@ export async function getHomeAcademies(context: ClassDiscoveryContext): Promise<
       distanceByOrganizationId = new Map(nearby.map((item) => [item.organizationId, item.distanceKm]))
       organizationIds = [...distanceByOrganizationId.keys()]
     }
-    const data = await getAcademiesForList({ organizationIds, distanceByOrganizationId, sort: "name" })
+    const data = await getAcademiesForList({ organizationIds, distanceByOrganizationId, sort: "name", launchRegion: PARENT_LAUNCH_REGION })
     return { data: await withPublicLogos(data.slice(0, 3)), error: false }
   } catch {
     return { data: [], error: true }

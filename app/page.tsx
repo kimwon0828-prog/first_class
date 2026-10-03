@@ -33,7 +33,7 @@ import {
   type ClassDiscoverySearchParams
 } from "@/features/classes/queries/resolve-class-discovery-context"
 import { HomeClassCard } from "@/features/classes/ui/home-class-card"
-import { LocationFilter } from "@/features/location/ui/location-filter"
+import { ParentLaunchLocation } from "@/features/location/ui/parent-launch-location"
 import type { ClassSummary } from "@/shared/lib/db/adapter"
 import { formatClassSubjectDisplayLabel } from "@/shared/lib/subject-master"
 import { formatDistanceLabel } from "@/features/location/lib/search-location"
@@ -119,10 +119,7 @@ async function ParentHomeContent({ searchParams }: HomePageProps) {
         q: homeQuery || null,
         subjectCategory: homeSubjectCategory || null,
         subject: homeSubject || null,
-        radius: decodeQueryValue(resolvedSearchParams?.radius) || null,
-        sido: decodeQueryValue(resolvedSearchParams?.sido) || null,
-        sigungu: decodeQueryValue(resolvedSearchParams?.sigungu) || null,
-        bname: decodeQueryValue(resolvedSearchParams?.bname) || null
+        child: resolvedSearchParams?.child ?? null
       })
     )
   }
@@ -226,22 +223,7 @@ async function ParentHomeContent({ searchParams }: HomePageProps) {
         <h1 className={styles.hero}>우리 아이에게 맞는<br /><span>수업의 시작</span></h1>
         <div className={styles.header}>
           <div className={styles.headerContext} role="group" aria-label="탐색 지역과 자녀 선택">
-            <LocationFilter
-              mode={context.locationMode}
-              label={context.locationMode === "all" ? "전체 지역" : context.locationFilterLabel}
-              regionCatalog={context.regionCatalog}
-              regionSelection={context.regionSelection}
-              radiusKm={context.radiusKm}
-              className={styles.filterInlineItem}
-              triggerClassName={styles.filterInlineTrigger}
-              labelClassName={styles.filterInlineLabel}
-              iconClassName={styles.filterInlineIcon}
-              chevronWrapClassName={styles.filterInlineChevron}
-              openChevronClassName={styles.filterInlineChevronOpen}
-              radiusRailClassName={styles.radiusRail}
-              radiusChipClassName={styles.radiusChip}
-              radiusChipActiveClassName={styles.radiusChipActive}
-            />
+            <div className={styles.filterInlineItem}><ParentLaunchLocation className={`${styles.filterInlineTrigger} ${styles.launchLocation}`} /></div>
 
             <div className={styles.childContext} role="group" aria-label="자녀 선택">
             {parentHome && parentHome.childOptions.length > 0 ? (

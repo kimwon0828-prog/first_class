@@ -1,3 +1,4 @@
+import type { ParentLaunchRegion } from "@/features/location/lib/parent-launch-region"
 import "server-only"
 
 import {
@@ -61,6 +62,7 @@ type SafeOrganizationRow = {
 }
 
 type ListPublicClassesOptions = {
+  launchRegion?: ParentLaunchRegion
   subject?: string
   subjectCategoryId?: string
   subjectId?: string
@@ -178,7 +180,7 @@ const buildPublicClassesQuery = (
   // created_at 기준 11번째 수업이 영원히 노출되지 않는다.
   let query = serviceRoleClient
     .from("classes")
-    .select(selectFields)
+    .select(options?.launchRegion ? `${selectFields}, launch_organization:organizations!inner(sido, sigungu)` : selectFields)
     .eq("is_active", true).is("archived_at", null)
     .order("created_at", { ascending: false })
 
@@ -192,6 +194,11 @@ const buildPublicClassesQuery = (
 
   if (options?.organizationIds) {
     query = query.in("organization_id", [...options.organizationIds])
+  }
+
+  if (options?.launchRegion) {
+    query = query.in("launch_organization.sido", [...options.launchRegion.sidoNames])
+      .eq("launch_organization.sigungu", options.launchRegion.sigungu)
   }
 
   // limit 은 모든 필터와 order 가 적용된 뒤 마지막에 붙인다.

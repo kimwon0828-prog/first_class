@@ -1,4 +1,5 @@
 import "server-only"
+import type { ParentLaunchRegion } from "@/features/location/lib/parent-launch-region"
 
 import { getSupabaseServiceRoleClient } from "@/integrations/supabase/service-role"
 import { formatStoredTargetGrades, parseStoredTargetGrades } from "@/shared/constants/grade-options"
@@ -33,6 +34,7 @@ type SafeOrganizationRow = {
   sido: string | null
   sigungu: string | null
   bname: string | null
+  academy_public_profiles?: { logo_image_path: string | null } | { logo_image_path: string | null }[] | null
 }
 
 /** 검색 비교는 공백을 접고 소문자로 맞춘 뒤 한다. */
@@ -52,6 +54,7 @@ export type AcademyClassPreview = {
 
 export type AcademyListItem = {
   id: string
+  logoImageUrl?: string | null
   /** 검색 대상. 이름 · 지점 · 붙여 쓴 형태 · 지역이 전부 소문자로 들어 있다. */
   searchHaystack: string[]
   displayName: string
@@ -67,6 +70,10 @@ export type AcademyListItem = {
 }
 
 type GetAcademiesForListOptions = {
+  /** Parent discovery scope; detail/Studio callers remain unrestricted. */
+  launchRegion?: ParentLaunchRegion
+  /** Join public logo metadata in the existing organization query. */
+  includeLogos?: boolean
   /**
    * 학원명 · 지점명 검색어.
    *
@@ -227,10 +234,16 @@ export const getAcademiesForList = async (
     return []
   }
 
-  const { data: organizationData, error: organizationError } = await serviceRoleClient
+  let organizationQuery = serviceRoleClient
     .from("organizations")
-    .select(ORGANIZATION_SELECT_FIELDS)
+    .select(options?.includeLogos ? `${ORGANIZATION_SELECT_FIELDS}, academy_public_profiles(logo_image_path)` : ORGANIZATION_SELECT_FIELDS)
     .in("id", organizationIds)
+
+  if (options?.launchRegion) {
+    organizationQuery = organizationQuery.in("sido", [...options.launchRegion.sidoNames])
+      .eq("sigungu", options.launchRegion.sigungu)
+  }
+  const { data: organizationData, error: organizationError } = await organizationQuery
 
   if (organizationError) {
     throw new Error("failed_to_fetch_public_organization_projection")
@@ -277,6 +290,11 @@ export const getAcademiesForList = async (
         )
       ).slice(0, 4)
       const displayName = [organization.name, organization.branch_name].filter(Boolean).join(" ").trim()
+      const profile = Array.isArray(organization.academy_public_profiles)
+        ? organization.academy_public_profiles[0] : organization.academy_public_profiles
+      const logoPath = profile?.logo_image_path?.trim()
+      const logoImageUrl = logoPath
+        ? serviceRoleClient.storage.from("academy-profile-assets").getPublicUrl(logoPath).data.publicUrl || null : null
 
       const distanceKm = options?.distanceByOrganizationId?.get(organizationId)
       const regionLabel = [organization.sido, organization.sigungu, organization.bname]
@@ -285,6 +303,7 @@ export const getAcademiesForList = async (
 
       return {
         id: organizationId,
+        ...(options?.includeLogos ? { logoImageUrl } : {}),
         displayName: displayName || organization.name,
         address: organization.address ?? null,
         addressDetail: organization.address_detail ?? null,

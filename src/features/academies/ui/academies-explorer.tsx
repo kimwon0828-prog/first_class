@@ -7,9 +7,10 @@ import { useRouter, useSearchParams } from "next/navigation"
 import { useTransition } from "react"
 
 import { formatAdministrativeRegionLabel } from "@/features/location/lib/region-selection"
-import { formatDistanceLabel, type SearchRadiusKm } from "@/features/location/lib/search-location"
-import type { RegionCatalog, RegionSelection } from "@/features/location/lib/region-selection"
-import { LocationFilter, type LocationMode } from "@/features/location/ui/location-filter"
+import { formatDistanceLabel } from "@/features/location/lib/search-location"
+import { ParentLaunchLocation } from "@/features/location/ui/parent-launch-location"
+import { PARENT_LAUNCH_REGION } from "@/features/location/lib/parent-launch-region"
+import { HomeAcademyLogo } from "@/features/classes/ui/home-academy-logo"
 import { SubjectFilter } from "@/features/subjects/ui/subject-filter"
 import { GradeFilter } from "@/features/grades/ui/grade-filter"
 import { ClassesSearchPill } from "@/features/classes/ui/classes-region-select"
@@ -24,11 +25,6 @@ type AcademiesExplorerProps = {
   error?: boolean
   /** URL 의 q. 입력값의 출처는 언제나 URL 이다. */
   initialQuery: string
-  locationMode: LocationMode
-  locationLabel: string
-  radiusKm: SearchRadiusKm
-  regionCatalog: RegionCatalog
-  regionSelection: RegionSelection | null
   subjectCatalog: SubjectCatalogCategory[]
   selectedSubjectCategory: SubjectCatalogCategory | null
   selectedSubject: Subject | null
@@ -56,11 +52,6 @@ export function AcademiesExplorer({
   academies,
   error = false,
   initialQuery,
-  locationMode,
-  locationLabel,
-  radiusKm,
-  regionCatalog,
-  regionSelection,
   subjectCatalog,
   selectedSubjectCategory,
   selectedSubject,
@@ -84,14 +75,12 @@ export function AcademiesExplorer({
     ...(selectedGrade ? [{ label: selectedGradeLabel, keys: ["grade"] }] : [])
   ]
   const resetHref = without(["q", "subjectCategory", "subject", "grade"])
-  const filtered = conditions.length > 0 || locationMode !== "all"
+  const filtered = conditions.length > 0
   return <section className={styles.explorer} aria-label="학원 리스트" aria-busy={pending}>
     <div className={styles.locationRow}>
-      <LocationFilter mode={locationMode} label={locationLabel} radiusKm={radiusKm} regionCatalog={regionCatalog} regionSelection={regionSelection}
-        className={styles.locationFilter} triggerClassName={styles.locationButton} labelClassName={styles.locationLabel}
-        iconClassName={styles.locationIcon} chevronWrapClassName={styles.chevron} openChevronClassName={styles.chevronOpen}
-        radiusRailClassName={styles.radiusRail} radiusChipClassName={styles.radiusChip} radiusChipActiveClassName={styles.radiusChipActive} />
+      <ParentLaunchLocation className={styles.launchLocation} />
     </div>
+    <p className={styles.launchNotice}>{PARENT_LAUNCH_REGION.notice}</p>
     <ClassesSearchPill initialQuery={initialQuery} placeholder="학원명, 지점명으로 찾기" className={styles.searchForm} pillClassName={styles.searchPill} inputClassName={styles.searchInput} submitButtonClassName={styles.searchSubmit} />
     <div className={styles.filterRow}>
       <SubjectFilter catalog={subjectCatalog} selectedCategory={selectedSubjectCategory} selectedSubject={selectedSubject} label={selectedSubjectCategory ? selectedSubjectLabel : "전체"}
@@ -113,12 +102,12 @@ export function AcademiesExplorer({
       <h2 className={styles.resultCount}>학원 {academies.length}개</h2>
       {academies.length === 0 ? <div className={styles.state}>
         <span className={styles.stateIcon}><AcademyIcon /></span>
-        <h3>{filtered ? "검색 결과가 없어요." : "아직 공개된 학원이 없어요."}</h3>
-        <p>{filtered ? "검색어나 지역, 과목, 학년을 바꿔 다시 찾아보세요." : "지역, 과목, 학년으로 학원을 찾아보세요."}</p>
+        <h3>{filtered ? "조건에 맞는 학원을 찾지 못했어요." : "아직 공개된 학원이 없어요."}</h3>
+        <p>{filtered ? "검색어나 과목, 학년을 바꿔 다시 찾아보세요." : "노원구의 공개 학원이 준비되면 여기에서 확인할 수 있어요."}</p>
         {conditions.length > 0 ? <Link href={resetHref} replace className={styles.secondaryButton}>검색 조건 초기화</Link> : null}
       </div> : <ul className={styles.academyList}>{academies.map(academy => <li key={academy.id}>
         <ParentDetailLink href={`/academy/${academy.id}`} className={styles.academyCard}>
-          <span className={styles.academyIcon}><AcademyIcon /></span>
+          <span className={styles.academyIcon}><HomeAcademyLogo url={academy.logoImageUrl ?? null} name={academy.displayName} fallback={<span role="img" aria-label={`${academy.displayName} 로고 없음`}><AcademyIcon /></span>} /></span>
           <div className={styles.academyBody}>
             <h3 className={styles.academyName}>{academy.displayName}</h3>
             {buildAcademyLocationLabel(academy) ? <p className={styles.locationMeta}>{buildAcademyLocationLabel(academy)}</p> : null}

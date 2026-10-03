@@ -119,3 +119,7 @@
 .experience .academyBody .muted { font-size: var(--font-b2); }
 .experience .academyName { font-size: var(--font-b1); }
 .experience .academyCard { gap: var(--s4); }
+
+/* Fixed Parent launch scope: informational, not a location selector. */
+.launchLocation { cursor: default; white-space: nowrap; }
+.launchLocation svg { flex-shrink: 0; }

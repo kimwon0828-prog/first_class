@@ -1,3 +1,10 @@
+## Parent Academy Discovery — Nowon launch (local)
+
+- Parent Home 추천/학원 둘러보기, `/classes`, `/academies`는 `PARENT_LAUNCH_REGION`의 시도 alias (`서울`, `서울특별시`) + `sigungu=노원구`만 노출한다. 상세 직접 링크와 Studio 데이터에는 적용하지 않는다.
+- 지역 UI는 비대화형 `노원구` chip이다. 기존 지역/radius URL은 제거하되 검색·과목·학년·정렬·child/returnTo는 유지한다. GPS/cookie가 launch 범위를 넓히지 않는다.
+- `/academies` 로고는 기존 organization 조회의 `academy_public_profiles(logo_image_path)` relation에서 읽는다. Home의 `HomeAcademyLogo`를 재사용하고 56px neutral frame/contain/최적화 이미지를 유지한다. 없거나 로딩 실패하면 building icon이다.
+- 수업 launch 필터는 DB limit 이전에 적용한다. 로고 때문에 academy별 query를 추가하지 않는다. query와 브라우저 검증: `verify-parent-academy-launch.cjs`, `verify-parent-academy-launch-browser.cjs`.
+
 # Parent Design System V1.3
 
 Authoritative Parent specification. First adoption: Home `/` (2026-09-20).
