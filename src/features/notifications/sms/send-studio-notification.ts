@@ -1,4 +1,5 @@
 import "server-only"
+import { isConfirmedPushTestApplication } from "@/features/notifications/push/confirmed-policy"
 
 import { sendSms } from "@/features/notifications/sms/sender"
 import { renderSmsTemplate } from "@/features/notifications/sms/templates"
@@ -416,6 +417,8 @@ export const sendStudioNotificationSafely = async (
   input: SendStudioNotificationInput
 ): Promise<SendStudioNotificationResult | null> => {
   try {
+    if (["teacher_trial_requested", "teacher_trial_schedule_confirmed"].includes(input.teacherEventType)
+      && await isConfirmedPushTestApplication(input.application.id, input.application.parentId)) return null
     return await sendStudioNotification(input)
   } catch (error) {
     console.error("[studio sms notification failed]", error)

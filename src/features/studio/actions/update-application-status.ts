@@ -1,6 +1,8 @@
 "use server"
 
 import { revalidatePath } from "next/cache"
+import { after } from "next/server"
+import { sendConfirmedApplicationSafely } from "@/features/notifications/push/confirmed-delivery"
 
 import { sendParentNotificationSafely } from "@/features/notifications/alimtalk/send-parent-notification"
 import { sendStudioNotificationSafely } from "@/features/notifications/sms/send-studio-notification"
@@ -165,29 +167,35 @@ export async function updateApplicationStatusAction(
 
     if (updated) {
       if (requestedActionType === "move_to_confirmed") {
-        await sendParentNotificationSafely({
-          eventType: "trial_schedule_confirmed",
-          organizationId: teacher.organizationId,
-          trialApplicationId: updated.id,
-          createdBy: teacher.id,
-          parentId: updated.parentId,
-          parentPhone: updated.parentPhone,
-          parentName: updated.parentName,
-          studentName: updated.childName,
-          academyName: updated.academyName,
-          classId: updated.classId,
-          classTitle: updated.classTitle,
-          requestedSlotAt: updated.requestedSlotAt,
-          confirmedSlotAt: updated.confirmedSlotAt,
-          selectedScheduleLabel: updated.selectedScheduleLabel ?? null
-        })
-        await sendStudioNotificationSafely({
-          organizationId: teacher.organizationId,
-          application: updated,
-          createdBy: teacher.id,
-          teacherEventType: "teacher_trial_schedule_confirmed",
-          adminEventType: "admin_trial_schedule_confirmed"
-        })
+        try {
+          after(async () => {
+            await sendConfirmedApplicationSafely({
+              eventType: "trial_schedule_confirmed",
+              organizationId: teacher.organizationId,
+              trialApplicationId: updated.id,
+              createdBy: teacher.id,
+              parentId: updated.parentId,
+              parentPhone: updated.parentPhone,
+              parentName: updated.parentName,
+              studentName: updated.childName,
+              academyName: updated.academyName,
+              classId: updated.classId,
+              classTitle: updated.classTitle,
+              requestedSlotAt: updated.requestedSlotAt,
+              confirmedSlotAt: updated.confirmedSlotAt,
+              selectedScheduleLabel: updated.selectedScheduleLabel ?? null
+            })
+            await sendStudioNotificationSafely({
+              organizationId: teacher.organizationId,
+              application: updated,
+              createdBy: teacher.id,
+              teacherEventType: "teacher_trial_schedule_confirmed",
+              adminEventType: "admin_trial_schedule_confirmed"
+            })
+          })
+        } catch {
+          console.warn("[confirmed-push] after scheduling failed; durable event remains for worker")
+        }
       }
 
       if (requestedActionType === "move_to_completed") {
