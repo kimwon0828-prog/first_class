@@ -1,3 +1,5 @@
+
+import { applePhoneGateHref } from "../phone/gate"
 import { cache } from "react"
 import { redirect } from "next/navigation"
 
@@ -28,5 +30,13 @@ export const requireSession = async (redirectTo: string) => {
   if (!session) {
     redirect(redirectTo)
   }
+  const supabase = await getSupabaseServerClient()
+  const { data } = await supabase.auth.getClaims()
+  const claims = data?.claims
+  if (!claims?.sub || claims.sub !== session.user.id) redirect(redirectTo)
+  const params = new URL(redirectTo, "http://localhost").searchParams
+  const next = params.get("returnTo") ?? params.get("next") ?? "/my"
+  const phoneGate = await applePhoneGateHref({ id: claims.sub, app_metadata: claims.app_metadata as Record<string, unknown> }, next)
+  if (phoneGate) redirect(phoneGate)
   return session
 }

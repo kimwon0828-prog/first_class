@@ -166,3 +166,9 @@
     margin-top: 40px;
   }
 }
+
+.appleButton { display: flex; align-items: center; justify-content: center; width: 100%; min-height: 52px; padding: 0; border: 0; border-radius: 12px; background: #000; color: #fff; cursor: pointer; }
+.appleButton:disabled { cursor: wait; }
+.appleButton:focus-visible { outline: 3px solid var(--brand-action); outline-offset: 3px; }
+.authError, .ctaBlock [role="alert"] { margin: 0; font-size: 14px; color: #b42318; word-break: keep-all; }
+.ctaBlock [role="status"] { margin: 8px 0 0; font-size: 14px; }

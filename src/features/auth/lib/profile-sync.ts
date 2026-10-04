@@ -1,3 +1,6 @@
+
+import { getApplePhoneState, enrollNewAppleParentPhone, needsPhoneVerification } from "../phone/gate"
+import { hasAppleIdentity } from "./apple-auth"
 import { cache } from "react"
 
 import { getSupabaseServerClient } from "@/integrations/supabase/server"
@@ -19,6 +22,7 @@ export type AuthProfile = {
 export type AuthUserIdentity = {
   id: string
   email?: string
+  app_metadata?: Record<string, unknown>
 }
 
 export type AuthProfileLookupResult =
@@ -207,6 +211,7 @@ export const getMyProfile = async (): Promise<AuthProfile | null> => getMyProfil
 
 type EnsureParentProfileOptions = {
   allowCreateParentIfMissing: boolean
+  requireProvidedName?: boolean
   preferredName?: string
   preferredPhone?: string | null
   preferredParentBirthDate?: string | null
@@ -225,6 +230,10 @@ export const ensureParentProfile = async (
   }
 
   const existing = await getMyProfile()
+  const phoneState = existing ? await getApplePhoneState(user) : await enrollNewAppleParentPhone(user)
+  if (!existing && (phoneState.unavailable || phoneState.excluded)) return null
+  if (needsPhoneVerification(phoneState)) return null
+  if (phoneState.required && phoneState.verified) options = { ...options, preferredPhone: phoneState.phone }
   if (existing) {
     const { data: existingDetails } = await supabase
       .from("profiles")
@@ -319,9 +328,12 @@ export const ensureParentProfile = async (
   const insertParentBirthDate =
     normalizeBirthDate(options.preferredParentBirthDate) ?? parentBirthDateFromMetadata
 
+  if ((options.requireProvidedName || hasAppleIdentity(user)) && !insertName) return null
+
   const { error } = await supabase.from("profiles").insert({
     id: user.id,
     role: "parent",
+    ...(phoneState.required ? { phone_verification_required: true, phone_verified_at: phoneState.phoneVerifiedAt } : {}),
     name: insertName || getFallbackName(user.email),
     phone: insertPhone || null,
     parent_birth_date: insertParentBirthDate,

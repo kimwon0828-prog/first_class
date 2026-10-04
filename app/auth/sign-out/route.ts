@@ -1,3 +1,4 @@
+import { safeAuthReturnTo } from "@/features/auth/lib/apple-auth"
 import { NextResponse } from "next/server"
 
 import { getSupabaseServerClient } from "@/integrations/supabase/server"
@@ -34,5 +35,11 @@ export async function POST(request: Request) {
   await supabase.auth.signOut()
 
   const redirectUrl = new URL("/auth/sign-in", request.url)
+  // Onboarding may resume the original protected page after switching accounts.
+  if (request.headers.get("content-type")?.includes("application/x-www-form-urlencoded")) {
+    const data = await request.formData().catch(() => null)
+    const returnTo = data?.get("returnTo")
+    if (typeof returnTo === "string") redirectUrl.searchParams.set("returnTo", safeAuthReturnTo(returnTo))
+  }
   return NextResponse.redirect(redirectUrl, 303)
 }

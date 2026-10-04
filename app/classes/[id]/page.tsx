@@ -1,3 +1,5 @@
+
+import { applePhoneGateHref } from "@/features/auth/phone/gate"
 import { canOptimizeParentImage } from "@/features/classes/lib/parent-image"
 import { safeParentReturnTo } from "@/features/classes/lib/parent-navigation"
 import { ParentAppShell } from "@/features/classes/ui/parent-app-shell"
@@ -93,7 +95,8 @@ export default async function ClassDetailPage({ params, searchParams }: ClassDet
   const detailHref = detailQuery.size
     ? `/classes/${resolvedParams.id}?${detailQuery.toString()}`
     : `/classes/${resolvedParams.id}`
-  const signInHref = `/auth/sign-in?${new URLSearchParams({ returnTo: detailHref }).toString()}`
+  const phoneGate = session ? await applePhoneGateHref(session.user, detailHref) : null
+  const signInHref = phoneGate ?? `/auth/sign-in?${new URLSearchParams({ returnTo: detailHref }).toString()}`
   const organizationLabel = organization
     ? [organization.name, organization.branchName].filter(Boolean).join(" ")
     : ""
@@ -284,7 +287,7 @@ export default async function ClassDetailPage({ params, searchParams }: ClassDet
         availableSlots={slots} slotsError={slotsError} childProfiles={children} childProfilesError={childrenError}
         parentName={profile?.name ?? ""} parentPhone={profile?.phone ?? null}
         academyName={organizationLabel || null} trialPriceLabel={formatDiscoveryPrice(classItem)}
-        hasSession={Boolean(session)} isParentUser={isParentUser} signInHref={signInHref}
+        hasSession={Boolean(session) && !phoneGate} isParentUser={isParentUser && !phoneGate} signInHref={signInHref}
         secondaryAction={favoritesEnabled ? <BookmarkButton key="favorite" classId={classItem.id}
           className={styles.dockFavorite} activeClassName={styles.favoriteActive} iconSize={24} variant="heart" /> : null}
         fixedCtaClassName={styles.fixedCta} ctaButtonClassName={styles.ctaButton} /> : null}

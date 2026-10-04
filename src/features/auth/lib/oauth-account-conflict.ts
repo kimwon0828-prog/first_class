@@ -107,7 +107,7 @@ export const detectOAuthEmailConflict = async (
 
 export const resolveOAuthConflictMessage = (reason: ConflictReason) => {
   if (reason === "existing_email_account") {
-    return "이미 이메일로 가입된 계정이 있습니다. 이메일로 로그인한 뒤 카카오 계정 연결을 진행해 주세요."
+    return "이미 같은 이메일로 가입된 다른 계정이 있습니다. 기존 로그인 방식으로 로그인해 주세요."
   }
 
   if (reason === "studio_account") {

@@ -22,6 +22,9 @@ export type ParentProfileValues = {
 }
 
 type ParentProfileFormProps = {
+  phoneReadOnly?: boolean
+  saveAction?: typeof updateParentProfileAction
+  birthDateNote?: string
   email?: string | null
   onCancel?: () => void
   onSaved?: (values: ParentProfileValues) => void
@@ -37,9 +40,9 @@ const initialState: UpdateParentProfileActionState = {
 }
 
 // Keep transport failures in the sheet too; preserve Next auth redirects.
-async function saveProfile(previous: UpdateParentProfileActionState, formData: FormData): Promise<UpdateParentProfileActionState> {
+async function saveProfile(previous: UpdateParentProfileActionState, formData: FormData, action = updateParentProfileAction): Promise<UpdateParentProfileActionState> {
   try {
-    return await updateParentProfileAction(previous, formData)
+    return await action(previous, formData)
   } catch (error) {
     unstable_rethrow(error)
     return { status: "error", message: "보호자 정보를 저장하지 못했어요. 잠시 후 다시 시도해 주세요." }
@@ -47,12 +50,15 @@ async function saveProfile(previous: UpdateParentProfileActionState, formData: F
 }
 
 export const ParentProfileForm = ({
+  phoneReadOnly = false,
+  saveAction = updateParentProfileAction,
+  birthDateNote = "카카오 로그인으로 가입한 경우 생년월일이 비어 있을 수 있어요.",
   initialName,
   initialPhone,
   initialParentBirthDate,
   email, onCancel, onSaved, onPendingChange
 }: ParentProfileFormProps) => {
-  const [state, formAction, isPending] = useActionState(saveProfile, initialState)
+  const [state, formAction, isPending] = useActionState((previous: UpdateParentProfileActionState, formData: FormData) => saveProfile(previous, formData, saveAction), initialState)
   const [clientMessage, setClientMessage] = useState("")
   const [name, setName] = useState(initialName)
   const [phone, setPhone] = useState(initialPhone ?? "")
@@ -116,9 +122,10 @@ export const ParentProfileForm = ({
       </label>
 
       <label className={styles.field}>
-        <span className={styles.label}>연락처 <span className={styles.optional}>선택</span></span>
+        <span className={styles.label}>연락처 <span className={styles.optional}>{phoneReadOnly ? "인증 완료" : "선택"}</span></span>
         <input
           name="phone"
+          readOnly={phoneReadOnly}
           autoComplete="tel"
           type="tel"
           maxLength={20}
@@ -146,7 +153,7 @@ export const ParentProfileForm = ({
         />
       </label>
 
-      <p id="profile-birth-note" className={styles.note}>카카오 로그인으로 가입한 경우 생년월일이 비어 있을 수 있어요.</p>
+      <p id="profile-birth-note" className={styles.note}>{birthDateNote}</p>
 
       {email ? <div className={styles.field}><span className={styles.label}>이메일</span><p className={styles.readOnly}>{email}</p></div> : null}
 

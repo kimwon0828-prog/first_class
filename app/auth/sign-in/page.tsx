@@ -1,3 +1,7 @@
+
+import { applePhoneGateHref } from "@/features/auth/phone/gate"
+import { AppleAuthButton } from "@/features/auth/ui/apple-auth-button"
+import { appleProfileCompletionHref, hasAppleIdentity, safeAuthReturnTo } from "@/features/auth/lib/apple-auth"
 import { redirect } from "next/navigation"
 import Link from "next/link"
 import Image from "next/image"
@@ -10,32 +14,28 @@ import styles from "./page.module.css"
 
 type SignInPageProps = {
   searchParams?: Promise<{
+    next?: string
+    error?: string
     returnTo?: string
   }>
 }
 
-const resolveSafeReturnTo = (raw: string | undefined): string | null => {
-  const value = (raw ?? "").trim()
-  if (!value) {
-    return null
-  }
-
-  if (!value.startsWith("/") || value.startsWith("//")) {
-    return null
-  }
-
-  return value
-}
-
 export default async function SignInPage({ searchParams }: SignInPageProps) {
   const resolvedSearchParams = searchParams ? await searchParams : undefined
-  const returnTo = resolveSafeReturnTo(resolvedSearchParams?.returnTo)
+  const rawReturnTo = resolvedSearchParams?.returnTo ?? resolvedSearchParams?.next
+  const safeReturnTo = safeAuthReturnTo(rawReturnTo)
+  const returnTo = rawReturnTo?.trim() === safeReturnTo ? safeReturnTo : null
   const session = await getSession()
-  if (session) {
+  if (session && !resolvedSearchParams?.error) {
     const profile = await getMyProfile()
+    if (!profile || profile.role === "parent") {
+      const phoneGate = await applePhoneGateHref(session.user, returnTo ?? "/")
+      if (phoneGate) redirect(phoneGate)
+    }
     if (profile) {
       redirect(returnTo ?? resolvePostAuthRedirect(profile.role))
     }
+    if (hasAppleIdentity(session.user)) redirect(appleProfileCompletionHref(returnTo ?? "/"))
     redirect(returnTo ?? "/")
   }
 
@@ -85,8 +85,9 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
           </div>
 
           <div className={styles.ctaBlock}>
+            {resolvedSearchParams?.error ? <p role="alert" className={styles.authError}>로그인에 실패했습니다. 다시 시도해 주세요.</p> : null}
             <KakaoAuthButton
-              label="카카오로 3초 만에 시작하기"
+              label="카카오로 시작하기"
               next={returnTo ?? "/"}
               className={styles.kakaoButton}
               icon={
@@ -106,6 +107,8 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
                 </svg>
               }
             />
+
+            <AppleAuthButton next={returnTo ?? "/"} className={styles.appleButton} />
 
             <p className={styles.legalNotice}>
               가입 시{" "}

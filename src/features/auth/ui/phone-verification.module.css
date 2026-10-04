@@ -1,0 +1,10 @@
+.form { display: grid; gap: 12px; min-width: 0; word-break: keep-all; }
+.form label { font-size: 14px; font-weight: 600; }
+.form input { width: 100%; min-width: 0; box-sizing: border-box; min-height: 48px; border: 1px solid #d9d9d9; border-radius: 12px; padding: 12px; font: inherit; font-size: 16px; }
+.form button { min-height: 48px; border: 0; border-radius: 12px; padding: 12px; background: var(--brand-action, #21882C); color: white; font: inherit; font-weight: 700; cursor: pointer; }
+.form button:hover:not(:disabled) { background: var(--brand-action-hover, #20822A); }
+.form button:disabled { opacity: .5; cursor: default; }
+.form button.secondary { background: white; border: 1px solid #d9d9d9; color: #222; width: 100%; }
+.form p { margin: 0; font-size: 14px; line-height: 1.6; }
+
+.form button:active:not(:disabled) { background: var(--brand-action-pressed, #1F7E29); }

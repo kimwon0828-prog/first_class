@@ -216,7 +216,7 @@ console.log("\n[H] OAuth callback 무변경")
 check("H) code 를 세션으로 교환한다", oauthCallback.includes("supabase.auth.exchangeCodeForSession(code)"))
 check(
   "H) 외부 주소 차단 규칙이 그대로다",
-  read(OAUTH_CALLBACK).includes('!normalized.startsWith("/") || normalized.startsWith("//")')
+  read("src/features/auth/lib/apple-auth.ts").includes('!value.startsWith("/") || value.startsWith("//")') && oauthCallback.includes("const resolveSafeNext = safeAuthReturnTo")
 )
 /* 모든 redirect 가 요청 origin 안에서만 돈다 — cross-host 이동은 다음 Phase 다. */
 const callbackRedirects = Array.from(oauthCallback.matchAll(/NextResponse\.redirect\(\s*new URL\(([\s\S]*?)\)\s*\)/g))

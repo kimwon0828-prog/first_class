@@ -65,7 +65,7 @@ const resolveCurrentAuthCached = cache(async (context: string): Promise<CurrentA
   const subject = typeof claims?.sub === "string" ? claims.sub : null
   const claimEmail = typeof claims?.email === "string" ? claims.email : undefined
 
-  let user: AuthUserIdentity | null = subject ? { id: subject, email: claimEmail } : null
+  let user: AuthUserIdentity | null = subject ? { id: subject, email: claimEmail, app_metadata: claims?.app_metadata as Record<string, unknown> | undefined } : null
   let fallback: Awaited<ReturnType<typeof getUserFromSupabaseAuthCookieFallback>> | null = null
 
   // A raw request cookie can still verify the user when the SSR client cannot read its session consistently.

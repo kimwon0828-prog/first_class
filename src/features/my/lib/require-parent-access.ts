@@ -1,5 +1,7 @@
 "use server"
 
+import { applePhoneGateHref } from "@/features/auth/phone/gate"
+
 import { redirect } from "next/navigation"
 
 import { resolveCurrentAuth } from "@/features/auth/lib/current-auth"
@@ -54,6 +56,10 @@ export const getParentAccessState = async (currentPath: string): Promise<ParentA
     }
   }
 
+  if (auth.status !== "unsupported_role" && (auth.status !== "ok" || auth.isParentUser)) {
+    const phoneGate = await applePhoneGateHref(auth.user, currentPath)
+    if (phoneGate) redirect(phoneGate)
+  }
   if (auth.status === "profile_error") {
     return {
       status: "profile_error",

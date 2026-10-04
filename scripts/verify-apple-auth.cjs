@@ -1,0 +1,53 @@
+// Actual auth callback/profile sync/action modules with isolated Supabase. No external Auth or DB writes.
+const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),vm=require('node:vm'),ts=require('typescript')
+const root=process.cwd();let state
+const baseUser=provider=>({id:'parent-uuid',email:'parent@example.test',app_metadata:{provider},user_metadata:{},identities:[{provider,identity_data:{}}]})
+function reset(provider='apple'){state={user:baseUser(provider),row:null,phoneVerified:true,phoneUnavailable:false,enrollCalls:0,pending:false,conflict:{ok:true,reason:null},writes:[],signedOut:0,exchange:0,exchangeError:false,queryError:false}}
+function load(file,mocks={}){const exports={};vm.runInNewContext(ts.transpileModule(fs.readFileSync(path.join(root,file),'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,jsx:ts.JsxEmit.ReactJSX}}).outputText,{exports,console,URL,FormData,process,require(name){if(name==='server-only')return{};if(name in mocks)return mocks[name];if(name.startsWith('@/'))return load('src/'+name.slice(2)+'.ts',mocks);if(name.startsWith('.'))return load(path.normalize(path.join(path.dirname(file),name))+'.ts',mocks);return require(name)}},{filename:file});return exports}
+const client={rpc:async name=>{
+ assert(['get_my_parent_phone_status','enroll_new_apple_parent_phone'].includes(name));
+ if(name==='enroll_new_apple_parent_phone')state.enrollCalls++;
+ const date=state.row ? state.row.phone_verified_at??null : state.phoneVerified?'2026-10-04T00:00:00Z':null;
+ return {data:{required:state.row ? state.row.phone_verification_required===true : true,verified:date!==null,phoneVerifiedAt:date,phone:state.row?state.row.phone:'01012345678',profileMissing:!state.row,excluded:!!state.row&&state.row.role!=='parent'},error:state.phoneUnavailable?{}:null}
+},auth:{getClaims:async()=>({data:{claims:state.user?{sub:state.user.id,email:state.user.email}:null}}),getUser:async()=>({data:{user:state.user},error:null}),exchangeCodeForSession:async()=>{state.exchange++;if(state.exchangeError==='throw')throw Error('offline');return{error:state.exchangeError}},signOut:async()=>{state.signedOut++;return{error:null}}},from(table){assert.equal(table,'profiles');const q={select(){return q},eq(key,id){assert.equal(key,'id');assert.equal(id,'parent-uuid');return q},maybeSingle:async()=>({data:state.row,error:state.queryError?{message:'offline'}:null}),insert:async row=>{state.writes.push({insert:row});state.row={...row};return {error:null}},update(row){state.writes.push({update:row});return{eq(){return Promise.resolve({error:null})}}}};return q}}
+const mocks={'@/integrations/supabase/service-role':{getSupabaseServiceRoleClient:()=>client},'react':{cache:fn=>fn},'@/integrations/supabase/server':{getSupabaseServerClient:async()=>client},'@/features/my/lib/parent-account-deletion-server':{isMyParentAccountDeletionPending:async()=>state.pending},'@/features/auth/lib/oauth-account-conflict':{detectOAuthEmailConflict:async()=>state.conflict},'../lib/oauth-account-conflict':{detectOAuthEmailConflict:async()=>state.conflict}}
+const callback=load('app/auth/callback/route.ts',mocks),profile=load('src/features/auth/lib/profile-sync.ts',mocks),complete=load('src/features/auth/actions/complete-apple-profile.ts',mocks)
+const next='/classes/example?child=child-1&apply=1',url='http://localhost:3000/auth/callback?code=code&next='+encodeURIComponent(next)
+async function run(){
+ reset();state.phoneVerified=false;let blocked=await callback.GET(new Request(url));assert.equal(new URL(blocked.headers.get('location')).pathname,'/auth/complete-phone');assert.equal(new URL(blocked.headers.get('location')).searchParams.get('returnTo'),next);assert.equal(state.writes.length,0);
+ const blockedForm=new FormData();blockedForm.set('name','보호자');blockedForm.set('phone','01012345678');assert.equal((await complete.completeAppleProfileAction(undefined,blockedForm)).status,'error');assert.equal(await profile.ensureParentProfile({allowCreateParentIfMissing:true,preferredName:'보호자'}),null);
+ reset();let r=await callback.GET(new Request(url));assert.equal(new URL(r.headers.get('location')).pathname,'/auth/complete-profile');assert.equal(new URL(r.headers.get('location')).searchParams.get('returnTo'),next);assert.equal(state.writes.length,0)
+ reset();assert.equal(await profile.ensureParentProfile({allowCreateParentIfMissing:true}),null);assert.equal(state.writes.length,0,'never create invented Apple name')
+ reset('kakao');state.user.user_metadata.name='김민준';r=await callback.GET(new Request(url));assert.equal(r.headers.get('location'),'http://localhost:3000'+next);assert.equal(state.writes[0].insert.name,'김민준');assert.equal(state.writes[0].insert.id,'parent-uuid');assert.equal(state.writes[0].insert.role,'parent')
+ for(const provider of ['kakao','apple']){reset(provider);state.row={id:'parent-uuid',role:'parent',name:'기존 보호자',phone:'01012345678',organization_id:null};r=await callback.GET(new Request(url));assert.equal(r.headers.get('location'),'http://localhost:3000'+next);assert.equal(state.writes.length,0,'existing UUID/profile retained')}
+ for(const phone of [null,'01012345678'])for(const unavailable of [false,true]){
+  reset();state.row={id:'parent-uuid',role:'parent',name:'기존 Apple 보호자',phone,organization_id:null};state.phoneVerified=false;state.phoneUnavailable=unavailable;
+  r=await callback.GET(new Request(url));assert.equal(r.headers.get('location'),'http://localhost:3000'+next);assert.equal(state.enrollCalls,0,'never enroll existing Apple, including missing phone/migration');assert.equal(state.writes.length,0);
+ }
+ reset();state.phoneUnavailable=true;r=await callback.GET(new Request(url));assert.equal(new URL(r.headers.get('location')).searchParams.get('error'),'oauth');assert.equal(state.writes.length,0,'new enrollment failure is login error, never fake OTP state');
+ reset();state.user.user_metadata.full_name='실제 제공 이름';r=await callback.GET(new Request(url));assert.equal(r.headers.get('location'),'http://localhost:3000'+next);assert.equal(state.writes[0].insert.name,'실제 제공 이름')
+ for(const err of [true,'throw']){reset();state.exchangeError=err;r=await callback.GET(new Request(url));const u=new URL(r.headers.get('location'));assert.equal(u.searchParams.get('error'),'oauth');assert.equal(u.searchParams.get('returnTo'),next);assert.equal(state.writes.length,0)}
+ reset();r=await callback.GET(new Request('http://localhost:3000/auth/callback?error=access_denied&next='+encodeURIComponent(next)));assert.equal(state.exchange,0);assert.equal(new URL(r.headers.get('location')).searchParams.get('error'),'oauth')
+ for(const bad of ['https://outside.test','//outside.test','/\\outside.test','/\n/evil']){reset('kakao');state.user.user_metadata.name='보호자';r=await callback.GET(new Request('http://localhost:3000/auth/callback?code=x&next='+encodeURIComponent(bad)));assert.equal(r.headers.get('location'),'http://localhost:3000/')}
+ reset();state.queryError=true;r=await callback.GET(new Request(url));assert.equal(new URL(r.headers.get('location')).searchParams.get('error'),'oauth');assert.equal(state.writes.length,0)
+ reset();state.pending=true;r=await callback.GET(new Request(url));assert.equal(new URL(r.headers.get('location')).pathname,'/my');assert.equal(state.writes.length,0)
+ reset();state.conflict={ok:false,reason:'existing_email_account'};r=await callback.GET(new Request(url));assert.equal(new URL(r.headers.get('location')).pathname,'/auth/account-conflict');assert.equal(state.signedOut,1);assert.equal(state.writes.length,0)
+ reset();const data=new FormData();data.set('name','김보호자');data.set('phone','01099998888');data.set('parentBirthDate','1990-01-02');let saved=await complete.completeAppleProfileAction(undefined,data);assert.equal(saved.status,'success');assert.equal(state.writes[0].insert.id,'parent-uuid');assert.equal(state.writes[0].insert.name,'김보호자');assert.equal(state.writes[0].insert.phone,'01012345678','ignores forged submitted phone');assert.equal(state.writes[0].insert.parent_birth_date,'1990-01-02');assert.equal(state.writes[0].insert.phone_verification_required,true);assert.equal(state.writes[0].insert.phone_verified_at,'2026-10-04T00:00:00Z');r=await callback.GET(new Request(url));assert.equal(r.headers.get('location'),'http://localhost:3000'+next)
+ for(const scenario of ['guest','kakao','studio','pending','conflict','invalid','query-error']){reset();if(scenario==='guest')state.user=null;if(scenario==='kakao')state.user=baseUser('kakao');if(scenario==='studio')state.user.user_metadata.signup_intent='teacher_invite';if(scenario==='pending')state.pending=true;if(scenario==='conflict')state.conflict={ok:false};if(scenario==='query-error')state.queryError=true;const f=new FormData();f.set('name',scenario==='invalid'?'':'김보호자');saved=await complete.completeAppleProfileAction(undefined,f);assert.equal(saved.status,'error',scenario);assert.equal(state.writes.length,0,scenario)}
+ // Real conflict checker: same UUID can have linked identities; other emails are never merged.
+ const conflict=load('src/features/auth/lib/oauth-account-conflict.ts',{'@/integrations/supabase/service-role':{getSupabaseServiceRoleClient:()=>({auth:{admin:{listUsers:async()=>({data:{users:[{id:'parent-uuid',email:'relay@privaterelay.appleid.com'},{id:'kakao-uuid',email:'kakao@example.test'}]},error:null})}}})}})
+ assert.equal((await conflict.detectOAuthEmailConflict('parent-uuid','relay@privaterelay.appleid.com')).ok,true)
+ for(const role of ['admin','academy','operator']){reset();state.row={id:'parent-uuid',role,name:'운영자',phone:null,organization_id:'org'};state.phoneVerified=false;r=await callback.GET(new Request(url));assert.equal(new URL(r.headers.get('location')).pathname,'/studio');assert.equal(state.writes.length,0)}
+ const adminConflict=load('src/features/auth/lib/oauth-account-conflict.ts', {
+  '@/integrations/supabase/service-role': {
+   getSupabaseServiceRoleClient: () => ({
+    auth: { admin: { listUsers: async () => ({data:{users:[{id:'admin-uuid',email:'same@example.test'}]},error:null}) } },
+    from: () => ({ select: () => ({ in: async () => ({data:[{id:'admin-uuid',role:'admin'}],error:null}) }) })
+   })
+  }
+ });
+ assert.equal((await adminConflict.detectOAuthEmailConflict('parent-uuid','same@example.test')).reason,'studio_account');
+ const signout=load('src/features/auth/actions/sign-out.ts',mocks);reset();await signout.signOutAction();assert.equal(state.signedOut,1)
+ console.log('PASS Kakao new/existing, Apple name/missing/existing, UUID/role, callback/cancel/error/returnTo/child, strict completion, deletion/Studio guards, relay identity separation, sign-out')
+}
+run().catch(e=>{console.error(e);process.exitCode=1})
