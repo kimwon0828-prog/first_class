@@ -13,6 +13,7 @@ import styles from "./page.module.css"
 import { resolveStudioCrossProductHref } from "@/shared/lib/cross-product-navigation-server"
 
 type ApplyPageProps = {
+  searchParams?: Promise<{ child?: string }>
   params: Promise<{
     id: string
   }>
@@ -44,9 +45,10 @@ const resolveApplyCardSubtitle = (
   return academyName || "정보 준비 중"
 }
 
-export default async function ClassApplyPage({ params }: ApplyPageProps) {
+export default async function ClassApplyPage({ params, searchParams }: ApplyPageProps) {
   const resolvedParams = await params
-  const returnTo = `/classes/${resolvedParams.id}/apply`
+  const child = (await searchParams)?.child
+  const returnTo = `/classes/${resolvedParams.id}/apply${child ? `?${new URLSearchParams({ child })}` : ""}`
   await requireSession(`/auth/sign-in?returnTo=${encodeURIComponent(returnTo)}`)
   const profile = await getMyProfile()
   const [{ data: classItem, error }, { data: slots, error: slotsError }, { data: children, error: childrenError }] =

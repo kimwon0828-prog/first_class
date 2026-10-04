@@ -14,9 +14,9 @@ function parseState(data: unknown): ApplePhoneState | null {
 export function needsPhoneVerification(state: ApplePhoneState) {
   return !state.excluded && state.required === true && state.phoneVerifiedAt === null
 }
-/** Read-only, zero RPC for Kakao; missing migration/status never enrolls or blocks legacy users. */
+/** Read the explicit state for every provider. Only enrollment classifies new Apple accounts. */
 export async function getApplePhoneState(user: Identity): Promise<ApplePhoneState> {
-  if (!hasAppleIdentity(user)) return legacyState
+  void user // RPC binds the trusted auth.uid(); never accept a caller-supplied user id.
   try {
     const db = await getSupabaseServerClient()
     const { data, error } = await db.rpc("get_my_parent_phone_status")

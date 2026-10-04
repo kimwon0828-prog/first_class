@@ -5890,6 +5890,9 @@ export const supabaseDataAdapter: DataAdapter = {
       })
 
     if (error) {
+      if (error.message === "parent_phone_verification_required") {
+        throw new Error("parent_phone_verification_required")
+      }
       throw new Error("failed_to_create_trial_application")
     }
 

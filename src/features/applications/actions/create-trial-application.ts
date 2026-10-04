@@ -1,8 +1,11 @@
 "use server"
 
+import { redirect } from "next/navigation"
+
 import { isChildEligibleForClass } from "@/shared/constants/grade-options"
 import { sendStudioNotificationSafely } from "@/features/notifications/sms/send-studio-notification"
 import { getMyProfile } from "@/features/auth/lib/profile-sync"
+import { completePhoneHref } from "@/features/auth/phone/contracts"
 import { requireSession } from "@/features/auth/lib/session"
 import { getSupabaseServerClient } from "@/integrations/supabase/server"
 import { dataAdapter } from "@/shared/lib/db"
@@ -102,7 +105,11 @@ export async function createTrialApplicationAction(
 ): Promise<CreateTrialApplicationActionState> {
   void previousState
 
-  const session = await requireSession("/auth/sign-in")
+  const returnQuery = new URLSearchParams({ apply: "1" })
+  const requestedChild = formData.get("childId")
+  if (typeof requestedChild === "string" && requestedChild.trim()) returnQuery.set("child", requestedChild.trim())
+  const returnTo = `/classes/${encodeURIComponent(classId)}?${returnQuery}`
+  const session = await requireSession(`/auth/sign-in?returnTo=${encodeURIComponent(returnTo)}`)
   const profile = await getMyProfile()
 
   if (!profile) {
@@ -242,6 +249,10 @@ export async function createTrialApplicationAction(
   } catch (error) {
     const message =
       error instanceof Error ? error.message : "failed_to_create_trial_application"
+
+    if (message === "parent_phone_verification_required") {
+      redirect(completePhoneHref(returnTo))
+    }
 
     if (message === "duplicate_trial_application") {
       return {

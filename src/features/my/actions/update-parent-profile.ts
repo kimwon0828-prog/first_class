@@ -75,7 +75,11 @@ export async function updateParentProfileAction(
   if (error) {
     return {
       status: "error",
-      message: "보호자 정보를 저장하지 못했어요. 잠시 후 다시 시도해 주세요."
+      message: error.message === "parent_verified_phone_immutable"
+        ? "인증된 휴대폰 번호는 이 화면에서 변경할 수 없어요. 기존 번호로 저장해 주세요."
+        : error.message === "parent_phone_verification_required"
+          ? "휴대폰 인증을 먼저 완료해 주세요."
+          : "보호자 정보를 저장하지 못했어요. 잠시 후 다시 시도해 주세요."
     }
   }
 

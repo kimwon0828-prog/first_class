@@ -1,7 +1,7 @@
 # Apple Parent 휴대폰 인증 — COMPAT rollout 준비
 
-2026-10-04: COMPAT migration만 Production DB 적용 완료. 웹 commit/push/deploy는 아직 수행하지 않았다. Push 변경은 이 배포 범위에서 제외한다.
-이 문서는 기존 DB hardening trigger 기반 설계를 대체한다.
+2026-10-04: COMPAT migration과 Apple/Auth 웹 배포 완료. 사용자가 실제 Production Apple 로그인 → SMS OTP 수신 성공을 확인했다. Push 변경은 배포 범위에서 제외했다.
+이 문서는 COMPAT 계약을 기록한다. 후속 DB 쓰기 보호는 [별도 HARDENING 문서](./apple-parent-phone-hardening.md)에 정리하며, 사용자 승인에 따라 Production migration 적용과 웹 release를 진행했다.
 
 ## 확정 계약
 

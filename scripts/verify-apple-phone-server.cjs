@@ -33,7 +33,8 @@ async function call(body={},origin='http://localhost:3000'){const r=await route.
  reset();s.status={required:false,verified:false,phoneVerifiedAt:null,excluded:true};assert.equal((await call()).http,403);
  reset();s.user.user_metadata.signup_intent='teacher_invite';assert.equal((await call()).http,401);
  reset();assert.equal(await gate.applePhoneGateHref(s.user,next),contracts.completePhoneHref(next));s.status={required:true,verified:true,phoneVerifiedAt:'2026-10-04T00:00:00Z',profileMissing:true};assert.equal(new URL(await gate.applePhoneGateHref(s.user,next),'http://local').pathname,'/auth/complete-profile');s.status.profileMissing=false;assert.equal(await gate.applePhoneGateHref(s.user,next),null);
- reset();s.user.app_metadata={provider:'kakao'};assert.equal(await gate.applePhoneGateHref(s.user,next),null);assert.equal(s.calls.length,0,'Kakao gate adds zero RPC');
+ reset();s.user.app_metadata={provider:'kakao'};s.status={required:false,verified:false,phoneVerifiedAt:null};assert.equal(await gate.applePhoneGateHref(s.user,next),null);assert.equal(s.calls.length,1,'Kakao reads explicit flags without provider inference');
+ reset();s.user.app_metadata={provider:'kakao'};assert.equal(await gate.applePhoneGateHref(s.user,next),contracts.completePhoneHref(next),'required flag wins over metadata');
  reset();s.user.app_metadata={provider:'email',providers:['email','apple']};assert.equal(await gate.applePhoneGateHref(s.user,next),contracts.completePhoneHref(next));
  // Exact flag/timestamp matrix; neither missing phone nor stale verified boolean can change the predicate.
  for(const required of [false,true])for(const timestamp of [null,'2026-10-04T00:00:00Z'])for(const phone of [null,'01012345678']) {
@@ -46,8 +47,8 @@ async function call(body={},origin='http://localhost:3000'){const r=await route.
  reset();await assert.rejects(()=>sessionModule.requireSession('/auth/sign-in?returnTo='+encodeURIComponent(next)),error=>error.message==='REDIRECT '+contracts.completePhoneHref(next));
  reset();s.status={required:true,verified:true,phoneVerifiedAt:'2026-10-04T00:00:00Z',profileMissing:false};assert.equal((await sessionModule.requireSession('/auth/sign-in')).user.id,uid);
  reset();s.claimSub='other';await assert.rejects(()=>sessionModule.requireSession('/auth/sign-in'),/REDIRECT \/auth\/sign-in/);
- reset();s.user.app_metadata={provider:'kakao'};assert.equal((await sessionModule.requireSession('/auth/sign-in')).user.id,uid);assert.equal(s.calls.length,0);
+ reset();s.user.app_metadata={provider:'kakao'};s.status={required:false,verified:false,phoneVerifiedAt:null};assert.equal((await sessionModule.requireSession('/auth/sign-in')).user.id,uid);assert.equal(s.calls.length,1);
  const access=load('src/features/my/lib/require-parent-access.ts',{...mocks,'next/navigation':{redirect:href=>{throw new Error('REDIRECT '+href)}},'@/features/auth/lib/current-auth':{resolveCurrentAuth:async()=>({status:'profile_missing',user:s.user})},'@/shared/config/cross-product-navigation':{},'@/shared/lib/request-host':{}});
  reset();await assert.rejects(()=>access.getParentAccessState(next),error=>error.message==='REDIRECT '+contracts.completePhoneHref(next));
- console.log('PASS OTP normalization/HMAC, session/CSRF/config, provider dry-run/error, rate reservation, non-disclosure, trusted user binding, verify/relogin, role/email isolation, returnTo/child and zero-RPC Kakao gate');
+ console.log('PASS OTP normalization/HMAC, session/CSRF/config, provider dry-run/error, rate reservation, non-disclosure, trusted user binding, verify/relogin, role/email isolation, returnTo/child and provider-independent flag gate / Kakao regression');
 })().catch(e=>{console.error(e);process.exitCode=1});
