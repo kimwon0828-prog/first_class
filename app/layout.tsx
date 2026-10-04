@@ -1,3 +1,4 @@
+import { ParentPushBridge } from "@/features/notifications/ui/parent-push-bridge"
 import { FavoriteAccountBoundary } from "@/features/favorites/ui/favorite-account-boundary"
 import { PARENT_ORIGIN } from "@/shared/config/site-origins"
 
@@ -23,7 +24,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
   return (
     <html lang="ko">
       <head />
-      <body><FavoriteAccountBoundary />{children}</body>
+      <body><FavoriteAccountBoundary /><ParentPushBridge />{children}</body>
     </html>
   )
 }
