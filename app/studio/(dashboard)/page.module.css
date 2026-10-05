@@ -46,6 +46,7 @@
 .panelHead { display: flex; align-items: center; gap: var(--s2); min-height: 60px; padding: var(--s4) var(--s5); border-bottom: 1px solid var(--border); }
 .panelHead h2 { margin: 0; font-size: 16px; line-height: 24px; font-weight: 800; letter-spacing: -.02em; }
 .panelCount { color: var(--text-3); font-size: 12px; white-space: nowrap; }
+.previewNote { margin: 0; padding: var(--s2) var(--s5); color: var(--text-3); font-size: 12px; line-height: 18px; }
 .panelAction { margin-left: auto; display: inline-flex; align-items: center; gap: var(--s2); color: var(--brand-700); font-size: 12px; line-height: 20px; font-weight: 700; text-decoration: none; white-space: nowrap; }
 .panelAction span { font-size: 20px; }
 .list { list-style: none; margin: 0; padding: 0; }

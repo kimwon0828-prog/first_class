@@ -177,6 +177,7 @@ export default async function StudioIndexPage({ searchParams }: StudioIndexPageP
               <h2 id="dashboard-actions-title">오늘 처리할 신청</h2><span className={styles.panelCount}>{view.actionTotalCount}건</span>
               <Link href={studioPath("/studio/cases")} className={styles.panelAction}>전체 보기 <span aria-hidden="true">›</span></Link>
             </div>
+            {view.actionTotalCount > view.actionItems.length ? <p className={styles.previewNote}>전체 {view.actionTotalCount}건 중 {view.actionItems.length}건 미리보기 · 나머지는 전체 보기에서 확인하세요.</p> : null}
             {view.actionItems.length ? <ul className={styles.list}>{view.actionItems.map(item => <li key={item.id} className={styles.row}>
               <StudioDetailLink internalPath={item.href} className={styles.rowLink}>
                 <span className={styles.rowBody}>

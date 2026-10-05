@@ -54,13 +54,13 @@ const ACTION_LABELS: Record<StudioDashboardActionKind, string> = {
   CONFIRM_SCHEDULE: "체험 일정을 확정해 주세요."
 }
 
-/** 위에 있을수록 먼저 처리한다. getCaseAttentionState 의 우선순위와 같은 순서다. */
+/** 신규·확인 중 신청이 후속 등록 업무에 밀려 5건 미리보기에서 빠지지 않도록 한다. */
 const ACTION_ORDER: StudioDashboardActionKind[] = [
   "UNASSIGNED",
   "NEEDS_COMPLETION",
   "REVIEW_NEW",
-  "NEEDS_REGISTRATION",
-  "CONFIRM_SCHEDULE"
+  "CONFIRM_SCHEDULE",
+  "NEEDS_REGISTRATION"
 ]
 
 export type StudioDashboardActionItem = {
