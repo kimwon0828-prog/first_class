@@ -1,7 +1,7 @@
 // Cases URL state and relational PostgREST predicates. Filter before DB pagination.
 export type CaseViewKey = "active" | "closed"
 export type CaseActiveFilterKey = "all" | "new" | "schedule_needed" | "reviewing" | "confirmed" | "post_trial"
-export type CaseClosedFilterKey = "all" | "enrolled" | "not_enrolled" | "canceled" | "no_show"
+export type CaseClosedFilterKey = "all" | "pending" | "enrolled" | "not_enrolled" | "canceled" | "no_show"
 export type CaseFilterKey = CaseActiveFilterKey | CaseClosedFilterKey
 export type CaseFilterOption<K extends string> = { key: K; label: string; description?: string }
 export const CASE_ACTIVE_FILTERS: CaseFilterOption<CaseActiveFilterKey>[] = [
@@ -11,21 +11,25 @@ export const CASE_ACTIVE_FILTERS: CaseFilterOption<CaseActiveFilterKey>[] = [
   { key: "post_trial", label: "결과 정리 필요" }
 ]
 export const CASE_CLOSED_FILTERS: CaseFilterOption<CaseClosedFilterKey>[] = [
-  { key: "all", label: "전체" }, { key: "enrolled", label: "등록 완료" },
+  { key: "all", label: "전체" }, { key: "pending", label: "고민중" }, { key: "enrolled", label: "등록 완료" },
   { key: "not_enrolled", label: "미등록" }, { key: "canceled", label: "취소" }, { key: "no_show", label: "노쇼" }
 ]
 const live = "no_show_at.is.null,canceled_at.is.null,status.neq.canceled"
 const unfinished = "or(record.is.null,report.is.null,registration_status.in.(undecided,pending))"
-const finished = "status.eq.completed,record.not.is.null,report.not.is.null,registration_status.in.(enrolled,not_enrolled)"
+const pending = `and(${live},status.eq.completed,registration_status.eq.pending)`
+const decided = `and(${live},registration_status.in.(enrolled,not_enrolled))`
 const scheduled = "or(confirmed_slot_at.not.is.null,confirmed_block.not.is.null)"
 export type CaseFilterPredicate = { orExpression: string }
 export const CASE_VIEW_PREDICATES: Record<CaseViewKey, CaseFilterPredicate> = {
   active: { orExpression: `and(${live},or(status.in.(new,reviewing,confirmed),and(status.eq.completed,${unfinished})))` },
-  closed: { orExpression: `no_show_at.not.is.null,canceled_at.not.is.null,status.eq.canceled,and(${finished})` }
+  // Result filters and the whole result list use the same inclusion rules.
+  // Remaining record/report work may still appear in the active work list.
+  closed: { orExpression: `no_show_at.not.is.null,canceled_at.not.is.null,status.eq.canceled,${pending},${decided}` }
 }
 export function getCaseFilterPredicate(view: CaseViewKey, filter: CaseFilterKey): CaseFilterPredicate {
   if (filter === "all") return CASE_VIEW_PREDICATES[view]
   if (view === "closed") {
+    if (filter === "pending") return { orExpression: pending }
     if (filter === "no_show") return { orExpression: "no_show_at.not.is.null" }
     if (filter === "canceled") return { orExpression: "and(no_show_at.is.null,or(status.eq.canceled,canceled_at.not.is.null))" }
     // Registration results are independent of remaining record/report work.

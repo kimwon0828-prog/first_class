@@ -57,6 +57,7 @@ export type CasesListItem = {
   requestedSlotAt: string
   confirmedSlotAt: string | null
   latestRecord: { at: string; label: string } | null
+  resultRecord?: { at: string | null; label: string }
 }
 export const formatCasesDate = (value: string) => {
   const parts = getSeoulDateTimeParts(value)

@@ -135,14 +135,14 @@ export default async function StudioCasesPage({ searchParams }: StudioCasesPageP
       ) : (
         <section className={styles.workspace} aria-label="Case 목록">
           <div className={styles.resultHeader}>
-            <p className={styles.resultMeta}>검색 결과 <strong>{data.totalCount}건</strong>{view === "active" ? <><span aria-hidden="true">·</span><span>신청 최신순</span></> : null}</p>
+            <p className={styles.resultMeta}>검색 결과 <strong>{data.totalCount}건</strong><span aria-hidden="true">·</span><span>{view === "active" ? "확정 대기 우선 · 체험 예정순" : filter === "pending" ? "연락일 도래 우선 · 체험 완료 오래된 순" : "결과 처리 최신순 · 처리일 미기록은 완료일/접수일 기준"}</span></p>
             <CasePagination {...paginationProps} compact />
           </div>
           <div className={styles.tableSurface}>
             <div className={styles.listHead} aria-hidden="true">
               <span>학생</span><span>진행 상태</span><span>체험수업 / 일정</span>
               <span>{view === "closed" ? "결과 요약" : "다음 행동"}</span><span>등록 상태</span>
-              <span>담당자</span><span>최근 기록</span><span />
+              <span>담당자</span><span>{view === "closed" ? "결과 처리" : "최근 기록"}</span><span />
             </div>
             {data.items.length === 0 ? (
               <div className={styles.empty}>
@@ -153,7 +153,7 @@ export default async function StudioCasesPage({ searchParams }: StudioCasesPageP
               <ul className={styles.list}>
                 {data.items.map((item) => {
                   const schedule = getCasesScheduleLabel(item)
-                  const record = item.latestRecord
+                  const record = view === "closed" ? item.resultRecord : item.latestRecord
                   const summary = view === "closed" ? getCasesResultSummary(item) : null
                   const action = item.workflow.action ? CASES_ACTIONS[item.workflow.action] : null
                   const progressTone: StudioStatusTone = item.workflow.progress === "신청 접수" ? "amber" : ["일정 확정", "체험 예정"].includes(item.workflow.progress) ? "green" : "gray"
@@ -192,7 +192,7 @@ export default async function StudioCasesPage({ searchParams }: StudioCasesPageP
                         <span className={styles.cellRegistration}><span className={`${styles.stageBadge} ${STAGE_TONE_CLASS[registrationTone]}`}>{item.workflow.registration}</span></span>
                         <span className={styles.cellAssignee}><span className={styles.assigneeBadge}><span className={styles.srOnly}>담당자 </span>{item.assignee.teacherName ?? "미배정"}</span></span>
                         <span className={styles.cellRecord}>
-                          {record ? <><time dateTime={record.at}>{formatCasesDate(record.at)}</time><span>{record.label}</span></> : "—"}
+                          {record?.at ? <><time dateTime={record.at}>{formatCasesDate(record.at)}</time><span>{record.label}</span></> : view === "closed" ? "처리일 미기록" : "—"}
                         </span>
                         <span className={styles.chevron}><Chevron /><span className={styles.srOnly}>신청 상세 보기</span></span>
                       </StudioDetailLink>
