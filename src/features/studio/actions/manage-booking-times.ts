@@ -2,12 +2,12 @@
 import { revalidatePath } from "next/cache"
 import { requireTeacherStudioAccess } from "@/features/studio/lib/require-teacher-studio-access"
 import { dataAdapter } from "@/shared/lib/db"
-import type { BookingClosureMutation, BookingDay } from "../lib/booking-closures"
+import { emptyBookingDay, type BookingClosureMutation, type BookingDay } from "../lib/booking-closures"
 export async function getStudioBookingDayAction(dateKey: string): Promise<{ data: BookingDay; error: string | null }> {
   const teacher = await requireTeacherStudioAccess()
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(dateKey)) return { data: { occurrences: [], closures: [] }, error: "날짜를 확인해 주세요." }
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dateKey)) return { data: emptyBookingDay(), error: "날짜를 확인해 주세요." }
   try { return { data: await dataAdapter.getStudioBookingDay(teacher.organizationId,dateKey), error: null } }
-  catch { return { data: { occurrences: [], closures: [] }, error: "예약 시간을 불러오지 못했습니다. 다시 시도해 주세요." } }
+  catch { return { data: emptyBookingDay(), error: "예약 시간을 불러오지 못했습니다. 다시 시도해 주세요." } }
 }
 export async function manageBookingTimesAction(input: Omit<BookingClosureMutation,"organizationId">): Promise<{ changed: number; error: string | null }> {
   const teacher = await requireTeacherStudioAccess()

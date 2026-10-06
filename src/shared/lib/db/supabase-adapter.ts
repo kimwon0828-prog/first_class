@@ -1,4 +1,4 @@
-import type { BookingDay, BookingClosureMutation, BookingClosure } from "@/features/studio/lib/booking-closures"
+import { withBookingClassHistory, type BookingDay, type BookingClosureMutation, type BookingClosure } from "@/features/studio/lib/booking-closures"
 import { decodeParentFeedbackContext, decodePrivateFeedback, decodePublicFeedback } from "@/features/feedback/lib/feedback-decode"
 import { buildScheduleOccurrenceReservationKey } from "@/shared/lib/schedule-reservation-key"
 import { buildStudioScheduleRangeFilter } from "@/features/studio/lib/studio-schedule-range"
@@ -2734,12 +2734,30 @@ const mapExperienceReport = (row: ExperienceReportRow): ExperienceReportSummary 
   }
 }
 
+// Authenticated Studio metadata only; matches Parent's existing Lifecycle fields.
+const readStudioScheduleClassOptions = async (client: SupabaseClient, organizationId: string) => {
+  const rows: Array<Pick<ClassRow, "id" | "title" | "is_active" | "archived_at">> = []
+  for (;;) {
+    const { data, error, count } = await client.from("classes").select("id,title,is_active,archived_at", { count: "exact" })
+      .eq("organization_id", organizationId).order("id").range(rows.length, rows.length + 999)
+    if (error || count === null || !data || (!data.length && rows.length < count)) throw new Error("failed_to_fetch_schedule_filters")
+    rows.push(...data as typeof rows)
+    if (rows.length >= count) return rows.map(r => ({ value: r.id, label: r.title, isActive: r.is_active, archivedAt: r.archived_at }))
+  }
+}
+
 export const supabaseDataAdapter: DataAdapter = {
   async getStudioBookingDay(organizationId, dateKey) {
     const client=await getSupabaseServerClient()
-    const {data,error}=await client.rpc("get_studio_booking_day",{p_date:dateKey,p_organization_id:organizationId})
+    const from = new Date(`${dateKey}T00:00:00+09:00`), to = new Date(from.getTime() + 86400000)
+    const [result, classes, applications] = await Promise.all([
+      client.rpc("get_studio_booking_day", { p_date: dateKey, p_organization_id: organizationId }),
+      readStudioScheduleClassOptions(client, organizationId),
+      supabaseDataAdapter.listStudioApplications(organizationId, { scheduleRange: { from: from.toISOString(), to: to.toISOString() } })
+    ])
+    const { data, error } = result
     if(error||!data||!Array.isArray(data.occurrences)||!Array.isArray(data.closures)) throw new Error("failed_to_fetch_booking_day")
-    return data as BookingDay
+    return withBookingClassHistory(data as BookingDay, classes.map(c => ({ id: c.value, title: c.label, isActive: c.isActive, archivedAt: c.archivedAt })), applications)
   },
   async listStudioBookingClosures(organizationId, from, to) {
     const client=await getSupabaseServerClient(), rows: BookingClosure[]=[]
@@ -3233,11 +3251,11 @@ export const supabaseDataAdapter: DataAdapter = {
       }
     }
     const [classes, teachers] = await Promise.all([
-      readAll("classes", "id,title"), readAll("teachers", "id,display_name,profile_id")
+      readStudioScheduleClassOptions(client, organizationId), readAll("teachers", "id,display_name,profile_id")
     ])
     const profiles = await getProfileNameMap(teachers.map(row => row.profile_id).filter((id): id is string => Boolean(id)))
     return {
-      classes: [{ value: "all", label: "전체" }, ...classes.map(row => ({ value: row.id!, label: row.title ?? "수업 정보 없음" }))],
+      classes: [{ value: "all", label: "전체" }, ...classes],
       teachers: [{ value: "all", label: "전체" }, { value: "unassigned", label: "미배정" },
         ...teachers.map(row => ({ value: row.id!, label: row.display_name || (row.profile_id ? profiles.get(row.profile_id) : null) || "이름 미정" }))]
     }

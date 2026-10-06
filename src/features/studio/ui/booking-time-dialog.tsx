@@ -1,21 +1,21 @@
 "use client"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { getStudioBookingDayAction, manageBookingTimesAction } from "../actions/manage-booking-times"
-import { groupBookingOccurrences, previewBookingClosure, type BookingDay, type BookingClosure } from "../lib/booking-closures"
+import { groupBookingOccurrences, previewBookingClosure, emptyBookingDay, visibleBookingOccurrences, bookingClassOptions, type BookingDay, type BookingClosure } from "../lib/booking-closures"
 import { formatSelectedDateLabel } from "../lib/studio-schedule-month"
 import styles from "./booking-time-dialog.module.css"
 const clock = (at: string) => new Intl.DateTimeFormat("ko-KR",{timeZone:"Asia/Seoul",hour:"2-digit",minute:"2-digit",hourCycle:"h23"}).format(new Date(at))
 export const bookingTimeLabel = (row: { startAt: string; endAt: string }) => `${clock(row.startAt)}~${clock(row.endAt)}`
 export function BookingTimeDialog({dateKey: initialDate, initialClassId, todayKey, onClose, onChange}: {dateKey:string;initialClassId:string|null;todayKey:string;onClose:()=>void;onChange:(dateKey:string,closures:BookingClosure[])=>void}) {
  const dialog=useRef<HTMLDialogElement>(null), request=useRef(0), alive=useRef(true), inFlight=useRef(false)
- const [dateKey,setDateKey]=useState(initialDate),[classId,setClassId]=useState<string|null>(initialClassId),[day,setDay]=useState<BookingDay>({occurrences:[],closures:[]})
+ const [dateKey,setDateKey]=useState(initialDate),[classId,setClassId]=useState<string|null>(initialClassId),[day,setDay]=useState<BookingDay>(emptyBookingDay())
  const [selected,setSelected]=useState<string[]>([]),[selectedClosureIds,setSelectedClosureIds]=useState<string[]>([]),[reason,setReason]=useState(""),[loading,setLoading]=useState(true),[applying,setApplying]=useState(false),[error,setError]=useState<string|null>(null),[notice,setNotice]=useState("")
  const changeRef=useRef(onChange);changeRef.current=onChange
- const load=useCallback(async()=>{const id=++request.current;setLoading(true);setError(null);try{const r=await getStudioBookingDayAction(dateKey);if(!alive.current||id!==request.current)return;if(r.error){setError(r.error);setDay({occurrences:[],closures:[]})}else{setDay(r.data);changeRef.current(dateKey,r.data.closures)}}catch{if(alive.current&&id===request.current)setError("예약 시간을 불러오지 못했습니다.")}finally{if(alive.current&&id===request.current)setLoading(false)}},[dateKey])
+ const load=useCallback(async()=>{const id=++request.current;setLoading(true);setError(null);try{const r=await getStudioBookingDayAction(dateKey);if(!alive.current||id!==request.current)return;if(r.error){setError(r.error);setDay(emptyBookingDay())}else{setDay(r.data);changeRef.current(dateKey,r.data.closures)}}catch{if(alive.current&&id===request.current)setError("예약 시간을 불러오지 못했습니다.")}finally{if(alive.current&&id===request.current)setLoading(false)}},[dateKey])
  useEffect(()=>{alive.current=true;if(!dialog.current?.open)dialog.current?.showModal();return()=>{alive.current=false}},[])
  useEffect(()=>{void load()},[load])
- const classes=useMemo(()=>[...new Map(day.occurrences.map(o=>[o.classId,o.classTitle])).entries()],[day])
- const groups=useMemo(()=>groupBookingOccurrences(day.occurrences.filter(o=>!classId||o.classId===classId)),[day,classId])
+ const classes=useMemo(()=>bookingClassOptions(day),[day])
+ const groups=useMemo(()=>groupBookingOccurrences(visibleBookingOccurrences(day).filter(o=>!classId||o.classId===classId)),[day,classId])
  const closePreview=previewBookingClosure(day,selected,classId,"close"),releaseBase=previewBookingClosure(day,selected,classId,"release")
  const releaseIds=[...new Set([...releaseBase.closureIds,...selectedClosureIds])]
  const releaseWindows=day.closures.filter(c=>releaseIds.includes(c.id)&&c.classId===classId)
@@ -37,7 +37,7 @@ export function BookingTimeDialog({dateKey: initialDate, initialClassId, todayKe
   <header className={styles.head}><div><p className={styles.eyebrow}>예약 시간 관리</p><h2 id="booking-time-title">{formatSelectedDateLabel(dateKey)}</h2><p>신규 예약을 마감할 시간을 선택하세요.</p></div><button type="button" className={styles.close} aria-label="예약 시간 관리 닫기" disabled={applying} onClick={dismiss}>×</button></header>
   <div className={styles.body}>
    <label className={styles.field}>선택 날짜<input type="date" value={dateKey} disabled={applying} onChange={e=>{if(e.target.value){setSelected([]);setSelectedClosureIds([]);setNotice("");setDateKey(e.target.value)}}}/></label>
-   <label className={styles.field}>적용 과정<select aria-label="적용 과정" value={classId??""} disabled={loading||applying} onChange={e=>{setClassId(e.target.value||null);setSelected([]);setSelectedClosureIds([]);setNotice("")}}><option value="">전체 과정</option>{classId&&!classes.some(([id])=>id===classId)?<option value={classId}>선택 과정 · 현재 회차 없음</option>:null}{classes.map(([id,title])=><option value={id} key={id}>{title}</option>)}</select></label>
+   <label className={styles.field}>적용 과정<select aria-label="적용 과정" value={classId??""} disabled={loading||applying} onChange={e=>{setClassId(e.target.value||null);setSelected([]);setSelectedClosureIds([]);setNotice("")}}><option value="">전체 과정</option>{classId&&!classes.some(o=>o.value===classId)?<option value={classId}>선택 과정 · 현재 회차 없음</option>:null}{classes.map(o=><option value={o.value} key={o.value}>{o.label}</option>)}</select></label>
    {loading?<p role="status">예약 시간을 불러오는 중입니다.</p>:groups.length===0?<p>이 날짜에 제공되는 예약 시간이 없습니다.</p>:<div className={styles.table}>
     <div className={styles.tableHead}><span>선택</span><span>시간 / 과정</span><span>예약 상태</span></div>
     {groups.map(group=>{const first=group[0],closed=group.filter(o=>o.closureIds.length>0).length,checked=group.every(o=>selected.includes(o.key)),reservations=new Set(group.flatMap(o=>o.reservationIds)).size

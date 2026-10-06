@@ -1,6 +1,29 @@
 export type BookingClosure = { id: string; organizationId: string; classId: string | null; dateKey: string; startAt: string; endAt: string; reason: string | null }
 export type BookingOccurrence = { key: string; source: "class_schedule" | "schedule_block"; id: string; classId: string; classTitle: string; startAt: string; endAt: string; bookingStatus: "open" | "closed" | "hidden"; capacity: number; reservationIds: string[]; closureIds: string[] }
-export type BookingDay = { occurrences: BookingOccurrence[]; closures: BookingClosure[] }
+export type BookingClass = { id: string; title: string; isActive: boolean; archivedAt?: string | null }
+export type BookingDay = { occurrences: BookingOccurrence[]; closures: BookingClosure[]; classes: BookingClass[]; applicationHistoryKeys: string[] }
+export const emptyBookingDay = (): BookingDay => ({ occurrences: [], closures: [], classes: [], applicationHistoryKeys: [] })
+// Existing Lifecycle/Parent contract. Availability restrictions are a separate axis.
+const isPublicClass = (klass: Pick<BookingClass, "isActive" | "archivedAt">) => klass.isActive && !klass.archivedAt
+export function withBookingClassHistory(day: Pick<BookingDay, "occurrences" | "closures">, classes: BookingClass[], applications: Array<{ classId: string; requestedSlotAt: string | null; confirmedSlotAt?: string | null; confirmedBlockStartAt?: string | null }>): BookingDay {
+  const historyTimes = new Set<string>()
+  for (const a of applications) for (const at of [a.requestedSlotAt, a.confirmedSlotAt, a.confirmedBlockStartAt]) if (at) historyTimes.add(`${a.classId}/${Date.parse(at)}`)
+  return { ...day, classes, applicationHistoryKeys: day.occurrences.filter(o => historyTimes.has(`${o.classId}/${Date.parse(o.startAt)}`)).map(o => o.key) }
+}
+// Presentation only: full day.occurrences remains the authority for impact/preview/save.
+export function visibleBookingOccurrences(day: BookingDay) {
+  const publicIds = new Set(day.classes.filter(isPublicClass).map(c => c.id))
+  const history = new Set(day.applicationHistoryKeys)
+  return day.occurrences.filter(o => publicIds.has(o.classId) || o.reservationIds.length > 0 || history.has(o.key) || o.closureIds.length > 0)
+}
+export function bookingClassOptions(day: BookingDay) {
+  const rows = visibleBookingOccurrences(day), ids = new Set([...rows.map(o => o.classId), ...day.closures.flatMap(c => c.classId ? [c.classId] : [])])
+  return [...ids].map(id => ({ value: id, label: day.classes.find(c => c.id === id)?.title ?? rows.find(o => o.classId === id)?.classTitle ?? "수업 정보 없음" }))
+}
+export function visibleScheduleClassOptions<T extends { value: string; label: string; isActive?: boolean; archivedAt?: string | null }>(options: T[], applicationClassIds: string[], closures: BookingClosure[]) {
+  const retained = new Set([...applicationClassIds, ...closures.flatMap(c => c.classId ? [c.classId] : [])])
+  return options.filter(c => c.value === "all" || (c.isActive === true && !c.archivedAt) || retained.has(c.value))
+}
 export type BookingClosureMutation = { organizationId: string; dateKey: string; classId: string | null; mode: "close" | "release"; slotKeys: string[]; expectedTargets: string[]; closureIds: string[]; reason: string | null }
 export const bookingIntervalsOverlap = (a: Pick<BookingClosure, "startAt" | "endAt">, b: Pick<BookingOccurrence, "startAt" | "endAt">) => Date.parse(a.startAt) < Date.parse(b.endAt) && Date.parse(a.endAt) > Date.parse(b.startAt)
 export function previewBookingClosure(day: BookingDay, keys: string[], classId: string | null, mode: "close" | "release") {

@@ -1,4 +1,4 @@
-import { bookingIntervalsOverlap, type BookingClosure, type BookingDay, type BookingOccurrence } from "@/features/studio/lib/booking-closures"
+import { withBookingClassHistory, bookingIntervalsOverlap, type BookingClosure, type BookingDay, type BookingOccurrence } from "@/features/studio/lib/booking-closures"
 import { decisionDraftError } from "@/features/feedback/lib/experience-submission"
 import { isFeedbackProgramType, normalizeFeedbackNote, summarizeFeedback, validateFeedbackInput, type FeedbackChipId, type FeedbackProgramType, type ParentExperienceFeedback } from "@/features/feedback/lib/experience-feedback"
 import { buildMonthGrid, parseDateKey, toDayNumber, toWeekday } from "@/features/studio/lib/studio-schedule-month"
@@ -857,7 +857,7 @@ export const mockDataAdapter: DataAdapter = {
       if(parts!==dateKey)continue
       occurrences.push({key:`${klass.id}/schedule_block/${block.id}`,source:"schedule_block",id:block.id,classId:klass.id,classTitle:klass.title,startAt:block.startAt,endAt:block.endAt,bookingStatus:klass.isActive?"open":"hidden",capacity:block.capacity,reservationIds:applications.filter(a=>a.classId===klass.id&&a.requestedSlotAt===block.startAt&&ACTIVE_APPLICATION_STATUSES.includes(a.status)).map(a=>a.id),closureIds:closures.filter(c=>(!c.classId||c.classId===klass.id)&&bookingIntervalsOverlap(c,block)).map(c=>c.id)})
     }
-    return {occurrences,closures} satisfies BookingDay
+    return withBookingClassHistory({occurrences,closures}, classes.map(c=>({id:c.id,title:c.title,isActive:c.isActive,archivedAt:c.archivedAt})), applications.map(a=>({...a,confirmedBlockStartAt:scheduleBlocks.find(b=>b.id===a.confirmedScheduleBlockId)?.startAt??null}))) satisfies BookingDay
   },
   async mutateStudioBookingClosures(input) {
     if(input.organizationId!==mockOrganizationId) throw new Error("booking_scope_forbidden")
@@ -1032,7 +1032,7 @@ export const mockDataAdapter: DataAdapter = {
   },
   async getStudioScheduleFilterOptions(organizationId) {
     const owned = organizationId === mockOrganizationId
-    return { classes: [{ value: "all", label: "전체" }, ...(owned ? classes.map(row => ({ value: row.id, label: row.title })) : [])],
+    return { classes: [{ value: "all", label: "전체" }, ...(owned ? classes.map(row => ({ value: row.id, label: row.title, isActive: row.isActive, archivedAt: row.archivedAt })) : [])],
       teachers: [{ value: "all", label: "전체" }, { value: "unassigned", label: "미배정" },
         ...(owned ? teacherSummaries.map(row => ({ value: row.id, label: row.displayName })) : [])] }
   },

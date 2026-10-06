@@ -373,7 +373,7 @@ export type StudioScheduleFilterOption = {
 
 export type StudioScheduleFilterOptions = {
   teachers: StudioScheduleFilterOption[]
-  classes: StudioScheduleFilterOption[]
+  classes: Array<StudioScheduleFilterOption & { isActive?: boolean; archivedAt?: string | null }>
 }
 
 export type StudioScheduleFilters = {
@@ -430,7 +430,7 @@ export const buildStudioScheduleFilterOptions = (
     ...Array.from(teacherLabelById, ([value, label]) => ({ value, label })).sort(byLabel)
   )
 
-  const classes: StudioScheduleFilterOption[] = [
+  const classes: Array<StudioScheduleFilterOption & { isActive?: boolean; archivedAt?: string | null }> = [
     { value: ALL_FILTER, label: "전체" },
     ...Array.from(classLabelById, ([value, label]) => ({ value, label })).sort(byLabel)
   ]

@@ -5,7 +5,7 @@ const date="2026-10-09",at=(hour:number,minute=0)=>new Date(`${date}T${String(ho
 const slot=(id:string,c:string,start:number,end:number,minute=0):BookingOccurrence=>({key:`${c}/class_schedule/${id}`,id,source:"class_schedule",classId:c,classTitle:c,startAt:at(start,minute),endAt:at(end,minute),bookingStatus:"open",capacity:3,reservationIds:[],closureIds:[]})
 const rows=[slot("12","A",12,13),slot("13","A",13,14),slot("14","A",14,15),slot("15","A",15,16),slot("offset","B",13,15,30),slot("b15","B",15,16)]
 rows[2].reservationIds=["existing"]
-const day:BookingDay={occurrences:rows,closures:[]},keys=[rows[1].key,rows[2].key]
+const day:BookingDay={occurrences:rows,closures:[],classes:[{id:"A",title:"A",isActive:true},{id:"B",title:"B",isActive:true}],applicationHistoryKeys:[]},keys=[rows[1].key,rows[2].key]
 assert.deepEqual(previewBookingClosure(day,keys,"A","close").targets.map(x=>x.id),["13","14"])
 assert.deepEqual(previewBookingClosure(day,keys,null,"close").targets.map(x=>x.id),["13","14","offset"])
 assert.equal(previewBookingClosure(day,keys,null,"close").reservationCount,1)

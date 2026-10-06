@@ -1368,7 +1368,7 @@ export interface DataAdapter {
   }>
   listStudioClassListItems(organizationId: string): Promise<StudioClassListItem[]>
   listStudioClasses(organizationId: string): Promise<ClassSummary[]>
-  getStudioScheduleFilterOptions(organizationId: string): Promise<{ teachers: Array<{ value: string; label: string }>; classes: Array<{ value: string; label: string }> }>
+  getStudioScheduleFilterOptions(organizationId: string): Promise<{ teachers: Array<{ value: string; label: string }>; classes: Array<{ value: string; label: string; isActive?: boolean; archivedAt?: string | null }> }>
   listStudioTeacherOptions(organizationId: string): Promise<StudioTeacherOption[]>
   listStudioDashboardTeacherFilterOptions(
     organizationId: string

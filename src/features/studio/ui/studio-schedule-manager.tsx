@@ -3,7 +3,7 @@
 import { StudioQueryRetry } from "./studio-query-retry"
 import { StudioDetailLink } from "./studio-detail-link"
 import { BookingTimeDialog, bookingTimeLabel } from "./booking-time-dialog"
-import { mergeBookingClosureRanges, type BookingClosure } from "../lib/booking-closures"
+import { mergeBookingClosureRanges, visibleScheduleClassOptions, type BookingClosure } from "../lib/booking-closures"
 import { useRouter } from "next/navigation"
 import { useCallback, useMemo, useState, useTransition, type CSSProperties } from "react"
 
@@ -442,12 +442,16 @@ export const StudioScheduleManager = ({
     () => buildStudioScheduleEvents(items, new Date(nowIso)),
     [items, nowIso]
   )
+  const allClosures=useMemo(()=>[...initialClosures.filter(c=>!(c.dateKey in closureOverrides)),...Object.values(closureOverrides).flat()],[initialClosures,closureOverrides])
   // 옵션은 필터가 걸리지 않은 전체 event 에서 만든다(§18).
-  const filterOptions = useMemo(() => suppliedFilterOptions ?? buildStudioScheduleFilterOptions(baseEvents), [suppliedFilterOptions, baseEvents])
-  const [filters, setFilters] = useState<StudioScheduleFilters>(() =>
+  const filterOptions = useMemo(() => {
+    const options = suppliedFilterOptions ?? buildStudioScheduleFilterOptions(baseEvents)
+    return { ...options, classes: visibleScheduleClassOptions(options.classes, baseEvents.map(e => e.classId), allClosures) }
+  }, [suppliedFilterOptions, baseEvents, allClosures])
+  const [filterState, setFilters] = useState<StudioScheduleFilters>(() =>
     resolveStudioScheduleFilters(initialUrlState, filterOptions)
   )
-  const allClosures=[...initialClosures.filter(c=>!(c.dateKey in closureOverrides)),...Object.values(closureOverrides).flat()]
+  const filters = resolveStudioScheduleFilters({ ...initialUrlState, ...filterState }, filterOptions)
   // Closures are class/academy scope. Teacher/status filters cannot hide them.
   const visibleClosures=mergeBookingClosureRanges(allClosures.filter(c=>filters.classId==="all"||!c.classId||c.classId===filters.classId))
   const openBooking=(date:string,classId:string|null=filters.classId==="all"?null:filters.classId)=>{setBookingClass(classId);setBookingDate(date)}

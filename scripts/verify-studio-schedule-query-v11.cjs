@@ -19,7 +19,7 @@ Module._extensions['.ts'] = (module, filename) => module._compile(ts.transpileMo
 }).outputText,filename)
 const {supabaseDataAdapter: adapter} = require('../src/shared/lib/db/supabase-adapter.ts')
 const {getStudioScheduleRange} = require('../src/features/studio/lib/studio-schedule-range.ts')
-const classes = Array.from({length:8},(_,i)=>({id:`c${i}`,title:`Class ${i}`,organization_id:i===7?'other':'org',teacher_id:`t${i%3}`,program_type:'trial_class'}))
+const classes = Array.from({length:8},(_,i)=>({id:`c${i}`,title:`Class ${i}`,organization_id:i===7?'other':'org',teacher_id:`t${i%3}`,program_type:'trial_class',is_active:true,archived_at:null}))
 const teachers = Array.from({length:3},(_,i)=>({id:`t${i}`,display_name:`Teacher ${i}`,organization_id:'org',profile_id:null}))
 const date = n=>new Date(Date.UTC(2026,0,1+n)).toISOString().slice(0,10)
 const schedules = Array.from({length:2500},(_,i)=>({id:`s${i}`,class_id:classes[i%8].id,classes:classes[i%8],schedule_type:'one_time',specific_date:date(Math.floor(i/6)),start_time:'15:00:00',end_time:'16:00:00',capacity:3,booking_status:'open',created_at:'2026-01-01T00:00:00Z'}))
