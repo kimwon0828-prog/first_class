@@ -726,10 +726,9 @@ export const StudioScheduleManager = ({
                         aria-label={`${formatSelectedDateLabel(cell.key)} 일간 보기`}
                       />
                       <span className={styles.cellHead}>
-                        <span className={styles.cellDay}>{cell.day}</span>
+                        <button type="button" className={`${styles.cellDay} ${styles.bookingDateTrigger}`} aria-label={`${formatSelectedDateLabel(cell.key)} 예약 시간 관리`} onClick={()=>openBooking(cell.key)}>{cell.day}</button>
                         {cell.key === todayKey ? <span className={styles.todayMark}>오늘</span> : null}
                       </span>
-                      <button type="button" className={styles.bookingDateButton} aria-label={`${formatSelectedDateLabel(cell.key)} 예약 시간 관리`} onClick={()=>openBooking(cell.key)}>예약 시간</button>
                       {visibleClosures.filter(c=>c.dateKey===cell.key).map(c=><button type="button" key={c.id} className={styles.bookingClosure} onClick={()=>openBooking(cell.key,c.classId)} title={closureLabel(c)}>{closureLabel(c)}</button>)}
                       {visibleEvents.length > 0 ? (
                         <span className={styles.cellEvents}>
@@ -759,7 +758,7 @@ export const StudioScheduleManager = ({
           ) : (
             <>
             <div className={styles.bookingDayStrip} aria-label="날짜별 예약 마감">
-              {visibleDateKeys.map(date=><div key={date}><button type="button" className={styles.bookingDateButton} onClick={()=>openBooking(date)}>{formatDayLabel(date)} 예약 시간 관리</button>{visibleClosures.filter(c=>c.dateKey===date).map(c=><button type="button" key={c.id} className={styles.bookingClosure} onClick={()=>openBooking(date,c.classId)}>{closureLabel(c)}</button>)}</div>)}
+              {visibleDateKeys.map(date=><div key={date}><button type="button" className={styles.bookingDateButton} aria-label={`${formatSelectedDateLabel(date)} 예약 시간 관리`} onClick={()=>openBooking(date)}>{formatDayLabel(date)}</button>{visibleClosures.filter(c=>c.dateKey===date).map(c=><button type="button" key={c.id} className={styles.bookingClosure} onClick={()=>openBooking(date,c.classId)}>{closureLabel(c)}</button>)}</div>)}
             </div>
             <TimeGrid
               dateKeys={visibleDateKeys}
