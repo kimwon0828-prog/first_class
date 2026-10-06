@@ -25,7 +25,7 @@ const out=process.env.CLOSURES_QA_OUTPUT||fs.mkdtempSync('/tmp/closure-adapter-'
  assert.equal(error,'schedule_date_booking_closed')
  const hidden=await parent.from('date_booking_closures').select('reason');assert.equal(hidden.error,null);assert.equal(hidden.data.length,0)
  const masked=await anon.rpc('get_closed_booking_slot_indexes',{p_class_id:f.a,p_starts:[target.startAt],p_ends:[target.endAt]});assert.equal(masked.error,null);assert.deepEqual(masked.data,[1]);assert(!JSON.stringify(masked).includes('INTERNAL_REASON_SENTINEL'))
- global.__client=studio;const held=await adapter.getStudioBookingDay(f.org,targetDate);await adapter.mutateStudioBookingClosures({...mutation,mode:'release',slotKeys:[],closureIds:held.closures.filter(c=>!c.classId).map(c=>c.id)})
+ global.__client=studio;const held=await adapter.getStudioBookingDay(f.org,targetDate);await adapter.mutateStudioBookingClosures({...mutation,mode:'release',slotKeys:[],closureIds:held.closures.filter(c=>c.classId===f.a).map(c=>c.id)})
  global.__client=parent;const reopened=await adapter.listAvailableScheduleSlotsByClassId(f.a);assert(reopened.some(s=>s.optionId===target.optionId))
  const created=await adapter.createTrialApplication({classId:f.a,parentId:f.parent,selectedScheduleOptionId:target.optionId,childName:'Adapter reopened '+Date.now(),childGrade:'elem_1',parentName:'Synthetic',parentPhone:'01011112222'})
  const check=await service.from('trial_applications').select('id,status').eq('id',created.id);assert.equal(check.error,null);assert.equal(check.data.length,1);assert.equal(check.data[0].status,'new')

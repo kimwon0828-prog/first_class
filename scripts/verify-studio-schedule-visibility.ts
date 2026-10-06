@@ -13,8 +13,8 @@ assert.deepEqual(visibleBookingOccurrences(day).map(o=>o.key),['public','full','
 assert.deepEqual(bookingClassOptions(day).map(o=>o.value).sort(),['pub','booked','history','closed','orphan'].sort())
 // Orphan scoped closure is selected through class options even without a source row.
 assert(bookingClassOptions(day).some(c=>c.value===orphan.classId));assert.equal(day.closures.length,2)
-// The public window still previews the hidden private target: no silent save-scope narrowing.
-assert.deepEqual(previewBookingClosure(day,['public'],null,'close').targets.map(o=>o.key),['public','private-empty'])
+// New all-public scope excludes private rows without hiding saved records.
+assert.deepEqual(previewBookingClosure(day,['public'],null,'close').targets.map(o=>o.key),['public'])
 assert.deepEqual(previewBookingClosure(day,['public'],'pub','close').targets.map(o=>o.key),['public'])
 const before=structuredClone(day);visibleBookingOccurrences(day);bookingClassOptions(day);assert.deepEqual(day,before)
 const options=[{value:'all',label:'전체'},...classes.map(c=>({...c,value:c.id,label:c.title}))]
@@ -26,4 +26,4 @@ const events=buildStudioScheduleEvents(['new','reviewing','confirmed','completed
 assert.equal(events.length,5);assert(events.every(e=>e.detailHref===`/studio/applications/${e.id}`))
 assert.equal(filterStudioScheduleEvents(events,{teacherId:'all',classId:'booked',status:'completed'}).length,1)
 assert.equal(filterStudioScheduleEvents(events,{teacherId:'all',classId:'booked',status:'canceled'}).length,1)
-console.log('PASS Studio visibility: Parent Lifecycle predicate, public restricted rows retained, empty private excluded, active/historical reservations and closures retained, orphan access, full impact scope, unchanged calendar details/status filters, empty lists')
+console.log('PASS Studio visibility: Parent Lifecycle predicate, public restricted rows retained, empty private excluded, active/historical reservations and closures retained, orphan access, public impact scope, unchanged calendar details/status filters, empty lists')

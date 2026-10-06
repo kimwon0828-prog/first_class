@@ -862,15 +862,16 @@ export const mockDataAdapter: DataAdapter = {
   async mutateStudioBookingClosures(input) {
     if(input.organizationId!==mockOrganizationId) throw new Error("booking_scope_forbidden")
     const day=await mockDataAdapter.getStudioBookingDay(input.organizationId,input.dateKey)
-    const selected=day.occurrences.filter(o=>input.slotKeys.includes(o.key)&&(!input.classId||o.classId===input.classId))
+    const publicIds=new Set(day.classes.filter(c=>c.isActive&&!c.archivedAt).map(c=>c.id))
+    const selected=day.occurrences.filter(o=>input.slotKeys.includes(o.key)&&(!input.classId||o.classId===input.classId)&&publicIds.has(o.classId))
     if(selected.length!==new Set(input.slotKeys).size||(input.mode==="close"&&!selected.length))throw new Error("booking_slots_changed")
     const held=input.closureIds.map(id=>mockDateBookingClosures.find(c=>c.id===id)??bookingMockStore.released.get(id))
-    if(input.mode==="release"&&(!held.length||held.some(c=>!c||c.organizationId!==input.organizationId||c.dateKey!==input.dateKey||c.classId!==input.classId)))throw new Error("booking_scope_forbidden")
+    if(input.mode==="release"&&(!held.length||held.some(c=>!c||c.organizationId!==input.organizationId||c.dateKey!==input.dateKey||(input.classId&&c.classId!==input.classId))))throw new Error("booking_scope_forbidden")
     const windows=input.mode==="close"?selected:held.filter((c):c is BookingClosure=>!!c)
-    const preview={targets:day.occurrences.filter(o=>(!input.classId||o.classId===input.classId)&&windows.some(w=>bookingIntervalsOverlap(w,o)))}
+    const preview={targets:day.occurrences.filter(o=>(input.mode==="release"||publicIds.has(o.classId)&&(!input.classId||o.classId===input.classId))&&windows.some(w=>bookingIntervalsOverlap(w,o)&&(input.mode==="close"||!(w as BookingClosure).classId||(w as BookingClosure).classId===o.classId)))}
     if(JSON.stringify(preview.targets.map(o=>o.key).sort())!==JSON.stringify([...new Set(input.expectedTargets)].sort()))throw new Error("booking_slots_changed")
     let changed=0
-    if(input.mode==="close")for(const row of selected){if(!mockDateBookingClosures.some(c=>c.classId===input.classId&&c.dateKey===input.dateKey&&c.startAt===row.startAt&&c.endAt===row.endAt)){mockDateBookingClosures.push({id:crypto.randomUUID(),organizationId:input.organizationId,classId:input.classId,dateKey:input.dateKey,startAt:row.startAt,endAt:row.endAt,reason:input.reason});changed++}}
+    if(input.mode==="close")for(const row of preview.targets)for(const window of selected){if(bookingIntervalsOverlap(window,row)&&!mockDateBookingClosures.some(c=>c.classId===row.classId&&c.dateKey===input.dateKey&&c.startAt===window.startAt&&c.endAt===window.endAt)){mockDateBookingClosures.push({id:crypto.randomUUID(),organizationId:input.organizationId,classId:row.classId,dateKey:input.dateKey,startAt:window.startAt,endAt:window.endAt,reason:input.reason,selectionScope:input.classId?"class":"public"});changed++}}
     else for(const id of input.closureIds){const at=mockDateBookingClosures.findIndex(c=>c.id===id);if(at>=0){bookingMockStore.released.set(id,mockDateBookingClosures[at]);mockDateBookingClosures.splice(at,1);changed++}}
     return {changed,targetCount:preview.targets.length}
   },

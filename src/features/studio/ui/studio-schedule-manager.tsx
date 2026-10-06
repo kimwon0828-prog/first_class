@@ -455,7 +455,7 @@ export const StudioScheduleManager = ({
   // Closures are class/academy scope. Teacher/status filters cannot hide them.
   const visibleClosures=mergeBookingClosureRanges(allClosures.filter(c=>filters.classId==="all"||!c.classId||c.classId===filters.classId))
   const openBooking=(date:string,classId:string|null=filters.classId==="all"?null:filters.classId)=>{setBookingClass(classId);setBookingDate(date)}
-  const closureLabel=(c:BookingClosure)=>`${bookingTimeLabel(c)} 예약 마감 · ${c.classId?filterOptions.classes.find(o=>o.value===c.classId)?.label??"특정 과정":"학원 전체"}`
+  const closureLabel=(c:BookingClosure)=>`${bookingTimeLabel(c)} 예약 마감 · ${c.classId?`${filterOptions.classes.find(o=>o.value===c.classId)?.label??"특정 과정"}${c.selectionScope==="public"?" (전체 공개 과정)":""}`:"기존 학원 전체"}`
 
   const calendarEvents = useMemo(
     () => filterStudioScheduleEvents(baseEvents, filters),

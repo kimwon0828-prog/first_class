@@ -1,6 +1,6 @@
 import assert from "node:assert/strict"
 import { readFileSync } from "node:fs"
-import { bookingIntervalsOverlap,previewBookingClosure,groupBookingOccurrences,mergeBookingClosureRanges,type BookingOccurrence,type BookingDay,type BookingClosure } from "@/features/studio/lib/booking-closures"
+import { bookingIntervalsOverlap,previewBookingClosure,bookingReleaseTargets,bookingClosureScopeLabel,groupBookingOccurrences,mergeBookingClosureRanges,type BookingOccurrence,type BookingDay,type BookingClosure } from "@/features/studio/lib/booking-closures"
 const date="2026-10-09",at=(hour:number,minute=0)=>new Date(`${date}T${String(hour).padStart(2,"0")}:${String(minute).padStart(2,"0")}:00+09:00`).toISOString()
 const slot=(id:string,c:string,start:number,end:number,minute=0):BookingOccurrence=>({key:`${c}/class_schedule/${id}`,id,source:"class_schedule",classId:c,classTitle:c,startAt:at(start,minute),endAt:at(end,minute),bookingStatus:"open",capacity:3,reservationIds:[],closureIds:[]})
 const rows=[slot("12","A",12,13),slot("13","A",13,14),slot("14","A",14,15),slot("15","A",15,16),slot("offset","B",13,15,30),slot("b15","B",15,16)]
@@ -14,11 +14,23 @@ const closure=(id:string,classId:string|null,start:number,end:number):BookingClo
 day.closures=[closure("a13","A",13,14),closure("a14","A",14,15),closure("global",null,13,14)]
 assert.equal(previewBookingClosure(day,keys,"A","close").canApply,false)
 assert.deepEqual(previewBookingClosure(day,keys,"A","release").closureIds,["a13","a14"])
-assert.deepEqual(previewBookingClosure(day,keys,null,"release").closureIds,["global"])
+assert.deepEqual(previewBookingClosure(day,keys,null,"release").closureIds,["a13","a14","global"])
 const merged=mergeBookingClosureRanges(day.closures);assert.equal(merged.length,2);assert(merged.some(c=>c.classId==="A"&&c.endAt===at(15)))
 assert.equal(groupBookingOccurrences([rows[1],{...rows[1],id:"b",classId:"B",key:"B/class_schedule/b"}]).length,1)
 assert.equal(rows[1].id,"13");assert.equal(day.closures[0].endAt,at(14)) // Helpers don't rewrite input.
 assert.equal(previewBookingClosure(day,[],null,"close").canApply,false)
+// Exact reported fixture: one public course and three overlapping private rows.
+const reported:BookingDay={...day,closures:[],occurrences:[slot("piano","A",18,19),slot("private1","B",17,18,30),slot("private2","B",18,19),slot("private3","B",18,19,30)],classes:[{id:"A",title:"Piano",isActive:true},{id:"B",title:"Private",isActive:false}]}
+assert.deepEqual(previewBookingClosure(reported,[reported.occurrences[0].key],null,"close").targets.map(o=>o.id),["piano"])
+assert.deepEqual(previewBookingClosure(reported,[reported.occurrences[0].key],"A","close").targets.map(o=>o.id),["piano"])
+const privateLegacy={...closure("legacy",null,18,19)}
+assert.equal(bookingReleaseTargets(reported,[privateLegacy]).length,4)
+assert.equal(bookingReleaseTargets(reported,[{...privateLegacy,classId:"A",selectionScope:"public"}]).length,1)
+assert.equal(bookingClosureScopeLabel(privateLegacy),"기존 학원 전체 마감")
+assert.equal(bookingClosureScopeLabel({...privateLegacy,classId:"A",selectionScope:"public"}),"전체 공개 과정에서 적용")
+assert.deepEqual(previewBookingClosure({...reported,classes:reported.classes.map(c=>({...c,isActive:true}))},[reported.occurrences[0].key],null,"close").targets.map(o=>o.id),["piano","private1","private2","private3"])
+const compat=readFileSync("supabase/migrations/20261006160000_public_booking_closure_scope_compat.sql","utf8")
+assert(!/\bdrop\b/i.test(compat));assert(!/update public\.(classes|class_schedules|trial_applications)\b/i.test(compat));assert(compat.includes('mutate_studio_booking_closures_v2'));assert(compat.includes('on conflict do nothing'))
 const migration=readFileSync("supabase/migrations/20261006120000_date_booking_closures_compat.sql","utf8")
 assert(!/\bdrop\b/i.test(migration));assert(!/update public\.(class_schedules|trial_applications|classes)\b/i.test(migration))
 assert(migration.includes("for no key update"));assert(migration.includes("zz_enforce_date_booking_application"));assert(migration.includes("starts<now()+interval '24 hours'"))

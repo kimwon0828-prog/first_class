@@ -2751,7 +2751,7 @@ export const supabaseDataAdapter: DataAdapter = {
     const client=await getSupabaseServerClient()
     const from = new Date(`${dateKey}T00:00:00+09:00`), to = new Date(from.getTime() + 86400000)
     const [result, classes, applications] = await Promise.all([
-      client.rpc("get_studio_booking_day", { p_date: dateKey, p_organization_id: organizationId }),
+      client.rpc("get_studio_booking_day_v2", { p_date: dateKey, p_organization_id: organizationId }),
       readStudioScheduleClassOptions(client, organizationId),
       supabaseDataAdapter.listStudioApplications(organizationId, { scheduleRange: { from: from.toISOString(), to: to.toISOString() } })
     ])
@@ -2761,15 +2761,15 @@ export const supabaseDataAdapter: DataAdapter = {
   },
   async listStudioBookingClosures(organizationId, from, to) {
     const client=await getSupabaseServerClient(), rows: BookingClosure[]=[]
-    for(;;){const {data,error,count}=await client.from("date_booking_closures").select("id,organization_id,class_id,specific_date,start_at,end_at,reason",{count:"exact"}).eq("organization_id",organizationId).is("released_at",null).gte("specific_date",from).lte("specific_date",to).order("id").range(rows.length,rows.length+499)
+    for(;;){const {data,error,count}=await client.from("date_booking_closures").select("id,organization_id,class_id,specific_date,start_at,end_at,reason,selection_scope",{count:"exact"}).eq("organization_id",organizationId).is("released_at",null).gte("specific_date",from).lte("specific_date",to).order("id").range(rows.length,rows.length+499)
       if(error||count===null||!data||(!data.length&&rows.length<count)) throw new Error("failed_to_fetch_booking_closures")
-      rows.push(...data.map(r=>({id:r.id,organizationId:r.organization_id,classId:r.class_id,dateKey:r.specific_date,startAt:r.start_at,endAt:r.end_at,reason:r.reason})))
+      rows.push(...data.map(r=>({id:r.id,organizationId:r.organization_id,classId:r.class_id,dateKey:r.specific_date,startAt:r.start_at,endAt:r.end_at,reason:r.reason,selectionScope:r.selection_scope})))
       if(rows.length>=count)break
     } return rows
   },
   async mutateStudioBookingClosures(input: BookingClosureMutation) {
     const client=await getSupabaseServerClient()
-    const {data,error}=await client.rpc("mutate_studio_booking_closures",{p_date:input.dateKey,p_class_id:input.classId,p_mode:input.mode,p_slot_keys:input.slotKeys,p_expected_targets:input.expectedTargets,p_closure_ids:input.closureIds,p_reason:input.reason})
+    const {data,error}=await client.rpc("mutate_studio_booking_closures_v2",{p_date:input.dateKey,p_class_id:input.classId,p_mode:input.mode,p_slot_keys:input.slotKeys,p_expected_targets:input.expectedTargets,p_closure_ids:input.closureIds,p_reason:input.reason})
     if(error) throw new Error(error.message)
     return data as {changed:number;targetCount:number}
   },

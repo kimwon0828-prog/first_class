@@ -1,5 +1,8 @@
 # Studio 일정·예약 시간 관리의 비공개 수업 노출
 
+> 신규 마감의 전체 선택 범위는 이후 [전체 공개 과정 계약](studio-public-booking-closure-scope.md)으로 변경됐다. 아래 학원 전체 저장/영향 설명은 기존 기록과 당시 구현에 대한 이력이다.
+
+
 기준 main/Production: `bfd43d39beffea83d80f2ce3a4e3c6f888fe4e6a`.
 
 ## 원인과 기존 계약

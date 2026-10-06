@@ -1,4 +1,4 @@
-export type BookingClosure = { id: string; organizationId: string; classId: string | null; dateKey: string; startAt: string; endAt: string; reason: string | null }
+export type BookingClosure = { id: string; organizationId: string; classId: string | null; dateKey: string; startAt: string; endAt: string; reason: string | null; selectionScope?: "public" | "class" | null }
 export type BookingOccurrence = { key: string; source: "class_schedule" | "schedule_block"; id: string; classId: string; classTitle: string; startAt: string; endAt: string; bookingStatus: "open" | "closed" | "hidden"; capacity: number; reservationIds: string[]; closureIds: string[] }
 export type BookingClass = { id: string; title: string; isActive: boolean; archivedAt?: string | null }
 export type BookingDay = { occurrences: BookingOccurrence[]; closures: BookingClosure[]; classes: BookingClass[]; applicationHistoryKeys: string[] }
@@ -10,7 +10,7 @@ export function withBookingClassHistory(day: Pick<BookingDay, "occurrences" | "c
   for (const a of applications) for (const at of [a.requestedSlotAt, a.confirmedSlotAt, a.confirmedBlockStartAt]) if (at) historyTimes.add(`${a.classId}/${Date.parse(at)}`)
   return { ...day, classes, applicationHistoryKeys: day.occurrences.filter(o => historyTimes.has(`${o.classId}/${Date.parse(o.startAt)}`)).map(o => o.key) }
 }
-// Presentation only: full day.occurrences remains the authority for impact/preview/save.
+// Preserve raw occurrences for existing bookings and legacy closure release.
 export function visibleBookingOccurrences(day: BookingDay) {
   const publicIds = new Set(day.classes.filter(isPublicClass).map(c => c.id))
   const history = new Set(day.applicationHistoryKeys)
@@ -26,14 +26,18 @@ export function visibleScheduleClassOptions<T extends { value: string; label: st
 }
 export type BookingClosureMutation = { organizationId: string; dateKey: string; classId: string | null; mode: "close" | "release"; slotKeys: string[]; expectedTargets: string[]; closureIds: string[]; reason: string | null }
 export const bookingIntervalsOverlap = (a: Pick<BookingClosure, "startAt" | "endAt">, b: Pick<BookingOccurrence, "startAt" | "endAt">) => Date.parse(a.startAt) < Date.parse(b.endAt) && Date.parse(a.endAt) > Date.parse(b.startAt)
+export const bookingClosureScopeLabel = (c: BookingClosure) => !c.classId ? "기존 학원 전체 마감" : c.selectionScope === "public" ? "전체 공개 과정에서 적용" : "과정별 마감"
+export function bookingReleaseTargets(day: BookingDay, closures: BookingClosure[]) {
+  return day.occurrences.filter(o => closures.some(c => (!c.classId || c.classId === o.classId) && bookingIntervalsOverlap(c,o)))
+}
 export function previewBookingClosure(day: BookingDay, keys: string[], classId: string | null, mode: "close" | "release") {
-  const selected = day.occurrences.filter(o => keys.includes(o.key) && (!classId || o.classId === classId))
-  const ownClosures = day.closures.filter(c => c.classId === classId && selected.some(o => bookingIntervalsOverlap(c,o)))
-  const windows = mode === "release" ? ownClosures : selected
-  const targets = day.occurrences.filter(o => (!classId || o.classId === classId) && windows.some(w => bookingIntervalsOverlap(w,o)))
+  const publicIds = new Set(day.classes.filter(isPublicClass).map(c => c.id))
+  const selected = day.occurrences.filter(o => keys.includes(o.key) && (!classId || o.classId === classId) && (mode === "release" || publicIds.has(o.classId)))
+  const ownClosures = day.closures.filter(c => (!classId || c.classId === classId) && selected.some(o => (!c.classId || c.classId === o.classId) && bookingIntervalsOverlap(c,o)))
+  const targets = mode === "release" ? bookingReleaseTargets(day,ownClosures) : day.occurrences.filter(o => publicIds.has(o.classId) && (!classId || o.classId === classId) && selected.some(w => bookingIntervalsOverlap(w,o)))
   const reservationCount = new Set(targets.flatMap(o => o.reservationIds)).size
-  const closeCount = new Set(selected.filter(o => !day.closures.some(c => c.classId === classId && c.startAt === o.startAt && c.endAt === o.endAt)).map(o => `${o.startAt}/${o.endAt}`)).size
-  return { selected, targets, reservationCount, closureIds: ownClosures.map(c => c.id), canApply: mode === "close" ? closeCount > 0 : ownClosures.length > 0 }
+  const canClose = targets.some(o => selected.some(w => bookingIntervalsOverlap(w,o) && !day.closures.some(c => c.classId === o.classId && Date.parse(c.startAt) === Date.parse(w.startAt) && Date.parse(c.endAt) === Date.parse(w.endAt))))
+  return { selected, targets, reservationCount, closureIds: ownClosures.map(c => c.id), canApply: mode === "close" ? canClose : ownClosures.length > 0 }
 }
 export function groupBookingOccurrences(rows: BookingOccurrence[]) {
   const groups = new Map<string, BookingOccurrence[]>()
@@ -44,7 +48,7 @@ export function mergeBookingClosureRanges(rows: BookingClosure[]) {
   const merged: BookingClosure[] = []
   for (const row of [...rows].sort((a,b)=>a.dateKey.localeCompare(b.dateKey)||String(a.classId).localeCompare(String(b.classId))||a.startAt.localeCompare(b.startAt))) {
     const last=merged[merged.length-1]
-    if(last&&last.dateKey===row.dateKey&&last.classId===row.classId&&Date.parse(last.endAt)>=Date.parse(row.startAt))last.endAt=Date.parse(last.endAt)>Date.parse(row.endAt)?last.endAt:row.endAt
+    if(last&&last.dateKey===row.dateKey&&last.classId===row.classId&&last.selectionScope===row.selectionScope&&Date.parse(last.endAt)>=Date.parse(row.startAt))last.endAt=Date.parse(last.endAt)>Date.parse(row.endAt)?last.endAt:row.endAt
     else merged.push({...row})
   }
   return merged
