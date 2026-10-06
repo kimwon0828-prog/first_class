@@ -17,7 +17,12 @@ const rows = [
   {...base,id:'pending-due',registration_status:'pending',next_contact_at:'2020-01-01T00:00:00Z'},
   {...base,id:'pending-future',registration_status:'pending',next_contact_at:'2035-01-01T00:00:00Z'},
   {...base,id:'pending-null',registration_status:'pending',completed_at:'2025-01-01T00:00:00Z'},
-  {...base,id:'undecided'}, {...base,id:'new-pending',status:'new',registration_status:'pending'},
+  {...base,id:'undecided'}, {...base,id:'null-result',registration_status:null},
+  {...base,id:'report-preview',record:{application_id:'report-preview',created_at:day(1)},report:[]},
+  {...base,id:'reviewing',status:'reviewing',completed_at:null},
+  {...base,id:'confirmed-future',status:'confirmed',completed_at:null,confirmed_slot_at:'2035-01-01T00:00:00Z'},
+  {...base,id:'confirmed-in-trial',status:'confirmed',completed_at:null,confirmed_slot_at:new Date(Date.now()-600000).toISOString(),confirmed_block:{start_at:new Date(Date.now()-600000).toISOString(),end_at:new Date(Date.now()+3000000).toISOString()}},
+  {...base,id:'confirmed-ended',status:'confirmed',completed_at:null,confirmed_slot_at:new Date(Date.now()-7200000).toISOString(),confirmed_block:{start_at:new Date(Date.now()-7200000).toISOString(),end_at:new Date(Date.now()-3600000).toISOString()}}, {...base,id:'new-pending',status:'new',registration_status:'pending'},
   {...base,id:'cancel',status:'canceled',canceled_at:day(2)},
   {...base,id:'no-show',status:'canceled',canceled_at:day(3),no_show_at:day(3)},
   {...base,id:'foreign',status:'new',classes:{...base.classes,organization_id:'org-b'}}
@@ -56,7 +61,7 @@ const client={from(table){assert(table in tables);const filters=[],orders=[];let
   await esbuild.build({stdin:{contents:`export {getStudioCases} from './src/features/studio/queries/get-studio-cases'`,resolveDir:process.cwd(),loader:'ts'},outfile:path.join(out,'query.cjs'),bundle:true,platform:'node',format:'cjs',tsconfig:'tsconfig.json',plugins:[{name:'boundary',setup(b){b.onResolve({filter:/^(server-only|@\/integrations\/supabase\/server)$/},a=>({path:a.path,namespace:'stub'}));b.onLoad({filter:/.*/,namespace:'stub'},a=>({contents:a.path==='server-only'?'':`export const getSupabaseServerClient=async()=>global.__casesClient`,loader:'js'}))}}]})
   const {getStudioCases}=require(path.resolve(out,'query.cjs'))
   async function get(options){const r=await getStudioCases('org-a',options);assert.equal(r.error,null);return r.data}
-  const first=await get({view:'active',filter:'new',query:'receipt',page:1}),second=await get({view:'active',filter:'new',query:'receipt',page:2})
+  const first=await get({view:'active',filter:'schedule_needed',query:'receipt',page:1}),second=await get({view:'active',filter:'schedule_needed',query:'receipt',page:2})
   assert.deepEqual([first.totalCount,first.items.length,second.items.length],[32,25,7])
   assert.deepEqual([...first.items,...second.items].map(x=>x.id),[...Array.from({length:31},(_,i)=>'new-'+String(30-i).padStart(2,'0')),'new-null'])
   const active=await get({view:'active',filter:'all'});assert.equal(active.items[0].id,'new-30')
@@ -67,10 +72,10 @@ const client={from(table){assert(table in tables);const filters=[],orders=[];let
   assert.deepEqual(pending.items.map(x=>x.id),['pending-due','pending-null','pending-future'])
   assert.equal(pending.items[0].resultRecord.at,day(5));assert.equal(pending.items[1].resultRecord.at,null)
   const all=[await get({view:'closed',filter:'all',page:1}),await get({view:'closed',filter:'all',page:2})]
-  assert.equal(all[0].totalCount,36);assert.equal(new Set(all.flatMap(p=>p.items.map(x=>x.id))).size,36)
+  assert.equal(all[0].totalCount,39);assert.equal(new Set(all.flatMap(p=>p.items.map(x=>x.id))).size,39)
   for(const p of pending.items)assert(all.some(page=>page.items.some(x=>x.id===p.id)))
-  assert(!all.some(page=>page.items.some(x=>['undecided','new-pending','foreign'].includes(x.id))))
-  const before=lost1.items.map(x=>x.id);tables.consultation_logs.push({id:'contact',application_id:'lost-00',activity_type:'CONSULTATION',occurred_at:'2030-01-01T00:00:00Z'})
+  assert(!all.some(page=>page.items.some(x=>['new-pending','foreign'].includes(x.id))))
+  assert(all.some(p=>p.items.some(x=>x.id==='null-result')));const closedIds=all.flatMap(p=>p.items.map(x=>x.id));assert(closedIds.includes('undecided'));const activePages=[active,await get({view:'active',filter:'all',page:2})];const activeIds=activePages.flatMap(p=>p.items.map(x=>x.id));assert.equal(activeIds.length+closedIds.length,rows.length-1);assert.equal(new Set([...activeIds,...closedIds]).size,rows.length-1);const confirmed=await get({view:'active',filter:'confirmed'});assert.deepEqual(confirmed.items.map(x=>x.id),['confirmed','confirmed-ended','confirmed-in-trial','confirmed-future']);assert(confirmed.items.every(x=>!x.workflow.closed));const completedPreview=await get({view:'closed',filter:'all',query:'TEST'});const previewItem=all.flatMap(p=>p.items).find(x=>x.id==='report-preview');assert.equal(previewItem.workflow.action,'report');assert.equal(previewItem.workflow.closed,true);const before=lost1.items.map(x=>x.id);tables.consultation_logs.push({id:'contact',application_id:'lost-00',activity_type:'CONSULTATION',occurred_at:'2030-01-01T00:00:00Z'})
   assert.deepEqual((await get({view:'closed',filter:'not_enrolled',query:'outcome',page:1})).items.map(x=>x.id),before)
   for(const q of ['TEST guardian','000','TEST class'])assert.equal((await get({view:'closed',filter:'pending',query:q})).totalCount,3)
   assert.equal((await get({view:'closed',filter:'pending',query:'no-match'})).totalCount,0)
@@ -80,6 +85,6 @@ const client={from(table){assert(table in tables);const filters=[],orders=[];let
   omitCount=true;assert((await getStudioCases('org-a',{view:'active',filter:'all'})).error);omitCount=false
   assert(reads.some(r=>r.table==='studio_trial_applications'&&r.from===28));assert(reads.some(r=>r.table==='registration_results'&&r.from===28))
   fs.writeFileSync(path.join(out,'browser-fixtures.json'),JSON.stringify({first,second,lost1,lost2,pending,all:all[0]}))
-  fs.writeFileSync(path.join(out,'results.json'),JSON.stringify({passed:true,serverRowCap:7,receiptPages:[25,7],resultPages:[25,6],pendingCount:3,closedTotal:36,historyFailureClosed:true,contactEditStable:true}))
+  fs.writeFileSync(path.join(out,'results.json'),JSON.stringify({passed:true,serverRowCap:7,receiptPages:[25,7],resultPages:[25,6],pendingCount:3,closedTotal:39,historyFailureClosed:true,contactEditStable:true}))
   console.log('PASS QC2 actual query: capped full-cohort/history reads, global order before 25-row pages, closed union/counts, pending null/new exclusion, search fields, old receipts, out-of-range, organization scope, contact stability, failure states')
 })().catch(e=>{console.error(e);process.exitCode=1})

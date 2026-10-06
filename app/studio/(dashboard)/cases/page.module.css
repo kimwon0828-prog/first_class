@@ -33,7 +33,7 @@
 .listHead { padding: 11px 16px; background: var(--surface-sub); color: var(--text-2); border-bottom: 1px solid var(--border); font-size: 12px; line-height: 20px; font-weight: 600; }
 .list { margin: 0; padding: 0; list-style: none; }
 .row + .row { border-top: 1px solid var(--border); }
-.rowLink { width: 100%; min-height: 80px; padding: 15px 16px; color: inherit; text-decoration: none; cursor: pointer; background: var(--surface); transition: background-color 150ms ease; }
+.rowLink { width: 100%; min-height: 80px; padding: 15px 16px; color: inherit; text-decoration: none; background: var(--surface); transition: background-color 150ms ease; }
 .rowLink:hover { background: var(--brand-50); }
 .rowLink > span { min-width: 0; }
 .rowLink:focus-visible { outline: 2px solid var(--brand-500); outline-offset: -2px; background: var(--brand-50); }
@@ -130,3 +130,12 @@
 
 .remainingAction { display: flex; align-items: center; gap: 5px; margin-top: 2px; color: var(--text-2); font-size: 12px; line-height: 18px; }
 .remainingAction > svg { flex: none; width: 14px; height: 14px; }
+
+.actionLinks { display: flex; flex-wrap: wrap; gap: 6px; margin-block: 4px; }
+.actionLink { display: inline-flex; align-items: center; justify-content: center; padding: 5px 8px; min-height: 32px; border: 1px solid var(--brand-100); border-radius: var(--r-sm); color: var(--brand-700); background: var(--brand-50); font-size: 12px; line-height: 18px; font-weight: 600; text-decoration: none; white-space: nowrap; }
+.actionLink > svg { width: 14px; height: 14px; }
+.actionLink:hover { border-color: var(--brand-500); background: var(--brand-100); }
+.actionLink:focus-visible, .studentName:focus-visible, .chevron:focus-visible { outline: 2px solid var(--brand-500); outline-offset: 3px; }
+.studentName { color: inherit; text-decoration: none; font-weight: 700; }
+.studentName:hover { text-decoration: underline; text-underline-offset: 3px; }
+.chevron { min-height: 32px; }

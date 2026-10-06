@@ -6,13 +6,13 @@ const base: CasesWorkflowInput = { status: "completed", registrationStatus: "und
 export const casesWorkflowFixtures: Array<{ name: string; input: CasesWorkflowInput; expected: [string, string | null, string, boolean] }> = [
   {name:"A",input:{...base,status:"new",confirmedSlotAt:null},expected:["신청 접수","schedule","결정 전",false]},
   {name:"B",input:{...base,status:"confirmed",confirmedSlotAt:"2026-10-01T06:00:00Z"},expected:["체험 예정","trial","결정 전",false]},
-  {name:"C",input:{...base,recordFinalized:false,reportSent:false},expected:["체험 완료","record","결정 전",false]},
-  {name:"D",input:{...base,reportSent:false},expected:["체험 완료","report","결정 전",false]},
-  {name:"E",input:{...base},expected:["체험 완료","registration","결정 전",false]},
-  {name:"F",input:{...base,registrationStatus:"pending"},expected:["체험 완료","registration","고민 중",false]},
+  {name:"C",input:{...base,recordFinalized:false,reportSent:false},expected:["체험 완료","record","결정 전",true]},
+  {name:"D",input:{...base,reportSent:false},expected:["체험 완료","report","결정 전",true]},
+  {name:"E",input:{...base},expected:["체험 완료","registration","결정 전",true]},
+  {name:"F",input:{...base,registrationStatus:"pending"},expected:["체험 완료","consultation","고민 중",true]},
   {name:"G",input:{...base,registrationStatus:"enrolled"},expected:["체험 완료",null,"등록 완료",true]},
   {name:"H",input:{...base,registrationStatus:"not_enrolled"},expected:["체험 완료",null,"미등록",true]},
-  {name:"I",input:{...base,registrationStatus:"enrolled",reportSent:false},expected:["체험 완료","report","등록 완료",false]},
+  {name:"I",input:{...base,registrationStatus:"enrolled",reportSent:false},expected:["체험 완료","report","등록 완료",true]},
   {name:"J",input:{...base,status:"canceled",recordFinalized:false},expected:["취소",null,"취소",true]},
   {name:"K",input:{...base,status:"canceled",noShowAt:"2026-09-29T07:00:00Z"},expected:["노쇼",null,"노쇼",true]},
   {name:"L",input:{...base,registrationStatus:"enrolled",...{nextContactAt:"2026-01-01T00:00:00Z",hasAnyConsultationHistory:false}},expected:["체험 완료",null,"등록 완료",true]}

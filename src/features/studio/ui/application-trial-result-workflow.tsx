@@ -293,7 +293,7 @@ export const ApplicationTrialResultWorkflow = ({
   const consultationEvents = activityEvents.filter(event => event.kind === "consultation")
   const systemEvents = activityEvents.filter(event => event.kind !== "consultation")
   const activitySection = (
-    <section className={`${styles.card} ${styles.sectionCard}`} aria-label="연락·상담 기록">
+    <section id="consultation-records" className={`${styles.card} ${styles.sectionCard}`} aria-label="연락·상담 기록">
       <div className={styles.sectionHead}><h2 className={styles.sectionTitle}><ApplicationDetailIcon name="contact" />연락·상담 기록</h2>
         {canAddConsultation ? <button type="button" className={styles.inlineTextButton} onClick={openConsultationEditor}>+ 기록 추가</button> : null}
       </div>
@@ -309,7 +309,7 @@ export const ApplicationTrialResultWorkflow = ({
     </section>
   )
   const trialResultSection = !isCompletedView && !hasVisibleTrialResultContent ? null : (
-    <section className={styles.recordContent} aria-label="체험 기록">
+    <section id="trial-record" className={styles.recordContent} aria-label="체험 기록">
       <div className={styles.sectionHead}>
         <h3 className={styles.sectionTitle}><ApplicationDetailIcon name="record" />체험 기록</h3>
         {hasTrialResult ? <span className={styles.completedBadge}>✓ 체험 기록 확정</span> : null}
@@ -431,7 +431,7 @@ export const ApplicationTrialResultWorkflow = ({
         <section className={`${styles.card} ${styles.recordCard}`} aria-labelledby="record-report-title">
           <h2 id="record-report-title" className={styles.sectionTitle}><ApplicationDetailIcon name="record" />체험 결과 정리</h2>
           <p className={styles.sectionMetaLine}>체험 기록을 작성하고 학부모 리포트와 실제 등록 결과를 관리해요.</p>
-          {evidence.trialResultError || !trialResultSection ? <section className={styles.recordContent} aria-label="체험 기록">
+          {evidence.trialResultError || !trialResultSection ? <section id="trial-record" className={styles.recordContent} aria-label="체험 기록">
             <h3 className={styles.sectionTitle}><ApplicationDetailIcon name="record" />체험 기록</h3>
             {evidence.trialResultError ? <div role="alert"><p>체험 기록 정보를 불러오지 못했어요.</p><StudioQueryRetry /></div>
               : <p className={styles.simpleEmptyLine}>{application.status === "canceled" ? "남아 있는 체험 기록이 없습니다." : "체험을 완료한 뒤 기록할 수 있어요."}</p>}

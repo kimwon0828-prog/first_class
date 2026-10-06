@@ -6,8 +6,8 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE_PATH || 'playwright')
 const root = process.cwd(), out = process.env.UX_V2_OUTPUT || fs.mkdtempSync('/tmp/application-detail-ux-v2-')
 fs.mkdirSync(out, { recursive: true })
 const stubs = {
-  'next/navigation': `const router={refresh:()=>{window.refreshes++}};export const useRouter=()=>router;export const notFound=()=>{throw Error('not found')};`,
-  'next/link': `import React from 'react';export default function Link({prefetch,children,...props}){return <a {...props}>{children}</a>}`,
+  'next/navigation': `const router={refresh:()=>{window.refreshes++}};export const useRouter=()=>router;export const usePathname=()=>'/studio/applications/workflow-test';export const useSearchParams=()=>new URLSearchParams();export const notFound=()=>{throw Error('not found')};`,
+  'next/link': `import React from 'react';export const useLinkStatus=()=>({pending:false});export default function Link({prefetch,children,...props}){return <a {...props}>{children}</a>}`,
   'next/image': `import React from 'react';export default function Image({fill,priority,...props}){return <img {...props}/>}`,
   '@/shared/lib/db': `export const dataAdapter={listExperienceReportVersions:async()=>window.fixture.sent?[{}]:[]}`,
   '@/shared/lib/request-host': `export const getRequestHostname=async()=> 'localhost'`,

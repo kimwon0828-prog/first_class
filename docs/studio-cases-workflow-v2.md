@@ -1,5 +1,7 @@
 # Studio Cases Experience Workflow V2 — Local review
 
+현재 탭 분류/다음 행동은 [QC 2 보완](./studio-cases-qc2-classification.md), 정렬은 QC 2 문서 기준이다. 아래 남은 업무 기준 분류는 이전 구현의 기록이다.
+
 2026-09-30. `/studio/cases`와 sidebar label만 신청 관리로 변경한다. route는 유지한다. Application Detail·Dashboard·Schedule·Parent 화면 및 DB/RPC/migration은 변경하지 않는다.
 
 ## 판정

@@ -7,7 +7,7 @@ import type { ApplicationRegistrationStatus, ApplicationStatus } from "@/shared/
 import type { QueryResult } from "@/shared/queries"
 
 // Cases has an existing direct query boundary; no adapter or mutation contract changes.
-// Embedded record/report existence is filtered BEFORE count/range, never after pagination.
+// Trial status owns membership; record/report existence only drives row guidance.
 // report means any sent snapshot: withdrawal cannot reopen publication under Phase 1.
 export const CASE_SELECT_FIELDS =
   "id, child_name, child_grade, parent_name, parent_phone, assigned_teacher_id, " +

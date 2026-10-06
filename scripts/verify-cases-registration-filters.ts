@@ -18,9 +18,9 @@ assert.deepEqual(casesRegistrationFilterFixtures.filter(f => matches("enrolled",
 for (const name of ["B","C","D","E"]) {
   const fixture = casesRegistrationFilterFixtures.find(f => f.name === name)!
   const workflow = deriveCasesWorkflow(fixture.input, CASES_NOW)
-  assert.equal(workflow.closed, false); assert.equal(workflow.filter, "post_trial")
+  assert.equal(workflow.closed, true); assert.equal(workflow.filter, fixture.input.registrationStatus)
   assert(matches(name === "E" ? "enrolled" : "not_enrolled", fixture.input))
 }
 assert.equal(deriveCasesWorkflow(casesRegistrationFilterFixtures[1].input, CASES_NOW).action, "report")
 assert.equal(deriveCasesWorkflow(casesRegistrationFilterFixtures[2].input, CASES_NOW).action, "record")
-console.log("PASS registration filter A–I: result axis independent of remaining work, intentional overlap, cancel/no-show excluded")
+console.log("PASS registration filter A–I: result axis independent of remaining work, trial-completed membership without work prerequisites, cancel/no-show excluded")

@@ -5,10 +5,10 @@ import type { ComponentProps } from "react"
 import { resolveStudioDetailReturn } from "../lib/studio-detail-navigation"
 import { useStudioInternalPathname, useStudioNavigationPathFactory } from "./studio-navigation-provider"
 
-export function StudioDetailLink({ internalPath, ...props }: Omit<ComponentProps<typeof Link>, "href"> & { internalPath: string }) {
+export function StudioDetailLink({ internalPath, section, ...props }: Omit<ComponentProps<typeof Link>, "href"> & { internalPath: string; section?: string | null }) {
   const pathname = useStudioInternalPathname()
   const params = useSearchParams()
   const studioPath = useStudioNavigationPathFactory()
   const back = resolveStudioDetailReturn(`${pathname}?${params.toString()}`)
-  return <Link {...props} href={`${studioPath(internalPath)}?${new URLSearchParams({ returnTo: back.pathname + back.search })}`} />
+  return <Link {...props} href={`${studioPath(internalPath)}?${new URLSearchParams({ returnTo: back.pathname + back.search })}${section ? `#${encodeURIComponent(section)}` : ""}`} />
 }

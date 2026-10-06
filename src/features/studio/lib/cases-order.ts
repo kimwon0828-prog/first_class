@@ -41,7 +41,8 @@ export function getCasesResultRecord(row: CasesOrderRow, logs: CasesOrderLog[], 
     label: "취소 처리"
   }
   const status = row.registration_status
-  const label = status === "pending" ? "고민 중 전환" : status === "enrolled" ? "등록 완료" : "미등록"
+  const label = status === "pending" ? "고민 중 전환" : status === "enrolled" ? "등록 완료" : status === "not_enrolled" ? "미등록" : "등록 결과 미정"
+  if (!status || status === "undecided") return { at: null, label }
   const transitionAt = latest(ownLogs.filter(log => registrationTransition(log, status)).map(log => log.created_at))
   if (status === "pending") return { at: transitionAt, label }
   // Immutable current result first; a later consultation must not change result order.
