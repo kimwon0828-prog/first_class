@@ -1,3 +1,4 @@
+import { bookingIntervalsOverlap, type BookingClosure, type BookingDay, type BookingOccurrence } from "@/features/studio/lib/booking-closures"
 import { decisionDraftError } from "@/features/feedback/lib/experience-submission"
 import { isFeedbackProgramType, normalizeFeedbackNote, summarizeFeedback, validateFeedbackInput, type FeedbackChipId, type FeedbackProgramType, type ParentExperienceFeedback } from "@/features/feedback/lib/experience-feedback"
 import { buildMonthGrid, parseDateKey, toDayNumber, toWeekday } from "@/features/studio/lib/studio-schedule-month"
@@ -836,7 +837,44 @@ const prepareMockConfirmation = (target: MockApplicationRecord, teacherId: strin
   return { startAt, blockId: existing?.id ?? createdBlock!.id, createdBlock }
 }
 
+const bookingMockGlobal=globalThis as typeof globalThis & { __dateBookingClosures?: {active:BookingClosure[];released:Map<string,BookingClosure>} }
+const bookingMockStore: {active:BookingClosure[];released:Map<string,BookingClosure>}=bookingMockGlobal.__dateBookingClosures ?? (bookingMockGlobal.__dateBookingClosures={active:[],released:new Map()})
+const mockDateBookingClosures=bookingMockStore.active
 export const mockDataAdapter: DataAdapter = {
+  async listStudioBookingClosures(organizationId,from,to) {return organizationId===mockOrganizationId ? mockDateBookingClosures.filter(c=>c.dateKey>=from&&c.dateKey<=to) : []},
+  async getStudioBookingDay(organizationId,dateKey) {
+    if(organizationId!==mockOrganizationId) throw new Error("booking_scope_forbidden")
+    const calendar=await mockDataAdapter.getStudioScheduleCalendar({organizationId,month:dateKey.slice(0,7)})
+    const closures=mockDateBookingClosures.filter(c=>c.dateKey===dateKey)
+    const occurrences: BookingOccurrence[]=calendar.items.filter(s=>s.specificDate===dateKey&&!classes.find(c=>c.id===s.classId)?.archivedAt).map(s=>{
+      const startAt=new Date(`${dateKey}T${s.startTime}:00+09:00`).toISOString(),endAt=new Date(new Date(`${dateKey}T${s.endTime}:00+09:00`).getTime()+(s.endTime<=s.startTime?86400000:0)).toISOString()
+      return {key:`${s.classId}/class_schedule/${s.classScheduleId}`,source:"class_schedule" as const,id:s.classScheduleId,classId:s.classId,classTitle:s.classTitle,startAt,endAt,bookingStatus:s.bookingStatus,capacity:s.capacity,
+        reservationIds:applications.filter(a=>a.classId===s.classId&&a.requestedSlotAt===startAt&&ACTIVE_APPLICATION_STATUSES.includes(a.status)).map(a=>a.id),
+        closureIds:closures.filter(c=>(!c.classId||c.classId===s.classId)&&bookingIntervalsOverlap(c,{startAt,endAt})).map(c=>c.id)}
+    })
+    for(const klass of classes.filter(c=>!c.archivedAt&&!(c.schedules?.length)))for(const block of scheduleBlocks.filter(b=>b.type==="available"&&(b.classId===klass.id||(!b.classId&&b.teacherId===klass.teacherId)))){
+      const parts=new Intl.DateTimeFormat("en-CA",{timeZone:"Asia/Seoul",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date(block.startAt))
+      if(parts!==dateKey)continue
+      occurrences.push({key:`${klass.id}/schedule_block/${block.id}`,source:"schedule_block",id:block.id,classId:klass.id,classTitle:klass.title,startAt:block.startAt,endAt:block.endAt,bookingStatus:klass.isActive?"open":"hidden",capacity:block.capacity,reservationIds:applications.filter(a=>a.classId===klass.id&&a.requestedSlotAt===block.startAt&&ACTIVE_APPLICATION_STATUSES.includes(a.status)).map(a=>a.id),closureIds:closures.filter(c=>(!c.classId||c.classId===klass.id)&&bookingIntervalsOverlap(c,block)).map(c=>c.id)})
+    }
+    return {occurrences,closures} satisfies BookingDay
+  },
+  async mutateStudioBookingClosures(input) {
+    if(input.organizationId!==mockOrganizationId) throw new Error("booking_scope_forbidden")
+    const day=await mockDataAdapter.getStudioBookingDay(input.organizationId,input.dateKey)
+    const selected=day.occurrences.filter(o=>input.slotKeys.includes(o.key)&&(!input.classId||o.classId===input.classId))
+    if(selected.length!==new Set(input.slotKeys).size||(input.mode==="close"&&!selected.length))throw new Error("booking_slots_changed")
+    const held=input.closureIds.map(id=>mockDateBookingClosures.find(c=>c.id===id)??bookingMockStore.released.get(id))
+    if(input.mode==="release"&&(!held.length||held.some(c=>!c||c.organizationId!==input.organizationId||c.dateKey!==input.dateKey||c.classId!==input.classId)))throw new Error("booking_scope_forbidden")
+    const windows=input.mode==="close"?selected:held.filter((c):c is BookingClosure=>!!c)
+    const preview={targets:day.occurrences.filter(o=>(!input.classId||o.classId===input.classId)&&windows.some(w=>bookingIntervalsOverlap(w,o)))}
+    if(JSON.stringify(preview.targets.map(o=>o.key).sort())!==JSON.stringify([...new Set(input.expectedTargets)].sort()))throw new Error("booking_slots_changed")
+    let changed=0
+    if(input.mode==="close")for(const row of selected){if(!mockDateBookingClosures.some(c=>c.classId===input.classId&&c.dateKey===input.dateKey&&c.startAt===row.startAt&&c.endAt===row.endAt)){mockDateBookingClosures.push({id:crypto.randomUUID(),organizationId:input.organizationId,classId:input.classId,dateKey:input.dateKey,startAt:row.startAt,endAt:row.endAt,reason:input.reason});changed++}}
+    else for(const id of input.closureIds){const at=mockDateBookingClosures.findIndex(c=>c.id===id);if(at>=0){bookingMockStore.released.set(id,mockDateBookingClosures[at]);mockDateBookingClosures.splice(at,1);changed++}}
+    return {changed,targetCount:preview.targets.length}
+  },
+
   async getParentFeedbackContext(applicationId, parentId) {
     const a = applications.find(row => row.id === applicationId && row.parentId === parentId)
     if (!a) throw new Error("feedback_forbidden")
@@ -1496,7 +1534,8 @@ export const mockDataAdapter: DataAdapter = {
             })
           })
         )
-        .sort((a, b) => (a.startAt > b.startAt ? 1 : -1))
+        .filter(slot=>!mockDateBookingClosures.some(c=>(!c.classId||c.classId===classId)&&bookingIntervalsOverlap(c,slot)))
+      .sort((a, b) => (a.startAt > b.startAt ? 1 : -1))
     }
 
     const primarySlots = scheduleBlocks
@@ -1529,6 +1568,7 @@ export const mockDataAdapter: DataAdapter = {
 
         return toAvailableScheduleSlot(slot, appliedCount)
       })
+      .filter(slot=>!mockDateBookingClosures.some(c=>(!c.classId||c.classId===classId)&&bookingIntervalsOverlap(c,slot)))
       .sort((a, b) => (a.startAt > b.startAt ? 1 : -1))
   },
   async getStudioScheduleCalendar(input) {

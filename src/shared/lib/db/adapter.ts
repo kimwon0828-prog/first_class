@@ -18,6 +18,7 @@ import type {
 
 import type { RegularSchedulePreference } from "@/features/studio/lib/regular-schedule-preference"
 import type { ClassSubjectReadModel } from "@/shared/lib/subject-master"
+import type { BookingClosure, BookingDay, BookingClosureMutation } from "@/features/studio/lib/booking-closures"
 
 export type UserRole = "parent" | "teacher"
 
@@ -1346,6 +1347,9 @@ export type WithdrawExperienceReportResult = {
 }
 
 export interface DataAdapter {
+  getStudioBookingDay(organizationId: string, dateKey: string): Promise<BookingDay>
+  listStudioBookingClosures(organizationId: string, from: string, to: string): Promise<BookingClosure[]>
+  mutateStudioBookingClosures(input: BookingClosureMutation): Promise<{ changed: number; targetCount: number }>
   getParentFeedbackContext(applicationId: string, parentId: string): Promise<ParentFeedbackContext>
   submitParentExperience(applicationId: string, parentId: string, input: ExperienceSubmissionInput): Promise<void>
   /** @deprecated Final submission only; always rejects. */

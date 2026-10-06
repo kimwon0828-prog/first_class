@@ -2,6 +2,8 @@
 
 import { StudioQueryRetry } from "./studio-query-retry"
 import { StudioDetailLink } from "./studio-detail-link"
+import { BookingTimeDialog, bookingTimeLabel } from "./booking-time-dialog"
+import { mergeBookingClosureRanges, type BookingClosure } from "../lib/booking-closures"
 import { useRouter } from "next/navigation"
 import { useCallback, useMemo, useState, useTransition, type CSSProperties } from "react"
 
@@ -50,6 +52,8 @@ import type { StudioApplicationSummary } from "@/shared/lib/db/adapter"
 import styles from "./studio-schedule-manager.module.css"
 
 type StudioScheduleManagerProps = {
+  initialClosures?: BookingClosure[]
+  closuresError?: string | null
   filterOptions?: StudioScheduleFilterOptions
   items: StudioApplicationSummary[]
   error?: string | null
@@ -417,7 +421,9 @@ export const StudioScheduleManager = ({
   error,
   initialUrlState,
   nowIso,
-  filterOptions: suppliedFilterOptions
+  filterOptions: suppliedFilterOptions,
+  initialClosures = [],
+  closuresError
 }: StudioScheduleManagerProps) => {
   // "오늘" 도 서버가 정한 기준 시각에서 뽑는다. 달력 강조와 체험 종료 표시가 같은 시각을 본다.
   const todayKey = useMemo(() => getSeoulTodayKey(new Date(nowIso)), [nowIso])
@@ -425,6 +431,10 @@ export const StudioScheduleManager = ({
   const [isNavigating, startNavigation] = useTransition()
   const anchorDateKey = initialUrlState.dateKey ?? todayKey
   const view = initialUrlState.view
+  const [bookingDate,setBookingDate]=useState<string|null>(null)
+  const [bookingClass,setBookingClass]=useState<string|null>(null)
+  const [closureOverrides,setClosureOverrides]=useState<Record<string,BookingClosure[]>>({})
+  const updateClosures=useCallback((dateKey:string,rows:BookingClosure[])=>{setClosureOverrides(current=>({...current,[dateKey]:rows}));router.refresh()},[router])
   // Mini/main share the URL anchor; navigating either refetches the same range.
   const miniMonthKey = toMonthStartKey(anchorDateKey)
 
@@ -437,6 +447,11 @@ export const StudioScheduleManager = ({
   const [filters, setFilters] = useState<StudioScheduleFilters>(() =>
     resolveStudioScheduleFilters(initialUrlState, filterOptions)
   )
+  const allClosures=[...initialClosures.filter(c=>!(c.dateKey in closureOverrides)),...Object.values(closureOverrides).flat()]
+  // Closures are class/academy scope. Teacher/status filters cannot hide them.
+  const visibleClosures=mergeBookingClosureRanges(allClosures.filter(c=>filters.classId==="all"||!c.classId||c.classId===filters.classId))
+  const openBooking=(date:string,classId:string|null=filters.classId==="all"?null:filters.classId)=>{setBookingClass(classId);setBookingDate(date)}
+  const closureLabel=(c:BookingClosure)=>`${bookingTimeLabel(c)} 예약 마감 · ${c.classId?filterOptions.classes.find(o=>o.value===c.classId)?.label??"특정 과정":"학원 전체"}`
 
   const calendarEvents = useMemo(
     () => filterStudioScheduleEvents(baseEvents, filters),
@@ -559,6 +574,7 @@ export const StudioScheduleManager = ({
               {option.label}
             </button>
           ))}
+          <button type="button" className={styles.bookingManage} onClick={()=>openBooking(anchorDateKey)}>예약 시간 관리</button>
         </div>
       </header>
 
@@ -567,6 +583,7 @@ export const StudioScheduleManager = ({
           <p className={styles.errorText}>{error}</p><StudioQueryRetry />
         </div>
       ) : null}
+      {closuresError?<div role="alert" className={styles.errorCard}>{closuresError}<StudioQueryRetry/></div>:null}
 
       <div className={styles.workspace}>
         <aside className={styles.sidebarPanel} aria-label="날짜 및 필터">
@@ -708,6 +725,8 @@ export const StudioScheduleManager = ({
                         <span className={styles.cellDay}>{cell.day}</span>
                         {cell.key === todayKey ? <span className={styles.todayMark}>오늘</span> : null}
                       </span>
+                      <button type="button" className={styles.bookingDateButton} aria-label={`${formatSelectedDateLabel(cell.key)} 예약 시간 관리`} onClick={()=>openBooking(cell.key)}>예약 시간</button>
+                      {visibleClosures.filter(c=>c.dateKey===cell.key).map(c=><button type="button" key={c.id} className={styles.bookingClosure} onClick={()=>openBooking(cell.key,c.classId)} title={closureLabel(c)}>{closureLabel(c)}</button>)}
                       {visibleEvents.length > 0 ? (
                         <span className={styles.cellEvents}>
                           {visibleEvents.map((event) => (
@@ -734,12 +753,17 @@ export const StudioScheduleManager = ({
               </div>
             </>
           ) : (
+            <>
+            <div className={styles.bookingDayStrip} aria-label="날짜별 예약 마감">
+              {visibleDateKeys.map(date=><div key={date}><button type="button" className={styles.bookingDateButton} onClick={()=>openBooking(date)}>{formatDayLabel(date)} 예약 시간 관리</button>{visibleClosures.filter(c=>c.dateKey===date).map(c=><button type="button" key={c.id} className={styles.bookingClosure} onClick={()=>openBooking(date,c.classId)}>{closureLabel(c)}</button>)}</div>)}
+            </div>
             <TimeGrid
               dateKeys={visibleDateKeys}
               eventsByDateKey={eventsByDateKey}
               todayKey={todayKey}
               compact={view === "week"}
             />
+            </>
             )}
           {!error && uncertainEvents.length > 0 ? (
             <details className={styles.uncertainRecords}>
@@ -754,6 +778,7 @@ export const StudioScheduleManager = ({
           ) : null}
         </section>
       </div>
+      {bookingDate?<BookingTimeDialog key={`${bookingDate}/${bookingClass}`} dateKey={bookingDate} initialClassId={bookingClass} todayKey={todayKey} onClose={()=>setBookingDate(null)} onChange={updateClosures}/>:null}
     </div>
   )
 }

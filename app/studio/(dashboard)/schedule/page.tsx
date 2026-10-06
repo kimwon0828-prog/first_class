@@ -1,5 +1,6 @@
 import { getStudioScheduleRange } from "@/features/studio/lib/studio-schedule-range"
 import { getSeoulTodayKey } from "@/features/studio/lib/studio-schedule-month"
+import { getSeoulDateTimeParts } from "@/shared/lib/seoul-datetime"
 import { dataAdapter } from "@/shared/lib/db"
 import { requireTeacherStudioAccess } from "@/features/studio/lib/require-teacher-studio-access"
 import { getStudioApplications } from "@/features/studio/queries/get-studio-applications"
@@ -22,11 +23,14 @@ export default async function StudioSchedulePage({ searchParams }: StudioSchedul
   const now = new Date()
   initialUrlState.dateKey ??= getSeoulTodayKey(now)
   const range = getStudioScheduleRange(initialUrlState.view, initialUrlState.dateKey)
-  const [result, optionsResult] = await Promise.all([
+  const toDateKey = (at: string) => { const p=getSeoulDateTimeParts(at)!; return `${p.year}-${String(p.month).padStart(2,"0")}-${String(p.day).padStart(2,"0")}` }
+  const [result, optionsResult, closuresResult] = await Promise.all([
     getStudioApplications(teacher.organizationId, { scheduleRange: range }),
     dataAdapter.getStudioScheduleFilterOptions(teacher.organizationId)
       .then(data => ({ data, error: null as string | null }))
-      .catch(() => ({ data: { teachers: [], classes: [] }, error: "일정 필터를 불러오지 못했습니다." }))
+      .catch(() => ({ data: { teachers: [], classes: [] }, error: "일정 필터를 불러오지 못했습니다." })),
+    dataAdapter.listStudioBookingClosures(teacher.organizationId,toDateKey(range.from),toDateKey(range.to))
+      .then(data=>({data,error:null as string|null})).catch(()=>({data:[],error:"예약 마감 정보를 불러오지 못했습니다."}))
   ])
 
 
@@ -40,6 +44,8 @@ export default async function StudioSchedulePage({ searchParams }: StudioSchedul
           filterOptions={optionsResult.data}
           initialUrlState={initialUrlState}
           nowIso={now.toISOString()}
+          initialClosures={closuresResult.data}
+          closuresError={closuresResult.error}
         />
       </div>
     </div>

@@ -275,7 +275,7 @@ export async function createTrialApplicationAction(
       }
     }
 
-    if (message === "schedule_booking_closed") {
+    if ((message === "schedule_booking_closed" || message === "schedule_date_booking_closed")) {
       return {
         status: "error",
         message: "현재 모집이 마감된 일정입니다."

@@ -1,3 +1,4 @@
+import type { BookingDay, BookingClosureMutation, BookingClosure } from "@/features/studio/lib/booking-closures"
 import { decodeParentFeedbackContext, decodePrivateFeedback, decodePublicFeedback } from "@/features/feedback/lib/feedback-decode"
 import { buildScheduleOccurrenceReservationKey } from "@/shared/lib/schedule-reservation-key"
 import { buildStudioScheduleRangeFilter } from "@/features/studio/lib/studio-schedule-range"
@@ -2520,6 +2521,19 @@ const getParentSlotReservationCounts = async (
   return { byBlock, byOccurrence }
 }
 
+// Public availability returns only available slots, never internal reasons.
+async function excludeDateClosedSlots(supabase: SupabaseClient, classId: string, slots: AvailableScheduleSlot[]) {
+  if (!slots.length) return slots
+  const closed = new Set<number>()
+  for (let offset=0; offset<slots.length; offset+=1000) {
+    const batch=slots.slice(offset,offset+1000)
+    const {data,error}=await supabase.rpc("get_closed_booking_slot_indexes",{p_class_id:classId,p_starts:batch.map(s=>s.startAt),p_ends:batch.map(s=>s.endAt)})
+    if (error || !Array.isArray(data)) throw new Error("failed_to_fetch_available_schedule_slots")
+    for (const index of data as number[]) closed.add(offset+index-1)
+  }
+  return slots.filter((_,index)=>!closed.has(index))
+}
+
 export const listAvailableScheduleSlotsByClassIdWithClient = async ({
   classId,
   supabase
@@ -2593,7 +2607,7 @@ export const listAvailableScheduleSlotsByClassIdWithClient = async ({
       }
     }
 
-    return visibleClassScheduleRows
+    return excludeDateClosedSlots(supabase, classId, visibleClassScheduleRows
       .flatMap((row) => {
         return generateUpcomingClassScheduleOccurrences(row, now)
           .filter((occurrence) => isTrialBookingBookable(occurrence.startAt, now))
@@ -2622,7 +2636,7 @@ export const listAvailableScheduleSlotsByClassIdWithClient = async ({
             })
           })
       })
-      .sort((a, b) => a.startAt.localeCompare(b.startAt))
+      .sort((a, b) => a.startAt.localeCompare(b.startAt)))
   }
 
   const { data: primaryData, error: primaryError } = await supabase
@@ -2666,7 +2680,7 @@ export const listAvailableScheduleSlotsByClassIdWithClient = async ({
     ? await getAppliedCountByTeacherScheduleBlockIdWithClient(supabase, classData.teacher_id, scheduleRows)
     : await getAppliedCountByClassScheduleBlockIdWithClient(supabase, classId, scheduleRows)
 
-  return scheduleRows.map((row) => {
+  return excludeDateClosedSlots(supabase, classId, scheduleRows.map((row) => {
     const mapped = mapAvailableSlot(row)
     const appliedCount = appliedCountBySlotId.get(row.id) ?? 0
     const remainingCount = Math.max(0, row.capacity - appliedCount)
@@ -2676,7 +2690,7 @@ export const listAvailableScheduleSlotsByClassIdWithClient = async ({
       remainingCount,
       isClosed: remainingCount <= 0
     }
-  })
+  }))
 }
 
 type ExperienceReportRow = {
@@ -2721,6 +2735,27 @@ const mapExperienceReport = (row: ExperienceReportRow): ExperienceReportSummary 
 }
 
 export const supabaseDataAdapter: DataAdapter = {
+  async getStudioBookingDay(organizationId, dateKey) {
+    const client=await getSupabaseServerClient()
+    const {data,error}=await client.rpc("get_studio_booking_day",{p_date:dateKey,p_organization_id:organizationId})
+    if(error||!data||!Array.isArray(data.occurrences)||!Array.isArray(data.closures)) throw new Error("failed_to_fetch_booking_day")
+    return data as BookingDay
+  },
+  async listStudioBookingClosures(organizationId, from, to) {
+    const client=await getSupabaseServerClient(), rows: BookingClosure[]=[]
+    for(;;){const {data,error,count}=await client.from("date_booking_closures").select("id,organization_id,class_id,specific_date,start_at,end_at,reason",{count:"exact"}).eq("organization_id",organizationId).is("released_at",null).gte("specific_date",from).lte("specific_date",to).order("id").range(rows.length,rows.length+499)
+      if(error||count===null||!data||(!data.length&&rows.length<count)) throw new Error("failed_to_fetch_booking_closures")
+      rows.push(...data.map(r=>({id:r.id,organizationId:r.organization_id,classId:r.class_id,dateKey:r.specific_date,startAt:r.start_at,endAt:r.end_at,reason:r.reason})))
+      if(rows.length>=count)break
+    } return rows
+  },
+  async mutateStudioBookingClosures(input: BookingClosureMutation) {
+    const client=await getSupabaseServerClient()
+    const {data,error}=await client.rpc("mutate_studio_booking_closures",{p_date:input.dateKey,p_class_id:input.classId,p_mode:input.mode,p_slot_keys:input.slotKeys,p_expected_targets:input.expectedTargets,p_closure_ids:input.closureIds,p_reason:input.reason})
+    if(error) throw new Error(error.message)
+    return data as {changed:number;targetCount:number}
+  },
+
   async getParentFeedbackContext(applicationId) {
     const client = await getSupabaseServerClient()
     const { data, error } = await client.rpc("get_parent_experience_feedback_context", { p_application_id: applicationId })
@@ -5890,6 +5925,7 @@ export const supabaseDataAdapter: DataAdapter = {
       })
 
     if (error) {
+      if (["schedule_date_booking_closed","booking_cutoff_reached","slot_capacity_reached","schedule_booking_closed"].includes(error.message)) throw new Error(error.message)
       if (error.message === "parent_phone_verification_required") {
         throw new Error("parent_phone_verification_required")
       }
