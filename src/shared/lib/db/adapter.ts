@@ -943,6 +943,8 @@ export type StudioTrialResult = {
  * 전체 상세(getStudioApplicationDetail)는 이 목적에 과하다.
  */
 export type StudioTrialResultSaveContext = {
+  reportEverSent: boolean
+  assessmentUpdatedAt: string | null
   status: ApplicationStatus
   trialResult: Pick<
     StudioTrialResult,
@@ -1090,6 +1092,7 @@ export type UpdateStudioApplicationOutcomeInput = {
 }
 
 export type UpsertStudioTrialResultInput = {
+  expectedUpdatedAt?: string | null
   applicationId: string
   actorId: string
   observations: string[]

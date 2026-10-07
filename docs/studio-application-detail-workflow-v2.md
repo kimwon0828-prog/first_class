@@ -1,5 +1,8 @@
 # Studio 신청 상세 — 최종 리디자인
 
+> 발행 전 수정·저장 / 발행 후 잠금 계약은 [후속 변경](studio-report-edit-before-publication.md)을 따른다. DB COMPAT는 승인 후 적용했고 앱 변경의 commit/push도 승인됐다. 아래 최초 저장 잠금 설명은 기존 Production 이력이다.
+
+
 ## 2026-09-30 체험 기록 작성 모달 polish
 
 - 체험 기록 작성 UI만 변경했다. 상담 모달의 CSS를 그대로 재사용하고 해당 파일은 수정하지 않았다. 600px native dialog, viewport 최대 높이, 내부 스크롤, 접근 가능한 하단 확정 안내/취소/확정, focus 순환과 Escape/복귀 패턴을 맞췄다.

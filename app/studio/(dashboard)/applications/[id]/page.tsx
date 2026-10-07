@@ -562,7 +562,8 @@ export default async function StudioApplicationDetailPage({ params, searchParams
             evidence={{
               trialResultError: data.trialResultLoadError ?? null,
               report: {
-                error: publishedReportResult.error,
+                error: reportHistory.error ? "발행 이력을 확인하지 못했습니다." : publishedReportResult.error,
+                everSent: reportHistory.everSent,
                 version: reportView?.published?.version ?? null,
                 publishedAt: reportView?.published?.publishedAt ?? null,
                 changed: reportView?.assessmentChangedSincePublish ?? false,

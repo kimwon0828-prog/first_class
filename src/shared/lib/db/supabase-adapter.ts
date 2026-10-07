@@ -5397,7 +5397,7 @@ export const supabaseDataAdapter: DataAdapter = {
     const { data, error } = await supabase
       .from("studio_trial_applications")
       .select(
-        "status, classes!inner(organization_id), trial_results(observations, parent_reaction, recommended_course, recommended_level, recommended_schedule, next_action, note, public_summary)"
+        "status, classes!inner(organization_id), trial_results(observations, parent_reaction, recommended_course, recommended_level, recommended_schedule, next_action, note, public_summary, updated_at), experience_reports(id)"
       )
       .eq("id", applicationId)
       .eq("classes.organization_id", organizationId)
@@ -5413,28 +5413,34 @@ export const supabaseDataAdapter: DataAdapter = {
 
     const row = data as unknown as {
       status: TrialApplicationRow["status"]
-      trial_results?: TrialResultFieldsRow | TrialResultFieldsRow[] | null
+      experience_reports?: {id: string}[] | null
+      trial_results?: (TrialResultFieldsRow & {updated_at:string}) | (TrialResultFieldsRow & {updated_at:string})[] | null
     }
+    if(!Array.isArray(row.experience_reports)) throw new Error("failed_to_fetch_report_save_lock")
     const embedded = Array.isArray(row.trial_results)
       ? (row.trial_results[0] ?? null)
       : (row.trial_results ?? null)
 
     return {
       status: row.status,
+      reportEverSent: Boolean(row.experience_reports?.length),
+      assessmentUpdatedAt: embedded?.updated_at ?? null,
       trialResult: embedded ? mapStudioTrialResultFields(embedded) : null
     }
   },
   async upsertStudioTrialResult(input: UpsertStudioTrialResultInput) {
     const supabase = await getSupabaseServerClient()
-    const { error } = await supabase.rpc("finalize_studio_trial_result", {
+    const { data, error } = await supabase.rpc("save_studio_trial_result", {
+      p_expected_updated_at: input.expectedUpdatedAt ?? null,
       p_application_id: input.applicationId, p_content: {
         observations: input.observations, recommendedCourse: input.recommendedCourse,
         recommendedLevel: input.recommendedLevel, recommendedSchedule: input.recommendedSchedule,
         publicSummary: input.publicSummary, note: input.note
       }
     })
-    if (error) throw new Error(error.message.includes("trial_result_already_finalized") ? "trial_result_already_finalized" : "failed_to_finalize_trial_result")
-    return "created"
+    if (error) throw new Error(error.message)
+    if (data !== "created" && data !== "updated") throw new Error("failed_to_save_trial_result")
+    return data
   },
   async saveStudioRegistrationResult(input) {
     const supabase = await getSupabaseServerClient()

@@ -17,7 +17,7 @@ export const CASES_ACTIONS = {
   schedule: { title: "일정 확정", description: "체험 일정을 잡아주세요.", icon: "calendar" },
   trial: { title: "상세 보기", description: "체험 일정과 진행 상태를 확인해 주세요.", icon: "calendar" },
   record: { title: "체험 기록 작성", description: "체험 수업 내용을 기록해 주세요.", icon: "record" },
-  report: { title: "리포트 확인", description: "확정한 기록의 미리보기와 발행 조건을 확인해 주세요.", icon: "report" },
+  report: { title: "리포트 확인·수정", description: "저장한 기록을 수정하고 미리보기와 발행 조건을 확인해 주세요.", icon: "report" },
   registration: { title: "등록 결과 입력", description: "등록 여부를 기록해 주세요.", icon: "registration" },
   consultation: { title: "상담 기록 추가", description: "고민 중인 학부모와 나눈 상담을 기록해 주세요.", icon: "contact" },
   detail: { title: "상세 보기", description: "신청 내용과 처리 이력을 확인해 주세요.", icon: "record" }
@@ -51,7 +51,7 @@ export function deriveCasesWorkflow(input: CasesWorkflowInput, now = new Date())
 }
 // Navigation only: opening an existing detail section never invokes a mutation.
 export const CASES_ACTION_SECTIONS: Record<CasesActionKey, string | null> = {
-  schedule: "confirm-schedule", trial: null, record: "trial-record", report: "report-publishing-title",
+  schedule: "confirm-schedule", trial: null, record: "trial-record", report: "trial-record",
   registration: "registration-result-title", consultation: "consultation-records", detail: null
 }
 export function getCasesNextActions(item: CasesListItem): CasesActionKey[] {

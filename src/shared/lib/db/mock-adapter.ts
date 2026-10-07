@@ -2562,6 +2562,8 @@ export const mockDataAdapter: DataAdapter = {
 
     return {
       status: application.status,
+      reportEverSent: experienceReports.some(r=>r.applicationId===applicationId),
+      assessmentUpdatedAt: trialResult?.updatedAt ?? null,
       trialResult: trialResult
         ? {
             observations: trialResult.observations,
@@ -2577,11 +2579,15 @@ export const mockDataAdapter: DataAdapter = {
     }
   },
   async upsertStudioTrialResult(input: UpsertStudioTrialResultInput) {
-    const normalizedObservations = Array.from(new Set(input.observations.filter((item) => item.trim().length > 0)))
     const existing = trialResults.find((item) => item.applicationId === input.applicationId) ?? null
-    const nowIso = new Date().toISOString()
-
-    if (existing) throw new Error("trial_result_already_finalized")
+    const normalizedObservations = existing&&JSON.stringify(existing.observations)===JSON.stringify(input.observations)?[...existing.observations]:Array.from(new Set(input.observations.filter((item) => item.trim().length > 0)))
+    const nowIso = new Date(Math.max(Date.now(),existing ? Date.parse(existing.updatedAt)+1 : 0)).toISOString()
+    const application=applications.find(a=>a.id===input.applicationId)
+    if(!application) throw new Error("application_not_found_or_forbidden")
+    if(application.status!=="completed"||application.noShowAt||application.canceledAt) throw new Error("application_not_completed")
+    if(experienceReports.some(r=>r.applicationId===input.applicationId)) throw new Error("report_content_locked")
+    if((existing?.updatedAt??null)!==(input.expectedUpdatedAt??null)) throw new Error("assessment_changed_since_preview")
+    if(existing){if(JSON.stringify(existing.observations)===JSON.stringify(normalizedObservations)&&existing.recommendedCourse===input.recommendedCourse&&existing.recommendedLevel===input.recommendedLevel&&existing.recommendedSchedule===input.recommendedSchedule&&existing.note===input.note&&existing.publicSummary===input.publicSummary)return "updated";Object.assign(existing,{observations:normalizedObservations,recommendedCourse:input.recommendedCourse,recommendedLevel:input.recommendedLevel,recommendedSchedule:input.recommendedSchedule,note:input.note,publicSummary:input.publicSummary,updatedAt:nowIso});return "updated"}
 
     trialResults.push({
       id: `trial-result-${trialResults.length + 1}`,

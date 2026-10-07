@@ -32,7 +32,7 @@ import type {
 import styles from "./application-trial-result-workflow.module.css"
 import modalStyles from "./consultation-log-dialog.module.css"
 import recordStyles from "./trial-record-dialog.module.css"
-import { TRIAL_RECOMMENDED_DAYS, TRIAL_RECOMMENDED_PERIODS, formatTrialRecommendedSchedule, type TrialRecommendedPeriod } from "@/features/studio/lib/trial-recommended-schedule"
+import { TRIAL_RECOMMENDED_DAYS, TRIAL_RECOMMENDED_PERIODS, formatTrialRecommendedSchedule, parseTrialRecommendedSchedule, type TrialRecommendedPeriod } from "@/features/studio/lib/trial-recommended-schedule"
 
 /**
  * 저장된 관찰 값을 "현재 기준 code" 와 "문구를 저장하던 시절의 원문" 으로 가른다.
@@ -112,6 +112,9 @@ export const ApplicationTrialResultWorkflow = ({
   canWriteConsultations
 }: ApplicationTrialResultWorkflowProps) => {
   const router = useRouter()
+  const reportLocked=Boolean(evidence.report.everSent || evidence.report.version)
+  const [scheduleTouched,setScheduleTouched]=useState(false)
+  const [editorSource,setEditorSource]=useState<StudioApplicationDetail["trialResult"]>(null)
   const [recordDraft, setRecordDraft] = useState({ recommendedCourse: "", recommendedLevel: "", publicSummary: "", note: "" })
   const [recommendedDays, setRecommendedDays] = useState<number[]>([])
   const [recommendedPeriod, setRecommendedPeriod] = useState<TrialRecommendedPeriod | "">("")
@@ -168,7 +171,12 @@ export const ApplicationTrialResultWorkflow = ({
   }
 
   const openEditor = (options?: { refreshAfterClose?: boolean }) => {
-    if (application.trialResult) return
+    if (!canWriteTrialResult) return
+    const record=application.trialResult
+    setEditorSource(record?structuredClone(record):null)
+    setRecordDraft({recommendedCourse:record?.recommendedCourse??"",recommendedLevel:record?.recommendedLevel??"",publicSummary:record?.publicSummary??"",note:record?.note??""})
+    const schedule=parseTrialRecommendedSchedule(record?.recommendedSchedule)
+    setRecommendedDays(schedule?.days??[]);setRecommendedPeriod(schedule?.period??"");setScheduleTouched(false)
     resetTrialResultSelections()
     setTrialResultErrorMessage(null)
     setIsPromptOpen(false)
@@ -194,6 +202,7 @@ export const ApplicationTrialResultWorkflow = ({
 
   const closeEditor = () => {
     if (isSavingTrialResult || trialSubmitInFlight.current) return
+    if (editorDirty && !window.confirm("저장하지 않은 변경이 있습니다. 변경을 버리고 닫을까요?")) return
     setIsEditorOpen(false)
 
     if (refreshOnEditorClose) {
@@ -240,20 +249,22 @@ export const ApplicationTrialResultWorkflow = ({
     setIsEditorOpen(false)
     setIsPromptOpen(false)
     setIsSuccessOpen(true)
-  }, [trialResultState.status, trialResultState.successToken])
+    router.refresh()
+  }, [trialResultState.status, trialResultState.successToken, router])
 
   // Keep drafts intact and show server errors beside the finalization action.
   useEffect(() => {
     trialSubmitInFlight.current = false
     if (trialResultState.status === "error") {
       setTrialResultErrorMessage(trialResultState.message)
+      if(trialResultState.message.includes("발행된 리포트")) router.refresh()
       return
     }
 
     if (trialResultState.status === "success") {
       setTrialResultErrorMessage(null)
     }
-  }, [trialResultState])
+  }, [trialResultState,router])
 
   useEffect(() => {
     if (!isEditorOpen) return
@@ -286,8 +297,21 @@ export const ApplicationTrialResultWorkflow = ({
   const isCompletedView = application.status === "completed"
   const workflow = deriveApplicationDetailWorkflow({ application, evidence, nowIso, canWriteTrialResults, canWriteConsultations })
   const canAddConsultation = isCompletedView && !application.noShowAt && canWriteConsultations
-  const canWriteTrialResult = canWriteTrialResults && !evidence.trialResultError && !hasTrialResult
+  const canWriteTrialResult = canWriteTrialResults && isCompletedView && !application.noShowAt && !application.canceledAt && !evidence.trialResultError && !evidence.report.error && !reportLocked
   const hasVisibleTrialResultContent = hasTrialRecordContent(application.trialResult)
+  const draftSchedule=scheduleTouched?formatTrialRecommendedSchedule(recommendedDays,recommendedPeriod):editorSource?.recommendedSchedule??""
+  const draftObservations=observationsTouched?selectedObservations:editorSource?.observations??selectedObservations
+  const editorDirty=Object.entries(recordDraft).some(([field,value])=>value!==(editorSource?.[field as keyof typeof recordDraft]??""))
+    || draftSchedule!==(editorSource?.recommendedSchedule??"")
+    || JSON.stringify([...draftObservations].sort())!==JSON.stringify([...(editorSource?.observations??[])].sort())
+  useEffect(()=>{
+    if(!isEditorOpen || !editorDirty)return
+    const unload=(event:BeforeUnloadEvent)=>{event.preventDefault();event.returnValue=""}
+    const href=window.location.href,state=window.history.state
+    const back=(event:PopStateEvent)=>{if(!window.confirm("저장하지 않은 변경이 있습니다. 변경을 버리고 이동할까요?")){event.stopImmediatePropagation();window.history.pushState(state,"",href)}}
+    window.addEventListener("beforeunload",unload);window.addEventListener("popstate",back,true)
+    return()=>{window.removeEventListener("beforeunload",unload);window.removeEventListener("popstate",back,true)}
+  },[isEditorOpen,editorDirty])
   const handleCompletedSaved = useCallback(() => { setIsPromptOpen(true) }, [])
   const activityEvents = useMemo(() => buildCaseActivityEvents(application), [application])
   const consultationEvents = activityEvents.filter(event => event.kind === "consultation")
@@ -312,9 +336,9 @@ export const ApplicationTrialResultWorkflow = ({
     <section id="trial-record" className={styles.recordContent} aria-label="체험 기록">
       <div className={styles.sectionHead}>
         <h3 className={styles.sectionTitle}><ApplicationDetailIcon name="record" />체험 기록</h3>
-        {hasTrialResult ? <span className={styles.completedBadge}>✓ 체험 기록 확정</span> : null}
+        {hasTrialResult ? <div><span className={styles.completedBadge}>✓ 체험 기록 저장</span>{canWriteTrialResult ? <button type="button" className={styles.inlineTextButton} onClick={()=>openEditor()}>체험 기록 수정</button> : null}</div> : null}
       </div>
-      {hasTrialResult ? <p className={styles.sectionMetaLine}>{formatSeoulDateTime(application.trialResult?.createdAt)} · 읽기 전용</p> : null}
+      {hasTrialResult ? <p className={styles.sectionMetaLine}>{formatSeoulDateTime(application.trialResult?.updatedAt)} · {reportLocked?"발행 후 읽기 전용":"발행 전 수정 가능"}</p> : null}
       {hasTrialResult ? (
         <details className={styles.resultCompact}><summary className={styles.disclosureSummary}>기록 보기</summary>
           {recommendationSummary ? <p className={styles.recordSummary}>{recommendationSummary}</p> : null}
@@ -500,23 +524,31 @@ export const ApplicationTrialResultWorkflow = ({
         <dialog ref={trialDialogRef} className={modalStyles.dialog} aria-labelledby="trial-result-editor-title" aria-describedby="trial-result-editor-description" onCancel={event => { event.preventDefault(); closeEditor() }}>
           <header className={modalStyles.header}>
             <div>
-              <h3 id="trial-result-editor-title">체험 기록 작성</h3>
+              <h3 id="trial-result-editor-title">{hasTrialResult?"체험 기록 수정":"체험 기록 작성"}</h3>
               <p id="trial-result-editor-description">관찰·추천·총평은 학부모 리포트에 포함됩니다.</p>
             </div>
             <button type="button" className={modalStyles.close} aria-label="닫기" onClick={closeEditor} disabled={isSavingTrialResult}>×</button>
           </header>
           <form className={modalStyles.form} onSubmit={event => {
             event.preventDefault()
-            if (isSavingTrialResult || trialSubmitInFlight.current) return
+            if (isSavingTrialResult || trialSubmitInFlight.current || !canWriteTrialResult) return
             const data = new FormData(event.currentTarget)
             trialSubmitInFlight.current = true
             setTrialResultErrorMessage(null)
             // Call the same action without native form-action reset on a failed response.
             startTransition(() => trialResultFormAction(data))
           }}>
+            <input type="hidden" name="expectedAssessmentUpdatedAt" value={editorSource?.updatedAt??""} />
             <div className={modalStyles.body}>
-              <fieldset className={modalStyles.group} disabled={isSavingTrialResult}>
+              <fieldset className={modalStyles.group} disabled={isSavingTrialResult || !canWriteTrialResult}>
                 <legend>수업 관찰</legend>
+                {splitStoredObservations(editorSource?.observations).legacy.length > 0 ? (
+                  <div className={styles.legacyObservationBlock}>
+                    <p className={styles.legacyObservationTitle}>기존 기준으로 작성된 관찰 기록입니다.</p>
+                    <p className={modalStyles.hint}>리포트 발행을 위해 아래 현재 관찰 항목을 직접 확인해 선택해 주세요. 기존 문구는 자동 선택하지 않습니다.</p>
+                    <div>{splitStoredObservations(editorSource?.observations).legacy.map(text => <span key={text} className={styles.legacyObservationChip}>{text}</span>)}</div>
+                  </div>
+                ) : null}
                 <div className={`${modalStyles.chips} ${recordStyles.observations}`}>
                   {TRIAL_RESULT_OBSERVATION_OPTIONS.map(option => <button key={option.value} type="button" aria-pressed={selectedObservations.includes(option.value)} onClick={() => toggleObservation(option.value)}>{option.label}</button>)}
                 </div>
@@ -525,39 +557,40 @@ export const ApplicationTrialResultWorkflow = ({
                 <input type="hidden" name="observationsTouched" value={observationsTouched ? "true" : "false"} />
               </fieldset>
               <div className={recordStyles.columns}>
-                <label className={modalStyles.field} htmlFor="trial-recommended-course"><span>추천 과정</span><input id="trial-recommended-course" name="recommendedCourse" value={recordDraft.recommendedCourse} onChange={event => setRecordDraft(draft => ({ ...draft, recommendedCourse: event.target.value }))} disabled={isSavingTrialResult} /></label>
-                <label className={modalStyles.field} htmlFor="trial-recommended-level"><span>추천 레벨</span><input id="trial-recommended-level" name="recommendedLevel" value={recordDraft.recommendedLevel} onChange={event => setRecordDraft(draft => ({ ...draft, recommendedLevel: event.target.value }))} disabled={isSavingTrialResult} /></label>
+                <label className={modalStyles.field} htmlFor="trial-recommended-course"><span>추천 과정</span><input id="trial-recommended-course" name="recommendedCourse" value={recordDraft.recommendedCourse} onChange={event => setRecordDraft(draft => ({ ...draft, recommendedCourse: event.target.value }))} disabled={isSavingTrialResult || !canWriteTrialResult} /></label>
+                <label className={modalStyles.field} htmlFor="trial-recommended-level"><span>추천 레벨</span><input id="trial-recommended-level" name="recommendedLevel" value={recordDraft.recommendedLevel} onChange={event => setRecordDraft(draft => ({ ...draft, recommendedLevel: event.target.value }))} disabled={isSavingTrialResult || !canWriteTrialResult} /></label>
               </div>
               <section className={recordStyles.schedule} aria-labelledby="trial-recommended-schedule-title">
                 <h4 id="trial-recommended-schedule-title">추천 일정</h4>
-                <fieldset className={modalStyles.group} disabled={isSavingTrialResult}>
+                <fieldset className={modalStyles.group} disabled={isSavingTrialResult || !canWriteTrialResult}>
                   <legend>추천 요일</legend>
-                  <div className={modalStyles.chips}>{TRIAL_RECOMMENDED_DAYS.map((day, index) => <button key={day} type="button" aria-pressed={recommendedDays.includes(index + 1)} onClick={() => setRecommendedDays(current => current.includes(index + 1) ? current.filter(value => value !== index + 1) : [...current, index + 1])}>{day}</button>)}</div>
+                  <div className={modalStyles.chips}>{TRIAL_RECOMMENDED_DAYS.map((day, index) => <button key={day} type="button" aria-pressed={recommendedDays.includes(index + 1)} onClick={() => {setScheduleTouched(true);setRecommendedDays(current => current.includes(index + 1) ? current.filter(value => value !== index + 1) : [...current, index + 1])}}>{day}</button>)}</div>
                 </fieldset>
-                <fieldset className={modalStyles.group} disabled={isSavingTrialResult} aria-describedby="trial-period-hint">
+                <fieldset className={modalStyles.group} disabled={isSavingTrialResult || !canWriteTrialResult} aria-describedby="trial-period-hint">
                   <legend>추천 시간대</legend>
-                  <div className={modalStyles.chips}>{TRIAL_RECOMMENDED_PERIODS.map(period => <button key={period.value} type="button" aria-pressed={recommendedPeriod === period.value} onClick={() => setRecommendedPeriod(current => current === period.value ? "" : period.value)}>{period.label}</button>)}</div>
+                  <div className={modalStyles.chips}>{TRIAL_RECOMMENDED_PERIODS.map(period => <button key={period.value} type="button" aria-pressed={recommendedPeriod === period.value} onClick={() => {setScheduleTouched(true);setRecommendedPeriod(current => current === period.value ? "" : period.value)}}>{period.label}</button>)}</div>
                   <p id="trial-period-hint" className={modalStyles.hint}>{TRIAL_RECOMMENDED_PERIODS.filter(period => period.range).map(period => `${period.label} ${period.range}`).join(" · ")}</p>
                 </fieldset>
-                <input type="hidden" name="recommendedSchedule" value={formatTrialRecommendedSchedule(recommendedDays, recommendedPeriod)} />
+                {!scheduleTouched && editorSource?.recommendedSchedule && !parseTrialRecommendedSchedule(editorSource.recommendedSchedule)?<p className={modalStyles.hint}>현재 추천 일정: {editorSource.recommendedSchedule}. 새 요일·시간대를 선택하면 이 값이 바뀝니다.</p>:null}
+                <input type="hidden" name="recommendedSchedule" value={draftSchedule} />
               </section>
               <label className={modalStyles.field} htmlFor="trial-public-summary">
                 <span>총평</span>
-                <textarea id="trial-public-summary" name="publicSummary" aria-label="총평" aria-describedby="trial-public-summary-hint" value={recordDraft.publicSummary} onChange={event => setRecordDraft(draft => ({ ...draft, publicSummary: event.target.value }))} rows={4} placeholder={"학부모님께 전달할 내용을 작성해 주세요.\n리포트에 그대로 반영됩니다."} maxLength={1000} disabled={isSavingTrialResult} />
+                <textarea id="trial-public-summary" name="publicSummary" aria-label="총평" aria-describedby="trial-public-summary-hint" value={recordDraft.publicSummary} onChange={event => setRecordDraft(draft => ({ ...draft, publicSummary: event.target.value }))} rows={4} placeholder={"학부모님께 전달할 내용을 작성해 주세요.\n리포트에 그대로 반영됩니다."} maxLength={1000} disabled={isSavingTrialResult || !canWriteTrialResult} />
                 <p id="trial-public-summary-hint" className={modalStyles.hint}>학부모가 리포트에서 읽습니다.</p>
               </label>
               <label className={`${modalStyles.field} ${modalStyles.secondary}`} htmlFor="trial-private-note">
                 <span>내부 메모 · 비공개</span>
-                <textarea id="trial-private-note" name="note" aria-label="내부 메모 · 비공개" aria-describedby="trial-private-note-hint" value={recordDraft.note} onChange={event => setRecordDraft(draft => ({ ...draft, note: event.target.value }))} rows={2} placeholder="아이 반응이나 향후 상담에 도움이 될 핵심 메모를 남겨 주세요." disabled={isSavingTrialResult} />
+                <textarea id="trial-private-note" name="note" aria-label="내부 메모 · 비공개" aria-describedby="trial-private-note-hint" value={recordDraft.note} onChange={event => setRecordDraft(draft => ({ ...draft, note: event.target.value }))} rows={2} placeholder="아이 반응이나 향후 상담에 도움이 될 핵심 메모를 남겨 주세요." disabled={isSavingTrialResult || !canWriteTrialResult} />
                 <p id="trial-private-note-hint" className={modalStyles.hint}>학원 내부에서만 보입니다.</p>
               </label>
             </div>
             <footer className={modalStyles.footer}>
-              <p className={recordStyles.notice}>체험 기록은 확정 후 수정할 수 없습니다.</p>
+              <p className={recordStyles.notice}>저장은 학부모 발행과 별도입니다. 리포트 발행 전까지 수정할 수 있습니다.</p>
               {trialResultErrorMessage ? <p className={modalStyles.error} role="alert">{trialResultErrorMessage}</p> : null}
               <div className={modalStyles.actions}>
                 <button type="button" onClick={closeEditor} disabled={isSavingTrialResult}>취소</button>
-                <button type="submit" className={modalStyles.primary} disabled={isSavingTrialResult}>{isSavingTrialResult ? "저장 중..." : "체험 기록 확정"}</button>
+                <button type="submit" className={modalStyles.primary} disabled={isSavingTrialResult || !canWriteTrialResult || (hasTrialResult && !editorDirty)}>{isSavingTrialResult ? "저장 중..." : "체험 기록 저장"}</button>
               </div>
             </footer>
           </form>
@@ -591,10 +624,10 @@ export const ApplicationTrialResultWorkflow = ({
           >
             <div className={styles.dialogBody}>
               <h3 id="trial-result-success-title" className={styles.dialogTitle}>
-                체험 기록을 최종 확정했습니다.
+                체험 기록을 저장했습니다.
               </h3>
               <p className={styles.dialogDescription}>
-                확정한 기록은 수정하거나 다시 작성할 수 없습니다.
+                저장한 내용이 리포트 미리보기에 반영됩니다. 학부모에게는 별도로 발행해야 전달됩니다.
               </p>
             </div>
             <div className={styles.dialogActions}>

@@ -9,6 +9,7 @@ export type ApplicationWorkflowEvidence = {
   trialResultError?: string | null
   report: {
     error: string | null
+    everSent?: boolean
     version: number | null
     publishedAt: string | null
     changed: boolean
@@ -81,13 +82,13 @@ export function deriveApplicationDetailWorkflow({ application: a, evidence: e, n
     description = "진행 상태를 다시 확인한 뒤 작업해 주세요."
   } else if (!hasRecord) {
     title = "체험 기록을 작성해 주세요."
-    description = "관찰 내용과 추천 사항을 한 번 기록하고, 공개 가능한 내용으로 학부모 리포트를 발행해요."
+    description = "관찰 내용과 추천 사항을 저장하고, 공개 가능한 내용으로 학부모 리포트를 발행해요."
     if (canWriteTrialResults) act("record", "체험 기록 작성", "record", title)
   } else if (e.report.error) {
     title = "리포트 정보를 불러오지 못했어요."
     description = "등록 결과와 연락 기록은 별도로 저장할 수 있어요."
   } else if (e.report.canPublish && !e.report.version) {
-    act("report", "학부모 리포트 발송", "report", "확정한 체험 기록을 학부모에게 전달할 수 있어요.")
+    act("report", "학부모 리포트 발송", "report", "저장한 체험 기록을 학부모에게 전달할 수 있어요.")
     description = "내부 메모를 제외한 공개 가능한 내용만 리포트에 포함됩니다."
   } else {
     act("registration", "등록 결과 입력", "registration", "학원에서 확인한 실제 등록 결과를 기록해 주세요.")
@@ -97,7 +98,7 @@ export function deriveApplicationDetailWorkflow({ application: a, evidence: e, n
     { id: "trial", title: "체험 완료", state: completed ? "done" : closed ? "restricted" : "waiting",
       summary: completed ? formatSeoulDateTime(a.completedAt) ?? "체험 완료" : a.status === "canceled" ? (a.noShowAt ? "노쇼" : "취소") : inTrial ? "체험 진행 중" : "체험 전" },
     { id: "record", title: "체험 기록", state: e.trialResultError ? "error" : hasRecord ? "done" : completed ? "available" : "restricted",
-      summary: e.trialResultError ? "정보를 불러오지 못했어요." : hasRecord ? "최종 확정 · 읽기 전용" : completed ? "체험 기록 미작성" : "체험 완료 후 작성 가능" },
+      summary: e.trialResultError ? "정보를 불러오지 못했어요." : hasRecord ? (e.report.everSent || e.report.version ? "발행 후 잠금" : "저장 완료 · 발행 전 수정 가능") : completed ? "체험 기록 미작성" : "체험 완료 후 작성 가능" },
     { id: "report", title: "학부모 리포트", state: e.report.error ? "error" : e.report.version ? "done" : e.report.canPublish ? "available" : "restricted",
       summary: e.report.error ? "정보를 불러오지 못했어요." : e.report.version ? "발송 완료 · 잠금" : "미발송" },
     { id: "registration", title: "등록 결과", state: e.registration.error ? "error" : result ? "done" : completed ? "available" : "restricted",

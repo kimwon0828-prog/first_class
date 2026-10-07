@@ -200,7 +200,9 @@ export async function upsertTrialResultAction(
     }
   }
 
-  if (current.trialResult) return { status: "error", message: "이미 확정된 체험 기록은 수정할 수 없습니다." }
+  if (current.reportEverSent) return { status: "error", message: "발행된 리포트는 수정할 수 없습니다." }
+  const expectedUpdatedAt = normalizeOptionalText(formData.get("expectedAssessmentUpdatedAt"))
+  if (expectedUpdatedAt !== current.assessmentUpdatedAt) return { status: "error", message: "체험 기록이 변경되었습니다. 입력 내용을 보관한 뒤 최신 기록을 다시 확인해 주세요." }
 
   const submitted = normalizeObservationValues(formData.getAll("observations"))
   if (submitted.status === "legacy") {
@@ -218,8 +220,8 @@ export async function upsertTrialResultAction(
     }
   }
 
-  // Existing rows were rejected above; a new finalization stores the submitted canonical values.
-  const observations = submitted.values
+  // Untouched legacy values come from the saved row, never from a client-authored label.
+  const observations = current.trialResult && formData.get("observationsTouched") !== "true" ? current.trialResult.observations : submitted.values
 
   // 한 row 는 한 표기만 쓴다. 위 두 갈래는 각각 canonical 전용 · 기존 배열 그대로라
   // 여기까지 섞인 배열이 오지 않는다. DB CHECK 도 같은 것을 막는다.
@@ -240,8 +242,8 @@ export async function upsertTrialResultAction(
     note: normalizeOptionalText(formData.get("note")),
     // 총평은 note 와 다른 칸이다. 같은 값을 복사하지 않는다.
     publicSummary: normalizeOptionalText(formData.get("publicSummary")),
-    parentReaction: null,
-    nextAction: null
+    parentReaction: current.trialResult?.parentReaction ?? null,
+    nextAction: current.trialResult?.nextAction ?? null
   }
 
   const changedFieldLabels = getChangedFieldLabels(current, nextValue)
@@ -250,6 +252,7 @@ export async function upsertTrialResultAction(
     const mode = await dataAdapter.upsertStudioTrialResult({
       applicationId,
       actorId: teacher.id,
+      expectedUpdatedAt,
       observations: nextValue.observations,
       parentReaction: nextValue.parentReaction,
       recommendedCourse: nextValue.recommendedCourse,
@@ -271,7 +274,7 @@ export async function upsertTrialResultAction(
     return {
       status: "success",
       message:
-        `체험 기록을 확정했습니다${suffix}.`,
+        `체험 기록을 저장했습니다${suffix}.`,
       mode,
       successToken: crypto.randomUUID()
     }
@@ -279,6 +282,8 @@ export async function upsertTrialResultAction(
     const message =
       caughtError instanceof Error ? caughtError.message : "failed_to_upsert_trial_result"
 
+    if (message.includes("report_content_locked")) return { status: "error", message: "발행된 리포트는 수정할 수 없습니다." }
+    if (message.includes("assessment_changed_since_preview")) return { status: "error", message: "체험 기록이 변경되었습니다. 입력 내용을 보관한 뒤 최신 기록을 다시 확인해 주세요." }
     if (message === "failed_to_check_trial_result") {
       return {
         status: "error",

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict"
 import { readFileSync } from "node:fs"
-import { formatTrialRecommendedSchedule, TRIAL_RECOMMENDED_PERIODS } from "@/features/studio/lib/trial-recommended-schedule"
+import { formatTrialRecommendedSchedule, parseTrialRecommendedSchedule, TRIAL_RECOMMENDED_PERIODS } from "@/features/studio/lib/trial-recommended-schedule"
 import { buildExperienceReportSnapshotV2, decodeExperienceReportSnapshot } from "@/features/reports/lib/experience-report-snapshot"
 import { mockDataAdapter } from "@/shared/lib/db/mock-adapter"
 import { createWorkflowApplication, createWorkflowRecord } from "./fixtures/application-detail-workflow"
@@ -34,17 +34,27 @@ async function main() {
     recommendedLevel: "입문", recommendedSchedule: "화·목 / 저녁", publicSummary: "학부모 총평",
     note: "PRIVATE_SENTINEL", nextAction: null
   }
+  const store=globalThis as typeof globalThis & {__firstClassMockApplications__?: unknown[]}
+  store.__firstClassMockApplications__!.push({...createWorkflowApplication({id:input.applicationId}),childId:null})
   const results = await Promise.allSettled(Array.from({ length: 10 }, () => mockDataAdapter.upsertStudioTrialResult(input)))
   assert.equal(results.filter(result => result.status === "fulfilled").length, 1)
-  assert(results.filter(result => result.status === "rejected").every(result => result.status === "rejected" && result.reason.message === "trial_result_already_finalized"))
-  await assert.rejects(mockDataAdapter.upsertStudioTrialResult({ ...input, recommendedSchedule: "변경 시도" }), /trial_result_already_finalized/)
+  assert(results.filter(result => result.status === "rejected").every(result => result.status === "rejected" && result.reason.message === "assessment_changed_since_preview"))
+  const before=await mockDataAdapter.getStudioTrialResultSaveContext(input.applicationId,"org-1")
+  assert(before&&!before.reportEverSent)
+  assert.equal(await mockDataAdapter.upsertStudioTrialResult({...input,expectedUpdatedAt:before.assessmentUpdatedAt,publicSummary:"수정한 총평"}),"updated")
+  const latest=await mockDataAdapter.getStudioTrialResultSaveContext(input.applicationId,"org-1")
+  assert(latest?.assessmentUpdatedAt&&latest.trialResult?.publicSummary==="수정한 총평")
+  await mockDataAdapter.publishExperienceReport(input.applicationId,latest.assessmentUpdatedAt)
+  await assert.rejects(mockDataAdapter.upsertStudioTrialResult({...input,expectedUpdatedAt:latest.assessmentUpdatedAt}),/report_content_locked/)
+  assert.deepEqual(parseTrialRecommendedSchedule("화·목 / 저녁"),{days:[2,4],period:"evening"})
+  assert.equal(parseTrialRecommendedSchedule("이전 자유 입력 일정"),null)
   const source = readFileSync("src/features/studio/actions/upsert-trial-result.ts", "utf8")
   const db = readFileSync("supabase/migrations/20260930110000_studio_experience_workflow_phase1_expand.sql", "utf8")
-  assert(source.includes("if (current.trialResult) return"))
+  assert(source.includes("if (current.reportEverSent)"))
   assert(source.includes('recommendedSchedule: normalizeOptionalText(formData.get("recommendedSchedule"))'))
   assert(db.includes("for update"))
   assert(db.includes("raise exception 'trial_result_already_finalized'"))
   assert(db.includes("p_content->>'recommendedSchedule'"))
-  console.log("PASS mock one-time finalization, 10 concurrent calls -> 1 success; unchanged action/RPC string and locking guards (not a live DB test)")
+  console.log("PASS mock revision-safe create/edit, 10 stale concurrent creates -> 1 success, publication lock; formatter round-trip and legacy schedule preservation (not a live DB test)")
 }
 main().catch(error => { console.error(error); process.exitCode = 1 })

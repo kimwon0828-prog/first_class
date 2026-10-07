@@ -267,7 +267,7 @@ export const ApplicationReportPublishing = ({
         )}
       </div>
 
-      {!publishedSnapshot && !everSent ? <p className={styles.sectionDescription}>{needsRecord ? "체험 기록 확정 후 리포트를 발송할 수 있어요." : "학부모에게 전달할 내용을 미리 확인해 주세요."}</p> : null}
+      {!publishedSnapshot && !everSent ? <p className={styles.sectionDescription}>{needsRecord ? "체험 기록 저장 후 리포트를 발송할 수 있어요." : "학부모에게 전달할 내용을 미리 확인해 주세요."}</p> : null}
 
       {/*
         지금 공개돼 있는 것은 발행 시점에 얼어붙은 snapshot 이다.
@@ -285,6 +285,8 @@ export const ApplicationReportPublishing = ({
           <ReportBody snapshot={publishedSnapshot} />
         </details>
       </> : null}
+
+      {everSent || publishedVersion ? <p className={styles.footnote}>발행된 리포트는 수정할 수 없습니다.</p> : null}
 
       {publishedReportLoadError ? (
         <div className={styles.notice} role="alert">

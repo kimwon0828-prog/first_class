@@ -1,5 +1,8 @@
 # Phase 1A 확장 / Phase 1B 잠금 전환
 
+> 발행 전 수정·저장 / 발행 후 잠금 계약은 [후속 변경](studio-report-edit-before-publication.md)을 따른다. DB COMPAT는 승인 후 적용했고 앱 변경의 commit/push도 승인됐다. 아래 최초 저장 잠금 설명은 기존 Production 이력이다.
+
+
 2026-09-30. 실제 계정 localhost 조회 QA를 위한 승인 범위다. 운영 업무 데이터 저장, 1B 적용, 앱 배포는 포함하지 않는다.
 
 ## 원본과 source/history 관리

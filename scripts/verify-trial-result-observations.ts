@@ -171,8 +171,8 @@ check(
 )
 check("legacy 로 분류된다", describedRow.every((item) => item?.kind === "legacy"))
 check(
-  "기존 기록은 재저장을 막아 그대로 보존한다",
-  actionSource.includes('if (current.trialResult) return') && actionSource.includes("const observations = submitted.values")
+  "발행 이력은 잠그고, 발행 전 미수정 legacy 관찰은 그대로 보존한다",
+  actionSource.includes('if (current.reportEverSent)') && actionSource.includes('formData.get("observationsTouched") !== "true" ? current.trialResult.observations')
 )
 
 console.log("\n── 7. legacy row 가 Studio 에서 사라지지 않는다 ──")
