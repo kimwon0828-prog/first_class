@@ -14,8 +14,8 @@ import type {
 export type StudioDisplayStatus = ApplicationStatus | "no_show" | "in_trial"
 
 export const STUDIO_APPLICATION_STATUS_LABELS: Record<StudioDisplayStatus, string> = {
-  new: "일정 미확정",
-  reviewing: "일정 미확정",
+  new: "신규 신청",
+  reviewing: "신규 신청",
   confirmed: "체험 예정",
   in_trial: "체험 진행 중",
   completed: "체험 완료",

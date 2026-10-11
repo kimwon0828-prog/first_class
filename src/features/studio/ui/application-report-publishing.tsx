@@ -1,5 +1,6 @@
 "use client"
 
+import { ReportObservations } from "@/features/reports/ui/report-observations"
 import { StudioQueryRetry } from "./studio-query-retry"
 import { ApplicationDetailIcon } from "./application-detail-icon"
 
@@ -113,6 +114,7 @@ const ReportBody = ({ snapshot }: { snapshot: ExperienceReportSnapshotV1 }) => {
   return (
     <div className={styles.report}>
       <div className={styles.reportHead}>
+        <h3 className={styles.reportSectionTitle}>오늘의 수업</h3>
         <p className={styles.reportChild}>
           {snapshot.experience.child.displayName} 학생
           {snapshot.experience.child.grade ? (
@@ -124,26 +126,16 @@ const ReportBody = ({ snapshot }: { snapshot: ExperienceReportSnapshotV1 }) => {
         <p className={styles.reportClass}>{snapshot.experience.class.title}</p>
       </div>
 
-      <section className={styles.reportSection} aria-label="관찰된 모습">
-        <h3 className={styles.reportSectionTitle}>관찰된 모습</h3>
-        {snapshot.observations.length > 0 ? (
-          <ul className={styles.reportList}>
-            {snapshot.observations.map((item) => (
-              <li key={item.code} className={styles.reportListItem}>
-                {item.label}
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className={styles.reportEmpty}>등록된 관찰 내용이 없습니다.</p>
-        )}
-      </section>
+      {snapshot.observations.length > 0 ? <section className={styles.reportSection} aria-label="수업에서 보인 모습">
+        <h3 className={styles.reportSectionTitle}>수업에서 보인 모습</h3>
+        <ReportObservations observations={snapshot.observations} listClassName={styles.reportList} itemClassName={styles.reportListItem} />
+      </section> : null}
 
-      {summary ? <section className={styles.reportSection} aria-label="학부모에게 전달할 총평"><h3 className={styles.reportSectionTitle}>총평</h3><p className={styles.reportSummary}>{summary}</p></section> : null}
+      {summary ? <section className={styles.reportSection} aria-label="학부모에게 전달할 총평"><h3 className={styles.reportSectionTitle}>선생님 이야기</h3><p className={styles.reportSummary}>{summary}</p></section> : null}
 
       {recommendations.length > 0 ? (
         <section className={styles.reportSection} aria-label="추천">
-          <h3 className={styles.reportSectionTitle}>추천</h3>
+          <h3 className={styles.reportSectionTitle}>추천 정보</h3>
           <dl className={styles.reportGrid}>
             {recommendations.map((item) => (
               <div key={item.label} className={styles.reportGridRow}>

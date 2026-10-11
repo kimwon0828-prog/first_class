@@ -6,7 +6,7 @@ const stubs={
  '@/features/studio/lib/require-teacher-studio-access':`export const requireTeacherStudioAccess=async()=>{globalThis.memoTest.authCalls++;if(globalThis.memoTest.denied)throw Error('unauthorized');return {id:'teacher',organizationId:'own-org'}}`,
  '@/features/billing/lib/require-entitlement':`export const requireStudioEntitlement=async(org,flag)=>{globalThis.memoTest.entitlement={org,flag};return {allowed:!globalThis.memoTest.noEntitlement,message:'no permission'}}`,
  '@/shared/lib/db':`export const dataAdapter={saveStudioAcademyMemo:async input=>{globalThis.memoTest.calls.push(input);if(globalThis.memoTest.fail)throw Error(globalThis.memoTest.fail);return {note:input.note,revision:'memo:new'}},upsertStudioTrialResult:async input=>{globalThis.memoTest.recordCalls.push(input);return 'updated'}}`,
- '@/features/studio/queries/get-studio-trial-result-save-context':`export const getStudioTrialResultSaveContext=async()=>({data:{status:'completed',reportEverSent:globalThis.memoTest.sent,assessmentUpdatedAt:'old-revision',trialResult:{observations:['active_participation'],recommendedCourse:null,recommendedLevel:null,recommendedSchedule:null,publicSummary:'public',note:'LEGACY_SOURCE_KEEP',parentReaction:null,nextAction:null}},error:null})`
+ '@/features/studio/queries/get-studio-trial-result-save-context':`export const getStudioTrialResultSaveContext=async()=>({data:{status:'completed',reportSubjectCategory:globalThis.memoTest.category,reportEverSent:globalThis.memoTest.sent,assessmentUpdatedAt:'old-revision',trialResult:{observations:globalThis.memoTest.observations??['active_participation'],recommendedCourse:null,recommendedLevel:null,recommendedSchedule:null,publicSummary:'public',note:'LEGACY_SOURCE_KEEP',parentReaction:null,nextAction:null}},error:null})`
 }
 ;(async()=>{
  await esbuild.build({stdin:{contents:`export {saveAcademyMemoAction} from './src/features/studio/actions/save-academy-memo';export {upsertTrialResultAction} from './src/features/studio/actions/upsert-trial-result'`,resolveDir:process.cwd(),loader:'ts'},outfile:path.join(out,'actions.cjs'),bundle:true,platform:'node',format:'cjs',tsconfig:'tsconfig.json',plugins:[{name:'boundaries',setup(b){b.onResolve({filter:/.*/},a=>stubs[a.path]?{path:a.path,namespace:'stub'}:undefined);b.onLoad({filter:/.*/,namespace:'stub'},a=>({contents:stubs[a.path],loader:'ts'}))}}]})
@@ -21,5 +21,26 @@ const stubs={
  t.denied=true;await assert.rejects(save('app',state,f()));t.denied=false
  const report=f();report.set('expectedAssessmentUpdatedAt','old-revision');report.set('observations','active_participation');report.set('publicSummary','public');report.set('note','INJECT_SOURCE_MEMO');assert.equal((await record('app',state,report)).status,'success');assert.equal(t.recordCalls[0].note,'LEGACY_SOURCE_KEEP');assert.equal(t.calls.length,count+4)
  t.sent=true;assert.equal((await record('app',state,report)).status,'error');assert.equal(t.recordCalls.length,1)
+ t.sent=false;const mathForm=f();mathForm.set('expectedAssessmentUpdatedAt','old-revision');mathForm.set('observationsTouched','true');mathForm.set('observations','math_applied_concept');
+ assert.equal((await record('app',state,mathForm)).status,'error');assert.equal(t.recordCalls.length,1)
+ t.category='math';assert.equal((await record('app',state,mathForm)).status,'success');assert.deepEqual(t.recordCalls.at(-1).observations,['math_applied_concept']);assert.equal(t.recordCalls.at(-1).note,'LEGACY_SOURCE_KEEP')
+ mathForm.set('observationsTouched','false');assert.equal((await record('app',state,mathForm)).status,'success');assert.deepEqual(t.recordCalls.at(-1).observations,['active_participation'])
+ const pianoForm=f();pianoForm.set('expectedAssessmentUpdatedAt','old-revision');pianoForm.set('observationsTouched','true');pianoForm.set('observations','music_followed_rhythm_or_sound');
+ t.category='math';const priorPiano=t.recordCalls.length;assert.equal((await record('app',state,pianoForm)).status,'error');assert.equal(t.recordCalls.length,priorPiano)
+ t.category='english';assert.equal((await record('app',state,pianoForm)).status,'error')
+ t.category='music';assert.equal((await record('app',state,pianoForm)).status,'success');assert.deepEqual(t.recordCalls.at(-1).observations,['music_followed_rhythm_or_sound'])
+ t.sent=true;assert.equal((await record('app',state,pianoForm)).status,'error');t.sent=false
+ if(process.env.SUBJECT_CATALOG_PATH){
+  const catalog=JSON.parse(fs.readFileSync(process.env.SUBJECT_CATALOG_PATH,'utf8'));
+  for(const [category,groups] of Object.entries(catalog.groups)){
+   const codes=groups.flatMap(g=>g.options.map(o=>o.value)),form=f();form.set('expectedAssessmentUpdatedAt','old-revision');form.set('observationsTouched','true');form.delete('observations');codes.forEach(code=>form.append('observations',code));
+   t.category=category;assert.equal((await record('app',state,form)).status,'success');assert.deepEqual(t.recordCalls.at(-1).observations,codes);
+   const before=t.recordCalls.length;t.category='other';const denied=await record('app',state,form);assert.equal(denied.status,'error');assert.equal(t.recordCalls.length,before);
+   t.observations=codes;assert.equal((await record('app',state,form)).status,'success','old selections survive reclassification');t.observations=undefined;
+  }
+  console.log('PASS actual action: all 11 categories, foreign-code rejection and preserved previous selection');
+ }
+ console.log('PASS real music record action: music master category only, english/math denied, published source blocked')
+ console.log('PASS real report action accepts new math codes only for saved math classification; untouched generic values and private source retained')
  console.log('PASS actual memo/report actions: auth + entitlement, scalar whitelist, forged org/actor/public fields ignored, revision, max length, failure messages, cache failure after committed save, legacy source note preserved, published report action blocked')
 })().catch(e=>{console.error(e);process.exitCode=1})

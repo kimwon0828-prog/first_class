@@ -6,6 +6,8 @@ import { requireStudioEntitlement } from "@/features/billing/lib/require-entitle
 import { requireTeacherStudioAccess } from "@/features/studio/lib/require-teacher-studio-access"
 import {
   isConsistentObservationRepresentation,
+  getObservationSubject,
+  REPORT_SUBJECT_LABELS,
   isLegacyTrialResultObservation,
   normalizeTrialResultObservation
 } from "@/features/studio/lib/trial-result-options"
@@ -232,6 +234,15 @@ export async function upsertTrialResultAction(
       message:
         "기존 관찰 기록과 현재 기준 항목이 섞여 있습니다. 화면을 새로고침한 뒤 현재 기준의 항목으로 다시 선택해 주세요."
     }
+  }
+
+  const mismatchedObservation = observations.find(code => {
+    const subject = getObservationSubject(code)
+    return subject && subject !== current.reportSubjectCategory && !current.trialResult?.observations.includes(code)
+  })
+  if (mismatchedObservation) {
+    const subjectLabel = REPORT_SUBJECT_LABELS[getObservationSubject(mismatchedObservation)!]
+    return { status: "error", message: `${subjectLabel} 관찰 항목은 ${subjectLabel}로 분류된 수업에서 선택할 수 있어요. 수업 과목을 확인해 주세요.` }
   }
 
   const nextValue = {

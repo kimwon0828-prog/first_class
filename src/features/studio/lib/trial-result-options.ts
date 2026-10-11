@@ -1,3 +1,4 @@
+import { ADDITIONAL_SUBJECT_OBSERVATION_GROUPS, ADDITIONAL_REPORT_SUBJECT_LABELS } from "./subject-observation-catalog"
 import type {
   ApplicationRegistrationStatus,
   ApplicationUnregisteredReason,
@@ -49,12 +50,84 @@ export const TRIAL_RESULT_OBSERVATION_OPTIONS = [
   }
 ] as const
 
+/** Separate immutable codes: none of the existing generic meanings are reused. */
+export const MATH_OBSERVATION_GROUPS = [
+  { code: "interest_participation", label: "관심과 참여", options: [
+    { value: "math_attempted_new_problem", label: "새로운 문제에 스스로 도전했어요" },
+    { value: "math_started_familiar_problem", label: "익숙한 문제부터 참여했어요" },
+    { value: "math_engaged_with_manipulatives", label: "문제 풀이보다 교구 활동에 더 참여했어요" }
+  ] },
+  { code: "understanding_today", label: "오늘 내용의 이해", options: [
+    { value: "math_applied_concept", label: "배운 개념을 문제에 적용했어요" },
+    { value: "math_needed_step_guidance", label: "풀이 중 일부 단계에서 도움이 필요했어요" },
+    { value: "math_reviewed_foundations", label: "기초 개념을 함께 확인하며 진행했어요" }
+  ] },
+  { code: "response_to_guidance", label: "안내 후 반응", options: [
+    { value: "math_solved_after_example", label: "예시를 본 뒤 비슷한 문제를 해결했어요" },
+    { value: "math_expressed_with_visuals", label: "그림·교구를 활용한 뒤 이해를 표현했어요" },
+    { value: "math_needs_further_practice", label: "추가 연습을 통해 더 확인할 부분이 있어요" }
+  ] }
+] as const
+export const MUSIC_OBSERVATION_GROUPS = [
+  { code: "interest_participation", label: "관심과 참여", options: [
+    { value: "music_interested_in_sound", label: "소리나 음악 활동에 관심을 보였어요" },
+    { value: "music_started_familiar_activity", label: "익숙한 곡이나 활동부터 참여했어요" },
+    { value: "music_attempted_new_activity", label: "새로운 곡이나 활동을 스스로 시도했어요" }
+  ] },
+  { code: "performance_today", label: "오늘 활동의 수행", options: [
+    { value: "music_followed_rhythm_or_sound", label: "제시된 리듬이나 소리를 따라 표현했어요" },
+    { value: "music_applied_learning", label: "배운 내용을 연주·노래·음악 만들기에 활용했어요" },
+    { value: "music_reviewed_activity_steps", label: "활동의 일부 단계를 함께 확인하며 진행했어요" }
+  ] },
+  { code: "response_to_guidance", label: "안내 후 반응", options: [
+    { value: "music_retried_after_guidance", label: "시범이나 설명을 들은 뒤 다시 시도했어요" },
+    { value: "music_continued_with_smaller_steps", label: "활동을 작은 단계로 나눈 뒤 이어갔어요" },
+    { value: "music_needs_further_practice", label: "반복 연습을 통해 더 확인할 부분이 있어요" }
+  ] }
+] as const
+export const SUBJECT_OBSERVATION_GROUPS = {
+  ...ADDITIONAL_SUBJECT_OBSERVATION_GROUPS,
+  math: MATH_OBSERVATION_GROUPS,
+  music: MUSIC_OBSERVATION_GROUPS
+} as const
+export const REPORT_SUBJECT_LABELS = { ...ADDITIONAL_REPORT_SUBJECT_LABELS, math: "수학", music: "음악" } as const
+type ReportSubjectCategory = keyof typeof SUBJECT_OBSERVATION_GROUPS
+const isReportSubjectCategory = (value: string | null | undefined): value is ReportSubjectCategory =>
+  typeof value === "string" && Object.prototype.hasOwnProperty.call(SUBJECT_OBSERVATION_GROUPS, value)
+const SUBJECT_OBSERVATION_OPTIONS = Object.values(SUBJECT_OBSERVATION_GROUPS).flatMap(groups => groups.flatMap(group => [...group.options]))
+export const ALL_TRIAL_RESULT_OBSERVATION_OPTIONS = [
+  ...TRIAL_RESULT_OBSERVATION_OPTIONS, ...SUBJECT_OBSERVATION_OPTIONS
+]
+export const MATH_OBSERVATION_CODES: ReadonlySet<string> = new Set(MATH_OBSERVATION_GROUPS.flatMap(group => group.options.map(option => option.value)))
+const MATH_SUBJECT_CODES: ReadonlySet<string> = new Set(["math", "school_math", "thinking_math", "competition_math", "arithmetic", "abacus"])
+/** Observation selection key from persisted FK codes, never class names.
+ * Category templates use only the persisted master category, independent of subsubject.
+ * The existing category-based math/legacy classification contract is unchanged.
+ */
+export const getReportSubjectCategory = (categoryCode: string | null | undefined, subjectCode: string | null | undefined, legacySubject: string | null | undefined): string | null => {
+  return categoryCode ?? (MATH_SUBJECT_CODES.has(subjectCode ?? legacySubject ?? "") ? "math" : null)
+}
+export const getObservationGroups = (subject: string | null | undefined) =>
+  isReportSubjectCategory(subject) ? SUBJECT_OBSERVATION_GROUPS[subject]
+    : [{ code: "general", label: "관찰한 모습", options: TRIAL_RESULT_OBSERVATION_OPTIONS }]
+export const getObservationSubject = (code: string): ReportSubjectCategory | null => {
+  for (const subject of Object.keys(SUBJECT_OBSERVATION_GROUPS) as ReportSubjectCategory[]) {
+    if (SUBJECT_OBSERVATION_GROUPS[subject].some(group => group.options.some(option => option.value === code))) return subject
+  }
+  return null
+}
+export const getObservationGroupSnapshot = (code: string): { code: string; label: string } | null => {
+  const subject = getObservationSubject(code)
+  const group = subject ? SUBJECT_OBSERVATION_GROUPS[subject].find(group => group.options.some(option => option.value === code)) : null
+  return group ? { code: group.code, label: group.label } : null
+}
+
 export type TrialResultObservationCode =
-  (typeof TRIAL_RESULT_OBSERVATION_OPTIONS)[number]["value"]
+  (typeof ALL_TRIAL_RESULT_OBSERVATION_OPTIONS)[number]["value"]
 
 /** 허용 code 집합. 별도 목록을 만들지 않고 위 하나에서만 파생한다. */
 export const TRIAL_RESULT_OBSERVATION_CODES: ReadonlySet<string> = new Set(
-  TRIAL_RESULT_OBSERVATION_OPTIONS.map((option) => option.value)
+  ALL_TRIAL_RESULT_OBSERVATION_OPTIONS.map((option) => option.value)
 )
 
 /**
@@ -121,7 +194,7 @@ export const getTrialResultObservationLabel = (value: unknown): string | null =>
     return null
   }
 
-  return TRIAL_RESULT_OBSERVATION_OPTIONS.find((option) => option.value === code)?.label ?? null
+  return ALL_TRIAL_RESULT_OBSERVATION_OPTIONS.find((option) => option.value === code)?.label ?? null
 }
 
 /**

@@ -365,7 +365,7 @@ const reportUi = read(REPORT_UI_PATH)
 
 check(
   "미리보기를 공용 builder 로만 만든다",
-  detailPage.includes("buildExperienceReportSnapshotV2")
+  detailPage.includes("buildExperienceReportSnapshotV3")
 )
 check(
   "화면이 공개 내용을 따로 조립하지 않는다",
@@ -826,7 +826,7 @@ check(
 )
 check(
   "관찰은 목록 markup 이다",
-  parentReportPage.includes("<ul") && parentReportPage.includes("<li")
+  parentReportPage.includes("<ReportObservations") && read("src/features/reports/ui/report-observations.tsx").includes("<ul") && read("src/features/reports/ui/report-observations.tsx").includes("<li")
 )
 check("추천은 정의 목록 markup 이다", parentReportPage.includes("<dl") && parentReportPage.includes("<dt"))
 

@@ -1088,3 +1088,5 @@
 .viewEditButton:hover:not(:disabled) { background: var(--brand-50); border-color: var(--brand-700); }
 .viewEditButton:focus-visible { outline: 2px solid var(--brand-700); outline-offset: 3px; }
 .viewEditButton:disabled { background: var(--surface-sub); color: var(--text-3); cursor: not-allowed; }
+
+.reportReadingSection h4 { margin: 14px 0 6px; font-size: 14px; line-height: 1.5; font-weight: 600; }

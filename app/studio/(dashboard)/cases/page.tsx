@@ -134,7 +134,7 @@ export default async function StudioCasesPage({ searchParams }: StudioCasesPageP
       ) : (
         <section className={styles.workspace} aria-label="Case 목록">
           <div className={styles.resultHeader}>
-            <p className={styles.resultMeta}>검색 결과 <strong>{data.totalCount}건</strong><span aria-hidden="true">·</span><span>{view === "active" ? "일정 미확정 우선 · 체험 예정순" : filter === "pending" ? "연락일 도래 우선 · 체험 완료 오래된 순" : "결과 처리 최신순 · 처리일 미기록은 완료일/접수일 기준"}</span></p>
+            <p className={styles.resultMeta}>검색 결과 <strong>{data.totalCount}건</strong><span aria-hidden="true">·</span><span>{view === "active" ? "신규 신청 우선 · 체험 예정순" : filter === "pending" ? "연락일 도래 우선 · 체험 완료 오래된 순" : "결과 처리 최신순 · 처리일 미기록은 완료일/접수일 기준"}</span></p>
             <CasePagination {...paginationProps} compact />
           </div>
           <div className={styles.tableSurface} role="region" aria-label="신청 목록 표" tabIndex={0}>
@@ -156,7 +156,7 @@ export default async function StudioCasesPage({ searchParams }: StudioCasesPageP
                   const summary = view === "closed" ? getCasesResultSummary(item) : null
                   const actions = getCasesNextActions(item)
                   const taskActions = actions.filter(key => key !== "detail" && key !== "trial")
-                  const progressTone: StudioStatusTone = item.workflow.progress === "일정 미확정" ? "amber" : ["체험 예정"].includes(item.workflow.progress) ? "green" : "gray"
+                  const progressTone: StudioStatusTone = item.workflow.progress === "신규 신청" ? "amber" : ["체험 예정"].includes(item.workflow.progress) ? "green" : "gray"
                   const registrationTone: StudioStatusTone = ["취소", "불참"].includes(item.workflow.registration) ? "gray" : item.registrationStatus === "enrolled" ? "green" : item.registrationStatus === "pending" ? "amber" : item.registrationStatus === "not_enrolled" ? "red" : "gray"
                   return (
                     <li key={item.id} className={styles.row} data-case-id={item.id}>

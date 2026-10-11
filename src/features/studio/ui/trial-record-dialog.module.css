@@ -17,3 +17,8 @@ dialog.dialog { width: min(820px, calc(100vw - 32px)); }
 .recommendations .columns { margin: 12px 0 20px; }
 .recommendations > summary:focus-visible { outline: 2px solid var(--brand-700); outline-offset: 2px; }
 @media (max-width: 600px) { .observations { grid-template-columns: minmax(0, 1fr); } }
+
+.observationGroup + .observationGroup { margin-top: 14px; }
+.observationGroup h4 { margin: 0 0 8px; font-size: 14px; font-weight: 600; }
+.previousObservations { margin-top: 14px; }
+.previousObservations summary { cursor: pointer; font-size: 14px; font-weight: 600; }

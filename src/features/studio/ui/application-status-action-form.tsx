@@ -22,8 +22,8 @@ const initialState: UpdateApplicationStatusActionState = {
 }
 
 const STATUS_LABELS: Record<ApplicationStatus, string> = {
-  new: "일정 미확정",
-  reviewing: "일정 미확정",
+  new: "신규 신청",
+  reviewing: "신규 신청",
   confirmed: "체험 예정",
   completed: "체험 완료",
   canceled: "취소"

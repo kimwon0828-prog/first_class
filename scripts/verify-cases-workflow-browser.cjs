@@ -24,12 +24,12 @@ const entry=`import React from 'react';import {createRoot} from 'react-dom/clien
  assert(alignment.headingAlignment.every(delta=>delta<1),JSON.stringify(alignment));assert.equal(alignment.visible,true);assert.equal(alignment.font,'15px');assert.equal(alignment.weight,'600');assert(alignment.rows.flat().every(c=>c.dx<1&&c.dw<1&&c.chip<1&&c.center<1),JSON.stringify(alignment));
  assert.equal(await p.locator('[data-case-id]').getByText('다음 할 일',{exact:true}).count(),0);assert.equal(await p.locator('[data-case-id]').getByText('상세 보기',{exact:true}).count(),0);
 }
- for(const [view,count,labels,notice]of[['active',2,['전체','일정 미확정','체험 예정·진행'],'일정 확정부터 체험 진행까지 관리하세요.'],['closed',10,['전체','고민중','등록 완료','등록하지 않음','취소','불참'],'체험 결과와 등록 여부를 관리하세요.']]){
+ for(const [view,count,labels,notice]of[['active',2,['전체','신규 신청','체험 예정·진행'],'일정 확정부터 체험 진행까지 관리하세요.'],['closed',10,['전체','고민중','등록 완료','등록하지 않음','취소','불참'],'체험 결과와 등록 여부를 관리하세요.']]){
   await render(view);await p.waitForFunction(n=>document.querySelectorAll('[data-case-id]').length===n,count);assert.deepEqual(await p.locator('[aria-label="상태 필터"] a').allTextContents(),labels);assert(await p.getByText(notice,{exact:true}).isVisible());assert.match(await p.locator('[class*="resultMeta"]').innerText(),new RegExp(count+'건'));
   for(const width of [1440,1280,1024]){await p.setViewportSize({width,height:1000});await layout();await p.screenshot({path:path.join(out,view+'-'+width+'.png'),fullPage:true})}
  }
  for(const [filter,count] of [['all',2],['schedule_needed',1],['confirmed',1]]){
-  await render('active','normal',{filter});await p.waitForFunction(n=>document.querySelectorAll('[data-case-id]').length===n,count);assert.equal(await p.locator('[aria-label="상태 필터"] a[aria-current]').innerText(),{all:'전체',schedule_needed:'일정 미확정',confirmed:'체험 예정·진행'}[filter]);
+  await render('active','normal',{filter});await p.waitForFunction(n=>document.querySelectorAll('[data-case-id]').length===n,count);assert.equal(await p.locator('[aria-label="상태 필터"] a[aria-current]').innerText(),{all:'전체',schedule_needed:'신규 신청',confirmed:'체험 예정·진행'}[filter]);
   for(const width of [1440,1024]){await p.setViewportSize({width,height:1000});await layout();await p.screenshot({path:path.join(out,'active-'+filter+'-'+width+'.png'),fullPage:true});await p.locator('[aria-label="신청 목록 표"]').evaluate(e=>e.scrollLeft=e.scrollWidth);await layout();await p.screenshot({path:path.join(out,'active-'+filter+'-'+width+'-scroll.png'),fullPage:true});await p.locator('[aria-label="신청 목록 표"]').evaluate(e=>e.scrollLeft=0)}
  }
  await render('closed');const tasks={C:['기록 작성'],D:['리포트 보내기'],E:['등록 결과 입력'],F:['등록 상담 메모','등록 결과 입력'],G:[],H:[],I:['리포트 보내기'],J:[],K:[],L:[]};

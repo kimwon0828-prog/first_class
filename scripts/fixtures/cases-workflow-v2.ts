@@ -4,7 +4,7 @@ const base: CasesWorkflowInput = { status: "completed", registrationStatus: "und
   confirmedBlockStartAt: null, confirmedBlockEndAt: null, confirmedSlotAt: "2026-09-29T06:00:00Z", scheduleStartTime: null, scheduleEndTime: null,
   recordFinalized: true, reportSent: true }
 export const casesWorkflowFixtures: Array<{ name: string; input: CasesWorkflowInput; expected: [string, string | null, string, boolean] }> = [
-  {name:"A",input:{...base,status:"new",confirmedSlotAt:null},expected:["일정 미확정","schedule","등록 여부 미정",false]},
+  {name:"A",input:{...base,status:"new",confirmedSlotAt:null},expected:["신규 신청","schedule","등록 여부 미정",false]},
   {name:"B",input:{...base,status:"confirmed",confirmedSlotAt:"2026-10-01T06:00:00Z"},expected:["체험 예정","trial","등록 여부 미정",false]},
   {name:"C",input:{...base,recordFinalized:false,reportSent:false},expected:["체험 완료","record","등록 여부 미정",true]},
   {name:"D",input:{...base,reportSent:false},expected:["체험 완료","report","등록 여부 미정",true]},

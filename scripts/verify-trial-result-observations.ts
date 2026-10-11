@@ -75,7 +75,7 @@ const codes = TRIAL_RESULT_OBSERVATION_OPTIONS.map((option) => option.value)
 check("code 가 정확히 7개다", codes.length === 7, `actual ${codes.length}`)
 check("code 집합이 기대와 같다", CANONICAL.every((code) => codes.includes(code as never)))
 check("code 에 중복이 없다", new Set(codes).size === codes.length)
-check("TRIAL_RESULT_OBSERVATION_CODES 가 같은 집합이다", TRIAL_RESULT_OBSERVATION_CODES.size === 7)
+check("범용 7개와 대분류 11개 각 9개 code를 모두 허용한다", TRIAL_RESULT_OBSERVATION_CODES.size === 106 && CANONICAL.every(code => TRIAL_RESULT_OBSERVATION_CODES.has(code)))
 check(
   "모든 code 에 label 이 있고 서로 다르다",
   codes.every((code) => (getTrialResultObservationLabel(code) ?? "").length > 0) &&

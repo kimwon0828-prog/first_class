@@ -37,7 +37,8 @@ import Page from ${JSON.stringify(root + '/app/studio/(dashboard)/applications/[
 import ParentReportPage from ${JSON.stringify(root + '/app/record/[experienceId]/report/page.tsx')};
 import {StudioShell} from '@/features/studio/ui/studio-shell';
 import {createWorkflowApplication,createWorkflowRecord} from ${JSON.stringify(root + '/scripts/fixtures/application-detail-workflow.ts')};
-import {buildExperienceReportSnapshotV2} from '@/features/reports/lib/experience-report-snapshot';
+import {buildExperienceReportSnapshotV2,buildExperienceReportSnapshotV3} from '@/features/reports/lib/experience-report-snapshot';
+window.buildMathSnapshot=buildExperienceReportSnapshotV3;
 const appRoot=createRoot(document.getElementById('app'));let renderCount=0;window.submissions=[];window.refreshes=0;
 window.renderFixture=async(name)=>{const a=createWorkflowApplication({interestSubjects:'수학, 음악',childNotes:'차분히 설명해 주세요.',memo:'긴 학부모 요청도 줄바꿈되어 표시됩니다.'});
 const f={application:a,sent:false,report:null};
@@ -66,6 +67,7 @@ if(name==='long'){a.childName='긴 이름 학생';a.classTitle='길게 표시되
 window.fixture=f;window.fixtureKey=name+(++renderCount);const content=await Page({params:Promise.resolve({id:a.id})});flushSync(()=>appRoot.render(<StudioShell key={window.fixtureKey} organizationName="첫수업 테스트 학원">{content}</StudioShell>))};
 window.refreshCurrent=async()=>{const content=await Page({params:Promise.resolve({id:window.fixture.application.id})});flushSync(()=>appRoot.render(<StudioShell key={window.fixtureKey} organizationName='첫수업 테스트 학원'>{content}</StudioShell>))};
 window.renderParentSchedule=async(schedule)=>{const a=createWorkflowApplication();const built=buildExperienceReportSnapshotV2({programType:a.classProgramType,confirmedSlotAt:a.confirmedSlotAt,completedAt:a.completedAt,childName:a.childName,childGrade:a.childGrade,academyName:a.academyName,classTitle:a.classTitle,...createWorkflowRecord({recommendedSchedule:schedule,note:'PRIVATE_REPORT_CANARY'})});window.reportFixture={status:'ok',experience:{status:'completed',canCollectParentDecision:false},report:{id:'test-report',version:2,publishedAt:a.updatedAt,content:name==='sent-v1'?(({summary,...snapshot})=>snapshot)(built.snapshot):built.snapshot}};appRoot.render(await ParentReportPage({params:Promise.resolve({experienceId:a.id})}))};
+window.renderMathParent=async(snapshot)=>{window.reportFixture={status:'ok',experience:{status:'completed',canCollectParentDecision:false},report:{id:'math-report',version:1,publishedAt:'2026-10-11T01:00:00Z',content:snapshot}};flushSync(()=>appRoot.render(null));appRoot.render(await ParentReportPage({params:Promise.resolve({experienceId:'math-fixture'})}))};
 window.renderFixture('unwritten');`
 
 ;(async () => {
@@ -99,6 +101,7 @@ window.renderFixture('unwritten');`
     const openMemo = async () => page.locator('#academy-memo').getByRole('button',{name:/^(수정|메모 추가)$/}).click();
     const openHistory = async () => {const d=page.locator('[class*=historyDisclosure]');if(await d.count()&&!await d.evaluate(e=>e.open))await d.locator(':scope > summary').click()}
     const results = [], pass = message => { results.push(message);console.log('PASS ' + message) }
+    if (!process.env.REPORT_OBSERVATIONS_ONLY) {
     for (const name of ['unwritten','finalized','sent','pending','not-enrolled','enrolled','contact','legacy','record-error','report-error','free','unlinked','new','canceled','future','in-trial','elapsed','unknown-time']) {
       await render(name)
       assert.equal(await page.getByRole('list', { name: '신청 진행 단계', includeHidden: true }).count(), 0)
@@ -198,10 +201,100 @@ window.renderFixture('unwritten');`
     await page.getByRole('button',{name:'내용 수정',exact:true}).click();const orderedEdit=page.getByRole('dialog',{name:'리포트 내용 수정',exact:true});const layout=await orderedEdit.evaluate(e=>{const group=e.querySelector('fieldset'),summary=e.querySelector('[name=publicSummary]'),recs=e.querySelector('details'),buttons=[...group.querySelectorAll('button')].map(x=>x.getBoundingClientRect());return {order:group.getBoundingClientRect().top<summary.getBoundingClientRect().top&&summary.getBoundingClientRect().top<recs.getBoundingClientRect().top,twoColumns:buttons[0].x<buttons[1].x&&buttons[0].y===buttons[1].y}});assert(layout.order&&layout.twoColumns);await orderedEdit.getByRole('button',{name:'취소',exact:true}).click();
     pass('1440/1024 long content wraps in aligned report/operations columns; references default closed, anchors reveal hidden targets, contact/back links and preview Escape/focus work; ordered editor keeps 2 observation columns');
     for(const width of [390,768]) {
-      await page.setViewportSize({width,height:844});await page.evaluate(()=>window.renderParentSchedule('화·목 / 저녁'));await page.getByText('화·목 / 저녁',{exact:true}).waitFor();await page.evaluate(()=>window.scrollTo(0,0));assert.equal(await page.getByRole('region',{name:'선생님이 제안한 일정'}).getByText('화·목 / 저녁',{exact:true}).count(),1);assert(!(await page.locator('body').innerText()).includes('PRIVATE_REPORT_CANARY'));assert(!await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth));await page.screenshot({path:path.join(out,`parent-report-recommendation-${width}.png`),fullPage:true})
+      await page.setViewportSize({width,height:844});await page.evaluate(()=>window.renderParentSchedule('화·목 / 저녁'));await page.getByText('화·목 / 저녁',{exact:true}).waitFor();await page.evaluate(()=>window.scrollTo(0,0));assert.equal(await page.getByRole('region',{name:'추천 정보'}).getByText('화·목 / 저녁',{exact:true}).count(),1);assert(!(await page.locator('body').innerText()).includes('PRIVATE_REPORT_CANARY'));assert(!await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth));await page.screenshot({path:path.join(out,`parent-report-recommendation-${width}.png`),fullPage:true})
     }
     await page.evaluate(()=>window.renderParentSchedule('기존 자유 입력 일정 원문'));await page.getByText('기존 자유 입력 일정 원문',{exact:true}).waitFor();
     pass('actual Parent report page/CSS renders new recommendation at 390/768 and preserves legacy text; no private note; view tracking disabled in isolated fixture');
+    }
+    // Math: same real route/editor and shared reader, only fixture data and action transport isolated.
+    for(const width of [1440,1024]) {
+      await page.setViewportSize({width,height:1000});await render('finalized');
+      await page.evaluate(async()=>{window.fixture.application.reportSubjectCategory='math';window.fixture.application.classTitle='수학 체험수업';await window.refreshCurrent()});
+      await page.getByRole('button',{name:'내용 수정',exact:true}).click();const mathEdit=page.getByRole('dialog',{name:'리포트 내용 수정',exact:true});
+      for(const group of ['관심과 참여','오늘 내용의 이해','안내 후 반응'])assert.equal(await mathEdit.getByRole('group',{name:group,exact:true}).getByRole('button').count(),3);
+      assert.equal(await mathEdit.getByRole('button',{name:'활동이 진행되는 동안 과제에 계속 참여했어요.',exact:true}).getAttribute('aria-pressed'),'true');
+      await mathEdit.getByRole('button',{name:'새로운 문제에 스스로 도전했어요',exact:true}).click();
+      assert.deepEqual(await mathEdit.locator('[name=observations]').evaluateAll(nodes=>nodes.map(n=>n.value)),['sustained_engagement','math_attempted_new_problem']);
+      assert.equal(await mathEdit.locator('[name=publicSummary]').inputValue(),'즐겁게 수업에 참여했어요.');
+      assert(!await mathEdit.evaluate(e=>e.scrollWidth>e.clientWidth));await page.screenshot({path:path.join(out,'math-editor-'+width+'.png')});
+      await mathEdit.getByRole('button',{name:'기록 저장',exact:true}).click();await mathEdit.getByText('TEST 저장 실패 · 입력 유지',{exact:true}).waitFor();
+      const submitted=await page.evaluate(()=>window.submissions.filter(s=>s.name==='upsertTrialResultAction').at(-1));assert.deepEqual(submitted.observations,['sustained_engagement','math_attempted_new_problem']);
+      assert.equal(await mathEdit.getByRole('button',{name:'새로운 문제에 스스로 도전했어요',exact:true}).getAttribute('aria-pressed'),'true');
+      // Re-entry uses a separately persisted source (actual RPC persistence is covered in the isolated DB suite).
+      await render('finalized');await page.evaluate(async()=>{const a=window.fixture.application;a.reportSubjectCategory='math';a.classTitle='수학 체험수업';a.trialResult.observations=['math_applied_concept','math_solved_after_example'];await window.refreshCurrent()});
+      await page.getByRole('button',{name:'내용 수정',exact:true}).click();assert.equal(await mathEdit.getByRole('button',{name:'배운 개념을 문제에 적용했어요',exact:true}).getAttribute('aria-pressed'),'true');await mathEdit.getByRole('button',{name:'취소',exact:true}).click();
+      assert.equal(await page.locator('#trial-record').getByText('관심과 참여',{exact:true}).count(),0);
+      await page.getByRole('button',{name:'미리보기',exact:true}).click();const mathPreview=page.getByRole('dialog',{name:'리포트 미리보기',exact:true});
+      assert.equal(await mathPreview.getByText('관심과 참여',{exact:true}).count(),0);assert(await mathPreview.getByText('오늘 내용의 이해',{exact:true}).isVisible());assert(await mathPreview.getByText('안내 후 반응',{exact:true}).isVisible());
+      const studioObservations=await mathPreview.locator('li').allTextContents();
+      const snapshot=await page.evaluate(()=>{const a=window.fixture.application;return window.buildMathSnapshot({programType:a.classProgramType,confirmedSlotAt:a.confirmedSlotAt,completedAt:a.completedAt,childName:a.childName,childGrade:a.childGrade,academyName:a.academyName,classTitle:a.classTitle,...a.trialResult}).snapshot});
+      await page.keyboard.press('Escape');await page.setViewportSize({width:390,height:844});await page.evaluate(s=>window.renderMathParent(s),snapshot);await page.getByRole('heading',{name:'수업에서 보인 모습',exact:true}).waitFor();
+      assert.deepEqual(await page.getByRole('region',{name:'수업에서 보인 모습',exact:true}).locator('li').allTextContents(),studioObservations);assert.equal(await page.getByText('관심과 참여',{exact:true}).count(),0);
+      assert(!await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth));assert.equal(await page.getByRole('region',{name:'추천 정보',exact:true}).locator('a').count(),0);
+      await page.screenshot({path:path.join(out,'math-parent-390-from-'+width+'.png'),fullPage:true});
+    }
+    // Music (piano demo): same real route/editor and shared reader, only fixture data and action transport isolated.
+    for(const width of [1440,1024]) {
+      await page.setViewportSize({width,height:1000});await render('finalized');
+      await page.evaluate(async()=>{window.fixture.application.reportSubjectCategory='music';window.fixture.application.classTitle='피아노 체험수업';await window.refreshCurrent()});
+      await page.getByRole('button',{name:'내용 수정',exact:true}).click();const pianoEdit=page.getByRole('dialog',{name:'리포트 내용 수정',exact:true});
+      for(const group of ['관심과 참여','오늘 활동의 수행','안내 후 반응'])assert.equal(await pianoEdit.getByRole('group',{name:group,exact:true}).getByRole('button').count(),3);
+      assert.equal(await pianoEdit.getByRole('button',{name:'활동이 진행되는 동안 과제에 계속 참여했어요.',exact:true}).getAttribute('aria-pressed'),'true');
+      await pianoEdit.getByRole('button',{name:'소리나 음악 활동에 관심을 보였어요',exact:true}).click();
+      assert.deepEqual(await pianoEdit.locator('[name=observations]').evaluateAll(nodes=>nodes.map(n=>n.value)),['sustained_engagement','music_interested_in_sound']);
+      assert.equal(await pianoEdit.locator('[name=publicSummary]').inputValue(),'즐겁게 수업에 참여했어요.');
+      assert(!await pianoEdit.evaluate(e=>e.scrollWidth>e.clientWidth));await page.screenshot({path:path.join(out,'piano-editor-'+width+'.png')});
+      await pianoEdit.getByRole('button',{name:'기록 저장',exact:true}).click();await pianoEdit.getByText('TEST 저장 실패 · 입력 유지',{exact:true}).waitFor();
+      const submitted=await page.evaluate(()=>window.submissions.filter(s=>s.name==='upsertTrialResultAction').at(-1));assert.deepEqual(submitted.observations,['sustained_engagement','music_interested_in_sound']);
+      assert.equal(await pianoEdit.getByRole('button',{name:'소리나 음악 활동에 관심을 보였어요',exact:true}).getAttribute('aria-pressed'),'true');
+      // Re-entry uses a separately persisted source (actual RPC persistence is covered in the isolated DB suite).
+      await render('finalized');await page.evaluate(async()=>{const a=window.fixture.application;a.reportSubjectCategory='music';a.classTitle='피아노 체험수업';a.trialResult.observations=['music_followed_rhythm_or_sound','music_retried_after_guidance'];await window.refreshCurrent()});
+      await page.getByRole('button',{name:'내용 수정',exact:true}).click();assert.equal(await pianoEdit.getByRole('button',{name:'제시된 리듬이나 소리를 따라 표현했어요',exact:true}).getAttribute('aria-pressed'),'true');await pianoEdit.getByRole('button',{name:'취소',exact:true}).click();
+      assert.equal(await page.locator('#trial-record').getByText('관심과 참여',{exact:true}).count(),0);
+      await page.getByRole('button',{name:'미리보기',exact:true}).click();const pianoPreview=page.getByRole('dialog',{name:'리포트 미리보기',exact:true});
+      assert.equal(await pianoPreview.getByText('관심과 참여',{exact:true}).count(),0);assert(await pianoPreview.getByText('오늘 활동의 수행',{exact:true}).isVisible());assert(await pianoPreview.getByText('안내 후 반응',{exact:true}).isVisible());
+      const studioObservations=await pianoPreview.locator('li').allTextContents();
+      const snapshot=await page.evaluate(()=>{const a=window.fixture.application;return window.buildMathSnapshot({programType:a.classProgramType,confirmedSlotAt:a.confirmedSlotAt,completedAt:a.completedAt,childName:a.childName,childGrade:a.childGrade,academyName:a.academyName,classTitle:a.classTitle,...a.trialResult}).snapshot});
+      await page.keyboard.press('Escape');await page.setViewportSize({width:390,height:844});await page.evaluate(s=>window.renderMathParent(s),snapshot);await page.getByRole('heading',{name:'수업에서 보인 모습',exact:true}).waitFor();
+      assert.deepEqual(await page.getByRole('region',{name:'수업에서 보인 모습',exact:true}).locator('li').allTextContents(),studioObservations);assert.equal(await page.getByText('관심과 참여',{exact:true}).count(),0);
+      assert(!await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth));assert.equal(await page.getByRole('region',{name:'추천 정보',exact:true}).locator('a').count(),0);
+      await page.screenshot({path:path.join(out,'piano-parent-390-from-'+width+'.png'),fullPage:true});
+    }
+    if(process.env.SUBJECT_CATALOG_PATH){
+     const catalog=JSON.parse(fs.readFileSync(process.env.SUBJECT_CATALOG_PATH,'utf8'));
+     for(const [category,groups] of Object.entries(catalog.groups).filter(([k])=>!['math','music'].includes(k))){
+    for(const width of [1440,1024]) {
+      await page.setViewportSize({width,height:1000});await render('finalized');
+      await page.evaluate(async(category)=>{window.fixture.application.reportSubjectCategory=category;window.fixture.application.classTitle=category+' 체험수업';await window.refreshCurrent()},category);
+      await page.getByRole('button',{name:'내용 수정',exact:true}).click();const pianoEdit=page.getByRole('dialog',{name:'리포트 내용 수정',exact:true});
+      for(const group of groups.map(g=>g.label))assert.equal(await pianoEdit.getByRole('group',{name:group,exact:true}).getByRole('button').count(),3);
+      assert.equal(await pianoEdit.getByRole('button',{name:'활동이 진행되는 동안 과제에 계속 참여했어요.',exact:true}).getAttribute('aria-pressed'),'true');
+      await pianoEdit.getByRole('button',{name:groups[0].options[0].label,exact:true}).click();
+      assert.deepEqual(await pianoEdit.locator('[name=observations]').evaluateAll(nodes=>nodes.map(n=>n.value)),['sustained_engagement',groups[0].options[0].value]);
+      assert.equal(await pianoEdit.locator('[name=publicSummary]').inputValue(),'즐겁게 수업에 참여했어요.');
+      assert(!await pianoEdit.evaluate(e=>e.scrollWidth>e.clientWidth));await page.screenshot({path:path.join(out,category+'-editor-'+width+'.png')});
+      await pianoEdit.getByRole('button',{name:'기록 저장',exact:true}).click();await pianoEdit.getByText('TEST 저장 실패 · 입력 유지',{exact:true}).waitFor();
+      const submitted=await page.evaluate(()=>window.submissions.filter(s=>s.name==='upsertTrialResultAction').at(-1));assert.deepEqual(submitted.observations,['sustained_engagement',groups[0].options[0].value]);
+      assert.equal(await pianoEdit.getByRole('button',{name:groups[0].options[0].label,exact:true}).getAttribute('aria-pressed'),'true');
+      // Re-entry uses a separately persisted source (actual RPC persistence is covered in the isolated DB suite).
+      await render('finalized');await page.evaluate(async({category,groups})=>{const a=window.fixture.application;a.reportSubjectCategory=category;a.classTitle=category+' 체험수업';a.trialResult.observations=[groups[1].options[0].value,groups[2].options[0].value];await window.refreshCurrent()},{category,groups});
+      await page.getByRole('button',{name:'내용 수정',exact:true}).click();assert.equal(await pianoEdit.getByRole('button',{name:groups[1].options[0].label,exact:true}).getAttribute('aria-pressed'),'true');await pianoEdit.getByRole('button',{name:'취소',exact:true}).click();
+      assert.equal(await page.locator('#trial-record').getByText('관심과 참여',{exact:true}).count(),0);
+      await page.getByRole('button',{name:'미리보기',exact:true}).click();const pianoPreview=page.getByRole('dialog',{name:'리포트 미리보기',exact:true});
+      assert.equal(await pianoPreview.getByText('관심과 참여',{exact:true}).count(),0);assert(await pianoPreview.getByText(groups[1].label,{exact:true}).isVisible());assert(await pianoPreview.getByText('안내 후 반응',{exact:true}).isVisible());
+      const studioObservations=await pianoPreview.locator('li').allTextContents();
+      const snapshot=await page.evaluate(()=>{const a=window.fixture.application;return window.buildMathSnapshot({programType:a.classProgramType,confirmedSlotAt:a.confirmedSlotAt,completedAt:a.completedAt,childName:a.childName,childGrade:a.childGrade,academyName:a.academyName,classTitle:a.classTitle,...a.trialResult}).snapshot});
+      await page.keyboard.press('Escape');await page.setViewportSize({width:390,height:844});await page.evaluate(s=>window.renderMathParent(s),snapshot);await page.getByRole('heading',{name:'수업에서 보인 모습',exact:true}).waitFor();
+      assert.deepEqual(await page.getByRole('region',{name:'수업에서 보인 모습',exact:true}).locator('li').allTextContents(),studioObservations);assert.equal(await page.getByText('관심과 참여',{exact:true}).count(),0);
+      assert(!await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth));assert.equal(await page.getByRole('region',{name:'추천 정보',exact:true}).locator('a').count(),0);
+      await page.screenshot({path:path.join(out,category+'-parent-390-from-'+width+'.png'),fullPage:true});
+    }
+     }
+     pass('Nine additional categories: shared editor selection/reentry/failure, optional domains and preview/Parent equivalence at 1440/1024/390');
+    }
+    await page.evaluate(()=>window.renderMathParent({experience:{type:'trial_class',date:'2026-10-11T01:00:00Z',child:{displayName:'격리 학생',grade:'초3'},academy:{name:'격리 학원'},class:{title:'격리 수업'}},observations:[],summary:'선생님 이야기만 있는 리포트',recommendation:{course:null,level:null,schedule:null}}));
+    await page.getByText('선생님 이야기만 있는 리포트',{exact:true}).waitFor();assert.equal(await page.getByRole('heading',{name:'수업에서 보인 모습',exact:true}).count(),0);assert.equal(await page.getByRole('region',{name:'추천 정보',exact:true}).count(),0);
+    pass('Math + music 3 optional domains / 9 unique choices, legacy generic selection preserved, failed draft retained, saved math re-entry, shared preview/Parent labels, omitted empty domains, Parent 390 and Studio 1440/1024');
     assert.deepEqual(errors,[]);fs.writeFileSync(path.join(out,'results.json'),JSON.stringify({results,errors},null,2));console.log('Evidence: '+out)
   } catch (error) {
     const page = browser.contexts()[0]?.pages()[0]

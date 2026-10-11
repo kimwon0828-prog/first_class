@@ -264,7 +264,7 @@ check(
 )
 
 console.log("\n── 5. V1 은 그대로, V2 만 총평 ──")
-check("지금 발행 version 은 2다", EXPERIENCE_REPORT_CONTENT_VERSION === 2)
+check("지금 발행 version 은 3이다 (V1/V2 조회 보존)", EXPERIENCE_REPORT_CONTENT_VERSION === 3)
 check("migration 이 2로 적는다", migration.includes("'published', 2, v_content"))
 check(
   "기존 발행본을 backfill 하지 않는다",

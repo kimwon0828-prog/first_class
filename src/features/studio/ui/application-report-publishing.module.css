@@ -457,3 +457,5 @@
 .previewDialog::backdrop { background: #172d2366; }
 .previewDialog > header { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin-bottom: 20px; }
 .previewDialog h2 { margin: 0; font-size: 20px; }
+
+.reportSection h4 { margin: 14px 0 6px; font-size: 14px; line-height: 1.5; font-weight: 600; }

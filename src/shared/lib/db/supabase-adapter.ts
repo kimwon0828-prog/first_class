@@ -1,3 +1,4 @@
+import { getReportSubjectCategory } from "@/features/studio/lib/trial-result-options"
 import { withBookingClassHistory, type BookingDay, type BookingClosureMutation, type BookingClosure } from "@/features/studio/lib/booking-closures"
 import { decodeParentFeedbackContext, decodePrivateFeedback, decodePublicFeedback } from "@/features/feedback/lib/feedback-decode"
 import { buildScheduleOccurrenceReservationKey } from "@/shared/lib/schedule-reservation-key"
@@ -2747,6 +2748,14 @@ const readStudioScheduleClassOptions = async (client: SupabaseClient, organizati
   }
 }
 
+// Nested classification comes from the saved FK relations, not display labels/title.
+const reportCategoryFromClass = (value: unknown): string | null => {
+  const one = (v: unknown): Record<string, unknown> => (Array.isArray(v) ? v[0] : v) as Record<string, unknown> ?? {}
+  const klass = one(value), category = one(klass.report_category), subject = one(klass.report_subject)
+  const subjectCategory = one(subject.subject_categories)
+  return getReportSubjectCategory((category.code ?? subjectCategory.code) as string | undefined, subject.code as string | undefined, klass.subject as string | undefined)
+}
+
 export const supabaseDataAdapter: DataAdapter = {
   async getStudioBookingDay(organizationId, dateKey) {
     const client=await getSupabaseServerClient()
@@ -4870,7 +4879,7 @@ export const supabaseDataAdapter: DataAdapter = {
     const { data, error } = await supabase
       .from("studio_trial_applications")
       .select(
-        "id, class_id, parent_id, child_name, child_grade, parent_name, parent_phone, child_school, child_notes, subject_experience_yn, subject_experience_duration, current_level, interest_subjects, preferred_regular_schedule, goal_type, goal_note, class_schedule_id, requested_slot_at, requested_schedule_block_id, selected_schedule_label, confirmed_slot_at, confirmed_schedule_block_id, assigned_teacher_id, contacted_at, scheduled_at, completed_at, enrolled_at, canceled_at, no_show_at, consultation_note, trial_feedback, final_level, final_schedule, registration_status, registration_reason_ids, registration_note, registered_course, unregistered_reason, unregistered_reason_note, lost_at, follow_up_note, next_contact_at, last_activity_at, regular_schedule_preference, regular_schedule_preference_note, regular_schedule_preference_updated_at, memo, status, created_at, updated_at, class_schedules(start_time, end_time), confirmed_block:schedule_blocks!trial_applications_confirmed_schedule_block_id_fkey(start_at, end_at), classes!inner(title, subject, organization_id, program_type, assignment_mode, organizations(name, sido, sigungu, bname))"
+        "id, class_id, parent_id, child_name, child_grade, parent_name, parent_phone, child_school, child_notes, subject_experience_yn, subject_experience_duration, current_level, interest_subjects, preferred_regular_schedule, goal_type, goal_note, class_schedule_id, requested_slot_at, requested_schedule_block_id, selected_schedule_label, confirmed_slot_at, confirmed_schedule_block_id, assigned_teacher_id, contacted_at, scheduled_at, completed_at, enrolled_at, canceled_at, no_show_at, consultation_note, trial_feedback, final_level, final_schedule, registration_status, registration_reason_ids, registration_note, registered_course, unregistered_reason, unregistered_reason_note, lost_at, follow_up_note, next_contact_at, last_activity_at, regular_schedule_preference, regular_schedule_preference_note, regular_schedule_preference_updated_at, memo, status, created_at, updated_at, class_schedules(start_time, end_time), confirmed_block:schedule_blocks!trial_applications_confirmed_schedule_block_id_fkey(start_at, end_at), classes!inner(title, subject, organization_id, program_type, assignment_mode, organizations(name, sido, sigungu, bname), report_category:subject_categories(code), report_subject:subjects(code, subject_categories(code)))"
       )
       .eq("id", applicationId)
       .eq("classes.organization_id", organizationId)
@@ -4933,6 +4942,7 @@ export const supabaseDataAdapter: DataAdapter = {
     )
     const detail: StudioApplicationDetail = {
       ...mapStudioApplication(data as TrialApplicationRow, teacherNameById),
+      reportSubjectCategory: reportCategoryFromClass(data.classes),
       academyName: embeddedOrganization?.name.trim() || null,
       confirmedScheduleBlockId: (data as TrialApplicationRow).confirmed_schedule_block_id ?? null,
       childSchool: (data as TrialApplicationRow).child_school ?? null,
@@ -5415,7 +5425,7 @@ export const supabaseDataAdapter: DataAdapter = {
     const { data, error } = await supabase
       .from("studio_trial_applications")
       .select(
-        "status, classes!inner(organization_id), trial_results(observations, parent_reaction, recommended_course, recommended_level, recommended_schedule, next_action, note, public_summary, updated_at), experience_reports(id)"
+        "status, classes!inner(organization_id, subject, report_category:subject_categories(code), report_subject:subjects(code, subject_categories(code))), trial_results(observations, parent_reaction, recommended_course, recommended_level, recommended_schedule, next_action, note, public_summary, updated_at), experience_reports(id)"
       )
       .eq("id", applicationId)
       .eq("classes.organization_id", organizationId)
@@ -5441,6 +5451,7 @@ export const supabaseDataAdapter: DataAdapter = {
 
     return {
       status: row.status,
+      reportSubjectCategory: reportCategoryFromClass(data.classes),
       reportEverSent: Boolean(row.experience_reports?.length),
       assessmentUpdatedAt: embedded?.updated_at ?? null,
       trialResult: embedded ? mapStudioTrialResultFields(embedded) : null
@@ -5714,7 +5725,7 @@ export const supabaseDataAdapter: DataAdapter = {
     //
     // 넘기는 것은 "원장이 확인한 시점" 뿐이다. 그 사이 평가가 바뀌었는지는
     // 함수가 source row 를 잠근 채 판단한다.
-    const { data, error } = await supabase.rpc("publish_experience_report", {
+    const { data, error } = await supabase.rpc("publish_experience_report_v3", {
       p_application_id: applicationId,
       p_expected_assessment_updated_at: expectedAssessmentUpdatedAt
     })

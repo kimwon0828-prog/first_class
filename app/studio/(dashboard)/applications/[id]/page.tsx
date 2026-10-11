@@ -24,7 +24,7 @@ import { ApplicationReportPublishing, type ReportPublishBlocker } from "@/featur
 import { ApplicationTrialResultWorkflow } from "@/features/studio/ui/application-trial-result-workflow"
 import { ApplicationDetailIcon } from "@/features/studio/ui/application-detail-icon"
 import {
-  buildExperienceReportSnapshotV2,
+  buildExperienceReportSnapshotV3,
   hasPublishableReportContent
 } from "@/features/reports/lib/experience-report-snapshot"
 import { getPublishedExperienceReport } from "@/features/reports/queries/get-published-experience-report"
@@ -268,7 +268,7 @@ export default async function StudioApplicationDetailPage({ params, searchParams
    * 발행 영역이 쓸 값을 서버에서 만든다.
    *
    * ⚠️ 미리보기를 화면에서 다시 조립하지 않는다. 공개 가능한 field 를 정하는 곳은
-   *    buildExperienceReportSnapshotV2 하나다 — 화면이 따로 만들면 그 whitelist 를
+   *    buildExperienceReportSnapshotV3 하나다 — 화면이 따로 만들면 그 whitelist 를
    *    비켜 가는 경로가 생긴다.
    */
   const reportView = (() => {
@@ -306,7 +306,7 @@ export default async function StudioApplicationDetailPage({ params, searchParams
     // legacy 가 있는 row 는 "내용 없음" 보다 legacy 안내가 먼저다 —
     // 옛 기록을 현재 기준으로 다시 확인하는 것이 먼저 할 일이기 때문이다.
     const built = trialResult
-      ? buildExperienceReportSnapshotV2({
+      ? buildExperienceReportSnapshotV3({
           programType: data.classProgramType ?? "trial_class",
           confirmedSlotAt: data.confirmedSlotAt,
           completedAt: data.completedAt,
@@ -503,7 +503,7 @@ export default async function StudioApplicationDetailPage({ params, searchParams
           progressSteps,
           caseStageLabel: data.status === "confirmed"
             ? getTrialProgressState(data, new Date(nowIso)) === "after_scheduled_end" ? "완료 확인 필요"
-              : getTrialProgressState(data, new Date(nowIso)) === "unknown" ? "일정 미확정" : CASE_STAGE_LABELS[caseStage]
+              : getTrialProgressState(data, new Date(nowIso)) === "unknown" ? "신규 신청" : CASE_STAGE_LABELS[caseStage]
             : CASE_STAGE_LABELS[caseStage]
         }
       })()

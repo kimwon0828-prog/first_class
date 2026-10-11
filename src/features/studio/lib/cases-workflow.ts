@@ -26,7 +26,7 @@ export const CASES_REGISTRATION_LABELS = { undecided: "등록 여부 미정", pe
 export function deriveCasesWorkflow(input: CasesWorkflowInput, now = new Date()) {
   const exception = input.noShowAt ? "불참" : input.status === "canceled" || input.canceledAt ? "취소" : null
   let action: CasesActionKey | null = null
-  let progress: string = exception ?? "일정 미확정"
+  let progress: string = exception ?? "신규 신청"
   let filter: "all" | "schedule_needed" | "confirmed" | "pending" | "enrolled" | "not_enrolled" | "canceled" | "no_show"
   if (exception) filter = exception === "불참" ? "no_show" : "canceled"
   else if (input.status === "completed") {

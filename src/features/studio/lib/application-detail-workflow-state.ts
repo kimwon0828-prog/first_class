@@ -96,7 +96,7 @@ export function deriveApplicationDetailWorkflow({ application: a, evidence: e, n
 
   const steps: WorkflowStep[] = [
     { id: "trial", title: "체험", state: completed ? "done" : closed ? "restricted" : "waiting",
-      summary: completed ? formatSeoulDateTime(a.completedAt) ?? "체험 완료" : a.status === "canceled" ? (a.noShowAt ? "불참" : "취소") : progress === "after_scheduled_end" ? "완료 확인 필요" : progress === "in_trial" ? "체험 진행 중" : a.status === "confirmed" && progress === "before_start" ? "체험 예정" : "일정 미확정" },
+      summary: completed ? formatSeoulDateTime(a.completedAt) ?? "체험 완료" : a.status === "canceled" ? (a.noShowAt ? "불참" : "취소") : progress === "after_scheduled_end" ? "완료 확인 필요" : progress === "in_trial" ? "체험 진행 중" : a.status === "confirmed" && progress === "before_start" ? "체험 예정" : "신규 신청" },
     { id: "record", title: "체험 기록", state: e.trialResultError ? "error" : hasRecord ? "done" : completed ? "available" : "restricted",
       summary: e.trialResultError ? "정보를 불러오지 못했어요." : hasRecord ? (e.report.everSent || e.report.version ? "보낸 뒤 읽기 전용" : "저장 완료 · 보내기 전 수정 가능") : completed ? "체험 기록 미작성" : "체험 완료 후 작성 가능" },
     { id: "report", title: "학부모 리포트", state: e.report.error ? "error" : e.report.version ? "done" : e.report.canPublish ? "available" : "restricted",

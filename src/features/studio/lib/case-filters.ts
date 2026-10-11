@@ -6,7 +6,7 @@ export type CaseFilterKey = CaseActiveFilterKey | CaseClosedFilterKey
 export type CaseFilterOption<K extends string> = { key: K; label: string; description?: string }
 export const CASE_ACTIVE_FILTERS: CaseFilterOption<CaseActiveFilterKey>[] = [
   { key: "all", label: "전체" },
-  { key: "schedule_needed", label: "일정 미확정", description: "신청 접수·확인 중이거나 확정 일정이 없는 신청" },
+  { key: "schedule_needed", label: "신규 신청", description: "신청 접수·확인 중이거나 확정 일정이 없는 신청" },
   { key: "confirmed", label: "체험 예정·진행", description: "일정 확정 후 실제 체험 완료 처리 전까지의 신청" }
 ]
 export const CASE_CLOSED_FILTERS: CaseFilterOption<CaseClosedFilterKey>[] = [

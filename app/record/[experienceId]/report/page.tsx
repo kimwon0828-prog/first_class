@@ -1,3 +1,4 @@
+import { ReportObservations } from "@/features/reports/ui/report-observations"
 import { ParentExperienceThumbnail } from "@/features/classes/ui/parent-experience-thumbnail"
 import { parentEntryHref } from "@/features/classes/lib/parent-navigation"
 import { getParentExperienceFeedback } from "@/features/feedback/queries/get-experience-feedback"
@@ -122,14 +123,16 @@ export default async function ExperienceReportPage({ params, searchParams }: {
   const typeLabel = type === "trial_class" || type === "level_test" ? getExperienceTypeLabel(type) : null
   const recommendations = [
     { label: "과정", value: snapshot.recommendation.course },
-    { label: "레벨", value: snapshot.recommendation.level }
+    { label: "레벨", value: snapshot.recommendation.level },
+    { label: "일정", value: snapshot.recommendation.schedule }
   ].filter((item): item is { label: string; value: string } => Boolean(item.value))
 
   return <ReportFrame backHref={backHref}>
     <ReportViewTracker reportId={report.id} />
-    <section className={styles.summary} aria-label="경험 요약">
+    <section className={styles.summary} aria-label="오늘의 수업">
       <ParentExperienceThumbnail src={experience.classCoverImageUrl} size="report" />
       <div className={styles.summaryText}>
+      <p className={styles.caption}>오늘의 수업</p>
       {snapshot.experience.child.displayName ? <p className={styles.childName}>
         {snapshot.experience.child.displayName}
         {snapshot.experience.child.grade ? <span className={styles.grade}> · {snapshot.experience.child.grade}</span> : null}
@@ -142,19 +145,17 @@ export default async function ExperienceReportPage({ params, searchParams }: {
     </section>
 
     {snapshot.observations.length > 0 ? <section className={styles.block} aria-labelledby="observations-title">
-      <h2 id="observations-title" className={styles.blockTitle}><SectionIcon kind="observation" />선생님이 남긴 관찰</h2>
-      <ul className={styles.observationList}>
-        {snapshot.observations.map((item, index) => <li key={`${item.code}-${index}`} className={styles.prose}>{item.label}</li>)}
-      </ul>
+      <h2 id="observations-title" className={styles.blockTitle}><SectionIcon kind="observation" />수업에서 보인 모습</h2>
+      <ReportObservations observations={snapshot.observations} listClassName={styles.observationList} itemClassName={styles.prose} heading="h3" />
     </section> : null}
 
     {summary ? <section className={styles.block} aria-labelledby="report-summary-title">
-      <h2 id="report-summary-title" className={styles.blockTitle}><SectionIcon kind="summary" />선생님 총평</h2>
+      <h2 id="report-summary-title" className={styles.blockTitle}><SectionIcon kind="summary" />선생님 이야기</h2>
       <p className={styles.prose}>{summary}</p>
     </section> : null}
 
     {recommendations.length > 0 ? <section className={styles.block} aria-labelledby="recommendation-title">
-      <h2 id="recommendation-title" className={styles.blockTitle}><SectionIcon kind="course" />선생님이 제안한 과정 · 레벨</h2>
+      <h2 id="recommendation-title" className={styles.blockTitle}><SectionIcon kind="course" />추천 정보</h2>
       <dl className={styles.recommendationList}>
         {recommendations.map(item => <div key={item.label} className={styles.recommendationRow}>
           <dt>{item.label}</dt><dd className={styles.prose}>{item.value}</dd>
@@ -162,10 +163,7 @@ export default async function ExperienceReportPage({ params, searchParams }: {
       </dl>
     </section> : null}
 
-    {snapshot.recommendation.schedule ? <section className={styles.block} aria-labelledby="schedule-title">
-      <h2 id="schedule-title" className={styles.blockTitle}><SectionIcon kind="schedule" />선생님이 제안한 일정</h2>
-      <p className={styles.prose}>{snapshot.recommendation.schedule}</p>
-    </section> : null}
+
 
     <footer className={styles.footer}>
       {publishedDate ? <p className={styles.caption}><time dateTime={report.publishedAt}>{publishedDate}</time> 발행</p> : null}

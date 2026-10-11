@@ -1,5 +1,6 @@
 import {
-  TRIAL_RESULT_OBSERVATION_OPTIONS,
+  ALL_TRIAL_RESULT_OBSERVATION_OPTIONS,
+  getObservationGroupSnapshot,
   type TrialResultObservationCode,
   isLegacyTrialResultObservation,
   normalizeTrialResultObservation
@@ -32,6 +33,8 @@ export const EXPERIENCE_REPORT_STATUSES: readonly ExperienceReportStatus[] = [
 export type ExperienceReportObservationSnapshot = {
   code: TrialResultObservationCode
   label: string
+  /** V3 only. The delivered group is read from the snapshot, never live configuration. */
+  group?: { code: string; label: string } | null
 }
 
 /**
@@ -46,11 +49,15 @@ export type ExperienceReportSnapshotV2 = ExperienceReportSnapshotV1 & {
   summary: string | null
 }
 
+export type ExperienceReportSnapshotV3 = ExperienceReportSnapshotV2 & {
+  observations: (ExperienceReportObservationSnapshot & { group: { code: string; label: string } | null })[]
+}
+
 /** 화면이 받는 모양. V1 은 summary 가 없는 것으로 읽힌다. */
-export type ExperienceReportSnapshot = ExperienceReportSnapshotV1 | ExperienceReportSnapshotV2
+export type ExperienceReportSnapshot = ExperienceReportSnapshotV1 | ExperienceReportSnapshotV2 | ExperienceReportSnapshotV3
 
 /** 지금 발행하면 찍히는 version. */
-export const EXPERIENCE_REPORT_CONTENT_VERSION = 2
+export const EXPERIENCE_REPORT_CONTENT_VERSION = 3
 
 export const getExperienceReportSummary = (
   snapshot: ExperienceReportSnapshot
@@ -242,7 +249,7 @@ export const buildExperienceReportSnapshotV2 = (
   const observations = eligibility.codes.map((code) => ({
     code,
     label:
-      TRIAL_RESULT_OBSERVATION_OPTIONS.find((option) => option.value === code)?.label ?? code
+      ALL_TRIAL_RESULT_OBSERVATION_OPTIONS.find((option) => option.value === code)?.label ?? code
   }))
 
   return {
@@ -287,7 +294,7 @@ export const buildExperienceReportSnapshotV2 = (
  * 공백만 있는 추천은 내용으로 세지 않는다.
  */
 export const hasPublishableReportContent = (snapshot: ExperienceReportSnapshotV1): boolean => {
-  if (snapshot.observations.length > 0) {
+  if (snapshot.observations.length > 0 || Boolean(getExperienceReportSummary(snapshot)?.trim())) {
     return true
   }
 
@@ -301,7 +308,7 @@ export const decodeExperienceReportSnapshot = (
 ): ExperienceReportSnapshot | null => {
   // content_version 으로 분기한다. 과거 row 를 새 모양으로 변환하지 않는다 —
   // V1 은 V1 로 읽고, summary 가 없는 문서로 그대로 남는다.
-  if (contentVersion !== 1 && contentVersion !== 2) {
+  if (contentVersion !== 1 && contentVersion !== 2 && contentVersion !== 3) {
     return null
   }
 
@@ -358,7 +365,13 @@ export const decodeExperienceReportSnapshot = (
       return null
     }
 
-    decodedObservations.push({ code, label: item.label })
+    let group: { code: string; label: string } | null = null
+    if (contentVersion === 3 && item.group !== null) {
+      if (!isPlainObject(item.group) || Object.keys(item.group).some(key => key !== "code" && key !== "label") ||
+        typeof item.group.code !== "string" || !item.group.code.trim() || typeof item.group.label !== "string" || !item.group.label.trim()) return null
+      group = { code: item.group.code, label: item.group.label }
+    }
+    decodedObservations.push({ code, label: item.label, ...(contentVersion === 3 ? { group } : {}) })
   }
 
   return {
@@ -380,8 +393,27 @@ export const decodeExperienceReportSnapshot = (
     },
     // V1 에는 이 개념이 없다. 없던 문서를 "총평이 비었다" 로 읽지 않도록
     // V2 일 때만 값을 담는다.
-    ...(contentVersion === 2
+    ...(contentVersion >= 2
       ? { summary: typeof content.summary === "string" && content.summary.trim() ? content.summary : null }
       : {})
   }
+}
+
+/** New publications freeze observation domains as well as wording. V1/V2 builders/readers remain supported. */
+export const buildExperienceReportSnapshotV3 = (source: ExperienceReportSnapshotSource): BuildExperienceReportSnapshotResult => {
+  const built = buildExperienceReportSnapshotV2(source)
+  if (built.status !== "ok") return built
+  return { status: "ok", snapshot: { ...built.snapshot, observations: built.snapshot.observations.map(item => ({ ...item, group: getObservationGroupSnapshot(item.code) })) } }
+}
+
+/** Only selected domains appear, preserving snapshot wording and within-domain order. */
+export const groupReportObservations = (observations: readonly ExperienceReportObservationSnapshot[]) => {
+  const groups: { code: string; label: string | null; items: ExperienceReportObservationSnapshot[] }[] = []
+  for (const item of observations) {
+    const code = item.group?.code ?? "general"
+    let group = groups.find(group => group.code === code && group.label === (item.group?.label ?? null))
+    if (!group) { group = { code, label: item.group?.label ?? null, items: [] }; groups.push(group) }
+    group.items.push(item)
+  }
+  return groups
 }

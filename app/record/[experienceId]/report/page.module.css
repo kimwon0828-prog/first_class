@@ -78,3 +78,5 @@
 .summaryText { flex: 1; min-width: 0; }
 .sectionIcon { flex: 0 0 20px; margin-top: 2px; color: var(--text-2); }
 .typeBadge, .primaryAction { white-space: nowrap; }
+
+.block h3 { margin: 14px 0 6px; font-size: 14px; line-height: 1.5; font-weight: 600; }

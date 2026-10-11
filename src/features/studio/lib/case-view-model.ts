@@ -48,8 +48,8 @@ export const CASE_ACTIVE_STAGES = ["new", "reviewing", "confirmed", "in_trial", 
 export const CASE_CLOSED_STAGES = ["enrolled", "not_enrolled", "canceled", "no_show"] as const
 
 export const CASE_STAGE_LABELS: Record<CaseStage, string> = {
-  new: "일정 미확정",
-  reviewing: "일정 미확정",
+  new: "신규 신청",
+  reviewing: "신규 신청",
   confirmed: "체험 예정",
   in_trial: "체험 진행 중",
   completed: "체험 완료",

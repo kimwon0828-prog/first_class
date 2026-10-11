@@ -1,3 +1,4 @@
+import { getReportSubjectCategory } from "@/features/studio/lib/trial-result-options"
 import { withBookingClassHistory, bookingIntervalsOverlap, type BookingClosure, type BookingDay, type BookingOccurrence } from "@/features/studio/lib/booking-closures"
 import { decisionDraftError } from "@/features/feedback/lib/experience-submission"
 import { isFeedbackProgramType, normalizeFeedbackNote, summarizeFeedback, validateFeedbackInput, type FeedbackChipId, type FeedbackProgramType, type ParentExperienceFeedback } from "@/features/feedback/lib/experience-feedback"
@@ -18,7 +19,7 @@ import {
   type RegistrationResult
 } from "@/features/registration/lib/registration-result"
 import {
-  buildExperienceReportSnapshotV2,
+  buildExperienceReportSnapshotV3,
   checkObservationPublicationEligibility,
   hasPublishableReportContent
 } from "@/features/reports/lib/experience-report-snapshot"
@@ -2162,6 +2163,7 @@ export const mockDataAdapter: DataAdapter = {
 
     const detail: StudioApplicationDetail = {
       ...application,
+      reportSubjectCategory: getReportSubjectCategory(null, null, classItem?.subject),
       classSubject: "classSubject" in application ? application.classSubject : classItem?.subject ?? null,
       classRegion:
         "classRegion" in application
@@ -2583,6 +2585,7 @@ export const mockDataAdapter: DataAdapter = {
 
     return {
       status: application.status,
+      reportSubjectCategory: getReportSubjectCategory(null, null, classes.find(c => c.id === application.classId)?.subject),
       reportEverSent: experienceReports.some(r=>r.applicationId===applicationId),
       assessmentUpdatedAt: trialResult?.updatedAt ?? null,
       trialResult: trialResult
@@ -2761,7 +2764,7 @@ export const mockDataAdapter: DataAdapter = {
       throw new Error("unknown_observations_cannot_publish")
     }
 
-    const built = buildExperienceReportSnapshotV2({
+    const built = buildExperienceReportSnapshotV3({
       programType: "trial_class",
       confirmedSlotAt: application.confirmedSlotAt ?? null,
       completedAt: application.completedAt ?? null,
@@ -2812,7 +2815,7 @@ export const mockDataAdapter: DataAdapter = {
       applicationId,
       version: nextVersion,
       status: "published",
-      contentVersion: 1,
+      contentVersion: 3,
       content: built.snapshot,
       publishedAt: nowIso,
       supersededAt: null,

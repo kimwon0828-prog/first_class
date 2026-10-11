@@ -865,6 +865,7 @@ export type StudioConsultationPipelineApplicationItem = {
 export type StudioApplicationDetailReadOptions = { allowPartialTrialResult?: boolean }
 
 export type StudioApplicationDetail = StudioApplicationSummary & {
+  reportSubjectCategory?: string | null
   registrationReasonIds?: string[]
   registrationNote?: string | null
   confirmedScheduleBlockId: string | null
@@ -945,6 +946,7 @@ export type StudioTrialResult = {
 export type StudioAcademyMemo = { note: string | null; revision: string }
 
 export type StudioTrialResultSaveContext = {
+  reportSubjectCategory?: string | null
   reportEverSent: boolean
   assessmentUpdatedAt: string | null
   status: ApplicationStatus

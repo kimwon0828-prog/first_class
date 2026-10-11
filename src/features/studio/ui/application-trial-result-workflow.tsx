@@ -1,6 +1,7 @@
 "use client"
 
 import { deriveApplicationDetailWorkflow, hasTrialRecordContent, type ApplicationWorkflowEvidence } from "@/features/studio/lib/application-detail-workflow-state"
+import { ReportObservations } from "@/features/reports/ui/report-observations"
 import { RegistrationResultEditor } from "./registration-result-editor"
 import { ApplicationDetailIcon } from "./application-detail-icon"
 import { StudioQueryRetry } from "./studio-query-retry"
@@ -19,7 +20,9 @@ import {
   type UpsertTrialResultActionState
 } from "@/features/studio/actions/upsert-trial-result"
 import {
-  TRIAL_RESULT_OBSERVATION_OPTIONS,
+  getObservationGroups,
+  getObservationGroupSnapshot,
+  normalizeTrialResultObservation,
   describeTrialResultObservation,
   getTrialResultObservationLabel,
 } from "@/features/studio/lib/trial-result-options"
@@ -111,6 +114,8 @@ export const ApplicationTrialResultWorkflow = ({
   academyMemo
 }: ApplicationTrialResultWorkflowProps) => {
   const router = useRouter()
+  const observationGroups = getObservationGroups(application.reportSubjectCategory)
+  const offeredCodes = new Set<string>(observationGroups.flatMap(group => group.options.map(option => option.value)))
   const reportLocked=Boolean(evidence.report.everSent || evidence.report.version)
   const [scheduleTouched,setScheduleTouched]=useState(false)
   const [editorSource,setEditorSource]=useState<StudioApplicationDetail["trialResult"]>(null)
@@ -441,16 +446,19 @@ export const ApplicationTrialResultWorkflow = ({
           <section id="trial-record" className={styles.reportReading} aria-labelledby="record-report-title">
             <header className={styles.reportReadingHead}>
               <h2 id="record-report-title">{application.childName} 학생의 체험 리포트</h2>
-              <p>{formatSeoulDateTime(application.confirmedBlockStartAt ?? application.confirmedSlotAt ?? application.completedAt)}</p>
+              <p>오늘의 수업 · {formatSeoulDateTime(application.confirmedBlockStartAt ?? application.confirmedSlotAt ?? application.completedAt)}</p>
             </header>
             {evidence.trialResultError ? <div role="alert"><p>체험 기록 정보를 불러오지 못했어요.</p><StudioQueryRetry /></div> : hasPublicReportContent ? <>
               {storedObservations.canonical.length || storedObservations.legacy.length ? <section className={styles.reportReadingSection}>
                 <h3>수업에서 보인 모습</h3>
-                <ul>{storedObservations.canonical.map(code => <li key={code}>{getTrialResultObservationLabel(code)}</li>)}</ul>
+                <ReportObservations observations={storedObservations.canonical.flatMap(value => {
+                  const code = normalizeTrialResultObservation(value)
+                  return code ? [{ code, label: getTrialResultObservationLabel(code)!, group: getObservationGroupSnapshot(code) }] : []
+                })} />
                 {storedObservations.legacy.length ? <><p className={styles.fieldHint}>기존 기준으로 작성된 관찰 기록</p><ul>{storedObservations.legacy.map(text => <li key={text}>{text}</li>)}</ul></> : null}
               </section> : null}
               {application.trialResult?.publicSummary?.trim() ? <section className={styles.reportReadingSection}>
-                <h3>선생님 총평</h3><p className={styles.savedText}>{application.trialResult.publicSummary}</p>
+                <h3>선생님 이야기</h3><p className={styles.savedText}>{application.trialResult.publicSummary}</p>
               </section> : null}
               {recommendations.length ? <section className={styles.reportReadingSection}>
                 <h3>추천 정보</h3><dl>{recommendations.map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}</dl>
@@ -554,7 +562,7 @@ export const ApplicationTrialResultWorkflow = ({
           <header className={modalStyles.header}>
             <div>
               <h3 id="trial-result-editor-title">{hasTrialResult?"리포트 내용 수정":"기록 작성"}</h3>
-              <p id="trial-result-editor-description">관찰·추천·총평은 학부모 리포트에 포함됩니다.</p>
+              <p id="trial-result-editor-description">{application.childName} · {application.classTitle} · {formatSeoulDateTime(application.confirmedBlockStartAt ?? application.confirmedSlotAt ?? application.completedAt)}</p>
             </div>
             <button type="button" className={modalStyles.close} aria-label="닫기" onClick={closeEditor} disabled={isSavingTrialResult}>×</button>
           </header>
@@ -578,16 +586,26 @@ export const ApplicationTrialResultWorkflow = ({
                     <div>{splitStoredObservations(editorSource?.observations).legacy.map(text => <span key={text} className={styles.legacyObservationChip}>{text}</span>)}</div>
                   </div>
                 ) : null}
-                <div className={`${modalStyles.chips} ${recordStyles.observations}`}>
-                  {TRIAL_RESULT_OBSERVATION_OPTIONS.map(option => <button key={option.value} type="button" aria-pressed={selectedObservations.includes(option.value)} onClick={() => toggleObservation(option.value)}>{option.label}</button>)}
-                </div>
-                <p className={modalStyles.hint}>해당하는 내용을 모두 선택해 주세요.</p>
+                {observationGroups.map(group => <div key={group.code} className={recordStyles.observationGroup} role={group.code === "general" ? undefined : "group"} aria-label={group.code === "general" ? undefined : group.label}>
+                  {group.code !== "general" ? <h4>{group.label}</h4> : null}
+                  <div className={`${modalStyles.chips} ${recordStyles.observations}`}>
+                    {group.options.map(option => <button key={option.value} type="button" aria-pressed={selectedObservations.includes(option.value)} onClick={() => toggleObservation(option.value)}>{option.label}</button>)}
+                  </div>
+                </div>)}
+                {normalizeStoredObservations(editorSource?.observations).some(code => !offeredCodes.has(code)) ? <details className={recordStyles.previousObservations} open>
+                  <summary>이전에 선택한 관찰 항목</summary>
+                  <p className={modalStyles.hint}>기존 선택은 유지돼요. 변경할 항목만 직접 해제해 주세요.</p>
+                  <div className={`${modalStyles.chips} ${recordStyles.observations}`}>
+                    {normalizeStoredObservations(editorSource?.observations).filter(code => !offeredCodes.has(code)).map(code => <button key={code} type="button" aria-pressed={selectedObservations.includes(code)} onClick={() => toggleObservation(code)}>{getTrialResultObservationLabel(code)}</button>)}
+                  </div>
+                </details> : null}
+                <p className={modalStyles.hint}>오늘 확인한 항목만 선택해 주세요. 모든 영역을 선택하지 않아도 돼요.</p>
                 {selectedObservations.map(item => <input key={item} type="hidden" name="observations" value={item} />)}
                 <input type="hidden" name="observationsTouched" value={observationsTouched ? "true" : "false"} />
               </fieldset>
               <label className={modalStyles.field} htmlFor="trial-public-summary">
                 <span>학부모에게 전달할 총평</span>
-                <textarea id="trial-public-summary" name="publicSummary" aria-label="학부모에게 전달할 총평" aria-describedby="trial-public-summary-hint" value={recordDraft.publicSummary} onChange={event => setRecordDraft(draft => ({ ...draft, publicSummary: event.target.value }))} rows={4} placeholder={"학부모님께 전달할 내용을 작성해 주세요.\n리포트에 그대로 반영됩니다."} maxLength={1000} disabled={isSavingTrialResult || !canWriteTrialResult} />
+                <textarea id="trial-public-summary" name="publicSummary" aria-label="학부모에게 전달할 총평" aria-describedby="trial-public-summary-hint" value={recordDraft.publicSummary} onChange={event => setRecordDraft(draft => ({ ...draft, publicSummary: event.target.value }))} rows={4} placeholder={"어떤 장면을 관찰했고, 다음 수업에서 어떻게 지도하면 좋을지\n짧게 적어 주세요."} maxLength={1000} disabled={isSavingTrialResult || !canWriteTrialResult} />
                 <p id="trial-public-summary-hint" className={modalStyles.hint}>학부모가 리포트에서 읽습니다.</p>
               </label>
               <details className={recordStyles.recommendations}>
