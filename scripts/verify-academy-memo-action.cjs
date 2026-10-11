@@ -40,6 +40,11 @@ const stubs={
   }
   console.log('PASS actual action: all 11 categories, foreign-code rejection and preserved previous selection');
  }
+ const photos=[{id:'85000000-0000-4000-8000-000000000123',caption:'첨부 설명',width:900,height:2400,mimeType:'image/png'}];
+ const photoForm=f();photoForm.set('expectedAssessmentUpdatedAt','old-revision');photoForm.set('attachments',JSON.stringify(photos));
+ photoForm.set('observations','active_participation');assert.equal((await record('app',state,photoForm)).status,'success');assert.deepEqual(t.recordCalls.at(-1).attachments,photos);
+ const photoCount=t.recordCalls.length;for(const bad of ['{bad',JSON.stringify([...photos,...photos]),JSON.stringify([{...photos[0],caption:'x'.repeat(101)}])]){photoForm.set('attachments',bad);assert.equal((await record('app',state,photoForm)).status,'error');assert.equal(t.recordCalls.length,photoCount)}
+ console.log('PASS real record action: photo payload accepted; malformed, duplicate and overlong caption rejected');
  console.log('PASS real music record action: music master category only, english/math denied, published source blocked')
  console.log('PASS real report action accepts new math codes only for saved math classification; untouched generic values and private source retained')
  console.log('PASS actual memo/report actions: auth + entitlement, scalar whitelist, forged org/actor/public fields ignored, revision, max length, failure messages, cache failure after committed save, legacy source note preserved, published report action blocked')

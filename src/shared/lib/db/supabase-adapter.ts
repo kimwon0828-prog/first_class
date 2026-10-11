@@ -1,3 +1,4 @@
+import { parseReportAttachments } from "@/features/reports/lib/report-attachments"
 import { getReportSubjectCategory } from "@/features/studio/lib/trial-result-options"
 import { withBookingClassHistory, type BookingDay, type BookingClosureMutation, type BookingClosure } from "@/features/studio/lib/booking-closures"
 import { decodeParentFeedbackContext, decodePrivateFeedback, decodePublicFeedback } from "@/features/feedback/lib/feedback-decode"
@@ -354,6 +355,7 @@ type ApplicationLogRow = {
 
 /** 체험 결과의 "내용" 컬럼만. 저장 컨텍스트는 이 만큼만 읽는다. */
 type TrialResultFieldsRow = {
+  attachments?: unknown
   public_summary?: string | null
   observations: string[] | null
   parent_reaction: string | null
@@ -1084,6 +1086,7 @@ const mapStudioTrialResultFields = (
       ? row.next_action
       : null,
   note: row.note?.trim() ? row.note.trim() : null,
+  attachments: row.attachments == null ? [] : (() => { const photos = parseReportAttachments(row.attachments); if (!photos) throw new Error("invalid_saved_attachments"); return photos })(),
   publicSummary: row.public_summary?.trim() ? row.public_summary.trim() : null
 })
 
@@ -4916,7 +4919,7 @@ export const supabaseDataAdapter: DataAdapter = {
     const { data: trialResultData, error: trialResultError } = await supabase
       .from("trial_results")
       .select(
-        "id, application_id, observations, parent_reaction, recommended_course, recommended_level, recommended_schedule, next_action, note, public_summary, created_by, created_at, updated_at"
+        "*"
       )
       .eq("application_id", applicationId)
       .maybeSingle()
@@ -5425,7 +5428,7 @@ export const supabaseDataAdapter: DataAdapter = {
     const { data, error } = await supabase
       .from("studio_trial_applications")
       .select(
-        "status, classes!inner(organization_id, subject, report_category:subject_categories(code), report_subject:subjects(code, subject_categories(code))), trial_results(observations, parent_reaction, recommended_course, recommended_level, recommended_schedule, next_action, note, public_summary, updated_at), experience_reports(id)"
+        "status, classes!inner(organization_id, subject, report_category:subject_categories(code), report_subject:subjects(code, subject_categories(code))), trial_results(*), experience_reports(id)"
       )
       .eq("id", applicationId)
       .eq("classes.organization_id", organizationId)
@@ -5459,12 +5462,13 @@ export const supabaseDataAdapter: DataAdapter = {
   },
   async upsertStudioTrialResult(input: UpsertStudioTrialResultInput) {
     const supabase = await getSupabaseServerClient()
-    const { data, error } = await supabase.rpc("save_studio_trial_result", {
+    const { data, error } = await supabase.rpc("save_studio_trial_result_with_attachments", {
       p_expected_updated_at: input.expectedUpdatedAt ?? null,
       p_application_id: input.applicationId, p_content: {
         observations: input.observations, recommendedCourse: input.recommendedCourse,
         recommendedLevel: input.recommendedLevel, recommendedSchedule: input.recommendedSchedule,
-        publicSummary: input.publicSummary, note: input.note
+        publicSummary: input.publicSummary, note: input.note,
+        attachments: (input.attachments ?? []).map(({ id, caption }) => ({ id, caption }))
       }
     })
     if (error) throw new Error(error.message)
@@ -5725,7 +5729,7 @@ export const supabaseDataAdapter: DataAdapter = {
     //
     // 넘기는 것은 "원장이 확인한 시점" 뿐이다. 그 사이 평가가 바뀌었는지는
     // 함수가 source row 를 잠근 채 판단한다.
-    const { data, error } = await supabase.rpc("publish_experience_report_v3", {
+    const { data, error } = await supabase.rpc("publish_experience_report_v4", {
       p_application_id: applicationId,
       p_expected_assessment_updated_at: expectedAssessmentUpdatedAt
     })

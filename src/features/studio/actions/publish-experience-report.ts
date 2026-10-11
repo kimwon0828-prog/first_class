@@ -32,6 +32,9 @@ const defaultState: PublishExperienceReportActionState = {
  * 같은 버튼을 다시 누르는 것 말고 할 수 있는 일이 없다.
  */
 const PUBLISH_ERROR_MESSAGES: Record<string, string> = {
+  attachment_upload_in_progress: "사진 업로드가 진행 중이에요. 완료한 뒤 다시 시도해 주세요.",
+  attachment_reader_required: "사진 리포트 열람 기능 준비 후 보낼 수 있어요.",
+  invalid_attachment_reference: "사진 첨부를 확인하지 못했어요. 기록을 다시 확인해 주세요.",
   report_already_sent: "이미 발송한 리포트는 다시 발송할 수 없습니다.",
   parent_not_linked: "학부모 계정이 연결되어 있지 않습니다. 연결 후 리포트를 발행할 수 있어요.",
   legacy_observations_require_review:

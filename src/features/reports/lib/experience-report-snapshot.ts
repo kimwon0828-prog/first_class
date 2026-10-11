@@ -1,3 +1,4 @@
+import { parseReportAttachments, type ReportAttachment } from "./report-attachments"
 import {
   ALL_TRIAL_RESULT_OBSERVATION_OPTIONS,
   getObservationGroupSnapshot,
@@ -54,9 +55,11 @@ export type ExperienceReportSnapshotV3 = ExperienceReportSnapshotV2 & {
 }
 
 /** 화면이 받는 모양. V1 은 summary 가 없는 것으로 읽힌다. */
-export type ExperienceReportSnapshot = ExperienceReportSnapshotV1 | ExperienceReportSnapshotV2 | ExperienceReportSnapshotV3
+export type ExperienceReportSnapshotV4 = ExperienceReportSnapshotV3 & { attachments: ReportAttachment[] }
+export type ExperienceReportSnapshot = ExperienceReportSnapshotV1 | ExperienceReportSnapshotV2 | ExperienceReportSnapshotV3 | ExperienceReportSnapshotV4
+export const getReportAttachments = (snapshot: ExperienceReportSnapshot): ReportAttachment[] => "attachments" in snapshot ? snapshot.attachments : []
 
-/** 지금 발행하면 찍히는 version. */
+/** 사진 없는 발행본의 기본 version. 첨부가 있는 발행본은 V4다. */
 export const EXPERIENCE_REPORT_CONTENT_VERSION = 3
 
 export const getExperienceReportSummary = (
@@ -92,7 +95,7 @@ export type ExperienceReportRecord = {
   version: number
   status: ExperienceReportStatus
   contentVersion: number
-  content: ExperienceReportSnapshotV1
+  content: ExperienceReportSnapshot
   publishedAt: string
   supersededAt: string | null
   withdrawnAt: string | null
@@ -226,10 +229,11 @@ export type ExperienceReportSnapshotSource = {
   recommendedLevel: string | null
   recommendedSchedule: string | null
   publicSummary: string | null
+  attachments?: ReportAttachment[]
 }
 
 export type BuildExperienceReportSnapshotResult =
-  | { status: "ok"; snapshot: ExperienceReportSnapshotV2 }
+  | { status: "ok"; snapshot: ExperienceReportSnapshotV2 | ExperienceReportSnapshotV3 | ExperienceReportSnapshotV4 }
   | { status: "ineligible"; reason: ExperienceReportSnapshotRejection }
 
 export const buildExperienceReportSnapshotV2 = (
@@ -308,7 +312,7 @@ export const decodeExperienceReportSnapshot = (
 ): ExperienceReportSnapshot | null => {
   // content_version 으로 분기한다. 과거 row 를 새 모양으로 변환하지 않는다 —
   // V1 은 V1 로 읽고, summary 가 없는 문서로 그대로 남는다.
-  if (contentVersion !== 1 && contentVersion !== 2 && contentVersion !== 3) {
+  if (contentVersion !== 1 && contentVersion !== 2 && contentVersion !== 3 && contentVersion !== 4) {
     return null
   }
 
@@ -317,7 +321,7 @@ export const decodeExperienceReportSnapshot = (
   }
 
   for (const key of Object.keys(content)) {
-    if (!EXPERIENCE_REPORT_SNAPSHOT_TOP_LEVEL_KEYS.includes(key as never)) {
+    if (!(contentVersion === 4 && key === "attachments") && !EXPERIENCE_REPORT_SNAPSHOT_TOP_LEVEL_KEYS.includes(key as never)) {
       return null
     }
   }
@@ -353,6 +357,9 @@ export const decodeExperienceReportSnapshot = (
     return null
   }
 
+  const attachments = contentVersion === 4 ? parseReportAttachments(content.attachments) : []
+  if (!attachments) return null
+
   const decodedObservations: ExperienceReportObservationSnapshot[] = []
   for (const item of observations) {
     if (!isPlainObject(item)) {
@@ -366,12 +373,12 @@ export const decodeExperienceReportSnapshot = (
     }
 
     let group: { code: string; label: string } | null = null
-    if (contentVersion === 3 && item.group !== null) {
+    if (contentVersion >= 3 && item.group !== null) {
       if (!isPlainObject(item.group) || Object.keys(item.group).some(key => key !== "code" && key !== "label") ||
         typeof item.group.code !== "string" || !item.group.code.trim() || typeof item.group.label !== "string" || !item.group.label.trim()) return null
       group = { code: item.group.code, label: item.group.label }
     }
-    decodedObservations.push({ code, label: item.label, ...(contentVersion === 3 ? { group } : {}) })
+    decodedObservations.push({ code, label: item.label, ...(contentVersion >= 3 ? { group } : {}) })
   }
 
   return {
@@ -386,6 +393,7 @@ export const decodeExperienceReportSnapshot = (
       class: { title: typeof classInfo.title === "string" ? classInfo.title : "" }
     },
     observations: decodedObservations,
+    ...(contentVersion === 4 ? { attachments } : {}),
     recommendation: {
       course: asOptionalText(recommendation.course),
       level: asOptionalText(recommendation.level),
@@ -416,4 +424,10 @@ export const groupReportObservations = (observations: readonly ExperienceReportO
     group.items.push(item)
   }
   return groups
+}
+
+export const buildExperienceReportSnapshotV4 = (source: ExperienceReportSnapshotSource): BuildExperienceReportSnapshotResult => {
+  const built = buildExperienceReportSnapshotV3(source)
+  if (built.status !== "ok" || !source.attachments?.length) return built
+  return { status: "ok", snapshot: { ...built.snapshot, attachments: source.attachments.map(photo => ({ id: photo.id, caption: photo.caption.trim(), width: photo.width, height: photo.height, mimeType: photo.mimeType })) } }
 }

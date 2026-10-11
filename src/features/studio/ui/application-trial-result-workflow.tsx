@@ -1,4 +1,7 @@
 "use client"
+import { ReportPhotoEditor } from "@/features/reports/ui/report-photo-editor"
+import { ReportPhotos } from "@/features/reports/ui/report-photos"
+import type { ReportAttachment } from "@/features/reports/lib/report-attachments"
 
 import { deriveApplicationDetailWorkflow, hasTrialRecordContent, type ApplicationWorkflowEvidence } from "@/features/studio/lib/application-detail-workflow-state"
 import { ReportObservations } from "@/features/reports/ui/report-observations"
@@ -114,6 +117,8 @@ export const ApplicationTrialResultWorkflow = ({
   academyMemo
 }: ApplicationTrialResultWorkflowProps) => {
   const router = useRouter()
+  const [photos,setPhotos] = useState<ReportAttachment[]>([])
+  const [photosBlocked,setPhotosBlocked] = useState(false)
   const observationGroups = getObservationGroups(application.reportSubjectCategory)
   const offeredCodes = new Set<string>(observationGroups.flatMap(group => group.options.map(option => option.value)))
   const reportLocked=Boolean(evidence.report.everSent || evidence.report.version)
@@ -175,6 +180,7 @@ export const ApplicationTrialResultWorkflow = ({
     if (!canWriteTrialResult) return
     const record=application.trialResult
     setEditorSource(record?structuredClone(record):null)
+    setPhotos(structuredClone(record?.attachments ?? [])); setPhotosBlocked(false)
     setRecordDraft({recommendedCourse:record?.recommendedCourse??"",recommendedLevel:record?.recommendedLevel??"",publicSummary:record?.publicSummary??""})
     const schedule=parseTrialRecommendedSchedule(record?.recommendedSchedule)
     setRecommendedDays(schedule?.days??[]);setRecommendedPeriod(schedule?.period??"");setScheduleTouched(false)
@@ -289,7 +295,7 @@ export const ApplicationTrialResultWorkflow = ({
   const hasVisibleTrialResultContent = hasTrialRecordContent(application.trialResult)
   const draftSchedule=scheduleTouched?formatTrialRecommendedSchedule(recommendedDays,recommendedPeriod):editorSource?.recommendedSchedule??""
   const draftObservations=observationsTouched?selectedObservations:editorSource?.observations??selectedObservations
-  const editorDirty=Object.entries(recordDraft).some(([field,value])=>value!==(editorSource?.[field as keyof typeof recordDraft]??""))
+  const editorDirty=photosBlocked || JSON.stringify(photos)!==JSON.stringify(editorSource?.attachments ?? []) || Object.entries(recordDraft).some(([field,value])=>value!==(editorSource?.[field as keyof typeof recordDraft]??""))
     || draftSchedule!==(editorSource?.recommendedSchedule??"")
     || JSON.stringify([...draftObservations].sort())!==JSON.stringify([...(editorSource?.observations??[])].sort())
   useEffect(()=>{
@@ -460,6 +466,7 @@ export const ApplicationTrialResultWorkflow = ({
               {application.trialResult?.publicSummary?.trim() ? <section className={styles.reportReadingSection}>
                 <h3>선생님 이야기</h3><p className={styles.savedText}>{application.trialResult.publicSummary}</p>
               </section> : null}
+              <ReportPhotos attachments={application.trialResult?.attachments ?? []} />
               {recommendations.length ? <section className={styles.reportReadingSection}>
                 <h3>추천 정보</h3><dl>{recommendations.map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}</dl>
               </section> : null}
@@ -568,13 +575,14 @@ export const ApplicationTrialResultWorkflow = ({
           </header>
           <form className={modalStyles.form} onSubmit={event => {
             event.preventDefault()
-            if (isSavingTrialResult || trialSubmitInFlight.current || !canWriteTrialResult) return
+            if (isSavingTrialResult || trialSubmitInFlight.current || photosBlocked || !canWriteTrialResult) return
             const data = new FormData(event.currentTarget)
             trialSubmitInFlight.current = true
             setTrialResultErrorMessage(null)
             // Call the same action without native form-action reset on a failed response.
             startTransition(() => trialResultFormAction(data))
           }}>
+            <input type="hidden" name="attachments" value={JSON.stringify(photos)} />
             <input type="hidden" name="expectedAssessmentUpdatedAt" value={editorSource?.updatedAt??""} />
             <div className={modalStyles.body}>
               <fieldset className={modalStyles.group} disabled={isSavingTrialResult || !canWriteTrialResult}>
@@ -608,6 +616,7 @@ export const ApplicationTrialResultWorkflow = ({
                 <textarea id="trial-public-summary" name="publicSummary" aria-label="학부모에게 전달할 총평" aria-describedby="trial-public-summary-hint" value={recordDraft.publicSummary} onChange={event => setRecordDraft(draft => ({ ...draft, publicSummary: event.target.value }))} rows={4} placeholder={"어떤 장면을 관찰했고, 다음 수업에서 어떻게 지도하면 좋을지\n짧게 적어 주세요."} maxLength={1000} disabled={isSavingTrialResult || !canWriteTrialResult} />
                 <p id="trial-public-summary-hint" className={modalStyles.hint}>학부모가 리포트에서 읽습니다.</p>
               </label>
+              <ReportPhotoEditor applicationId={application.id} value={photos} onChange={setPhotos} disabled={isSavingTrialResult || !canWriteTrialResult} onBlockedChange={setPhotosBlocked} />
               <details className={recordStyles.recommendations}>
                 <summary>추천 과정·레벨·일정 <span>선택</span></summary>
               <div className={recordStyles.columns}>
@@ -632,11 +641,11 @@ export const ApplicationTrialResultWorkflow = ({
             </div>
             <footer className={modalStyles.footer}>
               <p className={recordStyles.notice}>저장만으로 학부모에게 보내지지 않아요.</p>
-              <p id="record-save-help" className={modalStyles.hint}>{isSavingTrialResult ? "기록을 저장하고 있어요." : recordBlockReason ?? (hasTrialResult && !editorDirty ? "저장된 내용과 같아요. 내용을 수정하면 저장할 수 있어요." : "저장한 내용으로 리포트를 미리 볼 수 있어요.")}</p>
+              <p id="record-save-help" className={modalStyles.hint}>{isSavingTrialResult ? "기록을 저장하고 있어요." : photosBlocked ? "사진 업로드를 완료하거나 실패한 사진을 제외해 주세요." : recordBlockReason ?? (hasTrialResult && !editorDirty ? "저장된 내용과 같아요. 내용을 수정하면 저장할 수 있어요." : "저장한 내용으로 리포트를 미리 볼 수 있어요.")}</p>
               {trialResultErrorMessage ? <p className={modalStyles.error} role="alert">{trialResultErrorMessage}</p> : null}
               <div className={modalStyles.actions}>
                 <button type="button" onClick={closeEditor} disabled={isSavingTrialResult}>취소</button>
-                <button type="submit" aria-describedby="record-save-help" className={modalStyles.primary} disabled={isSavingTrialResult || !canWriteTrialResult || (hasTrialResult && !editorDirty)}>{isSavingTrialResult ? "저장 중..." : "기록 저장"}</button>
+                <button type="submit" aria-describedby="record-save-help" className={modalStyles.primary} disabled={isSavingTrialResult || photosBlocked || !canWriteTrialResult || (hasTrialResult && !editorDirty)}>{isSavingTrialResult ? "저장 중..." : "기록 저장"}</button>
               </div>
             </footer>
           </form>

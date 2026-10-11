@@ -1,5 +1,6 @@
 "use server"
 
+import { parseReportAttachments } from "@/features/reports/lib/report-attachments"
 import { revalidatePath } from "next/cache"
 
 import { requireStudioEntitlement } from "@/features/billing/lib/require-entitlement"
@@ -245,6 +246,11 @@ export async function upsertTrialResultAction(
     return { status: "error", message: `${subjectLabel} 관찰 항목은 ${subjectLabel}로 분류된 수업에서 선택할 수 있어요. 수업 과목을 확인해 주세요.` }
   }
 
+  let attachmentValue: unknown
+  try { attachmentValue = formData.has("attachments") ? JSON.parse(String(formData.get("attachments"))) : current.trialResult?.attachments ?? [] } catch { return { status: "error", message: "첨부 목록을 확인해 주세요." } }
+  const attachments = parseReportAttachments(attachmentValue)
+  if (!attachments) return { status: "error", message: "첨부 목록·설명을 확인해 주세요." }
+
   const nextValue = {
     observations,
     recommendedCourse: normalizeOptionalText(formData.get("recommendedCourse")),
@@ -266,6 +272,7 @@ export async function upsertTrialResultAction(
       actorId: teacher.id,
       expectedUpdatedAt,
       observations: nextValue.observations,
+      attachments,
       parentReaction: nextValue.parentReaction,
       recommendedCourse: nextValue.recommendedCourse,
       recommendedLevel: nextValue.recommendedLevel,
@@ -294,6 +301,8 @@ export async function upsertTrialResultAction(
     const message =
       caughtError instanceof Error ? caughtError.message : "failed_to_upsert_trial_result"
 
+    if (message.includes("attachment_upload_in_progress")) return { status: "error", message: "사진 업로드가 진행 중이에요. 완료한 뒤 다시 저장해 주세요." }
+    if (message.includes("attachment")) return { status: "error", message: "사진 첨부 저장에 실패했어요. 입력 내용은 유지돼요. 사진과 서버 준비 상태를 확인한 뒤 다시 시도해 주세요." }
     if (message.includes("report_content_locked")) return { status: "error", message: "발행된 리포트는 수정할 수 없습니다." }
     if (message.includes("assessment_changed_since_preview")) return { status: "error", message: "체험 기록이 변경되었습니다. 입력 내용을 보관한 뒤 최신 기록을 다시 확인해 주세요." }
     if (message === "failed_to_check_trial_result") {

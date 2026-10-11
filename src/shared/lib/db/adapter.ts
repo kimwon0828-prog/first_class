@@ -1,3 +1,4 @@
+import type { ReportAttachment } from "@/features/reports/lib/report-attachments"
 import type { ExperienceSubmissionInput } from "@/features/feedback/lib/experience-submission"
 import type { ParentFeedbackContext, StudioExperienceFeedback, PublicFeedbackSummary } from "@/features/feedback/lib/experience-feedback"
 import type {
@@ -915,6 +916,7 @@ export type StudioTrialResultNextAction =
   | "undecided"
 
 export type StudioTrialResult = {
+  attachments?: ReportAttachment[]
   id: string
   applicationId: string
   observations: string[]
@@ -952,6 +954,7 @@ export type StudioTrialResultSaveContext = {
   status: ApplicationStatus
   trialResult: Pick<
     StudioTrialResult,
+    | "attachments"
     | "observations"
     | "parentReaction"
     | "recommendedCourse"
@@ -1096,6 +1099,7 @@ export type UpdateStudioApplicationOutcomeInput = {
 }
 
 export type UpsertStudioTrialResultInput = {
+  attachments?: ReportAttachment[]
   expectedUpdatedAt?: string | null
   applicationId: string
   actorId: string

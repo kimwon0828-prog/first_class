@@ -365,7 +365,7 @@ const reportUi = read(REPORT_UI_PATH)
 
 check(
   "미리보기를 공용 builder 로만 만든다",
-  detailPage.includes("buildExperienceReportSnapshotV3")
+  detailPage.includes("buildExperienceReportSnapshotV4")
 )
 check(
   "화면이 공개 내용을 따로 조립하지 않는다",

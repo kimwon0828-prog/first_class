@@ -1,3 +1,5 @@
+import { ReportPhotos } from "@/features/reports/ui/report-photos"
+import { getReportAttachments } from "@/features/reports/lib/experience-report-snapshot"
 import { ReportObservations } from "@/features/reports/ui/report-observations"
 import { ParentExperienceThumbnail } from "@/features/classes/ui/parent-experience-thumbnail"
 import { parentEntryHref } from "@/features/classes/lib/parent-navigation"
@@ -153,6 +155,8 @@ export default async function ExperienceReportPage({ params, searchParams }: {
       <h2 id="report-summary-title" className={styles.blockTitle}><SectionIcon kind="summary" />선생님 이야기</h2>
       <p className={styles.prose}>{summary}</p>
     </section> : null}
+
+    <ReportPhotos attachments={getReportAttachments(snapshot)} />
 
     {recommendations.length > 0 ? <section className={styles.block} aria-labelledby="recommendation-title">
       <h2 id="recommendation-title" className={styles.blockTitle}><SectionIcon kind="course" />추천 정보</h2>

@@ -1,4 +1,6 @@
 "use client"
+import { ReportPhotos } from "@/features/reports/ui/report-photos"
+import { getReportAttachments } from "@/features/reports/lib/experience-report-snapshot"
 
 import { ReportObservations } from "@/features/reports/ui/report-observations"
 import { StudioQueryRetry } from "./studio-query-retry"
@@ -132,6 +134,7 @@ const ReportBody = ({ snapshot }: { snapshot: ExperienceReportSnapshotV1 }) => {
       </section> : null}
 
       {summary ? <section className={styles.reportSection} aria-label="학부모에게 전달할 총평"><h3 className={styles.reportSectionTitle}>선생님 이야기</h3><p className={styles.reportSummary}>{summary}</p></section> : null}
+      <ReportPhotos attachments={getReportAttachments(snapshot)} />
 
       {recommendations.length > 0 ? (
         <section className={styles.reportSection} aria-label="추천">

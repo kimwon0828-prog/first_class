@@ -101,6 +101,10 @@ window.renderFixture('unwritten');`
     const openMemo = async () => page.locator('#academy-memo').getByRole('button',{name:/^(수정|메모 추가)$/}).click();
     const openHistory = async () => {const d=page.locator('[class*=historyDisclosure]');if(await d.count()&&!await d.evaluate(e=>e.open))await d.locator(':scope > summary').click()}
     const results = [], pass = message => { results.push(message);console.log('PASS ' + message) }
+    if (process.env.REPORT_PHOTOS_ONLY) {
+      await require('./verify-report-photos-browser.cjs')({page,render,out,root,assert,fs,pass});
+      assert.deepEqual(errors,[]);return;
+    }
     if (!process.env.REPORT_OBSERVATIONS_ONLY) {
     for (const name of ['unwritten','finalized','sent','pending','not-enrolled','enrolled','contact','legacy','record-error','report-error','free','unlinked','new','canceled','future','in-trial','elapsed','unknown-time']) {
       await render(name)
@@ -216,7 +220,7 @@ window.renderFixture('unwritten');`
       await mathEdit.getByRole('button',{name:'새로운 문제에 스스로 도전했어요',exact:true}).click();
       assert.deepEqual(await mathEdit.locator('[name=observations]').evaluateAll(nodes=>nodes.map(n=>n.value)),['sustained_engagement','math_attempted_new_problem']);
       assert.equal(await mathEdit.locator('[name=publicSummary]').inputValue(),'즐겁게 수업에 참여했어요.');
-      assert(!await mathEdit.evaluate(e=>e.scrollWidth>e.clientWidth));await page.screenshot({path:path.join(out,'math-editor-'+width+'.png')});
+      assert(!await mathEdit.evaluate(e=>e.scrollWidth>e.clientWidth),JSON.stringify(await mathEdit.evaluate(e=>({width:e.clientWidth,scroll:e.scrollWidth,bad:[...e.querySelectorAll('*')].filter(n=>n.getBoundingClientRect().right>e.getBoundingClientRect().right).map(n=>({tag:n.tagName,cls:n.className,width:n.getBoundingClientRect().width,right:n.getBoundingClientRect().right})).slice(0,15)}))));await page.screenshot({path:path.join(out,'math-editor-'+width+'.png')});
       await mathEdit.getByRole('button',{name:'기록 저장',exact:true}).click();await mathEdit.getByText('TEST 저장 실패 · 입력 유지',{exact:true}).waitFor();
       const submitted=await page.evaluate(()=>window.submissions.filter(s=>s.name==='upsertTrialResultAction').at(-1));assert.deepEqual(submitted.observations,['sustained_engagement','math_attempted_new_problem']);
       assert.equal(await mathEdit.getByRole('button',{name:'새로운 문제에 스스로 도전했어요',exact:true}).getAttribute('aria-pressed'),'true');

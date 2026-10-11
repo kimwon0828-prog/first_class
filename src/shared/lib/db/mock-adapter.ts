@@ -19,7 +19,7 @@ import {
   type RegistrationResult
 } from "@/features/registration/lib/registration-result"
 import {
-  buildExperienceReportSnapshotV3,
+  buildExperienceReportSnapshotV4,
   checkObservationPublicationEligibility,
   hasPublishableReportContent
 } from "@/features/reports/lib/experience-report-snapshot"
@@ -2591,6 +2591,7 @@ export const mockDataAdapter: DataAdapter = {
       trialResult: trialResult
         ? {
             observations: trialResult.observations,
+            attachments: trialResult.attachments ?? [],
             parentReaction: trialResult.parentReaction,
             recommendedCourse: trialResult.recommendedCourse,
             recommendedLevel: trialResult.recommendedLevel,
@@ -2624,6 +2625,7 @@ export const mockDataAdapter: DataAdapter = {
       nextAction: input.nextAction,
       note: input.note,
       publicSummary: input.publicSummary,
+      attachments: input.attachments ?? [],
       createdBy: input.actorId,
       createdAt: nowIso,
       updatedAt: nowIso
@@ -2764,7 +2766,7 @@ export const mockDataAdapter: DataAdapter = {
       throw new Error("unknown_observations_cannot_publish")
     }
 
-    const built = buildExperienceReportSnapshotV3({
+    const built = buildExperienceReportSnapshotV4({
       programType: "trial_class",
       confirmedSlotAt: application.confirmedSlotAt ?? null,
       completedAt: application.completedAt ?? null,
@@ -2773,6 +2775,7 @@ export const mockDataAdapter: DataAdapter = {
       academyName: application.academyName ?? "",
       classTitle: application.classTitle ?? "",
       observations: trialResult.observations,
+      attachments: trialResult.attachments ?? [],
       recommendedCourse: trialResult.recommendedCourse,
       recommendedLevel: trialResult.recommendedLevel,
       recommendedSchedule: trialResult.recommendedSchedule,
@@ -2815,7 +2818,7 @@ export const mockDataAdapter: DataAdapter = {
       applicationId,
       version: nextVersion,
       status: "published",
-      contentVersion: 3,
+      contentVersion: trialResult.attachments?.length ? 4 : 3,
       content: built.snapshot,
       publishedAt: nowIso,
       supersededAt: null,
