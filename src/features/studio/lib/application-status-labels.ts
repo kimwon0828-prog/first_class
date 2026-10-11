@@ -14,20 +14,20 @@ import type {
 export type StudioDisplayStatus = ApplicationStatus | "no_show" | "in_trial"
 
 export const STUDIO_APPLICATION_STATUS_LABELS: Record<StudioDisplayStatus, string> = {
-  new: "신청 접수",
-  reviewing: "신청 접수",
-  confirmed: "일정 확정",
-  in_trial: "체험 중",
+  new: "일정 미확정",
+  reviewing: "일정 미확정",
+  confirmed: "체험 예정",
+  in_trial: "체험 진행 중",
   completed: "체험 완료",
-  canceled: "신청 취소",
-  no_show: "노쇼"
+  canceled: "취소",
+  no_show: "불참"
 }
 
 export const STUDIO_REGISTRATION_STATUS_LABELS: Record<ApplicationRegistrationStatus, string> = {
-  undecided: "등록 미결정",
-  enrolled: "등록함",
-  not_enrolled: "미등록",
-  pending: "고민 중"
+  undecided: "등록 여부 미정",
+  enrolled: "등록 완료",
+  not_enrolled: "등록하지 않음",
+  pending: "고민중"
 }
 
 /**

@@ -460,12 +460,12 @@ check(
 check(
   "처리 중에는 다시 누를 수 없다",
   reportUi.includes('isPublishing\n                ? "발행 중..."') ||
-    reportUi.includes('"발송 중..."')
+    reportUi.includes('"보내는 중..."')
 )
 check("발송 후 재발행 UI 없음", !reportUi.includes("새 버전 발행"))
 check(
   "발송 후 수정 불가 안내",
-  reportUi.includes("발송 후 수정하거나 다시 발송할 수 없어요.")
+  reportUi.includes("보낸 리포트는 수정할 수 없어요.")
 )
 check(
   "발송 이력이 있으면 재발송 불가",
@@ -497,11 +497,11 @@ check(
 check("화면이 오류 상태를 받는다", reportUi.includes("publishedReportLoadError: string | null"))
 check(
   "오류일 때 '없음' 이라고 말하지 않는다",
-  reportUi.includes("발행 상태를 확인하지 못했습니다")
+  reportUi.includes("리포트 공개 상태를 확인하지 못했어요")
 )
 check(
   "오류 안내를 표시한다",
-  reportUi.includes("현재 발행된 리포트 정보를 불러오지 못했습니다") &&
+  reportUi.includes("보낸 리포트 정보를 불러오지 못했어요") &&
     reportUi.includes("<StudioQueryRetry />")
 )
 check(
@@ -519,7 +519,7 @@ check("운영 철회 action의 기존 무료 권한 유지", !withdrawAction.inc
 check(
   "발행이 잠기면 이유를 글자로 말한다",
   reportUi.includes("{!canPublishReport && !publishedVersion && !everSent ? (") &&
-    reportUi.includes("학부모 리포트 발행은 스탠다드 플랜에서 사용할 수 있어요.")
+    reportUi.includes("리포트 보내기는 스탠다드 플랜에서 사용할 수 있어요.")
 )
 check(
   "잠금 안내가 기존 기록·발행본이 살아 있음을 말한다",
@@ -529,10 +529,10 @@ check(
 {
   const workflowUi = read(WORKFLOW_UI_PATH)
   check(
-    "작성 권한을 기능별로 따로 받는다",
+    "기록 작성 권한은 유지하고 제거된 상담 작성 UI 권한은 받지 않는다",
     workflowUi.includes("canWriteTrialResults: boolean") &&
-      workflowUi.includes("canWriteConsultations: boolean") &&
-      workflowUi.includes("canReopenConsultation: boolean")
+      !workflowUi.includes("canWriteConsultations: boolean") &&
+      !workflowUi.includes("canReopenConsultation: boolean")
   )
   check(
     "여러 기능을 하나의 paid 묶음으로 다시 묶지 않는다",
@@ -554,9 +554,13 @@ check(
   reportUi.includes('studioPath("/studio/billing")') && reportUi.includes("플랜 확인하기")
 )
 // 같은 화면에 업그레이드 안내를 여러 개 두지 않는다(디자인 시스템 §10.2).
+const compactReportStart = reportUi.indexOf("if (actionsOnly) return")
+const fullReportStart = reportUi.indexOf("\n  return (", compactReportStart)
 check(
-  "잠금 안내는 한 곳뿐이다",
-  (reportUi.match(/스탠다드 플랜에서/g) ?? []).length === 1
+  "서로 배타적인 간결/전체 리포트 화면마다 잠금 안내는 한 곳뿐이다",
+  compactReportStart >= 0 && fullReportStart > compactReportStart &&
+    (reportUi.slice(compactReportStart, fullReportStart).match(/스탠다드 플랜에서/g) ?? []).length === 1 &&
+    (reportUi.slice(fullReportStart).match(/스탠다드 플랜에서/g) ?? []).length === 1
 )
 
 check(
@@ -703,7 +707,7 @@ check("blocker 종류에 추가됐다", reportUi.includes('kind: "report_content
 check(
   "안내 문구가 있다",
   reportUi.includes("부모님께 전달할 리포트 내용이 아직 없습니다") &&
-    reportUi.includes("관찰 내용이나 추천 정보를 확인한 뒤 발행해 주세요")
+    reportUi.includes("관찰 내용이나 추천 정보를 확인한 뒤 보내 주세요")
 )
 check("페이지가 판정 함수를 쓴다", detailPage.includes("hasPublishableReportContent(built.snapshot)"))
 check(

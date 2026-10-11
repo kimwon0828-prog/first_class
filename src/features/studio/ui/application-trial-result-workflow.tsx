@@ -9,7 +9,7 @@ import type { ReactNode } from "react"
 import { startTransition, useActionState, useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 
-import { ConsultationLogDialog } from "./consultation-log-dialog"
+import { AcademyMemoEditor, type AcademyMemoData } from "./academy-memo-editor"
 import { buildCaseActivityEvents } from "@/features/studio/lib/case-activity"
 import {
   formatSeoulDateTime
@@ -24,7 +24,7 @@ import {
   getTrialResultObservationLabel,
 } from "@/features/studio/lib/trial-result-options"
 import { ApplicationStatusActionForm } from "@/features/studio/ui/application-status-action-form"
-import { ConsultationHistoryModal } from "@/features/studio/ui/consultation-history-modal"
+import { PreviousConsultationRecords } from "@/features/studio/ui/consultation-history-modal"
 import type {
   StudioApplicationDetail
 } from "@/shared/lib/db/adapter"
@@ -93,8 +93,7 @@ type ApplicationTrialResultWorkflowProps = {
    * 여기서는 할 수 없는 버튼을 숨긴다.
    */
   canWriteTrialResults: boolean
-  canWriteConsultations: boolean
-  canReopenConsultation: boolean
+  academyMemo: AcademyMemoData
 }
 
 export const ApplicationTrialResultWorkflow = ({
@@ -109,13 +108,13 @@ export const ApplicationTrialResultWorkflow = ({
   parentDecisionSection = null,
   nowIso,
   canWriteTrialResults,
-  canWriteConsultations
+  academyMemo
 }: ApplicationTrialResultWorkflowProps) => {
   const router = useRouter()
   const reportLocked=Boolean(evidence.report.everSent || evidence.report.version)
   const [scheduleTouched,setScheduleTouched]=useState(false)
   const [editorSource,setEditorSource]=useState<StudioApplicationDetail["trialResult"]>(null)
-  const [recordDraft, setRecordDraft] = useState({ recommendedCourse: "", recommendedLevel: "", publicSummary: "", note: "" })
+  const [recordDraft, setRecordDraft] = useState({ recommendedCourse: "", recommendedLevel: "", publicSummary: "" })
   const [recommendedDays, setRecommendedDays] = useState<number[]>([])
   const [recommendedPeriod, setRecommendedPeriod] = useState<TrialRecommendedPeriod | "">("")
   const trialDialogRef = useRef<HTMLDialogElement>(null)
@@ -130,9 +129,6 @@ export const ApplicationTrialResultWorkflow = ({
   // 원장이 관찰 항목을 실제로 건드렸는지. 건드리지 않은 저장은 server 가 기존 값을
   // 그대로 다시 쓴다 — 폼으로 표현할 수 없는 과거 기록이 조용히 지워지지 않게.
   const [observationsTouched, setObservationsTouched] = useState(false)
-  const [consultationNotice, setConsultationNotice] = useState("")
-  const [isConsultationEditorOpen, setIsConsultationEditorOpen] = useState(false)
-  const [isConsultationHistoryOpen, setIsConsultationHistoryOpen] = useState(false)
   const trialResultAction = upsertTrialResultAction.bind(null, application.id)
   const [trialResultState, trialResultFormAction, isSavingTrialResult] = useActionState(
     trialResultAction,
@@ -174,7 +170,7 @@ export const ApplicationTrialResultWorkflow = ({
     if (!canWriteTrialResult) return
     const record=application.trialResult
     setEditorSource(record?structuredClone(record):null)
-    setRecordDraft({recommendedCourse:record?.recommendedCourse??"",recommendedLevel:record?.recommendedLevel??"",publicSummary:record?.publicSummary??"",note:record?.note??""})
+    setRecordDraft({recommendedCourse:record?.recommendedCourse??"",recommendedLevel:record?.recommendedLevel??"",publicSummary:record?.publicSummary??""})
     const schedule=parseTrialRecommendedSchedule(record?.recommendedSchedule)
     setRecommendedDays(schedule?.days??[]);setRecommendedPeriod(schedule?.period??"");setScheduleTouched(false)
     resetTrialResultSelections()
@@ -183,16 +179,6 @@ export const ApplicationTrialResultWorkflow = ({
     setIsSuccessOpen(false)
     setRefreshOnEditorClose(Boolean(options?.refreshAfterClose))
     setIsEditorOpen(true)
-  }
-
-  const openConsultationEditor = () => {
-    setConsultationNotice("")
-    setIsConsultationHistoryOpen(false)
-    setIsConsultationEditorOpen(true)
-  }
-
-  const openConsultationHistory = () => {
-    setIsConsultationHistoryOpen(true)
   }
 
   const closePromptLater = () => {
@@ -209,14 +195,6 @@ export const ApplicationTrialResultWorkflow = ({
       setRefreshOnEditorClose(false)
       router.refresh()
     }
-  }
-
-  const closeConsultationEditor = () => {
-    setIsConsultationEditorOpen(false)
-  }
-
-  const closeConsultationHistory = () => {
-    setIsConsultationHistoryOpen(false)
   }
 
   const closeSuccessModal = () => {
@@ -277,7 +255,7 @@ export const ApplicationTrialResultWorkflow = ({
     document.body.style.overflow = "hidden"
     const trapFocus = (event: KeyboardEvent) => {
       if (event.key !== "Tab" || !dialog) return
-      const controls = Array.from(dialog.querySelectorAll<HTMLElement>("button, input, select, textarea, [tabindex]"))
+      const controls = Array.from(dialog.querySelectorAll<HTMLElement>("button, input, select, textarea, summary, a[href], [tabindex]"))
         .filter(element => !element.matches(":disabled") && element.tabIndex >= 0 && element.getClientRects().length > 0)
       const target = event.shiftKey && document.activeElement === controls[0] ? controls.at(-1)
         : !event.shiftKey && document.activeElement === controls.at(-1) ? controls[0] : null
@@ -295,9 +273,14 @@ export const ApplicationTrialResultWorkflow = ({
 
   const hasTrialResult = Boolean(application.trialResult)
   const isCompletedView = application.status === "completed"
-  const workflow = deriveApplicationDetailWorkflow({ application, evidence, nowIso, canWriteTrialResults, canWriteConsultations })
-  const canAddConsultation = isCompletedView && !application.noShowAt && canWriteConsultations
+  const workflow = deriveApplicationDetailWorkflow({ application, evidence, nowIso, canWriteTrialResults, canWriteConsultations: false })
   const canWriteTrialResult = canWriteTrialResults && isCompletedView && !application.noShowAt && !application.canceledAt && !evidence.trialResultError && !evidence.report.error && !reportLocked
+  const isTerminal = application.status === "canceled" || Boolean(application.noShowAt)
+  const recordBlockReason = evidence.trialResultError || evidence.report.error
+    ? "기록 또는 리포트 이력을 확인하지 못했어요. 새로고침 후 다시 확인해 주세요."
+    : reportLocked ? "보낸 리포트는 수정할 수 없어요. 기록은 읽기 전용으로 보관돼요."
+    : !isCompletedView || isTerminal ? "체험 완료 처리 후 기록을 작성할 수 있어요."
+    : !canWriteTrialResults ? "기록 작성 권한이 없어요. 학원 관리자에게 권한을 확인해 주세요." : null
   const hasVisibleTrialResultContent = hasTrialRecordContent(application.trialResult)
   const draftSchedule=scheduleTouched?formatTrialRecommendedSchedule(recommendedDays,recommendedPeriod):editorSource?.recommendedSchedule??""
   const draftObservations=observationsTouched?selectedObservations:editorSource?.observations??selectedObservations
@@ -314,33 +297,25 @@ export const ApplicationTrialResultWorkflow = ({
   },[isEditorOpen,editorDirty])
   const handleCompletedSaved = useCallback(() => { setIsPromptOpen(true) }, [])
   const activityEvents = useMemo(() => buildCaseActivityEvents(application), [application])
-  const consultationEvents = activityEvents.filter(event => event.kind === "consultation")
   const systemEvents = activityEvents.filter(event => event.kind !== "consultation")
-  const activitySection = (
-    <section id="consultation-records" className={`${styles.card} ${styles.sectionCard}`} aria-label="연락·상담 기록">
-      <div className={styles.sectionHead}><h2 className={styles.sectionTitle}><ApplicationDetailIcon name="contact" />연락·상담 기록</h2>
-        {canAddConsultation ? <button type="button" className={styles.inlineTextButton} onClick={openConsultationEditor}>+ 기록 추가</button> : null}
-      </div>
-      <p className={styles.sectionMetaLine}>학부모와 나눈 상담 내용과 희망 조건을 기록할 수 있습니다.</p>
-      {application.nextContactAt ? <p className={styles.sectionMetaLine}>다음 연락 · {formatSeoulDateTime(application.nextContactAt)}</p> : null}
-      {consultationNotice ? <p className={styles.sectionMetaLine} role="status">{consultationNotice}</p> : null}
-      {consultationEvents.length ? <ul className={styles.contactList}>{consultationEvents.slice(0, 3).map(event => <li key={event.id} className={styles.contactRow}>
-        <div className={styles.contactHeading}><strong><ApplicationDetailIcon name={event.title.includes("전화") ? "phone" : event.title.includes("방문") ? "person" : "message"} />{event.title}</strong><time dateTime={event.at}>{formatSeoulDateTime(event.at)}</time></div>
-        {application.parentName ? <p className={styles.contactParent}>{application.parentName} 학부모님</p> : null}
-        {event.note ? <p className={styles.asideNote}>{event.note}</p> : null}
-      </li>)}</ul> : <div className={styles.contactEmpty}><p className={styles.simpleEmptyLine}>아직 상담 기록이 없어요.</p><p className={styles.sectionMetaLine}>학부모와 통화, 문자, 방문 상담 내용을 기록해보세요.</p></div>}
-      {application.consultationLogs.length ? <button type="button" className={styles.inlineTextButton} onClick={openConsultationHistory}>상담 {application.consultationLogs.length}건 전체 보기 →</button> : null}
-    </section>
-  )
+  const memoSection = isCompletedView || academyMemo.data?.note || application.trialResult?.note ? (
+    <div id="consultation-records">
+      <AcademyMemoEditor key={application.id} applicationId={application.id} initial={academyMemo}
+        legacyNote={application.trialResult?.note ?? null}
+        canWrite={canWriteTrialResults && isCompletedView && !application.noShowAt && !application.canceledAt}
+        blockReason={!isCompletedView || application.noShowAt || application.canceledAt ? "체험 완료 처리 후 메모를 저장할 수 있어요." : !canWriteTrialResults ? "메모 작성 권한이 없어요. 학원 관리자에게 권한을 확인해 주세요." : null} />
+    </div>
+  ) : null
   const trialResultSection = !isCompletedView && !hasVisibleTrialResultContent ? null : (
     <section id="trial-record" className={styles.recordContent} aria-label="체험 기록">
       <div className={styles.sectionHead}>
         <h3 className={styles.sectionTitle}><ApplicationDetailIcon name="record" />체험 기록</h3>
-        {hasTrialResult ? <div><span className={styles.completedBadge}>✓ 체험 기록 저장</span>{canWriteTrialResult ? <button type="button" className={styles.inlineTextButton} onClick={()=>openEditor()}>체험 기록 수정</button> : null}</div> : null}
+        {hasTrialResult ? <div><span className={styles.completedBadge}>✓ 저장 완료</span>{!reportLocked ? <button type="button" className={styles.inlineTextButton} onClick={()=>openEditor()} disabled={!canWriteTrialResult} aria-describedby={recordBlockReason ? "record-help" : undefined}>기록 수정</button> : null}</div> : null}
       </div>
-      {hasTrialResult ? <p className={styles.sectionMetaLine}>{formatSeoulDateTime(application.trialResult?.updatedAt)} · {reportLocked?"발행 후 읽기 전용":"발행 전 수정 가능"}</p> : null}
+      {recordBlockReason ? <p id="record-help" className={styles.sectionMetaLine}>{recordBlockReason}</p> : null}
+      {hasTrialResult ? <p className={styles.sectionMetaLine}>{formatSeoulDateTime(application.trialResult?.updatedAt)} · {reportLocked?"보낸 뒤 읽기 전용":"보내기 전 수정 가능"}</p> : null}
       {hasTrialResult ? (
-        <details className={styles.resultCompact}><summary className={styles.disclosureSummary}>기록 보기</summary>
+        <details className={styles.resultCompact} open={!reportLocked}><summary className={styles.disclosureSummary}>기록 보기</summary>
           {recommendationSummary ? <p className={styles.recordSummary}>{recommendationSummary}</p> : null}
           {storedObservations.canonical.length ? (
             <div className={styles.chipWrap}>
@@ -370,7 +345,7 @@ export const ApplicationTrialResultWorkflow = ({
           ) : null}
 
           <dl className={styles.resultGrid}>
-            <div className={styles.resultGridRow}><dt className={styles.resultGridLabel}>공개 총평</dt><dd className={styles.resultGridValue}>{application.trialResult?.publicSummary?.trim() || "-"}</dd></div>
+            <div className={styles.resultGridRow}><dt className={styles.resultGridLabel}>학부모에게 전달할 총평</dt><dd className={styles.resultGridValue}>{application.trialResult?.publicSummary?.trim() || "-"}</dd></div>
             <div className={styles.resultGridRow}>
               <dt className={styles.resultGridLabel}>추천 과정</dt>
               <dd className={styles.resultGridValue}>
@@ -389,22 +364,15 @@ export const ApplicationTrialResultWorkflow = ({
                 {application.trialResult?.recommendedSchedule?.trim() || "-"}
               </dd>
             </div>
-            <div className={styles.resultGridRow}>
-              <dt className={styles.resultGridLabel}>내부 메모 · 비공개</dt>
-              <dd className={styles.resultGridValue}>
-                {application.trialResult?.note?.trim() || "-"}
-              </dd>
-            </div>
+
           </dl>
         </details>
       ) : isCompletedView ? (
         <div className={styles.compactEmpty}>
           <p className={styles.sectionMetaLine}>체험 수업 내용을 기록하고,<br />학부모 리포트를 위한 기초 자료로 활용합니다.</p>
-          {canWriteTrialResult ? (
-            <button type="button" className={styles.primaryButton} onClick={() => openEditor()}>
-              체험 기록 작성
+            <button type="button" className={styles.primaryButton} onClick={() => openEditor()} disabled={!canWriteTrialResult} aria-describedby={recordBlockReason ? "record-help" : undefined}>
+              기록 작성
             </button>
-          ) : null}
         </div>
       ) : null}
     </section>
@@ -415,16 +383,40 @@ export const ApplicationTrialResultWorkflow = ({
       : <RegistrationResultEditor key={application.id} application={application} />
   ) : null
 
-  const systemSection = <details className={styles.systemDisclosure} aria-label="시스템 이력">
-    <summary className={styles.disclosureSummary}>시스템 이력 보기</summary>
-    {systemEvents.length ? <ol className={styles.activityList}>{systemEvents.map(event => <li key={event.id} className={styles.activitySystemItem}><span className={styles.activitySystemTitle}>{event.title}{event.meta ? ` · ${event.meta}` : ""}</span><span className={styles.activitySystemTime}>{formatSeoulDateTime(event.at)}</span></li>)}</ol> : <p className={styles.simpleEmptyLine}>시스템 이력이 없습니다.</p>}
+  const systemSection = <details className={styles.systemDisclosure} aria-label="처리 이력" open={isTerminal}>
+    <summary className={styles.disclosureSummary}>처리 이력 보기</summary>
+    {systemEvents.length ? <ol className={styles.activityList}>{systemEvents.map(event => <li key={event.id} className={styles.activitySystemItem}><span className={styles.activitySystemTitle}>{event.title}{event.meta ? ` · ${event.meta}` : ""}</span><time className={styles.activitySystemTime} dateTime={event.at}>{formatSeoulDateTime(event.at)}</time></li>)}</ol> : <p className={styles.simpleEmptyLine}>처리 이력이 없습니다.</p>}
   </details>
-  const progressSteps = workflow.steps
-  const stepStateLabels = { done: "완료", current: "진행 중", waiting: "대기", available: "작업 가능", restricted: "제한", error: "조회 실패" }
+  const beforeSending = isCompletedView && !isTerminal && !reportLocked
+  const HistoryContainer = beforeSending ? "details" : "div"
+  const recommendations = [
+    ["추천 과정", application.trialResult?.recommendedCourse],
+    ["추천 레벨", application.trialResult?.recommendedLevel],
+    ["추천 일정", application.trialResult?.recommendedSchedule]
+  ].filter((item): item is [string, string] => Boolean(item[1]?.trim()))
+
+  const hasPublicReportContent = Boolean(storedObservations.canonical.length || storedObservations.legacy.length || recommendations.length || application.trialResult?.publicSummary?.trim())
+
+  // Existing list links may target content now placed in a disclosure.
+  useEffect(() => {
+    const revealAnchor = () => {
+      let id: string
+      try { id = decodeURIComponent(window.location.hash.slice(1)) } catch { return }
+      const target = id ? document.getElementById(id) : null
+      if (!target) return
+      for (let ancestor = target.parentElement; ancestor; ancestor = ancestor.parentElement) {
+        if (ancestor instanceof HTMLDetailsElement) ancestor.open = true
+      }
+      target.scrollIntoView({ block: "start" })
+    }
+    revealAnchor()
+    window.addEventListener("hashchange", revealAnchor)
+    return () => window.removeEventListener("hashchange", revealAnchor)
+  }, [application.id])
 
   return (
     <>
-      <div className={`${styles.workspace} ${confirmationSection ? styles.withConfirmation : ""}`}>
+      <div className={`${styles.workspace} ${beforeSending ? styles.approvedWorkspace : ""} ${confirmationSection ? styles.withConfirmation : ""}`} data-phase={isTerminal ? "closed" : !isCompletedView ? "before" : reportLocked ? "sent" : "record"}>
         <section className={styles.workspaceHeader} aria-label="신청 작업 헤더">
           {headerContent}
           {!confirmationSection && workflow.primary?.action === "status" ? (
@@ -435,37 +427,71 @@ export const ApplicationTrialResultWorkflow = ({
           ) : null}
         </section>
 
-        <section className={styles.progressCard} aria-labelledby="workflow-progress-title">
-          <h2 id="workflow-progress-title" className={styles.sectionTitle}>진행 현황</h2>
-          <ol className={styles.stepper} aria-label="신청 진행 단계">
-            {progressSteps.map((step, index) => <li key={step.id} data-state={step.state} aria-current={step.state === "current" ? "step" : undefined}>
-              <span className={styles.stepNumber}>{step.state === "done" ? "✓" : index + 1}</span>
-              <strong>{step.title}</strong>
-              <span className={styles.stepSummary}>{step.state === "error" ? step.summary : step.id === "record" && application.trialResult ? formatSeoulDateTime(application.trialResult.createdAt) : step.id === "report" && evidence.report.publishedAt ? formatSeoulDateTime(evidence.report.publishedAt) : step.id === "registration" && application.registrationStatus === "pending" ? "고민 중" : step.summary}</span>
-              <span className={styles.stepState}>{stepStateLabels[step.state]}</span>
-            </li>)}
-          </ol>
-        </section>
-
         {confirmationSection ? <section id="confirm-schedule" className={`${styles.card} ${styles.confirmationCard}`} aria-label="일정 확정">
           <h2 className={styles.sectionTitle}>일정 확정</h2>
           <p className={styles.sectionMetaLine}>체험 일정을 확정해 주세요.</p>
           {confirmationSection}
         </section> : null}
-        <section className={`${styles.card} ${styles.recordCard}`} aria-labelledby="record-report-title">
-          <h2 id="record-report-title" className={styles.sectionTitle}><ApplicationDetailIcon name="record" />체험 결과 정리</h2>
-          <p className={styles.sectionMetaLine}>체험 기록을 작성하고 학부모 리포트와 실제 등록 결과를 관리해요.</p>
+        {isTerminal ? <section className={styles.terminalSection} aria-label="종료 사유">
+          <h2 className={styles.sectionTitle}>{application.noShowAt ? "불참" : "취소"} 처리 내역</h2>
+          <p className={styles.activityNote}>{application.logs.find(log => log.toStatus === "canceled" && log.note?.trim())?.note || "별도로 기록된 사유가 없어요."}</p>
+        </section> : null}
+        {isTerminal ? systemSection : null}
+        {beforeSending ? <>
+          <section id="trial-record" className={styles.reportReading} aria-labelledby="record-report-title">
+            <header className={styles.reportReadingHead}>
+              <h2 id="record-report-title">{application.childName} 학생의 체험 리포트</h2>
+              <p>{formatSeoulDateTime(application.confirmedBlockStartAt ?? application.confirmedSlotAt ?? application.completedAt)}</p>
+            </header>
+            {evidence.trialResultError ? <div role="alert"><p>체험 기록 정보를 불러오지 못했어요.</p><StudioQueryRetry /></div> : hasPublicReportContent ? <>
+              {storedObservations.canonical.length || storedObservations.legacy.length ? <section className={styles.reportReadingSection}>
+                <h3>수업에서 보인 모습</h3>
+                <ul>{storedObservations.canonical.map(code => <li key={code}>{getTrialResultObservationLabel(code)}</li>)}</ul>
+                {storedObservations.legacy.length ? <><p className={styles.fieldHint}>기존 기준으로 작성된 관찰 기록</p><ul>{storedObservations.legacy.map(text => <li key={text}>{text}</li>)}</ul></> : null}
+              </section> : null}
+              {application.trialResult?.publicSummary?.trim() ? <section className={styles.reportReadingSection}>
+                <h3>선생님 총평</h3><p className={styles.savedText}>{application.trialResult.publicSummary}</p>
+              </section> : null}
+              {recommendations.length ? <section className={styles.reportReadingSection}>
+                <h3>추천 정보</h3><dl>{recommendations.map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}</dl>
+              </section> : null}
+            </> : <p className={styles.simpleEmptyLine}>아직 작성된 리포트 내용이 없어요. 체험에서 관찰한 모습과 총평을 기록해 주세요.</p>}
+            <footer className={styles.reportReadingActions}>
+              <button type="button" className={styles.secondaryButton} onClick={() => openEditor()} disabled={!canWriteTrialResult} aria-describedby={recordBlockReason ? "record-help" : undefined}>{hasTrialResult ? "내용 수정" : "기록 작성"}</button>
+              {recordBlockReason ? <p id="record-help" className={styles.fieldHint}>{recordBlockReason}</p> : null}
+              {reportSection}
+            </footer>
+          </section>
+          <aside className={styles.operations} aria-label="학원에서 관리할 내용">
+            <h2>학원에서 관리할 내용</h2>
+            {registrationSection}
+            {memoSection}
+            {parentDecisionSection}
+            {!application.parentId ? <p className={styles.fieldHint}>학부모 계정이 연결되어 있지 않아요. 학원 등록 결과는 계속 기록할 수 있어요.</p> : null}
+          </aside>
+          <details className={styles.referenceDisclosure}>
+            <summary className={styles.disclosureSummary}>학생·신청 정보</summary>
+            <div className={styles.referenceContents}>{sidebarContent}{referenceSections}{feedbackSection}</div>
+          </details>
+        </> : <>
+        <details className={styles.recordCard} open={isCompletedView && !isTerminal} aria-labelledby="record-report-title">
+          <summary id="record-report-title" className={styles.disclosureSummary}>{isCompletedView ? "기록·리포트·등록 결과" : "기록·리포트"}</summary>
+          <div className={styles.recordSections}>
+          {reportLocked ? reportSection : null}
           {evidence.trialResultError || !trialResultSection ? <section id="trial-record" className={styles.recordContent} aria-label="체험 기록">
             <h3 className={styles.sectionTitle}><ApplicationDetailIcon name="record" />체험 기록</h3>
             {evidence.trialResultError ? <div role="alert"><p>체험 기록 정보를 불러오지 못했어요.</p><StudioQueryRetry /></div>
               : <p className={styles.simpleEmptyLine}>{application.status === "canceled" ? "남아 있는 체험 기록이 없습니다." : "체험을 완료한 뒤 기록할 수 있어요."}</p>}
           </section> : trialResultSection}
           {/* 기록 조회 실패와 발행본 조회는 독립적이다. 확인된 발행본은 계속 보여 준다. */}
-          {reportSection ?? <section className={styles.registrationSection} aria-label="학부모 리포트"><div className={styles.sectionHead}><h3 className={styles.sectionTitle}><ApplicationDetailIcon name="report" />학부모 리포트</h3><span className={styles.sectionMetaLine}>미발송</span></div><p className={styles.sectionMetaLine}>체험 기록 확정 후 리포트를 발송할 수 있어요.</p></section>}
+          {!reportLocked ? reportSection ?? <section className={styles.registrationSection} aria-label="학부모 리포트"><div className={styles.sectionHead}><h3 className={styles.sectionTitle}><ApplicationDetailIcon name="report" />학부모 리포트</h3><span className={styles.sectionMetaLine}>아직 보내지 않음</span></div><p className={styles.sectionMetaLine}>기록 저장 후 리포트를 보낼 수 있어요.</p></section> : null}
           {registrationSection}
-        </section>
+          </div>
+        </details>
 
-        <aside className={styles.workspaceAside} aria-label="신청 참고 패널">
+        </>}
+
+        {!beforeSending ? <aside className={styles.workspaceAside} aria-label="신청 참고 패널">
           {sidebarContent}
           {isCompletedView ? <>
             {parentDecisionSection}
@@ -473,16 +499,19 @@ export const ApplicationTrialResultWorkflow = ({
           </> : null}
           {referenceSections}
           {isCompletedView ? feedbackSection : null}
-        </aside>
+        </aside> : null}
 
-        <div className={styles.supplementary}>
-          {activitySection}
+        <HistoryContainer className={beforeSending ? styles.historyDisclosure : styles.supplementary}>
+          {beforeSending ? <summary className={styles.disclosureSummary}>이전 상담·처리 이력</summary> : null}
+          {!beforeSending ? memoSection : null}
+          <PreviousConsultationRecords logs={application.consultationLogs} />
           <section className={`${styles.card} ${styles.sectionCard}`} aria-label="최근 활동">
             <h2 className={styles.sectionTitle}><ApplicationDetailIcon name="activity" />최근 활동</h2>
-            {activityEvents.length ? <ol className={styles.activityList}>{activityEvents.slice(0, 3).map(event => <li key={event.id} className={styles.activityItem}><span className={styles.activityMarker} aria-hidden="true" /><div className={styles.activityContent}><p className={styles.activityTitle}>{event.title}</p><p className={styles.activityTime}>{formatSeoulDateTime(event.at)}</p></div></li>)}</ol> : <p className={styles.simpleEmptyLine}>아직 활동 내역이 없습니다.</p>}
+            {activityEvents.length ? <ol className={styles.activityList}>{activityEvents.slice(0, 3).map(event => <li key={event.id} className={styles.activityItem}><span className={styles.activityMarker} aria-hidden="true" /><div className={styles.activityContent}><p className={styles.activityTitle}>{event.title}</p><time className={styles.activityTime} dateTime={event.at}>{formatSeoulDateTime(event.at)}</time>{event.note ? <p className={styles.activityNote}>{event.note}</p> : null}</div></li>)}</ol> : <p className={styles.simpleEmptyLine}>아직 활동 내역이 없습니다.</p>}
           </section>
-        </div>
-        {systemSection}
+          {beforeSending ? systemSection : null}
+        </HistoryContainer>
+        {!isTerminal && !beforeSending ? systemSection : null}
       </div>
 
       {isPromptOpen ? (
@@ -521,10 +550,10 @@ export const ApplicationTrialResultWorkflow = ({
       ) : null}
 
       {isEditorOpen ? (
-        <dialog ref={trialDialogRef} className={modalStyles.dialog} aria-labelledby="trial-result-editor-title" aria-describedby="trial-result-editor-description" onCancel={event => { event.preventDefault(); closeEditor() }}>
+        <dialog ref={trialDialogRef} className={`${modalStyles.dialog} ${recordStyles.dialog}`} aria-labelledby="trial-result-editor-title" aria-describedby="trial-result-editor-description" onCancel={event => { event.preventDefault(); closeEditor() }}>
           <header className={modalStyles.header}>
             <div>
-              <h3 id="trial-result-editor-title">{hasTrialResult?"체험 기록 수정":"체험 기록 작성"}</h3>
+              <h3 id="trial-result-editor-title">{hasTrialResult?"리포트 내용 수정":"기록 작성"}</h3>
               <p id="trial-result-editor-description">관찰·추천·총평은 학부모 리포트에 포함됩니다.</p>
             </div>
             <button type="button" className={modalStyles.close} aria-label="닫기" onClick={closeEditor} disabled={isSavingTrialResult}>×</button>
@@ -541,11 +570,11 @@ export const ApplicationTrialResultWorkflow = ({
             <input type="hidden" name="expectedAssessmentUpdatedAt" value={editorSource?.updatedAt??""} />
             <div className={modalStyles.body}>
               <fieldset className={modalStyles.group} disabled={isSavingTrialResult || !canWriteTrialResult}>
-                <legend>수업 관찰</legend>
+                <legend>관찰한 모습</legend>
                 {splitStoredObservations(editorSource?.observations).legacy.length > 0 ? (
                   <div className={styles.legacyObservationBlock}>
                     <p className={styles.legacyObservationTitle}>기존 기준으로 작성된 관찰 기록입니다.</p>
-                    <p className={modalStyles.hint}>리포트 발행을 위해 아래 현재 관찰 항목을 직접 확인해 선택해 주세요. 기존 문구는 자동 선택하지 않습니다.</p>
+                    <p className={modalStyles.hint}>리포트를 보내려면 아래 현재 관찰 항목을 직접 확인해 선택해 주세요. 기존 문구는 자동 선택하지 않습니다.</p>
                     <div>{splitStoredObservations(editorSource?.observations).legacy.map(text => <span key={text} className={styles.legacyObservationChip}>{text}</span>)}</div>
                   </div>
                 ) : null}
@@ -556,6 +585,13 @@ export const ApplicationTrialResultWorkflow = ({
                 {selectedObservations.map(item => <input key={item} type="hidden" name="observations" value={item} />)}
                 <input type="hidden" name="observationsTouched" value={observationsTouched ? "true" : "false"} />
               </fieldset>
+              <label className={modalStyles.field} htmlFor="trial-public-summary">
+                <span>학부모에게 전달할 총평</span>
+                <textarea id="trial-public-summary" name="publicSummary" aria-label="학부모에게 전달할 총평" aria-describedby="trial-public-summary-hint" value={recordDraft.publicSummary} onChange={event => setRecordDraft(draft => ({ ...draft, publicSummary: event.target.value }))} rows={4} placeholder={"학부모님께 전달할 내용을 작성해 주세요.\n리포트에 그대로 반영됩니다."} maxLength={1000} disabled={isSavingTrialResult || !canWriteTrialResult} />
+                <p id="trial-public-summary-hint" className={modalStyles.hint}>학부모가 리포트에서 읽습니다.</p>
+              </label>
+              <details className={recordStyles.recommendations}>
+                <summary>추천 과정·레벨·일정 <span>선택</span></summary>
               <div className={recordStyles.columns}>
                 <label className={modalStyles.field} htmlFor="trial-recommended-course"><span>추천 과정</span><input id="trial-recommended-course" name="recommendedCourse" value={recordDraft.recommendedCourse} onChange={event => setRecordDraft(draft => ({ ...draft, recommendedCourse: event.target.value }))} disabled={isSavingTrialResult || !canWriteTrialResult} /></label>
                 <label className={modalStyles.field} htmlFor="trial-recommended-level"><span>추천 레벨</span><input id="trial-recommended-level" name="recommendedLevel" value={recordDraft.recommendedLevel} onChange={event => setRecordDraft(draft => ({ ...draft, recommendedLevel: event.target.value }))} disabled={isSavingTrialResult || !canWriteTrialResult} /></label>
@@ -574,45 +610,20 @@ export const ApplicationTrialResultWorkflow = ({
                 {!scheduleTouched && editorSource?.recommendedSchedule && !parseTrialRecommendedSchedule(editorSource.recommendedSchedule)?<p className={modalStyles.hint}>현재 추천 일정: {editorSource.recommendedSchedule}. 새 요일·시간대를 선택하면 이 값이 바뀝니다.</p>:null}
                 <input type="hidden" name="recommendedSchedule" value={draftSchedule} />
               </section>
-              <label className={modalStyles.field} htmlFor="trial-public-summary">
-                <span>총평</span>
-                <textarea id="trial-public-summary" name="publicSummary" aria-label="총평" aria-describedby="trial-public-summary-hint" value={recordDraft.publicSummary} onChange={event => setRecordDraft(draft => ({ ...draft, publicSummary: event.target.value }))} rows={4} placeholder={"학부모님께 전달할 내용을 작성해 주세요.\n리포트에 그대로 반영됩니다."} maxLength={1000} disabled={isSavingTrialResult || !canWriteTrialResult} />
-                <p id="trial-public-summary-hint" className={modalStyles.hint}>학부모가 리포트에서 읽습니다.</p>
-              </label>
-              <label className={`${modalStyles.field} ${modalStyles.secondary}`} htmlFor="trial-private-note">
-                <span>내부 메모 · 비공개</span>
-                <textarea id="trial-private-note" name="note" aria-label="내부 메모 · 비공개" aria-describedby="trial-private-note-hint" value={recordDraft.note} onChange={event => setRecordDraft(draft => ({ ...draft, note: event.target.value }))} rows={2} placeholder="아이 반응이나 향후 상담에 도움이 될 핵심 메모를 남겨 주세요." disabled={isSavingTrialResult || !canWriteTrialResult} />
-                <p id="trial-private-note-hint" className={modalStyles.hint}>학원 내부에서만 보입니다.</p>
-              </label>
+              </details>
             </div>
             <footer className={modalStyles.footer}>
-              <p className={recordStyles.notice}>저장은 학부모 발행과 별도입니다. 리포트 발행 전까지 수정할 수 있습니다.</p>
+              <p className={recordStyles.notice}>저장만으로 학부모에게 보내지지 않아요.</p>
+              <p id="record-save-help" className={modalStyles.hint}>{isSavingTrialResult ? "기록을 저장하고 있어요." : recordBlockReason ?? (hasTrialResult && !editorDirty ? "저장된 내용과 같아요. 내용을 수정하면 저장할 수 있어요." : "저장한 내용으로 리포트를 미리 볼 수 있어요.")}</p>
               {trialResultErrorMessage ? <p className={modalStyles.error} role="alert">{trialResultErrorMessage}</p> : null}
               <div className={modalStyles.actions}>
                 <button type="button" onClick={closeEditor} disabled={isSavingTrialResult}>취소</button>
-                <button type="submit" className={modalStyles.primary} disabled={isSavingTrialResult || !canWriteTrialResult || (hasTrialResult && !editorDirty)}>{isSavingTrialResult ? "저장 중..." : "체험 기록 저장"}</button>
+                <button type="submit" aria-describedby="record-save-help" className={modalStyles.primary} disabled={isSavingTrialResult || !canWriteTrialResult || (hasTrialResult && !editorDirty)}>{isSavingTrialResult ? "저장 중..." : "기록 저장"}</button>
               </div>
             </footer>
           </form>
         </dialog>
       ) : null}
-
-      {isConsultationEditorOpen ? (
-        <ConsultationLogDialog
-          application={application}
-          onCancel={closeConsultationEditor}
-          onSaved={message => { setConsultationNotice(message); setIsConsultationEditorOpen(false); router.refresh() }}
-        />
-      ) : null}
-
-      <ConsultationHistoryModal
-        applicationId={application.id}
-        logs={application.consultationLogs}
-        isOpen={isConsultationHistoryOpen}
-        canAddConsultation={canAddConsultation}
-        onClose={closeConsultationHistory}
-        onAddConsultation={openConsultationEditor}
-      />
 
       {isSuccessOpen ? (
         <div className={styles.dialogOverlay} role="presentation">
@@ -627,7 +638,7 @@ export const ApplicationTrialResultWorkflow = ({
                 체험 기록을 저장했습니다.
               </h3>
               <p className={styles.dialogDescription}>
-                저장한 내용이 리포트 미리보기에 반영됩니다. 학부모에게는 별도로 발행해야 전달됩니다.
+                저장한 내용이 리포트 미리보기에 반영됩니다. 학부모에게 전달하려면 리포트 보내기를 눌러 주세요.
               </p>
             </div>
             <div className={styles.dialogActions}>

@@ -94,3 +94,22 @@ Production DB/Auth/Storage write, migration, git add/commit/push/deploy 없음. 
 - 작업 직전 백업/지문: `/var/folders/vs/w6ngmhxs3xg_fl4r7b5q4zzw0000gn/T/cases-registration-filters-9hhdreao`. 다른 dirty/untracked, 환경변수, branch/HEAD/staged 보존. Application Detail/Dashboard/DB/migration/RPC 변경 및 Production write/commit/push/deploy 없음.
 
 검수 화면 유지: http://localhost:3000/studio/cases?view=closed&filter=not_enrolled
+
+## 2026-10-09 Studio 1단계 추가 — 신청관리 행·정렬
+
+- 기존 1단계 통합 소스 `/Users/1to6/Desktop/firstsuup-studio-phase1-review`에서 작업. 정상 localhost:3000 PID/cwd 확인, 기존 env와 인증 유지.
+- 열의 `다음 할 일` 제목은 유지하고 행별 반복 제목과 상세 이동 버튼은 제거했다. 실질적인 업무는 일반 텍스트로 표시하며 `상세 보기`는 생략한다.
+- `StudioCaseRowLink`는 기존 `StudioDetailLink`의 returnTo/URL 정규화를 그대로 사용한다. 행당 native 링크 하나와 오른쪽 화살표, hover, focus-visible만 둔다. 기존 첫 업무의 section anchor를 유지한다. 연락처는 기존처럼 선택·복사 가능한 텍스트다. 텍스트 선택 중 포인터 click은 이동시키지 않고 Enter와 modifier-click의 native 동작을 유지한다.
+- 헤더와 본문은 동일한 grid template/16px 좌우 padding을 공유한다. 칩 외곽의 시작선과 행 내 세로 중심을 맞춘다. 수업명은 생략 없이 줄바꿈한다. 헤더는 15px/600, 본문보다 진한 색, 16px 상하 여백·은은한 배경·하단선으로 구분한다.
+- 1024px에서도 헤더/열 구조를 유지하며 필요한 폭은 표 내부 가로 스크롤로 제공한다. 719px 이하의 기존 카드형 구조는 유지한다.
+- 검증: 격리된 실제 route/CSS/컴포넌트 fixture의 1440/1280/1024 렌더, 헤더/본문/칩 bounding box, 세로 중심, 긴 수업명, 한 번의 클릭/Enter 이동, 포커스, modifier-click, 마우스 드래그 선택, 선택 후 이동 차단, returnTo/anchor, 빈/오류/로딩 확인. 분류·정렬 순수 검사와 typecheck/lint/build/diff-check 수행. Production DB나 고객 데이터에 쓰는 검사는 하지 않았다.
+- 실제 계정 화면은 미검증: CUA 브라우저 목록 없음, 기존 Chrome의 Playwright CDP 연결은 `ECONNREFUSED 127.0.0.1:9222`. 새 로그인/프로필/검토 서버는 만들지 않았다.
+- 증거: `/Users/1to6/.codex/artifacts/studio-phase1-cases-20261009`. 원래 WEB/MOBILE과 기존 1단계의 비대상 파일, branch/HEAD/staged/env 보존. 분류·정렬·조회·업무 로직·DB·MOBILE 변경, 고객 데이터 저장/상태 변경/리포트 보내기/알림 실행, commit/push/배포 없음.
+
+## 2026-10-09 Studio 1단계 추가 — 열별 중심 정렬
+
+- 위의 모든 열 왼쪽 정렬 중 진행 상태·등록 상태·담당자 열은 이번 요청에 따라 헤더와 칩을 중앙 정렬한다. 학생·체험수업/일정·다음 할 일·최근 기록(완료·종료에서는 결과 처리)은 왼쪽 정렬을 유지한다.
+- 720px 이상 표의 공통 열 선택자로 헤더와 본문에 같은 정렬을 적용한다. 기존 grid 너비·padding·행 세로 중앙 정렬을 유지하고 칩별 margin 보정은 추가하지 않았다. 모바일 카드 구조는 유지한다.
+- 격리된 실제 route/CSS fixture에서 진행 중 전체·일정 미확정·체험 예정·진행의 1440/1024px 및 완료·종료의 1440/1280/1024px를 검사했다. 헤더 텍스트·서로 다른 너비의 칩 중심, 헤더/본문 열 경계, 행 세로 중심을 bounding box로 확인했다. 긴 수업명·행 클릭/Enter·선택·returnTo/anchor 검사도 통과했다.
+- 실제 계정 화면은 미검증이다. 기존 브라우저 연결 목록이 비어 있으며 CDP는 ECONNREFUSED 127.0.0.1:9222를 반환했다. 별도 로그인·검토 서버를 만들지 않았다. 정상 localhost:3000은 기존 통합 소스를 실행한다.
+- 이번 제품 수정은 cases/page.module.css뿐이다. 업무/조회/분류/정렬 로직과 고객 데이터는 변경하지 않았다. 검사 증거: /Users/1to6/.codex/artifacts/studio-phase1-cases-center-20261009.

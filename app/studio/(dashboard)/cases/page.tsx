@@ -11,11 +11,10 @@ import {
 } from "@/features/studio/lib/case-filters"
 import type { StudioStatusTone } from "@/features/studio/lib/application-status-labels"
 import { CASES_ACTIONS, CASES_ACTION_SECTIONS, getCasesNextActions, formatCasesDate, getCasesResultSummary, getCasesScheduleLabel, type CasesListItem } from "@/features/studio/lib/cases-workflow"
-import { ApplicationDetailIcon } from "@/features/studio/ui/application-detail-icon"
 import { requireTeacherStudioAccess } from "@/features/studio/lib/require-teacher-studio-access"
 import { getStudioCases } from "@/features/studio/queries/get-studio-cases"
 import { StudioQueryRetry } from "@/features/studio/ui/studio-query-retry"
-import { StudioDetailLink } from "@/features/studio/ui/studio-detail-link"
+import { StudioCaseRowLink } from "@/features/studio/ui/studio-case-row-link"
 import { getChildGradeLabel, getSubjectLabel } from "@/shared/constants/education-taxonomy"
 import { getStudioNavigationPathResolver } from "@/shared/lib/studio-navigation-server"
 
@@ -135,10 +134,10 @@ export default async function StudioCasesPage({ searchParams }: StudioCasesPageP
       ) : (
         <section className={styles.workspace} aria-label="Case 목록">
           <div className={styles.resultHeader}>
-            <p className={styles.resultMeta}>검색 결과 <strong>{data.totalCount}건</strong><span aria-hidden="true">·</span><span>{view === "active" ? "확정 대기 우선 · 체험 예정순" : filter === "pending" ? "연락일 도래 우선 · 체험 완료 오래된 순" : "결과 처리 최신순 · 처리일 미기록은 완료일/접수일 기준"}</span></p>
+            <p className={styles.resultMeta}>검색 결과 <strong>{data.totalCount}건</strong><span aria-hidden="true">·</span><span>{view === "active" ? "일정 미확정 우선 · 체험 예정순" : filter === "pending" ? "연락일 도래 우선 · 체험 완료 오래된 순" : "결과 처리 최신순 · 처리일 미기록은 완료일/접수일 기준"}</span></p>
             <CasePagination {...paginationProps} compact />
           </div>
-          <div className={styles.tableSurface}>
+          <div className={styles.tableSurface} role="region" aria-label="신청 목록 표" tabIndex={0}>
             <div className={styles.listHead} aria-hidden="true">
               <span>학생</span><span>진행 상태</span><span>체험수업 / 일정</span>
               <span>다음 할 일{view === "closed" ? " / 결과 요약" : ""}</span><span>등록 상태</span>
@@ -156,13 +155,14 @@ export default async function StudioCasesPage({ searchParams }: StudioCasesPageP
                   const record = view === "closed" ? item.resultRecord : item.latestRecord
                   const summary = view === "closed" ? getCasesResultSummary(item) : null
                   const actions = getCasesNextActions(item)
-                  const progressTone: StudioStatusTone = item.workflow.progress === "신청 접수" ? "amber" : ["일정 확정", "체험 예정"].includes(item.workflow.progress) ? "green" : "gray"
-                  const registrationTone: StudioStatusTone = ["취소", "노쇼"].includes(item.workflow.registration) ? "gray" : item.registrationStatus === "enrolled" ? "green" : item.registrationStatus === "pending" ? "amber" : item.registrationStatus === "not_enrolled" ? "red" : "gray"
+                  const taskActions = actions.filter(key => key !== "detail" && key !== "trial")
+                  const progressTone: StudioStatusTone = item.workflow.progress === "일정 미확정" ? "amber" : ["체험 예정"].includes(item.workflow.progress) ? "green" : "gray"
+                  const registrationTone: StudioStatusTone = ["취소", "불참"].includes(item.workflow.registration) ? "gray" : item.registrationStatus === "enrolled" ? "green" : item.registrationStatus === "pending" ? "amber" : item.registrationStatus === "not_enrolled" ? "red" : "gray"
                   return (
                     <li key={item.id} className={styles.row} data-case-id={item.id}>
-                      <div className={styles.rowLink}>
+                      <StudioCaseRowLink className={styles.rowLink} internalPath={`/studio/applications/${item.id}`} section={CASES_ACTION_SECTIONS[actions[0]]} aria-label={`${item.student.name} 신청 상세`}>
                         <span className={styles.cellStudent}>
-                          <span className={styles.studentHeading}><StudioDetailLink className={styles.studentName} internalPath={`/studio/applications/${item.id}`}>{item.student.name}</StudioDetailLink><span className={styles.studentMeta}>{getChildGradeLabel(item.student.grade) ?? "학년 미기록"}</span></span>
+                          <span className={styles.studentHeading}><span className={styles.studentName}>{item.student.name}</span><span className={styles.studentMeta}>{getChildGradeLabel(item.student.grade) ?? "학년 미기록"}</span></span>
                           {item.guardian.phone ? <span className={styles.studentPhone}><span className={styles.srOnly}>보호자 연락처 </span>{item.guardian.phone}</span> : null}
                         </span>
                         <span className={styles.cellStage}>
@@ -173,12 +173,7 @@ export default async function StudioCasesPage({ searchParams }: StudioCasesPageP
                           {schedule ? <span className={styles.classMeta}>{schedule}</span> : null}
                         </span>
                         <span className={styles.cellNextAction}>
-                          <span className={styles.actionHeading}>다음 할 일</span>
-                          <span className={styles.actionLinks}>
-                            {actions.map((key) => <StudioDetailLink key={key} className={styles.actionLink}
-                              internalPath={`/studio/applications/${item.id}`} section={CASES_ACTION_SECTIONS[key]}
-                              title={CASES_ACTIONS[key].description}><ApplicationDetailIcon name={CASES_ACTIONS[key].icon} />{CASES_ACTIONS[key].title}</StudioDetailLink>)}
-                          </span>
+                          {taskActions.map(key => <span key={key} className={styles.taskText}>{CASES_ACTIONS[key].title}</span>)}
                           {summary ? <span className={styles.resultSummary}>
                             <span className={styles.srOnly}>결과 요약: </span>
                             {summary.reasons.length ? summary.reasons.map((reason, index) => <span className={styles.reasonLine} key={reason.id}>
@@ -192,8 +187,8 @@ export default async function StudioCasesPage({ searchParams }: StudioCasesPageP
                         <span className={styles.cellRecord}>
                           {record?.at ? <><time dateTime={record.at}>{formatCasesDate(record.at)}</time><span>{record.label}</span></> : view === "closed" ? "처리일 미기록" : "—"}
                         </span>
-                        <StudioDetailLink className={styles.chevron} internalPath={`/studio/applications/${item.id}`} aria-label="신청 상세 보기"><Chevron /></StudioDetailLink>
-                      </div>
+                        <span className={styles.chevron} aria-hidden="true"><Chevron /></span>
+                      </StudioCaseRowLink>
                     </li>
                   )
                 })}

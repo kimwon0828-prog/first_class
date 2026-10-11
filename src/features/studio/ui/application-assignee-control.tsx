@@ -82,9 +82,10 @@ function AssigneeDialog({ applicationId, currentAssignedTeacherId, currentAssign
       </label>
       {optionsError ? <div role="alert" className={`${styles.message} ${styles.messageError}`}>{optionsError}<StudioQueryRetry /></div> : null}
       {state.status === "error" ? <p role="alert" className={`${styles.message} ${styles.messageError}`}>{state.message}</p> : null}
+      <p id="assignee-save-help" className={styles.label}>{pending ? "담당 선생님을 저장하고 있어요." : optionsError ? "선생님 목록을 다시 불러온 후 선택해 주세요." : selectedId === (currentAssignedTeacherId ?? "") ? "현재 담당과 같아요. 다른 선생님이나 미배정을 선택하면 저장할 수 있어요." : "선택한 담당 선생님을 저장해 주세요."}</p>
       <div className={styles.compactActions}>
         <button type="button" disabled={pending} className={styles.secondaryButton} onClick={onCancel}>취소</button>
-        <button type="submit" disabled={pending || Boolean(optionsError) || selectedId === (currentAssignedTeacherId ?? "")} className={styles.primaryButton}>{pending ? "저장 중..." : "저장"}</button>
+        <button type="submit" aria-describedby="assignee-save-help" disabled={pending || Boolean(optionsError) || selectedId === (currentAssignedTeacherId ?? "")} className={styles.primaryButton}>{pending ? "저장 중..." : "저장"}</button>
       </div>
     </form>
   </dialog>

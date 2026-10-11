@@ -239,7 +239,8 @@ export async function upsertTrialResultAction(
     recommendedCourse: normalizeOptionalText(formData.get("recommendedCourse")),
     recommendedLevel: normalizeOptionalText(formData.get("recommendedLevel")),
     recommendedSchedule: normalizeOptionalText(formData.get("recommendedSchedule")),
-    note: normalizeOptionalText(formData.get("note")),
+    // Legacy source note is preserved; the independent academy memo action owns new edits.
+    note: current.trialResult?.note ?? null,
     // 총평은 note 와 다른 칸이다. 같은 값을 복사하지 않는다.
     publicSummary: normalizeOptionalText(formData.get("publicSummary")),
     parentReaction: current.trialResult?.parentReaction ?? null,

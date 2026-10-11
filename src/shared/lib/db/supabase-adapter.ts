@@ -64,6 +64,7 @@ import type {
   ParentApplicationSummary,
   StudioConsultationTransactionResult,
   StudioTrialResultSaveContext,
+  StudioAcademyMemo,
   ActivateStudioTeacherInput,
   StudioTeacherReferenceCounts,
   ApplicationLogEntry,
@@ -5387,6 +5388,23 @@ export const supabaseDataAdapter: DataAdapter = {
     if (!data) {
       throw new Error("consultation_log_update_conflict")
     }
+  },
+  async getStudioAcademyMemo(applicationId, organizationId) {
+    const supabase = await getSupabaseServerClient()
+    const { data, error } = await supabase.rpc("get_studio_academy_memo", {
+      p_application_id: applicationId, p_organization_id: organizationId
+    })
+    if (error?.code === "PGRST202") throw new Error("academy_memo_not_ready")
+    if (error || !data) throw new Error(error?.message ?? "failed_to_load_academy_memo")
+    return data as StudioAcademyMemo
+  },
+  async saveStudioAcademyMemo(input) {
+    const supabase = await getSupabaseServerClient()
+    const { data, error } = await supabase.rpc("save_studio_academy_memo", {
+      p_application_id: input.applicationId, p_note: input.note, p_expected_revision: input.expectedRevision
+    })
+    if (error || !data) throw new Error(error?.message ?? "failed_to_save_academy_memo")
+    return data as StudioAcademyMemo
   },
   async getStudioTrialResultSaveContext(applicationId: string, organizationId: string) {
     const supabase = await getSupabaseServerClient()

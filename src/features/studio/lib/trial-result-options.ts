@@ -174,7 +174,7 @@ export const TRIAL_RESULT_PARENT_REACTION_OPTIONS: Array<{
   label: string
 }> = [
   { value: "positive", label: "긍정" },
-  { value: "considering", label: "고민 중" },
+  { value: "considering", label: "고민중" },
   { value: "negative", label: "부정" }
 ]
 
@@ -209,10 +209,10 @@ export const TRIAL_RESULT_REGISTRATION_OPTIONS: Array<{
   label: string
   description: string
 }> = [
-  { value: "enrolled", label: "등록함", description: "정규 수강으로 이어졌어요." },
-  { value: "pending", label: "고민 중", description: "추가 상담이나 재연락이 필요해요." },
-  { value: "not_enrolled", label: "미등록", description: "등록하지 않기로 결정했어요." },
-  { value: "undecided", label: "아직 결정 안 됨", description: "결정을 아직 보류하고 있어요." }
+  { value: "enrolled", label: "등록 완료", description: "정규 수강으로 이어졌어요." },
+  { value: "pending", label: "고민중", description: "추가 상담이나 재연락이 필요해요." },
+  { value: "not_enrolled", label: "등록하지 않음", description: "등록하지 않기로 결정했어요." },
+  { value: "undecided", label: "등록 여부 미정", description: "결정을 아직 보류하고 있어요." }
 ]
 
 export const TRIAL_RESULT_UNREGISTERED_REASON_OPTIONS: Array<{

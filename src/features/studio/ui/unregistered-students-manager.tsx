@@ -56,14 +56,14 @@ const GROUP_META: Record<
     title: "상담 필요",
     description: "체험은 끝났지만 아직 상담 기록이 없는 학생이에요.",
     emptyMessage: "아직 상담이 필요한 학생이 없습니다.",
-    actionTitle: "첫 상담을 남겨 주세요.",
+    actionTitle: "필요한 내용은 등록 상담 메모에 남겨 주세요.",
     tone: "needs"
   },
   NO_NEXT_CONTACT: {
     title: "예정 없음",
     description: "상담은 했지만 다음 연락 일정이 없습니다.",
     emptyMessage: "다음 연락 일정이 비어 있는 학생이 없습니다.",
-    actionTitle: "다음 연락 일정을 정해 주세요.",
+    actionTitle: "기존 연락 예정일과 등록 상담 메모를 확인해 주세요.",
     tone: "warning"
   },
   UPCOMING_CONTACT: {
@@ -420,9 +420,9 @@ export const UnregisteredStudentsManager = async ({
                         groupKey === "TODAY_CONTACT"
                           ? "지금 연락해 주세요."
                           : groupKey === "NEEDS_CONSULTATION"
-                            ? "첫 상담을 남겨 주세요."
+                            ? "필요한 내용은 등록 상담 메모에 남겨 주세요."
                             : groupKey === "NO_NEXT_CONTACT"
-                              ? "다음 연락 일정을 정해 주세요."
+                              ? "기존 연락 예정일과 등록 상담 메모를 확인해 주세요."
                               : "예정된 시각에 다시 연락하세요."
 
                       return (
@@ -547,8 +547,8 @@ export const UnregisteredStudentsManager = async ({
                                     전화
                                   </a>
                                 ) : null}
-                                <Link href={detailHref} className={styles.secondaryButton}>
-                                  상담 기록
+                                <Link href={`${detailHref}#academy-memo`} className={styles.secondaryButton}>
+                                  등록 상담 메모
                                 </Link>
                                 <Link href={detailHref} className={styles.tertiaryButton}>
                                   상세 보기

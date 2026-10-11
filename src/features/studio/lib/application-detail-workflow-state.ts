@@ -69,8 +69,8 @@ export function deriveApplicationDetailWorkflow({ application: a, evidence: e, n
 
   // Terminal results precede missing records. No large task CTA on closed cases.
   if (closed) {
-    title = a.status === "canceled" ? (a.noShowAt ? "노쇼로 종료되었습니다." : "취소된 신청입니다.") :
-      result === "enrolled" ? "등록이 완료되었습니다." : "미등록으로 종료되었습니다."
+    title = a.status === "canceled" ? (a.noShowAt ? "불참으로 종료되었습니다." : "취소된 신청입니다.") :
+      result === "enrolled" ? "등록이 완료되었습니다." : "등록하지 않은 신청입니다."
     description = "확정된 체험 기록과 리포트는 보존되며 등록 결과는 변경할 수 있어요."
   } else if (!completed) {
     if (a.status === "new" || a.status === "reviewing") act("status", "일정 확정하기", "trial", "체험 일정을 확인하고 확정해 주세요.")
@@ -82,27 +82,27 @@ export function deriveApplicationDetailWorkflow({ application: a, evidence: e, n
     description = "진행 상태를 다시 확인한 뒤 작업해 주세요."
   } else if (!hasRecord) {
     title = "체험 기록을 작성해 주세요."
-    description = "관찰 내용과 추천 사항을 저장하고, 공개 가능한 내용으로 학부모 리포트를 발행해요."
-    if (canWriteTrialResults) act("record", "체험 기록 작성", "record", title)
+    description = "관찰 내용과 추천 사항을 저장하고, 공개 가능한 내용으로 학부모 리포트를 보내요."
+    if (canWriteTrialResults) act("record", "기록 작성", "record", title)
   } else if (e.report.error) {
     title = "리포트 정보를 불러오지 못했어요."
-    description = "등록 결과와 연락 기록은 별도로 저장할 수 있어요."
+    description = "등록 결과와 등록 상담 메모는 별도로 저장할 수 있어요."
   } else if (e.report.canPublish && !e.report.version) {
-    act("report", "학부모 리포트 발송", "report", "저장한 체험 기록을 학부모에게 전달할 수 있어요.")
-    description = "내부 메모를 제외한 공개 가능한 내용만 리포트에 포함됩니다."
+    act("report", "리포트 보내기", "report", "저장한 체험 기록을 학부모에게 전달할 수 있어요.")
+    description = "등록 상담 메모를 제외한 공개 가능한 내용만 리포트에 포함됩니다."
   } else {
     act("registration", "등록 결과 입력", "registration", "학원에서 확인한 실제 등록 결과를 기록해 주세요.")
   }
 
   const steps: WorkflowStep[] = [
-    { id: "trial", title: "체험 완료", state: completed ? "done" : closed ? "restricted" : "waiting",
-      summary: completed ? formatSeoulDateTime(a.completedAt) ?? "체험 완료" : a.status === "canceled" ? (a.noShowAt ? "노쇼" : "취소") : inTrial ? "체험 진행 중" : "체험 전" },
+    { id: "trial", title: "체험", state: completed ? "done" : closed ? "restricted" : "waiting",
+      summary: completed ? formatSeoulDateTime(a.completedAt) ?? "체험 완료" : a.status === "canceled" ? (a.noShowAt ? "불참" : "취소") : progress === "after_scheduled_end" ? "완료 확인 필요" : progress === "in_trial" ? "체험 진행 중" : a.status === "confirmed" && progress === "before_start" ? "체험 예정" : "일정 미확정" },
     { id: "record", title: "체험 기록", state: e.trialResultError ? "error" : hasRecord ? "done" : completed ? "available" : "restricted",
-      summary: e.trialResultError ? "정보를 불러오지 못했어요." : hasRecord ? (e.report.everSent || e.report.version ? "발행 후 잠금" : "저장 완료 · 발행 전 수정 가능") : completed ? "체험 기록 미작성" : "체험 완료 후 작성 가능" },
+      summary: e.trialResultError ? "정보를 불러오지 못했어요." : hasRecord ? (e.report.everSent || e.report.version ? "보낸 뒤 읽기 전용" : "저장 완료 · 보내기 전 수정 가능") : completed ? "체험 기록 미작성" : "체험 완료 후 작성 가능" },
     { id: "report", title: "학부모 리포트", state: e.report.error ? "error" : e.report.version ? "done" : e.report.canPublish ? "available" : "restricted",
-      summary: e.report.error ? "정보를 불러오지 못했어요." : e.report.version ? "발송 완료 · 잠금" : "미발송" },
+      summary: e.report.error ? "정보를 불러오지 못했어요." : e.report.everSent || e.report.version ? "리포트 보냄" : "아직 보내지 않음" },
     { id: "registration", title: "등록 결과", state: e.registration.error ? "error" : result ? "done" : completed ? "available" : "restricted",
-      summary: e.registration.error ? "정보를 불러오지 못했어요." : result === "enrolled" ? "등록 완료" : result === "not_enrolled" ? "미등록" : completed ? "아직 기록되지 않았어요." : "체험 완료 후 기록 가능" }
+      summary: e.registration.error ? "정보를 불러오지 못했어요." : result === "enrolled" ? "등록 완료" : result === "not_enrolled" ? "등록하지 않음" : completed ? "등록 여부 미정" : "체험 완료 후 기록 가능" }
   ]
   const selected = primary as ApplicationDetailWorkflowState["primary"]
   if (selected) {
@@ -125,9 +125,9 @@ export function getApplicationJourney(a: StudioApplicationDetail, now: Date) {
     id: String(index), title,
     state: index === 0 || (index === 1 && confirmed) || (index === 2 && ended) || (index === 3 && a.status === "completed") ? "done" as const : current === index ? "current" as const : "waiting" as const,
     summary: index === 0 ? formatSeoulDateTime(a.createdAt) ?? "접수 완료"
-      : closed && index === 3 ? a.noShowAt ? "노쇼" : "신청 취소"
+      : closed && index === 3 ? a.noShowAt ? "불참" : "신청 취소"
       : index === 1 && !confirmed && !closed ? "체험 일정을 확정해 주세요."
       : index === 2 && confirmed && !closed ? ended ? "예정 시간 경과" : started ? "체험 진행 중" : "체험 예정"
-      : index === 3 && started && !closed ? a.status === "completed" ? "체험 완료" : "완료 또는 노쇼 처리" : ""
+      : index === 3 && started && !closed ? a.status === "completed" ? "체험 완료" : "완료 또는 불참 처리" : ""
   }))
 }

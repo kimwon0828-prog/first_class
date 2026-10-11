@@ -45,7 +45,7 @@ export const StudioParentDecision = ({ decision, loadError, titleIcon }: StudioP
     <section className={`${styles.card} ${styles.sectionCard}`} aria-labelledby="parent-decision-title">
       <div className={styles.sectionHead}>
         <h2 id="parent-decision-title" className={styles.sectionTitle}>
-          {titleIcon}학부모 현재 생각
+          {titleIcon}학부모 의향
         </h2>
       </div>
 

@@ -3,7 +3,7 @@
 import { StudioQueryRetry } from "./studio-query-retry"
 import { ApplicationDetailIcon } from "./application-detail-icon"
 
-import { useActionState, useEffect, useRef } from "react"
+import { useActionState, useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 
@@ -34,6 +34,7 @@ export type ReportPublishBlocker =
 type ApplicationReportPublishingProps = {
   applicationId: string
   embedded?: boolean
+  actionsOnly?: boolean
   emphasizePublish?: boolean
   /** 지금 저장된 평가로 만든 미리보기. 막힌 상태면 null 이다. */
   preview: ExperienceReportSnapshotV1 | null
@@ -138,7 +139,7 @@ const ReportBody = ({ snapshot }: { snapshot: ExperienceReportSnapshotV1 }) => {
         )}
       </section>
 
-      {summary ? <section className={styles.reportSection} aria-label="공개 총평"><h3 className={styles.reportSectionTitle}>총평</h3><p className={styles.reportSummary}>{summary}</p></section> : null}
+      {summary ? <section className={styles.reportSection} aria-label="학부모에게 전달할 총평"><h3 className={styles.reportSectionTitle}>총평</h3><p className={styles.reportSummary}>{summary}</p></section> : null}
 
       {recommendations.length > 0 ? (
         <section className={styles.reportSection} aria-label="추천">
@@ -160,14 +161,14 @@ const ReportBody = ({ snapshot }: { snapshot: ExperienceReportSnapshotV1 }) => {
 const BLOCKER_TEXT: Record<ReportPublishBlocker["kind"], { title: string; body: string }> = {
   parent_not_linked: {
     title: "학부모 계정이 연결되어 있지 않습니다.",
-    body: "학부모 연결 후 리포트를 발행할 수 있어요."
+    body: "학부모 연결 후 리포트를 보낼 수 있어요."
   },
   legacy_observations: {
     title: "기존 기준으로 작성된 관찰 기록입니다.",
-    body: "현재 기준의 관찰 항목을 다시 확인한 뒤 리포트를 발행해 주세요."
+    body: "현재 기준의 관찰 항목을 다시 확인한 뒤 리포트를 보내 주세요."
   },
   experience_date_missing: {
-    title: "체험 날짜를 확인할 수 없어 리포트를 발행할 수 없습니다.",
+    title: "체험 날짜를 확인할 수 없어 리포트를 보낼 수 없습니다.",
     body: "확정 일정 또는 체험 완료 처리를 먼저 확인해 주세요."
   },
   no_assessment: {
@@ -176,13 +177,14 @@ const BLOCKER_TEXT: Record<ReportPublishBlocker["kind"], { title: string; body: 
   },
   report_content_missing: {
     title: "부모님께 전달할 리포트 내용이 아직 없습니다.",
-    body: "관찰 내용이나 추천 정보를 확인한 뒤 발행해 주세요."
+    body: "관찰 내용이나 추천 정보를 확인한 뒤 보내 주세요."
   }
 }
 
 export const ApplicationReportPublishing = ({
   applicationId,
   embedded = false,
+  actionsOnly = false,
   emphasizePublish = !embedded,
   preview,
   publishedSnapshot,
@@ -201,6 +203,17 @@ export const ApplicationReportPublishing = ({
     publishAction,
     initialPublishState
   )
+  const [previewOpen, setPreviewOpen] = useState(false)
+  const previewDialog = useRef<HTMLDialogElement>(null)
+  useEffect(() => {
+    if (!previewOpen) return
+    const dialog = previewDialog.current
+    const previous = document.activeElement as HTMLElement | null
+    const overflow = document.body.style.overflow
+    dialog?.showModal()
+    document.body.style.overflow = "hidden"
+    return () => { dialog?.close(); document.body.style.overflow = overflow; previous?.focus() }
+  }, [previewOpen])
   const handledPublishTokenRef = useRef<string | null>(null)
 
   // 발행에 성공하면 화면을 다시 읽는다. 발행본 version 과 공개 내용이
@@ -239,7 +252,30 @@ export const ApplicationReportPublishing = ({
     Boolean(assessmentUpdatedAt)
   const publishedDateText = publishedAt ? formatSeoulDateTime(publishedAt) : null
   const needsRecord = blockers.some(blocker => blocker.kind === "no_assessment")
+  const publishHelp = publishedReportLoadError
+    ? "리포트 이력을 확인하지 못했어요. 새로고침 후 다시 확인해 주세요."
+    : activeBlocker ? `${BLOCKER_TEXT[activeBlocker.kind].title} ${BLOCKER_TEXT[activeBlocker.kind].body}`
+    : !preview || !assessmentUpdatedAt ? "리포트 내용을 확인하지 못했어요. 기록을 저장한 뒤 새로고침해 주세요."
+    : null
   const Heading = embedded ? "h3" : "h2"
+
+  if (actionsOnly) return <div className={styles.actionArea} aria-label="리포트 확인과 보내기">
+    <div className={styles.actionButtons}>
+      <button type="button" className={styles.secondaryButton} disabled={!preview} aria-describedby={!preview ? "report-send-help" : undefined} onClick={() => setPreviewOpen(true)}>미리보기</button>
+      {!everSent && !publishedVersion && canPublishReport && !needsRecord ? <form action={submitPublish}>
+        <input type="hidden" name="expectedAssessmentUpdatedAt" value={assessmentUpdatedAt ?? ""} />
+        <button type="submit" className={styles.primaryButton} disabled={!canPublish || isPublishing} aria-describedby="report-send-help">{isPublishing ? "보내는 중..." : "리포트 보내기"}</button>
+      </form> : null}
+    </div>
+    {publishHelp || canPublishReport ? <p id="report-send-help" className={styles.footnote}>{isPublishing ? "학부모 앱에 리포트를 공개하고 있어요." : publishHelp ?? "보내면 학부모 앱에서 리포트를 볼 수 있어요. 보낸 리포트는 수정할 수 없어요."}</p> : null}
+    {publishedReportLoadError ? <StudioQueryRetry /> : null}
+    {!canPublishReport ? <p className={styles.footnote}>리포트 보내기는 스탠다드 플랜에서 사용할 수 있어요. <Link href={studioPath("/studio/billing")} prefetch={false}>플랜 확인하기</Link></p> : null}
+    {publishState.message ? <p role={publishState.status === "error" ? "alert" : "status"} className={styles.footnote}>{publishState.message}</p> : null}
+    {previewOpen && preview ? <dialog ref={previewDialog} className={styles.previewDialog} aria-labelledby="report-preview-title" onCancel={() => setPreviewOpen(false)}>
+      <header><h2 id="report-preview-title">리포트 미리보기</h2><button type="button" className={styles.secondaryButton} onClick={() => setPreviewOpen(false)}>닫기</button></header>
+      <ReportBody snapshot={preview} />
+    </dialog> : null}
+  </div>
 
   return (
     <section className={`${embedded ? styles.embedded : styles.card} ${styles.sectionCard}`} aria-labelledby="report-publishing-title">
@@ -250,11 +286,11 @@ export const ApplicationReportPublishing = ({
         {publishedReportLoadError ? (
           // 모르는 상태다. "없음" 이라고 말하지 않는다.
           <p className={styles.statusLine}>
-            <span className={styles.statusMuted}>발행 상태를 확인하지 못했습니다.</span>
+            <span className={styles.statusMuted}>리포트 공개 상태를 확인하지 못했어요.</span>
           </p>
         ) : publishedVersion ? (
           <p className={styles.statusLine}>
-            <span className={styles.statusBadge}>✓ 발송 완료</span>
+            <span className={styles.statusBadge}>✓ 리포트 보냄</span>
             <span className={styles.statusMeta}>
               v{publishedVersion}
               {publishedDateText ? ` · ${publishedDateText}` : ""}
@@ -262,37 +298,31 @@ export const ApplicationReportPublishing = ({
           </p>
         ) : (
           <p className={styles.statusLine}>
-            <span className={styles.statusMuted}>{everSent ? "이전에 발송한 리포트입니다. 재발송할 수 없습니다." : "미발송"}</span>
+            <span className={styles.statusMuted}>{everSent ? "리포트 보냄 · 현재 공개 종료" : "아직 보내지 않음"}</span>
           </p>
         )}
       </div>
 
-      {!publishedSnapshot && !everSent ? <p className={styles.sectionDescription}>{needsRecord ? "체험 기록 저장 후 리포트를 발송할 수 있어요." : "학부모에게 전달할 내용을 미리 확인해 주세요."}</p> : null}
+      {!publishedSnapshot && !everSent ? <p className={styles.sectionDescription}>{needsRecord ? "기록 저장 후 리포트를 보낼 수 있어요." : "학부모에게 전달할 내용을 미리 확인해 주세요."}</p> : null}
 
       {/*
         지금 공개돼 있는 것은 발행 시점에 얼어붙은 snapshot 이다.
         평가를 다시 조립해서 "현재 발행본" 이라고 보여 주지 않는다.
       */}
       {publishedSnapshot ? <>
-        <details className={styles.block}>
+        <details className={styles.block} open>
           <summary className={styles.blockLabel}>리포트 보기</summary>
-        {embedded ? <div className={styles.publishedPreview} aria-label="발행된 리포트 요약">
-          <h3>{publishedSnapshot.experience.child.displayName} 학생 체험 수업 리포트</h3>
-          {getExperienceReportSummary(publishedSnapshot) ? <p className={styles.previewSummary}>{getExperienceReportSummary(publishedSnapshot)}</p> : null}
-          {publishedSnapshot.observations.length ? <ul>{publishedSnapshot.observations.slice(0, 3).map(item => <li key={item.code}>{item.label}</li>)}</ul> : null}
-          {Object.values(publishedSnapshot.recommendation).some(Boolean) ? <p className={styles.previewSummary}>추천 · {Object.values(publishedSnapshot.recommendation).filter(Boolean).join(" · ")}</p> : null}
-        </div> : null}
           <ReportBody snapshot={publishedSnapshot} />
         </details>
       </> : null}
 
-      {everSent || publishedVersion ? <p className={styles.footnote}>발행된 리포트는 수정할 수 없습니다.</p> : null}
+      {everSent || publishedVersion ? <p className={styles.footnote}>보낸 리포트는 수정할 수 없어요.</p> : null}
 
       {publishedReportLoadError ? (
         <div className={styles.notice} role="alert">
-          <p className={styles.noticeTitle}>현재 발행된 리포트 정보를 불러오지 못했습니다.</p>
+          <p className={styles.noticeTitle}>보낸 리포트 정보를 불러오지 못했어요.</p>
           <p className={styles.noticeBody}>
-            다시 시도한 뒤 확인해 주세요. 발행 상태를 확인하기 전까지는 발행과 철회를 할
+            다시 시도한 뒤 확인해 주세요. 공개 상태를 확인하기 전까지는 보내기와 철회를 할
             수 없습니다.
           </p><StudioQueryRetry />
         </div>
@@ -316,29 +346,14 @@ export const ApplicationReportPublishing = ({
       */}
       {!canPublishReport && !publishedVersion && !everSent ? (
         <div className={styles.lockedNotice} role="status">
-          <p className={styles.noticeTitle}>학부모 리포트 발행은 스탠다드 플랜에서 사용할 수 있어요.</p>
+          <p className={styles.noticeTitle}>리포트 보내기는 스탠다드 플랜에서 사용할 수 있어요.</p>
           <p className={styles.noticeBody}>
-            체험 결과 작성과 미리보기는 계속 사용할 수 있고, 이미 발행한 리포트는 학부모가 그대로
+            체험 결과 작성과 미리보기는 계속 사용할 수 있고, 이미 보낸 리포트는 학부모가 그대로
             볼 수 있어요.
           </p>
           <Link href={studioPath("/studio/billing")} prefetch={false} className={styles.lockedLink}>
             플랜 확인하기
           </Link>
-        </div>
-      ) : null}
-
-      {/* 잠긴 상태에서는 발행 준비 안내를 띄우지 않는다. 지금 할 수 없는 일의 준비물이다. */}
-      {canPublishReport && activeBlocker && !needsRecord && !everSent && !publishedVersion ? (
-        <div className={styles.notice} role="status">
-          <p className={styles.noticeTitle}>{BLOCKER_TEXT[activeBlocker.kind].title}</p>
-          <p className={styles.noticeBody}>{BLOCKER_TEXT[activeBlocker.kind].body}</p>
-          {activeBlocker.kind === "legacy_observations" ? (
-            <ul className={styles.noticeList}>
-              {activeBlocker.values.map((value) => (
-                <li key={value}>{value}</li>
-              ))}
-            </ul>
-          ) : null}
         </div>
       ) : null}
 
@@ -354,9 +369,11 @@ export const ApplicationReportPublishing = ({
       ) : null}
       {!everSent && !publishedVersion && canPublishReport && !needsRecord ? <form action={submitPublish} className={styles.publishForm}>
         <input type="hidden" name="expectedAssessmentUpdatedAt" value={assessmentUpdatedAt ?? ""} />
-        <p className={styles.footnote}>발송 후 수정하거나 다시 발송할 수 없어요.</p>
-        <button type="submit" className={emphasizePublish ? styles.primaryButton : styles.secondaryButton} disabled={!canPublish || isPublishing}>
-          {isPublishing ? "발송 중..." : "리포트 발송"}
+        <p className={styles.footnote}>보내면 학부모 앱에서 리포트를 볼 수 있어요. 보낸 리포트는 수정할 수 없어요.</p>
+        {isPublishing || publishHelp ? <p id="report-send-help" className={styles.footnote}>{isPublishing ? "학부모 앱에 리포트를 공개하고 있어요." : publishHelp}</p> : null}
+        {activeBlocker?.kind === "legacy_observations" ? <ul className={styles.noticeList}>{activeBlocker.values.map(value => <li key={value}>{value}</li>)}</ul> : null}
+        <button type="submit" aria-describedby={isPublishing || publishHelp ? "report-send-help" : undefined} className={emphasizePublish ? styles.primaryButton : styles.secondaryButton} disabled={!canPublish || isPublishing}>
+          {isPublishing ? "보내는 중..." : "리포트 보내기"}
         </button>
       </form> : null}
     </section>

@@ -13,6 +13,7 @@ import {
   getStudioStatusLabel
 } from "@/features/studio/lib/application-status-labels"
 import { CASE_STAGE_LABELS, getCaseDisplayStage } from "@/features/studio/lib/case-view-model"
+import { getTrialProgressState } from "@/features/studio/lib/trial-completion"
 import { requireTeacherStudioAccess } from "@/features/studio/lib/require-teacher-studio-access"
 import { getStudioApplicationAssigneeOptions } from "@/features/studio/queries/get-studio-application-assignee-options"
 import { getStudioApplicationDetail } from "@/features/studio/queries/get-studio-application-detail"
@@ -227,6 +228,14 @@ export default async function StudioApplicationDetailPage({ params, searchParams
   if (!error && !data) {
     notFound()
   }
+
+  const academyMemo = data
+    ? await dataAdapter.getStudioAcademyMemo(data.id, teacher.organizationId)
+      .then(memo => ({ data: memo, error: null }))
+      .catch(caught => ({ data: null, error: caught instanceof Error && caught.message === "academy_memo_not_ready"
+        ? "등록 상담 메모 저장 기능을 준비 중이에요. 기존 내부 메모는 읽기 전용으로 확인할 수 있어요."
+        : "등록 상담 메모를 불러오지 못했어요. 저장된 이전 내부 메모는 아래에서 확인할 수 있어요. 새로고침 후 다시 시도해 주세요." }))
+    : { data: null, error: null }
 
   // 서버가 정한 한 시각을 이 화면 전체가 공유한다(단계 표시와 다음 할 일이 같은 시각을 본다).
   const nowIso = new Date().toISOString()
@@ -492,10 +501,15 @@ export default async function StudioApplicationDetailPage({ params, searchParams
           currentTimelineIndex,
           isTerminalCanceled,
           progressSteps,
-          caseStageLabel: CASE_STAGE_LABELS[caseStage]
+          caseStageLabel: data.status === "confirmed"
+            ? getTrialProgressState(data, new Date(nowIso)) === "after_scheduled_end" ? "완료 확인 필요"
+              : getTrialProgressState(data, new Date(nowIso)) === "unknown" ? "일정 미확정" : CASE_STAGE_LABELS[caseStage]
+            : CASE_STAGE_LABELS[caseStage]
         }
       })()
     : null
+
+  const beforeSending = Boolean(data?.status === "completed" && !data.noShowAt && !data.canceledAt && !reportHistory.everSent && !reportView?.published)
 
   return (
     <div className={styles.page}>
@@ -505,8 +519,8 @@ export default async function StudioApplicationDetailPage({ params, searchParams
             {back.label}
           </Link>
         </div>
-        <h1 className={styles.pageTitle}>신청 상세</h1>
-        <p className={styles.pageDescription}>체험 일정부터 기록과 등록 결과까지 한눈에 확인할 수 있습니다.</p>
+        {!beforeSending ? <><h1 className={styles.pageTitle}>신청 상세</h1>
+        <p className={styles.pageDescription}>체험 일정부터 기록과 등록 결과까지 한눈에 확인할 수 있습니다.</p></> : null}
       </header>
 
       {error ? (
@@ -532,10 +546,11 @@ export default async function StudioApplicationDetailPage({ params, searchParams
                 <div className={styles.caseHeaderTop}>
                   <div className={styles.caseIdentity}>
                     <div className={styles.identityLine}>
-                      <h2 className={styles.caseTitle}>{data.childName}<span className={styles.caseTitleSub}>{detailView.childGrade ? `· ${detailView.childGrade}` : ""}</span></h2>
+                      {beforeSending ? <h1 className={styles.caseTitle}>{data.childName}<span className={styles.caseTitleSub}>{detailView.childGrade ? `· ${detailView.childGrade}` : ""}</span></h1> : <h2 className={styles.caseTitle}>{data.childName}<span className={styles.caseTitleSub}>{detailView.childGrade ? `· ${detailView.childGrade}` : ""}</span></h2>}
                       <StudioStatusBadge tone={data.status === "canceled" ? "red" : "green"}>
-                        {detailView.caseStageLabel}
+                        {beforeSending ? "체험 완료" : detailView.caseStageLabel}
                       </StudioStatusBadge>
+                      {beforeSending ? <StudioStatusBadge tone="gray">{reportHistory.error || publishedReportResult.error ? "리포트 상태 확인 필요" : "아직 보내지 않음"}</StudioStatusBadge> : null}
                     </div>
                     <p className={styles.caseSubline}>{detailView.classTitle}{data.academyName ? ` · ${data.academyName}` : ""}</p>
                     <p className={styles.caseGuardian}>
@@ -574,8 +589,7 @@ export default async function StudioApplicationDetailPage({ params, searchParams
             }}
             nowIso={nowIso}
             canWriteTrialResults={entitlements.canWriteTrialResults}
-            canWriteConsultations={entitlements.canWriteConsultations}
-            canReopenConsultation={entitlements.canReopenConsultation}
+            academyMemo={academyMemo}
             feedbackSection={<StudioFeedback {...feedbackResult} />}
             parentDecisionSection={
               <StudioParentDecision
@@ -595,6 +609,7 @@ export default async function StudioApplicationDetailPage({ params, searchParams
                   everSent={reportHistory.everSent}
                   key="parent-report"
                   embedded
+                  actionsOnly={beforeSending}
                   emphasizePublish={(!reportView.published || reportView.assessmentChangedSincePublish) && data.status === "completed" && data.registrationStatus !== "enrolled" && data.registrationStatus !== "not_enrolled" && !registrationResult.data && !registrationResult.error}
                   applicationId={data.id}
                   preview={reportView.preview}
@@ -668,7 +683,7 @@ export default async function StudioApplicationDetailPage({ params, searchParams
 
             </div>
         </section>
-        <section id="detail-trial-schedule" key="trial-schedule" className={styles.applicationInfoSection} aria-label="체험 일정">
+        {!beforeSending ? <section id="detail-trial-schedule" key="trial-schedule" className={styles.applicationInfoSection} aria-label="체험 일정">
           <div className={styles.scheduleHead}><h2 className={styles.applicationInfoTitle}><ApplicationDetailIcon name="calendar" />체험 일정</h2>
             <StudioStatusBadge tone={data.status === "canceled" ? "red" : detailView.confirmedSchedule ? "green" : "gray"}>
               {data.status === "canceled" ? detailView.caseStageLabel : data.status === "completed" ? "완료" : detailView.confirmedSchedule ? "확정" : "미확정"}
@@ -676,7 +691,7 @@ export default async function StudioApplicationDetailPage({ params, searchParams
           </div>
           <p className={styles.scheduleDate}>{detailView.confirmedSchedule ?? `희망 · ${detailView.requestedSchedule}`}</p>
           <Link href={studioPath("/studio/schedule")} className={styles.caseInlineLink}>일정 관리 →</Link>
-        </section></Fragment>
+        </section> : <Link id="detail-trial-schedule" href={studioPath("/studio/schedule")} className={styles.caseInlineLink}>일정 관리 →</Link>}</Fragment>
             }
           />
         </>

@@ -942,6 +942,8 @@ export type StudioTrialResult = {
  * 학생/학부모 정보, 상담 이력, 활동 로그, 일정, 등록 결정은 읽지 않는다.
  * 전체 상세(getStudioApplicationDetail)는 이 목적에 과하다.
  */
+export type StudioAcademyMemo = { note: string | null; revision: string }
+
 export type StudioTrialResultSaveContext = {
   reportEverSent: boolean
   assessmentUpdatedAt: string | null
@@ -1444,6 +1446,8 @@ export interface DataAdapter {
     input: CreateStudioConsultationTransactionInput
   ): Promise<StudioConsultationTransactionResult>
   updateStudioConsultationLog(input: UpdateStudioConsultationLogInput): Promise<void>
+  getStudioAcademyMemo(applicationId: string, organizationId: string): Promise<StudioAcademyMemo>
+  saveStudioAcademyMemo(input: { applicationId: string; organizationId: string; actorId: string; note: string | null; expectedRevision: string }): Promise<StudioAcademyMemo>
   getStudioTrialResultSaveContext(
     applicationId: string,
     organizationId: string

@@ -446,3 +446,14 @@
 .publishedPreview h3 { font-size: 17px; line-height: 26px; margin: 0; color: var(--text-1); }
 .publishedPreview ul { margin: 0; padding-left: 18px; display: grid; gap: 6px; font-size: 14px; line-height: 22px; color: var(--text-2); }
 .previewSummary { margin: 0; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; white-space: pre-wrap; font-size: 14px; line-height: 24px; color: var(--text-1); }
+
+.embedded .report { padding: 16px 0 0; border: 0; border-radius: 0; }
+
+.actionArea { flex: 1 1 220px; min-width: 0; display: grid; gap: 10px; }
+.actionButtons { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.actionButtons form { margin: 0; }
+.actionArea .footnote { overflow-wrap: anywhere; }
+.previewDialog { width: min(720px, calc(100vw - 32px)); max-width: none; max-height: calc(100dvh - 32px); overflow-y: auto; margin: auto; padding: 24px; border: 1px solid var(--border); border-radius: var(--r-lg); background: var(--surface); color: var(--text-1); }
+.previewDialog::backdrop { background: #172d2366; }
+.previewDialog > header { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin-bottom: 20px; }
+.previewDialog h2 { margin: 0; font-size: 20px; }

@@ -129,3 +129,27 @@
 - localhost:3000은 원래 프로젝트 서버. 자동화 브라우저의 인증 세션이 없어 실제 인증 후 상세 저장 E2E는 수행하지 않았다.
 - build는 현재 dev cache와 분리된 `.next/application-detail-final-build`에 생성. 저장소 설정 및 next-env는 보존.
 - 증빙/로그: `/tmp/application-detail-final/`.
+
+## 2026-10-09 Studio 개선 1단계 — 로컬 검토 변경
+
+- 기준: origin/main `f8ee813`. 기존 `/private/tmp/firstsuup-application-detail-ux`는 디렉터리가 없고 Git worktree metadata만 남아 있다. WEB의 기존 상세 CSS/모달/담당자/상담 UI와 main을 비교했고, main에 반영된 작업은 유지했다. WEB에 남은 이전 버전의 기록 1회 확정 UI로 덮어쓰지 않았다. 사라진 임시 디렉터리의 미커밋 내용은 복구했다고 주장하지 않는다.
+- 실행: `/Users/1to6/Desktop/firstsuup-studio-phase1-review`, detached HEAD. 정상 `localhost:3000`, 원래 `.env.local`을 링크하여 인증과 Supabase 연결 유지. 원래 WEB/MOBILE의 파일·branch·HEAD·index·dirty/untracked·env 지문 보존.
+- 용어: 일정 미확정 / 체험 예정 / 체험 진행 중 / 등록 여부 미정 / 고민중 / 등록하지 않음 / 불참, 기록 작성·저장·수정 / 리포트 보내기 / 상담 기록 추가 / 등록 결과 입력·변경. 일정 확정 행동·이력, DB enum·필터 predicate·분류·정렬은 유지한다.
+- 체험 전에는 일정/신청 정보를 우선 표시하고 기록 영역을 접는다. 완료 후 기록·리포트·등록 결과를 평평하게 표시하며, 보낸 경우 실제 snapshot을 먼저 읽기 전용으로 표시한다. 취소·불참은 기존 로그의 사유와 펼친 처리 이력을 먼저 표시한다. 리포트의 중복 요약은 제거한다.
+- 기록 저장과 보내기는 별도다. 보내기는 학부모 앱 공개이며 알림 수신 성공을 뜻하지 않는다. 기록/등록/담당자 저장의 비활성 사유와 조치를 버튼에 연결한다. V1/V2 snapshot, 발행 이력 잠금, 미발행 상태의 상담·등록 독립성, 기존 action/adapter/entitlement/returnTo/anchor 계약을 유지한다.
+- 처리 이력 DOM은 제목·시각 2개인데 기존 CSS에 12px 아이콘 열이 남아 있었음. 2열(본문/시각)로 맞추고 작은 폭에서는 1열로 표시한다. 최근 활동은 본문을 명시적으로 두 번째 열에 배치한다.
+- 검증 증거: `/Users/1to6/.codex/artifacts/studio-phase1-20261009`. 순수 검사 6종(기준 main과 비교), 상세 18상태의 1440/1280/1024 fixture 브라우저 및 V1/철회 이력·수정/복귀·상담 회귀, Cases 브라우저, typecheck/lint/build/diff-check. 브라우저 fixture는 네트워크를 차단하며 실제 고객 데이터에 쓰지 않는다. 빌드는 env 없는 별도 소스 사본에서 실행해 3000 개발 서버를 유지한다.
+- **실제 화면 검증 미완료**: 사용자 실제 Chrome은 로그인했으나 CUA가 `No browser is available`, Playwright CDP는 `ECONNREFUSED 127.0.0.1:9222`; 해당 Chrome에 디버깅 포트와 DevToolsActivePort가 없다. 지정 신청 `97327ac5-1a6d-408f-86c8-a39a7741cb76`의 실제 화면은 확인했다고 보고하지 않는다. 새 프로필/가짜 로그인/검토 route를 만들지 않았다.
+- commit/push/배포/migration/고객 데이터 저장/상태 변경/리포트 보내기/외부 알림 실행 없음. 사용자 검토 대기.
+
+## 2026-10-09 승인된 보내기 전 상세 배치
+
+- 완료·미전달 상세는 간결한 학생/수업/일정/담당자/상태/연락처 헤더, 왼쪽 단일 리포트 읽기 영역, 오른쪽 `학원에서 관리할 내용`으로 구성한다. 큰 진행 현황 영역을 제거한다. 리포트는 관찰→총평→값이 있는 추천 항목 순서이고 원본 기록을 다시 나열하지 않는다. 추천 과정·레벨·일정은 각 값 그대로 구분한다.
+- 등록 결과와 학원 메모는 저장 내용부터 표시한다. 입력/수정을 누를 때만 폼을 열고 취소하면 저장값으로 돌아간다. 각 저장은 독립적이며 성공 응답 후에만 조회 내용을 갱신한다. 서버 재조회는 최신 내용을 반영하고 편집 중 메모 및 열었던 revision은 유지한다. 비운 메모는 legacy note로 되돌아가지 않는다.
+- 학부모 의향은 기존 조회값을 그대로 표시하며 실제 등록 결과와 구분한다. 학생·신청 참고 정보/학부모 의견과 이전 상담·처리 이력은 기본 접힘이다. 기존 앵커 링크로 접근하면 해당 보조 영역을 펼친다.
+- 편집창은 관찰 7항목을 데스크톱 2열로 표시하고 총평, 기본 접힌 선택 추천 정보 순서로 배치한다. 접힌 입력도 FormData에 유지한다. 학원 메모 제목/설명/링크/입력은 모두 제거했다. 저장 안내는 `저장만으로 학부모에게 보내지지 않아요.`이다.
+- 미리보기는 저장된 공개 내용으로 만든 기존 snapshot builder를 이용한다. 공개 내용 수정/재전달 잠금과 권한·차단 조건, 과거 V1/V2 전달본, 메모 CAS RPC와 등록 결과 action/서버 검증은 변경하지 않았다. DB migration, 고객 데이터 쓰기, 환경/자동 Push/MOBILE 변경 없음.
+- 검토 URL: http://localhost:3000/studio/applications/97327ac5-1a6d-408f-86c8-a39a7741cb76 . 실행 소스 `/Users/1to6/Desktop/firstsuup-studio-phase1-review`.
+- 실제 로그인 브라우저 연결 없음(CUA 목록 없음, 기존 Chrome CDP ECONNREFUSED)이므로 지정 신청의 실제 새로고침/화면/저장은 미검증이다. 로컬 검토 준비 완료로 보고하지 않는다. 쓰기 검증은 네트워크가 차단된 내부 fixture에서만 수행했다.
+- 격리 검증: 1440/1024의 보고서/운영 정보 배치와 긴 내용 줄바꿈, 조회/편집/취소/성공/실패/중복 제출, 빈 메모 및 재진입, 메모 revision 유지와 서버 최신값 반영, 추천 값 보존, 편집 순서/2열/접힘, 미리보기 Escape/포커스, 앵커 공개/돌아가기/연락처, 기존 전달본 잠금 및 독립 메모 편집, 신청관리 전체 행 이동·열 정렬 회귀를 확인했다. typecheck/lint/build/diff-check 모두 PASS, NEW FAILURES=0(실제 계정 화면·저장 제외). 원래 WEB/MOBILE의 branch·HEAD·staged·dirty·untracked·env와 기존 신청관리 코드·DB·action을 보존했다. 빌드는 env 없는 소스 사본에서 수행해 정상 3000 dev cache를 보존했다.
+- 증거: `/Users/1to6/.codex/artifacts/studio-detail-approved-20261009`. commit/push/배포 없이 사용자 직접 검토 대기.

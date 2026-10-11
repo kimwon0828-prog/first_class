@@ -56,8 +56,8 @@ const fixtures: Fixture[] = [
     confirmedBlockStartAt: iso(60),
     confirmedBlockEndAt: iso(120),
     confirmedSlotAt: iso(60),
-    expectedBadge: "일정 확정",
-    expectedStage: "일정 확정"
+    expectedBadge: "체험 예정",
+    expectedStage: "체험 예정"
   },
   {
     id: "B",
@@ -66,8 +66,8 @@ const fixtures: Fixture[] = [
     confirmedBlockStartAt: iso(-30),
     confirmedBlockEndAt: iso(30),
     confirmedSlotAt: iso(-30),
-    expectedBadge: "체험 중",
-    expectedStage: "체험 중"
+    expectedBadge: "체험 진행 중",
+    expectedStage: "체험 진행 중"
   },
   {
     id: "C",
@@ -76,8 +76,8 @@ const fixtures: Fixture[] = [
     confirmedBlockStartAt: iso(-120),
     confirmedBlockEndAt: iso(-60),
     confirmedSlotAt: iso(-120),
-    expectedBadge: "체험 중",
-    expectedStage: "체험 중"
+    expectedBadge: "체험 진행 중",
+    expectedStage: "체험 진행 중"
   },
   {
     id: "D",
@@ -96,7 +96,7 @@ const fixtures: Fixture[] = [
     confirmedBlockStartAt: null,
     confirmedBlockEndAt: null,
     confirmedSlotAt: null,
-    expectedBadge: "신청 취소",
+    expectedBadge: "취소",
     expectedStage: "취소"
   },
   {
@@ -107,8 +107,8 @@ const fixtures: Fixture[] = [
     confirmedBlockStartAt: null,
     confirmedBlockEndAt: null,
     confirmedSlotAt: null,
-    expectedBadge: "노쇼",
-    expectedStage: "노쇼"
+    expectedBadge: "불참",
+    expectedStage: "불참"
   },
   {
     id: "G",
@@ -117,8 +117,8 @@ const fixtures: Fixture[] = [
     confirmedBlockStartAt: null,
     confirmedBlockEndAt: null,
     confirmedSlotAt: null,
-    expectedBadge: "일정 확정",
-    expectedStage: "일정 확정"
+    expectedBadge: "체험 예정",
+    expectedStage: "체험 예정"
   }
 ]
 
@@ -243,14 +243,14 @@ for (const fixture of fixtures) {
   ]
   const detail = STUDIO_APPLICATION_STATUS_LABELS[resolveTrialDisplayStatus(summary, NOW)]
   const dashboardLabel = dashboardBadges.get(summary.id)
-  const dash = dashboardLabel === "예약 확정" ? "일정 확정" : dashboardLabel
+  const dash = dashboardLabel === "예약 확정" ? "체험 예정" : dashboardLabel
   const scheduleLabel = scheduleBadges.get(summary.id)
   // Schedule V1.1: distinguish a confirmed booking from a requested visit.
-  const sched = scheduleLabel === "예약 확정" ? "일정 확정" : scheduleLabel
+  const sched = scheduleLabel === "예약 확정" ? "체험 예정" : scheduleLabel
 
   // Cases 는 CaseStage 라벨(취소/노쇼), 나머지는 status 라벨(신청 취소/노쇼)이라
   // "체험" 관련 상태만 문자열이 완전히 같아야 한다.
-  const trialStates = ["일정 확정", "체험 중", "체험 완료"]
+  const trialStates = ["체험 예정", "체험 진행 중", "체험 완료"]
   if (trialStates.includes(fixture.expectedStage)) {
     const seen = [cases, detail, dash, sched].filter((value): value is string => Boolean(value))
     const unique = new Set(seen)

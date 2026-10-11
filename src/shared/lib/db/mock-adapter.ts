@@ -840,6 +840,8 @@ const prepareMockConfirmation = (target: MockApplicationRecord, teacherId: strin
 const bookingMockGlobal=globalThis as typeof globalThis & { __dateBookingClosures?: {active:BookingClosure[];released:Map<string,BookingClosure>} }
 const bookingMockStore: {active:BookingClosure[];released:Map<string,BookingClosure>}=bookingMockGlobal.__dateBookingClosures ?? (bookingMockGlobal.__dateBookingClosures={active:[],released:new Map()})
 const mockDateBookingClosures=bookingMockStore.active
+const academyMemos = new Map<string, { note: string | null; revision: string }>()
+
 export const mockDataAdapter: DataAdapter = {
   async listStudioBookingClosures(organizationId,from,to) {return organizationId===mockOrganizationId ? mockDateBookingClosures.filter(c=>c.dateKey>=from&&c.dateKey<=to) : []},
   async getStudioBookingDay(organizationId,dateKey) {
@@ -2547,6 +2549,25 @@ export const mockDataAdapter: DataAdapter = {
 
     target.nextContactAt = input.nextContactAt
     applyRegularSchedulePreferenceWrite(target, input.regularSchedulePreferenceWrite)
+  },
+  async getStudioAcademyMemo(applicationId, organizationId) {
+    const application = applications.find(a => a.id === applicationId)
+    const klass = classes.find(c => c.id === application?.classId)
+    if (!application || klass?.organization?.id !== organizationId) throw new Error("application_not_found_or_forbidden")
+    const record = trialResults.find(r => r.applicationId === applicationId)
+    return academyMemos.get(applicationId) ?? { note: record?.note ?? null, revision: `legacy:${record?.updatedAt ?? ""}` }
+  },
+  async saveStudioAcademyMemo(input) {
+    const current = await mockDataAdapter.getStudioAcademyMemo(input.applicationId, input.organizationId)
+    const application = applications.find(a => a.id === input.applicationId)!
+    if (application.status !== "completed" || application.noShowAt || application.canceledAt) throw new Error("application_not_completed")
+    if (current.revision !== input.expectedRevision) throw new Error("academy_memo_changed")
+    if ((input.note?.length ?? 0) > 10000) throw new Error("academy_memo_too_long")
+    const note = input.note?.trim() || null
+    if (note === current.note) return current
+    const saved = { note, revision: `memo:${crypto.randomUUID()}` }
+    academyMemos.set(input.applicationId, saved)
+    return saved
   },
   async getStudioTrialResultSaveContext(applicationId: string, organizationId: string) {
     if (organizationId !== mockOrganizationId) {

@@ -35,13 +35,13 @@ function registrationTransition(log: CasesOrderLog, status: string | null) {
 }
 export function getCasesResultRecord(row: CasesOrderRow, logs: CasesOrderLog[], results: CasesRegistrationClock[]): CasesResultRecord {
   const ownLogs = logs.filter(log => log.application_id === row.id)
-  if (row.no_show_at) return { at: latest([row.no_show_at]), label: "노쇼 처리" }
+  if (row.no_show_at) return { at: latest([row.no_show_at]), label: "불참 처리" }
   if (row.status === "canceled" || row.canceled_at) return {
     at: latest([row.canceled_at]) ?? latest(ownLogs.filter(log => log.to_status === "canceled" && log.from_status !== "canceled").map(log => log.created_at)),
     label: "취소 처리"
   }
   const status = row.registration_status
-  const label = status === "pending" ? "고민 중 전환" : status === "enrolled" ? "등록 완료" : status === "not_enrolled" ? "미등록" : "등록 결과 미정"
+  const label = status === "pending" ? "고민 중 전환" : status === "enrolled" ? "등록 완료" : status === "not_enrolled" ? "등록하지 않음" : "등록 여부 미정"
   if (!status || status === "undecided") return { at: null, label }
   const transitionAt = latest(ownLogs.filter(log => registrationTransition(log, status)).map(log => log.created_at))
   if (status === "pending") return { at: transitionAt, label }
