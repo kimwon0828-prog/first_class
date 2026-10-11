@@ -22,14 +22,15 @@
 .scheduleGroup { display: grid; gap: 16px; padding: 16px; border: 1px solid var(--border); border-radius: var(--r-md); background: var(--surface-sub); }
 .groupHeader { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
 .groupHeader strong { color: var(--text-1); font-size: 14px; }
-.groupField { display: grid; gap: 8px; }
+.groupField { display: grid; grid-template-columns: minmax(0, 1fr); min-width: 0; gap: 8px; }
 .subLabel { margin: 0; font-size: 13px; }
 .weekdayRow { display: flex; flex-wrap: wrap; gap: 7px; }
 .weekdayButton { width: 38px; height: 38px; padding: 0; border: 1px solid var(--border); border-radius: var(--r-sm); background: var(--surface); color: var(--text-2); font: inherit; font-size: 13px; cursor: pointer; transition: border-color 150ms, background 150ms, color 150ms; }
 .weekdayButton:hover:not(:disabled) { border-color: var(--brand-500); }
 .weekdayButton.weekdaySelected { border-color: var(--brand-500); background: var(--brand-50); color: var(--brand-700); font-weight: 650; }
-.timeList { display: grid; gap: 8px; }
-.timeRow { display: flex; align-items: center; gap: 8px; }
+.timeList { display: grid; grid-template-columns: minmax(0, 1fr); min-width: 0; gap: 8px; }
+.timeRow { display: flex; min-width: 0; align-items: flex-end; gap: 8px; }
+.timeRow > span { padding-bottom: 14px; }
 .timeRow > input { width: 132px; }
 .individualEnd { min-width: 82px; font-size: 13px; }
 .slotCapacity { display: flex; align-items: center; gap: 6px; }

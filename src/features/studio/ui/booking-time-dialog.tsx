@@ -1,7 +1,7 @@
 "use client"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { getStudioBookingDayAction, manageBookingTimesAction } from "../actions/manage-booking-times"
-import { groupBookingOccurrences, previewBookingClosure, bookingReleaseTargets, bookingClosureScopeLabel, emptyBookingDay, visibleBookingOccurrences, bookingClassOptions, type BookingDay, type BookingClosure } from "../lib/booking-closures"
+import { groupBookingOccurrences, previewBookingClosure, bookingReleaseTargets, bookingClosureScopeLabel, emptyBookingDay, bookingTimeOccurrences, bookingClassOptions, type BookingDay, type BookingClosure } from "../lib/booking-closures"
 import { formatSelectedDateLabel } from "../lib/studio-schedule-month"
 import styles from "./booking-time-dialog.module.css"
 const clock = (at: string) => new Intl.DateTimeFormat("ko-KR",{timeZone:"Asia/Seoul",hour:"2-digit",minute:"2-digit",hourCycle:"h23"}).format(new Date(at))
@@ -15,7 +15,7 @@ export function BookingTimeDialog({dateKey: initialDate, initialClassId, todayKe
  useEffect(()=>{alive.current=true;if(!dialog.current?.open)dialog.current?.showModal();return()=>{alive.current=false}},[])
  useEffect(()=>{void load()},[load])
  const classes=useMemo(()=>bookingClassOptions(day),[day])
- const groups=useMemo(()=>groupBookingOccurrences(visibleBookingOccurrences(day).filter(o=>!classId||o.classId===classId)),[day,classId])
+ const groups=useMemo(()=>groupBookingOccurrences(bookingTimeOccurrences(day,classId)),[day,classId])
  const closePreview=previewBookingClosure(day,selected,classId,"close"),releaseBase=previewBookingClosure(day,selected,classId,"release")
  const releaseIds=[...new Set([...releaseBase.closureIds,...selectedClosureIds])]
  const releaseWindows=day.closures.filter(c=>releaseIds.includes(c.id)&&(!classId||c.classId===classId))

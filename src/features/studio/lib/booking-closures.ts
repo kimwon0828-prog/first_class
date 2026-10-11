@@ -16,6 +16,14 @@ export function visibleBookingOccurrences(day: BookingDay) {
   const history = new Set(day.applicationHistoryKeys)
   return day.occurrences.filter(o => publicIds.has(o.classId) || o.reservationIds.length > 0 || history.has(o.key) || o.closureIds.length > 0)
 }
+// Default time selection matches the public close scope. Retained private
+// reservations remain available when explicitly viewing that course.
+export function bookingTimeOccurrences(day: BookingDay, classId: string | null) {
+  const rows = visibleBookingOccurrences(day)
+  if (classId) return rows.filter(o => o.classId === classId)
+  const publicIds = new Set(day.classes.filter(isPublicClass).map(c => c.id))
+  return rows.filter(o => publicIds.has(o.classId))
+}
 export function bookingClassOptions(day: BookingDay) {
   const rows = visibleBookingOccurrences(day), ids = new Set([...rows.map(o => o.classId), ...day.closures.flatMap(c => c.classId ? [c.classId] : [])])
   return [...ids].map(id => ({ value: id, label: day.classes.find(c => c.id === id)?.title ?? rows.find(o => o.classId === id)?.classTitle ?? "수업 정보 없음" }))

@@ -11,6 +11,7 @@ import {
   type OperatingHoursGroupDraft
 } from "@/features/studio/lib/studio-operating-hours"
 
+import { OperatingTimeInput } from "./operating-time-input"
 import styles from "./studio-class-operation-editor.module.css"
 
 export type StudioClassOperationType = "rolling" | "fixed_period" | null
@@ -171,22 +172,23 @@ export const StudioClassOperationEditor = ({
 
                 <div className={styles.groupField}>
                   <span className={styles.subLabel}>{inputMode === "range" ? "운영 시간 *" : "예약 시작 시간 *"}</span>
+                  <small className={styles.actionHint}>24시간제 · 직접 입력하거나 목록에서 선택</small>
                   <div className={styles.timeList}>
                     {group.timeRanges.map((range, rangeIndex) => <div key={range.id} className={styles.timeRow}>
-                      <input aria-label={`그룹 ${groupIndex + 1} ${rangeIndex + 1} 시작 시간`} type="time"
-                        lang="en-GB" value={range.startTime} disabled={disabled}
-                        onChange={(event) => updateGroup(group.id, (current) => ({ ...current,
+                      <OperatingTimeInput label="시작 시간" ariaLabel={`그룹 ${groupIndex + 1} ${rangeIndex + 1} 시작 시간`}
+                        value={range.startTime} disabled={disabled}
+                        onChange={(time) => updateGroup(group.id, (current) => ({ ...current,
                           timeRanges: current.timeRanges.map((item) => item.id === range.id
-                            ? { ...item, startTime: event.target.value,
-                              lastStartTime: inputMode === "individual" ? event.target.value : item.lastStartTime }
+                            ? { ...item, startTime: time,
+                              lastStartTime: inputMode === "individual" ? time : item.lastStartTime }
                             : item) }))} />
                       {inputMode === "range" ? <>
                         <span aria-hidden="true">~</span>
-                        <input aria-label={`그룹 ${groupIndex + 1} ${rangeIndex + 1} 운영 종료 시간`} type="time"
-                          lang="en-GB" value={range.operationEndTime ?? ""} disabled={disabled}
-                          onChange={(event) => updateGroup(group.id, (current) => ({ ...current,
+                        <OperatingTimeInput label="종료 시간" ariaLabel={`그룹 ${groupIndex + 1} ${rangeIndex + 1} 운영 종료 시간`}
+                          value={range.operationEndTime ?? ""} disabled={disabled}
+                          onChange={(time) => updateGroup(group.id, (current) => ({ ...current,
                             timeRanges: current.timeRanges.map((item) => item.id === range.id
-                              ? { ...item, operationEndTime: event.target.value } : item) }))} />
+                              ? { ...item, operationEndTime: time } : item) }))} />
                       </> : <span className={styles.individualEnd}>~ {addMinutesToTime(range.startTime, durationMinutes) || "--:--"}</span>}
                       {inputMode === "individual" ? <label className={styles.slotCapacity}>
                         <input aria-label={`${range.startTime || "미설정"} 정원`} type="number" min={1}

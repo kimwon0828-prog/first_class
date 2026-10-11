@@ -1,6 +1,6 @@
 import assert from "node:assert/strict"
 import { readFileSync } from "node:fs"
-import { bookingIntervalsOverlap,previewBookingClosure,bookingReleaseTargets,bookingClosureScopeLabel,groupBookingOccurrences,mergeBookingClosureRanges,type BookingOccurrence,type BookingDay,type BookingClosure } from "@/features/studio/lib/booking-closures"
+import { bookingIntervalsOverlap,previewBookingClosure,bookingReleaseTargets,bookingClosureScopeLabel,groupBookingOccurrences,mergeBookingClosureRanges,bookingTimeOccurrences,visibleBookingOccurrences,type BookingOccurrence,type BookingDay,type BookingClosure } from "@/features/studio/lib/booking-closures"
 const date="2026-10-09",at=(hour:number,minute=0)=>new Date(`${date}T${String(hour).padStart(2,"0")}:${String(minute).padStart(2,"0")}:00+09:00`).toISOString()
 const slot=(id:string,c:string,start:number,end:number,minute=0):BookingOccurrence=>({key:`${c}/class_schedule/${id}`,id,source:"class_schedule",classId:c,classTitle:c,startAt:at(start,minute),endAt:at(end,minute),bookingStatus:"open",capacity:3,reservationIds:[],closureIds:[]})
 const rows=[slot("12","A",12,13),slot("13","A",13,14),slot("14","A",14,15),slot("15","A",15,16),slot("offset","B",13,15,30),slot("b15","B",15,16)]
@@ -23,6 +23,17 @@ assert.equal(previewBookingClosure(day,[],null,"close").canApply,false)
 const reported:BookingDay={...day,closures:[],occurrences:[slot("piano","A",18,19),slot("private1","B",17,18,30),slot("private2","B",18,19),slot("private3","B",18,19,30)],classes:[{id:"A",title:"Piano",isActive:true},{id:"B",title:"Private",isActive:false}]}
 assert.deepEqual(previewBookingClosure(reported,[reported.occurrences[0].key],null,"close").targets.map(o=>o.id),["piano"])
 assert.deepEqual(previewBookingClosure(reported,[reported.occurrences[0].key],"A","close").targets.map(o=>o.id),["piano"])
+// Actual demo regression: a private, full existing booking shares a public
+// available time. It must not make the default public row look restricted.
+const reservedPrivate={...reported.occurrences[2],bookingStatus:"hidden" as const,capacity:1,reservationIds:["private-existing"]}
+const retained:BookingDay={...reported,occurrences:[reported.occurrences[0],reservedPrivate]}
+assert.equal(visibleBookingOccurrences(retained).length,2)
+const publicGroup=groupBookingOccurrences(bookingTimeOccurrences(retained,null))[0]
+assert.deepEqual(publicGroup.map(o=>o.id),["piano"])
+assert.equal(publicGroup.some(o=>o.bookingStatus!=="open"),false)
+assert.equal(publicGroup.flatMap(o=>o.reservationIds).length,0)
+assert.deepEqual(bookingTimeOccurrences(retained,"B").map(o=>o.id),["private2"])
+assert.equal(previewBookingClosure(retained,[reservedPrivate.key],"B","close").canApply,false)
 const privateLegacy={...closure("legacy",null,18,19)}
 assert.equal(bookingReleaseTargets(reported,[privateLegacy]).length,4)
 assert.equal(bookingReleaseTargets(reported,[{...privateLegacy,classId:"A",selectionScope:"public"}]).length,1)

@@ -1,0 +1,17 @@
+.field { position: relative; min-width: 0; width: 172px; flex: 0 1 172px; }
+.label { display: block; margin-bottom: 6px; color: var(--text-2); font-size: 12px; font-weight: 600; line-height: 18px; }
+.control { display: flex; align-items: center; width: 100%; min-height: 46px; border: 1px solid var(--border); border-radius: var(--r-sm); background: var(--surface); }
+.control:focus-within { border-color: var(--brand-500); outline: 2px solid var(--brand-100); outline-offset: 1px; }
+.field .input { flex: 1; min-width: 0; width: 100%; min-height: 44px; padding: 9px 0 9px 12px; border: 0; border-radius: var(--r-sm); background: transparent; color: var(--text-1); font: inherit; font-size: 17px; font-variant-numeric: tabular-nums; }
+.field .input:focus { outline: none; border: 0; }
+.toggle { display: flex; align-items: center; justify-content: center; flex: 0 0 42px; width: 42px; height: 44px; padding: 0; border: 0; border-radius: var(--r-sm); background: transparent; color: var(--text-2); cursor: pointer; }
+.toggle:hover:not(:disabled) { color: var(--brand-700); background: var(--brand-50); }
+.toggle:focus-visible, .option:focus-visible { outline: 2px solid var(--brand-500); outline-offset: -2px; }
+.options { position: absolute; top: 100%; left: 0; z-index: 20; width: 100%; max-height: 232px; margin-top: 6px; overflow-y: auto; overscroll-behavior: contain; padding: 5px; box-sizing: border-box; border: 1px solid var(--border); border-radius: var(--r-sm); background: var(--surface); box-shadow: 0 8px 24px rgb(15 23 42 / 14%); }
+.option { display: flex; align-items: center; justify-content: space-between; width: 100%; min-height: 40px; padding: 8px 10px; border: 0; border-radius: 5px; background: transparent; color: var(--text-1); font: inherit; font-size: 14px; font-variant-numeric: tabular-nums; cursor: pointer; }
+.option:hover, .option.active { background: var(--surface-sub); }
+.option[aria-selected="true"] { background: var(--brand-50); color: var(--brand-700); font-weight: 600; }
+.control.invalid { border-color: var(--red-fg); }
+.error { display: block; margin-top: 5px; color: var(--red-fg); font-size: 11px; line-height: 16px; }
+.field:has(input:disabled) .control { opacity: .55; }
+.field input:disabled, .field button:disabled { cursor: not-allowed; }
