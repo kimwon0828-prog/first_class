@@ -1,6 +1,6 @@
 "use client"
 
-import { startTransition, useActionState, useEffect, useRef, useState } from "react"
+import { startTransition, useActionState, useEffect, useId, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { ParentDecisionForm } from "@/features/decisions/ui/parent-decision-form"
 import type { MyParentDecisionResult } from "@/features/decisions/queries/get-my-current-parent-decision"
@@ -11,10 +11,11 @@ import { decisionDraftError, emptyExperienceDecision } from "../lib/experience-s
 import styles from "./feedback.module.css"
 
 const initialState: FeedbackActionState = { status: "idle", message: "" }
-export function ParentFeedbackForm({ applicationId, result, decisionResult, showDecision, showTitle = true }: {
-  applicationId: string; result: ParentFeedbackResult; decisionResult: MyParentDecisionResult; showDecision: boolean; showTitle?: boolean
+export function ParentFeedbackForm({ applicationId, result, decisionResult, showDecision, showTitle = true, presentation = "inline", onPendingChange }: {
+  applicationId: string; result: ParentFeedbackResult; decisionResult: MyParentDecisionResult; showDecision: boolean; showTitle?: boolean; presentation?: "inline" | "dialog"; onPendingChange?: (pending: boolean) => void
 }) {
   const router = useRouter()
+  const formId = useId()
   const context = result.status === "ok" ? result.context : null
   const saved = context?.feedback ?? null
   const decision = decisionResult.status === "ok" ? decisionResult.decision : null
@@ -27,6 +28,7 @@ export function ParentFeedbackForm({ applicationId, result, decisionResult, show
     sending.current = false
     if (state.status === "success") router.refresh()
   }, [state, router])
+  useEffect(() => { onPendingChange?.(pending) }, [pending, onPendingChange])
   const complete = Boolean(saved && decision)
   const Container = complete ? "div" : "form"
   const locked = complete || pending || state.status === "success" || state.code === "duplicate"
@@ -37,9 +39,9 @@ export function ParentFeedbackForm({ applicationId, result, decisionResult, show
   const categories = [...new Set(options.map(chip => chip.category))]
   const toggle = (id: FeedbackChipId) => setSelected(current => current.includes(id) ? current.filter(item => item !== id) : current.length < 5 ? [...current, id] : current)
   const schedule = decision ? formatPreferredSchedule({ days: decision.preferredDays, startTime: decision.preferredStartTime, endTime: decision.preferredEndTime, mode: decision.preferredTimeMode }) ?? (decision.preferredDate ? formatLegacyPreferredDate(decision.preferredDate, decision.preferredTimeNote) : null) : null
-  return <div className={styles.section}>
+  return <div className={`${styles.section} ${presentation === "dialog" ? styles.dialogSection : ""}`}>
     {showTitle ? <h2 className={styles.title}>체험은 어떠셨나요?</h2> : null}
-    <Container action={complete ? undefined : submit} className={styles.form} aria-busy={pending} onSubmit={event => {
+    <Container id={formId} action={complete ? undefined : submit} className={`${styles.form} ${presentation === "dialog" ? styles.dialogForm : ""}`} aria-busy={pending} onSubmit={event => {
       event.preventDefault()
       if (!(event.currentTarget instanceof HTMLFormElement) || !canSubmit || sending.current) return
       sending.current = true
@@ -47,6 +49,7 @@ export function ParentFeedbackForm({ applicationId, result, decisionResult, show
       // Dispatch explicitly: native action reset must not clear failed radio/checkbox drafts.
       startTransition(() => submit(formData))
     }}>
+      <div className={`${styles.fields} ${presentation === "dialog" ? styles.dialogFields : ""}`}>
       <div data-parent-feedback>
         {!context ? <div role="status"><p className={styles.description}>피드백을 불러오지 못했어요. 다시 확인해 주세요.</p><button type="button" className={styles.secondary} onClick={() => router.refresh()}>다시 불러오기</button></div>
           : saved ? <div className={styles.saved}>
@@ -85,15 +88,18 @@ export function ParentFeedbackForm({ applicationId, result, decisionResult, show
             : showDecision ? <ParentDecisionForm value={draft} onChange={setDraft} disabled={locked} />
               : <p className={styles.description}>현재 이 신청에는 등록 의향을 남길 수 없어요.</p>}
       </div>
+      </div>
+      <div className={presentation === "dialog" ? styles.dialogActions : styles.actions}>
       {complete ? <p className={styles.count} role="status">피드백을 보냈어요. 제출한 내용은 수정할 수 없어요.</p> : <>
         {state.status === "error" ? <p role="alert" className={styles.error}>{state.message}</p> : null}
         {state.status === "success" ? <p role="status" className={styles.count}>피드백을 보냈어요. 저장한 내용을 확인하고 있어요.</p> : null}
         {!readable ? <p className={styles.hint}>피드백과 선택 정보를 모두 불러온 뒤 제출할 수 있어요.</p> : null}
         {state.status === "success" || state.code === "duplicate" ? <button type="button" className={styles.secondary} onClick={() => router.refresh()}>보낸 내용 확인하기</button> : <>
           <p className={styles.hint}>보내고 나면 수정할 수 없어요.</p>
-          <button type="submit" className={styles.button} disabled={!canSubmit}>{pending ? "보내는 중…" : "피드백 보내기"}</button>
+          <button type="submit" className={styles.button} disabled={!canSubmit}>{pending ? "보내는 중…" : presentation === "dialog" ? "의견 보내기" : "피드백 보내기"}</button>
         </>}
       </>}
+      </div>
     </Container>
   </div>
 }

@@ -4,7 +4,7 @@ import { ReportObservations } from "@/features/reports/ui/report-observations"
 import { ParentExperienceThumbnail } from "@/features/classes/ui/parent-experience-thumbnail"
 import { parentEntryHref } from "@/features/classes/lib/parent-navigation"
 import { getParentExperienceFeedback } from "@/features/feedback/queries/get-experience-feedback"
-import { ParentFeedbackForm } from "@/features/feedback/ui/parent-feedback-form"
+import { ParentReportFeedback } from "@/features/feedback/ui/parent-report-feedback"
 import { getMyCurrentParentDecision } from "@/features/decisions/queries/get-my-current-parent-decision"
 import { ReportViewTracker } from "@/features/reports/ui/report-view-tracker"
 import { withRecordChild } from "@/features/record/lib/record-href"
@@ -172,12 +172,8 @@ export default async function ExperienceReportPage({ params, searchParams }: {
     <footer className={styles.footer}>
       {publishedDate ? <p className={styles.caption}><time dateTime={report.publishedAt}>{publishedDate}</time> 발행</p> : null}
       <p className={styles.caption}>이 리포트는 체험 당시 학원에서 기록하고 발행한 내용을 바탕으로 보여드려요.</p>
-      <Link href={backHref} className={styles.primaryAction}>체험 기록으로 돌아가기</Link>
     </footer>
-    <section id="experience-feedback" tabIndex={-1} className={styles.feedback} aria-label="학부모 체험 피드백">
-      <h2 className={styles.blockTitle}><SectionIcon kind="feedback" />체험은 어떠셨나요?</h2>
-      <ParentFeedbackForm applicationId={experienceId} result={feedbackResult} decisionResult={decisionResult}
-        showDecision={experience.status === "completed" && experience.canCollectParentDecision} showTitle={false} />
-    </section>
+    <ParentReportFeedback applicationId={experienceId} result={feedbackResult} decisionResult={decisionResult}
+      showDecision={experience.status === "completed" && experience.canCollectParentDecision} />
   </ReportFrame>
 }

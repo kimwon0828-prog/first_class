@@ -1,0 +1,20 @@
+.clearance { height: 80px; }
+.launch { position: fixed; z-index: 50; left: 50%; bottom: calc(var(--parent-bottom-nav-offset) + var(--parent-nav-h) + var(--s2)); transform: translateX(-50%); box-sizing: border-box; width: calc(100% - var(--gutter) * 2); max-width: calc(var(--col, 480px) - var(--gutter) * 2); transition: transform 180ms ease-out; }
+:global([data-parent-app-shell]:has(> nav[data-hidden="true"])) .launch { transform: translate(-50%, var(--parent-nav-h)); }
+@media (prefers-reduced-motion: reduce) { .launch { transition: none; } }
+.primary { box-shadow: 0 4px 16px rgba(32, 35, 33, .12); display: flex; align-items: center; justify-content: center; width: 100%; min-height: 52px; padding: 12px 16px; border: 0; border-radius: 12px; background: var(--parent-primary-action, var(--brand-700)); color: var(--surface); font: inherit; font-size: 15px; font-weight: 600; cursor: pointer; }
+.primary:hover { background: var(--brand-action-hover, #165d20); }
+.primary:active { background: var(--brand-action-pressed, #124e1b); }
+.primary:focus-visible, .close:focus-visible { outline: 2px solid var(--brand-700); outline-offset: 3px; }
+.dialog { box-sizing: border-box; width: calc(100% - 48px); max-width: 560px; height: min(85dvh, 760px); max-height: none; margin: auto; padding: 0; border: 1px solid var(--border); border-radius: 20px; background: var(--surface); color: var(--text-1); box-shadow: 0 16px 64px rgba(0, 0, 0, .2); }
+.dialog[open] { display: flex; flex-direction: column; }
+.dialog::backdrop { background: rgba(16, 24, 16, .45); }
+.header { display: flex; flex-shrink: 0; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 16px 12px 24px; border-bottom: 1px solid var(--border); }
+.header h2 { margin: 0; font-size: 20px; font-weight: 700; line-height: 1.5; }
+.close { flex: 0 0 44px; min-height: 44px; padding: 0; border: 0; border-radius: 8px; background: transparent; color: var(--text-2); font: inherit; font-size: 28px; cursor: pointer; }
+.close:hover:not(:disabled) { background: var(--surface-sub); }
+.close:disabled { opacity: .5; cursor: default; }
+@media (max-width: 640px) {
+  .dialog { inset: auto 0 0; width: 100%; max-width: 100%; height: min(92dvh, 840px); margin: 0 auto; border: 0; border-radius: 24px 24px 0 0; }
+  .header { padding-left: 20px; }
+}

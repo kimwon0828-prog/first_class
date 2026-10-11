@@ -22,7 +22,8 @@ export function useParentNavVisibility(pathname: string) {
 
   useEffect(() => {
     setScrollHidden(false)
-    if (!/^\/classes\/[^/]+\/?$/.test(pathname)) return
+    const hidesOnScroll = /^\/classes\/[^/]+\/?$/.test(pathname) || /^\/record\/[^/]+\/report\/?$/.test(pathname)
+    if (!hidesOnScroll) return
     let lastY = Math.max(0, window.scrollY)
     let travel = 0
     const onScroll = () => {
