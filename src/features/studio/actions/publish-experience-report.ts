@@ -7,7 +7,7 @@ import { revalidatePath } from "next/cache"
 import { requireStudioEntitlement } from "@/features/billing/lib/require-entitlement"
 import { requireTeacherStudioAccess } from "@/features/studio/lib/require-teacher-studio-access"
 import { getStudioTrialResultSaveContext } from "@/features/studio/queries/get-studio-trial-result-save-context"
-import { sendParentNotificationSafely } from "@/features/notifications/alimtalk/send-parent-notification"
+import { sendPublishedReportNotificationSafely } from "@/features/notifications/push/event-delivery"
 import { getStudioApplicationDetail } from "@/features/studio/queries/get-studio-application-detail"
 import { dataAdapter } from "@/shared/lib/db"
 
@@ -151,7 +151,7 @@ export async function publishExperienceReportAction(
       const { data: detail } = await getStudioApplicationDetail(applicationId, teacher.organizationId)
 
       if (detail) {
-        const sent = await sendParentNotificationSafely({
+        const sent = await sendPublishedReportNotificationSafely({
           eventType: "trial_report_published",
           organizationId: teacher.organizationId,
           trialApplicationId: applicationId,

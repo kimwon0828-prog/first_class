@@ -12,7 +12,7 @@ async function request(url,options){
  const body=JSON.parse(options.body);
  if(url.endsWith('/send')){
   httpCalls++;sentBatches.push(body);
-  assert(body.every(x=>x.data.type==='schedule_confirmed'&&x.data.path==='/notifications'&&x.data.notificationId==='status:'+uuid(50)));
+  assert(body.every(x=>x.data.type==='schedule_confirmed'&&x.data.path==='/my/schedule'&&x.data.notificationId==='status:'+uuid(50)));
   assert(!JSON.stringify(body).includes('foreignToken22'));
   if(sendMode==='timeout')throw Error('timeout');
   if(sendMode==='500')return new Response('',{status:500});
@@ -72,7 +72,7 @@ const poll=async()=>{jobs[0].next_check_at=new Date(0).toISOString();await servi
  assert.equal((await action.updateApplicationStatusAction(uuid(30),undefined,form)).status,'error');assert.equal(callbacks.length,0);pass('actual confirmation action commits inbox fact before deferred Push; failure/re-request cannot undo or duplicate');
  status='new';failMutation=true;assert.equal((await action.updateApplicationStatusAction(uuid(30),undefined,form)).status,'error');assert.equal(callbacks.length,0);failMutation=false;afterThrows=true;
  assert.equal((await action.updateApplicationStatusAction(uuid(30),undefined,form)).status,'success');pass('failed confirmation sends nothing; deferred-scheduler failure cannot report committed schedule as failed');
- const cron=load('app/api/cron/schedule-confirmed-push/route.ts',{'next/server':{NextResponse:Response},'@/features/notifications/push/confirmed-delivery':{runConfirmedPushWork:async()=>({processed:0})}});
+ const cron=load('app/api/cron/schedule-confirmed-push/route.ts',{'next/server':{NextResponse:Response},'@/features/notifications/push/confirmed-delivery':{runConfirmedPushWork:async()=>({processed:0})},'@/features/notifications/push/event-delivery':{runParentEventPushWork:async()=>({processed:0,errors:0})}});
  assert.equal((await cron.GET(new Request('https://firstsuup.com/api/cron/schedule-confirmed-push'))).status,401);env.CRON_SECRET='fixture-secret';assert.equal((await cron.GET(new Request('https://firstsuup.com/api/cron/schedule-confirmed-push',{headers:{authorization:'Bearer fixture-secret'}}))).status,200);pass('worker has no anonymous/public send route');
  // Actual scope policy protects the test exception from becoming a global SMS switch.
  let cfg={mode:'test',test_parent_id:uuid(1),test_class_id:uuid(5),test_application_id:null,test_started_at:'2026-10-01'};

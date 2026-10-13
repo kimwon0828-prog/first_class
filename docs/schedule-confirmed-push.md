@@ -31,3 +31,8 @@ Production 기존 schema/data fingerprint를 보존한 뒤 두 migration을 적�
 검증 명령: `node scripts/verify-schedule-confirmed-push.cjs`, `PGLITE_MODULE_PATH=<isolated-tool-path> node scripts/verify-schedule-confirmed-push-db.cjs`, typecheck/lint/build, 기존 Parent notification/foundation verifier. fixture는 실기기 수신을 증명하지 않는다.
 
 공식 계약: [Expo tickets/receipts](https://docs.expo.dev/push-notifications/sending-notifications/), [Next.js after](https://nextjs.org/docs/app/api-reference/functions/after), [Supabase scheduling/Vault](https://supabase.com/docs/guides/functions/schedule-functions), [Vercel cron limits](https://vercel.com/docs/cron-jobs/usage-and-pricing).
+
+
+## 2026-10-13 native integration update
+
+The confirmed payload now targets `/my/schedule`; native accepts the older `/notifications` payload as a compatibility alias. Additional report/feedback/schedule-change delivery is described in [parent-event-push-review.md](parent-event-push-review.md). Its separate default-OFF queue shares the authenticated worker. Existing worker activation is preserved, not automatically changed by the new migration. Neither a successful device test nor a migration application implies automatic sending is enabled.

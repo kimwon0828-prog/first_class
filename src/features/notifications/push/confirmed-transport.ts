@@ -10,6 +10,12 @@ const category = (value: unknown) => typeof value === "string" && ["DeviceNotReg
 /** Exactly one HTTP attempt per selected token; no phone/name/operational details in payload. */
 export async function sendConfirmedPush(notificationId: string, attempts: ConfirmedAttempt[], request: typeof fetch = fetch): Promise<ConfirmedAttempt[]> {
   if (!/^status:[0-9a-f-]{36}$/i.test(notificationId)) throw new Error("invalid_confirmation_key")
+  return sendPushPayload({ title: "체험 일정이 확정됐어요.", body: "앱에서 확정된 일정을 확인해 주세요.",
+    data: { type: "schedule_confirmed", path: "/my/schedule", notificationId } }, attempts, request)
+}
+export type PushPayload = { title: string; body: string; data: { type: string; path: string; notificationId: string } }
+/** Internal transport: callers construct a fixed, validated event payload. */
+export async function sendPushPayload(payload: PushPayload, attempts: ConfirmedAttempt[], request: typeof fetch = fetch): Promise<ConfirmedAttempt[]> {
   if (attempts.length > 100) return attempts.map(a => ({ ...a, sendStatus: "unknown", error: "device_limit_review" }))
   if (!attempts.length) return []
   const valid = attempts.filter(a => /^(Expo|Exponent)PushToken\[[A-Za-z0-9_-]{10,200}\]$/.test(a.token))
@@ -18,9 +24,7 @@ export async function sendConfirmedPush(notificationId: string, attempts: Confir
   try {
     const response = await request("https://exp.host/--/api/v2/push/send", {
       method: "POST", headers: headers(), signal: AbortSignal.timeout(8000),
-      body: JSON.stringify(valid.map(a => ({ to: a.token, title: "체험 일정이 확정됐어요.",
-        body: "앱 알림에서 확정된 일정을 확인해 주세요.", sound: "default", channelId: "parent-updates", priority: "high", ttl: 3600,
-        data: { type: "schedule_confirmed", path: "/notifications", notificationId } })))
+      body: JSON.stringify(valid.map(a => ({ to: a.token, ...payload, sound: "default", channelId: "parent-updates", priority: "high", ttl: 3600 })))
     })
     if (!response.ok) return [...invalid, ...valid.map(a => ({ ...a, httpStatus: response.status,
       sendStatus: response.status >= 500 ? "unknown" as const : "rejected" as const, error: "http_error" }))]

@@ -1,6 +1,7 @@
 import "server-only"
 
 import { sendParentNotification } from "@/features/notifications/alimtalk/send-parent-notification"
+import { enqueueParentFeedbackPush } from "@/features/notifications/push/event-delivery"
 import { sendStudioNotification } from "@/features/notifications/sms/send-studio-notification"
 import type { SmsEventType } from "@/features/notifications/sms/types"
 import { getSupabaseServiceRoleClient } from "@/integrations/supabase/service-role"
@@ -307,6 +308,8 @@ const runFeedbackReminders = async (result: TrialReminderRunResult) => {
 
   for (const candidate of candidates) {
     try {
+      // A claimed durable push owns delivery; pending/unknown must not also send SMS.
+      if (await enqueueParentFeedbackPush(candidate.application_id)) continue
       const sent = await sendParentNotification({
         eventType: FEEDBACK_REMINDER_EVENT,
         organizationId: candidate.organization_id,

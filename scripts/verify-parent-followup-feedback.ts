@@ -351,7 +351,7 @@ check(
 )
 check(
   "실패해도 발행을 되돌리지 않는다",
-  publishAction.includes("sendParentNotificationSafely") &&
+  publishAction.includes("sendPublishedReportNotificationSafely") &&
     !publishAction.includes("throw") &&
     publishAction.includes('status: "success"')
 )
@@ -413,7 +413,7 @@ console.log("\n── 7-b. 실제 CTA 버튼 ──")
 }
 check(
   "기존 발송 인프라를 재사용한다",
-  publishAction.includes("@/features/notifications/alimtalk/send-parent-notification")
+  publishAction.includes("@/features/notifications/push/event-delivery") && read("src/features/notifications/push/event-delivery.ts").includes("sendParentNotificationSafely")
 )
 
 console.log("\n── 8. 관찰 횟수 문구 ──")
