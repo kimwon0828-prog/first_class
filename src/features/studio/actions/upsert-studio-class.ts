@@ -558,6 +558,8 @@ export async function upsertStudioClassAction(
       regularPriceAmount: regularPrice.value.amount,
       regularPriceNote: regularPrice.value.note,
       trialPrice,
+      // 무료·유료를 이번 화면에서 직접 고른 저장만 가격 확인을 싣는다. 제목·사진 등만 바꾼 저장은 기존 확인을 그대로 둔다.
+      confirmTrialPrice: String(formData.get("trialPriceChoice") ?? "") === "explicit",
       teacherId: selectedTeacher?.teacherId ?? null,
       teacherDisplayName: selectedTeacher?.teacherName ?? null,
       coverImageUrl,

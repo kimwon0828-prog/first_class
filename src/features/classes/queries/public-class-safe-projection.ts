@@ -5,6 +5,7 @@ import {
   loadSubjectMasterMapsByIdsWithClient
 } from "@/features/subjects/queries/get-subject-master"
 import { getSupabaseServiceRoleClient } from "@/integrations/supabase/service-role"
+import { isMissingTrialPriceConfirmationColumn, trialPriceConfirmedFromRow } from "@/shared/lib/db/trial-price-confirmation"
 import type {
   ClassDetail,
   ClassSummary,
@@ -30,6 +31,8 @@ type PublicClassRow = {
   target_age: string
   description: string
   trial_price: number
+  // migration 미적용 DB 의 조회에는 없다(undefined) → trialPriceConfirmed null(기존 표시 유지).
+  trial_price_confirmed_at?: string | null
   regular_price_type?: ClassSummary["regularPriceType"]
   regular_price_amount?: number | null
   regular_price_note?: string | null
@@ -98,6 +101,26 @@ const PUBLIC_CLASS_SELECT_FIELDS = [
   "teacher_intro"
 ].join(", ")
 
+const TRIAL_PRICE_CONFIRMATION_FIELD = "trial_price_confirmed_at"
+/**
+ * 가격 확인 컬럼을 같은 조회에 넣는다(조회 1회). 다시 시도하는 경우는 두 가지뿐이다.
+ *   - 확인 컬럼 자체가 없다(migration 미적용): 확인 컬럼만 빼고 기존 순서대로 → trialPriceConfirmed null(기존 표시)
+ *   - 다른 컬럼이 없다(legacy DB): 확인 컬럼은 유지한 채 축소 projection 으로
+ * 권한·통신 등 그 밖의 오류는 그대로 돌려줘 호출부가 실패로 처리한다(확인 안 된 0원을 무료로 되돌리지 않는다).
+ */
+const selectWithTrialPriceConfirmation = async <R extends { error: { code?: string; message?: string } | null }>(
+  run: (fields: string) => PromiseLike<R>, fields: string, legacyFields: string
+): Promise<R> => {
+  const withConfirmation = (value: string) => `${value}, ${TRIAL_PRICE_CONFIRMATION_FIELD}`
+  const first = await run(withConfirmation(fields))
+  if (isMissingTrialPriceConfirmationColumn(first.error)) {
+    const plain = await run(fields)
+    return isMissingColumnError(plain.error) ? run(legacyFields) : plain
+  }
+  if (!isMissingColumnError(first.error)) return first
+  const legacy = await run(withConfirmation(legacyFields))
+  return isMissingTrialPriceConfirmationColumn(legacy.error) ? run(legacyFields) : legacy
+}
 const LEGACY_PUBLIC_CLASS_SELECT_FIELDS = [
   "id",
   "organization_id",
@@ -291,6 +314,7 @@ const mapPublicClassSummary = (row: PublicClassRow): ClassSummary => {
     curriculum: row.curriculum ?? null,
     teacherIntro: null,
     trialPrice: row.trial_price,
+    trialPriceConfirmed: trialPriceConfirmedFromRow(row),
     teacherId: row.teacher_id,
     teacherDisplayName: null,
     teacherName: null,
@@ -305,10 +329,7 @@ const mapPublicClassSummary = (row: PublicClassRow): ClassSummary => {
  * legacy 컬럼이 없는 DB 에서는 축소 projection 으로 한 번 더 시도한다.
  */
 const runPublicClassesQuery = async (options?: ListPublicClassesOptions) => {
-  const initialResult = await buildPublicClassesQuery(PUBLIC_CLASS_SELECT_FIELDS, options)
-  return isMissingColumnError(initialResult.error)
-    ? await buildPublicClassesQuery(LEGACY_PUBLIC_CLASS_SELECT_FIELDS, options)
-    : initialResult
+  return selectWithTrialPriceConfirmation(fields => buildPublicClassesQuery(fields, options), PUBLIC_CLASS_SELECT_FIELDS, LEGACY_PUBLIC_CLASS_SELECT_FIELDS)
 }
 
 export const listPublicClassesWithSafeProjection = async (
@@ -390,20 +411,14 @@ export const getPublicClassDetailWithSafeProjection = async (
   classId: string
 ): Promise<ClassDetail | null> => {
   const serviceRoleClient = getSupabaseServiceRoleClient()
-  const initialResult = await serviceRoleClient
+  const detailQuery = (fields: string) => serviceRoleClient
     .from("classes")
-    .select(`${PUBLIC_CLASS_SELECT_FIELDS}, regular_price_type, regular_price_amount, regular_price_note`)
+    .select(fields)
     .eq("id", classId)
     .eq("is_active", true).is("archived_at", null)
     .maybeSingle()
-  const { data, error } = isMissingColumnError(initialResult.error)
-    ? await serviceRoleClient
-        .from("classes")
-        .select(LEGACY_PUBLIC_CLASS_SELECT_FIELDS)
-        .eq("id", classId)
-        .eq("is_active", true).is("archived_at", null)
-        .maybeSingle()
-    : initialResult
+  const { data, error } = await selectWithTrialPriceConfirmation(detailQuery,
+    `${PUBLIC_CLASS_SELECT_FIELDS}, regular_price_type, regular_price_amount, regular_price_note`, LEGACY_PUBLIC_CLASS_SELECT_FIELDS)
 
   if (error) {
     throw new Error("failed_to_fetch_public_class_detail")

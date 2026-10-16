@@ -55,6 +55,7 @@ import { formatSeoulDateKey } from "@/shared/lib/seoul-datetime"
 import { StudioClassOperationEditor } from "./studio-class-operation-editor"
 import { StudioClassFormDialog } from "./studio-class-form-dialog"
 import styles from "./studio-class-form.module.css"
+import { initialPriceMode } from "@/features/studio/lib/class-price-choice"
 
 export type StudioClassFormProps = {
   organizationId: string
@@ -244,7 +245,10 @@ export const StudioClassForm = ({
   const [regularPriceType, setRegularPriceType] = useState<RegularPriceType | "">(initialItem?.regularPriceType ?? "")
   const [regularPriceAmount, setRegularPriceAmount] = useState(initialItem?.regularPriceAmount == null ? "" : String(initialItem.regularPriceAmount))
   const [regularPriceNote, setRegularPriceNote] = useState(initialItem?.regularPriceNote ?? "")
-  const [priceMode, setPriceMode] = useState<"" | "free" | "paid">(initialItem ? initialItem.trialPrice === 0 ? "free" : "paid" : "")
+  const [priceMode, setPriceMode] = useState<"" | "free" | "paid">(initialPriceMode(initialItem))
+  // 이번 화면에서 학원이 무료·유료를 직접 고르거나 금액을 고쳤는지. 이때만 서버가 가격 확인을 기록한다.
+  const [priceTouched, setPriceTouched] = useState(false)
+  const unconfirmedZeroPrice = Boolean(initialItem && initialItem.trialPrice === 0 && initialItem.trialPriceConfirmed === false)
   const [fieldErrors, setFieldErrors] = useState<Partial<Record<FieldErrorKey, string>>>({})
   const [previewOpen, setPreviewOpen] = useState(false)
   const [operationsOpen, setOperationsOpen] = useState(false)
@@ -363,6 +367,7 @@ export const StudioClassForm = ({
       id: initialItem?.id ?? "",
       programType: initialItem?.programType ?? "trial_class",
       trialPrice: String(initialItem?.trialPrice ?? 0),
+      trialPriceConfirmed: initialItem?.trialPriceConfirmed ?? null,
       regularPriceType: initialItem?.regularPriceType ?? ("" as const),
       regularPriceAmount: initialItem?.regularPriceAmount == null ? "" : String(initialItem.regularPriceAmount),
       regularPriceNote: initialItem?.regularPriceNote ?? "",
@@ -384,6 +389,7 @@ export const StudioClassForm = ({
     }),
     [
       initialItem?.classFormat,
+      initialItem?.trialPriceConfirmed,
       initialItem?.coverImageUrl,
       initialItem?.curriculum,
       initialItem?.description,
@@ -473,7 +479,8 @@ export const StudioClassForm = ({
     setRegularPriceAmount(initialFormSnapshot.regularPriceAmount)
     setRegularPriceNote(initialFormSnapshot.regularPriceNote)
     setTrialPrice(initialFormSnapshot.id ? initialFormSnapshot.trialPrice : "")
-    setPriceMode(initialFormSnapshot.id ? Number(initialFormSnapshot.trialPrice) === 0 ? "free" : "paid" : "")
+    setPriceMode(initialFormSnapshot.id ? initialPriceMode({ trialPrice: Number(initialFormSnapshot.trialPrice), trialPriceConfirmed: initialFormSnapshot.trialPriceConfirmed }) : "")
+    setPriceTouched(false)
     setScheduleEdited(false)
     setEditedOperatingDraft(null)
     setHasOperatingRuleSelection(Boolean(initialItem?.operatingRule))
@@ -884,6 +891,7 @@ export const StudioClassForm = ({
         <input type="hidden" name="regularPriceAmount" value={regularPriceType === "monthly" || regularPriceType === "per_session" ? regularPriceAmount : ""} />
         <input type="hidden" name="regularPriceNote" value={regularPriceType ? regularPriceNote : ""} />
         <input type="hidden" name="trialPrice" value={priceMode === "free" ? "0" : trialPrice} />
+        <input type="hidden" name="trialPriceChoice" value={mode === "create" || priceTouched ? "explicit" : ""} />
         <input type="hidden" name="enforcePublicSlotGuard" value={mode === "create" ? "true" : "false"} />
         <input type="hidden" name="scheduleWriteMode" value={scheduleEdited ? "replace" : "preserve"} />
         <input type="hidden" name="scheduleSnapshot" value={scheduleBaseline} />
@@ -1034,12 +1042,12 @@ export const StudioClassForm = ({
             {renderSectionHeader("price")}
             <div className={styles.sectionBody}>
             <div className={styles.field} data-field="price"><span className={styles.fieldLabel}>{programLabel === "체험수업" ? "체험수업 가격" : "레벨테스트 비용"} *</span>
-              <p className={styles.fieldHint}>1회 신청 비용입니다. 무료 여부를 선택해 주세요.</p>
+              <p className={styles.fieldHint}>{unconfirmedZeroPrice && !priceTouched ? "저장된 가격이 0원이지만 무료로 확인된 기록이 없어요. 무료인지 유료인지 선택해 주세요." : "1회 신청 비용입니다. 무료 여부를 선택해 주세요."}</p>
               <div className={styles.priceChoices}>
-                <label className={styles.radioCard}><input type="radio" name="priceChoice" value="free" checked={priceMode === "free"} onChange={() => setPriceMode("free")} disabled={isPending} /><strong>무료</strong></label>
-                <label className={styles.radioCard}><input type="radio" name="priceChoice" value="paid" checked={priceMode === "paid"} onChange={() => setPriceMode("paid")} disabled={isPending} /><strong>유료</strong></label>
+                <label className={styles.radioCard}><input type="radio" name="priceChoice" value="free" checked={priceMode === "free"} onChange={() => { setPriceMode("free"); setPriceTouched(true) }} disabled={isPending} /><strong>무료</strong></label>
+                <label className={styles.radioCard}><input type="radio" name="priceChoice" value="paid" checked={priceMode === "paid"} onChange={() => { setPriceMode("paid"); setPriceTouched(true) }} disabled={isPending} /><strong>유료</strong></label>
                 {priceMode === "paid" && <label className={styles.priceInput}><input aria-label={`${programLabel} 유료 비용`} type="number" min={1} step={1} inputMode="numeric" value={trialPrice === "0" ? "" : trialPrice}
-                  onChange={(event) => setTrialPrice(event.target.value)} disabled={isPending} className={styles.input} placeholder="금액 입력" aria-invalid={Boolean(fieldErrors.price)} aria-describedby="class-error-price" /><span>원</span></label>}
+                  onChange={(event) => { setTrialPrice(event.target.value); setPriceTouched(true) }} disabled={isPending} className={styles.input} placeholder="금액 입력" aria-invalid={Boolean(fieldErrors.price)} aria-describedby="class-error-price" /><span>원</span></label>}
               </div>{renderError("price")}
             </div>
             <div className={styles.regularPriceFields} data-field="regularPrice">

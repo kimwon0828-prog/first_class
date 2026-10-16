@@ -1,4 +1,5 @@
 import { parseReportAttachments } from "@/features/reports/lib/report-attachments"
+import { isMissingTrialPriceConfirmationColumn, loadTrialPriceConfirmations, saveWithTrialPriceConfirmation, withTrialPriceConfirmation } from "@/shared/lib/db/trial-price-confirmation"
 import { getReportSubjectCategory } from "@/features/studio/lib/trial-result-options"
 import { withBookingClassHistory, type BookingDay, type BookingClosureMutation, type BookingClosure } from "@/features/studio/lib/booking-closures"
 import { decodeParentFeedbackContext, decodePrivateFeedback, decodePublicFeedback } from "@/features/feedback/lib/feedback-decode"
@@ -3198,7 +3199,7 @@ export const supabaseDataAdapter: DataAdapter = {
         console.info("[listStudioClasses] done (fallback)", { returned: mapped.length })
       }
 
-      return mapped
+      return withTrialPriceConfirmation(mapped, await loadTrialPriceConfirmations(supabase, mapped.map((item) => item.id)))
     }
 
     if (error) {
@@ -3240,7 +3241,8 @@ export const supabaseDataAdapter: DataAdapter = {
       console.info("[listStudioClasses] done", { returned: mapped.length })
     }
 
-    return mapped
+    // Studio 수정 화면이 미확인 0원을 "무료"로 미리 고르지 않도록 확인 여부를 함께 준다.
+    return withTrialPriceConfirmation(mapped, await loadTrialPriceConfirmations(supabase, mapped.map((item) => item.id)))
   },
   async getStudioScheduleFilterOptions(organizationId) {
     const client = await getSupabaseServerClient()
@@ -3773,11 +3775,12 @@ export const supabaseDataAdapter: DataAdapter = {
       : {data:null,error:null}
     if (ruleLookup.error) throw new Error("failed_to_fetch_class_operating_rules")
     if (input.operatingRule || ruleLookup.data) {
-      const {data: managedClass,error: managedError} = await supabase.rpc("save_studio_class_operating_rule",{
-        p_class_id: normalizedClassId || null, p_fields: detailPayload, p_rule: input.operatingRule ?? null,
+      // 가격 확인은 가격과 같은 RPC(한 트랜잭션)에 싣는다. 확인을 싣지 않은 저장에서 가격이 바뀌면 DB 트리거가 확인을 지운다.
+      const {data: managedClass,error: managedError} = await saveWithTrialPriceConfirmation(Boolean(input.confirmTrialPrice), (confirmation) => supabase.rpc("save_studio_class_operating_rule",{
+        p_class_id: normalizedClassId || null, p_fields: { ...detailPayload, ...confirmation }, p_rule: input.operatingRule ?? null,
         p_expected_revision: input.operatingRuleRevision ?? 0,
         p_manual_slots: input.mode === "create" ? (input.scheduleSlots ?? []).filter(s=>!s.seriesId || s.bookingStatus && s.bookingStatus !== "open") : []
-      }).single()
+      }).single())
       if (managedError || !managedClass) throw new Error(managedError?.message ?? "class_rule_save_failed")
       const [enriched] = await attachClassSchedulesToRows(supabase,
         await attachSubjectMasterToRows(supabase,[managedClass as ClassRow]))
@@ -3793,10 +3796,13 @@ export const supabaseDataAdapter: DataAdapter = {
             .eq("organization_id", input.organizationId)
         : supabase.from("classes").insert(payload)
 
-    const initialResult = await buildQuery(detailPayload).select(CLASS_SAVE_SELECT_FIELDS).maybeSingle()
-    const { data, error } = isMissingColumnError(initialResult.error)
-      ? await buildQuery(basePayload).select(CLASS_SAVE_SELECT_FIELDS).maybeSingle()
-      : initialResult
+    // 가격 확인은 가격과 같은 insert/update 문장에 싣는다(0행이면 아래에서 실패로 처리된다).
+    const { data, error } = await saveWithTrialPriceConfirmation(Boolean(input.confirmTrialPrice), async (confirmation) => {
+      const initialResult = await buildQuery({ ...detailPayload, ...confirmation }).select(CLASS_SAVE_SELECT_FIELDS).maybeSingle()
+      return isMissingColumnError(initialResult.error) && !isMissingTrialPriceConfirmationColumn(initialResult.error)
+        ? await buildQuery({ ...basePayload, ...confirmation }).select(CLASS_SAVE_SELECT_FIELDS).maybeSingle()
+        : initialResult
+    })
 
     if (error) {
       throw new Error(

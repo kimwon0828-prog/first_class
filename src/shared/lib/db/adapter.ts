@@ -146,6 +146,8 @@ export type ClassSummary = ClassSubjectReadModel & {
   curriculum: string | null
   teacherIntro: string | null
   trialPrice: number
+  /** 학원이 무료·유료를 확인했는지. null 은 확인 컬럼이 없는 DB(기존 표시 유지). */
+  trialPriceConfirmed?: boolean | null
   regularPriceType?: import("@/shared/lib/regular-price").RegularPriceType | null
   regularPriceAmount?: number | null
   regularPriceNote?: string | null
@@ -490,6 +492,8 @@ export type StudioClassInput = {
   curriculum: string | null
   teacherIntro: string | null
   trialPrice: number
+  /** 학원이 이번 저장에서 무료·유료를 직접 골랐는지. 참이면 가격과 같은 저장 문장에 확인을 싣는다(DB 트리거가 시각을 정한다). */
+  confirmTrialPrice?: boolean
   regularPriceType?: import("@/shared/lib/regular-price").RegularPriceType | null
   regularPriceAmount?: number | null
   regularPriceNote?: string | null

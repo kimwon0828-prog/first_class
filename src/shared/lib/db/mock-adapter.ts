@@ -1326,6 +1326,8 @@ export const mockDataAdapter: DataAdapter = {
       curriculum: input.curriculum,
       teacherIntro: input.teacherIntro,
       trialPrice: input.trialPrice,
+      // DB 트리거와 같은 규칙: 직접 고른 저장은 확인, 가격이 바뀐 저장은 해제, 그 밖에는 유지.
+      trialPriceConfirmed: input.confirmTrialPrice ? true : existingClass && existingClass.trialPrice === input.trialPrice ? existingClass.trialPriceConfirmed ?? null : false,
       regularPriceType: input.regularPriceType === undefined ? existingClass?.regularPriceType ?? null : input.regularPriceType,
       regularPriceAmount: input.regularPriceType === undefined ? existingClass?.regularPriceAmount ?? null : input.regularPriceAmount ?? null,
       regularPriceNote: input.regularPriceType === undefined ? existingClass?.regularPriceNote ?? null : input.regularPriceNote ?? null,
