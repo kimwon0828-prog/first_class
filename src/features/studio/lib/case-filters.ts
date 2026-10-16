@@ -1,7 +1,7 @@
 // Cases URL state and relational PostgREST predicates. Filter before DB pagination.
 export type CaseViewKey = "active" | "closed"
 export type CaseActiveFilterKey = "all" | "schedule_needed" | "confirmed"
-export type CaseClosedFilterKey = "all" | "pending" | "enrolled" | "not_enrolled" | "canceled" | "no_show"
+export type CaseClosedFilterKey = "all" | "undecided" | "pending" | "enrolled" | "not_enrolled" | "canceled" | "no_show"
 export type CaseFilterKey = CaseActiveFilterKey | CaseClosedFilterKey
 export type CaseFilterOption<K extends string> = { key: K; label: string; description?: string }
 export const CASE_ACTIVE_FILTERS: CaseFilterOption<CaseActiveFilterKey>[] = [
@@ -10,7 +10,10 @@ export const CASE_ACTIVE_FILTERS: CaseFilterOption<CaseActiveFilterKey>[] = [
   { key: "confirmed", label: "체험 예정·진행", description: "일정 확정 후 실제 체험 완료 처리 전까지의 신청" }
 ]
 export const CASE_CLOSED_FILTERS: CaseFilterOption<CaseClosedFilterKey>[] = [
-  { key: "all", label: "전체" }, { key: "pending", label: "고민중" }, { key: "enrolled", label: "등록 완료" },
+  { key: "all", label: "전체" },
+  // 학원이 아직 등록 결과를 기록하지 않은 체험 완료 건. 학부모 의향(parent_decisions)은 이 값을 바꾸지 않는다.
+  { key: "undecided", label: "등록 여부 미정", description: "체험 완료 후 등록 결과를 아직 기록하지 않은 신청" },
+  { key: "pending", label: "고민중" }, { key: "enrolled", label: "등록 완료" },
   { key: "not_enrolled", label: "등록하지 않음" }, { key: "canceled", label: "취소" }, { key: "no_show", label: "불참" }
 ]
 const live = "no_show_at.is.null,canceled_at.is.null,status.neq.canceled"
@@ -28,7 +31,7 @@ export function getCaseFilterPredicate(view: CaseViewKey, filter: CaseFilterKey)
     if (filter === "pending") return { orExpression: pending }
     if (filter === "no_show") return { orExpression: "no_show_at.not.is.null" }
     if (filter === "canceled") return { orExpression: "and(no_show_at.is.null,or(status.eq.canceled,canceled_at.not.is.null))" }
-    if (filter === "enrolled" || filter === "not_enrolled") return { orExpression: `and(${live},status.eq.completed,registration_status.eq.${filter})` }
+    if (filter === "undecided" || filter === "enrolled" || filter === "not_enrolled") return { orExpression: `and(${live},status.eq.completed,registration_status.eq.${filter})` }
   } else {
     if (filter === "schedule_needed") return { orExpression: `and(${live},or(status.in.(new,reviewing),and(status.eq.confirmed,confirmed_slot_at.is.null,confirmed_block.is.null)))` }
     if (filter === "confirmed") return { orExpression: `and(${live},status.eq.confirmed,${scheduled})` }

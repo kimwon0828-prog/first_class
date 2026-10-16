@@ -76,7 +76,8 @@ export function orderStudioCases<T extends CasesOrderRow>(rows: T[], view: CaseV
         // Existing remaining-work cohort stays receipt-newest; schedule cohorts precede it.
         difference = compareTime(caseTimestamp(a.created_at), caseTimestamp(b.created_at), true)
       }
-    } else if (filter === "pending") {
+    } else if (filter === "pending" || filter === "undecided") {
+      // 미정도 고민중처럼 처리할 일 순서: 연락일 도래 우선, 체험 완료 오래된 순.
       // DB timestamptz values are absolute instants: KST and UTC representations compare identically.
       const aContact = caseTimestamp(a.next_contact_at), bContact = caseTimestamp(b.next_contact_at)
       const aDue = aContact !== null && aContact <= now.getTime(), bDue = bContact !== null && bContact <= now.getTime()

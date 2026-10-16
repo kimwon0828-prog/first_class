@@ -9,7 +9,8 @@ const row = (id: string, overrides: Partial<CasesOrderRow> = {}): CasesOrderRow 
   enrolled_at: null, lost_at: null, canceled_at: null, no_show_at: null, next_contact_at: null, ...overrides
 })
 const ids = (rows: CasesOrderRow[]) => rows.map(row => row.id)
-assert.deepEqual(CASE_CLOSED_FILTERS.map(x => x.key), ["all", "pending", "enrolled", "not_enrolled", "canceled", "no_show"])
+// "undecided"(등록 여부 미정): 체험 완료 후 등록 결과를 아직 기록하지 않은 신청.
+assert.deepEqual(CASE_CLOSED_FILTERS.map(x => x.key), ["all", "undecided", "pending", "enrolled", "not_enrolled", "canceled", "no_show"])
 assert.equal(resolveCaseFilter("closed", "pending"), "pending")
 assert.equal(resolveCaseFilter("active", "pending"), "all")
 const active = [

@@ -12,7 +12,7 @@ import {
 import type { StudioStatusTone } from "@/features/studio/lib/application-status-labels"
 import { CASES_ACTIONS, CASES_ACTION_SECTIONS, getCasesNextActions, formatCasesDate, getCasesResultSummary, getCasesScheduleLabel, type CasesListItem } from "@/features/studio/lib/cases-workflow"
 import { requireTeacherStudioAccess } from "@/features/studio/lib/require-teacher-studio-access"
-import { getStudioCases } from "@/features/studio/queries/get-studio-cases"
+import { countStudioCases, getStudioCases } from "@/features/studio/queries/get-studio-cases"
 import { StudioQueryRetry } from "@/features/studio/ui/studio-query-retry"
 import { StudioCaseRowLink } from "@/features/studio/ui/studio-case-row-link"
 import { getChildGradeLabel, getSubjectLabel } from "@/shared/constants/education-taxonomy"
@@ -82,6 +82,10 @@ export default async function StudioCasesPage({ searchParams }: StudioCasesPageP
   const searchQuery = sanitizeCaseSearchQuery(resolvedSearchParams?.q)
   const page = resolveCasePage(resolvedSearchParams?.page)
   const { data, error } = await getStudioCases(teacher.organizationId, { view, filter, query: searchQuery, page })
+  // '등록 여부 미정' 건수: 목록과 같은 조건(검색어 포함)으로 센다. 그 필터를 보고 있으면 목록 건수를 그대로 쓴다.
+  const undecidedCount = view !== "closed" ? null
+    : filter === "undecided" ? (error ? null : data.totalCount)
+    : await countStudioCases(teacher.organizationId, { view, filter: "undecided", query: searchQuery })
   const filterOptions = getCaseFilterOptions(view)
   const rangeStart = data.items.length > 0 ? (data.page - 1) * CASE_PAGE_SIZE + 1 : 0
   const rangeEnd = data.items.length > 0 ? Math.min(data.page * CASE_PAGE_SIZE, data.totalCount) : 0
@@ -113,7 +117,7 @@ export default async function StudioCasesPage({ searchParams }: StudioCasesPageP
       <section className={styles.toolbar} aria-label="목록 검색과 단계 필터">
         <div className={styles.filters} role="group" aria-label="상태 필터">
           {filterOptions.map((option) => (
-            <Link key={option.key} href={studioPath(buildHref({ view, filter: option.key, q: searchQuery }))} className={`${styles.filterChip} ${filter === option.key ? styles.filterChipActive : ""}`} title={option.description} aria-current={filter === option.key ? "true" : undefined}>{option.label}</Link>
+            <Link key={option.key} href={studioPath(buildHref({ view, filter: option.key, q: searchQuery }))} className={`${styles.filterChip} ${filter === option.key ? styles.filterChipActive : ""}`} title={option.description} aria-current={filter === option.key ? "true" : undefined}>{option.label}{option.key === "undecided" && undecidedCount !== null ? <span className={styles.filterCount}>{undecidedCount}<span className={styles.srOnly}>건</span></span> : null}</Link>
           ))}
         </div>
         <form className={styles.searchForm} action={studioPath(CASE_BASE_PATH)} method="get">
@@ -134,7 +138,7 @@ export default async function StudioCasesPage({ searchParams }: StudioCasesPageP
       ) : (
         <section className={styles.workspace} aria-label="Case 목록">
           <div className={styles.resultHeader}>
-            <p className={styles.resultMeta}>검색 결과 <strong>{data.totalCount}건</strong><span aria-hidden="true">·</span><span>{view === "active" ? "신규 신청 우선 · 체험 예정순" : filter === "pending" ? "연락일 도래 우선 · 체험 완료 오래된 순" : "결과 처리 최신순 · 처리일 미기록은 완료일/접수일 기준"}</span></p>
+            <p className={styles.resultMeta}>검색 결과 <strong>{data.totalCount}건</strong><span aria-hidden="true">·</span><span>{view === "active" ? "신규 신청 우선 · 체험 예정순" : filter === "pending" || filter === "undecided" ? "연락일 도래 우선 · 체험 완료 오래된 순" : "결과 처리 최신순 · 처리일 미기록은 완료일/접수일 기준"}</span></p>
             <CasePagination {...paginationProps} compact />
           </div>
           <div className={styles.tableSurface} role="region" aria-label="신청 목록 표" tabIndex={0}>

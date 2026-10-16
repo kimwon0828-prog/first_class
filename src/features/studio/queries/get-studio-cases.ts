@@ -49,27 +49,43 @@ async function readAllRows<T>(query: (from: number, to: number) => PromiseLike<{
   } while (rows.length < total)
   return rows
 }
-export async function getStudioCases(organizationId: string, options: GetStudioCasesOptions): Promise<QueryResult<StudioCasesQueryData>> {
-  const page = Math.max(1, options.page ?? 1), search = sanitizeCaseSearchQuery(options.query)
+type CasesClient = Awaited<ReturnType<typeof getSupabaseServerClient>>
+// The list and the filter counts share this one builder, so a chip count and its list always use the same conditions.
+async function createCaseQueryBuilder(supabase: CasesClient, organizationId: string, options: Pick<GetStudioCasesOptions, "view" | "filter" | "query">) {
+  const search = sanitizeCaseSearchQuery(options.query)
+  let classIds: string[] = []
+  if (search) {
+    const matches = await readAllRows<{ id: string }>((from, to) => supabase.from("classes").select("id", { count: "exact" })
+      .eq("organization_id", organizationId).ilike("title", `%${search}%`).order("id").range(from, to))
+    classIds = matches.map(row => row.id)
+  }
+  return (head = false) => {
+    let query = supabase.from("studio_trial_applications").select(CASE_SELECT_FIELDS, { count: "exact", head })
+      .eq("classes.organization_id", organizationId)
+      .or(getCaseFilterPredicate(options.view, options.filter).orExpression)
+    if (search) {
+      const terms = [`child_name.ilike.%${search}%`, `parent_name.ilike.%${search}%`, `parent_phone.ilike.%${search}%`]
+      if (classIds.length) terms.push(`class_id.in.(${classIds.join(",")})`)
+      query = query.or(terms.join(","))
+    }
+    return query.order("id", { ascending: true })
+  }
+}
+/** 필터 칩 건수. 목록과 같은 조건(조직·필터·검색어)으로 행 없이 개수만 센다. 읽기 전용. */
+export async function countStudioCases(organizationId: string, options: Pick<GetStudioCasesOptions, "view" | "filter" | "query">): Promise<number | null> {
   try {
     const supabase = await getSupabaseServerClient()
-    let classIds: string[] = []
-    if (search) {
-      const matches = await readAllRows<{ id: string }>((from, to) => supabase.from("classes").select("id", { count: "exact" })
-        .eq("organization_id", organizationId).ilike("title", `%${search}%`).order("id").range(from, to))
-      classIds = matches.map(row => row.id)
-    }
-    const buildQuery = () => {
-      let query = supabase.from("studio_trial_applications").select(CASE_SELECT_FIELDS, { count: "exact" })
-        .eq("classes.organization_id", organizationId)
-        .or(getCaseFilterPredicate(options.view, options.filter).orExpression)
-      if (search) {
-        const terms = [`child_name.ilike.%${search}%`, `parent_name.ilike.%${search}%`, `parent_phone.ilike.%${search}%`]
-        if (classIds.length) terms.push(`class_id.in.(${classIds.join(",")})`)
-        query = query.or(terms.join(","))
-      }
-      return query.order("id", { ascending: true })
-    }
+    const { count, error } = await (await createCaseQueryBuilder(supabase, organizationId, options))(true)
+    return error || count === null ? null : count
+  } catch {
+    return null
+  }
+}
+export async function getStudioCases(organizationId: string, options: GetStudioCasesOptions): Promise<QueryResult<StudioCasesQueryData>> {
+  const page = Math.max(1, options.page ?? 1)
+  try {
+    const supabase = await getSupabaseServerClient()
+    const buildQuery = await createCaseQueryBuilder(supabase, organizationId, options)
     const cohort = await readAllRows<CaseRow>((from, to) => buildQuery().range(from, to))
     const resultRecords = new Map<string, CasesResultRecord>()
     if (options.view === "closed") {
