@@ -18,7 +18,7 @@ for(const decided of [false,true]) for(const read of [false,true]) {
 assert.equal(applyNotificationReads(events,new Set(['orphan'])).filter(e=>e.isUnread).length,2)
 assert.equal(applyNotificationReads(events,new Set(['status:log'])).filter(e=>e.isUnread).length,1)
 const read=(p:string)=>readFileSync(p,'utf8')
-const action=read('src/features/notifications/actions/mark-notification-read.ts')
+const action=(read('src/features/notifications/actions/mark-notification-read.ts') + read('src/features/notifications/lib/save-parent-notification-read.ts'))
 assert(action.includes('access.profile.id') && action.includes('ignoreDuplicates: true'))
 const link=read('src/features/notifications/ui/notification-link.tsx')
 assert(link.includes('if (!isUnread) return') && link.includes('finally') && link.includes('router.push') && link.includes('1500'))

@@ -41,7 +41,7 @@ const stripComments = (source: string) =>
 
 const migration = read(MIGRATION_PATH)
 const retiredAction = read(ACTION_PATH)
-const action = read("src/features/feedback/actions/save-parent-feedback.ts")
+const action = (read("src/features/feedback/actions/save-parent-feedback.ts") + read("src/features/feedback/lib/submit-parent-experience.ts"))
 const finalUi = read("src/features/feedback/ui/parent-feedback-form.tsx")
 const query = read(QUERY_PATH)
 const parentUi = read(PARENT_UI_PATH)

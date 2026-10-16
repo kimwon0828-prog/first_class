@@ -100,7 +100,7 @@ export const isNotifiableStatusEvent = (
   return Boolean(NOTIFIABLE_STATUSES[event.toStatus])
 }
 
-const buildContextLabel = (application: ParentApplicationSummary): string | null => {
+const buildContextLabel = (application: NotificationApplication): string | null => {
   const parts = [application.classTitle, application.academyName].filter(
     (value): value is string => Boolean(value && value.trim())
   )
@@ -108,7 +108,7 @@ const buildContextLabel = (application: ParentApplicationSummary): string | null
 }
 
 /** 아이 이름은 신청에 실제로 적혀 있을 때만 쓴다. 비어 있으면 null 이다. */
-const resolveChildName = (application: ParentApplicationSummary): string | null => {
+const resolveChildName = (application: NotificationApplication): string | null => {
   const name = application.childName?.trim()
   return name ? name : null
 }
@@ -122,7 +122,7 @@ const resolveChildName = (application: ParentApplicationSummary): string | null 
  *    리포트가 없는 것으로 읽히면 안 된다.
  */
 export const selectParentNotifications = (input: {
-  applications: readonly ParentApplicationSummary[]
+  applications: readonly NotificationApplication[]
   statusEvents: readonly ParentApplicationStatusEvent[]
   publishedReports: readonly ParentPublishedReportEvent[]
   parentProfileId: string
@@ -252,3 +252,6 @@ export const formatNotificationTime = (value: string): string => {
 /** Match only current events; orphan receipts never create a notification. */
 export const applyNotificationReads = (items: readonly ParentNotification[], keys: ReadonlySet<string>): ParentNotification[] =>
   items.map(item => ({ ...item, isUnread: !keys.has(item.id) }))
+
+// Notification projection needs no private child notes or application form data.
+type NotificationApplication = Pick<ParentApplicationSummary, "id" | "childName" | "classTitle" | "academyName">

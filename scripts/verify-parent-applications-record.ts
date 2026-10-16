@@ -54,8 +54,8 @@ const applicationsPage = codeOf(APPLICATIONS_PAGE) + codeOf("app/my/applications
 const recordPage = codeOf(RECORD_PAGE) + codeOf("src/features/record/ui/record-home.tsx")
 const recordList = codeOf(RECORD_LIST_PATH)
 const hub = codeOf(HUB_PATH)
-const cancelAction = stripComments(read(CANCEL_PATH))
-const createAction = stripComments(read(CREATE_PATH))
+const cancelAction = stripComments((read(CANCEL_PATH) + read("src/features/applications/lib/cancel-parent-application.ts")))
+const createAction = stripComments((read(CREATE_PATH) + read("src/features/applications/lib/validate-trial-application.ts")))
 const adapter = read(ADAPTER_PATH)
 
 let failures = 0
@@ -265,11 +265,11 @@ check(
 )
 check(
   "취소가 바꾸는 화면만 비운다",
-  cancelAction.includes('revalidatePath("/my/applications")') &&
-    cancelAction.includes('revalidatePath("/my/schedule")') &&
-    cancelAction.includes('revalidatePath("/")') &&
-    !cancelAction.includes('revalidatePath("/record")') &&
-    !cancelAction.includes('revalidatePath("/my/actions")')
+  cancelAction.includes('dependencies.revalidate("/my/applications")') &&
+    cancelAction.includes('dependencies.revalidate("/my/schedule")') &&
+    cancelAction.includes('dependencies.revalidate("/")') &&
+    !cancelAction.includes('dependencies.revalidate("/record")') &&
+    !cancelAction.includes('dependencies.revalidate("/my/actions")')
 )
 check(
   "새 신청은 신청 현황으로 보낸다",

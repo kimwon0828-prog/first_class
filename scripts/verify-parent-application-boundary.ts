@@ -36,7 +36,7 @@ const migration = read(MIGRATION_PATH)
 const migrationSql = stripCommentOn(stripSqlComments(migration))
 const supabaseAdapter = read(SUPABASE_ADAPTER_PATH)
 const supabaseAdapterCode = stripTsComments(supabaseAdapter)
-const cancelAction = stripTsComments(read(CANCEL_ACTION_PATH))
+const cancelAction = stripTsComments((read(CANCEL_ACTION_PATH) + read("src/features/applications/lib/cancel-parent-application.ts")))
 
 let failures = 0
 const check = (label: string, ok: boolean, detail = "") => {

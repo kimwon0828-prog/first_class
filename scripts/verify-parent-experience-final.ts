@@ -15,7 +15,7 @@ assert(decisionDraftError({ ...schedule, preferredDays: ["tue"], preferredStartT
 assert(decisionDraftError({ ...schedule, preferredDays: ["tue"], preferredStartTime: "16:00", preferredTimeMode: "range", preferredEndTime: "15:00" }))
 assert.equal(decisionDraftError({ ...schedule, preferredDays: ["tue"], preferredStartTime: "16:00", preferredTimeMode: "range", preferredEndTime: "18:00" }), null)
 const read = (p: string) => readFileSync(p, "utf8")
-const action = read("src/features/feedback/actions/save-parent-feedback.ts")
+const action = (read("src/features/feedback/actions/save-parent-feedback.ts") + read("src/features/feedback/lib/submit-parent-experience.ts"))
 assert.equal((action.match(/await dataAdapter.submitParentExperience/g) ?? []).length, 1)
 assert(!action.includes("saveParentExperienceFeedback(")); assert(!action.includes("setParentDecision("))
 const ui = read("src/features/feedback/ui/parent-feedback-form.tsx")

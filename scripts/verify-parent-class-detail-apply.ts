@@ -46,7 +46,7 @@ const applyForm = codeOf(APPLY_FORM_PATH)
 const formHook = stripComments(read(FORM_HOOK_PATH))
 const sheet = codeOf(SHEET_PATH)
 const slotsLib = stripComments(read(SLOTS_LIB_PATH))
-const create = stripComments(read(CREATE_PATH))
+const create = stripComments((read(CREATE_PATH) + read("src/features/applications/lib/validate-trial-application.ts")))
 const projection = stripComments(read(PROJECTION_PATH))
 
 let failures = 0

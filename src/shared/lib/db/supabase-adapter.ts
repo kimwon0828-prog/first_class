@@ -1769,14 +1769,6 @@ const getAppliedCountByClassScheduleBlockIdWithClient = async (
   return counts
 }
 
-const getAppliedCountByClassScheduleBlockId = async (
-  classId: string,
-  scheduleRows: ScheduleBlockRow[]
-) => {
-  // client 는 helper 안에서 정한다(전체 집계).
-  return getAppliedCountByClassScheduleBlockIdWithClient(await getSupabaseServerClient(), classId, scheduleRows)
-}
-
 const assertTeacherBelongsToOrganization = async (teacherId: string, organizationId: string) => {
   const supabase = await getSupabaseServerClient()
   const { data, error } = await supabase
@@ -5769,7 +5761,71 @@ export const supabaseDataAdapter: DataAdapter = {
     return { id: result.id, version: result.version, withdrawnAt: result.withdrawnAt }
   },
   async createTrialApplication(input: TrialApplicationInput) {
+    return createTrialApplicationWithClient(await getSupabaseServerClient(), input)
+  },
+  async getPendingTeacherSignupRequest(userId) {
     const supabase = await getSupabaseServerClient()
+    const { data, error } = await supabase
+      .from("teacher_signup_requests")
+      .select("id, user_id, status, teacher_name, teacher_phone, organization_name, branch_name, address, address_detail, organization_phone, request_note, created_at")
+      .eq("user_id", userId)
+      .eq("status", "pending")
+      .maybeSingle()
+
+    if (error) {
+      throw new Error("failed_to_fetch_teacher_signup_request")
+    }
+
+    if (!data) {
+      return null
+    }
+
+    return mapTeacherSignupRequest(data as TeacherSignupRequestRow)
+  },
+  async createTeacherSignupRequest(input) {
+    const supabase = await getSupabaseServerClient()
+    const { data: existing, error: existingError } = await supabase
+      .from("teacher_signup_requests")
+      .select("id")
+      .eq("user_id", input.userId)
+      .in("status", ["pending", "approved"])
+      .maybeSingle()
+
+    if (existingError) {
+      throw new Error("failed_to_validate_teacher_signup_request")
+    }
+
+    if (existing) {
+      throw new Error("already_requested_or_approved")
+    }
+
+    const { data, error } = await supabase
+      .from("teacher_signup_requests")
+      .insert({
+        user_id: input.userId,
+        status: "pending",
+        teacher_name: input.teacherName,
+        teacher_phone: input.teacherPhone,
+        organization_name: input.organizationName,
+        branch_name: input.branchName,
+        address: input.address,
+        address_detail: input.addressDetail,
+        organization_phone: input.organizationPhone,
+        request_note: input.requestNote
+      })
+      .select("id, user_id, status, teacher_name, teacher_phone, organization_name, branch_name, address, address_detail, organization_phone, request_note, created_at")
+      .single()
+
+    if (error || !data) {
+      throw new Error("failed_to_create_teacher_signup_request")
+    }
+
+    return mapTeacherSignupRequest(data as TeacherSignupRequestRow)
+  }
+}
+
+// Shared by cookie-authenticated web and bearer-authenticated native callers.
+export async function createTrialApplicationWithClient(supabase: SupabaseClient, input: TrialApplicationInput) {
     const parsedScheduleOption = parseSelectedScheduleOptionId(
       input.selectedScheduleOptionId ??
         (input.selectedScheduleBlockId ? `schedule_block:${input.selectedScheduleBlockId}` : undefined)
@@ -5843,8 +5899,8 @@ export const supabaseDataAdapter: DataAdapter = {
       }
 
       const appliedCountBySlotId = isLegacyTeacherFallbackSlot
-        ? await getAppliedCountByTeacherScheduleBlockId(classData.teacher_id, [slotData as ScheduleBlockRow])
-        : await getAppliedCountByClassScheduleBlockId(input.classId, [slotData as ScheduleBlockRow])
+        ? await getAppliedCountByTeacherScheduleBlockIdWithClient(supabase, classData.teacher_id, [slotData as ScheduleBlockRow])
+        : await getAppliedCountByClassScheduleBlockIdWithClient(supabase, input.classId, [slotData as ScheduleBlockRow])
       const appliedCount = appliedCountBySlotId.get(matchedSlot.scheduleBlockId ?? matchedSlot.id) ?? 0
 
       matchedSlot = {
@@ -6021,64 +6077,4 @@ export const supabaseDataAdapter: DataAdapter = {
     }
 
     return mapCreatedApplication(insertedApplication)
-  },
-  async getPendingTeacherSignupRequest(userId) {
-    const supabase = await getSupabaseServerClient()
-    const { data, error } = await supabase
-      .from("teacher_signup_requests")
-      .select("id, user_id, status, teacher_name, teacher_phone, organization_name, branch_name, address, address_detail, organization_phone, request_note, created_at")
-      .eq("user_id", userId)
-      .eq("status", "pending")
-      .maybeSingle()
-
-    if (error) {
-      throw new Error("failed_to_fetch_teacher_signup_request")
-    }
-
-    if (!data) {
-      return null
-    }
-
-    return mapTeacherSignupRequest(data as TeacherSignupRequestRow)
-  },
-  async createTeacherSignupRequest(input) {
-    const supabase = await getSupabaseServerClient()
-    const { data: existing, error: existingError } = await supabase
-      .from("teacher_signup_requests")
-      .select("id")
-      .eq("user_id", input.userId)
-      .in("status", ["pending", "approved"])
-      .maybeSingle()
-
-    if (existingError) {
-      throw new Error("failed_to_validate_teacher_signup_request")
-    }
-
-    if (existing) {
-      throw new Error("already_requested_or_approved")
-    }
-
-    const { data, error } = await supabase
-      .from("teacher_signup_requests")
-      .insert({
-        user_id: input.userId,
-        status: "pending",
-        teacher_name: input.teacherName,
-        teacher_phone: input.teacherPhone,
-        organization_name: input.organizationName,
-        branch_name: input.branchName,
-        address: input.address,
-        address_detail: input.addressDetail,
-        organization_phone: input.organizationPhone,
-        request_note: input.requestNote
-      })
-      .select("id, user_id, status, teacher_name, teacher_phone, organization_name, branch_name, address, address_detail, organization_phone, request_note, created_at")
-      .single()
-
-    if (error || !data) {
-      throw new Error("failed_to_create_teacher_signup_request")
-    }
-
-    return mapTeacherSignupRequest(data as TeacherSignupRequestRow)
-  }
 }

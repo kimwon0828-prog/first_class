@@ -451,7 +451,7 @@ console.log("\n── 8-b. 희망 일정은 날짜가 아니라 요일·시간�
 {
   const form = clean(read(PARENT_FORM_PATH))
   const studio = clean(read(STUDIO_DECISION_PATH))
-  const action = clean(read("src/features/feedback/actions/save-parent-feedback.ts"))
+  const action = clean((read("src/features/feedback/actions/save-parent-feedback.ts") + read("src/features/feedback/lib/submit-parent-experience.ts")))
   const domain = clean(read("src/features/decisions/lib/parent-decision.ts"))
 
   check(
