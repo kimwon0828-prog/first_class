@@ -10,6 +10,7 @@ import { createClient } from "@supabase/supabase-js"
 import { getPublicEnv } from "@/shared/config/env"
 import { getSupabaseServiceRoleClient } from "@/integrations/supabase/service-role"
 import { createNativeParentReader } from "@/features/native/server/parent-reader"
+import { loadBookingTimes, type BookingTime } from "@/features/native/server/booking-time"
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
 const read = createNativeParentReader({
@@ -47,6 +48,8 @@ const read = createNativeParentReader({
     const publicProfiles = new Map((profiles.error ? [] : profiles.data ?? []).map(row => [row.organization_id, row]))
     const text = (value: string | null | undefined) => value?.trim() || null
     const logoUrl = (path: string | null) => path ? client.storage.from("academy-profile-assets").getPublicUrl(path).data.publicUrl || null : null
+    // End time is optional display data: a failure leaves it null and keeps the rest of the response.
+    const times: Record<string, BookingTime> = await loadBookingTimes(client, rows.map(row => row.id)).catch(() => ({}))
     return Object.fromEntries(rows.map(row => {
       const org = row.class_organization_id ? organizations.get(row.class_organization_id) : null
       const profile = org ? publicProfiles.get(org.id) : null
@@ -58,7 +61,9 @@ const read = createNativeParentReader({
         academy_logo_url: logoUrl(text(profile?.logo_image_path)),
         // Same handle the academy page accepts: the public slug, otherwise the organization id.
         academy_handle: org ? text(profile?.slug) ?? org.id : null,
-        academy_phone: org ? text(org.academy_phone) : null
+        academy_phone: org ? text(org.academy_phone) : null,
+        slot_end_at: times[row.id]?.slot_end_at ?? null,
+        duration_minutes: times[row.id]?.duration_minutes ?? null
       }]
     }))
   },

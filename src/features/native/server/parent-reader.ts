@@ -19,6 +19,8 @@ export type NativeReaderDependencies = {
 export type NativePresentation = {
   academy_name: string | null; address: string | null; cover_image_url: string | null
   organization_id: string | null; academy_logo_url: string | null; academy_handle: string | null; academy_phone: string | null
+  // 예약 종료 시각과 길이. 근거가 없거나 조회하지 못하면 null 이고, 예전 앱은 이 필드를 쓰지 않는다.
+  slot_end_at?: string | null; duration_minutes?: number | null
 }
 class ReadError extends Error {
   constructor(readonly status: number, readonly code: string) { super(code) }

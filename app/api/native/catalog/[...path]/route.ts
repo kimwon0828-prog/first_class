@@ -15,18 +15,39 @@ import { PARENT_LAUNCH_REGION } from "@/features/location/lib/parent-launch-regi
 import { formatClassSubjectDisplayLabel } from "@/shared/lib/subject-master"
 import { formatStoredTargetGrades, isChildEligibleForClass } from "@/shared/constants/grade-options"
 import type { ClassSummary } from "@/shared/lib/db/adapter"
+import { getSupabaseServiceRoleClient } from "@/integrations/supabase/service-role"
+import { cardSlots, loadAcademyCardDetails } from "@/features/native/server/academy-cards"
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
 // Only the web's existing public discovery projection is exposed here.
 const project = (item: ClassSummary) => ({
  id:item.id, title:item.title, programType:item.programType, subject:formatClassSubjectDisplayLabel(item),
- targetAge:formatStoredTargetGrades(item.targetAge), eligibleGrades:LEARNER_GRADES.filter(g=>isChildEligibleForClass(g.value,item.targetAge)), regularPriceLabel:formatRegularPrice({type:item.regularPriceType,amount:item.regularPriceAmount}), regularPriceNote:item.regularPriceNote, trialPrice:item.trialPrice, coverImageUrl:item.coverImageUrl,
+ targetAge:formatStoredTargetGrades(item.targetAge), eligibleGrades:LEARNER_GRADES.filter(g=>isChildEligibleForClass(g.value,item.targetAge)), regularPriceLabel:formatRegularPrice({type:item.regularPriceType,amount:item.regularPriceAmount}), regularPriceNote:item.regularPriceNote, trialPrice:item.trialPrice, trialPriceConfirmed:item.trialPriceConfirmed ?? null, coverImageUrl:item.coverImageUrl,
  academyName:item.organization ? [item.organization.name,item.organization.branchName].filter(Boolean).join(" ") : null,
  organizationId:item.organization?.id ?? null, locationLabel:[item.organization?.sigungu,item.organization?.bname].filter(Boolean).join(" "),
  description:item.description, recommendedFor:item.recommendedFor, experiencePoints:item.experiencePoints,
  curriculum:item.curriculum, teacherIntro:item.teacherIntro, classFormat:item.classFormat,
  address:[item.organization?.address,item.organization?.addressDetail].filter(Boolean).join(" ")
 })
+// The same public slot projection the class detail returns.
+const publicSlots = (slots: Awaited<ReturnType<typeof getPublicClassAvailableSlots>>) =>
+ slots.data.filter(slot=>!isHiddenPublicSlot(slot)).map(({optionId,startAt,endAt,isClosed,remainingCount})=>({optionId,startAt,endAt,isClosed,remainingCount}))
+// Academy class cards: one batched read of the class detail's price/image/format (same public filter as the
+// class detail) plus only the slots a card shows. The class detail keeps its full slot list for selection.
+async function academyClassCards<T extends { id: string }>(cards: T[]) {
+ const ids=cards.map(card=>card.id),client=getSupabaseServiceRoleClient(),now=Date.now()
+ const [details,slots]=await Promise.all([
+  loadAcademyCardDetails(client,ids).catch(()=>null),
+  Promise.all(ids.map(id=>getPublicClassAvailableSlots(id)))
+ ])
+ return cards.map((card,index)=>{
+  const detail=details?.get(card.id)
+  return {...card,
+   programType:detail?.programType ?? null, trialPrice:detail?.trialPrice ?? null, trialPriceConfirmed:detail?.trialPriceConfirmed ?? null,
+   coverImageUrl:detail?.coverImageUrl ?? null, classFormat:detail?.classFormat ?? null,
+   slotsError:details===null?"class_detail_unavailable":slots[index].error, slots:detail?cardSlots(publicSlots(slots[index]),now):[]}
+ })
+}
 // Use only the existing public aggregate, never a parent's private feedback row.
 const feedbackProjection = (summary: PublicFeedbackSummary) => ({ chips: summary.chips.map(({ id, count }) => ({ id, count, label: feedbackChipLabel(id) })) })
 function respond(request: Request, body: unknown, status=200) {
@@ -44,7 +65,8 @@ export async function GET(request:Request,{params}:{params:Promise<{path:string[
   if(!/^[a-zA-Z0-9_-]{1,100}$/.test(path[1])) return respond(request,{error:"not_found"},404)
   const academy=await getPublicAcademyPageByHandle(path[1])
   if(!academy) return respond(request,{error:"not_found"},404)
-  const [classes,feedback]=await Promise.all([getPublicAcademyClasses(academy.organizationId),getPublicAcademyFeedback(academy.organizationId)])
+  const [cards,feedback]=await Promise.all([getPublicAcademyClasses(academy.organizationId),getPublicAcademyFeedback(academy.organizationId)])
+  const classes=await academyClassCards(cards)
   const { organizationId,slug,name,branchName,address,phone,regionLabel,logoImageUrl,coverImageUrl,shortDescription,description,operatingHours,parkingInfo,directions }=academy
   return respond(request,{organizationId,slug,name,branchName,address,phone,regionLabel,logoImageUrl,coverImageUrl,shortDescription,description,operatingHours,parkingInfo,directions,classes,feedback:feedbackProjection(feedback)})
  }
@@ -58,7 +80,7 @@ export async function GET(request:Request,{params}:{params:Promise<{path:string[
  if(error) return respond(request,{error:"catalog_unavailable"},503)
  if(!data) return respond(request,{error:"not_found"},404)
  const [slots,feedback]=await Promise.all([getPublicClassAvailableSlots(path[1]),getPublicClassFeedback(path[1])])
- return respond(request,{...project(data),feedback:feedbackProjection(feedback),assignmentMode:data.assignmentMode,slotsError:slots.error,slots:slots.data.filter(slot=>!isHiddenPublicSlot(slot)).map(({optionId,startAt,endAt,isClosed,remainingCount})=>({optionId,startAt,endAt,isClosed,remainingCount}))})
+ return respond(request,{...project(data),feedback:feedbackProjection(feedback),assignmentMode:data.assignmentMode,slotsError:slots.error,slots:publicSlots(slots)})
  }
  if(path.length!==1 || !["home","classes","academies"].includes(path[0])) return respond(request,{error:"not_found"},404)
  const q=url.searchParams.get("q")??undefined,subjectCategory=url.searchParams.get("subjectCategory")??undefined,grade=url.searchParams.get("grade")
