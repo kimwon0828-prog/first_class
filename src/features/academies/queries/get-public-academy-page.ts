@@ -196,12 +196,13 @@ export const getPublicAcademyPageByHandle = async (handle: string): Promise<Publ
     return null
   }
 
-  const organization = await fetchOrganization(organizationId)
+  const [organization, publicProfile] = await Promise.all([
+    fetchOrganization(organizationId),
+    profileBySlug ? Promise.resolve(profileBySlug) : fetchAcademyPublicProfileByOrganizationId(organizationId)
+  ])
   if (!organization) {
     return null
   }
-
-  const publicProfile = profileBySlug ?? (await fetchAcademyPublicProfileByOrganizationId(organizationId))
 
   return {
     organizationId: organization.id,

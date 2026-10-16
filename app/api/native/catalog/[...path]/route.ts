@@ -8,7 +8,6 @@ import { getPublicClassAvailableSlots } from "@/features/applications/queries/ge
 import { isHiddenPublicSlot } from "@/features/applications/lib/public-class-slots"
 import { LEARNER_GRADES } from "@/shared/constants/education-taxonomy"
 import { resolveClassDiscoveryContext } from "@/features/classes/queries/resolve-class-discovery-context"
-import { getHomeAcademies } from "@/features/classes/queries/get-home-academies"
 import { getPublicClassDetail } from "@/features/classes/queries/get-public-class-detail"
 import { getAcademiesForList } from "@/features/academies/queries/get-academies-for-list"
 import { PARENT_LAUNCH_REGION } from "@/features/location/lib/parent-launch-region"
@@ -76,10 +75,29 @@ export async function GET(request:Request,{params}:{params:Promise<{path:string[
   return respond(request,{items:data.map(project)})
  }
  if(path.length===2 && path[0]==="classes" && /^[0-9a-f-]{36}$/i.test(path[1])) {
- const {data,error}=await getPublicClassDetail(path[1]);
+ const view=url.searchParams.get("view")
+ if(view && view!=="summary" && view!=="availability") return respond(request,{error:"invalid_query"},400)
+ if(view==="summary") {
+  const {data,error}=await getPublicClassDetail(path[1])
+  if(error) return respond(request,{error:"catalog_unavailable"},503)
+  if(!data) return respond(request,{error:"not_found"},404)
+  return respond(request,{...project(data),assignmentMode:data.assignmentMode})
+ }
+ if(view==="availability") {
+  // A thin visibility check keeps unpublished classes unavailable without loading their whole introduction twice.
+  const [visible,slots,feedback]=await Promise.all([
+   getSupabaseServiceRoleClient().from("classes").select("id").eq("id",path[1]).eq("is_active",true).is("archived_at",null).maybeSingle(),
+   getPublicClassAvailableSlots(path[1]),getPublicClassFeedback(path[1])
+  ])
+  if(visible.error) return respond(request,{error:"catalog_unavailable"},503)
+  if(!visible.data) return respond(request,{error:"not_found"},404)
+  return respond(request,{feedback:feedbackProjection(feedback),slotsError:slots.error,slots:publicSlots(slots)})
+ }
+ const [{data,error},slots,feedback]=await Promise.all([
+  getPublicClassDetail(path[1]),getPublicClassAvailableSlots(path[1]),getPublicClassFeedback(path[1])
+ ])
  if(error) return respond(request,{error:"catalog_unavailable"},503)
  if(!data) return respond(request,{error:"not_found"},404)
- const [slots,feedback]=await Promise.all([getPublicClassAvailableSlots(path[1]),getPublicClassFeedback(path[1])])
  return respond(request,{...project(data),feedback:feedbackProjection(feedback),assignmentMode:data.assignmentMode,slotsError:slots.error,slots:publicSlots(slots)})
  }
  if(path.length!==1 || !["home","classes","academies"].includes(path[0])) return respond(request,{error:"not_found"},404)
@@ -89,14 +107,18 @@ export async function GET(request:Request,{params}:{params:Promise<{path:string[
  const items=await getAcademiesForList({launchRegion:PARENT_LAUNCH_REGION,includeLogos:true,sort:"name",query:q})
  return respond(request,{items:items.map(({id,displayName,subjectTags,bname,sigungu,logoImageUrl})=>({id,displayName,subjectTags,locationLabel:[sigungu,bname].filter(Boolean).join(" "),logoImageUrl:logoImageUrl??null}))})
  }
- const context=await resolveClassDiscoveryContext({q,subjectCategory},path[0]==="home"&&!grade?{discoveryFetchLimit:6}:{})
+ // Launch-region academy discovery does not depend on the class/grade result. Start both immediately.
+ const [context,academies]=await Promise.all([
+  resolveClassDiscoveryContext({q,subjectCategory},path[0]==="home"&&!grade?{discoveryFetchLimit:6}:{}),
+  path[0]==="home"?getAcademiesForList({launchRegion:PARENT_LAUNCH_REGION,includeLogos:true,sort:"name"})
+   .then(data=>({data:data.slice(0,3),error:false})).catch(()=>({data:[],error:true})):Promise.resolve(null)
+ ])
  if(context.error) return respond(request,{error:"catalog_unavailable"},503)
  // Same eligibility helper as web Home; no new matching score or age inference.
  let items=grade?context.classes.filter(item=>isChildEligibleForClass(grade,item.targetAge)):context.classes
  const organization=url.searchParams.get("organization")
  if(organization) items=items.filter(item=>item.organization?.id===organization)
  if(path[0]==="home") items=items.slice(0,6)
- const academies=path[0]==="home"?await getHomeAcademies(context):null
  return respond(request,{items:items.map(project),categories:context.subjectCatalog.map(({id,code,name})=>({id,code,name})),locationLabel:context.locationFilterLabel,
  academies:academies?.data.map(({id,displayName,subjectTags,bname,sigungu,logoImageUrl})=>({id,displayName,subjectTags,locationLabel:[sigungu,bname].filter(Boolean).join(" "),logoImageUrl})),academiesError:academies?.error??false})
  } catch {return respond(request,{error:"catalog_unavailable"},503)}

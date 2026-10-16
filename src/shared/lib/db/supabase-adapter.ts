@@ -2541,32 +2541,15 @@ export const listAvailableScheduleSlotsByClassIdWithClient = async ({
 }): Promise<AvailableScheduleSlot[]> => {
   const now = new Date()
   const bookingCutoffIso = getTrialBookingCutoffDate(now).toISOString()
-  const { data: classData, error: classError } = await supabase
-    .from("classes")
-    .select("teacher_id")
-    .eq("id", classId)
-    .eq("is_active", true)
-      .is("archived_at", null)
-    .maybeSingle()
-
-  if (classError) {
-    throw new Error("failed_to_fetch_class_for_slots")
-  }
-
-  if (!classData) {
-    return []
-  }
-
-  const { data: classScheduleData, error: classScheduleError } = await supabase
-    .from("class_schedules")
-    .select(CLASS_SCHEDULE_SELECT_FIELDS)
-    .eq("class_id", classId)
-    .order("sort_order", { ascending: true })
-    .order("created_at", { ascending: true })
-
-  if (classScheduleError) {
-    throw new Error("failed_to_fetch_available_schedule_slots")
-  }
+  const [{ data: classData, error: classError }, { data: classScheduleData, error: classScheduleError }] = await Promise.all([
+    supabase.from("classes").select("teacher_id").eq("id", classId)
+      .eq("is_active", true).is("archived_at", null).maybeSingle(),
+    supabase.from("class_schedules").select(CLASS_SCHEDULE_SELECT_FIELDS).eq("class_id", classId)
+      .order("sort_order", { ascending: true }).order("created_at", { ascending: true })
+  ])
+  if (classError) throw new Error("failed_to_fetch_class_for_slots")
+  if (!classData) return []
+  if (classScheduleError) throw new Error("failed_to_fetch_available_schedule_slots")
 
   const classScheduleRows = (classScheduleData ?? []) as ClassScheduleRow[]
 

@@ -243,20 +243,20 @@ export const getAcademiesForList = async (
     organizationQuery = organizationQuery.in("sido", [...options.launchRegion.sidoNames])
       .eq("sigungu", options.launchRegion.sigungu)
   }
-  const { data: organizationData, error: organizationError } = await organizationQuery
-
+  const [{ data: organizationData, error: organizationError }, { categoryById, subjectById }] = await Promise.all([
+    organizationQuery,
+    loadSubjectMasterMapsByIdsWithClient(
+      serviceRoleClient,
+      classRows.map((row) => row.subject_category_id).filter((id): id is string => Boolean(id)),
+      classRows.map((row) => row.subject_id).filter((id): id is string => Boolean(id))
+    )
+  ])
   if (organizationError) {
     throw new Error("failed_to_fetch_public_organization_projection")
   }
 
   const organizationById = new Map<string, SafeOrganizationRow>(
     (((organizationData ?? []) as unknown) as SafeOrganizationRow[]).map((item) => [item.id, item])
-  )
-
-  const { categoryById, subjectById } = await loadSubjectMasterMapsByIdsWithClient(
-    serviceRoleClient,
-    classRows.map((row) => row.subject_category_id).filter((id): id is string => Boolean(id)),
-    classRows.map((row) => row.subject_id).filter((id): id is string => Boolean(id))
   )
 
   const groupedByOrganization = new Map<string, PublicClassRow[]>()
