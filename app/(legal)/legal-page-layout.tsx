@@ -1,3 +1,4 @@
+import { LEGAL_EFFECTIVE_DATE, LEGAL_UPDATED_DATE } from "@/shared/content/legal-documents"
 import Image from "next/image"
 import Link from "next/link"
 import type { ReactNode } from "react"
@@ -28,8 +29,8 @@ export function LegalPageLayout({
   description,
   notice,
   sections,
-  effectiveDate = "2026년 06월 25일",
-  lastUpdatedDate = "2026년 07월 07일"
+  effectiveDate = LEGAL_EFFECTIVE_DATE,
+  lastUpdatedDate = LEGAL_UPDATED_DATE
 }: LegalPageLayoutProps) {
   return (
     <main className={styles.page}>
