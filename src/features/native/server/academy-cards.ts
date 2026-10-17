@@ -3,7 +3,7 @@ import { isMissingTrialPriceConfirmationColumn, trialPriceConfirmedFromRow } fro
 
 // 앱 학원 상세의 수업 카드에 필요한 값만 만든다. 수업 상세(/classes/:id)의 전체 일정 응답은 바꾸지 않는다.
 export type CardSlot = { optionId: string; startAt: string; endAt: string; isClosed: boolean; remainingCount: number }
-export type AcademyCardDetail = { programType: string | null; trialPrice: number | null; trialPriceConfirmed: boolean | null; coverImageUrl: string | null; classFormat: string | null }
+export type AcademyCardDetail = { programType: string | null; trialPrice: number | null; trialPriceConfirmed: boolean | null; coverImageUrl: string | null; classFormat: string | null; targetAge: string | null }
 
 const DAY = 24 * 60 * 60 * 1000
 // 앱 bookable(slot) 및 서버 isTrialBookingBookable 과 같은 판정: 마감 아님, 남은 자리 있음, 시작이 24시간 뒤보다 늦음.
@@ -28,7 +28,7 @@ export async function loadAcademyCardDetails(client: SupabaseClient, classIds: r
   const ids = [...new Set(classIds.filter(Boolean))]
   if (!ids.length) return new Map()
   const query = (fields: string) => client.from("classes").select(fields).in("id", ids).eq("is_active", true).is("archived_at", null)
-  const base = "id, program_type, trial_price, cover_image_url"
+  const base = "id, program_type, trial_price, cover_image_url, target_age"
   const withFormat = await query(`${base}, class_format, trial_price_confirmed_at`)
   const confirmationMissing = isMissingTrialPriceConfirmationColumn(withFormat.error)
   const second = confirmationMissing ? await query(`${base}, class_format`)
@@ -37,12 +37,13 @@ export async function loadAcademyCardDetails(client: SupabaseClient, classIds: r
     ? (isMissingColumn(second.error) ? await query(base) : second)
     : (isMissingTrialPriceConfirmationColumn(second.error) ? await query(base) : second)
   if (error) throw new Error("failed_to_fetch_academy_card_details")
-  type Row = { id: string; program_type: string | null; trial_price: number | null; cover_image_url: string | null; class_format?: string | null; trial_price_confirmed_at?: string | null }
+  type Row = { id: string; program_type: string | null; trial_price: number | null; cover_image_url: string | null; target_age: string | null; class_format?: string | null; trial_price_confirmed_at?: string | null }
   return new Map(((data ?? []) as unknown as Row[]).map(row => [row.id, {
     programType: row.program_type ?? null,
     trialPrice: typeof row.trial_price === "number" ? row.trial_price : null,
     trialPriceConfirmed: trialPriceConfirmedFromRow(row),
     coverImageUrl: row.cover_image_url ?? null,
-    classFormat: row.class_format ?? null
+    classFormat: row.class_format ?? null,
+    targetAge: row.target_age ?? null
   }]))
 }

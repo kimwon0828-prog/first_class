@@ -74,6 +74,18 @@ const getLocalDateTimeParts = (value: string) => {
 
 const toDate = (value: string | Date) => (value instanceof Date ? value : new Date(value))
 
+// 같은 옵션의 formatter를 한 번만 만든다(호출마다 만들면 일정 수백 개 계산에 수백 ms가 든다). 결과는 같다.
+const SEOUL_PARTS_FORMAT = new Intl.DateTimeFormat("en-US-u-ca-gregory-nu-latn", {
+  timeZone: SEOUL_TIME_ZONE,
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+  weekday: "short",
+  hour: "2-digit",
+  minute: "2-digit",
+  hourCycle: "h23"
+})
+
 export const getSeoulDateTimeParts = (value: string | Date): SeoulDateTimeParts | null => {
   const date = toDate(value)
   if (Number.isNaN(date.getTime())) {
@@ -81,16 +93,7 @@ export const getSeoulDateTimeParts = (value: string | Date): SeoulDateTimeParts 
   }
 
   const parts = Object.fromEntries(
-    new Intl.DateTimeFormat("en-US-u-ca-gregory-nu-latn", {
-      timeZone: SEOUL_TIME_ZONE,
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-      weekday: "short",
-      hour: "2-digit",
-      minute: "2-digit",
-      hourCycle: "h23"
-    })
+    SEOUL_PARTS_FORMAT
       .formatToParts(date)
       .filter((part) => part.type !== "literal")
       .map((part) => [part.type, part.value])

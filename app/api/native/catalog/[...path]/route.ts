@@ -5,7 +5,6 @@ import { getPublicAcademyFeedback, getPublicClassFeedback } from "@/features/fee
 import { feedbackChipLabel, type PublicFeedbackSummary } from "@/features/feedback/lib/experience-feedback"
 import { formatRegularPrice } from "@/shared/lib/regular-price"
 import { getPublicClassAvailableSlots } from "@/features/applications/queries/get-public-class-available-slots"
-import { isHiddenPublicSlot } from "@/features/applications/lib/public-class-slots"
 import { LEARNER_GRADES } from "@/shared/constants/education-taxonomy"
 import { resolveClassDiscoveryContext } from "@/features/classes/queries/resolve-class-discovery-context"
 import { getPublicClassDetail } from "@/features/classes/queries/get-public-class-detail"
@@ -15,7 +14,8 @@ import { formatClassSubjectDisplayLabel } from "@/shared/lib/subject-master"
 import { formatStoredTargetGrades, isChildEligibleForClass } from "@/shared/constants/grade-options"
 import type { ClassSummary } from "@/shared/lib/db/adapter"
 import { getSupabaseServiceRoleClient } from "@/integrations/supabase/service-role"
-import { cardSlots, loadAcademyCardDetails } from "@/features/native/server/academy-cards"
+import { loadAcademyCardDetails } from "@/features/native/server/academy-cards"
+import { homeSection, loadCardSlots, publicSlotProjection, slotDurationMinutes, withinWeek, type CardSlotsResult } from "@/features/native/server/catalog-slots"
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
 // Only the web's existing public discovery projection is exposed here.
@@ -29,23 +29,30 @@ const project = (item: ClassSummary) => ({
  address:[item.organization?.address,item.organization?.addressDetail].filter(Boolean).join(" ")
 })
 // The same public slot projection the class detail returns.
-const publicSlots = (slots: Awaited<ReturnType<typeof getPublicClassAvailableSlots>>) =>
- slots.data.filter(slot=>!isHiddenPublicSlot(slot)).map(({optionId,startAt,endAt,isClosed,remainingCount})=>({optionId,startAt,endAt,isClosed,remainingCount}))
-// Academy class cards: one batched read of the class detail's price/image/format (same public filter as the
-// class detail) plus only the slots a card shows. The class detail keeps its full slot list for selection.
+const publicSlots = publicSlotProjection
+const eligibleGradesOf = (targetAge: string) => LEARNER_GRADES.filter(g=>isChildEligibleForClass(g.value,targetAge))
+// Academy class cards: one batched read of the class detail's price/image/format/target grades (same public filter as the
+// class detail) plus only the slots a card shows, read for all classes at once. The class detail keeps its full slot list.
+// Missing values stay null (no detail row → no price, grades or duration are made up).
 async function academyClassCards<T extends { id: string }>(cards: T[]) {
  const ids=cards.map(card=>card.id),client=getSupabaseServiceRoleClient(),now=Date.now()
  const [details,slots]=await Promise.all([
   loadAcademyCardDetails(client,ids).catch(()=>null),
-  Promise.all(ids.map(id=>getPublicClassAvailableSlots(id)))
+  loadCardSlots(ids,now)
  ])
- return cards.map((card,index)=>{
-  const detail=details?.get(card.id)
+ return cards.map(card=>{
+  const detail=details?.get(card.id),cardSlots=detail?slots.get(card.id)?.slots ?? []:[]
   return {...card,
    programType:detail?.programType ?? null, trialPrice:detail?.trialPrice ?? null, trialPriceConfirmed:detail?.trialPriceConfirmed ?? null,
    coverImageUrl:detail?.coverImageUrl ?? null, classFormat:detail?.classFormat ?? null,
-   slotsError:details===null?"class_detail_unavailable":slots[index].error, slots:detail?cardSlots(publicSlots(slots[index]),now):[]}
+   eligibleGrades:detail?.targetAge!=null?eligibleGradesOf(detail.targetAge):null, durationMinutes:slotDurationMinutes(cardSlots),
+   slotsError:details===null?"class_detail_unavailable":slots.get(card.id)?.slotsError ?? null, slots:cardSlots}
  })
+}
+// Home and class-list items: the existing projection plus the card slots (added fields only).
+const withSlots = (item: ClassSummary, slotsById: Map<string, CardSlotsResult>) => {
+ const slots=slotsById.get(item.id)
+ return {...project(item), slotsError:slots?.slotsError ?? null, slots:slots?.slots ?? []}
 }
 // Use only the existing public aggregate, never a parent's private feedback row.
 const feedbackProjection = (summary: PublicFeedbackSummary) => ({ chips: summary.chips.map(({ id, count }) => ({ id, count, label: feedbackChipLabel(id) })) })
@@ -102,14 +109,18 @@ export async function GET(request:Request,{params}:{params:Promise<{path:string[
  }
  if(path.length!==1 || !["home","classes","academies"].includes(path[0])) return respond(request,{error:"not_found"},404)
  const q=url.searchParams.get("q")??undefined,subjectCategory=url.searchParams.get("subjectCategory")??undefined,grade=url.searchParams.get("grade")
+ const within=url.searchParams.get("within")
  if((q?.length??0)>100 || (subjectCategory?.length??0)>60 || (grade?.length??0)>30) return respond(request,{error:"invalid_query"},400)
+ // within=7d (수업 목록만): 지금부터 7일 안에 신청 가능한 일정이 있는 수업만, 가장 빠른 일정 순.
+ if(within!==null && (within!=="7d" || path[0]!=="classes")) return respond(request,{error:"invalid_query"},400)
  if(path[0]==="academies") {
  const items=await getAcademiesForList({launchRegion:PARENT_LAUNCH_REGION,includeLogos:true,sort:"name",query:q})
  return respond(request,{items:items.map(({id,displayName,subjectTags,bname,sigungu,logoImageUrl})=>({id,displayName,subjectTags,locationLabel:[sigungu,bname].filter(Boolean).join(" "),logoImageUrl:logoImageUrl??null}))})
  }
  // Launch-region academy discovery does not depend on the class/grade result. Start both immediately.
  const [context,academies]=await Promise.all([
-  resolveClassDiscoveryContext({q,subjectCategory},path[0]==="home"&&!grade?{discoveryFetchLimit:6}:{}),
+  // 홈은 이번 주 수업을 고른 뒤 6개로 자르므로 앞의 몇 개만 미리 불러오지 않는다.
+  resolveClassDiscoveryContext({q,subjectCategory}),
   path[0]==="home"?getAcademiesForList({launchRegion:PARENT_LAUNCH_REGION,includeLogos:true,sort:"name"})
    .then(data=>({data:data.slice(0,3),error:false})).catch(()=>({data:[],error:true})):Promise.resolve(null)
  ])
@@ -118,8 +129,12 @@ export async function GET(request:Request,{params}:{params:Promise<{path:string[
  let items=grade?context.classes.filter(item=>isChildEligibleForClass(grade,item.targetAge)):context.classes
  const organization=url.searchParams.get("organization")
  if(organization) items=items.filter(item=>item.organization?.id===organization)
- if(path[0]==="home") items=items.slice(0,6)
- return respond(request,{items:items.map(project),categories:context.subjectCatalog.map(({id,code,name})=>({id,code,name})),locationLabel:context.locationFilterLabel,
+ const now=Date.now(),slotsById=await loadCardSlots(items.map(item=>item.id),now)
+ // 홈: 이번 주 신청 가능 수업(this_week) → 없으면 학년 조건만 적용한 전체를 일정 빠른 순(upcoming). 6개로 자르는 것은 그 뒤.
+ const home=path[0]==="home"?homeSection(items,slotsById,now):null
+ if(home) items=home.items.slice(0,6)
+ else if(within==="7d") items=withinWeek(items,slotsById,now)
+ return respond(request,{items:items.map(item=>withSlots(item,slotsById)),...(home?{section:home.section}:{}),categories:context.subjectCatalog.map(({id,code,name})=>({id,code,name})),locationLabel:context.locationFilterLabel,
  academies:academies?.data.map(({id,displayName,subjectTags,bname,sigungu,logoImageUrl})=>({id,displayName,subjectTags,locationLabel:[sigungu,bname].filter(Boolean).join(" "),logoImageUrl})),academiesError:academies?.error??false})
  } catch {return respond(request,{error:"catalog_unavailable"},503)}
 }
