@@ -61,6 +61,11 @@ const none={slot_end_at:null,duration_minutes:null};
   '@/integrations/supabase/service-role':{getSupabaseServiceRoleClient:()=>serviceRole},
   '@/features/native/server/academy-cards':load('src/features/native/server/academy-cards.ts',{'@/shared/lib/db/trial-price-confirmation':load('src/shared/lib/db/trial-price-confirmation.ts',{})})
  };
+ // Card slots are read for all classes at once; the fixture answers per class exactly as the single read did.
+ stub['@/features/native/server/catalog-slots']=load('src/features/native/server/catalog-slots.ts',{
+  '@/features/applications/lib/public-class-slots':stub['@/features/applications/lib/public-class-slots'],
+  '@/features/applications/queries/get-public-class-available-slots':{getPublicClassesAvailableSlots:async ids=>new Map(await Promise.all(ids.map(async id=>[id,await stub['@/features/applications/queries/get-public-class-available-slots'].getPublicClassAvailableSlots(id)])))},
+  '@/features/native/server/academy-cards':stub['@/features/native/server/academy-cards']});
  const {GET}=load('app/api/native/catalog/[...path]/route.ts',stub);
  const fetchAcademy=async()=>(await GET(new Request('http://localhost/api/native/catalog/academies/s'),{params:Promise.resolve({path:['academies','s']})})).json();
  const body=await fetchAcademy();

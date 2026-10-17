@@ -25,8 +25,12 @@ const stub={
  '@/shared/lib/subject-master':{formatClassSubjectDisplayLabel:()=>''},
  '@/shared/constants/grade-options':{formatStoredTargetGrades:v=>v,isChildEligibleForClass:()=>true},
  '@/integrations/supabase/service-role':{getSupabaseServiceRoleClient:()=>({from(){const q={select:()=>q,eq:()=>q,is:()=>q,maybeSingle:async()=>({data:visible?{id}:null,error:visibilityError})};return q;}})},
- '@/features/native/server/academy-cards':{cardSlots:()=>[],loadAcademyCardDetails:async()=>new Map()}
+ '@/features/native/server/academy-cards':{cardSlots:()=>[],isCardBookable:()=>true,loadAcademyCardDetails:async()=>new Map()}
 };
+stub['@/features/native/server/catalog-slots']=load('src/features/native/server/catalog-slots.ts',{
+ '@/features/applications/lib/public-class-slots':stub['@/features/applications/lib/public-class-slots'],
+ '@/features/applications/queries/get-public-class-available-slots':{getPublicClassesAvailableSlots:async ids=>new Map(await Promise.all(ids.map(async id=>[id,await slots()])))},
+ '@/features/native/server/academy-cards':stub['@/features/native/server/academy-cards']});
 const {GET}=load('app/api/native/catalog/[...path]/route.ts',stub);
 const get=(view)=>GET(new Request('https://example.invalid/api/native/catalog/classes/'+id+(view?'?view='+view:'')),{params:Promise.resolve({path:['classes',id]})});
 (async()=>{

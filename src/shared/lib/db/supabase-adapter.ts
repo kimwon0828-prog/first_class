@@ -1684,6 +1684,31 @@ const getStudioTeacherDisplayNameMap = async (teacherIds: string[]) => {
 
 const getTeacherNamesByIds = async (teacherIds: string[]) => getStudioTeacherDisplayNameMap(teacherIds)
 
+// 신청 행을 일정 블록별 신청 수로 센다(블록 id가 없으면 시작 시각으로 맞춘다). 단일·묶음 조회가 같은 규칙을 쓴다.
+const countAppliedBySlotId = (
+  applications: ReadonlyArray<{ requested_schedule_block_id: string | null; requested_slot_at: string | null }>,
+  scheduleRows: ScheduleBlockRow[]
+) => {
+  const counts = new Map<string, number>()
+  const slotIdByStartAt = new Map(scheduleRows.map((row) => [row.start_at, row.id]))
+
+  for (const item of applications) {
+    const matchedSlotId =
+      item.requested_schedule_block_id ??
+      (typeof item.requested_slot_at === "string"
+        ? (slotIdByStartAt.get(item.requested_slot_at) ?? null)
+        : null)
+
+    if (!matchedSlotId) {
+      continue
+    }
+
+    counts.set(matchedSlotId, (counts.get(matchedSlotId) ?? 0) + 1)
+  }
+
+  return counts
+}
+
 const getAppliedCountByTeacherScheduleBlockIdWithClient = async (
   supabase: SupabaseClient,
   teacherId: string,
@@ -1703,24 +1728,7 @@ const getAppliedCountByTeacherScheduleBlockIdWithClient = async (
     throw new Error("failed_to_count_teacher_schedule_applications")
   }
 
-  const counts = new Map<string, number>()
-  const slotIdByStartAt = new Map(scheduleRows.map((row) => [row.start_at, row.id]))
-
-  for (const item of data ?? []) {
-    const matchedSlotId =
-      item.requested_schedule_block_id ??
-      (typeof item.requested_slot_at === "string"
-        ? (slotIdByStartAt.get(item.requested_slot_at) ?? null)
-        : null)
-
-    if (!matchedSlotId) {
-      continue
-    }
-
-    counts.set(matchedSlotId, (counts.get(matchedSlotId) ?? 0) + 1)
-  }
-
-  return counts
+  return countAppliedBySlotId(data ?? [], scheduleRows)
 }
 
 const getAppliedCountByTeacherScheduleBlockId = async (
@@ -1750,24 +1758,7 @@ const getAppliedCountByClassScheduleBlockIdWithClient = async (
     throw new Error("failed_to_count_class_schedule_applications")
   }
 
-  const counts = new Map<string, number>()
-  const slotIdByStartAt = new Map(scheduleRows.map((row) => [row.start_at, row.id]))
-
-  for (const item of data ?? []) {
-    const matchedSlotId =
-      item.requested_schedule_block_id ??
-      (typeof item.requested_slot_at === "string"
-        ? (slotIdByStartAt.get(item.requested_slot_at) ?? null)
-        : null)
-
-    if (!matchedSlotId) {
-      continue
-    }
-
-    counts.set(matchedSlotId, (counts.get(matchedSlotId) ?? 0) + 1)
-  }
-
-  return counts
+  return countAppliedBySlotId(data ?? [], scheduleRows)
 }
 
 const assertTeacherBelongsToOrganization = async (teacherId: string, organizationId: string) => {
@@ -2485,8 +2476,9 @@ const getActorNameMap = async (actorIds: string[]) => {
 // Parent availability needs both block and occurrence counts for the same class.
 // Read active reservations once; keep the existing aggregate-only service client
 // boundary and never return reservation rows in the public slot DTO.
-const getParentSlotReservationCounts = async (
-  classId: string,
+type ParentSlotReservationRow = { requested_schedule_block_id: string | null; requested_slot_at: string | null; class_schedule_id: string | null }
+const countParentSlotReservations = (
+  rows: ReadonlyArray<ParentSlotReservationRow>,
   scheduleRows: ScheduleBlockRow[],
   classScheduleIds: string[]
 ) => {
@@ -2494,29 +2486,36 @@ const getParentSlotReservationCounts = async (
   const byOccurrence = new Map<string, number>()
   const slotIdByStartAt = new Map(scheduleRows.map((row) => [row.start_at, row.id]))
   const scheduleIds = new Set(classScheduleIds)
+  for (const row of rows) {
+    const blockId = row.requested_schedule_block_id ?? (row.requested_slot_at ? slotIdByStartAt.get(row.requested_slot_at) : undefined)
+    if (blockId) byBlock.set(blockId, (byBlock.get(blockId) ?? 0) + 1)
+    if (row.requested_slot_at && row.class_schedule_id && scheduleIds.has(row.class_schedule_id)) {
+      const key = buildScheduleOccurrenceReservationKey(row.class_schedule_id, row.requested_slot_at)
+      byOccurrence.set(key, (byOccurrence.get(key) ?? 0) + 1)
+    }
+  }
+  return { byBlock, byOccurrence }
+}
+const getParentSlotReservationCounts = async (
+  classId: string,
+  scheduleRows: ScheduleBlockRow[],
+  classScheduleIds: string[]
+) => {
   const client = getSupabaseServiceRoleClient()
-  let received = 0
+  const rows: ParentSlotReservationRow[] = []
   for (;;) {
     const { data, count, error } = await client.from("trial_applications")
       .select("id,requested_schedule_block_id,requested_slot_at,class_schedule_id", { count: "exact" })
       .eq("class_id", classId)
       .in("status", ACTIVE_APPLICATION_STATUSES)
-      .order("id").range(received, received + 999)
+      .order("id").range(rows.length, rows.length + 999)
     if (error) throw new Error("failed_to_fetch_available_schedule_slots")
-    const rows = data ?? []
-    for (const row of rows) {
-      const blockId = row.requested_schedule_block_id ?? slotIdByStartAt.get(row.requested_slot_at)
-      if (blockId) byBlock.set(blockId, (byBlock.get(blockId) ?? 0) + 1)
-      if (row.requested_slot_at && scheduleIds.has(row.class_schedule_id)) {
-        const key = buildScheduleOccurrenceReservationKey(row.class_schedule_id, row.requested_slot_at)
-        byOccurrence.set(key, (byOccurrence.get(key) ?? 0) + 1)
-      }
-    }
-    received += rows.length
+    const page = data ?? []
+    rows.push(...page)
     // Advance by actual rows: PostgREST can cap a requested page below 1000.
-    if (!rows.length || (count !== null && received >= count)) break
+    if (!page.length || (count !== null && rows.length >= count)) break
   }
-  return { byBlock, byOccurrence }
+  return countParentSlotReservations(rows, scheduleRows, classScheduleIds)
 }
 
 // Public availability returns only available slots, never internal reasons.
@@ -2531,6 +2530,71 @@ async function excludeDateClosedSlots(supabase: SupabaseClient, classId: string,
   }
   return slots.filter((_,index)=>!closed.has(index))
 }
+
+// 반복 일정(class_schedules) 수업의 공개 일정: 다가오는 회차 중 신청 가능 시각 이후, 같은 시간대 블록의 정원·마감을 따른다.
+const buildClassScheduleSlots = (input: {
+  rows: ClassScheduleRow[]
+  existingBlocks: ScheduleBlockRow[]
+  teacherId: string | null
+  byBlock: Map<string, number>
+  byOccurrence: Map<string, number>
+  now: Date
+}) => {
+  const blockByRange = new Map<string, ScheduleBlockRow>()
+
+  for (const block of input.existingBlocks) {
+    const key = `${block.start_at}|${block.end_at}`
+    const current = blockByRange.get(key)
+    if (!current || current.type !== "available") {
+      blockByRange.set(key, block)
+    }
+  }
+
+  return input.rows
+    .flatMap((row) => {
+      return generateUpcomingClassScheduleOccurrences(row, input.now)
+        .filter((occurrence) => isTrialBookingBookable(occurrence.startAt, input.now))
+        .map((occurrence) => {
+          const key = `${occurrence.startAt}|${occurrence.endAt}`
+          const matchedBlock = blockByRange.get(key) ?? null
+          const isAvailableBlock = matchedBlock?.type === "available"
+          const capacity = matchedBlock?.capacity ?? Math.max(1, row.capacity ?? 1)
+          const appliedCount =
+            matchedBlock && isAvailableBlock
+              ? (input.byBlock.get(matchedBlock.id) ?? 0)
+              : (input.byOccurrence.get(buildScheduleOccurrenceReservationKey(row.id, occurrence.startAt)) ?? 0)
+
+          return mapClassScheduleOccurrenceSlot({
+            row,
+            teacherId: input.teacherId,
+            startAt: occurrence.startAt,
+            endAt: occurrence.endAt,
+            label: occurrence.label,
+            capacity,
+            appliedCount,
+            scheduleBlockId: isAvailableBlock ? matchedBlock?.id ?? null : null,
+            isClosed:
+              row.booking_status === "closed" ||
+              (matchedBlock != null && !isAvailableBlock ? true : undefined)
+          })
+        })
+    })
+    .sort((a, b) => a.startAt.localeCompare(b.startAt))
+}
+
+// 일정 블록(schedule_blocks) 수업의 공개 일정: 남은 자리가 없으면 마감.
+const buildScheduleBlockSlots = (scheduleRows: ScheduleBlockRow[], appliedCountBySlotId: Map<string, number>) =>
+  scheduleRows.map((row) => {
+    const mapped = mapAvailableSlot(row)
+    const appliedCount = appliedCountBySlotId.get(row.id) ?? 0
+    const remainingCount = Math.max(0, row.capacity - appliedCount)
+    return {
+      ...mapped,
+      appliedCount,
+      remainingCount,
+      isClosed: remainingCount <= 0
+    }
+  })
 
 export const listAvailableScheduleSlotsByClassIdWithClient = async ({
   classId,
@@ -2573,51 +2637,15 @@ export const listAvailableScheduleSlotsByClassIdWithClient = async ({
 
     const existingBlocks = (existingBlockData ?? []) as ScheduleBlockRow[]
     const availableBlocks = existingBlocks.filter((row) => row.type === "available")
-    const { byBlock: appliedCountBySlotId, byOccurrence: appliedCountByOccurrence } = await getParentSlotReservationCounts(
+    const { byBlock, byOccurrence } = await getParentSlotReservationCounts(
       classId,
       availableBlocks,
       visibleClassScheduleRows.map((row) => row.id)
     )
-    const blockByRange = new Map<string, ScheduleBlockRow>()
 
-    for (const block of existingBlocks) {
-      const key = `${block.start_at}|${block.end_at}`
-      const current = blockByRange.get(key)
-      if (!current || current.type !== "available") {
-        blockByRange.set(key, block)
-      }
-    }
-
-    return excludeDateClosedSlots(supabase, classId, visibleClassScheduleRows
-      .flatMap((row) => {
-        return generateUpcomingClassScheduleOccurrences(row, now)
-          .filter((occurrence) => isTrialBookingBookable(occurrence.startAt, now))
-          .map((occurrence) => {
-            const key = `${occurrence.startAt}|${occurrence.endAt}`
-            const matchedBlock = blockByRange.get(key) ?? null
-            const isAvailableBlock = matchedBlock?.type === "available"
-            const capacity = matchedBlock?.capacity ?? Math.max(1, row.capacity ?? 1)
-            const appliedCount =
-              matchedBlock && isAvailableBlock
-                ? (appliedCountBySlotId.get(matchedBlock.id) ?? 0)
-                : (appliedCountByOccurrence.get(buildScheduleOccurrenceReservationKey(row.id, occurrence.startAt)) ?? 0)
-
-            return mapClassScheduleOccurrenceSlot({
-              row,
-              teacherId: classData.teacher_id,
-              startAt: occurrence.startAt,
-              endAt: occurrence.endAt,
-              label: occurrence.label,
-              capacity,
-              appliedCount,
-              scheduleBlockId: isAvailableBlock ? matchedBlock?.id ?? null : null,
-              isClosed:
-                row.booking_status === "closed" ||
-                (matchedBlock != null && !isAvailableBlock ? true : undefined)
-            })
-          })
-      })
-      .sort((a, b) => a.startAt.localeCompare(b.startAt)))
+    return excludeDateClosedSlots(supabase, classId, buildClassScheduleSlots({
+      rows: visibleClassScheduleRows, existingBlocks, teacherId: classData.teacher_id, byBlock, byOccurrence, now
+    }))
   }
 
   const { data: primaryData, error: primaryError } = await supabase
@@ -2661,17 +2689,124 @@ export const listAvailableScheduleSlotsByClassIdWithClient = async ({
     ? await getAppliedCountByTeacherScheduleBlockIdWithClient(supabase, classData.teacher_id, scheduleRows)
     : await getAppliedCountByClassScheduleBlockIdWithClient(supabase, classId, scheduleRows)
 
-  return excludeDateClosedSlots(supabase, classId, scheduleRows.map((row) => {
-    const mapped = mapAvailableSlot(row)
-    const appliedCount = appliedCountBySlotId.get(row.id) ?? 0
-    const remainingCount = Math.max(0, row.capacity - appliedCount)
-    return {
-      ...mapped,
-      appliedCount,
-      remainingCount,
-      isClosed: remainingCount <= 0
+  return excludeDateClosedSlots(supabase, classId, buildScheduleBlockSlots(scheduleRows, appliedCountBySlotId))
+}
+
+// 여러 수업의 공개 일정을 한 번에 읽는다(홈·수업 목록·학원 상세 카드). 수업마다 위 함수와 같은 규칙·같은 결과를 낸다.
+// 수업·반복 일정·일정 블록·신청 수는 `in`으로 묶어 읽고, 날짜 휴무 확인만 수업별로 부른다(그 RPC가 수업 하나를 받는다).
+// 묶음 조회가 실패하면 이번 호출의 모든 수업이 실패, 휴무 확인이 실패하면 그 수업만 실패로 돌려준다.
+export const listAvailableScheduleSlotsByClassIdsWithClient = async ({
+  classIds,
+  supabase
+}: {
+  classIds: readonly string[]
+  supabase: SupabaseClient
+}): Promise<Map<string, { data: AvailableScheduleSlot[]; error: boolean }>> => {
+  const ids = [...new Set(classIds.filter(Boolean))]
+  const result = new Map<string, { data: AvailableScheduleSlot[]; error: boolean }>()
+  if (!ids.length) return result
+  const now = new Date()
+  const bookingCutoffIso = getTrialBookingCutoffDate(now).toISOString()
+  const bookingCutoffMs = Date.parse(bookingCutoffIso)
+  type Page = PromiseLike<{ data: unknown; count: number | null; error: unknown }>
+  // PostgREST가 한 번에 주는 행 수에는 상한이 있으므로 실제로 받은 행 수만큼 넘겨 끝까지 읽는다.
+  const readAll = async <T,>(keys: string[], page: (chunk: string[], from: number, to: number) => Page) => {
+    const rows: T[] = []
+    for (const chunk of chunkArray(keys, 100)) {
+      let received = 0
+      for (;;) {
+        const { data, count, error } = await page(chunk, received, received + 999)
+        if (error) throw new Error("failed_to_fetch_available_schedule_slots")
+        const batch = (data ?? []) as T[]
+        rows.push(...batch)
+        received += batch.length
+        if (!batch.length || (count !== null && received >= count)) break
+      }
     }
+    return rows
+  }
+  const groupBy = <T,>(rows: T[], key: (row: T) => string | null | undefined) => {
+    const groups = new Map<string, T[]>()
+    for (const row of rows) {
+      const value = key(row)
+      if (value) groups.set(value, [...(groups.get(value) ?? []), row])
+    }
+    return groups
+  }
+  const service = getSupabaseServiceRoleClient()
+  type ApplicationRow = ParentSlotReservationRow & { class_id: string }
+  // 신청 수도 같은 단계에서 읽는다(어느 경로인지 정해지기 전이라 모든 수업 것을 읽고, 쓰는 수업 것만 센다).
+  const [classRows, scheduleRows, blockRows, applications] = await Promise.all([
+    readAll<{ id: string; teacher_id: string | null }>(ids, (chunk, from, to) => supabase.from("classes")
+      .select("id, teacher_id", { count: "exact" }).in("id", chunk).eq("is_active", true).is("archived_at", null)
+      .order("id").range(from, to)),
+    readAll<ClassScheduleRow>(ids, (chunk, from, to) => supabase.from("class_schedules")
+      .select(CLASS_SCHEDULE_SELECT_FIELDS, { count: "exact" }).in("class_id", chunk)
+      .order("sort_order", { ascending: true }).order("created_at", { ascending: true }).order("id").range(from, to)),
+    // 반복 일정 수업은 끝이 기준 시각 뒤인 모든 블록을, 블록 수업은 그중 시작이 기준 시각 뒤인 available 블록을 쓴다.
+    readAll<ScheduleBlockRow>(ids, (chunk, from, to) => supabase.from("schedule_blocks")
+      .select(SCHEDULE_BLOCK_SELECT_FIELDS, { count: "exact" }).in("class_id", chunk).gt("end_at", bookingCutoffIso)
+      .order("start_at", { ascending: true }).order("id").range(from, to)),
+    readAll<ApplicationRow>(ids, (chunk, from, to) => service.from("trial_applications")
+      .select("id,class_id,requested_schedule_block_id,requested_slot_at,class_schedule_id", { count: "exact" })
+      .in("class_id", chunk).in("status", ACTIVE_APPLICATION_STATUSES).order("id").range(from, to))
+  ])
+  const teacherByClass = new Map(classRows.map((row) => [row.id, row.teacher_id ?? null]))
+  const schedulesByClass = groupBy(scheduleRows, (row) => row.class_id)
+  const blocksByClass = groupBy(blockRows, (row) => row.class_id)
+  const primaryBlocksOf = (classId: string) => (blocksByClass.get(classId) ?? [])
+    .filter((row) => row.type === "available" && Date.parse(row.start_at) > bookingCutoffMs)
+  const scheduleClasses: string[] = [], blockClasses: string[] = [], fallbackClasses: string[] = []
+  for (const classId of ids) {
+    const schedules = schedulesByClass.get(classId) ?? []
+    if (!teacherByClass.has(classId)) result.set(classId, { data: [], error: false })
+    else if (schedules.length) {
+      if (schedules.some((row) => (row.booking_status ?? "open") !== "hidden")) scheduleClasses.push(classId)
+      else result.set(classId, { data: [], error: false })
+    } else if (primaryBlocksOf(classId).length) blockClasses.push(classId)
+    else if (teacherByClass.get(classId)) fallbackClasses.push(classId)
+    else result.set(classId, { data: [], error: false })
+  }
+  const teacherIds = [...new Set(fallbackClasses.map((classId) => teacherByClass.get(classId)!))]
+  type TeacherApplicationRow = { requested_schedule_block_id: string | null; requested_slot_at: string | null; classes: { teacher_id: string } | { teacher_id: string }[] | null }
+  // 강사 공통 블록으로 대신하는 수업이 있을 때만 한 단계 더 읽는다.
+  const [teacherBlocks, teacherApplications] = await Promise.all([
+    readAll<ScheduleBlockRow>(teacherIds, (chunk, from, to) => supabase.from("schedule_blocks")
+      .select("id, teacher_id, class_id, start_at, end_at, capacity", { count: "exact" })
+      .is("class_id", null).in("teacher_id", chunk).eq("type", "available").gt("start_at", bookingCutoffIso)
+      .order("start_at", { ascending: true }).order("id").range(from, to)),
+    readAll<TeacherApplicationRow>(teacherIds, (chunk, from, to) => service.from("trial_applications")
+      .select("id, requested_schedule_block_id, requested_slot_at, classes!inner(teacher_id)", { count: "exact" })
+      .in("classes.teacher_id", chunk).in("status", ACTIVE_APPLICATION_STATUSES).order("id").range(from, to))
+  ])
+  const applicationsByClass = groupBy(applications, (row) => row.class_id)
+  const teacherBlocksByTeacher = groupBy(teacherBlocks, (row) => row.teacher_id)
+  const teacherApplicationsByTeacher = groupBy(teacherApplications, (row) => {
+    const owner = Array.isArray(row.classes) ? row.classes[0] : row.classes
+    return owner?.teacher_id
+  })
+  const candidates = new Map<string, AvailableScheduleSlot[]>()
+  for (const classId of scheduleClasses) {
+    const visibleRows = schedulesByClass.get(classId)!.filter((row) => (row.booking_status ?? "open") !== "hidden")
+    const existingBlocks = blocksByClass.get(classId) ?? []
+    const { byBlock, byOccurrence } = countParentSlotReservations(
+      applicationsByClass.get(classId) ?? [], existingBlocks.filter((row) => row.type === "available"), visibleRows.map((row) => row.id))
+    candidates.set(classId, buildClassScheduleSlots({ rows: visibleRows, existingBlocks, teacherId: teacherByClass.get(classId) ?? null, byBlock, byOccurrence, now }))
+  }
+  for (const classId of blockClasses) {
+    const rows = primaryBlocksOf(classId)
+    candidates.set(classId, buildScheduleBlockSlots(rows, countAppliedBySlotId(applicationsByClass.get(classId) ?? [], rows)))
+  }
+  for (const classId of fallbackClasses) {
+    const teacherId = teacherByClass.get(classId)!
+    const rows = teacherBlocksByTeacher.get(teacherId) ?? []
+    candidates.set(classId, buildScheduleBlockSlots(rows, countAppliedBySlotId(teacherApplicationsByTeacher.get(teacherId) ?? [], rows)))
+  }
+  await Promise.all([...candidates].map(async ([classId, slots]) => {
+    try { result.set(classId, { data: await excludeDateClosedSlots(supabase, classId, slots), error: false }) }
+    catch { result.set(classId, { data: [], error: true }) }
   }))
+  return result
 }
 
 type ExperienceReportRow = {
