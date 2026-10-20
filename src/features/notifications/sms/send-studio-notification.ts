@@ -1,3 +1,4 @@
+import { canSendApplicationNotification } from "@/features/notifications/lib/app-store-review-recipient"
 import "server-only"
 import { isConfirmedPushTestApplication } from "@/features/notifications/push/confirmed-policy"
 
@@ -320,7 +321,11 @@ const sendTeacherSms = async (input: SendStudioNotificationInput) => {
 
 export const sendStudioNotification = async (
   input: SendStudioNotificationInput
-): Promise<SendStudioNotificationResult> => {
+) : Promise<SendStudioNotificationResult> => {
+  if (!await canSendApplicationNotification(input.application.id)) return {
+    teacher: { status: "skipped", errorMessage: "review_notification_suppressed", normalizedPhone: null },
+    admin: { status: "skipped", errorMessage: "review_notification_suppressed", normalizedPhone: null }
+  }
   const teacherResult = input.skipTeacher
     ? {
         recipient: {

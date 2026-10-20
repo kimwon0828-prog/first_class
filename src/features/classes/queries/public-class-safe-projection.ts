@@ -1,3 +1,5 @@
+import { requireAppReviewClass, REVIEW_DEMO_ORGANIZATION } from "@/shared/lib/db/app-store-review-access"
+import type { SupabaseClient } from "@supabase/supabase-js"
 import type { ParentLaunchRegion } from "@/features/location/lib/parent-launch-region"
 import "server-only"
 
@@ -407,16 +409,21 @@ export const listPublicClassesWithSafeProjection = async (
     .map(({ summary }) => summary)
 }
 
-export const getPublicClassDetailWithSafeProjection = async (
-  classId: string
-): Promise<ClassDetail | null> => {
+export const getPublicClassDetailWithSafeProjection = (classId: string): Promise<ClassDetail | null> => loadClassDetailProjection(classId, false)
+export async function getAppReviewClassDetailWithSafeProjection(client: SupabaseClient, classId: string): Promise<ClassDetail | null> {
+  await requireAppReviewClass(client, classId)
+  return loadClassDetailProjection(classId, true)
+}
+const loadClassDetailProjection = async (classId: string, review: boolean): Promise<ClassDetail | null> => {
   const serviceRoleClient = getSupabaseServiceRoleClient()
-  const detailQuery = (fields: string) => serviceRoleClient
+  const detailQuery = (fields: string) => {
+    const query = serviceRoleClient
     .from("classes")
     .select(fields)
     .eq("id", classId)
-    .eq("is_active", true).is("archived_at", null)
-    .maybeSingle()
+    .eq("is_active", !review).is("archived_at", null)
+    return (review ? query.eq("organization_id", REVIEW_DEMO_ORGANIZATION) : query).maybeSingle()
+  }
   const { data, error } = await selectWithTrialPriceConfirmation(detailQuery,
     `${PUBLIC_CLASS_SELECT_FIELDS}, regular_price_type, regular_price_amount, regular_price_note`, LEGACY_PUBLIC_CLASS_SELECT_FIELDS)
 

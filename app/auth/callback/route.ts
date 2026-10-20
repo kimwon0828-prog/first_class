@@ -9,6 +9,7 @@ import { detectOAuthEmailConflict } from "@/features/auth/lib/oauth-account-conf
 import { ensureParentProfile, getProfileForUser } from "@/features/auth/lib/profile-sync"
 import { resolvePostAuthRedirect } from "@/features/auth/lib/redirect"
 import { getSupabaseServerClient } from "@/integrations/supabase/server"
+import { completeAppleDeletionReauth } from "@/features/auth/lib/apple-deletion-grant-server"
 
 /*
  * 돌아갈 자리.
@@ -70,7 +71,7 @@ export async function GET(request: Request) {
   }
 
   const supabase = await getSupabaseServerClient()
-  const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code).catch(() => ({ error: true }))
+  const { data: exchangeData, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code).catch(() => ({ data: null, error: true }))
 
   if (exchangeError) {
     return NextResponse.redirect(new URL(`/auth/sign-in?error=oauth&returnTo=${encodeURIComponent(next)}`, requestUrl.origin))
@@ -92,6 +93,8 @@ export async function GET(request: Request) {
     )
   }
 
+  const deletionReauth = await completeAppleDeletionReauth(user.id, hasAppleIdentity(user) ? exchangeData?.session?.provider_refresh_token : undefined)
+  if (deletionReauth !== "none") return NextResponse.redirect(new URL(`/my?delete=1&appleDeletion=${deletionReauth}`, requestUrl.origin))
   if (await isMyParentAccountDeletionPending()) return NextResponse.redirect(new URL("/my", requestUrl.origin))
 
   const apple = hasAppleIdentity(user)

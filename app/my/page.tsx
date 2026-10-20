@@ -15,12 +15,18 @@ import { MyFrame } from "./my-frame"
 export const dynamic = "force-dynamic"
 export const revalidate = 0
 
-export default async function MyPage({ searchParams }: { searchParams: Promise<{ edit?: string; child?: string }> }) {
+export default async function MyPage({ searchParams }: { searchParams: Promise<{ edit?: string; child?: string; delete?: string; appleDeletion?: string }> }) {
   noStore()
   const params = await searchParams
+  if (params.delete === "1" && ["mismatch", "unavailable"].includes(params.appleDeletion ?? "")) return <MyFrame>
+    <section className={styles.state} role="alert"><h2 className={styles.stateTitle}>Apple 본인 확인을 완료하지 못했어요.</h2>
+      <p>{params.appleDeletion === "mismatch" ? "다른 Apple 계정으로 로그인되어 탈퇴를 중단했어요. 기존 계정의 데이터는 삭제하지 않았어요." : "탈퇴할 계정으로 다시 Apple 본인 확인을 해 주세요. 계정 데이터는 삭제하지 않았어요."}</p>
+      <a href="/auth/sign-in?returnTo=%2Fmy">로그인 다시 확인</a></section>
+  </MyFrame>
   const returnTo = withParentChild(params.edit === "profile" ? "/my?edit=profile" : "/my", typeof params.child === "string" ? params.child : null)
   if (await isMyParentAccountDeletionPending()) return <MyFrame><ParentAccountDeletion recovery /></MyFrame>
   await requireParentAccess({ returnTo })
+  if (params.delete === "1") return <MyFrame><ParentAccountDeletion /></MyFrame>
   const [profile, children, auth] = await Promise.all([
     getMyParentProfileDetail(), getMyChildren(), resolveCurrentAuth(returnTo)
   ])

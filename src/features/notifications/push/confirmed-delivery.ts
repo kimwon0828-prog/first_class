@@ -1,3 +1,4 @@
+import { canSendApplicationNotification } from "../lib/app-store-review-recipient"
 import "server-only"
 import { getSupabaseServiceRoleClient } from "@/integrations/supabase/service-role"
 import { sendParentNotificationSafely } from "../alimtalk/send-parent-notification"
@@ -46,7 +47,7 @@ async function fallbackContext(job: Job): Promise<ParentNotificationContext | nu
 }
 async function runFallback(id: string) {
   const job = await claim(id, "fallback")
-  if (!job) return
+  if (!job || !await canSendApplicationNotification(job.application_id)) return
   if (job.suppress_legacy) { await save(job, { state: "test_suppressed", reason: "test_legacy_not_sent" }); return }
   const context = await fallbackContext(job)
   if (!context) { await save(job, { state: "canceled", reason: "source_no_longer_current" }); return }
@@ -59,7 +60,7 @@ async function runFallback(id: string) {
 export async function dispatchConfirmedPush(id: string) {
   if (!confirmedPushEnabled()) return
   const job = await claim(id, "send")
-  if (!job) return
+  if (!job || !await canSendApplicationNotification(job.application_id)) return
   if (job.state === "fallback_ready") { await runFallback(id); return }
   // Recheck binding immediately before the external call (logout/rotation/account switch).
   const current = await getSupabaseServiceRoleClient().from("parent_push_devices").select("id,expo_push_token")
@@ -77,7 +78,7 @@ export async function dispatchConfirmedPush(id: string) {
 
 async function checkReceipts(id: string) {
   const job = await claim(id, "receipts")
-  if (!job) return
+  if (!job || !await canSendApplicationNotification(job.application_id)) return
   const attempts = await readConfirmedReceipts(job.attempts, Date.parse(job.created_at) < Date.now() - 24 * 3600000)
   const state = confirmedOutcome(attempts)
   await disableInvalid(job, attempts)

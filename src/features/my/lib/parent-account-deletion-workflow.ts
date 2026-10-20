@@ -4,6 +4,7 @@ export type ParentDeletionResult = {
   status: "idle" | "error" | "success"
   message: string
   cleanupStarted?: boolean
+  appleReauthRequired?: boolean
 }
 const failure = (cleanupStarted = false): ParentDeletionResult => ({
   status: "error", cleanupStarted,
@@ -12,11 +13,11 @@ const failure = (cleanupStarted = false): ParentDeletionResult => ({
 
 // The authenticated RPC has no target ID. The admin path only receives the UID
 // verified by Auth in this request, never a form field or unverified claim.
-export async function deleteParentAccountWorkflow(userClient: SupabaseClient, admin: SupabaseClient): Promise<ParentDeletionResult> {
+export async function deleteParentAccountWorkflow(userClient: SupabaseClient, admin: SupabaseClient, expectedUserId?: string): Promise<ParentDeletionResult> {
   let cleanupStarted = false
   try {
     const { data: { user }, error: userError } = await userClient.auth.getUser()
-    if (userError || !user) return failure()
+    if (userError || !user || (expectedUserId && user.id !== expectedUserId)) return failure()
     const prepared = await userClient.rpc("prepare_my_parent_account_deletion")
     if (prepared.error || prepared.data !== "db_cleaned") return failure()
     cleanupStarted = true

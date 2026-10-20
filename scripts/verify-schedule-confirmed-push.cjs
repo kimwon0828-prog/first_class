@@ -2,7 +2,7 @@
 const fs=require('node:fs'),vm=require('node:vm'),ts=require('typescript'),assert=require('node:assert/strict');
 const env={PARENT_SCHEDULE_CONFIRMED_PUSH_ENABLED:'true'};
 function load(file,deps={}) { const exports={};vm.runInNewContext(ts.transpileModule(fs.readFileSync(file,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText,
-  {exports,require:n=>{if(n==='server-only')return {};if(n in deps)return deps[n];throw Error('unmocked '+n)},process:{env},console:{warn(){},info(){},error(){}},fetch:request,AbortSignal,Date,URL,Response,JSON,structuredClone});return exports; }
+  {exports,require:n=>{if(n==='server-only')return {};if(n.endsWith('app-store-review-recipient'))return {canSendApplicationNotification:async()=>true};if(n in deps)return deps[n];throw Error('unmocked '+n)},process:{env},console:{warn(){},info(){},error(){}},fetch:request,AbortSignal,Date,URL,Response,JSON,structuredClone});return exports; }
 const uuid=n=>`00000000-0000-4000-8000-${String(n).padStart(12,'0')}`;
 const clone=x=>JSON.parse(JSON.stringify(x));
 let jobs,devices,httpCalls,alimtalkCalls,smsCalls,sentBatches,sendMode,receiptMode,legacyStatus,testScope;

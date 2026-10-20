@@ -1,17 +1,16 @@
+import { projectNativeCatalogClass as project } from "@/features/native/server/catalog-projection"
 import { getPublicAcademyPageByHandle } from "@/features/academies/queries/get-public-academy-page"
 import { getPublicAcademyClasses } from "@/features/academies/queries/get-public-academy-classes"
 import { getAllPublicClasses } from "@/features/classes/queries/get-public-classes"
 import { getPublicAcademyFeedback, getPublicClassFeedback } from "@/features/feedback/queries/get-public-feedback"
 import { feedbackChipLabel, type PublicFeedbackSummary } from "@/features/feedback/lib/experience-feedback"
-import { formatRegularPrice } from "@/shared/lib/regular-price"
 import { getPublicClassAvailableSlots } from "@/features/applications/queries/get-public-class-available-slots"
 import { LEARNER_GRADES } from "@/shared/constants/education-taxonomy"
 import { resolveClassDiscoveryContext } from "@/features/classes/queries/resolve-class-discovery-context"
 import { getPublicClassDetail } from "@/features/classes/queries/get-public-class-detail"
 import { getAcademiesForList } from "@/features/academies/queries/get-academies-for-list"
 import { PARENT_LAUNCH_REGION } from "@/features/location/lib/parent-launch-region"
-import { formatClassSubjectDisplayLabel } from "@/shared/lib/subject-master"
-import { formatStoredTargetGrades, isChildEligibleForClass } from "@/shared/constants/grade-options"
+import { isChildEligibleForClass } from "@/shared/constants/grade-options"
 import type { ClassSummary } from "@/shared/lib/db/adapter"
 import { getSupabaseServiceRoleClient } from "@/integrations/supabase/service-role"
 import { loadAcademyCardDetails } from "@/features/native/server/academy-cards"
@@ -19,15 +18,6 @@ import { homeSection, loadCardSlots, publicSlotProjection, slotDurationMinutes, 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
 // Only the web's existing public discovery projection is exposed here.
-const project = (item: ClassSummary) => ({
- id:item.id, title:item.title, programType:item.programType, subject:formatClassSubjectDisplayLabel(item),
- targetAge:formatStoredTargetGrades(item.targetAge), eligibleGrades:LEARNER_GRADES.filter(g=>isChildEligibleForClass(g.value,item.targetAge)), regularPriceLabel:formatRegularPrice({type:item.regularPriceType,amount:item.regularPriceAmount}), regularPriceNote:item.regularPriceNote, trialPrice:item.trialPrice, trialPriceConfirmed:item.trialPriceConfirmed ?? null, coverImageUrl:item.coverImageUrl,
- academyName:item.organization ? [item.organization.name,item.organization.branchName].filter(Boolean).join(" ") : null,
- organizationId:item.organization?.id ?? null, locationLabel:[item.organization?.sigungu,item.organization?.bname].filter(Boolean).join(" "),
- description:item.description, recommendedFor:item.recommendedFor, experiencePoints:item.experiencePoints,
- curriculum:item.curriculum, teacherIntro:item.teacherIntro, classFormat:item.classFormat,
- address:[item.organization?.address,item.organization?.addressDetail].filter(Boolean).join(" ")
-})
 // The same public slot projection the class detail returns.
 const publicSlots = publicSlotProjection
 const eligibleGradesOf = (targetAge: string) => LEARNER_GRADES.filter(g=>isChildEligibleForClass(g.value,targetAge))
