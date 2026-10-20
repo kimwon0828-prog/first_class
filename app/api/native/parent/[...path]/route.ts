@@ -1,9 +1,10 @@
+import { requireAppReviewScope } from "@/shared/lib/db/app-store-review-access"
 import { nativeResponses } from "@/features/native/server/responses"
 import { nativePushDevice } from "@/features/native/server/push-device"
 import { sendStudioNotificationSafely } from "@/features/notifications/sms/send-studio-notification"
 import { revalidatePath } from "next/cache"
 import { nativeDeletion } from "@/features/native/server/deletion"
-import { deleteParentAccountWorkflow } from "@/features/my/lib/parent-account-deletion-workflow"
+import { deleteParentAccountWithApple } from "@/features/my/lib/delete-parent-account-with-apple"
 import { isParentAccountDeletionEnabled } from "@/features/my/lib/parent-account-deletion-server"
 import { nativeApplication } from "@/features/native/server/application"
 import { createClient } from "@supabase/supabase-js"
@@ -14,12 +15,13 @@ import { loadBookingTimes, type BookingTime } from "@/features/native/server/boo
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
 const read = createNativeParentReader({
+  reviewAccess: requireAppReviewScope,
   pushDevice: (request, db) => nativePushDevice(request, db, process.env.PARENT_PUSH_REGISTRATION_ENABLED === "true"),
   application: nativeApplication,
   responses: (request, path, db, userId) => nativeResponses(request,path,db,userId,{admin:getSupabaseServiceRoleClient,notify:sendStudioNotificationSafely,revalidate:revalidatePath}),
   deletion: (request, db) => nativeDeletion(request, db, {
     enabled: isParentAccountDeletionEnabled(),
-    run: () => deleteParentAccountWorkflow(db, getSupabaseServiceRoleClient())
+    run: (appleRefreshToken) => deleteParentAccountWithApple(db, getSupabaseServiceRoleClient(), { appleRefreshToken })
   }),
   client(token) {
     const { supabaseUrl, supabasePublishableKey } = getPublicEnv()
@@ -30,7 +32,7 @@ const read = createNativeParentReader({
   },
   // Called only after the caller's own application rows have been authorized.
   // Select the same public academy/class display fields used by Parent web.
-  async presentation(rows) {
+  async presentation(rows, user) {
     if (!rows.length) return {}
     const client = getSupabaseServiceRoleClient()
     const orgIds = [...new Set(rows.map(row => row.class_organization_id).filter((id): id is string => Boolean(id)))]
@@ -60,8 +62,8 @@ const read = createNativeParentReader({
         organization_id: row.class_organization_id ?? null,
         academy_logo_url: logoUrl(text(profile?.logo_image_path)),
         // Same handle the academy page accepts: the public slug, otherwise the organization id.
-        academy_handle: org ? text(profile?.slug) ?? org.id : null,
-        academy_phone: org ? text(org.academy_phone) : null,
+        academy_handle: org ? user.app_metadata?.app_store_review === true ? org.id : text(profile?.slug) ?? org.id : null,
+        academy_phone: user.app_metadata?.app_store_review === true ? null : org ? text(org.academy_phone) : null,
         slot_end_at: times[row.id]?.slot_end_at ?? null,
         duration_minutes: times[row.id]?.duration_minutes ?? null
       }]

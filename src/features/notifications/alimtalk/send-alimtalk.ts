@@ -1,3 +1,4 @@
+import { canSendApplicationNotification } from "@/features/notifications/lib/app-store-review-recipient"
 import "server-only"
 
 import { sendNcloudAlimtalk } from "@/features/notifications/alimtalk/ncloud-alimtalk-client"
@@ -55,6 +56,7 @@ const getNcloudConfig = () => {
 export const sendAlimtalk = async (
   context: ParentNotificationContext
 ): Promise<AlimtalkSendResult> => {
+  if (!await canSendApplicationNotification(context.trialApplicationId)) return buildSkippedResult({ status: "skipped", errorMessage: "review_notification_suppressed", recipientPhoneMasked: null })
   const normalizedPhone = normalizePhoneNumber(context.parentPhone)
   const recipientPhoneMasked = maskPhoneNumber(normalizedPhone)
 

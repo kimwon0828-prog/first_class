@@ -1,3 +1,4 @@
+import { canSendApplicationNotification } from "../lib/app-store-review-recipient"
 import "server-only"
 import { getSupabaseServiceRoleClient } from "@/integrations/supabase/service-role"
 import { sendParentNotificationSafely } from "../alimtalk/send-parent-notification"
@@ -34,7 +35,7 @@ async function disableInvalid(job: Job, attempts: ConfirmedAttempt[]) {
 }
 async function runFallback(id: string) {
  const job = await claim(id, "fallback")
- if (!job) return
+ if (!job || !await canSendApplicationNotification(job.application_id)) return
  if (job.suppress_legacy) { await save(job, { state: "test_suppressed", reason: "test_legacy_not_sent" }); return }
  // Schedule changes have no existing Parent SMS/Alimtalk event. Do not invent one.
  if (job.event_type === "schedule_changed") { await save(job, { state: "no_device", reason: "push_unavailable_no_legacy_event" }); return }
@@ -60,7 +61,7 @@ async function runFallback(id: string) {
 export async function dispatchParentEventPush(id: string) {
  if (!parentEventPushEnabled()) return
  const job = await claim(id, "send")
- if (!job) return
+ if (!job || !await canSendApplicationNotification(job.application_id)) return
  if (job.state === "fallback_ready") { await runFallback(id); return }
  const current = await getSupabaseServiceRoleClient().from("parent_push_devices").select("id,expo_push_token")
   .eq("parent_id", job.parent_id).eq("enabled", true).eq("permission_status", "granted")
@@ -75,7 +76,7 @@ export async function dispatchParentEventPush(id: string) {
 }
 async function checkReceipts(id: string) {
  const job = await claim(id, "receipts")
- if (!job) return
+ if (!job || !await canSendApplicationNotification(job.application_id)) return
  const attempts = await readConfirmedReceipts(job.attempts, Date.parse(job.created_at) < Date.now() - 24 * 3600000)
  const state = confirmedOutcome(attempts)
  await save(job, { attempts, state, next_check_at: new Date(Date.now() + 5 * 60000).toISOString() })

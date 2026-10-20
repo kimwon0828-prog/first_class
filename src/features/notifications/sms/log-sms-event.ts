@@ -1,3 +1,4 @@
+import { canSendApplicationNotification } from "@/features/notifications/lib/app-store-review-recipient"
 import "server-only"
 import { hasLiveParentAccountRecipient } from "../lib/parent-account-recipient"
 
@@ -236,6 +237,7 @@ export const logSmsEvent = async ({
   eventType,
   targetTeacherId
 }: LogSmsEventInput) => {
+  if (!await canSendApplicationNotification(application.id)) return null
   const serviceRoleClient = getSupabaseServiceRoleClient()
   const template = renderSmsTemplate({
     recipientType,

@@ -1,3 +1,4 @@
+import { requireAppReviewClass, REVIEW_DEMO_ORGANIZATION } from "@/shared/lib/db/app-store-review-access"
 import { parseReportAttachments } from "@/features/reports/lib/report-attachments"
 import { isMissingTrialPriceConfirmationColumn, loadTrialPriceConfirmations, saveWithTrialPriceConfirmation, withTrialPriceConfirmation } from "@/shared/lib/db/trial-price-confirmation"
 import { getReportSubjectCategory } from "@/features/studio/lib/trial-result-options"
@@ -2596,18 +2597,33 @@ const buildScheduleBlockSlots = (scheduleRows: ScheduleBlockRow[], appliedCountB
     }
   })
 
+async function excludeAppReviewDateClosedSlots(client: SupabaseClient, classId: string, slots: AvailableScheduleSlot[]) {
+  if (!slots.length) return slots
+  const klass = await client.from("classes").select("organization_id").eq("id", classId).eq("is_active", false).is("archived_at", null).maybeSingle()
+  if (klass.error || klass.data?.organization_id !== REVIEW_DEMO_ORGANIZATION) throw new Error("failed_to_fetch_review_closures")
+  const closures = await client.from("date_booking_closures").select("class_id,start_at,end_at")
+    .eq("organization_id", klass.data.organization_id).is("released_at", null)
+    .or(`class_id.is.null,class_id.eq.${classId}`)
+  if (closures.error) throw new Error("failed_to_fetch_review_closures")
+  return slots.filter(slot => !(closures.data ?? []).some(row => Date.parse(row.start_at) < Date.parse(slot.endAt) && Date.parse(row.end_at) > Date.parse(slot.startAt)))
+}
+
 export const listAvailableScheduleSlotsByClassIdWithClient = async ({
   classId,
-  supabase
+  supabase,
+  reviewClient
 }: {
   classId: string
   supabase: SupabaseClient
+  reviewClient?: SupabaseClient
 }): Promise<AvailableScheduleSlot[]> => {
+  if (reviewClient) await requireAppReviewClass(reviewClient, classId)
+  const excludeClosures = (slots: AvailableScheduleSlot[]) => reviewClient ? excludeAppReviewDateClosedSlots(supabase, classId, slots) : excludeDateClosedSlots(supabase, classId, slots)
   const now = new Date()
   const bookingCutoffIso = getTrialBookingCutoffDate(now).toISOString()
   const [{ data: classData, error: classError }, { data: classScheduleData, error: classScheduleError }] = await Promise.all([
     supabase.from("classes").select("teacher_id").eq("id", classId)
-      .eq("is_active", true).is("archived_at", null).maybeSingle(),
+      .eq("is_active", !reviewClient).is("archived_at", null).maybeSingle(),
     supabase.from("class_schedules").select(CLASS_SCHEDULE_SELECT_FIELDS).eq("class_id", classId)
       .order("sort_order", { ascending: true }).order("created_at", { ascending: true })
   ])
@@ -2643,7 +2659,7 @@ export const listAvailableScheduleSlotsByClassIdWithClient = async ({
       visibleClassScheduleRows.map((row) => row.id)
     )
 
-    return excludeDateClosedSlots(supabase, classId, buildClassScheduleSlots({
+    return excludeClosures(buildClassScheduleSlots({
       rows: visibleClassScheduleRows, existingBlocks, teacherId: classData.teacher_id, byBlock, byOccurrence, now
     }))
   }
@@ -2663,6 +2679,7 @@ export const listAvailableScheduleSlotsByClassIdWithClient = async ({
   let scheduleRows = (primaryData ?? []) as ScheduleBlockRow[]
   let usesFallback = false
 
+  if (reviewClient && scheduleRows.length === 0) return []
   if (scheduleRows.length === 0) {
     if (!classData.teacher_id) {
       return []
@@ -2689,7 +2706,7 @@ export const listAvailableScheduleSlotsByClassIdWithClient = async ({
     ? await getAppliedCountByTeacherScheduleBlockIdWithClient(supabase, classData.teacher_id, scheduleRows)
     : await getAppliedCountByClassScheduleBlockIdWithClient(supabase, classId, scheduleRows)
 
-  return excludeDateClosedSlots(supabase, classId, buildScheduleBlockSlots(scheduleRows, appliedCountBySlotId))
+  return excludeClosures(buildScheduleBlockSlots(scheduleRows, appliedCountBySlotId))
 }
 
 // 여러 수업의 공개 일정을 한 번에 읽는다(홈·수업 목록·학원 상세 카드). 수업마다 위 함수와 같은 규칙·같은 결과를 낸다.
@@ -5949,7 +5966,12 @@ export const supabaseDataAdapter: DataAdapter = {
 }
 
 // Shared by cookie-authenticated web and bearer-authenticated native callers.
-export async function createTrialApplicationWithClient(supabase: SupabaseClient, input: TrialApplicationInput) {
+export async function createTrialApplicationWithClient(supabase: SupabaseClient, input: TrialApplicationInput, options: { privateReviewClassId?: string } = {}) {
+    const review = options.privateReviewClassId !== undefined
+    if (review) {
+      if (options.privateReviewClassId !== input.classId) throw new Error("invalid_schedule_slot")
+      await requireAppReviewClass(supabase, input.classId, input.parentId)
+    }
     const parsedScheduleOption = parseSelectedScheduleOptionId(
       input.selectedScheduleOptionId ??
         (input.selectedScheduleBlockId ? `schedule_block:${input.selectedScheduleBlockId}` : undefined)
@@ -5963,7 +5985,7 @@ export async function createTrialApplicationWithClient(supabase: SupabaseClient,
       .from("classes")
       .select("teacher_id, assignment_mode")
       .eq("id", input.classId)
-      .eq("is_active", true)
+      .eq("is_active", !review)
       .is("archived_at", null)
       .maybeSingle()
     const classLookup = isMissingColumnError(classQuery.error)
@@ -5971,7 +5993,7 @@ export async function createTrialApplicationWithClient(supabase: SupabaseClient,
           .from("classes")
           .select("teacher_id")
           .eq("id", input.classId)
-          .eq("is_active", true)
+          .eq("is_active", !review)
       .is("archived_at", null)
           .maybeSingle()
       : classQuery
@@ -6018,7 +6040,7 @@ export async function createTrialApplicationWithClient(supabase: SupabaseClient,
         classData.teacher_id !== null &&
         matchedSlot.teacherId === classData.teacher_id
 
-      if (!isLinkedClassSlot && !isLegacyTeacherFallbackSlot) {
+      if ((review && isLegacyTeacherFallbackSlot) || (!isLinkedClassSlot && !isLegacyTeacherFallbackSlot)) {
         throw new Error("invalid_schedule_slot")
       }
 

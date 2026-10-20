@@ -22,6 +22,22 @@ export function ParentAccountDeletion({ onCancel, onBusyChange, recovery = false
   const [state, action, pending] = useActionState(submit, initial)
   const heading = useRef<HTMLHeadingElement>(null)
   const completing = useRef(false)
+  const [appleBusy, setAppleBusy] = useState(false)
+  const [appleError, setAppleError] = useState("")
+  useEffect(() => {
+    const restore = () => setAppleBusy(false)
+    window.addEventListener("pageshow", restore)
+    return () => window.removeEventListener("pageshow", restore)
+  }, [])
+  const cancel = onCancel ?? (() => window.location.assign("/my"))
+  async function verifyApple() {
+    if (appleBusy) return
+    setAppleBusy(true); setAppleError("")
+    try {
+      const { error } = await getSupabaseBrowserClient().auth.signInWithOAuth({ provider: "apple", options: { redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent("/my?delete=1")}` } })
+      if (error) throw error
+    } catch { setAppleError("Apple 본인 확인을 시작하지 못했어요. 다시 시도해 주세요."); setAppleBusy(false) }
+  }
   useEffect(() => { onBusyChange?.(pending); return () => onBusyChange?.(false) }, [pending, onBusyChange])
   useEffect(() => { if (confirmed) heading.current?.focus() }, [confirmed])
   useEffect(() => {
@@ -42,9 +58,10 @@ export function ParentAccountDeletion({ onCancel, onBusyChange, recovery = false
       <form action={action} aria-busy={pending}>
         <input type="hidden" name="confirmation" value="delete" />
         {state.status === "error" ? <p className={styles.error} role="alert">{state.message}</p> : null}
+        {appleError ? <p className={styles.error} role="alert">{appleError}</p> : null}
         <div className={styles.actions}>
-          {onCancel ? <button type="button" disabled={pending} onClick={onCancel} className={styles.cancel}>취소</button> : null}
-          <button type="submit" disabled={pending || state.status === "success"} className={styles.destructive}>{pending ? "처리 중…" : recovery || state.cleanupStarted ? "탈퇴 다시 시도" : "회원탈퇴"}</button>
+          <button type="button" disabled={pending || appleBusy} onClick={cancel} className={styles.cancel}>취소</button>
+          {state.appleReauthRequired ? <button type="button" disabled={appleBusy} onClick={() => void verifyApple()} className={styles.continue}>{appleBusy ? "Apple 연결 중…" : "Apple로 본인 확인"}</button> : <button type="submit" disabled={pending || state.status === "success"} className={styles.destructive}>{pending ? "처리 중…" : recovery || state.cleanupStarted ? "탈퇴 다시 시도" : "회원탈퇴"}</button>}
         </div>
       </form>
     </> : <>
@@ -52,7 +69,7 @@ export function ParentAccountDeletion({ onCancel, onBusyChange, recovery = false
       <p>체험 신청 과정에서 선택한 학원에 이미 전달된 신청·상담·체험·등록 관련 정보는 해당 학원의 고객관리 및 운영 기록으로 보관될 수 있습니다.</p>
       <p>탈퇴 후에는 기존 첫수업 계정으로 서비스를 이용할 수 없습니다.</p>
       <div className={styles.actions}>
-        <button type="button" onClick={onCancel} className={styles.cancel}>취소</button>
+        <button type="button" onClick={cancel} className={styles.cancel}>취소</button>
         <button type="button" onClick={() => setConfirmed(true)} className={styles.continue}>회원탈퇴 계속</button>
       </div>
     </>}

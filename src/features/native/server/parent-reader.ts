@@ -1,19 +1,20 @@
 import { nativeAccount } from "./account"
 import { readNativeNotifications, writeNativeNotificationRead } from "./notifications"
-import type { SupabaseClient } from "@supabase/supabase-js"
+import type { SupabaseClient, User } from "@supabase/supabase-js"
 import { decodeExperienceReportSnapshot } from "@/features/reports/lib/experience-report-snapshot"
 import { isAttachmentId, REPORT_PHOTO_BUCKET } from "@/features/reports/lib/report-attachments"
 
 // Every query uses the verified caller's JWT. The privileged storage reader is
 // obtained only after the existing attachment RPC has authorized this caller.
 export type NativeReaderDependencies = {
+  reviewAccess?: (db: SupabaseClient) => Promise<unknown>
   pushDevice?: (request: Request, db: SupabaseClient) => Promise<Response>
   responses?: (request: Request, path: string[], db: SupabaseClient, userId: string) => Promise<Response>
   deletion?: (request: Request, db: SupabaseClient) => Promise<Response>
-  application?: (request: Request, path: string[], db: SupabaseClient, userId: string) => Promise<Response>
+  application?: (request: Request, path: string[], db: SupabaseClient, userId: string, user: User) => Promise<Response>
   client: (token: string) => SupabaseClient
   storage: () => SupabaseClient
-  presentation?: (rows: { id: string; class_id: string | null; class_organization_id: string | null }[]) => Promise<Record<string, NativePresentation>>
+  presentation?: (rows: { id: string; class_id: string | null; class_organization_id: string | null }[], user: User) => Promise<Record<string, NativePresentation>>
 }
 // 신청·리포트 응답에 덧붙이는 학원·수업 표시 정보(읽기 전용, 추가 필드만).
 export type NativePresentation = {
@@ -51,10 +52,14 @@ export function createNativeParentReader(deps: NativeReaderDependencies) {
       if (!phone.data || typeof phone.data.required !== "boolean" ||
           !(phone.data.phoneVerifiedAt === null || typeof phone.data.phoneVerifiedAt === "string")) fail(503, "account_unavailable")
       if (!phone.data.excluded && phone.data.required && phone.data.phoneVerifiedAt === null) fail(403, "phone_verification_required")
+      if (user.app_metadata?.app_store_review === true) {
+        if (!deps.reviewAccess) return json({ error: "review_access_unavailable" }, 503)
+        await deps.reviewAccess(db)
+      }
       if (path.length === 2 && path[0] === "notifications" && path[1] === "read") return await writeNativeNotificationRead(request, db, user.id)
       if (deps.pushDevice && path.length === 1 && path[0] === "push-devices") return await deps.pushDevice(request, db)
       if (deps.responses && path[0] === "applications" && path.length === 3 && ["cancel", "feedback"].includes(path[2])) return await deps.responses(request, path, db, user.id)
-      if (deps.application && ((path[0] === "application-context" && path.length === 2 && request.method === "GET") || (path[0] === "applications" && path.length === 1 && request.method === "POST"))) return await deps.application(request, path, db, user.id)
+      if (deps.application && ((path[0] === "application-context" && path.length === 2 && request.method === "GET") || (path[0] === "applications" && path.length === 1 && request.method === "POST"))) return await deps.application(request, path, db, user.id, user)
       if (path[0] === "profile" || path[0] === "children") return await nativeAccount(request, path, db, user, Boolean(phone.data.phoneVerifiedAt))
       if (request.method !== "GET") return json({ error: "not_found" }, 404)
       if (path.length === 1 && path[0] === "session") return json({ id: user.id, name: profile.data!.name })
@@ -73,7 +78,7 @@ export function createNativeParentReader(deps: NativeReaderDependencies) {
           : { data: [], error: null }
         if (reports.error) fail(503, "report_unavailable")
         const reportedIds = new Set((reports.data ?? []).map(report => report.application_id))
-        const presentation = deps.presentation ? await deps.presentation(items) : {}
+        const presentation = deps.presentation ? await deps.presentation(items, user) : {}
         return json({ items: items.map(item => ({ ...item, ...presentation[item.id], has_published_report: reportedIds.has(item.id) })), nextPage: (data?.length ?? 0) > 30 ? page + 1 : null })
       }
       if (path[0] === "applications" && (path.length === 2 || (path.length === 3 && path[2] === "report"))) {
@@ -83,7 +88,7 @@ export function createNativeParentReader(deps: NativeReaderDependencies) {
         if (own.error) fail(503, "application_unavailable")
         if (!own.data) fail(404, "not_found")
         if (path.length === 2) {
-          const presentation = deps.presentation ? await deps.presentation([own.data!]) : {}
+          const presentation = deps.presentation ? await deps.presentation([own.data!], user) : {}
           return json({ ...own.data, ...presentation[own.data!.id] })
         }
         const report = await db.from("experience_reports")
@@ -96,7 +101,7 @@ export function createNativeParentReader(deps: NativeReaderDependencies) {
         let academy = {}
         if (deps.presentation) {
           try {
-            const shown = (await deps.presentation([own.data!]))[own.data!.id]
+            const shown = (await deps.presentation([own.data!], user))[own.data!.id]
             if (shown) academy = { organization_id: shown.organization_id, academy_name: shown.academy_name, academy_logo_url: shown.academy_logo_url, academy_handle: shown.academy_handle, academy_phone: shown.academy_phone }
           } catch { /* Report stays available without academy display fields. */ }
         }

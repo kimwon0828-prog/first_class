@@ -1,3 +1,4 @@
+import { canSendApplicationNotification } from "@/features/notifications/lib/app-store-review-recipient"
 import "server-only"
 import { hasLiveParentAccountRecipient } from "../lib/parent-account-recipient"
 
@@ -37,6 +38,7 @@ const resolveSafeNotificationError = (error: unknown) => ({
 export const sendParentNotification = async (
   context: ParentNotificationContext
 ): Promise<ParentNotificationResult | null> => {
+  if (!await canSendApplicationNotification(context.trialApplicationId)) return null
   if (!await hasLiveParentAccountRecipient(context.trialApplicationId, context.parentId)) return null
   const alimtalk = await sendAlimtalk(context)
 
