@@ -20,7 +20,7 @@ type Embedded<T> = T | T[] | null
 const single = <T,>(value: Embedded<T>): T | null => Array.isArray(value) ? value.length === 1 ? value[0] : null : value
 const many = <T,>(value: Embedded<T>): T[] => Array.isArray(value) ? value : value ? [value] : []
 type CaseRow = CasesOrderRow & {
-  id: string; child_name: string; child_grade: string; parent_name: string | null; parent_phone: string | null
+  id: string; child_name: string | null; child_grade: string | null; parent_name: string | null; parent_phone: string | null
   assigned_teacher_id: string | null; requested_slot_at: string; confirmed_slot_at: string | null
   status: ApplicationStatus; registration_status: ApplicationRegistrationStatus; registration_reason_ids: string[] | null
   created_at: string; completed_at: string | null; enrolled_at: string | null; canceled_at: string | null; no_show_at: string | null; lost_at: string | null
@@ -128,6 +128,7 @@ export async function getStudioCases(organizationId: string, options: GetStudioC
         recordFinalized: records.length > 0, reportSent: reports.length > 0,
         confirmedBlockStartAt: block?.start_at ?? null, confirmedBlockEndAt: block?.end_at ?? null,
         confirmedSlotAt: row.confirmed_slot_at, scheduleStartTime: schedule?.start_time ?? null, scheduleEndTime: schedule?.end_time ?? null }, now)
+      if (row.child_name === null) workflow.action = "detail"
       const candidates = [
         { at: row.created_at, label: "신청 접수" }, { at: row.completed_at, label: "체험 완료" },
         ...records.map(record => ({ at: record.created_at, label: "체험 기록 완료" })),
@@ -137,7 +138,7 @@ export async function getStudioCases(organizationId: string, options: GetStudioC
         { at: latestContacts.get(row.id) ?? null, label: "상담 기록" }
       ].filter((item): item is { at: string; label: string } => Boolean(item.at) && Number.isFinite(Date.parse(item.at!)))
         .sort((a, b) => Date.parse(b.at) - Date.parse(a.at))
-      return { id: row.id, student: { name: row.child_name, grade: row.child_grade }, guardian: { name: row.parent_name, phone: row.parent_phone },
+      return { id: row.id, student: { name: row.child_name ?? "학생 정보 삭제됨", grade: row.child_grade ?? "" }, guardian: { name: row.parent_name, phone: row.parent_phone },
         klass: { title: klass?.title ?? null, subject: klass?.subject ?? null }, assignee: { teacherName: row.assigned_teacher_id ? names.get(row.assigned_teacher_id) ?? null : null },
         registrationStatus: row.registration_status, registrationReasonIds: row.registration_reason_ids ?? [], workflow, requestedSlotAt: row.requested_slot_at,
         confirmedSlotAt: block?.start_at ?? row.confirmed_slot_at, latestRecord: candidates[0] ?? null,

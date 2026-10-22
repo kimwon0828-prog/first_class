@@ -229,6 +229,26 @@ export default async function StudioApplicationDetailPage({ params, searchParams
     notFound()
   }
 
+  if (!error && data?.personalDataErased) {
+    return <div className={styles.page}>
+      <header className={styles.header}>
+        <Link href={studioPath(back.pathname) + back.search} className={styles.backLink}>{back.label}</Link>
+        <h1 className={styles.pageTitle}>개인정보가 삭제된 신청</h1>
+        <p className={styles.pageDescription}>학부모 탈퇴로 학생·보호자 정보와 상담·리포트 내용이 삭제되었습니다.</p>
+      </header>
+      <section className={styles.applicationInfoSection} aria-label="남은 운영 기록">
+        <dl className={styles.applicationInfoGrid}>
+          <div className={styles.infoCell}><dt>수업</dt><dd>{data.classTitle ?? "수업"}</dd></div>
+          <div className={styles.infoCell}><dt>진행 상태</dt><dd>{getStudioStatusLabel(data)}</dd></div>
+          <div className={styles.infoCell}><dt>등록 결과</dt><dd>{getStudioRegistrationStatusLabel(data.registrationStatus)}</dd></div>
+          <div className={styles.infoCell}><dt>체험 일정</dt><dd>{formatDateTime(data.confirmedSlotAt ?? data.requestedSlotAt)}</dd></div>
+        </dl>
+        <p>예약 상태와 등록 결과는 자동으로 변경되지 않습니다.</p>
+        <Link href={studioPath("/studio/schedule")} className={styles.caseInlineLink}>일정 관리 →</Link>
+      </section>
+    </div>
+  }
+
   const academyMemo = data
     ? await dataAdapter.getStudioAcademyMemo(data.id, teacher.organizationId)
       .then(memo => ({ data: memo, error: null }))

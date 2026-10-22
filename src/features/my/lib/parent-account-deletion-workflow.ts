@@ -18,11 +18,23 @@ export async function deleteParentAccountWorkflow(userClient: SupabaseClient, ad
   try {
     const { data: { user }, error: userError } = await userClient.auth.getUser()
     if (userError || !user || (expectedUserId && user.id !== expectedUserId)) return failure()
+    // Version 2 adds academy-uploaded report files and a DB-verified deletion
+    // acknowledgement. A precise missing-function response identifies the old
+    // schema during the backend-first rollout; all other errors fail closed.
+    const capability = await userClient.rpc("get_my_parent_erasure_contract")
+    const missingContract = capability.error?.code === "PGRST202"
+      && String(capability.error.message ?? "").includes("get_my_parent_erasure_contract")
+    if (capability.error && !missingContract) return failure()
+    if (!missingContract && capability.data !== 2) return failure()
+    const verifiesStorage = !missingContract
     const prepared = await userClient.rpc("prepare_my_parent_account_deletion")
     if (prepared.error || prepared.data !== "db_cleaned") return failure()
     cleanupStarted = true
     const objects = await userClient.rpc("get_my_parent_deletion_storage_objects")
     if (objects.error) return failure(true)
+    if (!Array.isArray(objects.data) || objects.data.some(row =>
+      !row || typeof row.bucket_id !== "string" || !row.bucket_id
+      || typeof row.object_name !== "string" || !row.object_name)) return failure(true)
     const groups = new Map<string, string[]>()
     for (const row of (objects.data ?? []) as { bucket_id: string; object_name: string }[]) {
       groups.set(row.bucket_id, [...(groups.get(row.bucket_id) ?? []), row.object_name])
@@ -31,6 +43,12 @@ export async function deleteParentAccountWorkflow(userClient: SupabaseClient, ad
       for (let i = 0; i < paths.length; i += 100) {
         const removed = await admin.storage.from(bucket).remove(paths.slice(i, i + 100))
         if (removed.error) return failure(true)
+        if (verifiesStorage) {
+          const ack = await userClient.rpc("ack_my_parent_erasure_files", {
+            p_objects: paths.slice(i, i + 100).map(object_name => ({ bucket_id: bucket, object_name }))
+          })
+          if (ack.error || ack.data !== true) return failure(true)
+        }
       }
     }
     const deleted = await admin.auth.admin.deleteUser(user.id)

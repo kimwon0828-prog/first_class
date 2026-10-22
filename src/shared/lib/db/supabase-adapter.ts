@@ -1,3 +1,4 @@
+import { readErasedReportFlags } from "@/shared/lib/db/erased-report-flags"
 import { requireAppReviewClass, REVIEW_DEMO_ORGANIZATION } from "@/shared/lib/db/app-store-review-access"
 import { parseReportAttachments } from "@/features/reports/lib/report-attachments"
 import { isMissingTrialPriceConfirmationColumn, loadTrialPriceConfirmations, saveWithTrialPriceConfirmation, withTrialPriceConfirmation } from "@/shared/lib/db/trial-price-confirmation"
@@ -246,8 +247,8 @@ type MyTrialApplicationRow = {
   classes?: { cover_image_url: string | null } | { cover_image_url: string | null }[] | null
   parent_id: string | null
   child_id?: string | null
-  child_name: string
-  child_grade: string
+  child_name: string | null
+  child_grade: string | null
   parent_name?: string | null
   parent_phone?: string | null
   goal_type?: string | null
@@ -276,8 +277,8 @@ type TrialApplicationRow = {
   /** 엑셀로 이관한 예약에는 학부모 계정이 없다. */
   parent_id: string | null
   child_id?: string | null
-  child_name: string
-  child_grade: string
+  child_name: string | null
+  child_grade: string | null
   parent_name?: string | null
   parent_phone?: string | null
   child_school?: string | null
@@ -934,7 +935,7 @@ const mapCreatedApplication = (row: MyTrialApplicationRow): CreatedTrialApplicat
   id: row.id,
   classId: row.class_id,
   parentId: row.parent_id ?? null,
-  childName: row.child_name,
+  childName: row.child_name ?? "학생 정보 삭제됨",
   parentName: row.parent_name ?? null,
   parentPhone: row.parent_phone ?? null,
   classTitle: row.class_title ?? null,
@@ -958,8 +959,8 @@ const mapMyApplication = (
   organizationAddress: organization?.address ?? null,
   organizationAddressDetail: organization?.addressDetail ?? null,
   childId: row.child_id ?? null,
-  childName: row.child_name,
-  childGrade: row.child_grade,
+  childName: row.child_name ?? "학생 정보 삭제됨",
+  childGrade: row.child_grade ?? "",
   classScheduleId: row.class_schedule_id ?? null,
   requestedScheduleBlockId: row.requested_schedule_block_id ?? null,
   selectedScheduleLabel: row.selected_schedule_label ?? null,
@@ -987,8 +988,9 @@ const mapApplication = (row: TrialApplicationRow): TrialApplicationSummary => {
     organizationAddress: null,
     organizationAddressDetail: null,
     parentId: row.parent_id,
-    childName: row.child_name,
-    childGrade: row.child_grade,
+    childName: row.child_name ?? "학생 정보 삭제됨",
+    personalDataErased: row.child_name === null,
+    childGrade: row.child_grade ?? "",
     parentName: row.parent_name ?? null,
     parentPhone: row.parent_phone ?? null,
     classScheduleId: row.class_schedule_id ?? null,
@@ -4807,8 +4809,8 @@ export const supabaseDataAdapter: DataAdapter = {
 
       return {
         id: row.id,
-        childName: row.child_name,
-        childGrade: row.child_grade,
+        childName: row.child_name ?? "학생 정보 삭제됨",
+        childGrade: row.child_grade ?? "",
         parentName: row.parent_name ?? null,
         parentPhone: row.parent_phone ?? null,
         classTitle: embeddedClass?.title ?? null,
@@ -4953,8 +4955,8 @@ export const supabaseDataAdapter: DataAdapter = {
 
       const item: StudioConsultationPipelineApplicationItem = {
         id: row.id,
-        childName: row.child_name,
-        childGrade: row.child_grade,
+        childName: row.child_name ?? "학생 정보 삭제됨",
+        childGrade: row.child_grade ?? "",
         parentName: row.parent_name ?? null,
         parentPhone: row.parent_phone ?? null,
         classTitle: embeddedClass?.title ?? null,
@@ -5624,12 +5626,12 @@ export const supabaseDataAdapter: DataAdapter = {
 
     const supabase = await getSupabaseServerClient()
 
-    // 표마다 한 번씩, 총 세 번이다. Experience 마다 질의하면 cohort 가 커질수록
+    // 원문 세 표와 삭제 후 발행 사실을 페이지 단위로 조회한다. Experience 마다 질의하면 cohort 가 커질수록
     // 질의 수가 같이 늘어난다.
     //
     // 조직 범위를 여기서 다시 적지 않는다 — 세 표 모두 teacher RLS 가
     // 자기 조직 신청으로 이미 좁혀 준다(적는 곳이 둘이면 어긋난다).
-    const [reportsResult, decisionsResult, resultsResult] = await Promise.all([
+    const [reportsResult, decisionsResult, resultsResult, erasedReportIds] = await Promise.all([
       supabase
         .from("experience_reports")
         .select("application_id")
@@ -5644,7 +5646,8 @@ export const supabaseDataAdapter: DataAdapter = {
         .from("registration_results")
         .select("application_id, result")
         .in("application_id", applicationIds)
-        .is("superseded_at", null)
+        .is("superseded_at", null),
+      readErasedReportFlags(supabase, applicationIds)
     ])
 
     if (reportsResult.error || decisionsResult.error || resultsResult.error) {
@@ -5652,9 +5655,10 @@ export const supabaseDataAdapter: DataAdapter = {
     }
 
     return {
-      publishedReportApplicationIds: (reportsResult.data ?? []).map(
-        (row) => (row as { application_id: string }).application_id
-      ),
+      publishedReportApplicationIds: [...new Set([
+        ...(reportsResult.data ?? []).map(row => (row as { application_id: string }).application_id),
+        ...erasedReportIds
+      ])],
       parentDecisions: (decisionsResult.data ?? [])
         .map((row) => row as { application_id: string; decision: string })
         .filter((row) => isParentDecision(row.decision))

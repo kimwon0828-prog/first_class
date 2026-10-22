@@ -635,6 +635,8 @@ export type UpdateChildProfileInput = ChildProfileInput & {
 }
 
 export type TrialApplicationSummary = {
+  /** Set only when the stored student identifiers have been erased. */
+  personalDataErased?: boolean
   id: string
   classId: string
   classTitle: string | null
