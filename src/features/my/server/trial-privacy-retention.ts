@@ -2,6 +2,8 @@ import "server-only"
 import type { SupabaseClient } from "@supabase/supabase-js"
 import { getSupabaseServiceRoleClient } from "@/integrations/supabase/service-role"
 
+export type TrialPrivacyRetentionResult = Awaited<ReturnType<typeof runTrialPrivacyRetention>>
+
 type FileTask = { bucket_id: string; object_name: string }
 type Claim = { applicationId: string; leaseId: string; files: FileTask[] }
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
@@ -30,7 +32,7 @@ export async function runTrialPrivacyRetention(options: {
   enabled?: boolean; client?: SupabaseClient; now?: () => number
 } = {}) {
   const result = { enabled: options.enabled ?? process.env.TRIAL_PRIVACY_RETENTION_ENABLED === "true",
-    scopes: 0, prepared: 0, blocked: 0, needsReview: 0, filesRemoved: 0, jobsCompleted: 0, errors: 0, deadlineReached: false }
+    scopes: 0, prepared: 0, blocked: 0, needsReview: 0, filesRemoved: 0, jobsCompleted: 0, errors: 0, busyScopes: 0, capacityReached: false, deadlineReached: false }
   if (!result.enabled) return result
   const client = options.client ?? getSupabaseServiceRoleClient()
   const now = options.now ?? Date.now
@@ -57,11 +59,14 @@ export async function runTrialPrivacyRetention(options: {
       result.prepared += prepared.data.prepared
       result.blocked += prepared.data.blocked
       result.needsReview += prepared.data.needsReview
+      if (prepared.data.busy) { result.busyScopes++; continue }
+      if (prepared.data.prepared + prepared.data.blocked === 10) result.capacityReached = true
       for (let batch = 0; batch < 4 && inBudget(); batch++) {
         const claimed = await client.rpc("claim_trial_privacy_retention_files", { p_org: org })
         if (claimed.error) throw new Error("privacy_claim_failed")
         const claim = claimValue(claimed.data)
         if (!claim) break
+        if (batch === 3) result.capacityReached = true
         try {
           const groups = new Map<string, string[]>()
           for (const file of claim.files) groups.set(file.bucket_id, [...(groups.get(file.bucket_id) ?? []), file.object_name])
