@@ -16,6 +16,7 @@ type LegalPageLayoutProps = {
   title: string
   description: string
   notice?: string
+  links?: readonly { href: string; label: string }[]
   sections: LegalSection[]
   /** 문서마다 다르다. 넘기지 않으면 기존 약관·방침의 날짜를 그대로 쓴다. */
   effectiveDate?: string
@@ -28,6 +29,7 @@ export function LegalPageLayout({
   title,
   description,
   notice,
+  links,
   sections,
   effectiveDate = LEGAL_EFFECTIVE_DATE,
   lastUpdatedDate = LEGAL_UPDATED_DATE
@@ -53,6 +55,11 @@ export function LegalPageLayout({
             <h1 className={styles.title}>{title}</h1>
             <p className={styles.description}>{description}</p>
             {notice ? <p className={styles.notice}>{notice}</p> : null}
+            {links?.length ? (
+              <nav className={styles.documentLinks} aria-label="관련 개인정보 안내">
+                {links.map(link => <Link key={link.href} href={link.href} className={styles.documentLink}>{link.label}</Link>)}
+              </nav>
+            ) : null}
           </div>
 
           <div className={styles.sectionList}>

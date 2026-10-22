@@ -746,6 +746,7 @@ export function ClassDetailApplicationSheet({
                                 className={styles.textarea}
                               />
                             </label>
+                            <p>진단명·알레르기 등 건강정보는 입력하지 말고, 필요한 내용은 학원에 직접 전달해 주세요.</p>
 
                             <label className={styles.field}>
                               <span className={styles.fieldLabel}>과목 경험 여부</span>
