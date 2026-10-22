@@ -66,7 +66,7 @@ export function ParentAccountDeletion({ onCancel, onBusyChange, recovery = false
       </form>
     </> : <>
       <p>첫수업 계정과 첫수업에서 관리하는 개인 정보가 삭제됩니다.</p>
-      <p>체험 신청 과정에서 선택한 학원에 이미 전달된 신청·상담·체험·등록 관련 정보는 해당 학원의 고객관리 및 운영 기록으로 보관될 수 있습니다.</p>
+      <p>첫수업에 저장된 이름·연락처, 상담 내용, 리포트와 사진도 삭제합니다. 예약·체험·등록 상태 등 최소 운영 기록은 체험 종료(취소·불참은 해당 처리 시점) 후 최대 12개월까지만 유지하고, 이후 개별 기록을 삭제합니다. 법령상 보관이나 분쟁 처리가 필요한 자료는 별도로 안내합니다. 진행 중인 예약은 자동 취소되지 않습니다.</p>
       <p>탈퇴 후에는 기존 첫수업 계정으로 서비스를 이용할 수 없습니다.</p>
       <div className={styles.actions}>
         <button type="button" onClick={cancel} className={styles.cancel}>취소</button>

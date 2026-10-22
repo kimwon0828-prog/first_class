@@ -225,10 +225,11 @@ export const ApplyForm = ({
                 setChildNotes(event.target.value)
               }}
               disabled={isPending}
-              placeholder="알레르기, 성향, 주의사항이 있으면 적어 주세요."
+              placeholder="수업 참여 성향이나 학습 시 참고할 내용을 적어 주세요."
               className={styles.textarea}
             />
           </div>
+          <p>진단명·알레르기 등 건강정보는 입력하지 말고, 필요한 내용은 학원에 직접 전달해 주세요.</p>
 
           <div className={styles.field}>
             <span className={styles.label}>과목 경험 여부</span>

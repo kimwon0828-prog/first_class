@@ -5,7 +5,7 @@ import { LegalPageLayout } from "../legal-page-layout"
 
 export const metadata: Metadata = {
   title: "개인정보 제3자 제공 동의",
-  description: "첫수업 MVP 개인정보 제3자 제공 동의 초안"
+  description: "체험 신청 시 선택한 학원에 제공하는 개인정보의 항목, 목적과 동의 거부 권리를 안내합니다."
 }
 
 export default function ThirdPartyConsentPage() {
