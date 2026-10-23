@@ -151,11 +151,11 @@ export const getOperatingRuleSlotMinutes = (rule: ClassOperatingRule) => {
   return first ? toMinutes(first.endTime) - toMinutes(first.startTime) : null
 }
 
-/** "상시 운영 (10/20부터)" · "기간 운영 (12/22–1/30)" */
+/** "상시 운영 (10/20부터)" · "기간 지정 (12/22–1/30)" — 운영 방식 이름은 목록 · 등록 화면과 같다. */
 export const presentOperatingRuleHeading = (rule: ClassOperatingRule) =>
   rule.operationType === "rolling"
     ? `상시 운영 (${formatMonthDay(rule.startDate)}부터)`
-    : `기간 운영 (${formatMonthDay(rule.startDate)}–${rule.endDate ? formatMonthDay(rule.endDate) : ""})`
+    : `기간 지정 (${formatMonthDay(rule.startDate)}–${rule.endDate ? formatMonthDay(rule.endDate) : ""})`
 
 export type OperatingRuleGroupPresentation = {
   id: string

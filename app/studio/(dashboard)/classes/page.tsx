@@ -35,7 +35,7 @@ export default async function StudioClassesPage({ searchParams }: StudioClassesP
   const weekItems = weekResults.flatMap((result) => result.data.items).filter((item) => weekDates.has(item.specificDate))
   const weekError = weekResults.find((result) => result.error)?.error ?? null
 
-  // 수업 소개 탭에 쓰는 글. 목록 조회에는 없는 칸이라 기존 수업 조회에서 꺼낸다.
+  // 수업 소개 탭 글과 체험비 확인 여부. 목록 조회에는 없는 칸이라 기존 수업 조회에서 꺼낸다.
   const intros: Record<string, StudioClassIntro> = Object.fromEntries(
     detailResult.data.map((item) => [
       item.id,
@@ -44,7 +44,8 @@ export default async function StudioClassesPage({ searchParams }: StudioClassesP
         recommendedFor: item.recommendedFor,
         experiencePoints: item.experiencePoints,
         curriculum: item.curriculum,
-        classFormat: item.classFormat
+        classFormat: item.classFormat,
+        trialPriceConfirmed: item.trialPriceConfirmed
       }
     ])
   )

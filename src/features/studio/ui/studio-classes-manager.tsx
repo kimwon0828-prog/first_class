@@ -17,6 +17,7 @@ import {
   useStudioNavigationPathFactory
 } from "@/features/studio/ui/studio-navigation-provider"
 import { getParentCrossProductHref } from "@/shared/config/cross-product-navigation"
+import { formatDiscoveryPrice } from "@/features/classes/lib/class-discovery-results"
 import { formatStoredTargetGrades } from "@/shared/constants/grade-options"
 import type { StudioClassListItem, StudioScheduleCalendarDay, StudioScheduleCalendarItem } from "@/shared/lib/db/adapter"
 import { formatClassSubjectDisplayLabel } from "@/shared/lib/subject-master"
@@ -40,6 +41,8 @@ export type StudioClassIntro = {
   experiencePoints: string | null
   curriculum: string | null
   classFormat: string | null
+  /** 0원 체험비를 학원이 확인했는지. null 은 확인 칸이 없는 DB(기존 표시 유지). */
+  trialPriceConfirmed?: boolean | null
 }
 
 type StudioClassesManagerProps = {
@@ -58,8 +61,6 @@ type StudioClassesManagerProps = {
 }
 
 type StatusFilter = "all" | "active" | "inactive" | "archived"
-
-const formatPrice = (price: number) => (price <= 0 ? "무료" : `${price.toLocaleString("ko-KR")}원`)
 
 const PROGRAM_TYPE_LABELS: Record<StudioClassListItem["programType"], string> = {
   trial_class: "체험수업",
@@ -80,7 +81,7 @@ const classStatus = (item: StudioClassListItem) =>
       ? { label: "운영 중", tone: "green" as const }
       : { label: "비공개", tone: "gray" as const }
 
-const INTRO_SECTIONS: Array<{ key: keyof StudioClassIntro; title: string }> = [
+const INTRO_SECTIONS: Array<{ key: Exclude<keyof StudioClassIntro, "trialPriceConfirmed">; title: string }> = [
   { key: "classFormat", title: "수업 방식" },
   { key: "description", title: "프로그램 소개" },
   { key: "recommendedFor", title: "이런 아이에게 추천해요" },
@@ -316,7 +317,7 @@ export const StudioClassesManager = ({
                   operationsHref,
                   operation.kind === "legacy" ? "운영 일정 설정" : "운영 시간 수정",
                   v2ButtonClassName({ variant: "ghost", size: "sm" }),
-                  <V2PlusIcon size={16} />
+                  operation.kind === "legacy" ? <V2PlusIcon size={16} /> : <V2PencilIcon size={16} />
                 )
               : null}
           </div>
@@ -450,11 +451,18 @@ export const StudioClassesManager = ({
     const status = classStatus(item)
     const rule = item.operatingRuleState.status === "loaded" ? item.operatingRuleState.rule : null
     const minutes = rule ? getOperatingRuleSlotMinutes(rule) : null
+    // 가격은 학부모 앱과 같은 규칙(formatDiscoveryPrice). 확인 여부를 못 읽었으면 "확인 안 됨"으로 본다 —
+    // 확인되지 않은 0원을 무료로 보여 주는 쪽으로 틀리지 않게.
+    const priceLabel = formatDiscoveryPrice({
+      programType: item.programType,
+      trialPrice: item.trialPrice,
+      trialPriceConfirmed: intros[item.id] ? intros[item.id].trialPriceConfirmed : false
+    })
     const summary = [
       PROGRAM_TYPE_LABELS[item.programType],
       formatStoredTargetGrades(item.targetAge),
       minutes ? `${minutes}분` : null,
-      formatPrice(item.trialPrice),
+      priceLabel,
       item.assignmentMode === "preassigned"
         ? `담당 ${item.teacherDisplayName ?? item.teacherName ?? "미지정"}`
         : "신청 후 배정"

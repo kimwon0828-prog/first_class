@@ -678,7 +678,7 @@ export const StudioClassForm = ({
   const programLabel = selectedProgramType === "level_test" ? "레벨테스트" : "체험수업"
   const priceLabel = priceMode === "free" ? `무료 ${programLabel}`
     : priceMode === "paid" && /^\d+$/.test(trialPrice) && Number(trialPrice) > 0
-      ? `${programLabel} ${Number(trialPrice).toLocaleString("ko-KR")}원` : "가격 미설정"
+      ? `${programLabel} ${Number(trialPrice).toLocaleString("ko-KR")}원` : "가격 정보 확인 필요"
   const savedVisibility = initialItem?.isActive ? "공개" : "비공개"
   const nextVisibility = isActivePreview ? "공개" : "비공개"
   const visibilitySummaryLabel = mode === "create" ? `등록 후 ${nextVisibility}`
