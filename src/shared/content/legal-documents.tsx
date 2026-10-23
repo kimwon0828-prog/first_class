@@ -124,10 +124,11 @@ export const LEGAL_DOCUMENTS: Record<string, LegalDocumentDefinition> = {
     ]
   },
   "privacy": {
-    effectiveDate: "2026년 10월 22일",
+    effectiveDate: "2026년 10월 23일",
+    lastUpdatedDate: "2026년 10월 23일",
     eyebrow: "개인정보 안내",
     title: "개인정보처리방침",
-    notice: "2026년 10월 22일 개정: 체험 기록의 12개월 보유 기준, 탈퇴 시 삭제 범위, 앱 없이 삭제를 요청하는 방법과 외부 서비스 이용 내역을 구체화했습니다. 건강정보 입력은 요청하지 않습니다.",
+    notice: "2026년 10월 23일 개정: Android 푸시 알림에 사용하는 Google FCM과 기기 식별자의 처리 내역을 추가했습니다. 체험 기록의 12개월 보유 기준, 탈퇴 시 삭제 범위와 건강정보 입력을 요청하지 않는 기준은 유지합니다.",
     description: "첫수업은 학부모의 체험 신청과 자녀 정보 관리, 학원의 수업 운영에 필요한 개인정보를 처리합니다. 어떤 정보를 왜 사용하는지, 어디에 전달되는지, 탈퇴 시 무엇이 삭제되고 남는지 안내합니다.",
     sections: [
       {
@@ -168,6 +169,7 @@ export const LEGAL_DOCUMENTS: Record<string, LegalDocumentDefinition> = {
         title: "푸시 알림과 기기 정보",
         body: content([
           {"kind": "paragraph", "text": "알림을 허용한 기기의 푸시 토큰, 앱 설치 식별자, 기기 운영체제와 알림 권한 상태 등 기기 등록에 필요한 정보를 처리하여 계정에 맞는 알림을 보냅니다. 푸시 토큰은 서비스 로그인 비밀번호가 아닙니다."},
+          {"kind": "paragraph", "text": "Android에서는 알림 전달을 준비하는 Firebase SDK가 앱 초기화 시 설치 식별자와 연결 정보를 처리할 수 있습니다. 이 처리는 첫수업 계정의 알림 발송 대상 등록이나 기기의 알림 표시 권한과 구분됩니다."},
           {"kind": "paragraph", "text": "알림 권한은 기기 설정에서 변경할 수 있습니다. 권한을 허용하지 않아도 수업 탐색·신청·리포트 열람 등 다른 기능을 이용할 수 있습니다. 로그아웃·탈퇴·기기 등록 해제 등 상태에 따라 해당 계정의 발송 대상에서 제외합니다."},
           {"kind": "paragraph", "text": "서비스는 광고 타기팅, 외부 광고 성과 측정 또는 데이터 판매를 목적으로 개인정보를 사용하지 않습니다. 광고 식별자나 기기 위치 접근 권한을 요청하여 맞춤 광고를 제공하지 않습니다."},
         ])
@@ -186,8 +188,9 @@ export const LEGAL_DOCUMENTS: Record<string, LegalDocumentDefinition> = {
         body: content([
           {"kind": "bullet", "text": "Supabase Pte. Ltd.(문의: privacy@supabase.io): 로그인 인증, 데이터베이스와 파일 저장소 운영. 인증·계정·자녀·신청·리포트 등 서비스 데이터와 인증 로그를 처리합니다."},
           {"kind": "bullet", "text": "Vercel Inc.(문의: privacy@vercel.com): 웹·앱 API 실행과 호스팅. 앱의 API 요청, 접속·오류·서버 운영 로그를 처리합니다."},
-          {"kind": "bullet", "text": "Expo — 650 Industries, Inc.(문의: https://expo.dev/contact): 앱 푸시 토큰과 알림 메시지를 Apple 푸시 서비스에 전달합니다. Expo는 전달에 필요한 메모리·메시지 큐에서 알림 내용을 처리하며, 알림 내용을 데이터베이스에 장기 저장하는 용도로 사용하지 않는다고 안내합니다."},
+          {"kind": "bullet", "text": "Expo — 650 Industries, Inc.(문의: https://expo.dev/contact): 앱 푸시 토큰과 알림 메시지를 iPhone의 Apple APNs 또는 Android의 Google FCM에 전달합니다. Expo는 전달에 필요한 메모리·메시지 큐에서 알림 내용을 처리하며, 알림 내용을 데이터베이스에 장기 저장하는 용도로 사용하지 않는다고 안내합니다."},
           {"kind": "bullet", "text": "Apple Inc.(APNs, 문의: https://www.apple.com/legal/privacy/contact/): iPhone에 푸시 알림을 전달하기 위한 기기 토큰과 메시지를 처리합니다."},
+          {"kind": "bullet", "text": "Google LLC(Firebase Cloud Messaging, FCM, 문의: https://firebase.google.com/support/privacy): Android 푸시 알림 전달을 위해 Firebase 설치 식별자와 등록 토큰, 알림 메시지 및 SDK의 앱 버전·연결 정보를 처리합니다. 광고 타기팅이나 Google Analytics를 위한 이용과는 구분됩니다."},
           {"kind": "bullet", "text": "네이버클라우드 주식회사: 신청·상태 안내 등 문자 또는 알림톡 발송에 사용하는 연락처와 메시지를 처리합니다."},
           {"kind": "bullet", "text": "카카오·Apple: 이용자가 선택한 소셜 로그인을 제공하며, 각 제공자의 계정·동의·개인정보 처리 정책도 적용됩니다."},
         ])
@@ -200,6 +203,8 @@ export const LEGAL_DOCUMENTS: Record<string, LegalDocumentDefinition> = {
           {"kind": "paragraph", "text": "Supabase는 지원·운영에 필요한 경우 미국 법인과 해외 지원 인력이 제한적으로 접근할 수 있고, 운영 로그는 유럽 데이터센터, 파일 전달은 전 세계 CDN에서 처리할 수 있다고 안내합니다. 선택한 도쿄 지역 안에서만 모든 처리가 이루어지는 것은 아닙니다. 처리 지역과 재위탁 업체 안내: https://supabase.com/legal/privacy-resources/data-residency-and-transfers-faq 및 https://supabase.com/legal/subprocessors"},
           {"kind": "bullet", "text": "Vercel Inc.(미국, privacy@vercel.com): 웹·앱 이용 시 인증에 필요한 정보와 요청·응답 데이터, IP·접속·오류 정보를 암호화된 통신으로 처리합니다. 현재 API 실행 지역은 일본 도쿄이며, 미국 등 업체 인프라에서도 로그·보안·콘텐츠 전달에 필요한 처리가 이루어질 수 있습니다. 요청 데이터는 응답 처리에, 운영 로그는 장애 대응과 보안에 사용합니다. 처리 지역·재위탁 업체 안내: https://security.vercel.com"},
           {"kind": "bullet", "text": "650 Industries, Inc.(Expo, 미국, https://expo.dev/contact)와 Apple Inc.(APNs, 미국, https://www.apple.com/legal/privacy/contact/): 알림 허용 후 기기 등록·알림 발송 시 푸시 토큰과 안내 메시지를 암호화된 통신으로 전달합니다. 알림 내용은 전달·재시도에 필요한 동안 처리되며, Expo는 내용을 장기 보관하는 데이터베이스에 저장하지 않는다고 안내합니다. 토큰은 알림 전달에 필요한 동안 처리됩니다. 기기 알림 권한 철회·로그아웃·탈퇴 시 첫수업의 발송 대상에서 제외합니다."},
+          {"kind": "bullet", "text": "Google LLC(미국, Firebase Cloud Messaging, https://firebase.google.com/support/privacy): Android 앱 초기화·기기 등록·알림 발송 과정에서 설치 식별자, 등록 토큰, 앱·연결 정보와 알림 메시지를 암호화된 통신으로 처리합니다. FCM은 Google의 전 세계 인프라에서 운영되며 한국 안에서만 처리되는 서비스는 아닙니다. 메시지는 전달·재시도에 필요한 동안 처리합니다."},
+          {"kind": "paragraph", "text": "Firebase 설치 식별자는 Google의 안내에 따라 삭제 API가 호출될 때까지 보유되며, 호출 후 운영 시스템과 백업에서 삭제되는 데 최대 180일이 걸릴 수 있습니다. 첫수업의 로그아웃·탈퇴에 따른 발송 대상 해제는 Google의 설치 식별자 삭제와는 별도입니다. 현재 앱은 발송 대상 해제 시 Google 설치 식별자의 즉시 삭제를 보장하지 않습니다. 삭제 요청은 고객센터 {{supportEmail}}에서 접수하며 처리 가능 범위와 결과를 확인하여 안내합니다."},
           {"kind": "paragraph", "text": "국외 이전을 원하지 않으면 고객센터 {{supportEmail}}으로 처리정지 또는 삭제를 요청할 수 있습니다. 푸시는 기기 설정에서 별도로 끌 수 있습니다. 인증·저장·API 처리 중단을 요청하면 로그인·신청·리포트 이용이 제한될 수 있으며, 요청 범위와 처리 결과를 확인하여 안내합니다."},
         ])
       },
