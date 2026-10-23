@@ -11,6 +11,9 @@ import {
   type OperatingHoursGroupDraft
 } from "@/features/studio/lib/studio-operating-hours"
 
+import { v2ButtonClassName } from "./v2/v2-button"
+import { V2Chip } from "./v2/v2-chip"
+import { V2ChevronDownIcon, V2PlusIcon } from "./v2/v2-icons"
 import { OperatingTimeInput } from "./operating-time-input"
 import styles from "./studio-class-operation-editor.module.css"
 
@@ -103,33 +106,43 @@ export const StudioClassOperationEditor = ({
         {operationType === "fixed_period" ? <fieldset className={styles.fieldset}>
           <legend className={styles.legend}>운영 기간 *</legend>
           <div className={styles.dateRange}>
-            <input aria-label="운영 시작일" type="date" value={value.operationStartDate} min={startDateMin}
-              disabled={disabled} onChange={(event) => onChange({ ...value, operationStartDate: event.target.value })} />
-            <span aria-hidden="true">~</span>
-            <input aria-label="운영 종료일" type="date" value={value.operationEndDate}
-              min={value.operationStartDate || todayKey} disabled={disabled}
-              onChange={(event) => onChange({ ...value, operationEndDate: event.target.value })} />
+            <label className={styles.dateField}>
+              <span className={styles.subLabel}>운영 시작일</span>
+              <input aria-label="운영 시작일" type="date" value={value.operationStartDate} min={startDateMin}
+                disabled={disabled} onChange={(event) => onChange({ ...value, operationStartDate: event.target.value })} />
+            </label>
+            <span className={styles.tilde} aria-hidden="true">~</span>
+            <label className={styles.dateField}>
+              <span className={styles.subLabel}>운영 종료일</span>
+              <input aria-label="운영 종료일" type="date" value={value.operationEndDate}
+                min={value.operationStartDate || todayKey} disabled={disabled}
+                onChange={(event) => onChange({ ...value, operationEndDate: event.target.value })} />
+            </label>
           </div>
+          <small className={styles.hint}>최대 2년까지 정할 수 있어요.</small>
         </fieldset> : null}
 
         <label className={styles.durationField}>
           <span className={styles.legend}>체험수업 시간 *</span>
-          <select aria-label="체험수업 시간" value={value.intervalMinutes} disabled={disabled}
-            onChange={(event) => onChange({ ...value, intervalMinutes: event.target.value })}>
-            {durationValues.map((duration) => <option key={duration} value={duration}>{duration}분</option>)}
-          </select>
-          <small>선택한 수업 시간 간격으로 예약 가능 시간을 만들어요.</small>
+          <span className={styles.selectWrap}>
+            <select aria-label="체험수업 시간" value={value.intervalMinutes} disabled={disabled}
+              onChange={(event) => onChange({ ...value, intervalMinutes: event.target.value })}>
+              {durationValues.map((duration) => <option key={duration} value={duration}>{duration}분</option>)}
+            </select>
+            <V2ChevronDownIcon className={styles.selectIcon} size={16} />
+          </span>
+          <small className={styles.hint}>선택한 수업 시간 간격으로 예약 가능 시간을 만들어요.</small>
         </label>
 
         {inputMode === "individual" ? <div className={styles.individualNotice}>
           <div><strong>기존 개별 시간 설정</strong><p>저장된 시간과 정원을 그대로 유지하고 있어요.</p></div>
-          <button type="button" disabled={disabled} onClick={switchToRangeMode}>운영시간 범위로 다시 설정</button>
+          <button type="button" className={v2ButtonClassName({ variant: "outline", size: "sm" })} disabled={disabled} onClick={switchToRangeMode}>운영시간 범위로 다시 설정</button>
         </div> : null}
 
         <fieldset className={styles.fieldset} aria-labelledby="operation-hours-heading">
           <div className={styles.sectionHeading}>
             <span id="operation-hours-heading" className={styles.legend}>운영 시간 설정 *</span>
-            {inputMode === "range" ? <small>운영 종료 시각에 끝나는 회차까지만 예약을 받아요.</small> : null}
+            {inputMode === "range" ? <small className={styles.hint}>운영 종료 시각에 끝나는 회차까지만 예약을 받아요.</small> : null}
           </div>
           <div className={styles.groupList}>
             {value.groups.map((group, groupIndex) => {
@@ -139,7 +152,7 @@ export const StudioClassOperationEditor = ({
                 buildOperatingTimeRangeSlots(range, durationMinutes, inputMode).map((slot) => slot.startTime)
               ))].sort()
 
-              return <section key={group.id} className={styles.scheduleGroup}>
+              return <section key={group.id} className={styles.scheduleGroup} aria-label={`운영시간 그룹 ${groupIndex + 1}`}>
                 <div className={styles.groupHeader}>
                   <strong>운영시간 그룹 {groupIndex + 1}</strong>
                   {value.groups.length > 1 ? <button type="button" className={styles.removeGroupButton}
@@ -157,22 +170,20 @@ export const StudioClassOperationEditor = ({
                       const blocked = !selected && value.groups.some(
                         (other) => other.id !== group.id && other.weekdays.includes(weekday)
                       )
-                      return <button key={`${group.id}-${weekday}`} type="button"
-                        className={`${styles.weekdayButton} ${selected ? styles.weekdaySelected : ""}`}
-                        aria-pressed={selected} disabled={disabled || blocked}
+                      return <V2Chip key={`${group.id}-${weekday}`} label={weekdayLabels[weekday]}
+                        selected={selected} disabled={disabled || blocked}
                         title={blocked ? "다른 운영시간 그룹에서 선택한 요일입니다." : undefined}
                         onClick={() => updateGroup(group.id, (current) => ({ ...current,
                           weekdays: selected ? current.weekdays.filter((item) => item !== weekday)
-                            : [...current.weekdays, weekday].sort((left, right) => left - right) }))}>
-                        {weekdayLabels[weekday]}
-                      </button>
+                            : [...current.weekdays, weekday].sort((left, right) => left - right) }))} />
                     })}
                   </div>
+                  <small className={styles.hint}>다른 운영시간 그룹에서 선택한 요일은 고를 수 없어요.</small>
                 </div>
 
                 <div className={styles.groupField}>
                   <span className={styles.subLabel}>{inputMode === "range" ? "운영 시간 *" : "예약 시작 시간 *"}</span>
-                  <small className={styles.actionHint}>24시간제 · 직접 입력하거나 목록에서 선택</small>
+                  <small className={styles.hint}>24시간제 · 직접 입력하거나 목록에서 선택</small>
                   <div className={styles.timeList}>
                     {group.timeRanges.map((range, rangeIndex) => <div key={range.id} className={styles.timeRow}>
                       <OperatingTimeInput label="시작 시간" ariaLabel={`그룹 ${groupIndex + 1} ${rangeIndex + 1} 시작 시간`}
@@ -183,14 +194,14 @@ export const StudioClassOperationEditor = ({
                               lastStartTime: inputMode === "individual" ? time : item.lastStartTime }
                             : item) }))} />
                       {inputMode === "range" ? <>
-                        <span aria-hidden="true">~</span>
+                        <span className={styles.tilde} aria-hidden="true">~</span>
                         <OperatingTimeInput label="종료 시간" ariaLabel={`그룹 ${groupIndex + 1} ${rangeIndex + 1} 운영 종료 시간`}
                           value={range.operationEndTime ?? ""} disabled={disabled}
                           onChange={(time) => updateGroup(group.id, (current) => ({ ...current,
                             timeRanges: current.timeRanges.map((item) => item.id === range.id
                               ? { ...item, operationEndTime: time } : item) }))} />
                       </> : <span className={styles.individualEnd}>~ {addMinutesToTime(range.startTime, durationMinutes) || "--:--"}</span>}
-                      {inputMode === "individual" ? <label className={styles.slotCapacity}>
+                      {inputMode === "individual" ? <label className={styles.unitInput}>
                         <input aria-label={`${range.startTime || "미설정"} 정원`} type="number" min={1}
                           value={range.capacity} disabled={disabled} onChange={(event) => onChange({ ...value,
                             usePerTimeRangeCapacity: true,
@@ -205,18 +216,21 @@ export const StudioClassOperationEditor = ({
                           timeRanges: current.timeRanges.filter((item) => item.id !== range.id) }))}>삭제</button> : null}
                     </div>)}
                   </div>
-                  <button type="button" className={styles.addTimeButton} disabled={disabled}
-                    onClick={() => updateGroup(group.id, (current) => ({ ...current,
-                      timeRanges: [...current.timeRanges, createOperatingHoursTimeRangeDraft(groupCapacity || value.defaultCapacity)] }))}>
-                    {inputMode === "range" ? "+ 시간대 추가" : "+ 시간 추가"}
-                  </button>
-                  {inputMode === "range" ? <small className={styles.actionHint}>같은 요일에 다른 시간 범위를 추가해요.</small> : null}
+                  <div className={styles.actionRow}>
+                    <button type="button" className={v2ButtonClassName({ variant: "outline", size: "sm" })} disabled={disabled}
+                      onClick={() => updateGroup(group.id, (current) => ({ ...current,
+                        timeRanges: [...current.timeRanges, createOperatingHoursTimeRangeDraft(groupCapacity || value.defaultCapacity)] }))}>
+                      <V2PlusIcon size={16} />{inputMode === "range" ? "시간대 추가" : "시간 추가"}
+                    </button>
+                    {inputMode === "range" ? <small className={styles.hint}>같은 요일에 다른 시간 범위를 추가해요.</small> : null}
+                  </div>
                 </div>
 
                 {inputMode === "range" ? <div className={styles.previewBlock}>
                   <div className={styles.previewHeading}>
                     <strong>예약 가능 시간 {previewTimes.length > 0 ? `(${previewTimes.length}개)` : ""}</strong>
-                    {previewTimes.length === 0 ? <span>운영 시간을 확인해 주세요.</span> : null}
+                    {previewTimes.length === 0 ? <span className={styles.previewError}>운영 시간을 확인해 주세요.</span>
+                      : <span>체험수업 시간 간격으로 자동 생성</span>}
                   </div>
                   {previewTimes.length > 0 ? <div className={styles.previewChips}>
                     {previewTimes.map((time) => <span key={time}>{time}</span>)}
@@ -225,7 +239,7 @@ export const StudioClassOperationEditor = ({
 
                 {inputMode === "range" ? <label className={styles.capacityField}>
                   <span className={styles.subLabel}>회차당 정원 *</span>
-                  <span className={styles.capacityInputWrap}>
+                  <span className={styles.unitInput}>
                     <input type="number" min={1} inputMode="numeric" value={groupCapacity}
                       placeholder={capacities.size > 1 ? "시간별 다름" : "정원"} disabled={disabled}
                       onChange={(event) => onChange({ ...value,
@@ -240,12 +254,14 @@ export const StudioClassOperationEditor = ({
             })}
           </div>
 
-          <button type="button" className={styles.addGroupButton} disabled={disabled || value.groups.length >= 7}
-            onClick={() => onChange({ ...value, operatingMode: "custom", usePerTimeRangeCapacity: true,
-              groups: [...value.groups, createOperatingHoursGroupDraft([], value.defaultCapacity)] })}>
-            + 운영시간 그룹 추가
-          </button>
-          <small className={styles.actionHint}>다른 요일에 다른 운영시간을 설정해요.</small>
+          <div className={`${styles.actionRow} ${styles.addGroupRow}`}>
+            <button type="button" className={v2ButtonClassName({ variant: "outline", size: "sm" })} disabled={disabled || value.groups.length >= 7}
+              onClick={() => onChange({ ...value, operatingMode: "custom", usePerTimeRangeCapacity: true,
+                groups: [...value.groups, createOperatingHoursGroupDraft([], value.defaultCapacity)] })}>
+              <V2PlusIcon size={16} />운영시간 그룹 추가
+            </button>
+            <small className={styles.hint}>다른 요일에 다른 운영시간을 설정해요.</small>
+          </div>
           {totalSlotsPerWeek > 336 ? <p className={styles.limitError}>주간 예약 가능 시간이 336개를 넘을 수 없어요.</p> : null}
         </fieldset>
       </> : null}

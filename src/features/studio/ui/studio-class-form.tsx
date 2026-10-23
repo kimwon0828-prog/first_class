@@ -4,7 +4,7 @@ import { formatRegularPriceInput, parseRegularPrice, REGULAR_PRICE_NOTE_MAX_LENG
 
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { Fragment, useActionState, useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { Fragment, useActionState, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react"
 
 import {
   formatStoredTargetGrades,
@@ -52,8 +52,15 @@ import {
   validateOperatingScheduleDraft
 } from "@/features/studio/lib/studio-operating-hours"
 import { formatSeoulDateKey } from "@/shared/lib/seoul-datetime"
+import { V2Chip } from "@/features/studio/ui/v2/v2-chip"
+import { v2ButtonClassName } from "@/features/studio/ui/v2/v2-button"
+import { V2Dialog } from "@/features/studio/ui/v2/v2-dialog"
+import { V2ChevronDownIcon, V2ChevronRightIcon, V2InfoIcon } from "@/features/studio/ui/v2/v2-icons"
+import { V2Section } from "@/features/studio/ui/v2/v2-section"
+import { V2StatusBadge } from "@/features/studio/ui/v2/v2-status-badge"
+import { V2SubjectIcon3D } from "@/features/studio/ui/v2/v2-subject-icon-3d"
+import { V2Toggle } from "@/features/studio/ui/v2/v2-toggle"
 import { StudioClassOperationEditor } from "./studio-class-operation-editor"
-import { StudioClassFormDialog } from "./studio-class-form-dialog"
 import styles from "./studio-class-form.module.css"
 import { initialPriceMode } from "@/features/studio/lib/class-price-choice"
 
@@ -100,17 +107,35 @@ type ScheduleSlotDraft = {
 const ClassPreviewBasicInfo = ({
   subject,
   target,
-  classFormat
+  classFormat,
+  className
 }: {
   subject: string
   target: string
   classFormat: string
+  className?: string
 }) => (
-  <dl aria-label="기본 수업 정보">
+  <dl aria-label="기본 수업 정보" className={className}>
     <div><dt>과목</dt><dd>{subject}</dd></div>
     <div><dt>대상</dt><dd>{target}</dd></div>
     <div><dt>방식</dt><dd>{classFormat}</dd></div>
   </dl>
+)
+
+/**
+ * 섹션 안 한 줄: 왼쪽 116px 라벨 + 오른쪽 입력(Figma 수업 등록 A·B·D·E·F).
+ * data-field 는 오류가 났을 때 focusError 가 찾아 포커스를 옮기는 표식이다.
+ */
+const FormRow = ({ label, htmlFor, field, children }: {
+  label: string
+  htmlFor?: string
+  field?: string
+  children: ReactNode
+}) => (
+  <div className={styles.row} data-field={field}>
+    {htmlFor ? <label htmlFor={htmlFor} className={styles.rowLabel}>{label}</label> : <span className={styles.rowLabel}>{label}</span>}
+    <div className={styles.rowBody}>{children}</div>
+  </div>
 )
 
 const formSections = [
@@ -646,7 +671,10 @@ export const StudioClassForm = ({
     [operatingDraft]
   )
   const previewSlots = scheduleSlots.filter((slot) => slot.scheduleType === "one_time" && slot.specificDate >= todayKey)
-  const subjectLabel = selectedSubjectSelection?.subject.name ?? selectedSubjectCategory?.name ?? "과목 미선택"
+  // 미리보기 과목 표기: "대분류 · 세부 과목"(세부 과목이 없으면 대분류만). Figma 수업 미리보기 표기와 같다.
+  const subjectLabel = selectedSubjectSelection
+    ? `${selectedSubjectSelection.category.name} · ${selectedSubjectSelection.subject.name}`
+    : selectedSubjectCategory?.name ?? "과목 미선택"
   const programLabel = selectedProgramType === "level_test" ? "레벨테스트" : "체험수업"
   const priceLabel = priceMode === "free" ? `무료 ${programLabel}`
     : priceMode === "paid" && /^\d+$/.test(trialPrice) && Number(trialPrice) > 0
@@ -812,68 +840,79 @@ export const StudioClassForm = ({
     } finally { setIsUploadingCoverImage(false) }
   }
 
-  const programTypeField = <div className={styles.field}>
-    <span className={styles.fieldLabel}>수업 유형 *</span>
-    <div className={styles.chipGroup}>{programTypeOptions.map((option) => (
-      <button key={option.value} type="button" aria-pressed={selectedProgramType === option.value}
-        disabled={isPending} onClick={() => setSelectedProgramType(option.value)}
-        className={`${styles.chipButton} ${selectedProgramType === option.value ? styles.chipButtonSelected : ""}`}>{option.label}</button>
+  const programTypeField = <FormRow label="수업 유형 *">
+    <div className={styles.chips}>{programTypeOptions.map((option) => (
+      <V2Chip key={option.value} label={option.label} selected={selectedProgramType === option.value}
+        disabled={isPending} onClick={() => setSelectedProgramType(option.value)} />
     ))}</div>
-  </div>
+  </FormRow>
 
   const sectionSummaries = {
     basic: [headerTitle || "수업 정보 입력", previewTargetGradeLabel].filter(Boolean).join(" · "),
     price: priceLabel,
     operations: operationsSectionSummary,
     description: [description.trim() && "소개", recommendedFor.trim() && "추천 대상", experiencePoints.trim() && "경험", curriculum.trim() && "커리큘럼"].filter(Boolean).join(" · ") || "소개·추천 대상·커리큘럼",
-    image: previewImageUrl ? "대표 이미지 1개" : "대표 이미지 없음",
+    image: previewImageUrl ? "대표 이미지 1장" : "대표 이미지 없음",
     visibility: visibilitySummaryLabel
   }
-  const renderSectionHeader = (id: (typeof formSections)[number][0]) => {
+  // 섹션 틀은 v2 접이식 Section 이다. data-class-section · id 는 오류 포커스(focusError)와
+  // ?section=operations 바로 열기가 찾는 표식이라 그대로 둔다.
+  const sectionProps = (id: (typeof formSections)[number][0]) => {
     const index = formSections.findIndex(([key]) => key === id)
     const errorKeys: Record<typeof id, FieldErrorKey[]> = {
       basic: ["title", "subject", "targetGrades"], price: ["price", "regularPrice"], operations: ["teacher", "schedule"],
       description: ["description"], image: [], visibility: ["visibility"]
     }
     const hasError = errorKeys[id].some((key) => fieldErrors[key])
-    return <summary className={styles.sectionHeading}>
-      <span className={styles.sectionLetter} aria-hidden="true">{String.fromCharCode(65 + index)}</span>
-      <h2 id={`class-${id}-title`}>{formSections[index][1]}</h2>
-      {hasError ? <span className={styles.sectionError}>확인 필요</span> : null}
-      <span className={styles.sectionSummary}>{sectionSummaries[id]}</span>
-      <span className={styles.sectionChevron} aria-hidden="true" />
-    </summary>
+    return {
+      "data-class-section": id,
+      id: `class-section-${id}`,
+      "aria-labelledby": `class-${id}-title`,
+      className: styles.formSection,
+      letter: String.fromCharCode(65 + index),
+      title: formSections[index][1],
+      titleAs: "h2" as const,
+      titleId: `class-${id}-title`,
+      summary: sectionSummaries[id],
+      badge: hasError ? <V2StatusBadge tone="red">확인 필요</V2StatusBadge> : null
+    }
   }
-  const teacherAssignmentField = <div className={styles.field} data-field="teacher">
+  const teacherAssignmentField = <div className={styles.stackField} data-field="teacher">
     <label htmlFor={`${resolvedFormId}-teacher`} className={styles.fieldLabel}>담당 선생님</label>
-    <select id={`${resolvedFormId}-teacher`} name="teacherId" value={isPreassignedMode ? selectedTeacherId : ""} onChange={(event) => {
-      const teacherId = event.target.value
-      setSelectedTeacherId(teacherId)
-      setSelectedAssignmentMode(teacherId ? "preassigned" : "post_assign")
-      setFieldErrors((current) => ({ ...current, teacher: undefined }))
-    }} disabled={isPending} className={styles.select} aria-invalid={Boolean(fieldErrors.teacher)}>
-      <option value="">신청 후 배정</option>
-      {mergedTeacherOptions.map((option) => <option key={option.teacherId} value={option.teacherId}>
-        {resolveTeacherLabel(option)}{fallbackTeacherOption?.teacherId === option.teacherId ? " (현재 비활성 선생님)" : ""}
-      </option>)}
-    </select>
+    <span className={`${styles.selectWrap} ${styles.teacherSelect}`}>
+      <select id={`${resolvedFormId}-teacher`} name="teacherId" value={isPreassignedMode ? selectedTeacherId : ""} onChange={(event) => {
+        const teacherId = event.target.value
+        setSelectedTeacherId(teacherId)
+        setSelectedAssignmentMode(teacherId ? "preassigned" : "post_assign")
+        setFieldErrors((current) => ({ ...current, teacher: undefined }))
+      }} disabled={isPending} className={styles.select} aria-invalid={Boolean(fieldErrors.teacher)}>
+        <option value="">신청 후 배정</option>
+        {mergedTeacherOptions.map((option) => <option key={option.teacherId} value={option.teacherId}>
+          {resolveTeacherLabel(option)}{fallbackTeacherOption?.teacherId === option.teacherId ? " (현재 비활성 선생님)" : ""}
+        </option>)}
+      </select>
+      <V2ChevronDownIcon className={styles.selectIcon} size={16} />
+    </span>
     <span className={styles.fieldHint}>{teacherOptionsError ? "선생님 목록을 불러오지 못했습니다. 다시 불러온 뒤 확인해 주세요."
       : isTeacherSelectionLockedToInactive ? "기존 비활성 담당자를 유지하거나 다른 선생님을 선택할 수 있습니다."
-      : isPreassignedMode ? "새 신청은 선택한 선생님에게 자동으로 배정돼요."
-      : "신청이 들어오면 적절한 선생님을 배정해요."}</span>
+      : "신청이 들어오면 학원에서 확인하고 담당 선생님을 배정해요. 선생님을 고르면 새 신청에 자동으로 배정돼요."}</span>
     {renderError("teacher")}
   </div>
+  const subjectCategoryCode = selectedSubjectCategory?.code ?? selectedSubjectSelection?.category.code ?? null
 
   return (
     <section id="studio-class-form" className={styles.page}>
       <header className={styles.pageHeader}>
-        <div><Link href={classesHref} className={styles.backLink}>← 수업 관리</Link>
+        <div className={styles.pageHeaderText}>
+          <Link href={classesHref} className={styles.backLink}>← 수업·일정</Link>
           <h1>{mode === "create" ? "수업 등록" : "수업 수정"}</h1>
-          <p>수업 정보와 체험 운영을 한 곳에서 정리하세요.</p></div>
+          <p>수업 정보와 체험 운영을 한 곳에서 정리해요.</p>
+        </div>
         {mode === "update" && <span className={styles.dirtyText} role="status">{isDirty || scheduleEdited ? "저장하지 않은 변경사항" : "변경사항 없음"}</span>}
       </header>
       {pendingDraft && <div className={styles.draftNotice} role="status">
-        <span>이 브라우저에 작성 중인 내용이 있습니다.</span>
+        <V2InfoIcon className={styles.draftIcon} size={16} />
+        <span>이 브라우저에 작성 중인 내용이 있어요.</span>
         <button type="button" className={styles.draftContinue} onClick={() => chooseDraft(true)}>이어쓰기</button>
         <button type="button" className={styles.draftReset} onClick={() => chooseDraft(false)}>새로 작성</button>
       </div>}
@@ -911,182 +950,157 @@ export const StudioClassForm = ({
           <input type="hidden" name="slotDisplayLabel" value={slot.displayLabel} />
         </Fragment>)}
         <div className={styles.sections}>
-          <details data-class-section="basic" open={true} id="class-section-basic" className={styles.formSection} aria-labelledby="class-basic-title">
-            {renderSectionHeader("basic")}
-            <div className={styles.sectionBody}>
-                    <div className={styles.basicInfoGrid}>
-                      <label className={styles.field}>
-                        <span className={styles.fieldLabel}>수업명 * </span>
-                        <input
-                          name="title"
-                          value={headerTitle}
-                          onChange={(event) => setHeaderTitle(event.target.value)}
-                          aria-invalid={Boolean(fieldErrors.title)}
-                          aria-describedby="class-error-title"
-                          required
-                          minLength={2}
+          <V2Section {...sectionProps("basic")} defaultOpen>
+            <FormRow label="수업명 *" htmlFor={`${resolvedFormId}-title`}>
+              <input
+                id={`${resolvedFormId}-title`}
+                name="title"
+                value={headerTitle}
+                onChange={(event) => setHeaderTitle(event.target.value)}
+                aria-invalid={Boolean(fieldErrors.title)}
+                aria-describedby="class-error-title"
+                required
+                minLength={2}
+                disabled={isPending}
+                placeholder={fieldExamples.title}
+                className={styles.input}
+              />
+              <span className={styles.fieldHint}>학부모가 검색할 때 보는 이름이에요. 2자 이상</span>
+              {renderError("title")}
+            </FormRow>
 
+            {programTypeField}
+
+            <FormRow label="과목 *" field="subject">
+              <StudioSubjectSelector
+                catalog={safeSubjectCatalog}
+                categoryId={selectedSubjectCategoryId}
+                subjectId={selectedSubjectId}
+                onCategoryChange={setSelectedSubjectCategoryId}
+                onSubjectChange={setSelectedSubjectId}
+                disabled={isPending}
+                catalogError={subjectCatalogError}
+                error={fieldErrors.subject}
+                legacySubjectLabel={
+                  legacySubjectValue && !selectedSubjectCategoryId
+                    ? getSubjectLabel(legacySubjectValue) ?? legacySubjectValue
+                    : null
+                }
+              />
+            </FormRow>
+
+            <FormRow label="대상 학년 *" field="targetGrades">
+              <div className={styles.gradeGroupList}>
+                {LEARNER_GRADE_GROUPS.map((group) => (
+                  <div key={group.value} className={styles.gradeGroup}>
+                    <span className={styles.gradeGroupLabel}>{group.label}</span>
+                    <div className={styles.chips}>
+                      {getLearnerGradesByGroup(group.value).map((option) => (
+                        <V2Chip
+                          key={option.value}
+                          label={option.label}
+                          selected={selectedTargetGrades.includes(option.value)}
+                          onClick={() => toggleTargetGrade(option.value)}
                           disabled={isPending}
-                          placeholder={fieldExamples.title}
-                          className={styles.input}
                         />
-                        {renderError("title")}
-                      </label>
-
-                      {programTypeField}
-                      <div className={styles.field} data-field="subject">
-                        <span className={styles.fieldLabel}>과목 *</span>
-                        <StudioSubjectSelector
-                          catalog={safeSubjectCatalog}
-                          categoryId={selectedSubjectCategoryId}
-                          subjectId={selectedSubjectId}
-                          onCategoryChange={setSelectedSubjectCategoryId}
-                          onSubjectChange={setSelectedSubjectId}
-                          disabled={isPending}
-                          catalogError={subjectCatalogError}
-                          error={fieldErrors.subject}
-                          legacySubjectLabel={
-                            legacySubjectValue && !selectedSubjectCategoryId
-                              ? getSubjectLabel(legacySubjectValue) ?? legacySubjectValue
-                              : null
-                          }
-                        />
-                      </div>
-
-                      <div className={styles.field} data-field="targetGrades">
-                        <span className={styles.fieldLabel}>대상 학년 *</span>
-                        <div className={styles.gradeGroupList}>
-                          {LEARNER_GRADE_GROUPS.map((group) => (
-                            <div key={group.value} className={styles.gradeGroup}>
-                              <span className={styles.gradeGroupLabel}>{group.label}</span>
-                              <div className={styles.chipGroup}>
-                                {getLearnerGradesByGroup(group.value).map((option) => {
-                                  const isSelected = selectedTargetGrades.includes(option.value)
-
-                                  return (
-                                    <button
-                                      key={option.value}
-                                      type="button"
-                                      onClick={() => toggleTargetGrade(option.value)}
-                                      disabled={isPending}
-                                      aria-pressed={isSelected}
-                                      className={`${styles.chipButton} ${isSelected ? styles.chipButtonSelected : ""}`}
-                                    >
-                                      {option.label}
-                                    </button>
-                                  )
-                                })}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                        <span className={styles.fieldHint}>
-                          시작 학년과 마지막 학년을 선택하면 사이 학년이 자동으로 선택됩니다.
-                        </span>
-                        <span className={styles.fieldHint}>
-                          {selectedTargetGrades.length > 0
-                            ? `선택한 대상 학년: ${formatStoredTargetGrades(selectedTargetGrades.join(","))}`
-                            : "여러 학년을 선택할 수 있습니다."}
-                        </span>
-                        {legacyTargetAgeValue ? (
-                          <span className={styles.fieldHint}>
-                            기존 저장값은 `{formatStoredTargetGrades(legacyTargetAgeValue)}` 입니다. 수정 저장 시에는 학년을
-                            다시 선택해 주세요.
-                          </span>
-                        ) : null}
-                        {renderError("targetGrades")}
-                      </div>
-
-                      <div className={styles.field}>
-                        <label htmlFor={`${resolvedFormId}-class-format`} className={styles.fieldLabel}>
-                          수업 방식 (선택)
-                        </label>
-                        <select
-                          id={`${resolvedFormId}-class-format`}
-                          value={classFormatSelection}
-                          onChange={(event) => setClassFormatSelection(event.target.value)}
-                          disabled={isPending}
-                          className={styles.select}
-                        >
-                          <option value="">선택해 주세요</option>
-                          {standardizedClassFormatOptions.map((option) => (
-                            <option
-                              key={option}
-                              value={option === "기타" ? customClassFormatOptionValue : option}
-                            >
-                              {option}
-                            </option>
-                          ))}
-                        </select>
-                        <span className={styles.fieldHint}>학생이 어떤 형태로 수업을 진행하는지 선택해 주세요.</span>
-                        {classFormatSelection === customClassFormatOptionValue ? (
-                          <div className={styles.field}>
-                            <label htmlFor={`${resolvedFormId}-class-format-custom`} className={styles.fieldLabel}>
-                              직접 입력
-                            </label>
-                            <input
-                              id={`${resolvedFormId}-class-format-custom`}
-                              value={customClassFormat}
-                              onChange={(event) => setCustomClassFormat(event.target.value)}
-                              disabled={isPending}
-                              placeholder="예) 프로젝트형 수업"
-                              className={styles.input}
-                            />
-                          </div>
-                        ) : null}
-                      </div>
+                      ))}
                     </div>
-            </div>
-          </details>
-          <details data-class-section="price" open={undefined} id="class-section-price" className={styles.formSection} aria-labelledby="class-price-title">
-            {renderSectionHeader("price")}
-            <div className={styles.sectionBody}>
-            <div className={styles.field} data-field="price"><span className={styles.fieldLabel}>{programLabel === "체험수업" ? "체험수업 가격" : "레벨테스트 비용"} *</span>
-              <p className={styles.fieldHint}>{unconfirmedZeroPrice && !priceTouched ? "저장된 가격이 0원이지만 무료로 확인된 기록이 없어요. 무료인지 유료인지 선택해 주세요." : "1회 신청 비용입니다. 무료 여부를 선택해 주세요."}</p>
-              <div className={styles.priceChoices}>
-                <label className={styles.radioCard}><input type="radio" name="priceChoice" value="free" checked={priceMode === "free"} onChange={() => { setPriceMode("free"); setPriceTouched(true) }} disabled={isPending} /><strong>무료</strong></label>
-                <label className={styles.radioCard}><input type="radio" name="priceChoice" value="paid" checked={priceMode === "paid"} onChange={() => { setPriceMode("paid"); setPriceTouched(true) }} disabled={isPending} /><strong>유료</strong></label>
-                {priceMode === "paid" && <label className={styles.priceInput}><input aria-label={`${programLabel} 유료 비용`} type="number" min={1} step={1} inputMode="numeric" value={trialPrice === "0" ? "" : trialPrice}
-                  onChange={(event) => { setTrialPrice(event.target.value); setPriceTouched(true) }} disabled={isPending} className={styles.input} placeholder="금액 입력" aria-invalid={Boolean(fieldErrors.price)} aria-describedby="class-error-price" /><span>원</span></label>}
-              </div>{renderError("price")}
-            </div>
-            <div className={styles.regularPriceFields} data-field="regularPrice">
-              <label className={styles.fieldLabel} htmlFor="regular-price-type">정규 수강료 <span className={styles.fieldHint}>(선택)</span></label>
-              <p className={styles.fieldHint}>정규수업의 수강료 안내입니다. 학부모 수업 상세에 표시됩니다.</p>
-              <div className={styles.regularPriceRow}>
-                <select id="regular-price-type" className={styles.select} value={regularPriceType} disabled={isPending}
-                  onChange={(event) => {
-                    const next = event.target.value as RegularPriceType | ""
-                    setRegularPriceType(next)
-                    if (!next || next === "consultation") setRegularPriceAmount("")
-                    if (!next) setRegularPriceNote("")
-                  }}>
-                  <option value="">표시하지 않음</option>
-                  <option value="monthly">월 수강료</option>
-                  <option value="per_session">회당 수강료</option>
-                  <option value="consultation">상담 후 안내</option>
+                  </div>
+                ))}
+              </div>
+              <span className={styles.fieldHint}>시작 학년과 마지막 학년을 고르면 사이 학년이 자동으로 선택돼요.</span>
+              {legacyTargetAgeValue ? (
+                <span className={styles.fieldHint}>
+                  기존 저장값은 `{formatStoredTargetGrades(legacyTargetAgeValue)}` 입니다. 수정 저장 시에는 학년을
+                  다시 선택해 주세요.
+                </span>
+              ) : null}
+              {renderError("targetGrades")}
+            </FormRow>
+
+            <FormRow label="수업 방식 (선택)" htmlFor={`${resolvedFormId}-class-format`}>
+              <span className={`${styles.selectWrap} ${styles.wideControl}`}>
+                <select
+                  id={`${resolvedFormId}-class-format`}
+                  value={classFormatSelection}
+                  onChange={(event) => setClassFormatSelection(event.target.value)}
+                  disabled={isPending}
+                  className={styles.select}
+                >
+                  <option value="">선택해 주세요</option>
+                  {standardizedClassFormatOptions.map((option) => (
+                    <option
+                      key={option}
+                      value={option === "기타" ? customClassFormatOptionValue : option}
+                    >
+                      {option}
+                    </option>
+                  ))}
                 </select>
-                {(regularPriceType === "monthly" || regularPriceType === "per_session") && <label className={styles.priceInput}>
-                  <input aria-label="정규 수강료 금액" className={styles.input} inputMode="numeric" type="text"
+                <V2ChevronDownIcon className={styles.selectIcon} size={16} />
+              </span>
+              <span className={styles.fieldHint}>학생이 어떤 형태로 수업을 듣는지 골라 주세요.</span>
+              {classFormatSelection === customClassFormatOptionValue ? (
+                <div className={styles.stackField}>
+                  <label htmlFor={`${resolvedFormId}-class-format-custom`} className={styles.fieldLabel}>
+                    직접 입력
+                  </label>
+                  <input
+                    id={`${resolvedFormId}-class-format-custom`}
+                    value={customClassFormat}
+                    onChange={(event) => setCustomClassFormat(event.target.value)}
+                    disabled={isPending}
+                    placeholder="예) 프로젝트형 수업"
+                    className={`${styles.input} ${styles.wideControl}`}
+                  />
+                </div>
+              ) : null}
+            </FormRow>
+          </V2Section>
+
+          <V2Section {...sectionProps("price")}>
+            <FormRow label={`${programLabel === "체험수업" ? "체험수업 가격" : "레벨테스트 비용"} *`} field="price">
+              <div className={styles.chips} role="radiogroup" aria-label={`${programLabel} 가격`}>
+                <label className={styles.radioChip}><input type="radio" name="priceChoice" value="free" checked={priceMode === "free"} onChange={() => { setPriceMode("free"); setPriceTouched(true) }} disabled={isPending} /><span>무료</span></label>
+                <label className={styles.radioChip}><input type="radio" name="priceChoice" value="paid" checked={priceMode === "paid"} onChange={() => { setPriceMode("paid"); setPriceTouched(true) }} disabled={isPending} /><span>유료</span></label>
+              </div>
+              {priceMode === "paid" && <label className={`${styles.unitInput} ${styles.amountInput}`}><input aria-label={`${programLabel} 유료 비용`} type="number" min={1} step={1} inputMode="numeric" value={trialPrice === "0" ? "" : trialPrice}
+                onChange={(event) => { setTrialPrice(event.target.value); setPriceTouched(true) }} disabled={isPending} placeholder="금액 입력" aria-invalid={Boolean(fieldErrors.price)} aria-describedby="class-error-price" /><span>원</span></label>}
+              <span className={styles.fieldHint}>{unconfirmedZeroPrice && !priceTouched
+                ? "저장된 가격이 0원이지만 무료로 확인된 기록이 없어요. 무료인지 유료인지 선택해 주세요."
+                : priceMode ? `무료나 유료 중 하나를 꼭 골라 주세요. 학부모 앱에는 "${priceLabel}" 문구로 보여요.` : "무료나 유료 중 하나를 꼭 골라 주세요."}</span>
+              {renderError("price")}
+            </FormRow>
+            <FormRow label="정규 수강료 (선택)" field="regularPrice">
+              <div className={styles.chips} aria-label="정규 수강료 표시 방식">
+                {([["", "표시하지 않음"], ["monthly", "월 수강료"], ["per_session", "회당 수강료"], ["consultation", "상담 후 안내"]] as const).map(([value, label]) => (
+                  <V2Chip key={value || "none"} label={label} selected={regularPriceType === value} disabled={isPending}
+                    onClick={() => {
+                      const next = value as RegularPriceType | ""
+                      setRegularPriceType(next)
+                      if (!next || next === "consultation") setRegularPriceAmount("")
+                      if (!next) setRegularPriceNote("")
+                    }} />
+                ))}
+              </div>
+              {regularPriceType ? <div className={styles.inlineControls}>
+                {(regularPriceType === "monthly" || regularPriceType === "per_session") && <label className={`${styles.unitInput} ${styles.amountInput}`}>
+                  <input aria-label="정규 수강료 금액" inputMode="numeric" type="text"
                     value={formatRegularPriceInput(regularPriceAmount)} disabled={isPending} placeholder="금액 입력"
                     onChange={(event) => setRegularPriceAmount(event.target.value.replace(/,/g, ""))}
                     aria-invalid={Boolean(fieldErrors.regularPrice)} aria-describedby="class-error-regularPrice" />
                   <span>원</span>
                 </label>}
-              </div>
-              {regularPriceType && <label className={styles.field}>
-                <span className={styles.fieldLabel}>추가 안내 (선택)</span>
-                <input className={styles.input} aria-label="정규 수강료 추가 안내" value={regularPriceNote}
+                <input className={`${styles.input} ${styles.noteInput}`} aria-label="정규 수강료 추가 안내" value={regularPriceNote}
                   onChange={(event) => setRegularPriceNote(event.target.value)} maxLength={REGULAR_PRICE_NOTE_MAX_LENGTH}
-                  disabled={isPending} placeholder="예: 주 2회 기준, 교재비 별도" />
-              </label>}
+                  disabled={isPending} placeholder="추가 안내 (선택) 예: 주 2회 기준, 교재비 별도" />
+              </div> : null}
+              <span className={styles.fieldHint}>정규수업의 수강료 안내예요. 학부모 수업 상세에 보여요. 추가 안내는 {REGULAR_PRICE_NOTE_MAX_LENGTH}자까지.</span>
               {renderError("regularPrice")}
-            </div>
-            </div>
-          </details>
-          <details data-class-section="operations" open={undefined} id="class-section-operations" className={styles.formSection} aria-labelledby="class-operations-title">
-            {renderSectionHeader("operations")}
-            <div className={styles.sectionBody}>
+            </FormRow>
+          </V2Section>
+
+          <V2Section {...sectionProps("operations")}>
             <div className={styles.operationBlock} data-field="schedule">
               {mode === "update" && !initialItem?.operatingRule && !editedOperatingDraft ? <div className={styles.legacyNotice}>
                 <strong>앞으로의 운영 일정을 설정해 주세요.</strong>
@@ -1103,148 +1117,130 @@ export const StudioClassForm = ({
               {hasOperatingRuleSelection ? teacherAssignmentField
                 : <input type="hidden" name="teacherId" value={isPreassignedMode ? selectedTeacherId : ""} />}
               {mode === "update" && (initialItem?.operatingRule || editedOperatingDraft) ? <div className={styles.protectionInfo}>
-                <span aria-hidden="true">i</span>
+                <V2InfoIcon size={16} />
                 <p>기존에 등록된 일정과 예약은 그대로 유지돼요.</p>
               </div> : null}
               {mode === "update" && hasOperatingRuleSelection ? <button type="button" className={styles.dateOverrideAction}
                 disabled={scheduleEdited || isPending} onClick={() => setOperationsOpen(true)}>
                 <span><strong>특정 날짜만 변경하기</strong><small>휴무일이나 특별 운영일의 시간을 변경할 수 있어요.</small></span>
-                <span aria-hidden="true">›</span>
+                <V2ChevronRightIcon size={18} />
               </button> : null}
               {scheduleEdited ? <div className={styles.pendingOperationNote}>
                 <p>운영 일정 변경사항을 저장하면 특정 날짜 변경을 다시 사용할 수 있어요.</p>
                 <button type="button" className={styles.textButton} onClick={() => { setScheduleEdited(false); setEditedOperatingDraft(null); setHasOperatingRuleSelection(Boolean(initialItem?.operatingRule)); setFieldErrors((current) => ({ ...current, schedule: undefined })); router.refresh() }}>운영 일정 변경 되돌리기</button>
               </div> : null}
             </div>
-            </div>
-          </details>
-          <details data-class-section="description" open={undefined} id="class-section-description" className={styles.formSection} aria-labelledby="class-description-title">
-            {renderSectionHeader("description")}
-            <div className={styles.sectionBody}>
-                    <div className={styles.detailsGrid}>
-                      <label className={styles.field}>
-                        <span className={styles.fieldLabel}>수업 소개 *</span>
-                        <textarea
-                          name="description"
-                          aria-invalid={Boolean(fieldErrors.description)}
-                          aria-describedby="class-error-description"
-                          value={description}
-                          onChange={(event) => setDescription(event.target.value)}
-                          required
-                          minLength={10}
-                          rows={3}
-                          disabled={isPending}
-                          placeholder={fieldExamples.description}
-                          className={styles.textarea}
-                        />
-                        <span className={styles.fieldHint}>수업의 특징과 진행 방식을 10자 이상 소개해 주세요.</span>
-                        {renderError("description")}
-                      </label>
+          </V2Section>
 
-                      <label className={styles.field}>
-                        <span className={styles.fieldLabel}>이런 아이에게 추천해요 (선택)</span>
-                        <span className={styles.fieldHint}>어떤 관심이나 학습 상황의 아이에게 잘 맞는지 적어 주세요.</span>
-                        <textarea
-                          name="recommendedFor"
-                          value={recommendedFor}
-                          onChange={(event) => setRecommendedFor(event.target.value)}
-                          rows={2}
-                          disabled={isPending}
-                          placeholder={fieldExamples.recommendedFor}
-                          className={`${styles.textarea} ${styles.compactTextarea}`}
-                        />
-                      </label>
+          <V2Section {...sectionProps("description")}>
+            <FormRow label="수업 소개 *" htmlFor={`${resolvedFormId}-description`}>
+              <textarea
+                id={`${resolvedFormId}-description`}
+                name="description"
+                aria-invalid={Boolean(fieldErrors.description)}
+                aria-describedby="class-error-description"
+                value={description}
+                onChange={(event) => setDescription(event.target.value)}
+                required
+                minLength={10}
+                rows={3}
+                disabled={isPending}
+                placeholder={fieldExamples.description}
+                className={styles.textarea}
+              />
+              <span className={styles.fieldHint}>수업의 특징과 진행 방식을 10자 이상 써 주세요.</span>
+              {renderError("description")}
+            </FormRow>
+            <FormRow label="이런 아이에게 추천해요 (선택)" htmlFor={`${resolvedFormId}-recommended`}>
+              <textarea
+                id={`${resolvedFormId}-recommended`}
+                name="recommendedFor"
+                value={recommendedFor}
+                onChange={(event) => setRecommendedFor(event.target.value)}
+                rows={1}
+                disabled={isPending}
+                placeholder={fieldExamples.recommendedFor}
+                className={`${styles.textarea} ${styles.compactTextarea}`}
+              />
+            </FormRow>
+            <FormRow label="이 수업에서 경험하는 것 (선택)" htmlFor={`${resolvedFormId}-experience`}>
+              <textarea
+                id={`${resolvedFormId}-experience`}
+                name="experiencePoints"
+                value={experiencePoints}
+                onChange={(event) => setExperiencePoints(event.target.value)}
+                rows={1}
+                disabled={isPending}
+                placeholder={fieldExamples.experiencePoints}
+                className={`${styles.textarea} ${styles.compactTextarea}`}
+              />
+            </FormRow>
+            <FormRow label="커리큘럼 (선택)" htmlFor={`${resolvedFormId}-curriculum`}>
+              <textarea
+                id={`${resolvedFormId}-curriculum`}
+                name="curriculum"
+                value={curriculum}
+                onChange={(event) => setCurriculum(event.target.value)}
+                rows={1}
+                disabled={isPending}
+                placeholder={fieldExamples.curriculum}
+                className={`${styles.textarea} ${styles.compactTextarea}`}
+              />
+            </FormRow>
+          </V2Section>
 
-                      <label className={styles.field}>
-                        <span className={styles.fieldLabel}>이 수업에서 경험하는 것 (선택)</span>
-                        <span className={styles.fieldHint}>아이가 직접 해보는 활동과 얻어가는 경험을 적어 주세요.</span>
-                        <textarea
-                          name="experiencePoints"
-                          value={experiencePoints}
-                          onChange={(event) => setExperiencePoints(event.target.value)}
-                          rows={2}
-                          disabled={isPending}
-                          placeholder={fieldExamples.experiencePoints}
-                          className={`${styles.textarea} ${styles.compactTextarea}`}
-                        />
-                      </label>
+          <V2Section {...sectionProps("image")}>
+            <FormRow label="대표 이미지">
+              {/* 이미지 자리 자체가 업로드 트리거다. 규격 검사(형식 · 5MB)는 handleCoverImageChange 가 한다. */}
+              <label className={styles.uploader}>
+                <input
+                  type="file"
+                  aria-label="대표 이미지 업로드"
+                  accept="image/jpeg,image/png,image/webp"
+                  disabled={isPending || isUploadingCoverImage}
+                  className={styles.uploaderInput}
+                  onChange={(event) => {
+                    const file = event.target.files?.[0]
+                    void handleCoverImageChange(file ?? null)
+                    event.target.value = ""
+                  }}
+                />
+                {previewImageUrl ? (
+                  <>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={previewImageUrl}
+                      alt={`${initialItem?.title ?? "프로그램"} 대표 이미지 미리보기`}
+                      className={styles.uploaderImage}
+                    />
+                    <span className={styles.uploaderOverlay}>
+                      {isUploadingCoverImage ? "업로드 중..." : "이미지 변경"}
+                    </span>
+                  </>
+                ) : (
+                  <span className={styles.uploaderEmpty}>
+                    <span className={styles.uploaderEmptyTitle}>
+                      {isUploadingCoverImage ? "업로드 중..." : "+ 대표 이미지 올리기"}
+                    </span>
+                    <span className={styles.uploaderEmptyMeta}>1200×900 · 4:3 · JPG/PNG/WebP · 5MB 이하</span>
+                  </span>
+                )}
+              </label>
+              <span className={styles.fieldHint}>사진이 없으면 과목 3D 아이콘으로 보여요.</span>
+              {coverImageUploadError ? (
+                <p className={styles.errorText} role="alert">{coverImageUploadError}</p>
+              ) : null}
+            </FormRow>
+          </V2Section>
 
-                      <label className={styles.field}>
-                        <span className={styles.fieldLabel}>커리큘럼 (선택)</span>
-                        <span className={styles.fieldHint}>도입부터 마무리까지 수업 순서를 적어 주세요.</span>
-                        <textarea
-                          name="curriculum"
-                          value={curriculum}
-                          onChange={(event) => setCurriculum(event.target.value)}
-                          rows={2}
-                          disabled={isPending}
-                          placeholder={fieldExamples.curriculum}
-                          className={`${styles.textarea} ${styles.compactTextarea}`}
-                        />
-                      </label>
-                    </div>
-            </div>
-          </details>
-          <details data-class-section="image" open={undefined} id="class-section-image" className={styles.formSection} aria-labelledby="class-image-title">
-            {renderSectionHeader("image")}
-            <div className={styles.sectionBody}>
-                    <div className={styles.field}>
-                      <span className={styles.fieldLabel}>대표 이미지</span>
-                      {/* Create 와 같은 문법: 이미지 자리 자체가 업로드 트리거다. */}
-                      <label className={styles.uploader}>
-                        <input
-                          type="file"
-                          aria-label="대표 이미지 업로드"
-                          accept="image/jpeg,image/png,image/webp"
-                          disabled={isPending || isUploadingCoverImage}
-                          className={styles.uploaderInput}
-                          onChange={(event) => {
-                            const file = event.target.files?.[0]
-                            void handleCoverImageChange(file ?? null)
-                            event.target.value = ""
-                          }}
-                        />
-                        {previewImageUrl ? (
-                          <>
-                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img
-                              src={previewImageUrl}
-                              alt={`${initialItem?.title ?? "프로그램"} 대표 이미지 미리보기`}
-                              className={styles.uploaderImage}
-                            />
-                            <span className={styles.uploaderOverlay}>
-                              {isUploadingCoverImage ? "업로드 중..." : "이미지 변경"}
-                            </span>
-                          </>
-                        ) : (
-                          <span className={styles.uploaderEmpty}>
-                            <span className={styles.uploaderEmptyTitle}>대표 이미지 등록</span>
-                            <span className={styles.uploaderEmptyHint}>
-                              {isUploadingCoverImage ? "업로드 중..." : "이미지를 클릭해 업로드하세요"}
-                            </span>
-                            <span className={styles.uploaderEmptyMeta}>
-                              1200 × 900px · 4:3 · JPG · PNG · WebP · 5MB 이하
-                            </span>
-                          </span>
-                        )}
-                      </label>
-                    </div>
-
-                    {coverImageUploadError ? (
-                      <p className={`${styles.feedbackMessage} ${styles.feedbackMessageError}`}>{coverImageUploadError}</p>
-                    ) : null}
-            </div>
-          </details>
-          <details data-class-section="visibility" open={undefined} id="class-section-visibility" className={styles.formSection} aria-labelledby="class-visibility-title">
-            {renderSectionHeader("visibility")}
-            <div className={styles.sectionBody}>
-            <label className={styles.visibilitySetting}>
-              <span><strong>학부모에게 공개</strong><small>{isActivePreview ? "저장 후 공개 설정이 적용됩니다." : "비공개 수업은 학부모에게 표시되지 않습니다."}</small></span>
-              <input type="checkbox" name="isActive" checked={isActivePreview} onChange={(event) => setIsActivePreview(event.target.checked)} disabled={isPending} />
-            </label>
-            {mode === "update" && !scheduleSlots.length && isActivePreview && <p className={styles.fieldHint}>설정된 예약시간이 없습니다. 신청받을 시간을 확인해 주세요.</p>}
-            </div>
-          </details>
+          <V2Section {...sectionProps("visibility")}>
+            <FormRow label="공개 여부">
+              <V2Toggle name="isActive" label="학부모에게 공개" checked={isActivePreview}
+                onChange={(event) => setIsActivePreview(event.target.checked)} disabled={isPending} />
+              <span className={styles.fieldHint}>예약 가능 시간이 1개 이상 있어야 공개할 수 있어요. 끄면 비공개로 저장돼요.</span>
+              {mode === "update" && !scheduleSlots.length && isActivePreview && <p className={styles.fieldHint}>설정된 예약시간이 없습니다. 신청받을 시간을 확인해 주세요.</p>}
+            </FormRow>
+          </V2Section>
         </div>
         <aside className={styles.summaryRail} aria-label="수업 요약 및 저장">
           <div className={styles.summaryCard}>
@@ -1254,63 +1250,68 @@ export const StudioClassForm = ({
                 {previewImageUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img src={previewImageUrl} alt="대표 이미지" className={styles.summaryImage} />
-                ) : <div className={styles.summaryImageEmpty}>
-                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.3" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8" cy="8" r="1.5"/><path d="m3 17 5-5 4 4 4-6 5 7"/></svg>
-                  <span>대표 이미지 미등록</span>
-                </div>}
-                <span className={styles.programBadge}>{programLabel}</span>
+                ) : <V2SubjectIcon3D categoryCode={subjectCategoryCode} size={72} />}
               </div>
-            <h2>{headerTitle || "수업명을 입력해 주세요"}</h2>
-            <ClassPreviewBasicInfo
-              subject={subjectLabel}
-              target={previewTargetGradeLabel || "학년 미선택"}
-              classFormat={resolvedClassFormat || "선택 안 함"}
-            />
-            <strong className={styles.summaryPrice}>{priceLabel}</strong>
-            {operatingPresentation ? <dl className={styles.operationSummary}>
-              <div><dt>운영 방식</dt><dd>{operatingPresentation.title}</dd></div>
-              {!operatingDraft.isAlwaysOpen ? <div><dt>운영 기간</dt><dd>{operatingDraft.operationStartDate && operatingDraft.operationEndDate
-                ? `${operatingDraft.operationStartDate.replaceAll("-", ".")} ~ ${operatingDraft.operationEndDate.replaceAll("-", ".")}`
-                : "기간 미설정"}</dd></div> : null}
-              <div><dt>체험수업 시간</dt><dd>{operatingDraft.intervalMinutes ? `${operatingDraft.intervalMinutes}분` : "미설정"}</dd></div>
-              <div><dt>운영 시간</dt><dd>{operatingGroupPresentations.length > 0
-                ? operatingGroupPresentations.map((group) => `${group.weekdayLabel} · ${group.timeLabel}`).join(" / ")
-                : "요일·시간 미설정"}</dd></div>
-              <div><dt>회차당 정원</dt><dd>{operatingCapacityLabel}</dd></div>
-              <div><dt>담당 선생님</dt><dd>{teacherSummaryLabel}</dd></div>
-            </dl> : null}
-            <p className={styles.visibilityStatus}><span>공개 상태</span><strong>{visibilitySummaryLabel}</strong></p>
-            </div>
-            <div className={styles.summaryFooter}>
-            <div className={styles.summaryActions}>
-              <button type="button" className={styles.secondaryButton} onClick={() => setPreviewOpen(true)}>수업 미리보기</button>
-              <button type="submit" disabled={isPending || isUploadingCoverImage || Boolean(pendingDraft)} className={styles.saveButton}>{isPending ? "저장 중…" : mode === "create" ? "수업 등록하기" : "변경사항 저장"}</button>
-            </div>
-            <div id="class-save-feedback" tabIndex={-1} aria-live="polite">
-              {Object.values(fieldErrors).some(Boolean) ? <p className={styles.errorText}>입력 내용을 확인해 주세요. 표시된 항목을 수정한 뒤 다시 저장할 수 있습니다.</p>
-                : state.message ? <p className={state.ok ? styles.successText : styles.errorText}>{state.message}</p> : null}
-              {isUploadingCoverImage && <p className={styles.fieldHint}>이미지를 업로드하고 있습니다.</p>}
-            </div>
-            {mode === "create" && <p className={styles.storageHint}>{storageUnavailable ? "브라우저 저장 공간을 사용할 수 없어 자동 보관되지 않습니다." : "작성 중인 내용은 이 브라우저에 임시 보관됩니다."}</p>}
+              <h2 className={styles.summaryTitle}>{headerTitle || "수업명을 입력해 주세요"}</h2>
+              <ClassPreviewBasicInfo
+                className={styles.kv}
+                subject={subjectLabel}
+                target={previewTargetGradeLabel || "학년 미선택"}
+                classFormat={resolvedClassFormat || "선택 안 함"}
+              />
+              <strong className={styles.summaryPrice}>{priceLabel}</strong>
+              {operatingPresentation ? <dl className={`${styles.kv} ${styles.kvDivided}`}>
+                <div><dt>운영 방식</dt><dd>{operatingPresentation.title}</dd></div>
+                {!operatingDraft.isAlwaysOpen ? <div><dt>운영 기간</dt><dd>{operatingDraft.operationStartDate && operatingDraft.operationEndDate
+                  ? `${operatingDraft.operationStartDate.replaceAll("-", ".")} ~ ${operatingDraft.operationEndDate.replaceAll("-", ".")}`
+                  : "기간 미설정"}</dd></div> : null}
+                <div><dt>체험수업 시간</dt><dd>{operatingDraft.intervalMinutes ? `${operatingDraft.intervalMinutes}분` : "미설정"}</dd></div>
+                <div><dt>운영 시간</dt><dd>{operatingGroupPresentations.length > 0
+                  ? operatingGroupPresentations.map((group) => `${group.weekdayLabel} · ${group.timeLabel}`).join(" / ")
+                  : "요일·시간 미설정"}</dd></div>
+                <div><dt>회차당 정원</dt><dd>{operatingCapacityLabel}</dd></div>
+                <div><dt>담당 선생님</dt><dd>{teacherSummaryLabel}</dd></div>
+              </dl> : null}
+              <dl className={`${styles.kv} ${styles.kvDivided}`}>
+                <div><dt>공개 상태</dt><dd>{visibilitySummaryLabel}</dd></div>
+              </dl>
+              <div className={styles.summaryActions}>
+                <button type="button" className={v2ButtonClassName({ variant: "outline", size: "md", className: styles.fullWidth })} onClick={() => setPreviewOpen(true)}>수업 미리보기</button>
+                <button type="submit" disabled={isPending || isUploadingCoverImage || Boolean(pendingDraft)} className={v2ButtonClassName({ variant: "primary", size: "lg", className: styles.fullWidth })}>{isPending ? "저장 중…" : mode === "create" ? "수업 등록하기" : "수정 내용 저장"}</button>
+              </div>
+              <div id="class-save-feedback" className={styles.saveFeedback} tabIndex={-1} aria-live="polite">
+                {Object.values(fieldErrors).some(Boolean) ? <p className={styles.errorText}>입력 내용을 확인해 주세요. 표시된 항목을 수정한 뒤 다시 저장할 수 있습니다.</p>
+                  : state.message ? <p className={state.ok ? styles.successText : styles.errorText}>{state.message}</p> : null}
+                {isUploadingCoverImage && <p className={styles.fieldHint}>이미지를 업로드하고 있습니다.</p>}
+              </div>
+              {mode === "create" && <p className={styles.fieldHint}>{storageUnavailable ? "브라우저 저장 공간을 사용할 수 없어 자동 보관되지 않습니다." : "작성 중인 내용은 이 브라우저에 임시 보관돼요."}</p>}
             </div>
           </div>
         </aside>
       </form>
-      {previewOpen && <StudioClassFormDialog title="수업 미리보기" onClose={() => setPreviewOpen(false)}>
-        <p className={styles.fieldHint}>작성 중인 내용을 미리 확인하는 화면입니다. 저장 전에는 공개되지 않습니다.</p>
-        {previewImageUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={previewImageUrl} alt="수업 대표 이미지" className={styles.parentPreviewImage} />
-        ) : null}
-        <p className={styles.previewMeta}>{programLabel} · {subjectLabel} · {previewTargetGradeLabel || "대상 미선택"}</p>
-        <h2>{headerTitle || "수업명"}</h2><p>{resolvedClassFormat}</p><strong className={styles.summaryPrice}>{priceLabel}</strong>
-        {previewSections.map((section) => <section key={section.title} className={styles.parentPreviewSection}><h3>{section.title}</h3><p>{section.value || section.empty}</p></section>)}
-        <section className={styles.parentPreviewSection}><h3>체험 일정</h3>{previewSlots.length ? <ul>{previewSlots.slice(0, 6).map((slot) => <li key={slot.localId}>{slot.specificDate} {slot.startTime}–{slot.endTime}</li>)}</ul> : <p>예약시간이 아직 설정되지 않았습니다.</p>}</section>
-      </StudioClassFormDialog>}
-      {operationsOpen && selectedClassId && scheduleCalendarMonth && <StudioClassFormDialog busy={operationsBusy} title="특정 날짜 변경" onClose={() => { setOperationsOpen(false); router.refresh() }}>
-        <p className={styles.notice}>휴무일이나 특별 운영일 변경은 즉시 저장됩니다.</p>
+      {previewOpen && <V2Dialog title="수업 미리보기" width={560}
+        description="작성 중인 내용을 미리 확인하는 화면이에요. 저장 전에는 공개되지 않아요." onClose={() => setPreviewOpen(false)}>
+        <div className={styles.parentPreview}>
+          <div className={styles.parentPreviewImage}>
+            {previewImageUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={previewImageUrl} alt="수업 대표 이미지" />
+            ) : <V2SubjectIcon3D categoryCode={subjectCategoryCode} size={96} />}
+          </div>
+          <p className={styles.previewMeta}>{programLabel} · {subjectLabel} · {previewTargetGradeLabel || "대상 미선택"}</p>
+          <h3 className={styles.previewTitle}>{headerTitle || "수업명"}</h3>
+          {resolvedClassFormat ? <p className={styles.previewMeta}>{resolvedClassFormat}</p> : null}
+          <strong className={styles.summaryPrice}>{priceLabel}</strong>
+          {previewSections.map((section) => <section key={section.title} className={styles.parentPreviewSection}><h4>{section.title}</h4><p>{section.value || section.empty}</p></section>)}
+          <section className={styles.parentPreviewSection}><h4>체험 일정</h4>{previewSlots.length ? <ul>{previewSlots.slice(0, 6).map((slot) => <li key={slot.localId}>{slot.specificDate} {slot.startTime}–{slot.endTime}</li>)}</ul> : <p>예약시간이 아직 설정되지 않았습니다.</p>}</section>
+        </div>
+      </V2Dialog>}
+      {operationsOpen && selectedClassId && scheduleCalendarMonth && <V2Dialog busy={operationsBusy} title="특정 날짜만 변경하기"
+        description="휴무일이나 특별 운영일을 바꿔요. 이 날짜에만 적용되고, 바꾼 내용은 바로 저장돼요."
+        footerNote="바꾼 내용은 바로 저장돼요. 이미 들어온 예약은 그대로 남아요."
+        onClose={() => { setOperationsOpen(false); router.refresh() }}>
         {scheduleCalendarError ? <p role="alert" className={styles.errorText}>{scheduleCalendarError}</p> : <StudioClassScheduleEditor operationsOnly onPendingChange={setOperationsBusy} classId={selectedClassId} month={scheduleCalendarMonth} days={scheduleCalendarDays} scheduleSlots={scheduleSlots} onChangeScheduleSlots={setScheduleSlots} />}
-      </StudioClassFormDialog>}
+      </V2Dialog>}
     </section>
   )
 }
