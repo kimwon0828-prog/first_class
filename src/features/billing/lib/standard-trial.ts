@@ -259,3 +259,51 @@ export const buildTrialBannerMessage = (view: StandardTrialView | null, amount: 
   if (view.state === "cancel_scheduled") return `${head} 그 뒤 무료 플랜으로 바뀌어요.`
   return `${head} 카드를 등록하지 않으면 무료 플랜으로 바뀌어요.`
 }
+
+// ─────────────────────────────────────────────────────────────
+// 카드 등록(자동 결제 동의) 가능 여부 — 서버가 시작 · 완료 두 번 판정한다
+// ─────────────────────────────────────────────────────────────
+
+export type TrialCardRegistrationCheck =
+  | { ok: true; trialEndsAt: Date }
+  | {
+      ok: false
+      code: "not_auto_trial" | "cancel_scheduled" | "window_not_open" | "trial_ended" | "already_registered"
+      message: string
+    }
+
+/**
+ * 지금 카드 등록을 시작 · 완료해도 되는가.
+ *
+ * 창(종료 30일 전 ~ 종료)은 화면이 아니라 여기서 강제한다. 완료(callback) 때도 다시 본다 —
+ * 결제창에 머무는 사이 체험이 끝났으면 빌링키를 발급하지 않는다.
+ * already_registered 는 시작할 때만 본다(checkAlreadyRegistered).
+ */
+export const checkTrialCardRegistration = (
+  subscription: OrganizationSubscription | null,
+  input: { now: Date; hasActiveBillingMethod: boolean; consentedAt: string | null; checkAlreadyRegistered: boolean }
+): TrialCardRegistrationCheck => {
+  if (!isAutoTrialSubscription(subscription) || !subscription) {
+    return { ok: false, code: "not_auto_trial", message: "지금은 카드를 등록할 수 있는 체험 상태가 아니에요." }
+  }
+
+  const trialEndsAt = new Date(subscription.trialEndsAt as string)
+  if (input.now.getTime() >= trialEndsAt.getTime()) {
+    return { ok: false, code: "trial_ended", message: "체험이 끝났어요. 플랜·결제에서 스탠다드를 시작해 주세요." }
+  }
+
+  if (subscription.cancelAtPeriodEnd) {
+    return { ok: false, code: "cancel_scheduled", message: "해지가 예약되어 있어요. 먼저 해지를 취소해 주세요." }
+  }
+
+  if (!isWithinTrialCardWindow(trialEndsAt, input.now)) {
+    const opensAt = formatKstDateLabel(toKstDateKey(resolveTrialCardWindowStart(trialEndsAt)))
+    return { ok: false, code: "window_not_open", message: `카드는 ${opensAt}부터 등록할 수 있어요.` }
+  }
+
+  if (input.checkAlreadyRegistered && input.hasActiveBillingMethod && isTrialConsentValid(trialEndsAt, input.consentedAt)) {
+    return { ok: false, code: "already_registered", message: "이미 카드를 등록했어요." }
+  }
+
+  return { ok: true, trialEndsAt }
+}

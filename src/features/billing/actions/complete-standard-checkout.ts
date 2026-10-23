@@ -20,10 +20,15 @@ import { chargeSubscription } from "@/features/billing/lib/charge/charge-subscri
 import { ensureBillingPaymentAttempt } from "@/features/billing/lib/charge/payment-attempt"
 import { buildInitialBillingPeriod } from "@/features/billing/lib/billing-period"
 import { getPurchasableBillingPlan } from "@/features/billing/lib/plan-catalog"
+import { checkTrialCardRegistration } from "@/features/billing/lib/standard-trial"
 import { issueTossBillingKey } from "@/features/billing/lib/toss/client"
 import { buildBillingOrderName } from "@/features/billing/lib/toss/identifiers"
 import { getTossRuntimeForOrganization } from "@/features/billing/lib/toss/server"
 import { pickStorableCardDisplay } from "@/features/billing/lib/toss/verify-payment"
+import type { CheckoutSessionSnapshot } from "@/features/billing/lib/checkout/checkout-guards"
+import type { CheckoutLease } from "@/features/billing/lib/checkout/checkout-store"
+import type { TossClientConfig } from "@/features/billing/lib/toss/client"
+import { dataAdapter } from "@/shared/lib/db"
 
 // 카드 인증이 끝난 뒤의 서버 처리.
 //
@@ -33,6 +38,8 @@ import { pickStorableCardDisplay } from "@/features/billing/lib/toss/verify-paym
 
 export type CheckoutCompletion =
   | { status: "activated" }
+  /** 자동 체험 중 카드만 등록했다. 결제는 하지 않았다. */
+  | { status: "card_registered" }
   /** 결제 결과를 아직 모른다. 대사가 마무리한다. */
   | { status: "pending"; message: string }
   | { status: "rejected"; message: string }
@@ -60,13 +67,18 @@ export const completeStandardCheckout = async (input: {
   }
 
   if (checked.session.status === "completed") {
-    return { status: "activated" }
+    return checked.session.purpose === "register_card" ? { status: "card_registered" } : { status: "activated" }
   }
 
   // 활성 lease는 하나뿐이고, worker crash 뒤에는 같은 세션을 재개할 수 있다.
   const claimed = await claimCheckoutSession(checked.session.id)
   if (!claimed) {
     return { status: "pending", message: PENDING_MESSAGE }
+  }
+
+  // 자동 체험 중 카드 등록: 빌링키만 발급하고 끝낸다. 이 경로는 결제를 만들지 않는다.
+  if (checked.session.purpose === "register_card") {
+    return completeTrialCardRegistration(runtime.config, checked.session, input.authKey, claimed)
   }
 
   const plan = getPurchasableBillingPlan(checked.session.planCode)
@@ -158,4 +170,74 @@ export const completeStandardCheckout = async (input: {
 
   await markCheckoutSessionFailed(checked.session.id, charged.code, claimed)
   return { status: "rejected", message: GENERIC_FAILURE }
+}
+
+const CARD_REGISTRATION_FAILURE = "카드를 등록하지 못했어요. 카드 정보를 확인한 뒤 다시 시도해 주세요."
+
+/**
+ * 자동 체험 중 카드 등록 완료(STUDIO_DESIGN_SYSTEM.md §5.26).
+ *
+ *   체험 · 창 다시 확인 → 빌링키 발급 → 결제수단 저장 → 세션 완료(completed_at = 동의 시각)
+ *
+ * 결제창에 머무는 사이 체험이 끝났거나 해지가 예약됐으면 빌링키를 발급하지 않는다.
+ * 첫 결제는 마지막 체험일의 갱신 크론이 이 세션의 completed_at 을 동의로 보고 한다.
+ */
+const completeTrialCardRegistration = async (
+  config: TossClientConfig,
+  session: CheckoutSessionSnapshot,
+  authKey: string,
+  claimed: CheckoutLease
+): Promise<CheckoutCompletion> => {
+  let subscription
+  try {
+    subscription = (await dataAdapter.getOrganizationBillingSnapshot(session.organizationId)).subscription
+  } catch {
+    await releaseCheckoutSession(session.id, claimed)
+    return { status: "rejected", message: CARD_REGISTRATION_FAILURE }
+  }
+
+  const trialCheck = checkTrialCardRegistration(subscription, {
+    now: new Date(),
+    hasActiveBillingMethod: false,
+    consentedAt: null,
+    checkAlreadyRegistered: false
+  })
+  if (!trialCheck.ok) {
+    await markCheckoutSessionFailed(session.id, `trial_${trialCheck.code}`, claimed)
+    return { status: "rejected", message: trialCheck.message }
+  }
+
+  const existing = await findActiveBillingCustomer(session.organizationId)
+  if (!existing || existing.customerKey !== session.customerKey) {
+    const issued = await issueTossBillingKey(config, {
+      authKey,
+      customerKey: session.customerKey,
+      idempotencyKey: session.billingKeyIssueIdempotencyKey
+    })
+
+    if (issued.outcome === "unknown") {
+      await releaseCheckoutSession(session.id, claimed)
+      return { status: "pending", message: "카드 등록 결과를 확인하고 있어요. 잠시 후 다시 확인해 주세요." }
+    }
+
+    if (issued.outcome !== "succeeded" || !issued.data?.billingKey) {
+      await markCheckoutSessionFailed(
+        session.id,
+        issued.outcome === "succeeded" ? "billing_key_missing" : issued.code,
+        claimed
+      )
+      return { status: "rejected", message: CARD_REGISTRATION_FAILURE }
+    }
+
+    await upsertBillingCustomer({
+      organizationId: session.organizationId,
+      customerKey: session.customerKey,
+      billingKey: issued.data.billingKey,
+      ...pickStorableCardDisplay(issued.data)
+    })
+  }
+
+  // register_card 세션은 구독 주기를 시작하지 않는다(anchor_day = null).
+  await markCheckoutSessionCompleted(session.id, null, claimed)
+  return { status: "card_registered" }
 }

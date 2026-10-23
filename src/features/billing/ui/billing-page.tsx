@@ -3,6 +3,7 @@ import type { CSSProperties } from "react"
 
 import { StartStandardButton } from "@/features/billing/ui/start-standard-button"
 import { SubscriptionActions } from "@/features/billing/ui/subscription-actions"
+import { TrialCardRegistration } from "@/features/billing/ui/trial-card-registration"
 import {
   formatBillingAmount,
   formatBillingDate,
@@ -38,6 +39,9 @@ export const BillingPage = ({ overview, notice }: BillingPageProps) => {
   const planName = presentation.planLabel.endsWith("플랜") ? presentation.planLabel : `${presentation.planLabel} 플랜`
   const currentCard = pricingCards.find((card) => card.planCode === presentation.billedPlanCode) ?? null
   const trial = presentation.trial
+  // 카드 등록(§5.26)은 자동 체험 · 카드 전 · 창(종료 30일 전부터) 안 · 결제 가능한 배포에서만 연다.
+  const canRegisterCard = Boolean(trial && trial.state === "no_card" && trial.cardWindowOpen && overview.billingAvailable)
+  const amountLabel = formatBillingAmount(overview.standardAmount)
 
   return (
     <div className={styles.page}>
@@ -130,6 +134,8 @@ export const BillingPage = ({ overview, notice }: BillingPageProps) => {
             <div className={styles.planCta}>
               {card.cta.kind === "action" ? (
                 <StartStandardButton />
+              ) : card.cta.kind === "register_card" && trial ? (
+                <TrialCardRegistration placement="plan" label={card.cta.label} lastDayLabel={trial.lastDayLabel} amountLabel={amountLabel} />
               ) : card.cta.kind === "disabled" || card.cta.kind === "register_card" ? (
                 <>
                   <button type="button" className={v2ButtonClassName({ variant: "outline", size: "lg", className: styles.ctaFull })} disabled>
@@ -168,6 +174,9 @@ export const BillingPage = ({ overview, notice }: BillingPageProps) => {
                   : "등록된 결제수단이 없어요."}
             </p>
           </div>
+          {canRegisterCard && trial ? (
+            <TrialCardRegistration placement="payment" label="카드 등록" lastDayLabel={trial.lastDayLabel} amountLabel={amountLabel} />
+          ) : null}
         </div>
         <div className={styles.factRow}>
           <div className={styles.factText}>

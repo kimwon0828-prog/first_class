@@ -26,7 +26,11 @@ import {
   resolveTrialLastDayKey,
   type TrialFirstChargeSubject
 } from "@/features/billing/lib/standard-trial"
+import { readFileSync } from "node:fs"
+import { join } from "node:path"
+
 import { resolveStudioEntitlements } from "@/features/billing/lib/entitlements"
+import { checkTrialCardRegistration } from "@/features/billing/lib/standard-trial"
 import { buildTrialBannerMessage, describeTrialStatus } from "@/features/billing/lib/standard-trial"
 import {
   buildNextBillingFact,
@@ -247,6 +251,71 @@ console.log("\n[7] 플랜·결제 · 사이드바 · 상단 안내 문구")
   check("사이드바: 승인 당일 '스탠다드 무료 체험 · 90일 남음'", sidebar.label === "스탠다드 무료 체험" && sidebar.trial?.daysLeft === 90, `${sidebar.label} ${sidebar.trial?.daysLeft}`)
   const sidebarLast = buildStudioSidebarPlan({ subscription: sub(), override: null }, at("2027-01-20T14:00:00Z"))
   check("사이드바: 마지막 체험일 1일 남음", sidebarLast.trial?.daysLeft === 1)
+}
+
+console.log("\n[8] 카드 등록(자동 결제 동의)")
+{
+  const end = "2027-01-20T15:00:00.000Z"
+  const sub = (overrides: Partial<OrganizationSubscription> = {}): OrganizationSubscription => ({
+    organizationId: "org-1",
+    planCode: "standard",
+    status: "trialing",
+    currentPeriodStart: "2026-10-23T05:00:00.000Z",
+    currentPeriodEnd: end,
+    cancelAtPeriodEnd: false,
+    gracePeriodEnd: null,
+    trialOrigin: "signup_approval",
+    trialEndsAt: end,
+    ...overrides
+  })
+  const run = (subscription: OrganizationSubscription | null, now: string, extra: Partial<{ card: boolean; consentedAt: string | null; already: boolean }> = {}) => {
+    const result = checkTrialCardRegistration(subscription, {
+      now: at(now),
+      hasActiveBillingMethod: extra.card ?? false,
+      consentedAt: extra.consentedAt ?? null,
+      checkAlreadyRegistered: extra.already ?? true
+    })
+    return result.ok ? "ok" : result.code
+  }
+  check("창 열리기 전(31일 전) → window_not_open", run(sub(), "2026-12-21T14:59:00Z") === "window_not_open")
+  check(
+    "창 열리기 전 문구에 여는 날짜",
+    (() => {
+      const result = checkTrialCardRegistration(sub(), { now: at("2026-12-01T03:00:00Z"), hasActiveBillingMethod: false, consentedAt: null, checkAlreadyRegistered: true })
+      return !result.ok && result.message === "카드는 12월 22일(화)부터 등록할 수 있어요."
+    })()
+  )
+  check("창 시작 시각(30일 전 00:00 KST) → ok", run(sub(), "2026-12-21T15:00:00Z") === "ok")
+  check("마지막 체험일 → ok", run(sub(), "2027-01-20T10:00:00Z") === "ok")
+  check("종료 시각 → trial_ended", run(sub(), end) === "trial_ended")
+  check("해지 예약 → cancel_scheduled", run(sub({ cancelAtPeriodEnd: true }), "2027-01-10T03:00:00Z") === "cancel_scheduled")
+  check("수동 trialing → not_auto_trial", run(sub({ trialOrigin: null, trialEndsAt: null }), "2027-01-10T03:00:00Z") === "not_auto_trial")
+  check("구독 없음(무료) → not_auto_trial", run(null, "2027-01-10T03:00:00Z") === "not_auto_trial")
+  check(
+    "이미 등록(카드 + 창 안 동의) → already_registered (시작할 때만)",
+    run(sub(), "2027-01-10T03:00:00Z", { card: true, consentedAt: "2027-01-01T03:00:00.000Z" }) === "already_registered" &&
+      run(sub(), "2027-01-10T03:00:00Z", { card: true, consentedAt: "2027-01-01T03:00:00.000Z", already: false }) === "ok"
+  )
+  check("동의 없는 예전 카드는 다시 등록할 수 있다", run(sub(), "2027-01-10T03:00:00Z", { card: true, consentedAt: null }) === "ok")
+
+  // 소스 계약: 서버가 동의 · 창을 다시 보고, 카드 등록 경로는 결제를 만들지 않는다.
+  const read = (path: string) => readFileSync(join(process.cwd(), path), "utf8")
+  const start = read("src/features/billing/actions/start-trial-card-registration.ts")
+  check("시작: 동의(agreed)가 없으면 결제창을 열지 않는다", /input\?\.agreed !== true/.test(start))
+  check("시작: 서버에서 체험 · 창을 판정한다", start.includes("checkTrialCardRegistration(") && start.includes("checkAlreadyRegistered: true"))
+  check("시작: 세션 purpose = register_card", start.includes('purpose: "register_card"'))
+  check("시작: 로컬 가드를 거친 Toss runtime 만 쓴다", start.includes("getTossRuntimeForOrganization(access.organizationId)"))
+  const complete = read("src/features/billing/actions/complete-standard-checkout.ts")
+  const branchAt = complete.indexOf('checked.session.purpose === "register_card"')
+  const chargeAt = complete.indexOf("await chargeSubscription(")
+  check("완료: 카드 등록 분기가 결제 호출보다 먼저 끝난다", branchAt > 0 && chargeAt > branchAt)
+  const registerFn = complete.slice(complete.indexOf("const completeTrialCardRegistration"))
+  check("완료: 카드 등록 함수는 결제를 만들지 않는다", !registerFn.includes("chargeSubscription") && !registerFn.includes("applyVerifiedBillingEvent"))
+  check("완료: 빌링키 발급 전에 체험 · 창을 다시 본다", registerFn.indexOf("checkTrialCardRegistration(") < registerFn.indexOf("issueTossBillingKey("))
+  check("완료: 세션은 기준일 없이 완료된다(anchor_day null)", registerFn.includes("markCheckoutSessionCompleted(session.id, null, claimed)"))
+  const ui = read("src/features/billing/ui/trial-card-registration.tsx")
+  check("화면: 동의 전에는 [카드 등록하기]를 누를 수 없다", ui.includes("disabled={!agreed || pending}"))
+  check("화면: 결제일 · 금액 · 자동 결제 · 해지를 말한다", ui.includes("매월 자동 결제") && ui.includes("그 전에 해지하면 결제되지 않아요") && ui.includes("첫 결제일"))
 }
 
 if (failures > 0) {

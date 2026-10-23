@@ -9,7 +9,7 @@ import { getSupabaseServiceRoleClient } from "@/integrations/supabase/service-ro
 // 직접 만들거나 고칠 수 있으면 금액·조직을 위조할 수 있다.
 
 const SESSION_COLUMNS =
-  "id, organization_id, customer_key, plan_code, amount, order_id, payment_idempotency_key, billing_key_issue_idempotency_key, status, expires_at, anchor_day"
+  "id, organization_id, customer_key, plan_code, amount, order_id, payment_idempotency_key, billing_key_issue_idempotency_key, status, expires_at, anchor_day, purpose"
 
 type SessionRow = {
   id: string
@@ -22,6 +22,7 @@ type SessionRow = {
   billing_key_issue_idempotency_key: string
   status: string
   expires_at: string
+  purpose: string | null
 }
 
 const toSnapshot = (row: SessionRow): CheckoutSessionSnapshot => ({
@@ -34,7 +35,8 @@ const toSnapshot = (row: SessionRow): CheckoutSessionSnapshot => ({
   paymentIdempotencyKey: row.payment_idempotency_key,
   billingKeyIssueIdempotencyKey: row.billing_key_issue_idempotency_key,
   status: row.status,
-  expiresAt: row.expires_at
+  expiresAt: row.expires_at,
+  purpose: row.purpose === "register_card" ? "register_card" : "subscribe"
 })
 
 export const insertCheckoutSession = async (input: {
@@ -48,6 +50,8 @@ export const insertCheckoutSession = async (input: {
   billingKeyIssueIdempotencyKey: string
   requestedBy: string
   expiresAt: string
+  /** 기본 subscribe. register_card 는 자동 체험 중 카드만 등록(결제 없음). */
+  purpose?: "subscribe" | "register_card"
 }) => {
   const client = getSupabaseServiceRoleClient()
   const { error } = await client.from("billing_checkout_sessions").insert({
@@ -62,7 +66,8 @@ export const insertCheckoutSession = async (input: {
     billing_key_issue_idempotency_key: input.billingKeyIssueIdempotencyKey,
     status: "pending",
     requested_by: input.requestedBy,
-    expires_at: input.expiresAt
+    expires_at: input.expiresAt,
+    purpose: input.purpose ?? "subscribe"
   })
 
   if (error) {
@@ -136,7 +141,8 @@ export const releaseCheckoutSession = async (sessionId: string, lease: CheckoutL
 
 export const markCheckoutSessionCompleted = async (
   sessionId: string,
-  anchorDay: number,
+  /** register_card 세션은 구독 주기를 시작하지 않으므로 null 이다(DB 제약). */
+  anchorDay: number | null,
   lease?: CheckoutLease
 ) => {
   const client = getSupabaseServiceRoleClient()

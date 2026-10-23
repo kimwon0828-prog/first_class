@@ -29,7 +29,9 @@ export default async function StudioBillingCallbackRoute({
   })
 
   const outcome =
-    result.status === "activated" ? "activated" : result.status === "pending" ? "pending" : "failed"
+    result.status === "activated" || result.status === "card_registered" || result.status === "pending"
+      ? result.status
+      : "failed"
 
   /* query 는 path helper 에 넣지 않는다. 경로만 옮기고 결과는 따로 붙인다. */
   const billingPath = await resolveStudioNavigationPath("/studio/billing")

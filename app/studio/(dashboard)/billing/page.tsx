@@ -6,6 +6,7 @@ export const dynamic = "force-dynamic"
 
 const NOTICE: Record<string, string> = {
   activated: "스탠다드가 시작되었어요.",
+  card_registered: "카드를 등록했어요. 지금은 결제되지 않았고, 아래 첫 결제일에 결제돼요.",
   pending: "결제 결과를 확인하고 있어요. 잠시 후 다시 확인해 주세요.",
   failed: "결제를 완료하지 못했어요. 잠시 후 다시 시도해 주세요."
 }
