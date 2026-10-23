@@ -42,7 +42,7 @@ export const STUDIO_PRIMARY_NAV: readonly StudioNavEntry[] = [
   { key: "analytics", label: "분석", href: "/studio/analytics", matchPrefixes: ["/studio/analytics"] }
 ]
 
-export type StudioSettingsTabKey = "academy" | "teachers" | "billing" | "account"
+export type StudioSettingsTabKey = "academy" | "hours" | "teachers" | "billing" | "account"
 
 export type StudioSettingsTab = {
   key: StudioSettingsTabKey
@@ -57,7 +57,7 @@ export type StudioSettingsTab = {
  * - 학원 정보: 공개 프로필(/studio/mypage/profile)과 공식정보 수정 요청(/studio/settings) 두 화면.
  *   프로필 화면 안에 공식정보로 가는 링크가 이미 있다.
  * - 내 계정: 기존 마이페이지(/studio/mypage). 하위 경로는 학원 정보 쪽이라 정확히 일치로만 본다.
- * - "운영 시간" 탭은 두지 않는다(운영 시간은 학원 프로필 화면 안에 있다).
+ * - "운영 시간" 탭은 학원 정보 화면의 방문 정보(#visit-info)로 연결만 한다(운영 시간 전용 화면은 2차).
  */
 export const STUDIO_SETTINGS_TABS: readonly StudioSettingsTab[] = [
   {
@@ -66,6 +66,8 @@ export const STUDIO_SETTINGS_TABS: readonly StudioSettingsTab[] = [
     href: "/studio/mypage/profile",
     matchPrefixes: ["/studio/mypage/profile", "/studio/settings"]
   },
+  // 운영 시간: 별도 화면이 없다(2차). 학원 정보 화면의 "방문 정보"(운영 요일 · 시간)로 연결만 한다.
+  { key: "hours", label: "운영 시간", href: "/studio/mypage/profile#visit-info", matchPrefixes: [] },
   { key: "teachers", label: "선생님", href: "/studio/teachers", matchPrefixes: ["/studio/teachers"] },
   { key: "billing", label: "플랜·결제", href: "/studio/billing", matchPrefixes: ["/studio/billing"] },
   { key: "account", label: "내 계정", href: "/studio/mypage", matchPrefixes: ["/studio/mypage"] }

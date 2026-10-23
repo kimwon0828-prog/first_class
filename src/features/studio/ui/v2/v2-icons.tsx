@@ -19,7 +19,7 @@ const Svg = ({
   size,
   viewBox,
   children
-}: IconProps & { viewBox: 14 | 16 | 18 | 20 | 24; children: ReactNode }) => (
+}: IconProps & { viewBox: 14 | 16 | 18 | 20 | 24 | 52; children: ReactNode }) => (
   <svg
     className={className}
     width={size ?? viewBox}
@@ -198,5 +198,35 @@ export const V2BackIcon = (props: IconProps) => (
 export const V2SendIcon = (props: IconProps) => (
   <Svg viewBox={18} {...props}>
     <path d="M15.75 2.25L7.5 10.5M7.5 10.5L2.25 7.5L15.75 2.25L10.5 15.75L7.5 10.5Z" strokeLinejoin="round" />
+  </Svg>
+)
+
+/* 6단계: Icon/more(18) · Icon/upload(16) · Icon/clock(52, 승인 대기 2148:4847). */
+export const V2MoreIcon = (props: IconProps) => (
+  <Svg viewBox={18} {...props}>
+    <path d="M5.4 9C5.4 9.49706 4.99706 9.9 4.5 9.9C4.00294 9.9 3.6 9.49706 3.6 9C3.6 8.50294 4.00294 8.1 4.5 8.1C4.99706 8.1 5.4 8.50294 5.4 9Z" />
+    <path d="M9.9 9C9.9 9.49706 9.49706 9.9 9 9.9C8.50294 9.9 8.1 9.49706 8.1 9C8.1 8.50294 8.50294 8.1 9 8.1C9.49706 8.1 9.9 8.50294 9.9 9Z" />
+    <path d="M14.4 9C14.4 9.49706 13.9971 9.9 13.5 9.9C13.0029 9.9 12.6 9.49706 12.6 9C12.6 8.50294 13.0029 8.1 13.5 8.1C13.9971 8.1 14.4 8.50294 14.4 9Z" />
+  </Svg>
+)
+
+export const V2UploadIcon = (props: IconProps) => (
+  <Svg viewBox={16} {...props}>
+    <path d="M8 10V2.66667M11 5.66667L8 2.66667L5 5.66667M3 10V12.3333C3 12.5986 3.10536 12.8529 3.29289 13.0404C3.48043 13.228 3.73478 13.3333 4 13.3333H12C12.2652 13.3333 12.5196 13.228 12.7071 13.0404C12.8946 12.8529 13 12.5986 13 12.3333V10" strokeLinecap="round" strokeLinejoin="round" />
+  </Svg>
+)
+
+export const V2ClockIcon = (props: IconProps) => (
+  <Svg viewBox={52} {...props}>
+    <path d="M44.4167 26C44.4167 36.1712 36.1712 44.4167 26 44.4167C15.8288 44.4167 7.58333 36.1712 7.58333 26C7.58333 15.8288 15.8288 7.58333 26 7.58333C36.1712 7.58333 44.4167 15.8288 44.4167 26Z" />
+    <path d="M26 16.25V26L32.5 30.3333" strokeLinecap="round" />
+  </Svg>
+)
+
+/* 잠금(공식 정보 · 운영자 확인 후 변경). Figma 원본 없음 — [코드 결정] stroke 1.8, viewBox 16. */
+export const V2LockIcon = (props: IconProps) => (
+  <Svg viewBox={16} {...props}>
+    <path d="M4.5 7.25H11.5C12.0523 7.25 12.5 7.69772 12.5 8.25V12.5C12.5 13.0523 12.0523 13.5 11.5 13.5H4.5C3.94772 13.5 3.5 13.0523 3.5 12.5V8.25C3.5 7.69772 3.94772 7.25 4.5 7.25Z" strokeLinejoin="round" />
+    <path d="M5.5 7.25V5.25C5.5 3.86929 6.61929 2.75 8 2.75C9.38071 2.75 10.5 3.86929 10.5 5.25V7.25" strokeLinecap="round" />
   </Svg>
 )

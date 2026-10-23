@@ -36,6 +36,10 @@ const SUBJECT_CATEGORY_LABEL_BY_CODE: Record<string, string> = {
   other: "기타"
 }
 
+/** 과목 대분류 코드 → 화면 이름(예: coding_it_robotics → "코딩·IT·로봇"). 모르면 null. */
+export const getSubjectCategoryLabel = (code: string | null | undefined): string | null =>
+  code ? SUBJECT_CATEGORY_LABEL_BY_CODE[code] ?? null : null
+
 export const findSubjectCatalogCategory = (
   catalog: SubjectCatalogCategory[],
   categoryId: string | null | undefined
