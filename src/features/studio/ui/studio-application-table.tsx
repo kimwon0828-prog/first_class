@@ -37,7 +37,7 @@ const PIPELINE_STAGES: Array<{
 
 const DROP_FILTERS: Array<{ key: StudioApplicationFilterKey; label: string }> = [
   { key: "canceled", label: "취소" },
-  { key: "no_show", label: "노쇼" },
+  { key: "no_show", label: "불참" },
   { key: "not_enrolled", label: "미등록" }
 ]
 

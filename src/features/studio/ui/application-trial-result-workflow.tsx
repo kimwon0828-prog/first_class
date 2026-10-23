@@ -84,6 +84,13 @@ const initialTrialResultState: UpsertTrialResultActionState = {
 
 const PUBLIC_SUMMARY_MAX = 1000
 
+/* 상태 변경 때 자동으로 남는 기록 문구(저장값)는 화면에서만 읽기 쉬운 말로 바꿔 보여준다. */
+const SYSTEM_CANCELED_LOG_NOTES: Record<string, string> = {
+  "teacher가 신청을 취소 처리했습니다.": "학원에서 신청을 취소했어요.",
+  "teacher가 신청을 노쇼 처리했습니다.": "학원에서 불참으로 처리했어요."
+}
+const formatCanceledLogNote = (note: string | null | undefined) => note ? SYSTEM_CANCELED_LOG_NOTES[note.trim()] ?? note : null
+
 type ApplicationTrialResultWorkflowProps = {
   application: StudioApplicationDetail
   /** 신규 신청의 일정 확정 폼(서버가 만든 ApplicationStatusActionForm). */
@@ -210,7 +217,7 @@ export const ApplicationTrialResultWorkflow = ({
 
   const closeEditor = () => {
     if (isSavingTrialResult || trialSubmitInFlight.current) return
-    if (editorDirty && !window.confirm("저장하지 않은 변경이 있습니다. 변경을 버리고 닫을까요?")) return
+    if (editorDirty && !window.confirm("저장하지 않은 변경이 있어요. 변경을 버리고 닫을까요?")) return
     setIsEditorOpen(false)
 
     if (refreshOnEditorClose) {
@@ -268,7 +275,7 @@ export const ApplicationTrialResultWorkflow = ({
     if (!isEditorOpen || !editorDirty) return
     const unload = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = "" }
     const href = window.location.href, state = window.history.state
-    const back = (event: PopStateEvent) => { if (!window.confirm("저장하지 않은 변경이 있습니다. 변경을 버리고 이동할까요?")) { event.stopImmediatePropagation(); window.history.pushState(state, "", href) } }
+    const back = (event: PopStateEvent) => { if (!window.confirm("저장하지 않은 변경이 있어요. 변경을 버리고 이동할까요?")) { event.stopImmediatePropagation(); window.history.pushState(state, "", href) } }
     window.addEventListener("beforeunload", unload); window.addEventListener("popstate", back, true)
     return () => { window.removeEventListener("beforeunload", unload); window.removeEventListener("popstate", back, true) }
   }, [isEditorOpen, editorDirty])
@@ -315,7 +322,7 @@ export const ApplicationTrialResultWorkflow = ({
   let registrationInNow = false
   if (isTerminal) {
     nowArea = nowCard(
-      <p className={styles.terminalNote}>{application.logs.find((log) => log.toStatus === "canceled" && log.note?.trim())?.note || "별도로 기록된 사유가 없어요."}</p>,
+      <p className={styles.terminalNote}>{formatCanceledLogNote(application.logs.find((log) => log.toStatus === "canceled" && log.note?.trim())?.note) || "별도로 기록된 사유가 없어요."}</p>,
       { label: application.noShowAt ? "불참 처리 내역" : "취소 처리 내역", neutral: true, description: "확정된 체험 기록과 리포트는 보관돼요." }
     )
   } else if (application.status === "new" || application.status === "reviewing") {

@@ -8,7 +8,7 @@ export function StudioFeedback({ feedback, error }: { feedback: StudioExperience
     <h2 className={styles.title}>학부모 체험 피드백</h2>
     <div className={styles.saved}>
       {feedback.selectedChipIds.length > 0 ? <div><p className={styles.label}>선택한 항목</p><ul className={styles.chips}>{feedback.selectedChipIds.map(id => <li className={styles.tag} key={id}>{feedbackChipLabel(id)}</li>)}</ul></div> : null}
-      {feedback.privateNote ? <div><p className={styles.label}>비공개 의견</p><p className={styles.privateNote}>{feedback.privateNote}</p><p className={styles.hint}>해당 학원에만 전달된 의견입니다.</p></div> : null}
+      {feedback.privateNote ? <div><p className={styles.label}>비공개 의견</p><p className={styles.privateNote}>{feedback.privateNote}</p><p className={styles.hint}>이 학원에만 전달된 의견이에요.</p></div> : null}
       <div><p className={styles.hint}>작성 <time dateTime={feedback.createdAt}>{formatSeoulDateTime(feedback.createdAt)}</time></p>
         <p className={styles.hint}>수정 <time dateTime={feedback.updatedAt}>{formatSeoulDateTime(feedback.updatedAt)}</time></p></div>
     </div>

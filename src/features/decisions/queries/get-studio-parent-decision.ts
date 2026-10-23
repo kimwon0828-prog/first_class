@@ -20,7 +20,7 @@ export const getStudioParentDecision = async (
     return {
       data: null,
       // 조회 실패를 "선택 없음" 으로 접지 않는다. 화면이 구분해서 말한다.
-      error: "학부모 선택을 불러오지 못했습니다. 잠시 후 다시 확인해 주세요."
+      error: "학부모 선택을 불러오지 못했어요. 잠시 후 다시 확인해 주세요."
     }
   }
 }

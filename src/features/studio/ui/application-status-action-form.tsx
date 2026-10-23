@@ -55,6 +55,8 @@ type ApplicationStatusActionFormProps = {
   showActions?: boolean
   confirmation?: {
     requestedSchedule: string
+    /** 학부모 희망 시각이 지금보다 앞인가(서버 기준 시각으로 판정). 안내 문구만 바뀐다. */
+    requestedPast?: boolean
     hasSchedule: boolean
     assignedTeacherId: string | null
     teachers: StudioTeacherOption[]
@@ -129,6 +131,9 @@ export const ApplicationStatusActionForm = ({
                 <small>학부모 희망 · 이 시간으로 확정해요</small>
               </span>
             </div>
+            {confirmation.requestedPast ? (
+              <p className={styles.messageWarn} role="status">희망 시간이 지났어요. 학부모와 시간을 다시 맞춘 뒤 확정해 주세요.</p>
+            ) : null}
             {!confirmation.hasSchedule ? (
               <p className={styles.messageError} role="status">
                 확정할 수 있는 일정이 없어요. <Link href={confirmation.scheduleHref}>일정 관리</Link>에서 확인해 주세요.
@@ -184,7 +189,7 @@ export const ApplicationStatusActionForm = ({
       <button ref={noShowSubmitRef} type="submit" name="actionType" value="no_show" hidden disabled={isPending} />
       <dialog ref={dialogRef} className={styles.confirmDialog} aria-labelledby={dialogTitleId} aria-describedby={dialogDescriptionId}>
         <h2 id={dialogTitleId}>이 학생을 불참으로 처리할까요?</h2>
-        <p id={dialogDescriptionId}>불참 처리 후에는 기존 정책에 따라 되돌릴 수 없습니다.</p>
+        <p id={dialogDescriptionId}>불참 처리 후에는 기존 정책에 따라 되돌릴 수 없어요.</p>
         <div className={styles.confirmActions}>
           <button type="button" autoFocus className={v2ButtonClassName({ variant: "outline" })} onClick={() => dialogRef.current?.close()}>돌아가기</button>
           <button type="button" className={`${v2ButtonClassName({ variant: "primary" })} ${styles.dangerButton}`} disabled={isPending} onClick={() => {

@@ -66,7 +66,7 @@ async function visit(p,path){const r=await p.goto(base+path);assert(r && r.statu
  }
  const studio=await context('studio',1440)
  for(const path of ['/studio/cases',`/studio/applications/${m.applications.completed}`]){await visit(studio.p,path);const body=await studio.p.locator('body').innerText();assert(!/불러오지 못|Internal Server Error/.test(body),body);assert(body.includes('보존 학생'),body);await studio.p.screenshot({path:out+(path.includes('/applications/')?'/studio-preserved-detail.png':'/studio-preserved-cases.png'),fullPage:true})}
- await studio.p.getByText('기록 보기',{exact:true}).click();const body=await studio.p.locator('body').innerText();assert(body.includes('보존 상담 내용'));assert(body.includes('보존 체험 결과'));assert(body.includes('미등록'));assert(body.includes('학부모 응답 정보가 없습니다.'))
+ await studio.p.getByText('기록 보기',{exact:true}).click();const body=await studio.p.locator('body').innerText();assert(body.includes('보존 상담 내용'));assert(body.includes('보존 체험 결과'));assert(body.includes('미등록'));assert(body.includes('학부모 응답 정보가 없어요.'))
  await studio.p.getByText('리포트 보기',{exact:true}).click();await studio.p.getByText('TEST 리포트 전체 총평입니다. 피드백을 보내지 않아도 읽을 수 있어요.',{exact:true}).first().waitFor()
  pass('Studio Cases/detail preserve consultation, trial result, registration and ParentDecision empty fallback')
  await studio.c.close()

@@ -229,7 +229,7 @@ export default async function StudioApplicationDetailPage({ params, searchParams
       <header className={styles.header}>
         <Link href={studioPath(back.pathname) + back.search} className={styles.backLink}>{back.label}</Link>
         <h1 className={styles.pageTitle}>개인정보가 삭제된 신청</h1>
-        <p className={styles.pageDescription}>학부모 탈퇴로 학생·보호자 정보와 상담·리포트 내용이 삭제되었습니다.</p>
+        <p className={styles.pageDescription}>학부모 탈퇴로 학생·보호자 정보와 상담·리포트 내용이 삭제됐어요.</p>
       </header>
       <section className={styles.applicationInfoSection} aria-label="남은 운영 기록">
         <dl className={styles.applicationInfoGrid}>
@@ -238,7 +238,7 @@ export default async function StudioApplicationDetailPage({ params, searchParams
           <div className={styles.infoCell}><dt>등록 결과</dt><dd>{getStudioRegistrationStatusLabel(data.registrationStatus)}</dd></div>
           <div className={styles.infoCell}><dt>체험 일정</dt><dd>{formatDateTime(data.confirmedSlotAt ?? data.requestedSlotAt)}</dd></div>
         </dl>
-        <p>예약 상태와 등록 결과는 자동으로 변경되지 않습니다.</p>
+        <p>예약 상태와 등록 결과는 자동으로 바뀌지 않아요.</p>
         <Link href={studioPath("/studio/schedule")} className={styles.caseInlineLink}>일정 관리 →</Link>
       </section>
     </div>
@@ -471,7 +471,7 @@ export default async function StudioApplicationDetailPage({ params, searchParams
             : caseStage === "not_enrolled"
               ? { label: "미등록", at: resolvedAtFromResult ?? data.lostAt }
               : caseStage === "no_show"
-                ? { label: "노쇼", at: data.noShowAt }
+                ? { label: "불참", at: data.noShowAt }
                 : caseStage === "canceled"
                   ? { label: "취소", at: data.canceledAt }
                   : { label: null, at: null }
@@ -530,7 +530,7 @@ export default async function StudioApplicationDetailPage({ params, searchParams
   const evidence = {
     trialResultError: data?.trialResultLoadError ?? null,
     report: {
-      error: reportHistory.error ? "발행 이력을 확인하지 못했습니다." : publishedReportResult.error,
+      error: reportHistory.error ? "발행 이력을 확인하지 못했어요." : publishedReportResult.error,
       everSent: reportHistory.everSent,
       version: reportView?.published?.version ?? null,
       publishedAt: reportView?.published?.publishedAt ?? null,
@@ -602,6 +602,7 @@ export default async function StudioApplicationDetailPage({ params, searchParams
               key={`${data.id}:${data.updatedAt}`}
               applicationId={data.id} currentStatus={data.status} variant="case-detail"
               confirmation={{requestedSchedule: detailView.requestedSchedule,
+                requestedPast: Date.parse(data.requestedSlotAt) < Date.parse(nowIso),
                 hasSchedule: Boolean(data.classScheduleId || data.requestedScheduleBlockId),
                 assignedTeacherId: data.assignedTeacherId, teachers: assigneeOptionsResult.data,
                 teachersError: assigneeOptionsResult.error, scheduleHref: studioPath("/studio/schedule")}}
@@ -620,7 +621,7 @@ export default async function StudioApplicationDetailPage({ params, searchParams
               publishedSnapshot: reportView.published?.content ?? null,
               publishedVersion: reportView.published?.version ?? null,
               publishedAt: reportView.published?.publishedAt ?? null,
-              publishedReportLoadError: reportHistory.error ? "발송 이력을 확인하지 못했습니다." : reportView.publishedReportLoadError,
+              publishedReportLoadError: reportHistory.error ? "발송 이력을 확인하지 못했어요." : reportView.publishedReportLoadError,
               assessmentUpdatedAt: reportView.assessmentUpdatedAt,
               assessmentChangedSincePublish: reportView.assessmentChangedSincePublish,
               blockers: reportView.blockers,

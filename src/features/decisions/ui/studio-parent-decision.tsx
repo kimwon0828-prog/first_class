@@ -89,11 +89,11 @@ export const StudioParentDecision = ({ decision, loadError, titleIcon }: StudioP
         </>
       ) : (
         // 아직 고르지 않은 것도 상태다. 재촉하는 문구를 쓰지 않는다.
-        <p className={styles.muted}>학부모 응답 정보가 없습니다.</p>
+        <p className={styles.muted}>학부모 응답 정보가 없어요.</p>
       )}
 
       <p className={styles.footnote}>
-        학부모가 직접 남긴 내용이라 학원에서 수정할 수 없습니다. 등록 결과와는 별개입니다.
+        학부모가 직접 남긴 내용이라 학원에서 수정할 수 없어요. 등록 결과와는 별개예요.
       </p>
     </section>
   )

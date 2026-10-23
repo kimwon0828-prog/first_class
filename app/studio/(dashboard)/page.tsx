@@ -88,7 +88,7 @@ export default async function StudioIndexPage({ searchParams }: StudioIndexPageP
 
   const trialSegments = metrics ? [
     { key: "completed", label: "체험 완료", count: metrics.trialOutcomes.completed },
-    { key: "noShow", label: "노쇼", count: metrics.trialOutcomes.noShow },
+    { key: "noShow", label: "불참", count: metrics.trialOutcomes.noShow },
     { key: "canceled", label: "일반 취소", count: metrics.trialOutcomes.canceled },
     { key: "pending", label: "진행 전·진행 중", count: metrics.trialOutcomes.pending }
   ] : []

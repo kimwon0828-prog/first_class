@@ -134,7 +134,7 @@ export async function getStudioCases(organizationId: string, options: GetStudioC
         ...records.map(record => ({ at: record.created_at, label: "체험 기록 완료" })),
         ...reports.map(report => ({ at: report.published_at, label: "리포트 발송" })),
         { at: row.enrolled_at, label: "등록 완료" }, { at: row.lost_at, label: "미등록" },
-        { at: row.canceled_at, label: "취소" }, { at: row.no_show_at, label: "노쇼" },
+        { at: row.canceled_at, label: "취소" }, { at: row.no_show_at, label: "불참" },
         { at: latestContacts.get(row.id) ?? null, label: "상담 기록" }
       ].filter((item): item is { at: string; label: string } => Boolean(item.at) && Number.isFinite(Date.parse(item.at!)))
         .sort((a, b) => Date.parse(b.at) - Date.parse(a.at))

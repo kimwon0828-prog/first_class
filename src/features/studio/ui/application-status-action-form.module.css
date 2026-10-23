@@ -106,6 +106,7 @@
 }
 
 .message,
+.messageWarn,
 .messageError {
   margin: 0;
   padding: var(--sv2-space-12) var(--sv2-space-16);
@@ -118,6 +119,12 @@
 .message {
   background: var(--sv2-brand-50);
   color: var(--sv2-brand-700);
+}
+
+/* 희망 시간이 지난 신청: 안내만 하고 버튼은 그대로 둔다 */
+.messageWarn {
+  background: var(--sv2-state-warn-bg);
+  color: var(--sv2-state-warn-fg);
 }
 
 .messageError {

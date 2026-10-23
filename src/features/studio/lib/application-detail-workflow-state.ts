@@ -69,8 +69,8 @@ export function deriveApplicationDetailWorkflow({ application: a, evidence: e, n
 
   // Terminal results precede missing records. No large task CTA on closed cases.
   if (closed) {
-    title = a.status === "canceled" ? (a.noShowAt ? "불참으로 종료되었습니다." : "취소된 신청입니다.") :
-      result === "enrolled" ? "등록이 완료되었습니다." : "등록하지 않은 신청입니다."
+    title = a.status === "canceled" ? (a.noShowAt ? "불참으로 종료됐어요." : "취소된 신청이에요.") :
+      result === "enrolled" ? "등록이 완료됐어요." : "등록하지 않은 신청이에요."
     description = "확정된 체험 기록과 리포트는 보존되며 등록 결과는 변경할 수 있어요."
   } else if (!completed) {
     if (a.status === "new" || a.status === "reviewing") act("status", "일정 확정하기", "trial", "체험 일정을 확인하고 확정해 주세요.")

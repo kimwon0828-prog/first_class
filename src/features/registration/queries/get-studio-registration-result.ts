@@ -22,7 +22,7 @@ export const getStudioRegistrationResult = async (
       data: null,
       // 조회 실패를 "결과 없음" 으로 접지 않는다. 확정된 등록이 화면에서
       // 조용히 사라지면 원장이 다시 상담을 돌리게 된다.
-      error: "등록 결과를 불러오지 못했습니다. 잠시 후 다시 확인해 주세요."
+      error: "등록 결과를 불러오지 못했어요. 잠시 후 다시 확인해 주세요."
     }
   }
 }

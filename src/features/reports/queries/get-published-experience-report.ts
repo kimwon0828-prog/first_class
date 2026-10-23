@@ -22,7 +22,7 @@ export const getPublishedExperienceReport = async (
   } catch {
     return {
       data: null,
-      error: "발행된 리포트를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요."
+      error: "보낸 리포트를 불러오지 못했어요. 잠시 후 다시 시도해 주세요."
     }
   }
 }
