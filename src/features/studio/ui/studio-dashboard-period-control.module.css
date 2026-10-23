@@ -11,42 +11,42 @@
   gap: var(--s2);
 }
 
+/* 기간 칩: v2 Chip 모양(STUDIO_DESIGN_SYSTEM.md §5.2). 직접 설정 팝오버는 기존 모양이다. */
 .periodButton {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 40px;
-  padding: 0 14px;
-  border: 1px solid var(--border);
-  border-radius: var(--r-md);
-  background: var(--surface);
-  color: var(--text-2);
+  padding: 8px 14px;
+  border: 1px solid var(--sv2-line-default);
+  border-radius: var(--sv2-radius-pill);
+  background: var(--sv2-surface-white);
+  color: var(--sv2-ink-700);
   font: inherit;
-  font-size: 13px;
+  font-family: var(--sv2-font);
+  font-size: 14px;
   line-height: 20px;
-  font-weight: 700;
+  font-weight: 500;
   text-decoration: none;
   white-space: nowrap;
   cursor: pointer;
-  transition: border-color 150ms ease, background-color 150ms ease, color 150ms ease;
 }
 
 .periodButton:hover {
-  border-color: var(--border-strong);
-  color: var(--text-1);
+  background: var(--sv2-surface-fill);
 }
 
 .periodButtonActive,
 .periodButtonActive:hover {
-  border-color: var(--brand-100);
-  background: var(--brand-50);
-  color: var(--brand-700);
+  border-color: var(--sv2-brand-700);
+  background: var(--sv2-brand-50);
+  color: var(--sv2-brand-700);
+  font-weight: 700;
 }
 
 .periodButton:focus-visible,
 .cancelButton:focus-visible,
 .applyButton:focus-visible {
-  outline: 2px solid var(--brand-500);
+  outline: 2px solid var(--sv2-brand-700);
   outline-offset: 2px;
 }
 
