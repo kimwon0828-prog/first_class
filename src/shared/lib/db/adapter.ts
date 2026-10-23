@@ -777,8 +777,15 @@ export type ApplicationLogEntry = {
   createdAt: string
 }
 
+export type StudioRecentExperienceFeedback = {
+  latest: (StudioExperienceFeedback & { applicationId: string; childName: string; childGrade: string }) | null
+  recentCount: number
+}
+
 export type StudioApplicationSummary = TrialApplicationSummary & {
   classSubject: string | null
+  /** 수업의 과목 대분류 코드(subject_categories.code). 3D 과목 아이콘용. 읽지 않는 조회에서는 비어 있다. */
+  classSubjectCategory?: string | null
   classRegion: string | null
   classAssignmentMode: ClassAssignmentMode
   scheduleStartTime: string | null
@@ -1374,6 +1381,8 @@ export interface DataAdapter {
   /** @deprecated Final submission only; always rejects. */
   saveParentExperienceFeedback(applicationId: string, parentId: string, selectedChipIds: string[], privateNote: string | null): Promise<void>
   getStudioExperienceFeedback(applicationId: string, organizationId: string): Promise<StudioExperienceFeedback | null>
+  /** 학원의 가장 최근 학부모 체험 의견 1건과 since 이후 새 의견 수. 홈 "학부모 의견" 카드용, 읽기 전용. */
+  getStudioRecentExperienceFeedback(organizationId: string, sinceIso: string): Promise<StudioRecentExperienceFeedback>
   getPublicClassFeedbackSummary(classId: string): Promise<PublicFeedbackSummary>
   getPublicAcademyFeedbackSummary(organizationId: string): Promise<PublicFeedbackSummary>
   listClasses(options?: ListClassesOptions): Promise<ClassSummary[]>

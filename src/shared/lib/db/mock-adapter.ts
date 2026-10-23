@@ -917,6 +917,16 @@ export const mockDataAdapter: DataAdapter = {
     const a = applications.find(row => row.id === applicationId)
     return f && a?.parentId === f.parentId && a.classId === f.classId && organizationId === mockOrganizationId ? privateFeedbackDto(f) : null
   },
+  async getStudioRecentExperienceFeedback(organizationId, sinceIso) {
+    if (organizationId !== mockOrganizationId) return { latest: null, recentCount: 0 }
+    const rows = experienceFeedback.filter(row => row.organizationId === organizationId).sort((left, right) => right.createdAt.localeCompare(left.createdAt))
+    const first = rows[0]
+    const application = first ? applications.find(row => row.id === first.applicationId) : null
+    return {
+      latest: first && application ? { ...privateFeedbackDto(first), applicationId: first.applicationId, childName: application.childName, childGrade: application.childGrade } : null,
+      recentCount: rows.filter(row => row.createdAt >= sinceIso).length
+    }
+  },
   async getPublicClassFeedbackSummary(classId) {
     if (!classes.some(row => row.id === classId && row.isActive && !row.archivedAt)) return { chips: [] }
     return summarizeFeedback(experienceFeedback.filter(f => f.classId === classId && applications.some(a => a.id === f.applicationId && a.parentId === f.parentId && a.classId === f.classId && a.status === "completed" && !a.noShowAt && !a.canceledAt)), "CLASS")
@@ -1947,6 +1957,7 @@ export const mockDataAdapter: DataAdapter = {
           ...item,
           lostAt: item.lostAt ?? null,
           classSubject: classItem?.subject ?? null,
+          classSubjectCategory: getReportSubjectCategory(null, null, classItem?.subject),
           classRegion: formatAdministrativeRegionLabel(mockOrganizationLocation),
           // mock 은 예약 블록 시각을 따로 갖지 않는다. confirmedSlotAt / 수업 길이로만 판정된다.
           confirmedBlockStartAt: null,

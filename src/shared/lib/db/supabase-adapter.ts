@@ -1032,6 +1032,8 @@ const mapStudioApplication = (
   return {
     ...mapApplication(row),
     classSubject: embeddedClass?.subject ?? null,
+    // 과목 대분류는 상세와 같은 규칙(reportCategoryFromClass)으로 읽는다. 대분류를 select 하지 않은 조회에서는 null.
+    classSubjectCategory: reportCategoryFromClass(row.classes),
     // 지역 표시는 organization 행정지역 metadata 로만 만든다. legacy classes.region 은 쓰지 않는다.
     classRegion: formatAdministrativeRegionLabel(getEmbeddedClassOrganization(embeddedClass) ?? {}),
     classAssignmentMode: resolveClassAssignmentMode(embeddedClass ?? {}),
@@ -2951,6 +2953,25 @@ export const supabaseDataAdapter: DataAdapter = {
     if (error) throw new Error("feedback_load_failed")
     return data ? decodePrivateFeedback({ selectedChipIds: data.selected_chip_ids, privateNote: data.private_note, createdAt: data.created_at, updatedAt: data.updated_at }) : null
   },
+  async getStudioRecentExperienceFeedback(organizationId, sinceIso) {
+    const client = await getSupabaseServerClient()
+    const [latest, recent] = await Promise.all([
+      client.from("experience_feedback").select("application_id,selected_chip_ids,private_note,created_at,updated_at")
+        .eq("organization_id", organizationId).order("created_at", { ascending: false }).limit(1).maybeSingle(),
+      client.from("experience_feedback").select("application_id", { count: "exact", head: true })
+        .eq("organization_id", organizationId).gte("created_at", sinceIso)
+    ])
+    if (latest.error || recent.error) throw new Error("feedback_load_failed")
+    if (!latest.data) return { latest: null, recentCount: recent.count ?? 0 }
+    const { data: application, error } = await client.from("studio_trial_applications").select("id, child_name, child_grade, classes!inner(organization_id)")
+      .eq("id", latest.data.application_id).eq("classes.organization_id", organizationId).maybeSingle()
+    if (error) throw new Error("feedback_load_failed")
+    const feedback = decodePrivateFeedback({ selectedChipIds: latest.data.selected_chip_ids, privateNote: latest.data.private_note, createdAt: latest.data.created_at, updatedAt: latest.data.updated_at })
+    return {
+      latest: feedback && application ? { ...feedback, applicationId: latest.data.application_id, childName: application.child_name ?? "", childGrade: application.child_grade ?? "" } : null,
+      recentCount: recent.count ?? 0
+    }
+  },
   async getPublicClassFeedbackSummary(classId) {
     const client = await getSupabaseServerClient()
     const { data, error } = await client.rpc("get_public_class_feedback_summary", { p_class_id: classId })
@@ -4658,7 +4679,7 @@ export const supabaseDataAdapter: DataAdapter = {
       let query = supabase
         .from("studio_trial_applications")
         .select(
-          "id, class_id, parent_id, child_name, child_grade, parent_name, parent_phone, class_schedule_id, requested_schedule_block_id, selected_schedule_label, requested_slot_at, confirmed_slot_at, assigned_teacher_id, contacted_at, scheduled_at, completed_at, enrolled_at, lost_at, canceled_at, no_show_at, goal_type, registration_status, unregistered_reason, status, created_at, updated_at, classes!inner(title, subject, organization_id, program_type, organizations(sido, sigungu, bname)), class_schedules(start_time, end_time), confirmed_block:schedule_blocks!trial_applications_confirmed_schedule_block_id_fkey(start_at, end_at)".replace("_fkey(start_at", blockOnly ? "_fkey!inner(start_at" : "_fkey(start_at"),
+          "id, class_id, parent_id, child_name, child_grade, parent_name, parent_phone, class_schedule_id, requested_schedule_block_id, selected_schedule_label, requested_slot_at, confirmed_slot_at, assigned_teacher_id, contacted_at, scheduled_at, completed_at, enrolled_at, lost_at, canceled_at, no_show_at, goal_type, registration_status, unregistered_reason, status, created_at, updated_at, classes!inner(title, subject, organization_id, program_type, organizations(sido, sigungu, bname), report_category:subject_categories(code), report_subject:subjects(code, subject_categories(code))), class_schedules(start_time, end_time), confirmed_block:schedule_blocks!trial_applications_confirmed_schedule_block_id_fkey(start_at, end_at)".replace("_fkey(start_at", blockOnly ? "_fkey!inner(start_at" : "_fkey(start_at"),
           // 총 개수를 알아야 서버가 page 를 잘라도 끝을 정확히 안다.
           // 같은 request 에 실려 오므로 query 가 늘지 않는다(getStudioCases 와 같은 방식).
           { count: "exact" }

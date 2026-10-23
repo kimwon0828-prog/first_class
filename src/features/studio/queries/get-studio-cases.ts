@@ -1,6 +1,7 @@
 import "server-only"
 import { CASE_PAGE_SIZE, getCaseFilterPredicate, sanitizeCaseSearchQuery, type CaseFilterKey, type CaseViewKey } from "@/features/studio/lib/case-filters"
 import { CASES_ACTION_SECTIONS, deriveCasesWorkflow, type CasesListItem } from "@/features/studio/lib/cases-workflow"
+import { getReportSubjectCategory } from "@/features/studio/lib/trial-result-options"
 import { getCasesResultRecord, orderStudioCases, type CasesOrderRow, type CasesOrderLog, type CasesRegistrationClock, type CasesResultRecord } from "@/features/studio/lib/cases-order"
 import { getSupabaseServerClient } from "@/integrations/supabase/server"
 import type { ApplicationRegistrationStatus, ApplicationStatus } from "@/shared/lib/db/adapter"
@@ -15,7 +16,7 @@ export const CASE_SELECT_FIELDS =
   "class_schedules(start_time,end_time), " +
   "confirmed_block:schedule_blocks!trial_applications_confirmed_schedule_block_id_fkey(start_at,end_at), " +
   "record:trial_results(application_id,created_at),report:experience_reports(application_id,published_at), " +
-  "classes!inner(id,title,subject,organization_id)"
+  "classes!inner(id,title,subject,organization_id,report_category:subject_categories(code),report_subject:subjects(code,subject_categories(code)))"
 type Embedded<T> = T | T[] | null
 const single = <T,>(value: Embedded<T>): T | null => Array.isArray(value) ? value.length === 1 ? value[0] : null : value
 const many = <T,>(value: Embedded<T>): T[] => Array.isArray(value) ? value : value ? [value] : []
@@ -24,7 +25,7 @@ type CaseRow = CasesOrderRow & {
   assigned_teacher_id: string | null; requested_slot_at: string; confirmed_slot_at: string | null
   status: ApplicationStatus; registration_status: ApplicationRegistrationStatus; registration_reason_ids: string[] | null
   created_at: string; completed_at: string | null; enrolled_at: string | null; canceled_at: string | null; no_show_at: string | null; lost_at: string | null
-  classes: Embedded<{ title: string | null; subject: string | null }>
+  classes: Embedded<{ title: string | null; subject: string | null; report_category?: Embedded<{ code: string | null }>; report_subject?: Embedded<{ code: string | null; subject_categories?: Embedded<{ code: string | null }> }> }>
   class_schedules: Embedded<{ start_time: string | null; end_time: string | null }>
   confirmed_block: Embedded<{ start_at: string; end_at: string }>
   record: Embedded<{ application_id: string; created_at: string }>
@@ -158,20 +159,38 @@ export type StudioCaseStageCard = Pick<CasesListItem, "id" | "student" | "klass"
   createdAt: string
   completedAt: string | null
   reportSentAt: string | null
+  /** 과목 대분류 코드(3D 아이콘). */
+  subjectCategory: string | null
+  /** 확정 + 예정 종료 시각 지남 + 완료 처리 전(공용 판정). "기록 작성" 칸 맨 앞에 둔다. */
+  completionNeeded: boolean
+  /** 학부모 체험 의견이 있는가(등록 결과 칸). */
+  hasParentFeedback: boolean
 }
-export type StudioCaseStageBoard = Record<StudioCaseStageKey, { count: number; items: StudioCaseStageCard[] }>
+export type StudioCaseStageBoard = Record<StudioCaseStageKey, { count: number; items: StudioCaseStageCard[] }> & {
+  /** 체험 완료 · 등록 미정 신청의 다음 단계(홈 "가장 먼저" 카드 문장용). */
+  completedActionById: Record<string, "record" | "report" | "registration">
+}
 const STAGE_BOARD_PREVIEW = 2
+const categoryOf = (klass: CaseRow["classes"] extends Embedded<infer T> ? T | null : never) => {
+  if (!klass) return null
+  const category = single(klass.report_category ?? null), subject = single(klass.report_subject ?? null)
+  return getReportSubjectCategory(category?.code ?? single(subject?.subject_categories ?? null)?.code, subject?.code, klass.subject)
+}
 /**
  * 홈 4칸(일정 확정 · 기록 작성 · 리포트 보내기 · 등록 결과). 읽기 전용.
- * 신청 목록과 같은 조건(createCaseQueryBuilder · 필터 신규 신청 / 등록 여부 미정) · 같은 판정(deriveCasesWorkflow) ·
+ * 신청 목록과 같은 조건(createCaseQueryBuilder · 필터 신규 신청 / 체험 예정·진행 / 등록 여부 미정) · 같은 판정(deriveCasesWorkflow) ·
  * 같은 정렬(orderStudioCases)로 칸마다 건수와 앞의 2건만 돌려준다. 새 판정을 만들지 않는다.
+ * - 일정 확정 칸은 오래 기다린 신청(신청일 오래된 순)이 앞이다.
+ * - "완료 확인 필요"(확정 + 예정 종료 시각 지남 · 완료 처리 전)는 기록 작성 칸 맨 앞에 더한다.
  */
 export async function getStudioCaseStageBoard(organizationId: string): Promise<QueryResult<StudioCaseStageBoard>> {
-  const board: StudioCaseStageBoard = { schedule: { count: 0, items: [] }, record: { count: 0, items: [] }, report: { count: 0, items: [] }, registration: { count: 0, items: [] } }
+  const board: StudioCaseStageBoard = { schedule: { count: 0, items: [] }, record: { count: 0, items: [] }, report: { count: 0, items: [] }, registration: { count: 0, items: [] }, completedActionById: {} }
   try {
     const supabase = await getSupabaseServerClient()
     const now = new Date()
-    const cohorts = [{ view: "active", filter: "schedule_needed" }, { view: "closed", filter: "undecided" }] as const
+    const cohorts = [{ view: "active", filter: "schedule_needed" }, { view: "active", filter: "confirmed" }, { view: "closed", filter: "undecided" }] as const
+    const columns: Record<StudioCaseStageKey, StudioCaseStageCard[]> = { schedule: [], record: [], report: [], registration: [] }
+    const completionNeeded: StudioCaseStageCard[] = []
     for (const options of cohorts) {
       const buildQuery = await createCaseQueryBuilder(supabase, organizationId, options)
       const cohort = await readAllRows<CaseRow>((from, to) => buildQuery().range(from, to))
@@ -184,18 +203,35 @@ export async function getStudioCaseStageBoard(organizationId: string): Promise<Q
           recordFinalized: records.length > 0, reportSent: reports.length > 0,
           confirmedBlockStartAt: block?.start_at ?? null, confirmedBlockEndAt: block?.end_at ?? null,
           confirmedSlotAt: row.confirmed_slot_at, scheduleStartTime: schedule?.start_time ?? null, scheduleEndTime: schedule?.end_time ?? null }, now)
-        const key: StudioCaseStageKey | null = workflow.filter === "schedule_needed" ? "schedule"
+        const isCompletionNeeded = options.filter === "confirmed" && workflow.progress === "완료 확인 필요"
+        const key: StudioCaseStageKey | null = isCompletionNeeded ? "record"
+          : options.filter === "confirmed" ? null
+          : workflow.filter === "schedule_needed" ? "schedule"
           : workflow.action === "record" || workflow.action === "report" || workflow.action === "registration" ? workflow.action : null
+        if (options.view === "closed" && (workflow.action === "record" || workflow.action === "report" || workflow.action === "registration")) board.completedActionById[row.id] = workflow.action
         if (!key) continue
-        const column = board[key]
-        column.count += 1
-        if (column.items.length < STAGE_BOARD_PREVIEW) column.items.push({
+        const card: StudioCaseStageCard = {
           id: row.id, student: { name: row.child_name, grade: row.child_grade ?? "" }, klass: { title: klass?.title ?? null, subject: klass?.subject ?? null },
           requestedSlotAt: row.requested_slot_at, confirmedSlotAt: block?.start_at ?? row.confirmed_slot_at,
-          section: workflow.action ? CASES_ACTION_SECTIONS[workflow.action] : null,
-          createdAt: row.created_at, completedAt: row.completed_at, reportSentAt: reports.map(report => report.published_at).sort()[0] ?? null
-        })
+          section: isCompletionNeeded ? null : workflow.action ? CASES_ACTION_SECTIONS[workflow.action] : null,
+          createdAt: row.created_at, completedAt: row.completed_at, reportSentAt: reports.map(report => report.published_at).sort()[0] ?? null,
+          subjectCategory: categoryOf(klass), completionNeeded: isCompletionNeeded, hasParentFeedback: false
+        }
+        if (isCompletionNeeded) completionNeeded.push(card)
+        else columns[key].push(card)
       }
+    }
+    // 일정 확정: 오래 기다린 신청이 앞(신청일 오래된 순). 표시 순서만 바꾼다.
+    columns.schedule.sort((left, right) => Date.parse(left.createdAt) - Date.parse(right.createdAt))
+    columns.record = [...completionNeeded, ...columns.record]
+    for (const key of Object.keys(columns) as StudioCaseStageKey[]) board[key] = { count: columns[key].length, items: columns[key].slice(0, STAGE_BOARD_PREVIEW) }
+    const registrationIds = board.registration.items.map(card => card.id)
+    if (registrationIds.length) {
+      // 학부모 의견이 있는지만 본다(내용은 읽지 않는다).
+      const { data, error } = await supabase.from("experience_feedback").select("application_id").in("application_id", registrationIds)
+      if (error) throw error
+      const withFeedback = new Set((data ?? []).map(row => row.application_id))
+      for (const card of board.registration.items) card.hasParentFeedback = withFeedback.has(card.id)
     }
     return { data: board, error: null }
   } catch {
