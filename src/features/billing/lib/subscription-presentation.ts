@@ -432,7 +432,7 @@ export const buildPricingCards = (
       priceLabel: formatBillingAmount(options.standardAmount),
       priceUnit: "/ 월",
       description:
-        "쌓인 체험·상담 기록을 분석하고 학부모에게 리포트를 공유하세요.",
+        "쌓인 체험·상담 기록으로 등록 전환과 미등록 사유를 분석하세요.",
       benefits: STANDARD_BENEFITS,
       featured: isFree || Boolean(trial),
       cta: standardCta
