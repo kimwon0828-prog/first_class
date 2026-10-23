@@ -16,8 +16,8 @@ import {
   type StudioStatusTone
 } from "@/features/studio/lib/application-status-labels"
 import {
+  getTrialProgressState,
   isTrialScheduledEndPassed,
-  isTrialStarted,
   type TrialScheduleWindow
 } from "@/features/studio/lib/trial-completion"
 import { getConsultationPipelineGroup } from "@/shared/lib/consultation-pipeline"
@@ -37,6 +37,8 @@ export type CaseStage =
   | "confirmed"
   /** 표시 전용. confirmed + 시작 시각 도달. DB enum 이 아니다. */
   | "in_trial"
+  /** 표시 전용. confirmed + 예정 종료 시각 경과, 완료 처리 전. DB enum 이 아니다. */
+  | "completion_needed"
   | "completed"
   // 종료
   | "enrolled"
@@ -44,7 +46,7 @@ export type CaseStage =
   | "canceled"
   | "no_show"
 
-export const CASE_ACTIVE_STAGES = ["new", "reviewing", "confirmed", "in_trial", "completed"] as const
+export const CASE_ACTIVE_STAGES = ["new", "reviewing", "confirmed", "in_trial", "completion_needed", "completed"] as const
 export const CASE_CLOSED_STAGES = ["enrolled", "not_enrolled", "canceled", "no_show"] as const
 
 export const CASE_STAGE_LABELS: Record<CaseStage, string> = {
@@ -52,6 +54,7 @@ export const CASE_STAGE_LABELS: Record<CaseStage, string> = {
   reviewing: "신규 신청",
   confirmed: "체험 예정",
   in_trial: "체험 진행 중",
+  completion_needed: "완료 확인 필요",
   completed: "체험 완료",
   enrolled: "등록 완료",
   not_enrolled: "등록하지 않음",
@@ -150,7 +153,9 @@ export const getCaseDisplayStage = (
     return stage
   }
 
-  return isTrialStarted(input, now) ? "in_trial" : stage
+  // 예정 종료 시각이 지나도 완료로 만들지 않는다 — "완료 확인 필요" 로 학원에 알릴 뿐이다.
+  const progress = getTrialProgressState(input, now)
+  return progress === "after_scheduled_end" ? "completion_needed" : progress === "in_trial" ? "in_trial" : stage
 }
 
 /** 목록에서 "지금 눈길이 가야 하는 이유". NONE 이면 급한 일이 없다는 뜻이다. */

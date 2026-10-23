@@ -9,15 +9,18 @@ import type {
  * 배지에 쓰는 표시 상태.
  *
  * "in_trial" 은 DB enum 이 아니다 — confirmed + 시작 시각 도달에서 파생되는 화면 전용 상태다.
+ * "completion_needed" 도 화면 전용이다 — confirmed + 예정 종료 시각이 지났는데 아직 완료 처리 전.
+ *   시간은 완료를 만들지 않으므로 DB 는 그대로 confirmed 이고, 학원에 "완료 확인" 을 알리는 표시일 뿐이다.
  * 계산은 trial-completion 의 resolveTrialDisplayStatus 가 한다.
  */
-export type StudioDisplayStatus = ApplicationStatus | "no_show" | "in_trial"
+export type StudioDisplayStatus = ApplicationStatus | "no_show" | "in_trial" | "completion_needed"
 
 export const STUDIO_APPLICATION_STATUS_LABELS: Record<StudioDisplayStatus, string> = {
   new: "신규 신청",
   reviewing: "신규 신청",
   confirmed: "체험 예정",
   in_trial: "체험 진행 중",
+  completion_needed: "완료 확인 필요",
   completed: "체험 완료",
   canceled: "취소",
   no_show: "불참"
@@ -42,6 +45,8 @@ export const STUDIO_APPLICATION_STATUS_TONES: Record<StudioDisplayStatus, Studio
   confirmed: "green",
   // 정상 진행이라 경고색을 쓰지 않는다. blue 는 reviewing 처럼 진행 축의 중간 상태에 이미 쓰고 있다.
   in_trial: "blue",
+  // 학원이 처리할 일이 남은 상태라 신규 신청과 같은 amber.
+  completion_needed: "amber",
   completed: "gray",
   canceled: "red",
   no_show: "red"
