@@ -9,7 +9,7 @@ const GRADES=[{value:'elem_3',label:'초3',group:'elementary'},{value:'high_1',l
 const summary=(id,targetAge='elem_3')=>({id,title:id,programType:'trial_class',subjectCategoryId:null,targetAge,trialPrice:id==='unpriced'?0:10000,trialPriceConfirmed:id==='unpriced'?false:true,coverImageUrl:null,organization:{id:'org',name:'학원'},description:'',recommendedFor:null,experiencePoints:null,curriculum:null,teacherIntro:null,classFormat:null,regularPriceType:null,regularPriceAmount:null,regularPriceNote:null});
 let classes=[],slotRows={},slotCalls=[],discoveryOptions=[];
 const stub={
- '@/features/academies/queries/get-public-academy-page':{getPublicAcademyPageByHandle:async()=>({organizationId:'org',slug:'s',name:'학원',branchName:null,address:null,phone:null,regionLabel:null,logoImageUrl:null,coverImageUrl:null,shortDescription:null,description:null,operatingHours:null,parkingInfo:null,directions:null})},
+ '@/features/academies/queries/get-public-academy-page':{getPublicAcademyPageByHandle:async()=>({organizationId:'org',slug:'s',name:'학원',branchName:null,address:null,latitude:37.65,longitude:127.06,phone:null,regionLabel:null,logoImageUrl:null,coverImageUrl:null,shortDescription:null,description:null,operatingHours:null,parkingInfo:null,directions:null})},
  '@/features/academies/queries/get-public-academy-classes':{getPublicAcademyClasses:async()=>['graded','nograde','gone'].map(id=>({id,title:id,subjectLabel:'수학',targetAgeLabel:'초3',programTypeLabel:'체험수업',periodLabel:'상시 운영',periodTone:'ongoing',scheduleLabel:'월 15:00-15:50'}))},
  '@/features/classes/queries/get-public-classes':{getAllPublicClasses:async()=>({data:[],error:null})},
  '@/features/feedback/queries/get-public-feedback':{getPublicAcademyFeedback:async()=>({chips:[]}),getPublicClassFeedback:async()=>({chips:[]})},
@@ -30,6 +30,7 @@ stub['@/features/native/server/catalog-slots']=load('src/features/native/server/
  '@/features/applications/lib/public-class-slots':{isHiddenPublicSlot:s=>s.hidden===true},
  '@/features/applications/queries/get-public-class-available-slots':{getPublicClassesAvailableSlots:async ids=>{slotCalls.push([...ids]);return new Map(ids.map(id=>[id,id==='broken'?{data:[],error:'slots_offline'}:{data:slotRows[id]??[],error:null}]))}},
  '@/features/native/server/academy-cards':stub['@/features/native/server/academy-cards']});
+stub['@/features/native/server/catalog-projection']=load('src/features/native/server/catalog-projection.ts',stub);
 const {GET}=load('app/api/native/catalog/[...path]/route.ts',stub);
 const call=async(pathname)=>{const url=new URL('http://localhost/api/native/catalog/'+pathname);const res=await GET(new Request(url),{params:Promise.resolve({path:url.pathname.split('/').slice(4)})});return {status:res.status,body:await res.json()}};
 const ids=body=>body.items.map(item=>item.id);

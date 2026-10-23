@@ -1,4 +1,4 @@
-import { projectNativeCatalogClass as project } from "@/features/native/server/catalog-projection"
+import { projectNativeCatalogClass as project, projectNativeMapLocation } from "@/features/native/server/catalog-projection"
 import { getPublicAcademyPageByHandle } from "@/features/academies/queries/get-public-academy-page"
 import { getPublicAcademyClasses } from "@/features/academies/queries/get-public-academy-classes"
 import { getAllPublicClasses } from "@/features/classes/queries/get-public-classes"
@@ -64,7 +64,7 @@ export async function GET(request:Request,{params}:{params:Promise<{path:string[
   const [cards,feedback]=await Promise.all([getPublicAcademyClasses(academy.organizationId),getPublicAcademyFeedback(academy.organizationId)])
   const classes=await academyClassCards(cards)
   const { organizationId,slug,name,branchName,address,phone,regionLabel,logoImageUrl,coverImageUrl,shortDescription,description,operatingHours,parkingInfo,directions }=academy
-  return respond(request,{organizationId,slug,name,branchName,address,phone,regionLabel,logoImageUrl,coverImageUrl,shortDescription,description,operatingHours,parkingInfo,directions,classes,feedback:feedbackProjection(feedback)})
+  return respond(request,{mapLocation:projectNativeMapLocation(academy.latitude,academy.longitude),organizationId,slug,name,branchName,address,phone,regionLabel,logoImageUrl,coverImageUrl,shortDescription,description,operatingHours,parkingInfo,directions,classes,feedback:feedbackProjection(feedback)})
  }
  if(path.length===1 && path[0]==="favorites") {
   const {data,error}=await getAllPublicClasses()

@@ -2,7 +2,7 @@ import "server-only"
 import type { SupabaseClient } from "@supabase/supabase-js"
 import type { ClassDetail, AvailableScheduleSlot } from "@/shared/lib/db/adapter"
 import { requireAppReviewScope, REVIEW_DEMO_ORGANIZATION } from "@/shared/lib/db/app-store-review-access"
-import { projectNativeCatalogClass } from "./catalog-projection"
+import { projectNativeCatalogClass, projectNativeMapLocation } from "./catalog-projection"
 import { publicSlotProjection, homeSection, withinWeek, slotDurationMinutes, type CardSlotsResult } from "./catalog-slots"
 import { cardSlots } from "./academy-cards"
 import { isChildEligibleForClass } from "@/shared/constants/grade-options"
@@ -60,6 +60,7 @@ export function createNativeReviewCatalog(deps: Dependencies) {
         if (!org) return reply({ error: "not_found" }, 404)
         // Never return the demo operator's real phone, staff roster, or unrelated feedback.
         return reply({ organizationId: REVIEW_DEMO_ORGANIZATION, slug: REVIEW_DEMO_ORGANIZATION, name: org.name, branchName: org.branchName,
+          mapLocation: projectNativeMapLocation(org.latitude,org.longitude),
           address: [org.address, org.addressDetail].filter(Boolean).join(" "), phone: null, regionLabel: academy!.locationLabel,
           logoImageUrl: null, coverImageUrl: null, shortDescription: null, description: null, operatingHours: null, parkingInfo: null, directions: null,
           feedback: { chips: [] }, classes: all.map(item => { const projected = withSlots(item); return { ...projected,
