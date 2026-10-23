@@ -86,7 +86,7 @@ export const formatCasesDate = (value: string) => {
   return parts ? `${parts.month}월 ${parts.day}일` : "—"
 }
 /** "희망 10월 20일(화) 16:00" · 확정이면 날짜만 "10월 20일(화) 16:00" (날짜 표기 규칙: 요일을 꼭 함께). */
-export function getCasesScheduleLabel(item: CasesListItem) {
+export function getCasesScheduleLabel(item: Pick<CasesListItem, "confirmedSlotAt" | "requestedSlotAt">) {
   const parts = getSeoulDateTimeParts(item.confirmedSlotAt ?? item.requestedSlotAt)
   if (!parts) return null
   const weekday = ["일", "월", "화", "수", "목", "금", "토"][parts.weekday]

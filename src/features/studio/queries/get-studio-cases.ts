@@ -1,6 +1,6 @@
 import "server-only"
 import { CASE_PAGE_SIZE, getCaseFilterPredicate, sanitizeCaseSearchQuery, type CaseFilterKey, type CaseViewKey } from "@/features/studio/lib/case-filters"
-import { deriveCasesWorkflow, type CasesListItem } from "@/features/studio/lib/cases-workflow"
+import { CASES_ACTION_SECTIONS, deriveCasesWorkflow, type CasesListItem } from "@/features/studio/lib/cases-workflow"
 import { getCasesResultRecord, orderStudioCases, type CasesOrderRow, type CasesOrderLog, type CasesRegistrationClock, type CasesResultRecord } from "@/features/studio/lib/cases-order"
 import { getSupabaseServerClient } from "@/integrations/supabase/server"
 import type { ApplicationRegistrationStatus, ApplicationStatus } from "@/shared/lib/db/adapter"
@@ -147,5 +147,58 @@ export async function getStudioCases(organizationId: string, options: GetStudioC
     return { data: result, error: null }
   } catch {
     return { data: empty(page), error: "신청 관리 목록을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요." }
+  }
+}
+
+/** 홈 "체험에서 등록까지" 칸. */
+export type StudioCaseStageKey = "schedule" | "record" | "report" | "registration"
+export type StudioCaseStageCard = Pick<CasesListItem, "id" | "student" | "klass" | "requestedSlotAt" | "confirmedSlotAt"> & {
+  /** 상세에서 열 단계 칸(CASES_ACTION_SECTIONS). */
+  section: string | null
+  createdAt: string
+  completedAt: string | null
+  reportSentAt: string | null
+}
+export type StudioCaseStageBoard = Record<StudioCaseStageKey, { count: number; items: StudioCaseStageCard[] }>
+const STAGE_BOARD_PREVIEW = 2
+/**
+ * 홈 4칸(일정 확정 · 기록 작성 · 리포트 보내기 · 등록 결과). 읽기 전용.
+ * 신청 목록과 같은 조건(createCaseQueryBuilder · 필터 신규 신청 / 등록 여부 미정) · 같은 판정(deriveCasesWorkflow) ·
+ * 같은 정렬(orderStudioCases)로 칸마다 건수와 앞의 2건만 돌려준다. 새 판정을 만들지 않는다.
+ */
+export async function getStudioCaseStageBoard(organizationId: string): Promise<QueryResult<StudioCaseStageBoard>> {
+  const board: StudioCaseStageBoard = { schedule: { count: 0, items: [] }, record: { count: 0, items: [] }, report: { count: 0, items: [] }, registration: { count: 0, items: [] } }
+  try {
+    const supabase = await getSupabaseServerClient()
+    const now = new Date()
+    const cohorts = [{ view: "active", filter: "schedule_needed" }, { view: "closed", filter: "undecided" }] as const
+    for (const options of cohorts) {
+      const buildQuery = await createCaseQueryBuilder(supabase, organizationId, options)
+      const cohort = await readAllRows<CaseRow>((from, to) => buildQuery().range(from, to))
+      // 미정 칸의 정렬은 등록 결과 기록을 쓰지 않는다(orderStudioCases). 결과 기록을 따로 읽지 않는다.
+      for (const row of orderStudioCases(cohort, options.view, options.filter, new Map(), now)) {
+        if (row.child_name === null) continue
+        const schedule = single(row.class_schedules), block = single(row.confirmed_block), klass = single(row.classes)
+        const records = many(row.record), reports = many(row.report)
+        const workflow = deriveCasesWorkflow({ status: row.status, registrationStatus: row.registration_status, canceledAt: row.canceled_at, noShowAt: row.no_show_at,
+          recordFinalized: records.length > 0, reportSent: reports.length > 0,
+          confirmedBlockStartAt: block?.start_at ?? null, confirmedBlockEndAt: block?.end_at ?? null,
+          confirmedSlotAt: row.confirmed_slot_at, scheduleStartTime: schedule?.start_time ?? null, scheduleEndTime: schedule?.end_time ?? null }, now)
+        const key: StudioCaseStageKey | null = workflow.filter === "schedule_needed" ? "schedule"
+          : workflow.action === "record" || workflow.action === "report" || workflow.action === "registration" ? workflow.action : null
+        if (!key) continue
+        const column = board[key]
+        column.count += 1
+        if (column.items.length < STAGE_BOARD_PREVIEW) column.items.push({
+          id: row.id, student: { name: row.child_name, grade: row.child_grade ?? "" }, klass: { title: klass?.title ?? null, subject: klass?.subject ?? null },
+          requestedSlotAt: row.requested_slot_at, confirmedSlotAt: block?.start_at ?? row.confirmed_slot_at,
+          section: workflow.action ? CASES_ACTION_SECTIONS[workflow.action] : null,
+          createdAt: row.created_at, completedAt: row.completed_at, reportSentAt: reports.map(report => report.published_at).sort()[0] ?? null
+        })
+      }
+    }
+    return { data: board, error: null }
+  } catch {
+    return { data: board, error: "진행 단계를 불러오지 못했어요. 잠시 후 다시 시도해 주세요." }
   }
 }

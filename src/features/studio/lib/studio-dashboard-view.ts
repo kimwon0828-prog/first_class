@@ -55,6 +55,15 @@ const ACTION_LABELS: Record<StudioDashboardActionKind, string> = {
 }
 
 /** 신규·확인 중 신청이 후속 등록 업무에 밀려 5건 미리보기에서 빠지지 않도록 한다. */
+/** 상세 화면의 단계 칸. 일정 확정만 칸이 따로 있고, 나머지는 상세 맨 위 "지금 할 일" 카드가 맡는다. */
+const ACTION_SECTIONS: Record<StudioDashboardActionKind, string | null> = {
+  UNASSIGNED: null,
+  NEEDS_COMPLETION: null,
+  REVIEW_NEW: "confirm-schedule",
+  NEEDS_REGISTRATION: null,
+  CONFIRM_SCHEDULE: "confirm-schedule"
+}
+
 const ACTION_ORDER: StudioDashboardActionKind[] = [
   "UNASSIGNED",
   "NEEDS_COMPLETION",
@@ -73,6 +82,11 @@ export type StudioDashboardActionItem = {
   statusLabel: string
   statusTone: StudioStatusTone
   actionLabel: string
+  /** 홈 "가장 먼저" 카드의 일시. 확정 일정이 있으면 확정, 없으면 학부모 희망. */
+  scheduleAt: string | null
+  scheduleConfirmed: boolean
+  /** 상세에서 열 단계 칸. 이동만 한다(홈에서 상태를 바꾸지 않는다). */
+  section: string | null
 }
 
 export type StudioDashboardScheduleItem = {
@@ -224,7 +238,10 @@ const buildActionItems = (applications: StudioApplicationSummary[], now: Date) =
     classTitle: normalizeClassTitle(item.classTitle),
     statusLabel: STUDIO_APPLICATION_STATUS_LABELS[toBadgeStatus(item, now)],
     statusTone: STUDIO_APPLICATION_STATUS_TONES[toBadgeStatus(item, now)],
-    actionLabel: ACTION_LABELS[kind]
+    actionLabel: ACTION_LABELS[kind],
+    scheduleAt: item.confirmedBlockStartAt ?? item.confirmedSlotAt ?? item.requestedSlotAt ?? null,
+    scheduleConfirmed: Boolean(item.confirmedBlockStartAt ?? item.confirmedSlotAt),
+    section: ACTION_SECTIONS[kind]
   }))
 }
 
