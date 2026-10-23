@@ -18,6 +18,7 @@ import { StudioOperatingHoursModal } from "./studio-operating-hours-modal"
 import { StudioOperatingHoursSummary } from "./studio-operating-hours-summary"
 import { StudioScheduleCalendar } from "./studio-schedule-calendar"
 import { StudioScheduleDayPanel } from "./studio-schedule-day-panel"
+import { V2ChevronLeftIcon, V2ChevronRightIcon } from "./v2/v2-icons"
 import styles from "./studio-class-schedule-editor.module.css"
 
 type StudioClassScheduleEditorProps = {
@@ -103,6 +104,53 @@ export const StudioClassScheduleEditor = ({
     const params = new URLSearchParams(searchParams.toString())
     params.set("month", toMonthValue(next))
     router.push(`${pathname}?${params.toString()}`)
+  }
+
+  // 수업 수정 화면의 "특정 날짜만 변경하기" 팝업(Figma 2178:959): 왼쪽 달력 + 오른쪽 날짜 패널.
+  // 날짜별 변경은 즉시 저장되고, 팝업 안내 문구는 팝업(V2Dialog)이 갖는다.
+  if (operationsOnly) {
+    return (
+      <div className={styles.dateOverrideLayout}>
+        <div className={styles.calendarCard}>
+          <div className={styles.calendarCardHead}>
+            <strong>{monthLabel}</strong>
+            <button type="button" className={styles.monthButton} aria-label="이전 달" onClick={() => moveMonth(-1)}>
+              <V2ChevronLeftIcon size={16} />
+            </button>
+            <button type="button" className={styles.monthButton} aria-label="다음 달" onClick={() => moveMonth(1)}>
+              <V2ChevronRightIcon size={16} />
+            </button>
+          </div>
+          <StudioScheduleCalendar
+            visibleMonthDate={visibleMonthDate}
+            selectedDate={selectedDate}
+            todayKey={todayKey}
+            dayMap={dayMap}
+            onSelectDate={setSelectedDate}
+          />
+          <div className={styles.calendarLegend} aria-hidden="true">
+            <span className={styles.legendDotOpen} />운영일
+            <span className={styles.legendGap} />
+            <span className={styles.legendDotChanged} />마감·숨김 있는 날
+          </div>
+        </div>
+        <div className={styles.dayColumn}>
+          {weeklySummaries.length > 0 ? (
+            <p className={styles.weeklyNote}>
+              기존 반복 일정({weeklySummaries.map((item) => `${item.weekdayLabel} ${item.timeLabels.join(", ")}`).join(" · ")})은
+              그대로 유지돼요. 여기서는 날짜별 예약 시간만 바꿔요.
+            </p>
+          ) : null}
+          <StudioScheduleDayPanel
+            onPendingChange={onPendingChange}
+            classId={classId}
+            selectedDate={selectedDate}
+            day={selectedDay}
+            classManagementHref={`${pathname}?month=${month}`}
+          />
+        </div>
+      </div>
+    )
   }
 
   return (

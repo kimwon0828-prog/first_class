@@ -22,6 +22,9 @@ import {
 } from "@/features/studio/actions/update-studio-class-schedule"
 import type { StudioScheduleCalendarDay } from "@/shared/lib/db/adapter"
 
+import { v2ButtonClassName } from "./v2/v2-button"
+import { V2PlusIcon } from "./v2/v2-icons"
+import { V2StatusBadge } from "./v2/v2-status-badge"
 import styles from "./studio-schedule-day-panel.module.css"
 import { useStudioNavigationPath } from "@/features/studio/ui/studio-navigation-provider"
 
@@ -63,75 +66,81 @@ export const StudioScheduleDayPanel = ({
     return status === "closed" ? "마감" : "모집 중"
   }
 
-  const getItemStatusClassName = (status: "open" | "closed" | "hidden") => {
+  const getItemStatusTone = (status: "open" | "closed" | "hidden", bookingStatus: "open" | "closed" | "hidden") => {
     if (status === "hidden") {
-      return styles.metaBadgeMuted
+      return "gray" as const
     }
 
-    return status === "closed" ? styles.metaBadgeWarning : styles.metaBadge
+    return status === "closed" || bookingStatus === "closed" ? "amber" as const : "green" as const
   }
 
   if (!day) {
     return (
       <section className={styles.panel}>
-        <div>
-          <h2 className={styles.title}>날짜 상세</h2>
-          <p className={styles.description}>캘린더에서 날짜를 선택하면 해당 날짜의 예약 가능 일정을 볼 수 있습니다.</p>
+        <div className={styles.header}>
+          <div className={styles.headerText}>
+            <h3 className={styles.title}>날짜 상세</h3>
+            <p className={styles.description}>캘린더에서 날짜를 선택하면 해당 날짜의 예약 가능 일정을 볼 수 있습니다.</p>
+          </div>
         </div>
       </section>
     )
   }
 
+  const closeDateDisabled = isPending || isPast || oneTimeItems.length === 0 || isDateClosed || hasWeeklyItems
+  const reopenDateDisabled = isPending || isPast || oneTimeItems.length === 0 || !isDateClosed || hasWeeklyItems
+
   return (
     <section className={styles.panel}>
       <div className={styles.header}>
-        <div>
-          <h2 className={styles.title}>{formatDateHeadline(selectedDate)}</h2>
+        <div className={styles.headerText}>
+          <h3 className={styles.title}>{formatDateHeadline(selectedDate)}</h3>
           <p className={styles.description}>이 날짜의 예약 가능 시간 · 총 {day.items.length}타임</p>
         </div>
-      </div>
-
-      <div className={styles.actionRow}>
-        <button
-          type="button"
-          className={styles.buttonSecondary}
-          disabled={isPending || isPast || oneTimeItems.length === 0 || isDateClosed || hasWeeklyItems}
-          onClick={() =>
-            startTransition(async () => {
-              setMessage(null)
-              setError(null)
-              try {
-                await closeStudioClassSchedulesForDateAction({ classId, specificDate: selectedDate })
-                setMessage("이 날짜의 one_time 일정을 모두 마감했습니다.")
-                router.refresh()
-              } catch (actionError) {
-                setError(actionError instanceof Error ? actionError.message : "날짜 전체 마감에 실패했습니다.")
-              }
-            })
-          }
-        >
-          날짜 전체 마감
-        </button>
-        <button
-          type="button"
-          className={styles.buttonSecondary}
-          disabled={isPending || isPast || oneTimeItems.length === 0 || !isDateClosed || hasWeeklyItems}
-          onClick={() =>
-            startTransition(async () => {
-              setMessage(null)
-              setError(null)
-              try {
-                await reopenStudioClassSchedulesForDateAction({ classId, specificDate: selectedDate })
-                setMessage("이 날짜의 one_time 일정을 다시 열었습니다.")
-                router.refresh()
-              } catch (actionError) {
-                setError(actionError instanceof Error ? actionError.message : "날짜 전체 다시 열기에 실패했습니다.")
-              }
-            })
-          }
-        >
-          날짜 전체 다시 열기
-        </button>
+        {/* 날짜 전체 마감 / 다시 열기는 지금 상태에 맞는 하나만 보인다. 실행 조건은 그대로다. */}
+        {isDateClosed ? (
+          <button
+            type="button"
+            className={v2ButtonClassName({ variant: "outline", size: "sm" })}
+            disabled={reopenDateDisabled}
+            onClick={() =>
+              startTransition(async () => {
+                setMessage(null)
+                setError(null)
+                try {
+                  await reopenStudioClassSchedulesForDateAction({ classId, specificDate: selectedDate })
+                  setMessage("이 날짜의 one_time 일정을 다시 열었습니다.")
+                  router.refresh()
+                } catch (actionError) {
+                  setError(actionError instanceof Error ? actionError.message : "날짜 전체 다시 열기에 실패했습니다.")
+                }
+              })
+            }
+          >
+            날짜 전체 다시 열기
+          </button>
+        ) : (
+          <button
+            type="button"
+            className={v2ButtonClassName({ variant: "outline", size: "sm" })}
+            disabled={closeDateDisabled}
+            onClick={() =>
+              startTransition(async () => {
+                setMessage(null)
+                setError(null)
+                try {
+                  await closeStudioClassSchedulesForDateAction({ classId, specificDate: selectedDate })
+                  setMessage("이 날짜의 one_time 일정을 모두 마감했습니다.")
+                  router.refresh()
+                } catch (actionError) {
+                  setError(actionError instanceof Error ? actionError.message : "날짜 전체 마감에 실패했습니다.")
+                }
+              })
+            }
+          >
+            날짜 전체 마감
+          </button>
+        )}
       </div>
       {hasWeeklyItems ? (
         <p className={styles.warningText}>
@@ -139,30 +148,221 @@ export const StudioScheduleDayPanel = ({
         </p>
       ) : null}
 
-      {message ? <p className={styles.message}>{message}</p> : null}
-      {error ? <p className={styles.errorText}>{error}</p> : null}
+      {message ? <p className={styles.message} role="status">{message}</p> : null}
+      {error ? <p className={styles.errorText} role="alert">{error}</p> : null}
 
-      <section className={styles.extraCard}>
-        <div>
-          <strong className={styles.fieldLabel}>이 날짜에만 시간 추가</strong>
-          <p className={styles.hint}>같은 날짜의 같은 시작 시간이 이미 있으면 추가되지 않습니다.</p>
-        </div>
-        <div className={styles.extraGrid}>
-          <label className={styles.field}>
-            <span className={styles.fieldLabel}>시작 시간</span>
+      {day.items.map((item) => (
+        <article key={item.classScheduleId} className={styles.timeCard}>
+          <div className={styles.timeHeader}>
+            <strong className={styles.timeHeadline}>
+              {format24HourTime(item.startTime)} – {format24HourTime(item.endTime)}
+            </strong>
+            <V2StatusBadge tone="gray">{item.scheduleType === "weekly" ? "반복 일정" : "이 날만"}</V2StatusBadge>
+            <span className={styles.timeMeta}>
+              신청 {item.activeReservationCount}/{item.capacity} · 남은 자리 {item.remainingCapacity}명
+            </span>
+            <V2StatusBadge tone={getItemStatusTone(item.status, item.bookingStatus)}>
+              {item.bookingStatus === "open" && item.status === "closed" ? "정원 마감" : getItemStatusText(item.status)}
+            </V2StatusBadge>
+          </div>
+
+          {item.scheduleType === "one_time" ? (
+            <div className={styles.timeActions}>
+              <span className={styles.capacityLabel}>정원</span>
+              <div className={styles.stepper}>
+                <button
+                  type="button"
+                  className={styles.stepperButton}
+                  aria-label={`${format24HourTime(item.startTime)} 정원 1명 줄이기`}
+                  disabled={isPending || isPast || item.capacity <= item.minimumCapacity}
+                  onClick={() =>
+                    startTransition(async () => {
+                      setMessage(null)
+                      setError(null)
+                      try {
+                        await updateStudioClassScheduleCapacityAction({
+                          classScheduleId: item.classScheduleId,
+                          capacity: item.capacity - 1
+                        })
+                        setMessage("정원을 수정했습니다.")
+                        router.refresh()
+                      } catch (actionError) {
+                        setError(actionError instanceof Error ? actionError.message : "정원 수정에 실패했습니다.")
+                      }
+                    })
+                  }
+                >
+                  −
+                </button>
+                <span className={styles.stepperValue}>{item.capacity}명</span>
+                <button
+                  type="button"
+                  className={styles.stepperButton}
+                  aria-label={`${format24HourTime(item.startTime)} 정원 1명 늘리기`}
+                  disabled={isPending || isPast}
+                  onClick={() =>
+                    startTransition(async () => {
+                      setMessage(null)
+                      setError(null)
+                      try {
+                        await updateStudioClassScheduleCapacityAction({
+                          classScheduleId: item.classScheduleId,
+                          capacity: item.capacity + 1
+                        })
+                        setMessage("정원을 수정했습니다.")
+                        router.refresh()
+                      } catch (actionError) {
+                        setError(actionError instanceof Error ? actionError.message : "정원 수정에 실패했습니다.")
+                      }
+                    })
+                  }
+                >
+                  +
+                </button>
+              </div>
+              {item.bookingStatus === "open" ? (
+                <button
+                  type="button"
+                  className={v2ButtonClassName({ variant: "outline", size: "sm" })}
+                  disabled={isPending || isPast}
+                  onClick={() =>
+                    startTransition(async () => {
+                      setMessage(null)
+                      setError(null)
+                      try {
+                        await closeStudioClassScheduleAction(item.classScheduleId)
+                        setMessage("해당 일정의 모집을 마감했습니다.")
+                        router.refresh()
+                      } catch (actionError) {
+                        setError(actionError instanceof Error ? actionError.message : "마감 처리에 실패했습니다.")
+                      }
+                    })
+                  }
+                >
+                  마감
+                </button>
+              ) : null}
+              {item.bookingStatus === "closed" ? (
+                <button
+                  type="button"
+                  className={v2ButtonClassName({ variant: "outline", size: "sm" })}
+                  disabled={isPending || isPast}
+                  onClick={() =>
+                    startTransition(async () => {
+                      setMessage(null)
+                      setError(null)
+                      try {
+                        await reopenStudioClassScheduleAction(item.classScheduleId)
+                        setMessage("해당 일정의 모집을 다시 열었습니다.")
+                        router.refresh()
+                      } catch (actionError) {
+                        setError(actionError instanceof Error ? actionError.message : "모집 재개에 실패했습니다.")
+                      }
+                    })
+                  }
+                >
+                  다시 모집
+                </button>
+              ) : null}
+              {item.bookingStatus === "hidden" ? (
+                <button
+                  type="button"
+                  className={v2ButtonClassName({ variant: "outline", size: "sm" })}
+                  disabled={isPending || isPast}
+                  onClick={() =>
+                    startTransition(async () => {
+                      setMessage(null)
+                      setError(null)
+                      try {
+                        await publishStudioClassScheduleAction(item.classScheduleId)
+                        setMessage("해당 일정을 다시 공개했습니다.")
+                        router.refresh()
+                      } catch (actionError) {
+                        setError(actionError instanceof Error ? actionError.message : "일정 공개에 실패했습니다.")
+                      }
+                    })
+                  }
+                >
+                  다시 공개
+                </button>
+              ) : null}
+              {item.bookingStatus !== "hidden" ? (
+                <button
+                  type="button"
+                  className={v2ButtonClassName({ variant: "ghost", size: "sm" })}
+                  disabled={isPending || isPast}
+                  onClick={() =>
+                    startTransition(async () => {
+                      setMessage(null)
+                      setError(null)
+                      try {
+                        await hideStudioClassScheduleAction(item.classScheduleId)
+                        setMessage("해당 일정을 예약 화면에서 숨겼습니다.")
+                        router.refresh()
+                      } catch (actionError) {
+                        setError(actionError instanceof Error ? actionError.message : "숨김 처리에 실패했습니다.")
+                      }
+                    })
+                  }
+                >
+                  예약 화면에서 숨기기
+                </button>
+              ) : null}
+              {!item.hasApplicationHistory ? (
+                <button
+                  type="button"
+                  className={v2ButtonClassName({ variant: "ghost", size: "sm", className: styles.dangerButton })}
+                  disabled={isPending || isPast}
+                  onClick={() =>
+                    startTransition(async () => {
+                      setMessage(null)
+                      setError(null)
+                      try {
+                        await deleteStudioClassScheduleAction(item.classScheduleId)
+                        setMessage("일정을 영구 삭제했습니다.")
+                        router.refresh()
+                      } catch (actionError) {
+                        setError(actionError instanceof Error ? actionError.message : "일정 삭제에 실패했습니다.")
+                      }
+                    })
+                  }
+                >
+                  영구 삭제
+                </button>
+              ) : null}
+            </div>
+          ) : (
+            <div className={styles.timeActions}>
+              <p className={styles.hint}>반복 일정은 수업 관리에서 수정할 수 있습니다.</p>
+              <a href={classManagementHref} className={v2ButtonClassName({ variant: "outline", size: "sm" })}>
+                수업 관리로 이동
+              </a>
+            </div>
+          )}
+
+          {item.hasApplicationHistory ? (
+            <p className={styles.hint}>
+              신청 이력이 있어 삭제할 수 없어요. 새 예약을 막으려면 마감하거나 숨겨 주세요.
+            </p>
+          ) : null}
+        </article>
+      ))}
+
+      <section className={styles.extraCard} aria-labelledby={`extra-time-${selectedDate}`}>
+        <strong id={`extra-time-${selectedDate}`} className={styles.extraTitle}>이 날짜에만 시간 추가</strong>
+        <div className={styles.extraRow}>
+          <input
+            className={`${styles.input} ${styles.timeInput}`}
+            aria-label="추가할 시작 시간"
+            type="time"
+            lang="en-GB"
+            value={extraStartTime}
+            onChange={(event) => setExtraStartTime(event.target.value)}
+            disabled={isPending || isPast}
+          />
+          <label className={`${styles.unitInput} ${styles.minutesInput}`}>
             <input
-              className={styles.input}
-              type="time"
-              lang="en-GB"
-              value={extraStartTime}
-              onChange={(event) => setExtraStartTime(event.target.value)}
-              disabled={isPending || isPast}
-            />
-          </label>
-          <label className={styles.field}>
-            <span className={styles.fieldLabel}>수업 길이</span>
-            <input
-              className={styles.input}
+              aria-label="수업 길이(분)"
               type="number"
               min={30}
               step={10}
@@ -170,23 +370,22 @@ export const StudioScheduleDayPanel = ({
               onChange={(event) => setExtraLessonMinutes(event.target.value)}
               disabled={isPending || isPast}
             />
+            <span>분</span>
           </label>
-          <label className={styles.field}>
-            <span className={styles.fieldLabel}>정원</span>
+          <label className={`${styles.unitInput} ${styles.capacityInput}`}>
             <input
-              className={styles.input}
+              aria-label="정원"
               type="number"
               min={1}
               value={extraCapacity}
               onChange={(event) => setExtraCapacity(event.target.value)}
               disabled={isPending || isPast}
             />
+            <span>명</span>
           </label>
-        </div>
-        <div className={styles.actionRow}>
           <button
             type="button"
-            className={styles.buttonPrimary}
+            className={v2ButtonClassName({ variant: "tonal", size: "sm" })}
             disabled={isPending || isPast}
             onClick={() =>
               startTransition(async () => {
@@ -220,217 +419,12 @@ export const StudioScheduleDayPanel = ({
               })
             }
           >
-            추가 버튼
+            <V2PlusIcon size={16} />
+            추가
           </button>
         </div>
+        <p className={styles.hint}>같은 날짜에 같은 시작 시간이 이미 있으면 추가되지 않아요. 반복 일정은 체험 운영(C)에서 바꿔요.</p>
       </section>
-
-      <div className={styles.panel}>
-        {day.items.map((item) => (
-          <article key={item.classScheduleId} className={styles.timeCard}>
-            <div className={styles.timeHeader}>
-              <div>
-                <strong className={styles.timeHeadline}>
-                  {format24HourTime(item.startTime)} ~ {format24HourTime(item.endTime)}
-                </strong>
-                <div className={styles.badgeRow}>
-                  <span className={styles.metaBadge}>신청 {item.activeReservationCount}건</span>
-                  {item.hasApplicationHistory ? <span className={styles.metaBadgeMuted}>신청 이력 · 삭제 보호</span> : null}
-                  <span className={styles.metaBadgeMuted}>{item.scheduleType === "weekly" ? "반복 일정" : "이 날만"}</span>
-                  {item.bookingStatus === "closed" ? <span className={styles.metaBadgeWarning}>마감</span> : null}
-                  {item.bookingStatus === "hidden" ? <span className={styles.metaBadgeMuted}>예약 화면 숨김</span> : null}
-                </div>
-              </div>
-              <span className={getItemStatusClassName(item.status)}>{item.bookingStatus === "open" && item.status === "closed" ? "정원 마감" : getItemStatusText(item.status)}</span>
-            </div>
-
-            {item.scheduleType === "one_time" ? (
-              <>
-                <div className={styles.capacityRow}>
-                  <div>
-                    <p className={styles.description}>정원 {item.capacity}명 · 남은 자리 {item.remainingCapacity}명</p>
-                  </div>
-                  <div className={styles.stepper}>
-                    <button
-                      type="button"
-                      className={styles.stepperButton}
-                      disabled={isPending || isPast || item.capacity <= item.minimumCapacity}
-                      onClick={() =>
-                        startTransition(async () => {
-                          setMessage(null)
-                          setError(null)
-                          try {
-                            await updateStudioClassScheduleCapacityAction({
-                              classScheduleId: item.classScheduleId,
-                              capacity: item.capacity - 1
-                            })
-                            setMessage("정원을 수정했습니다.")
-                            router.refresh()
-                          } catch (actionError) {
-                            setError(actionError instanceof Error ? actionError.message : "정원 수정에 실패했습니다.")
-                          }
-                        })
-                      }
-                    >
-                      -
-                    </button>
-                    <span className={styles.stepperValue}>{item.capacity}명</span>
-                    <button
-                      type="button"
-                      className={styles.stepperButton}
-                      disabled={isPending || isPast}
-                      onClick={() =>
-                        startTransition(async () => {
-                          setMessage(null)
-                          setError(null)
-                          try {
-                            await updateStudioClassScheduleCapacityAction({
-                              classScheduleId: item.classScheduleId,
-                              capacity: item.capacity + 1
-                            })
-                            setMessage("정원을 수정했습니다.")
-                            router.refresh()
-                          } catch (actionError) {
-                            setError(actionError instanceof Error ? actionError.message : "정원 수정에 실패했습니다.")
-                          }
-                        })
-                      }
-                    >
-                      +
-                    </button>
-                  </div>
-                </div>
-
-                <div className={styles.timeActions}>
-                  {item.bookingStatus === "open" ? (
-                    <button
-                      type="button"
-                      className={styles.buttonSecondary}
-                      disabled={isPending || isPast}
-                      onClick={() =>
-                        startTransition(async () => {
-                          setMessage(null)
-                          setError(null)
-                          try {
-                            await closeStudioClassScheduleAction(item.classScheduleId)
-                            setMessage("해당 일정의 모집을 마감했습니다.")
-                            router.refresh()
-                          } catch (actionError) {
-                            setError(actionError instanceof Error ? actionError.message : "마감 처리에 실패했습니다.")
-                          }
-                        })
-                      }
-                    >
-                      닫기
-                    </button>
-                  ) : null}
-                  {item.bookingStatus === "closed" ? (
-                    <button
-                      type="button"
-                      className={styles.buttonSecondary}
-                      disabled={isPending || isPast}
-                      onClick={() =>
-                        startTransition(async () => {
-                          setMessage(null)
-                          setError(null)
-                          try {
-                            await reopenStudioClassScheduleAction(item.classScheduleId)
-                            setMessage("해당 일정의 모집을 다시 열었습니다.")
-                            router.refresh()
-                          } catch (actionError) {
-                            setError(actionError instanceof Error ? actionError.message : "모집 재개에 실패했습니다.")
-                          }
-                        })
-                      }
-                    >
-                      다시 모집
-                    </button>
-                  ) : null}
-                  {item.bookingStatus === "hidden" ? (
-                    <button
-                      type="button"
-                      className={styles.buttonSecondary}
-                      disabled={isPending || isPast}
-                      onClick={() =>
-                        startTransition(async () => {
-                          setMessage(null)
-                          setError(null)
-                          try {
-                            await publishStudioClassScheduleAction(item.classScheduleId)
-                            setMessage("해당 일정을 다시 공개했습니다.")
-                            router.refresh()
-                          } catch (actionError) {
-                            setError(actionError instanceof Error ? actionError.message : "일정 공개에 실패했습니다.")
-                          }
-                        })
-                      }
-                    >
-                      다시 공개
-                    </button>
-                  ) : null}
-                  {item.bookingStatus !== "hidden" ? (
-                    <button
-                      type="button"
-                      className={styles.buttonSecondary}
-                      disabled={isPending || isPast}
-                      onClick={() =>
-                        startTransition(async () => {
-                          setMessage(null)
-                          setError(null)
-                          try {
-                            await hideStudioClassScheduleAction(item.classScheduleId)
-                            setMessage("해당 일정을 예약 화면에서 숨겼습니다.")
-                            router.refresh()
-                          } catch (actionError) {
-                            setError(actionError instanceof Error ? actionError.message : "숨김 처리에 실패했습니다.")
-                          }
-                        })
-                      }
-                    >
-                      예약 화면에서 숨기기
-                    </button>
-                  ) : null}
-                  {!item.hasApplicationHistory ? (
-                    <button
-                      type="button"
-                      className={styles.buttonDanger}
-                      disabled={isPending || isPast}
-                      onClick={() =>
-                        startTransition(async () => {
-                          setMessage(null)
-                          setError(null)
-                          try {
-                            await deleteStudioClassScheduleAction(item.classScheduleId)
-                            setMessage("일정을 영구 삭제했습니다.")
-                            router.refresh()
-                          } catch (actionError) {
-                            setError(actionError instanceof Error ? actionError.message : "일정 삭제에 실패했습니다.")
-                          }
-                        })
-                      }
-                    >
-                      영구 삭제
-                    </button>
-                  ) : null}
-                </div>
-              </>
-            ) : (
-              <div className={styles.timeActions}>
-                <p className={styles.hint}>반복 일정은 수업 관리에서 수정할 수 있습니다.</p>
-                <a href={classManagementHref} className={styles.buttonSecondary}>
-                  수업 관리로 이동
-                </a>
-              </div>
-            )}
-
-            {item.hasApplicationHistory ? (
-              <p className={styles.warningText}>
-                완료·취소를 포함한 신청 이력이 있어 영구 삭제할 수 없습니다. 신규 예약을 중단하려면 예약 화면에서 숨겨주세요.
-              </p>
-            ) : null}
-          </article>
-        ))}
-      </div>
     </section>
   )
 }

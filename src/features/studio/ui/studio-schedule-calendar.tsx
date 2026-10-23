@@ -47,6 +47,13 @@ type StudioScheduleCalendarProps = {
   onSelectDate: (date: string) => void
 }
 
+/**
+ * 월 달력 (Figma "특정 날짜만 변경하기" 2178:970).
+ *
+ * 칸 하나 38px. 예약 시간이 있는 날은 굵게 + 점(운영일 초록, 마감 · 숨김이 있는 날 주황),
+ * 선택한 날은 진한 초록. 이번 달이 아닌 칸은 비워 둔다. 날짜별 자세한 수치(타임 수 · 신청 수 ·
+ * 마감 상태)는 화면에서 줄이는 대신 버튼 이름(aria-label)과 title 에 그대로 담는다.
+ */
 export const StudioScheduleCalendar = ({
   visibleMonthDate,
   selectedDate,
@@ -67,30 +74,36 @@ export const StudioScheduleCalendar = ({
     return closedCount === totalCount ? "마감" : "운영 중"
   }
 
-  const getDayStatusClassName = (closedCount: number, hiddenCount: number, totalCount: number) => {
-    if (hiddenCount > 0) {
-      return styles.dayStatusHidden
-    }
-
-    return closedCount === totalCount ? styles.dayStatusClosed : ""
-  }
-
   return (
     <div className={styles.calendar}>
-      <div className={styles.weekdayRow}>
+      <div className={styles.weekdayRow} aria-hidden="true">
         {weekdayLabels.map((label) => (
           <div key={label} className={styles.weekdayCell}>
-            <div className={label === "일" ? styles.weekdayCellSunday : ""}>{label}</div>
+            {label}
           </div>
         ))}
       </div>
       <div className={styles.monthGrid}>
         {monthDays.map((day) => {
+          if (!day.isCurrentMonth) {
+            return <div key={day.key} className={styles.dayCellEmpty} aria-hidden="true" />
+          }
+
           const summary = dayMap.get(day.key)
+          const itemCount = summary?.items.length ?? 0
           const isSelected = selectedDate === day.key
           const isToday = todayKey === day.key
           const hasLockedItem = Boolean(summary?.items.some((item) => item.activeReservationCount > 0))
           const isPast = day.key < todayKey
+          const isChanged = Boolean(summary && (summary.closedCount > 0 || summary.hiddenCount > 0))
+          const statusText = summary ? getDayStatusText(summary.closedCount, summary.hiddenCount, itemCount) : ""
+          const label = [
+            formatDateHeadline(day.key),
+            isToday ? "오늘" : "",
+            summary && itemCount > 0 ? `${itemCount}타임 · 신청 ${summary.totalActiveReservationCount}건` : "예약 시간 없음",
+            statusText,
+            hasLockedItem ? "예약 있음" : ""
+          ].filter(Boolean).join(", ")
 
           return (
             <button
@@ -98,38 +111,21 @@ export const StudioScheduleCalendar = ({
               type="button"
               className={[
                 styles.dayCell,
-                !day.isCurrentMonth ? styles.dayCellMuted : "",
+                itemCount > 0 ? styles.dayCellHasItems : "",
                 isPast ? styles.dayCellPast : "",
-                isToday ? styles.dayCellToday : "",
                 isSelected ? styles.dayCellSelected : ""
               ]
                 .filter(Boolean)
                 .join(" ")}
+              aria-label={label}
+              aria-pressed={isSelected}
+              aria-current={isToday ? "date" : undefined}
+              title={label}
               onClick={() => onSelectDate(day.key)}
             >
-              <div className={styles.dayTop}>
-                <span className={styles.dayNumber}>{day.date.getDate()}</span>
-                {summary ? <span className={styles.countBadge}>{summary.items.length}개</span> : null}
-              </div>
-              {summary ? (
-                <div className={styles.dayBody}>
-                  <span className={styles.dayMetric}>{summary.items.length}타임</span>
-                  <span className={styles.dayMetric}>신청 {summary.totalActiveReservationCount}</span>
-                  {hasLockedItem ? <span className={styles.lockBadge}>🔒</span> : null}
-                  {getDayStatusText(summary.closedCount, summary.hiddenCount, summary.items.length) ? (
-                    <span
-                      className={[
-                        styles.dayStatus,
-                        getDayStatusClassName(summary.closedCount, summary.hiddenCount, summary.items.length)
-                      ]
-                        .filter(Boolean)
-                        .join(" ")}
-                      title={formatDateHeadline(day.key)}
-                    >
-                      {getDayStatusText(summary.closedCount, summary.hiddenCount, summary.items.length)}
-                    </span>
-                  ) : null}
-                </div>
+              <span className={styles.dayNumber}>{day.date.getDate()}</span>
+              {itemCount > 0 ? (
+                <span className={`${styles.dayDot} ${isChanged ? styles.dayDotChanged : ""}`} aria-hidden="true" />
               ) : null}
             </button>
           )
