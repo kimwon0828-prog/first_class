@@ -26,6 +26,14 @@ import {
   resolveTrialLastDayKey,
   type TrialFirstChargeSubject
 } from "@/features/billing/lib/standard-trial"
+import { resolveStudioEntitlements } from "@/features/billing/lib/entitlements"
+import { buildTrialBannerMessage, describeTrialStatus } from "@/features/billing/lib/standard-trial"
+import {
+  buildNextBillingFact,
+  buildPricingCards,
+  resolveBillingPresentation
+} from "@/features/billing/lib/subscription-presentation"
+import { buildStudioSidebarPlan } from "@/features/studio/lib/studio-sidebar-plan"
 import type { OrganizationSubscription } from "@/shared/lib/db/adapter"
 
 let failures = 0
@@ -159,6 +167,86 @@ console.log("\n[6] 화면 모델")
   check("수동 trialing 은 null", buildStandardTrialView(subscription({ trialOrigin: null, trialEndsAt: null }), { now: d10, hasActiveBillingMethod: false, consentedAt: null }) === null)
   check("끝난 체험은 null", buildStandardTrialView(subscription(), { now: at(end), hasActiveBillingMethod: false, consentedAt: null }) === null)
   check("active 구독은 null", buildStandardTrialView(subscription({ status: "active" }), { now: d10, hasActiveBillingMethod: true, consentedAt: null }) === null)
+}
+
+console.log("\n[7] 플랜·결제 · 사이드바 · 상단 안내 문구")
+{
+  const end = "2027-01-20T15:00:00.000Z" // 마지막 체험일 1월 20일(수)
+  const sub = (overrides: Partial<OrganizationSubscription> = {}): OrganizationSubscription => ({
+    organizationId: "org-1",
+    planCode: "standard",
+    status: "trialing",
+    currentPeriodStart: "2026-10-23T05:00:00.000Z",
+    currentPeriodEnd: end,
+    cancelAtPeriodEnd: false,
+    gracePeriodEnd: null,
+    trialOrigin: "signup_approval",
+    trialEndsAt: end,
+    ...overrides
+  })
+  const AMOUNT = 39000
+  const present = (subscription: OrganizationSubscription, now: Date, card: boolean, consentedAt: string | null) => {
+    const trial = buildStandardTrialView(subscription, { now, hasActiveBillingMethod: card, consentedAt })
+    const resolved = resolveStudioEntitlements({ subscription, override: null }, now)
+    const presentation = resolveBillingPresentation({ resolved, subscription, hasActiveBillingMethod: card, standardAmount: AMOUNT, trial })
+    return { trial, presentation, cards: buildPricingCards(presentation, { billingAvailable: true, standardAmount: AMOUNT }), fact: buildNextBillingFact(presentation) }
+  }
+  const d40 = present(sub(), at("2026-12-12T03:00:00Z"), false, null)
+  const standard40 = d40.cards.find((card) => card.planCode === "standard")!
+  check("D-40: 배지 '무료 체험 중'", d40.presentation.statusBadge.label === "무료 체험 중")
+  check(
+    "D-40: 스탠다드 버튼은 잠기고 여는 날짜를 말한다",
+    standard40.cta.kind === "disabled" && standard40.cta.note === "12월 22일(화)부터 카드를 등록할 수 있어요.",
+    `${standard40.cta.kind} ${standard40.cta.note}`
+  )
+  check("D-40: 무료 카드 '체험이 끝나면 자동 전환'", d40.cards.find((card) => card.planCode === "free")!.cta.label === "체험이 끝나면 자동 전환")
+  check("체험 중에도 스탠다드 카드가 추천(featured)이다", standard40.featured)
+  check("D-40: 해지 · 해지 취소 없음", !d40.presentation.canCancel && !d40.presentation.canResume)
+  check("D-40: 다음 결제 줄 = 체험 종료 · 금액 없음", d40.fact.title === "체험 종료" && d40.fact.value === "1월 20일(수)" && d40.fact.caption === "카드가 없으면 무료 플랜으로 바뀌어요")
+  check(
+    "D-40: 상태 설명",
+    describeTrialStatus(d40.trial!, AMOUNT) === "1월 20일(수)까지 모든 기능을 써요. 끝나면 카드 등록이 없을 때 자동으로 무료 플랜이 되고, 기록·리포트는 그대로 남아요."
+  )
+  check("D-40: 상단 안내 없음", buildTrialBannerMessage(d40.trial, AMOUNT) === null)
+
+  const d20 = present(sub(), at("2027-01-01T03:00:00Z"), false, null)
+  check("D-20: 스탠다드 버튼 = 카드 등록(계속 쓰기)", d20.cards.find((card) => card.planCode === "standard")!.cta.kind === "register_card")
+
+  const registered = present(sub(), at("2027-01-11T03:00:00Z"), true, "2027-01-01T03:00:00.000Z")
+  check("등록됨: 다음 결제 줄 = 첫 결제 · 1월 20일(수) · 39,000원", registered.fact.title === "첫 결제" && registered.fact.value === "1월 20일(수)" && registered.fact.caption === "39,000원")
+  check("등록됨: 자동 결제 해지 가능", registered.presentation.canCancel && !registered.presentation.canResume)
+  check("등록됨: 스탠다드 카드 '1월 20일(수) 첫 결제'", registered.cards.find((card) => card.planCode === "standard")!.cta.label === "1월 20일(수) 첫 결제")
+  check(
+    "등록됨: 상단 안내",
+    buildTrialBannerMessage(registered.trial, AMOUNT) === "스탠다드 무료 체험이 1월 20일(수)에 끝나요. 1월 20일(수)에 39,000원이 결제돼요."
+  )
+  check(
+    "등록됨: 상태 설명",
+    describeTrialStatus(registered.trial!, AMOUNT) === "1월 20일(수)까지 무료로 쓰고, 1월 20일(수)에 39,000원이 결제돼요. 그 뒤로는 매월 자동 결제돼요."
+  )
+
+  const canceled = present(sub({ cancelAtPeriodEnd: true }), at("2027-01-11T03:00:00Z"), true, "2027-01-01T03:00:00.000Z")
+  check("해지 예약: 배지 '해지 예정' · 해지 취소 가능", canceled.presentation.statusBadge.label === "해지 예정" && canceled.presentation.canResume && !canceled.presentation.canCancel)
+  check("해지 예약: 금액을 말하지 않는다", canceled.fact.caption === "해지 예정 · 결제되지 않아요" && canceled.presentation.monthlyAmount === null)
+  check(
+    "해지 예약: 상단 안내",
+    buildTrialBannerMessage(canceled.trial, AMOUNT) === "스탠다드 무료 체험이 1월 20일(수)에 끝나요. 그 뒤 무료 플랜으로 바뀌어요."
+  )
+  const noCard14 = present(sub(), at("2027-01-06T15:00:00Z"), false, null)
+  check(
+    "카드 없음 · 14일: 상단 안내",
+    buildTrialBannerMessage(noCard14.trial, AMOUNT) === "스탠다드 무료 체험이 1월 20일(수)에 끝나요. 카드를 등록하지 않으면 무료 플랜으로 바뀌어요."
+  )
+
+  // 수동 trialing(PoC)은 기존 문구 그대로다.
+  const poc = present(sub({ trialOrigin: null, trialEndsAt: null }), at("2027-01-11T03:00:00Z"), false, null)
+  check("수동 trialing 은 기존 '체험 이용 중'", poc.trial === null && poc.presentation.statusBadge.label === "체험 이용 중")
+
+  // 사이드바: 승인 당일 90일 남음
+  const sidebar = buildStudioSidebarPlan({ subscription: sub(), override: null }, at("2026-10-23T05:00:00Z"))
+  check("사이드바: 승인 당일 '스탠다드 무료 체험 · 90일 남음'", sidebar.label === "스탠다드 무료 체험" && sidebar.trial?.daysLeft === 90, `${sidebar.label} ${sidebar.trial?.daysLeft}`)
+  const sidebarLast = buildStudioSidebarPlan({ subscription: sub(), override: null }, at("2027-01-20T14:00:00Z"))
+  check("사이드바: 마지막 체험일 1일 남음", sidebarLast.trial?.daysLeft === 1)
 }
 
 if (failures > 0) {

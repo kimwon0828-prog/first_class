@@ -1,4 +1,5 @@
 import { resolveBilledPlanCode } from "@/features/billing/lib/entitlements"
+import { daysLeftInTrial, isAutoTrialSubscription } from "@/features/billing/lib/standard-trial"
 import type { OrganizationBillingSnapshot } from "@/shared/lib/db/adapter"
 
 /*
@@ -9,7 +10,8 @@ import type { OrganizationBillingSnapshot } from "@/shared/lib/db/adapter"
  * 이미 무료로 떨어진다. 내부 전체 권한(override)은 결제가 아니므로 플랜 이름에 섞지 않는다
  * (subscription-presentation.ts 와 같은 원칙).
  *
- * 남은 일수는 "체험 중"일 때만 보여준다.
+ * 남은 일수는 "체험 중"일 때만 보여준다. 자동 체험(승인 90일)은 KST 날짜로 센다
+ * (standard-trial.ts — 플랜·결제 · 상단 안내 · 문자와 같은 N).
  */
 
 const DAY_MS = 24 * 60 * 60 * 1000
@@ -63,10 +65,14 @@ export const buildStudioSidebarPlan = (
   const elapsedRatio =
     startMs != null && endMs > startMs ? Math.min(1, Math.max(0, (nowMs - startMs) / (endMs - startMs))) : null
 
+  const daysLeft = isAutoTrialSubscription(subscription)
+    ? Math.max(1, daysLeftInTrial(new Date(endMs), now))
+    : Math.max(1, Math.ceil((endMs - nowMs) / DAY_MS))
+
   return {
     label: `${PLAN_LABEL[billedPlanCode]} 무료 체험`,
     trial: {
-      daysLeft: Math.max(1, Math.ceil((endMs - nowMs) / DAY_MS)),
+      daysLeft,
       elapsedRatio
     }
   }

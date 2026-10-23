@@ -3,6 +3,7 @@ import "server-only"
 import { cache } from "react"
 
 import { getStudioEntitlementsForDisplay } from "@/features/billing/queries/get-organization-entitlements"
+import { getStandardTrialView } from "@/features/billing/queries/get-standard-trial-view"
 import { getPurchasableBillingPlan } from "@/features/billing/lib/plan-catalog"
 import {
   buildFeatureComparison,
@@ -142,11 +143,14 @@ const getStudioBillingOverviewCached = cache(
     ])
 
     const standardAmount = getPurchasableBillingPlan("standard")?.amount ?? 0
+    // 자동 체험(승인 90일)이면 카드 등록 · 동의 상태까지 읽어 체험 문구를 만든다.
+    const trial = await getStandardTrialView(organizationId, snapshot).catch(() => null)
     const presentation = resolveBillingPresentation({
       resolved,
       subscription: snapshot.subscription,
       hasActiveBillingMethod: billingMethod.active,
-      standardAmount
+      standardAmount,
+      trial
     })
     const runtime = getTossRuntimeForOrganization(organizationId)
     const billingAvailable = runtime.status === "ready"

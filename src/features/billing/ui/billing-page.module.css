@@ -73,6 +73,30 @@
   letter-spacing: -0.5px;
 }
 
+/* 자동 체험: 배지 자리 "N일 남음" 15 Bold brand/700, 진행 막대 surface/fill pill 위 brand/500 8px (Figma 2148:7045 · 2148:7047) */
+.trialDays {
+  flex: 0 0 auto;
+  color: var(--sv2-brand-700);
+  font-size: 15px;
+  line-height: 1.45;
+  font-weight: 700;
+}
+
+.trialBar {
+  display: flex;
+  overflow: hidden;
+  border-radius: var(--sv2-radius-pill);
+  background: var(--sv2-surface-fill);
+}
+
+.trialBarFill {
+  width: var(--trial-elapsed, 0%);
+  min-width: 20px;
+  height: 8px;
+  border-radius: 4px;
+  background: var(--sv2-brand-500);
+}
+
 .statusBody {
   margin: 0;
   color: var(--sv2-ink-700);

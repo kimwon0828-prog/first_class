@@ -289,10 +289,50 @@
 }
 
 /*
+ * 상단 안내(§5.25). 화면마다 본문 여백(위 36 · 좌우 48)을 직접 갖고 있어서,
+ * 안내는 그 위에 위 24 · 좌우 48 로 얹는다. 모양은 플랜·결제 안내 상자(Figma 2148:7112)와 같다.
+ */
+.trialBanner {
+  padding: var(--sv2-space-24) 48px 0;
+}
+
+.trialBannerBox {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sv2-space-4) var(--sv2-space-12);
+  margin: 0;
+  padding: var(--sv2-space-12) 14px;
+  border-radius: var(--sv2-radius-control);
+  background: var(--sv2-brand-50);
+  color: var(--sv2-brand-800);
+  font-family: var(--sv2-font);
+  font-size: 14px;
+  line-height: 1.45;
+  font-weight: 500;
+  letter-spacing: -0.2px;
+}
+
+.trialBannerBox > span {
+  flex: 1 1 280px;
+  min-width: 0;
+}
+
+.trialBannerLink {
+  flex: 0 0 auto;
+  color: var(--sv2-brand-700);
+  font-weight: 700;
+}
+
+/*
  * 좁은 화면. Studio 는 desktop-first 라 별도 모바일 디자인이 없다 —
  * 기존처럼 사이드바를 위쪽 가로 줄로 접어 메뉴만 쓸 수 있게 둔다.
  */
 @media (max-width: 719px) {
+  .trialBanner {
+    padding: var(--sv2-space-16) var(--sv2-space-16) 0;
+  }
+
   .shell {
     flex-direction: column;
   }

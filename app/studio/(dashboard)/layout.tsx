@@ -7,12 +7,13 @@ import { getStudioApplicationsForDashboard } from "@/features/studio/queries/get
 import { getStudioAcademyPublicProfile } from "@/features/studio/queries/get-studio-academy-public-profile"
 import { countStudioCases } from "@/features/studio/queries/get-studio-cases"
 import { getStudioSidebarPlan } from "@/features/studio/queries/get-studio-sidebar-plan"
+import { getStudioTrialBanner } from "@/features/studio/queries/get-studio-trial-banner"
 import { StudioShell } from "@/features/studio/ui/studio-shell"
 import { StudioWorkspaceFooter } from "@/features/studio/ui/studio-workspace-footer"
 
 export default async function StudioDashboardLayout({ children }: { children: ReactNode }) {
   const teacher = await requireTeacherStudioAccess()
-  const [organizationName, publicProfile, plan, scheduleNeededCount, dashboardApplications] = await Promise.all([
+  const [organizationName, publicProfile, plan, scheduleNeededCount, dashboardApplications, trialBanner] = await Promise.all([
     getStudioOrganizationName(teacher.organizationId),
     getStudioAcademyPublicProfile(teacher.organizationId),
     getStudioSidebarPlan(teacher.organizationId),
@@ -20,7 +21,9 @@ export default async function StudioDashboardLayout({ children }: { children: Re
     // 읽기 전용 count 이고, 실패하면 null 이라 배지를 그리지 않는다.
     countStudioCases(teacher.organizationId, { view: "active", filter: "schedule_needed", query: null }),
     // 사이드바 "홈" 건수 = 홈 "오늘 할 일" 수. 홈 화면과 같은 조회(요청 단위 cache)와 같은 판정을 쓴다.
-    getStudioApplicationsForDashboard(teacher.organizationId)
+    getStudioApplicationsForDashboard(teacher.organizationId),
+    // 상단 안내(자동 체험 종료 14일 전부터). 표시 전용이라 실패하면 null.
+    getStudioTrialBanner(teacher.organizationId)
   ])
   const todayTaskCount = dashboardApplications.error ? null : buildStudioDashboardView(dashboardApplications.data).actionTotalCount
 
@@ -31,6 +34,7 @@ export default async function StudioDashboardLayout({ children }: { children: Re
       plan={plan}
       navCounts={{ home: todayTaskCount, cases: scheduleNeededCount }}
       footer={<StudioWorkspaceFooter />}
+      trialBanner={trialBanner}
     >
       {children}
     </StudioShell>

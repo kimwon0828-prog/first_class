@@ -233,3 +233,29 @@ export const buildStandardTrialView = (
     bannerVisible: daysLeft <= TRIAL_BANNER_DAYS
   }
 }
+
+// ─────────────────────────────────────────────────────────────
+// 화면 문구 (STUDIO_DESIGN_SYSTEM.md §5.23 · §5.25)
+// ─────────────────────────────────────────────────────────────
+
+const formatWon = (amount: number) => `${new Intl.NumberFormat("ko-KR").format(amount)}원`
+
+/** 플랜·결제 "지금 상태" 카드 설명(Figma 2148:7046) */
+export const describeTrialStatus = (view: StandardTrialView, amount: number): string => {
+  if (view.state === "card_registered") {
+    return `${view.lastDayLabel}까지 무료로 쓰고, ${view.lastDayLabel}에 ${formatWon(amount)}이 결제돼요. 그 뒤로는 매월 자동 결제돼요.`
+  }
+  if (view.state === "cancel_scheduled") {
+    return `${view.lastDayLabel}까지 쓰고 무료 플랜으로 바뀌어요. 결제되지 않아요.`
+  }
+  return `${view.lastDayLabel}까지 모든 기능을 써요. 끝나면 카드 등록이 없을 때 자동으로 무료 플랜이 되고, 기록·리포트는 그대로 남아요.`
+}
+
+/** Studio 상단 안내(§5.25). 종료 14일 전부터만 문구가 있다. */
+export const buildTrialBannerMessage = (view: StandardTrialView | null, amount: number): string | null => {
+  if (!view || !view.bannerVisible) return null
+  const head = `스탠다드 무료 체험이 ${view.lastDayLabel}에 끝나요.`
+  if (view.state === "card_registered") return `${head} ${view.lastDayLabel}에 ${formatWon(amount)}이 결제돼요.`
+  if (view.state === "cancel_scheduled") return `${head} 그 뒤 무료 플랜으로 바뀌어요.`
+  return `${head} 카드를 등록하지 않으면 무료 플랜으로 바뀌어요.`
+}

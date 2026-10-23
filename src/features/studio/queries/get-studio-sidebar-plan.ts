@@ -2,8 +2,8 @@ import "server-only"
 
 import { cache } from "react"
 
+import { getStudioBillingSnapshot } from "@/features/billing/queries/get-standard-trial-view"
 import { buildStudioSidebarPlan, type StudioSidebarPlan } from "@/features/studio/lib/studio-sidebar-plan"
-import { dataAdapter } from "@/shared/lib/db"
 
 /**
  * 사이드바 플랜 카드용 조회. 기존 billing snapshot 을 읽기만 한다.
@@ -13,7 +13,7 @@ import { dataAdapter } from "@/shared/lib/db"
  */
 export const getStudioSidebarPlan = cache(async (organizationId: string): Promise<StudioSidebarPlan | null> => {
   try {
-    const snapshot = await dataAdapter.getOrganizationBillingSnapshot(organizationId)
+    const snapshot = await getStudioBillingSnapshot(organizationId)
     return buildStudioSidebarPlan(snapshot)
   } catch {
     return null
