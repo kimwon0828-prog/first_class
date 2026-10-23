@@ -1,13 +1,7 @@
 /* canvas 는 StudioShell 이 칠한다. */
-.page {
-  min-height: 100dvh;
-  padding: 28px 24px 56px;
-  background: #fff;
-}
-
+/* 설정 탭(StudioSettingsFrame) 안에 들어가므로 제목과 바깥 여백은 틀이 갖는다. */
 .container {
   max-width: 760px;
-  margin: 0 auto;
   display: grid;
   gap: 18px;
 }
@@ -605,9 +599,6 @@
 }
 
 @media (max-width: 720px) {
-  .page {
-    padding: 24px 16px 48px;
-  }
 
   .infoGrid,
   .imageGrid,

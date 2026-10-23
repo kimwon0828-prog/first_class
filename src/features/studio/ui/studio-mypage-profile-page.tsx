@@ -694,18 +694,11 @@ export function StudioMypageProfilePage({
   }
 
   return (
-    <div className={styles.page}>
+    <div>
       <div className={styles.container}>
         <header className={styles.header}>
-          <Link href={studioPath("/studio/mypage")} prefetch={false} className={styles.backLink}>
-            <span aria-hidden="true" className={styles.backIcon}>
-              {"←"}
-            </span>
-            마이페이지
-          </Link>
           <div className={styles.topRow}>
             <div className={styles.sectionHeaderStack}>
-              <h1 className={styles.title}>학원 프로필</h1>
               <p className={styles.sectionDescription}>학원 소개와 방문에 필요한 정보를 관리해요.</p>
             </div>
             <div className={styles.topActions}>

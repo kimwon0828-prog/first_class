@@ -30,11 +30,6 @@ export const BillingPage = ({ overview, notice }: BillingPageProps) => {
 
   return (
     <div className={styles.page}>
-      <header className={styles.header}>
-        <h1 className={styles.title}>구독 및 결제</h1>
-        <p className={styles.description}>첫수업 스튜디오의 플랜과 결제 정보를 관리해요.</p>
-      </header>
-
       {/*
         카드사 심사용 조직에서만 뜬다. overview.reviewMode 는 서버가 조직 UUID 를
         TOSS_REVIEW_ORGANIZATION_ID 와 대조해 정한 값이라, 일반 학원에서는 항상 false 다.

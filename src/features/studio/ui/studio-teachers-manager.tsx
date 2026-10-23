@@ -150,7 +150,6 @@ export const StudioTeachersManager = ({
     <div className={styles.root}>
       <header className={styles.header}>
         <div className={styles.headerLeft}>
-          <h1 className={styles.title}>선생님 관리</h1>
           <p className={styles.description}>
             학원 내부 선생님 명부예요. 수업 배정과 알림 발송에 사용됩니다.
           </p>

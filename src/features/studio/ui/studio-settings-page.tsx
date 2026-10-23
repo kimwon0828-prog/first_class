@@ -92,8 +92,6 @@ export function StudioSettingsPage({
       <div className={styles.layout}>
         <section className={styles.heroCard}>
           <div>
-            <p className={styles.badge}>Studio</p>
-            <h1 className={styles.title}>학원 공식정보</h1>
             <p className={styles.description}>
               현재 등록된 학원의 공식 정보를 확인하고, 변경이 필요한 경우 수정 요청을 제출할 수 있어요.
             </p>

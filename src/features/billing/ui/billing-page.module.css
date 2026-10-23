@@ -17,10 +17,8 @@
  * margin-left 로 보정하지 않는다. 24px 은 StudioWorkspaceFooter 의 좌우 padding 과
  * 같은 값이라, 본문과 footer 가 같은 세로 축에서 시작한다.
  */
+/* 설정 탭(StudioSettingsFrame) 안에 들어가므로 제목과 바깥 여백은 틀이 갖는다. */
 .page {
-  max-width: var(--studio-max);
-  margin: 0 auto;
-  padding: 32px 24px 48px;
   display: grid;
   gap: var(--s8);
 }
@@ -493,8 +491,4 @@
 }
 
 /* 좁은 폭의 좌우 여백도 Studio 목록 화면과 같은 값을 쓴다(cases 와 동일). */
-@media (max-width: 860px) {
-  .page {
-    padding: 28px 20px 48px;
-  }
-}
+
