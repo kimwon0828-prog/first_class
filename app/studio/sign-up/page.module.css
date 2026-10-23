@@ -1,200 +1,150 @@
+/*
+ * 가입 (Figma 2148:4764). STUDIO_DESIGN_SYSTEM.md §5.24.
+ * 위 40 · 아래 64 · 세로 32. [위 줄 좌우 48] → 단계 → 카드 640(테두리 · 모서리 20 · 안쪽 40 · 간격 24).
+ */
 .page {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sv2-space-32);
   min-height: 100dvh;
-  background: radial-gradient(1200px 600px at 12% 10%, #f3fbf4 0%, rgba(243, 251, 244, 0) 55%),
-    #fafafa;
-  padding: 40px 24px 64px;
+  padding: 40px 0 64px;
+  background: var(--sv2-surface-white);
+  color: var(--sv2-ink-900);
+  font-family: var(--sv2-font);
 }
 
-.container {
-  max-width: 1080px;
-  margin: 0 auto;
-}
-
-.topBar {
+.top {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
-  gap: 16px;
-  margin-bottom: 28px;
+  justify-content: space-between;
+  width: 100%;
+  padding: 0 48px;
 }
 
-.logo {
-  height: auto;
+.topLink {
+  color: var(--sv2-ink-500);
+  font-size: 14px;
+  line-height: 1.45;
+  font-weight: 500;
+  letter-spacing: -0.2px;
+  text-decoration: none;
 }
 
-.grid {
-  display: grid;
-  gap: 26px;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 480px);
-  align-items: start;
+.topLink:hover {
+  color: var(--sv2-ink-900);
 }
 
-.intro {
-  padding: 8px 0;
+/* 단계: 원 26 · 선 48×2 · 간격 12 · 14 Bold. 지금 brand/700, 남은 단계 surface/fill + ink/400 */
+.steps {
+  display: flex;
+  align-items: center;
+  gap: var(--sv2-space-12);
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }
 
-.kicker {
-  margin: 0 0 12px;
-  font-size: 13px;
-  line-height: 18px;
-  font-weight: 900;
-  color: #2aad38;
-  letter-spacing: 0.02em;
+.steps li:not(.stepLine) {
+  display: flex;
+  align-items: center;
+  gap: var(--sv2-space-8);
+  color: var(--sv2-ink-400);
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 700;
+}
+
+.steps li[data-state="current"] {
+  color: var(--sv2-ink-900);
+}
+
+.stepDot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: var(--sv2-radius-pill);
+  background: var(--sv2-surface-fill);
+  color: var(--sv2-ink-400);
+  font-size: 12px;
+  line-height: 16px;
+}
+
+.steps li[data-state="current"] .stepDot {
+  background: var(--sv2-brand-700);
+  color: var(--sv2-surface-white);
+}
+
+.stepLine {
+  width: 48px;
+  height: 2px;
+  background: var(--sv2-line-default);
+}
+
+.stepLine[data-state="current"] {
+  background: var(--sv2-brand-500);
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sv2-space-24);
+  width: 640px;
+  max-width: calc(100% - 32px);
+  padding: 40px;
+  border: 1px solid var(--sv2-line-default);
+  border-radius: var(--sv2-radius-sheet);
+}
+
+.cardHead {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 
 .title {
   margin: 0;
-  font-size: 38px;
-  line-height: 44px;
-  font-weight: 900;
-  letter-spacing: -0.04em;
-  color: #111111;
-}
-
-.subtitle {
-  margin: 16px 0 0;
-  font-size: 16px;
-  line-height: 26px;
-  color: #4a4a4a;
+  font-size: 26px;
+  line-height: 35px;
   font-weight: 700;
+  letter-spacing: -0.7px;
 }
 
-.subtle {
-  margin: 10px 0 0;
-  font-size: 14px;
-  line-height: 22px;
-  color: #8a8a8a;
-  font-weight: 700;
-}
-
-.benefits {
-  margin: 22px 0 0;
-  padding: 0;
-  list-style: none;
-  display: grid;
-  gap: 10px;
-}
-
-.benefitItem {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-size: 14px;
-  line-height: 20px;
-  color: #1f1f1f;
-  font-weight: 700;
-}
-
-.benefitDot {
-  width: 10px;
-  height: 10px;
-  border-radius: 999px;
-  background: #2aad38;
-  box-shadow: 0 0 0 4px rgba(42, 173, 56, 0.12);
-  flex: 0 0 auto;
-}
-
-.noteCard {
-  margin-top: 24px;
-  border: 1px solid #d8f0dc;
-  background: #f3fbf4;
-  border-radius: 20px;
-  padding: 16px 16px;
-}
-
-.noteTitle {
+.description {
   margin: 0;
+  color: var(--sv2-ink-500);
+  font-size: 15px;
+  line-height: 22px;
+  letter-spacing: -0.2px;
+}
+
+.note {
+  margin: 0;
+  color: var(--sv2-ink-500);
   font-size: 13px;
   line-height: 18px;
-  font-weight: 900;
-  color: #2aad38;
+  font-weight: 500;
+  letter-spacing: -0.2px;
 }
 
-.noteBody {
-  margin: 10px 0 0;
-  font-size: 14px;
-  line-height: 22px;
-  color: #4a4a4a;
-  font-weight: 700;
-}
-
-.formCard {
-  border: 1px solid #eeeeee;
-  background: #ffffff;
-  border-radius: 24px;
-  padding: 28px;
-  box-shadow: 0 10px 30px rgba(17, 17, 17, 0.06);
-}
-
-.formHeader {
-  margin-bottom: 18px;
-}
-
-.formTitle {
-  margin: 0;
-  font-size: 18px;
-  line-height: 24px;
-  font-weight: 900;
-  color: #111111;
-}
-
-.formDescription {
-  margin: 10px 0 0;
-  font-size: 14px;
-  line-height: 22px;
-  color: #8a8a8a;
-}
-
-.requiredNotice {
-  margin: 8px 0 0;
-  font-size: 12px;
-  line-height: 18px;
-  color: #8a8a8a;
-  font-weight: 700;
-}
-
-.footer {
-  margin-top: 24px;
-  display: grid;
-  gap: 8px;
-  justify-items: center;
-}
-
-.footerText {
-  margin: 0;
-  font-size: 13px;
-  line-height: 18px;
-  color: #8a8a8a;
-  font-weight: 700;
-}
-
-.footerLink {
-  color: #2aad38;
-  text-decoration: none;
-  font-weight: 900;
-}
-
-.footerLink:hover {
-  text-decoration: underline;
-}
-
-@media (max-width: 980px) {
-  .grid {
-    grid-template-columns: 1fr;
-  }
-}
-
-@media (max-width: 640px) {
-  .page {
-    padding: 32px 24px 56px;
+@media (max-width: 720px) {
+  .top {
+    padding: 0 var(--sv2-space-16);
   }
 
-  .title {
-    font-size: 32px;
-    line-height: 38px;
+  .steps {
+    flex-wrap: wrap;
+    justify-content: center;
+    padding: 0 var(--sv2-space-16);
   }
 
-  .formCard {
-    padding: 22px;
+  .stepLine {
+    display: none;
+  }
+
+  .card {
+    padding: var(--sv2-space-24) var(--sv2-space-20);
   }
 }

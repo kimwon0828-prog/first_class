@@ -14,6 +14,7 @@ import {
 } from "@/features/studio/actions/studio-resubmit-sign-up"
 import type { KakaoAdministrativeRegionInput } from "@/features/maps/lib/kakao-postcode"
 import { StudioAddressFields } from "@/features/studio/ui/studio-address-fields"
+import { V2UploadIcon } from "@/features/studio/ui/v2/v2-icons"
 import styles from "@/features/studio/ui/studio-sign-up-form.module.css"
 
 type SharedActionState = StudioSignUpActionState | StudioResubmitSignUpActionState
@@ -342,6 +343,9 @@ export const StudioSignUpForm = ({
   return (
     <form action={formAction} className={styles.form} onSubmit={handleSubmit}>
       <div ref={formContentRef} className={styles.formContent}>
+        <h3 className={styles.groupTitle}>학원 정보</h3>
+        {/* Figma 2148:4788: 학원 이름 | 지점 두 칸 */}
+        <div className={styles.row}>
         <label className={styles.field}>
           <FieldLabel text="학원명" required />
           <input
@@ -369,6 +373,9 @@ export const StudioSignUpForm = ({
             defaultValue={initialValues?.branchName ?? ""}
           />
         </label>
+        </div>
+
+        <div className={styles.row}>
 
         <label className={styles.field}>
           <FieldLabel text="대표자명" required />
@@ -411,6 +418,9 @@ export const StudioSignUpForm = ({
             <p className={styles.inlineErrorText}>{businessRegistrationNumberError}</p>
           ) : null}
         </label>
+        </div>
+
+        <div className={styles.row}>
 
         <label className={styles.field}>
           <FieldLabel text="학원 대표 전화번호" required />
@@ -424,7 +434,7 @@ export const StudioSignUpForm = ({
             placeholder="예: 02-1234-5678"
             defaultValue={initialValues?.academyPhone ?? ""}
           />
-          <p className={styles.fieldHint}>학부모에게 노출되는 번호입니다.</p>
+          <p className={styles.fieldHint}>학부모 앱의 &lsquo;전화하기&rsquo;에 쓰여요.</p>
         </label>
 
         <label className={styles.field}>
@@ -440,9 +450,10 @@ export const StudioSignUpForm = ({
             defaultValue={initialValues?.contactPhone ?? ""}
           />
           <p className={styles.fieldHint}>
-            체험수업 신청 알림 문자를 받으실 번호입니다. 실제로 확인 가능한 번호를 입력해 주세요.
+            체험수업 신청 알림 문자를 받으실 번호예요. 실제로 확인할 수 있는 번호를 입력해 주세요.
           </p>
         </label>
+        </div>
 
         <StudioAddressFields
           initialPostalCode={initialValues?.postalCode}
@@ -504,7 +515,7 @@ export const StudioSignUpForm = ({
                   기존
                 </div>
               ) : (
-                <div className={styles.uploadPlaceholderIcon} aria-hidden="true" />
+                <div className={styles.uploadPlaceholderIcon} aria-hidden="true"><V2UploadIcon size={20} /></div>
               )}
             </div>
             <div className={styles.uploadTextBlock}>
@@ -555,12 +566,14 @@ export const StudioSignUpForm = ({
             </div>
           </div>
           <p className={styles.fieldHint}>
-            PDF, JPG, PNG, WEBP 파일을 업로드할 수 있으며 최대 5MB까지 지원합니다.
+            사진이나 PDF로 올려 주세요(PDF · JPG · PNG · WEBP, 5MB까지). 학원 확인에만 쓰고 학부모에게는 보이지 않아요.
           </p>
           {fileError ? <p className={styles.inlineErrorText}>{fileError}</p> : null}
         </div>
 
-        <p className={styles.bottomHint}>입력한 주소와 연락처는 가입 심사 및 학원 공식 정보 검토에 사용됩니다.</p>
+        <p className={styles.bottomHint}>입력한 주소와 연락처는 가입 확인과 학원 공식 정보 검토에 쓰여요.</p>
+
+        {!isResubmitMode ? <h3 className={styles.groupTitle}>계정 만들기</h3> : null}
 
         {!isResubmitMode ? (
           <label className={styles.field}>
@@ -769,7 +782,7 @@ export const StudioSignUpForm = ({
                   : "신청 중..."
                 : isResubmitMode
                   ? "수정 후 재신청"
-                  : "운영보드 계정 신청"}
+                  : "가입 신청하기"}
           </button>
           {isSubmitDisabledByValidation && !formLocked ? (
             <button
@@ -793,19 +806,19 @@ export const StudioSignUpForm = ({
           >
             <div className={styles.modalCheckIcon} aria-hidden="true" />
             <h2 id="studio-sign-up-success-title" className={styles.modalTitle}>
-              학원 계정 신청이 접수되었습니다
+              가입 신청을 받았어요
             </h2>
             <p id="studio-sign-up-success-description" className={styles.modalDescription}>
-              운영팀이 학원 정보를 확인한 뒤
+              첫수업 팀이 1영업일 안에 학원 정보를 확인하고
               <br />
-              영업일 기준 1일 이내에 담당자 전화번호로 연락드립니다.
+              담당자 전화번호로 연락드릴게요.
             </p>
             <Link
               ref={successActionButtonRef}
               href={signInHref}
               className={styles.modalActionButton}
             >
-              {isResubmitMode ? "운영보드 로그인으로 이동" : "운영보드 로그인으로 이동"}
+              로그인으로 이동
             </Link>
           </div>
         </div>

@@ -9,7 +9,17 @@ import { getSupabaseServerClient } from "@/integrations/supabase/server"
 import { formatAdministrativeRegionLabel } from "@/features/location/lib/region-selection"
 import { getParentCrossProductHref } from "@/shared/config/cross-product-navigation"
 import { getRequestHostname } from "@/shared/lib/request-host"
+import { V2ClockIcon } from "@/features/studio/ui/v2/v2-icons"
+import { getSeoulDateTimeParts } from "@/shared/lib/seoul-datetime"
 import { getStudioNavigationPathResolver } from "@/shared/lib/studio-navigation-server"
+import styles from "./page.module.css"
+
+const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"]
+/** "10월 17일(토) 14:20" (날짜 표기 규칙 §1) */
+const formatRequestedAt = (value: string | null) => {
+  const parts = value ? getSeoulDateTimeParts(value) : null
+  return parts ? `${parts.month}월 ${parts.day}일(${WEEKDAYS[parts.weekday]}) ${String(parts.hour).padStart(2, "0")}:${String(parts.minute).padStart(2, "0")}` : null
+}
 
 type SignupRequestRow = {
   id: string
@@ -30,6 +40,7 @@ type SignupRequestRow = {
   sigungu_code: string | null
   bcode: string | null
   rejection_reason: string | null
+  created_at: string | null
 }
 
 export default async function StudioPendingPage() {
@@ -67,7 +78,8 @@ export default async function StudioPendingPage() {
         "bname",
         "sigungu_code",
         "bcode",
-        "rejection_reason"
+        "rejection_reason",
+        "created_at"
       ].join(", ")
     )
     .eq("user_id", session.user.id)
@@ -99,57 +111,34 @@ export default async function StudioPendingPage() {
   const isRejected = request?.status === "rejected"
   const rejectionReason = request?.rejection_reason?.trim() || "운영팀에 문의해 주세요."
 
+  const documentName = request?.business_registration_file_path?.split("/").pop() ?? null
+  const requestedAt = formatRequestedAt(request?.created_at ?? null)
+  const contactPhone = request?.contact_phone?.trim() || null
+
   return (
-    <main
-      style={{
-        maxWidth: isRejected ? 760 : 480,
-        margin: "0 auto",
-        padding: "60px 24px",
-        textAlign: isRejected ? "left" : "center"
-      }}
-    >
-      <div style={{ marginBottom: 18, display: "flex", justifyContent: isRejected ? "flex-start" : "center" }}>
-        <StudioHomeLogo />
-      </div>
+    <main className={styles.page}>
+      <header className={styles.top}>
+        <StudioHomeLogo width={79} height={27} priority />
+        {/* Studio 로그아웃의 canonical 경로는 /studio/sign-out 이다(studio-mypage-page · studio/access 와 같은 링크).
+            반려 상태에서도 로그아웃은 항상 가능해야 한다 — 사용 권한과 세션 종료 권한을 묶지 않는다. */}
+        <Link href={studioPath("/studio/sign-out")} prefetch={false} className={styles.topLink}>로그아웃</Link>
+      </header>
+
       {isRejected ? (
-        <>
-          <h1 style={{ fontSize: 28, margin: "0 0 16px", textAlign: "left" }}>신청이 반려되었습니다</h1>
-          <div
-            style={{
-              background: "#fef2f2",
-              border: "1px solid #fecaca",
-              borderRadius: 16,
-              padding: 20,
-              marginBottom: 16
-            }}
-          >
-            <p style={{ margin: "0 0 10px", fontSize: 14, lineHeight: "20px", fontWeight: 800, color: "#b91c1c" }}>
-              반려 사유
-            </p>
-            <p style={{ margin: 0, fontSize: 15, lineHeight: "24px", color: "#7f1d1d", whiteSpace: "pre-wrap" }}>
-              {rejectionReason}
-            </p>
+        <div className={styles.content}>
+          <div className={styles.hero}>
+            <h1 className={styles.title}>신청이 반려됐어요</h1>
+            <p className={styles.description}>아래에서 정보를 고친 뒤 다시 신청해 주세요.</p>
           </div>
-          <p style={{ fontSize: 15, color: "#4b5563", lineHeight: "24px", margin: "0 0 28px" }}>
-            아래에서 정보를 수정한 뒤 다시 신청해 주세요.
-          </p>
+          <section className={styles.rejection} aria-labelledby="rejection-title">
+            <h2 id="rejection-title">반려 사유</h2>
+            <p>{rejectionReason}</p>
+          </section>
           {request ? (
-            <section
-              style={{
-                background: "#ffffff",
-                border: "1px solid #e5e7eb",
-                borderRadius: 24,
-                padding: 24,
-                boxShadow: "0 12px 24px rgba(17, 17, 17, 0.04)"
-              }}
-            >
-              <div style={{ marginBottom: 20 }}>
-                <h2 style={{ margin: "0 0 8px", fontSize: 20, lineHeight: "28px", color: "#111111" }}>
-                  정보 수정하고 재신청
-                </h2>
-                <p style={{ margin: 0, fontSize: 14, lineHeight: "22px", color: "#6b7280" }}>
-                  기존 신청 정보를 불러왔습니다. 필요한 항목을 수정한 뒤 다시 제출해 주세요.
-                </p>
+            <section className={styles.card} aria-labelledby="resubmit-title">
+              <div className={styles.cardHead}>
+                <h2 id="resubmit-title">정보 수정하고 다시 신청</h2>
+                <p>기존 신청 정보를 불러왔어요. 고칠 항목을 바꾼 뒤 다시 제출해 주세요.</p>
               </div>
               <StudioSignUpForm
                 mode="resubmit"
@@ -175,75 +164,41 @@ export default async function StudioPendingPage() {
               />
             </section>
           ) : null}
-
-          {/* 반려 상태에서도 로그아웃은 항상 가능해야 한다.
-              Studio 사용 권한과 세션 종료 권한을 묶지 않는다. */}
-          <div style={{ marginTop: 24 }}>
-            <Link
-              href={studioPath("/studio/sign-out")}
-              prefetch={false}
-              style={{
-                display: "inline-block",
-                padding: "12px 24px",
-                background: "#e5e7eb",
-                color: "#374151",
-                borderRadius: 8,
-                textDecoration: "none",
-                fontWeight: 500
-              }}
-            >
-              로그아웃
-            </Link>
-          </div>
-        </>
+        </div>
       ) : (
-        <>
-          <h1 style={{ fontSize: 24, margin: "0 0 16px" }}>학원 계정 승인 대기 중입니다</h1>
+        <div className={`${styles.content} ${styles.contentNarrow}`}>
+          <span className={styles.illust} aria-hidden="true"><V2ClockIcon size={52} /></span>
+          <div className={`${styles.hero} ${styles.heroCenter}`}>
+            <h1 className={styles.title}>학원 정보를 확인하고 있어요</h1>
+            <p className={styles.description}>
+              학원 정보와 사업자등록증을 확인하고 있어요. 보통 1영업일 안에 끝나고, 끝나면 {contactPhone ? <><span className={styles.nowrap}>{contactPhone}</span>(으)로</> : "담당자 전화번호로"} 연락드릴게요.
+            </p>
+          </div>
 
-          <p style={{ fontSize: 16, color: "#4b5563", lineHeight: "24px", marginBottom: 32 }}>
-            학원 계정 신청이 접수되었습니다.<br />
-            관리자 확인 및 승인 후 Studio 기능을 이용하실 수 있습니다.
-          </p>
+          <section className={styles.summary} aria-labelledby="summary-title">
+            <h2 id="summary-title">신청한 내용</h2>
+            {request ? (
+              <dl>
+                <div><dt>학원</dt><dd>{[request.organization_name, request.branch_name].filter(Boolean).join(" ")}</dd></div>
+                <div><dt>주소</dt><dd>{requestAddressLabel ?? "주소 정보 없음"}{requestRegionLabel ? ` · ${requestRegionLabel}` : ""}</dd></div>
+                <div><dt>서류</dt><dd>{documentName ? `${documentName} · 확인 중` : "확인 중"}</dd></div>
+                <div><dt>신청일</dt><dd>{requestedAt ?? "-"}</dd></div>
+              </dl>
+            ) : <p className={styles.muted}>신청 정보를 불러오지 못했어요.</p>}
+          </section>
 
-          {request ? (
-            <div style={{ background: "#f3f4f6", padding: 20, borderRadius: 12, textAlign: "left", marginBottom: 32 }}>
-              <h2 style={{ fontSize: 16, margin: "0 0 12px" }}>신청 정보</h2>
-              <ul style={{ listStyle: "none", padding: 0, margin: 0, fontSize: 14, color: "#374151" }}>
-                <li style={{ marginBottom: 8 }}><strong>학원 이름:</strong> {request.organization_name}</li>
-                {request.branch_name ? (
-                  <li style={{ marginBottom: 8 }}><strong>지점명:</strong> {request.branch_name}</li>
-                ) : null}
-                <li style={{ marginBottom: 8 }}>
-                  <strong>주소:</strong> {requestAddressLabel ?? "주소 정보 없음"}
-                </li>
-                {requestRegionLabel ? (
-                  <li style={{ marginBottom: 8 }}><strong>지역:</strong> {requestRegionLabel}</li>
-                ) : null}
-                <li><strong>신청 상태:</strong> 승인 대기</li>
-              </ul>
+          <section className={styles.next} aria-labelledby="next-title">
+            <h2 id="next-title">승인되면 이렇게 시작해요</h2>
+            <div>
+              <strong>첫 수업 등록하기</strong>
+              <p>체험수업이나 레벨테스트를 등록하고 운영 시간을 정하면 학부모 앱에 보여요.</p>
             </div>
-          ) : null}
-
-          {/* Studio 로그아웃의 canonical 경로는 /studio/sign-out 이다.
-              (studio-mypage-page · studio/access 와 같은 링크를 쓴다)
-              여기서만 쓰던 /api/auth/sign-out 은 존재하지 않는 경로라 404 였고,
-              세션이 그대로 남아 승인 대기 화면에 갇혔다. */}
-          <Link
-            href={studioPath("/studio/sign-out")}
-            prefetch={false}
-            style={{
-              display: "inline-block",
-              padding: "12px 24px",
-              background: "#e5e7eb",
-              color: "#374151",
-              borderRadius: 8,
-              textDecoration: "none",
-              fontWeight: 500
-            }}
-          >
-            로그아웃
-          </Link>
-        </>
+            <div>
+              <strong>선생님 등록하기</strong>
+              <p>승인 후 설정 › 선생님에서 이름과 연락처를 등록해요.</p>
+            </div>
+          </section>
+        </div>
       )}
     </main>
   )

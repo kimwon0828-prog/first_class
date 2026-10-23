@@ -33,82 +33,28 @@ export default async function StudioSignUpPage() {
 
   return (
     <main className={styles.page}>
-      <div className={styles.container}>
-        <header className={styles.topBar}>
-          <StudioHomeLogo logoClassName={styles.logo} priority />
-        </header>
+      <header className={styles.top}>
+        <StudioHomeLogo width={79} height={27} priority />
+        <Link href={studioPath("/studio/sign-in")} className={styles.topLink}>이미 계정이 있어요 · 로그인</Link>
+      </header>
 
-        <div className={styles.grid}>
-          <section className={styles.intro} aria-label="운영보드 소개">
-            <p className={styles.kicker}>첫수업 for Academy</p>
-            <h1 className={styles.title}>첫수업 운영보드 계정을 신청하세요</h1>
-            <p className={styles.subtitle}>
-              체험수업 신청부터 상담, 일정, 등록 전환까지 한 곳에서 관리할 수 있어요.
-            </p>
-            <p className={styles.subtle}>
-              신청서를 남겨주시면 확인 후 운영자 계정 안내를 도와드립니다.
-            </p>
+      {/* 단계 (Figma 2148:4769). 계정과 학원 정보를 한 화면에서 받으므로 두 단계를 함께 "지금"으로 보인다. */}
+      <ol className={styles.steps} aria-label="가입 단계">
+        <li data-state="current" aria-current="step"><span className={styles.stepDot}>1</span>계정 만들기</li>
+        <li className={styles.stepLine} data-state="current" aria-hidden="true" />
+        <li data-state="current"><span className={styles.stepDot}>2</span>학원 정보</li>
+        <li className={styles.stepLine} aria-hidden="true" />
+        <li><span className={styles.stepDot}>3</span>첫수업 팀 확인</li>
+      </ol>
 
-            <ul className={styles.benefits} aria-label="운영보드 장점">
-              <li className={styles.benefitItem}>
-                <span className={styles.benefitDot} aria-hidden="true" />
-                신규 신청을 한눈에 확인
-              </li>
-              <li className={styles.benefitItem}>
-                <span className={styles.benefitDot} aria-hidden="true" />
-                상담 상태와 메모 기록
-              </li>
-              <li className={styles.benefitItem}>
-                <span className={styles.benefitDot} aria-hidden="true" />
-                체험수업/레벨테스트 일정 관리
-              </li>
-              <li className={styles.benefitItem}>
-                <span className={styles.benefitDot} aria-hidden="true" />
-                등록 전환율 확인
-              </li>
-              <li className={styles.benefitItem}>
-                <span className={styles.benefitDot} aria-hidden="true" />
-                수업 노출 정보 관리
-              </li>
-            </ul>
-
-            <div className={styles.noteCard}>
-              <p className={styles.noteTitle}>안내</p>
-              <p className={styles.noteBody}>
-                신청 후 운영팀이 학원 정보를 확인합니다.
-                <br />
-                영업일 기준 1일 이내에 담당자 전화번호로 연락드리며,
-                <br />
-                승인 완료 후 운영보드를 이용하실 수 있습니다.
-              </p>
-            </div>
-          </section>
-
-          <section className={styles.formCard} aria-label="학원 계정 신청 폼">
-            <header className={styles.formHeader}>
-              <h2 className={styles.formTitle}>학원 계정 신청</h2>
-              <p className={styles.formDescription}>운영보드 사용을 위해 기본 정보를 입력해 주세요.</p>
-              <p className={styles.requiredNotice}>* 표시는 필수 입력 항목입니다.</p>
-            </header>
-            <StudioSignUpForm />
-          </section>
+      <section className={styles.card} aria-labelledby="studio-sign-up-title">
+        <div className={styles.cardHead}>
+          <h1 id="studio-sign-up-title" className={styles.title}>학원을 알려주세요</h1>
+          <p className={styles.description}>학부모 앱에 보이는 정보예요. 승인 뒤 설정에서 정보 수정을 요청할 수 있어요.</p>
         </div>
-
-        <footer className={styles.footer}>
-          <p className={styles.footerText}>
-            이미 계정이 있으신가요?{" "}
-            <Link href={studioPath("/studio/sign-in")} className={styles.footerLink}>
-              운영보드 로그인
-            </Link>
-          </p>
-          <p className={styles.footerText}>
-            가입 문의가 있으신가요?{" "}
-            <Link href="#" className={styles.footerLink}>
-              카카오톡 채널로 문의하기
-            </Link>
-          </p>
-        </footer>
-      </div>
+        <StudioSignUpForm />
+        <p className={styles.note}>첫수업 팀이 1영업일 안에 학원 정보를 확인해요. 승인되면 바로 수업을 등록할 수 있어요.</p>
+      </section>
     </main>
   )
 }
