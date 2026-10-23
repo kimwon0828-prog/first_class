@@ -16,7 +16,7 @@ export default async function StudioSignUpPage() {
   if (session) {
     const profile = await getMyProfile()
     if (profile?.role === "academy" || profile?.role === "admin") {
-      redirect(studioPath("/studio/applications"))
+      redirect(studioPath("/studio/cases"))
     }
     if (profile?.role === "parent") {
       /* 학부모 세션은 Parent origin 으로 내보낸다. 같은 host 로 보내면 되돌아온다. */

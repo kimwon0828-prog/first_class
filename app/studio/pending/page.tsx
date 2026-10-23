@@ -42,7 +42,7 @@ export default async function StudioPendingPage() {
 
   const profile = await getMyProfile()
   if (profile?.role === "academy" || profile?.role === "admin") {
-    redirect(studioPath("/studio/applications"))
+    redirect(studioPath("/studio/cases"))
   }
 
   const supabase = await getSupabaseServerClient()
