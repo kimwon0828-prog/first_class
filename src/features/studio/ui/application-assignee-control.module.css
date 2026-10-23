@@ -1,0 +1,87 @@
+/* 신청 상세 오른쪽 "담당 선생님" 카드 · 변경 팝업. STUDIO_DESIGN_SYSTEM.md §5.16. */
+.card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sv2-space-12);
+  padding: var(--sv2-space-16) var(--sv2-space-24);
+  border: 1px solid var(--sv2-line-default);
+  border-radius: var(--sv2-radius-card);
+  font-family: var(--sv2-font);
+}
+
+.title {
+  margin: 0;
+  color: var(--sv2-ink-500);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.name {
+  margin: 2px 0 0;
+  color: var(--sv2-ink-900);
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.unassigned {
+  color: var(--sv2-state-danger-fg);
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sv2-space-12);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sv2-space-8);
+}
+
+.label {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.selectWrap {
+  position: relative;
+  display: flex;
+}
+
+.selectWrap select {
+  width: 100%;
+  height: 48px;
+  padding: 0 40px 0 14px;
+  border: 1px solid var(--sv2-line-default);
+  border-radius: var(--sv2-radius-control);
+  background: var(--sv2-surface-white);
+  color: var(--sv2-ink-900);
+  font: inherit;
+  font-size: 15px;
+  appearance: none;
+}
+
+.selectWrap select:focus-visible {
+  border-color: var(--sv2-brand-700);
+  outline: none;
+}
+
+.selectIcon {
+  position: absolute;
+  top: 50%;
+  right: 14px;
+  color: var(--sv2-ink-500);
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+.messageError {
+  margin: 0;
+  padding: var(--sv2-space-12) var(--sv2-space-16);
+  border-radius: var(--sv2-radius-control);
+  background: var(--sv2-state-danger-bg);
+  color: var(--sv2-state-danger-fg);
+  font-size: 14px;
+}

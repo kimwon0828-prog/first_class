@@ -1,62 +1,64 @@
-/* 등록 상담과 같은 Section 문법을 쓴다. 새 카드 패턴을 만들지 않는다. */
+/*
+ * 신청 상세 오른쪽 "학부모 의향" (Figma 2148:5671 학부모 의견 상자). STUDIO_DESIGN_SYSTEM.md §5.16.
+ * surface/fill · 모서리 16 · 안쪽 24 · 간격 10. 학부모가 직접 남긴 값이라 수정 버튼이 없다.
+ */
 .card {
-  border: 1px solid var(--border);
-  background: var(--surface);
-  border-radius: var(--r-md);
-  padding: var(--s5);
+  border-radius: var(--sv2-radius-card);
+  background: var(--sv2-surface-fill);
+  color: var(--sv2-ink-900);
+  font-family: var(--sv2-font);
 }
 
 .sectionCard {
-  display: grid;
-  gap: var(--s2);
-  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: var(--sv2-space-24);
 }
 
 .sectionHead {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
-  gap: var(--s3);
-  flex-wrap: wrap;
+  gap: var(--sv2-space-8);
 }
 
 .sectionTitle {
   margin: 0;
-  font-size: 20px;
-  line-height: 26px;
-  font-weight: 900;
-  color: var(--text-1);
+  font-size: 15px;
+  line-height: 1.45;
+  font-weight: 700;
 }
 
 .value {
   margin: 0;
-  font-size: 16px;
-  line-height: 24px;
-  font-weight: 700;
-  color: var(--text-1);
+  font-size: 15px;
+  line-height: 1.45;
+  letter-spacing: -0.2px;
   word-break: keep-all;
 }
 
 .meta {
   margin: 0;
+  color: var(--sv2-ink-500);
   font-size: 13px;
-  line-height: 20px;
-  color: var(--text-2);
+  line-height: 1.45;
+  font-weight: 500;
   font-variant-numeric: tabular-nums;
 }
 
 .muted {
   margin: 0;
+  color: var(--sv2-ink-500);
   font-size: 14px;
-  line-height: 21px;
-  color: var(--text-3);
+  line-height: 1.45;
 }
 
 .footnote {
   margin: 0;
+  color: var(--sv2-ink-400);
   font-size: 12px;
-  line-height: 19px;
-  color: var(--text-3);
+  line-height: 1.45;
   word-break: keep-all;
 }
 
@@ -64,23 +66,23 @@
 .detailList {
   display: flex;
   flex-direction: column;
-  gap: var(--s1);
-  margin: var(--s2) 0 0;
+  gap: var(--sv2-space-4);
+  margin: 0;
 }
 
 .detailRow {
   display: flex;
-  gap: var(--s2);
+  gap: var(--sv2-space-8);
   font-size: 13px;
+  line-height: 1.45;
 }
 
 .detailLabel {
   flex: 0 0 56px;
   margin: 0;
-  color: var(--text-muted);
+  color: var(--sv2-ink-500);
 }
 
 .detailValue {
   margin: 0;
-  color: var(--text);
 }

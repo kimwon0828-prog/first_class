@@ -4,7 +4,6 @@ import { StudioFeedback } from "@/features/feedback/ui/studio-feedback"
 import { StudioQueryRetry } from "@/features/studio/ui/studio-query-retry"
 import { resolveStudioDetailReturn } from "@/features/studio/lib/studio-detail-navigation"
 import Link from "next/link"
-import { Fragment } from "react"
 import { notFound } from "next/navigation"
 
 import {
@@ -12,7 +11,7 @@ import {
   getStudioRegistrationStatusTone,
   getStudioStatusLabel
 } from "@/features/studio/lib/application-status-labels"
-import { CASE_STAGE_LABELS, getCaseDisplayStage } from "@/features/studio/lib/case-view-model"
+import { CASE_STAGE_LABELS, getCaseDisplayStage, getCaseStageTone } from "@/features/studio/lib/case-view-model"
 import { getTrialProgressState } from "@/features/studio/lib/trial-completion"
 import { requireTeacherStudioAccess } from "@/features/studio/lib/require-teacher-studio-access"
 import { getStudioApplicationAssigneeOptions } from "@/features/studio/queries/get-studio-application-assignee-options"
@@ -20,9 +19,8 @@ import { getStudioApplicationDetail } from "@/features/studio/queries/get-studio
 import { ApplicationStatusActionForm } from "@/features/studio/ui/application-status-action-form"
 import { ApplicationAssigneeControl } from "@/features/studio/ui/application-assignee-control"
 import { getStudioEntitlementsForDisplay } from "@/features/billing/queries/get-organization-entitlements"
-import { ApplicationReportPublishing, type ReportPublishBlocker } from "@/features/studio/ui/application-report-publishing"
+import type { ReportPublishBlocker } from "@/features/studio/ui/application-report-publishing"
 import { ApplicationTrialResultWorkflow } from "@/features/studio/ui/application-trial-result-workflow"
-import { ApplicationDetailIcon } from "@/features/studio/ui/application-detail-icon"
 import {
   buildExperienceReportSnapshotV4,
   hasPublishableReportContent
@@ -32,8 +30,12 @@ import { getStudioParentDecision } from "@/features/decisions/queries/get-studio
 import { getStudioRegistrationResult } from "@/features/registration/queries/get-studio-registration-result"
 import { StudioParentDecision } from "@/features/decisions/ui/studio-parent-decision"
 import { isLegacyTrialResultObservation } from "@/features/studio/lib/trial-result-options"
-import { StudioStatusBadge } from "@/features/studio/ui/studio-status-badge"
-import { getSubjectLabel } from "@/shared/constants/education-taxonomy"
+import { getApplicationDetailSteps } from "@/features/studio/lib/application-detail-workflow-state"
+import { v2ButtonClassName } from "@/features/studio/ui/v2/v2-button"
+import { V2BackIcon, V2CheckIcon, V2MessageIcon, V2PhoneIcon } from "@/features/studio/ui/v2/v2-icons"
+import { V2StatusBadge } from "@/features/studio/ui/v2/v2-status-badge"
+import { V2SubjectIcon3D } from "@/features/studio/ui/v2/v2-subject-icon-3d"
+import { getChildGradeLabel, getSubjectLabel } from "@/shared/constants/education-taxonomy"
 import { getSeoulDateTimeParts, SEOUL_TIME_ZONE } from "@/shared/lib/seoul-datetime"
 import { getStudioNavigationPathResolver } from "@/shared/lib/studio-navigation-server"
 
@@ -49,21 +51,15 @@ type StudioApplicationDetailPageProps = {
 const normalizeKoreanDayPeriod = (value: string) =>
   value.replace(/\bAM\b/gi, "오전").replace(/\bPM\b/gi, "오후")
 
+/** "10월 26일(월) 17:22" — 날짜 표기 규칙(요일을 꼭 함께, 24시간). */
 const formatDateTime = (value: string) => {
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) {
+  const parts = getSeoulDateTimeParts(value)
+  if (!parts) {
     return null
   }
 
-  return normalizeKoreanDayPeriod(new Intl.DateTimeFormat("ko-KR", {
-    year: "numeric",
-    month: "numeric",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-    hour12: true,
-    timeZone: SEOUL_TIME_ZONE
-  }).format(date))
+  const weekday = ["일", "월", "화", "수", "목", "금", "토"][parts.weekday]
+  return `${parts.month}월 ${parts.day}일(${weekday}) ${String(parts.hour).padStart(2, "0")}:${String(parts.minute).padStart(2, "0")}`
 }
 
 const getSelectedScheduleDurationMinutes = (selectedLabel: string | null) => {
@@ -106,12 +102,11 @@ const formatScheduleRange = (scheduleStartAt: string, selectedLabel: string | nu
   }
 
   const endDate = new Date(startDate.getTime() + durationMinutes * 60 * 1000)
-  const endText = normalizeKoreanDayPeriod(new Intl.DateTimeFormat("ko-KR", {
-    hour: "numeric",
-    minute: "2-digit",
-    hour12: true,
-    timeZone: SEOUL_TIME_ZONE
-  }).format(endDate))
+  const endParts = getSeoulDateTimeParts(endDate.toISOString())
+  const endText = endParts ? `${String(endParts.hour).padStart(2, "0")}:${String(endParts.minute).padStart(2, "0")}` : null
+  if (!endText) {
+    return startText
+  }
 
   return `${startText} ~ ${endText}`
 }
@@ -525,35 +520,84 @@ export default async function StudioApplicationDetailPage({ params, searchParams
           caseStageLabel: data.status === "confirmed"
             ? getTrialProgressState(data, new Date(nowIso)) === "after_scheduled_end" ? "완료 확인 필요"
               : getTrialProgressState(data, new Date(nowIso)) === "unknown" ? "신규 신청" : CASE_STAGE_LABELS[caseStage]
-            : CASE_STAGE_LABELS[caseStage]
+            : CASE_STAGE_LABELS[caseStage],
+          // 배지 tone 은 공용 표를 따른다. 확정인데 체험 시각을 모르는 신청은 위 라벨처럼 신규 신청으로 본다.
+          caseStageTone: getCaseStageTone(data.status === "confirmed" && getTrialProgressState(data, new Date(nowIso)) === "unknown" ? "new" : caseStage)
         }
       })()
     : null
 
-  const beforeSending = Boolean(data?.status === "completed" && !data.noShowAt && !data.canceledAt && !reportHistory.everSent && !reportView?.published)
+  const evidence = {
+    trialResultError: data?.trialResultLoadError ?? null,
+    report: {
+      error: reportHistory.error ? "발행 이력을 확인하지 못했습니다." : publishedReportResult.error,
+      everSent: reportHistory.everSent,
+      version: reportView?.published?.version ?? null,
+      publishedAt: reportView?.published?.publishedAt ?? null,
+      changed: reportView?.assessmentChangedSincePublish ?? false,
+      canPublish: Boolean(!reportHistory.everSent && !reportHistory.error && entitlements.canPublishParentReport && reportView?.preview && reportView.assessmentUpdatedAt && !publishedReportResult.error && reportView.blockers.length === 0)
+    },
+    parentDecision: { error: parentDecisionResult.error, value: parentDecisionResult.data?.decision ?? null, createdAt: parentDecisionResult.data?.createdAt ?? null },
+    registration: { error: registrationResult.error, result: registrationResult.data?.result ?? null, resolvedAt: registrationResult.data?.resolvedAt ?? null }
+  }
 
   return (
     <div className={styles.page}>
-      <header className={styles.header}>
-        <div className={styles.headerTopRow}>
-          <Link href={studioPath(back.pathname) + back.search} className={styles.backLink}>
-            {back.label}
-          </Link>
-        </div>
-        {!beforeSending ? <><h1 className={styles.pageTitle}>신청 상세</h1>
-        <p className={styles.pageDescription}>체험 일정부터 기록과 등록 결과까지 한눈에 확인할 수 있습니다.</p></> : null}
-      </header>
+      <Link href={studioPath(back.pathname) + back.search} className={styles.backLink}>
+        <V2BackIcon size={18} />
+        {back.label}
+      </Link>
 
       {error ? (
         <section className={styles.errorCard} role="alert">
-          <p className={styles.errorText}>{error}</p><StudioQueryRetry />
+          <p>{error}</p><StudioQueryRetry />
         </section>
       ) : null}
 
       {data && detailView ? (
         <>
+          <header className={styles.student}>
+            <span className={styles.studentIcon}>
+              <V2SubjectIcon3D categoryCode={data.reportSubjectCategory} size={40} />
+            </span>
+            <div className={styles.studentText}>
+              <div className={styles.studentLine}>
+                <h1 className={styles.studentName}>{data.childName}</h1>
+                {detailView.childGrade ? <span className={styles.studentGrade}>{getChildGradeLabel(detailView.childGrade) ?? detailView.childGrade}</span> : null}
+                <V2StatusBadge tone={detailView.caseStageTone}>{detailView.caseStageLabel}</V2StatusBadge>
+              </div>
+              <p className={styles.studentClass}>
+                {[detailView.classTitle, detailView.confirmedSchedule ?? `희망 ${detailView.requestedSchedule}`, data.assignedTeacherName ? `${data.assignedTeacherName} 선생님` : null].filter(Boolean).join(" · ")}
+              </p>
+              <p className={styles.studentGuardian}>
+                {[detailView.parentName ? `보호자 ${detailView.parentName}` : null, detailView.parentPhone, `${detailView.applicationDate} 신청`].filter(Boolean).join(" · ")}
+              </p>
+            </div>
+            <div className={styles.contactButtons}>
+              {detailView.phoneHref ? <a href={detailView.phoneHref} className={v2ButtonClassName({ variant: "outline", size: "sm" })}><V2PhoneIcon size={16} />전화</a> : null}
+              {detailView.smsHref ? <a href={detailView.smsHref} className={v2ButtonClassName({ variant: "outline", size: "sm" })}><V2MessageIcon size={16} />문자</a> : null}
+            </div>
+          </header>
+
+          <ol className={styles.stepper} aria-label="진행 단계">
+            {getApplicationDetailSteps(data, evidence).map((step, index) => (
+              <li key={step.label} className={styles.step} data-state={step.state} aria-current={step.state === "current" ? "step" : undefined}>
+                <span className={styles.stepTrack} aria-hidden="true">
+                  <span className={styles.stepLine} data-hidden={index === 0 ? "" : undefined} />
+                  <span className={styles.stepDot}>{step.state === "done" ? <V2CheckIcon size={14} /> : index + 1}</span>
+                  <span className={styles.stepLine} data-hidden={index === 5 ? "" : undefined} />
+                </span>
+                <span className={styles.stepLabel}>{step.label}<span className={styles.srOnly}>{step.state === "done" ? " 완료" : step.state === "current" ? " 지금 단계" : ""}</span></span>
+              </li>
+            ))}
+          </ol>
+
           <ApplicationTrialResultWorkflow
             application={data}
+            evidence={evidence}
+            nowIso={nowIso}
+            canWriteTrialResults={entitlements.canWriteTrialResults}
+            academyMemo={academyMemo}
             confirmationSection={data.status === "new" || data.status === "reviewing" ? <ApplicationStatusActionForm
               key={`${data.id}:${data.updatedAt}`}
               applicationId={data.id} currentStatus={data.status} variant="case-detail"
@@ -562,157 +606,48 @@ export default async function StudioApplicationDetailPage({ params, searchParams
                 assignedTeacherId: data.assignedTeacherId, teachers: assigneeOptionsResult.data,
                 teachersError: assigneeOptionsResult.error, scheduleHref: studioPath("/studio/schedule")}}
             /> : null}
-            headerContent={
-              <div key="application-header" className={styles.caseHeader}>
-                <div className={styles.caseHeaderTop}>
-                  <div className={styles.caseIdentity}>
-                    <div className={styles.identityLine}>
-                      {beforeSending ? <h1 className={styles.caseTitle}>{data.childName}<span className={styles.caseTitleSub}>{detailView.childGrade ? `· ${detailView.childGrade}` : ""}</span></h1> : <h2 className={styles.caseTitle}>{data.childName}<span className={styles.caseTitleSub}>{detailView.childGrade ? `· ${detailView.childGrade}` : ""}</span></h2>}
-                      <StudioStatusBadge tone={data.status === "canceled" ? "red" : "green"}>
-                        {beforeSending ? "체험 완료" : detailView.caseStageLabel}
-                      </StudioStatusBadge>
-                      {beforeSending ? <StudioStatusBadge tone="gray">{reportHistory.error || publishedReportResult.error ? "리포트 상태 확인 필요" : "아직 보내지 않음"}</StudioStatusBadge> : null}
-                    </div>
-                    <p className={styles.caseSubline}>{detailView.classTitle}{data.academyName ? ` · ${data.academyName}` : ""}</p>
-                    <p className={styles.caseGuardian}>
-                      <ApplicationDetailIcon name="calendar" />
-                      {detailView.confirmedSchedule ? `${detailView.confirmedSchedule} · 확정` : `희망 · ${detailView.requestedSchedule}`}
-                    </p>
-                  </div>
-                  <div className={styles.headerControls}>
-                    <div className={styles.caseActions}>
-                      {detailView.phoneHref ? <a href={detailView.phoneHref} className={styles.actionButtonTint}><ApplicationDetailIcon name="phone" />전화하기</a> : null}
-                      {detailView.smsHref ? <a href={detailView.smsHref} className={styles.actionButtonSecondary}><ApplicationDetailIcon name="message" />문자하기</a> : null}
-                    </div>
-                    {data.status !== "new" && data.status !== "reviewing" ? <ApplicationAssigneeControl
-                          applicationId={data.id}
-                          currentAssignedTeacherId={data.assignedTeacherId}
-                          currentAssignedTeacherName={data.assignedTeacherName}
-                          options={assigneeOptionsResult.data}
-                          optionsError={assigneeOptionsResult.error}
-                        /> : <a href="#confirm-schedule" className={styles.actionButtonTint}>일정 확정하기</a>}
-                  </div>
-                </div>
-              </div>
-            }
-            evidence={{
-              trialResultError: data.trialResultLoadError ?? null,
-              report: {
-                error: reportHistory.error ? "발행 이력을 확인하지 못했습니다." : publishedReportResult.error,
-                everSent: reportHistory.everSent,
-                version: reportView?.published?.version ?? null,
-                publishedAt: reportView?.published?.publishedAt ?? null,
-                changed: reportView?.assessmentChangedSincePublish ?? false,
-                canPublish: Boolean(!reportHistory.everSent && !reportHistory.error && entitlements.canPublishParentReport && reportView?.preview && reportView.assessmentUpdatedAt && !publishedReportResult.error && reportView.blockers.length === 0)
-              },
-              parentDecision: { error: parentDecisionResult.error, value: parentDecisionResult.data?.decision ?? null, createdAt: parentDecisionResult.data?.createdAt ?? null },
-              registration: { error: registrationResult.error, result: registrationResult.data?.result ?? null, resolvedAt: registrationResult.data?.resolvedAt ?? null }
-            }}
-            nowIso={nowIso}
-            canWriteTrialResults={entitlements.canWriteTrialResults}
-            academyMemo={academyMemo}
+            assigneeSection={data.status !== "new" && data.status !== "reviewing" && data.status !== "canceled" ? <ApplicationAssigneeControl
+              applicationId={data.id}
+              currentAssignedTeacherId={data.assignedTeacherId}
+              currentAssignedTeacherName={data.assignedTeacherName}
+              options={assigneeOptionsResult.data}
+              optionsError={assigneeOptionsResult.error}
+            /> : null}
+            report={reportView && (reportView.preview || reportView.published || reportView.publishedReportLoadError || reportView.blockers.length > 0) ? {
+              applicationId: data.id,
+              everSent: reportHistory.everSent,
+              preview: reportView.preview,
+              publishedSnapshot: reportView.published?.content ?? null,
+              publishedVersion: reportView.published?.version ?? null,
+              publishedAt: reportView.published?.publishedAt ?? null,
+              publishedReportLoadError: reportHistory.error ? "발송 이력을 확인하지 못했습니다." : reportView.publishedReportLoadError,
+              assessmentUpdatedAt: reportView.assessmentUpdatedAt,
+              assessmentChangedSincePublish: reportView.assessmentChangedSincePublish,
+              blockers: reportView.blockers,
+              canPublishReport: entitlements.canPublishParentReport
+            } : null}
             feedbackSection={<StudioFeedback {...feedbackResult} />}
-            parentDecisionSection={
-              <StudioParentDecision
-                key="parent-decision"
-                titleIcon={<ApplicationDetailIcon name="thought" />}
-                decision={parentDecisionResult.data}
-                loadError={parentDecisionResult.error}
-              />
-            }
-            reportSection={
-              reportView &&
-              (reportView.preview ||
-                reportView.published ||
-                reportView.publishedReportLoadError ||
-                reportView.blockers.length > 0) ? (
-                <ApplicationReportPublishing
-                  everSent={reportHistory.everSent}
-                  key="parent-report"
-                  embedded
-                  actionsOnly={beforeSending}
-                  emphasizePublish={(!reportView.published || reportView.assessmentChangedSincePublish) && data.status === "completed" && data.registrationStatus !== "enrolled" && data.registrationStatus !== "not_enrolled" && !registrationResult.data && !registrationResult.error}
-                  applicationId={data.id}
-                  preview={reportView.preview}
-                  publishedSnapshot={reportView.published?.content ?? null}
-                  publishedVersion={reportView.published?.version ?? null}
-                  publishedAt={reportView.published?.publishedAt ?? null}
-                  publishedReportLoadError={reportHistory.error ? "발송 이력을 확인하지 못했습니다." : reportView.publishedReportLoadError}
-                  assessmentUpdatedAt={reportView.assessmentUpdatedAt}
-                  assessmentChangedSincePublish={reportView.assessmentChangedSincePublish}
-                  blockers={reportView.blockers}
-                  canPublishReport={entitlements.canPublishParentReport}
-                />
-              ) : null
-            }
-            referenceSections={
-              <section key="application-reference" className={styles.applicationInfoSection} aria-label="신청 참고 정보">
-                <h2 className={styles.applicationInfoTitle}><ApplicationDetailIcon name="info" />신청 참고 정보</h2>
-                <dl className={styles.referenceGrid}>
+            parentDecisionSection={<StudioParentDecision key="parent-decision" decision={parentDecisionResult.data} loadError={parentDecisionResult.error} />}
+            infoSection={
+              <section className={styles.info} aria-labelledby="application-info-title">
+                <h2 id="application-info-title">신청 정보</h2>
+                <dl>
                   {[
+                    { label: "체험 일정", value: detailView.confirmedSchedule ? `${detailView.confirmedSchedule} 확정` : `희망 ${detailView.requestedSchedule}` },
+                    { label: "학교", value: detailView.childSchool },
                     { label: "관심 과목", value: detailView.interestSubjects },
                     { label: "학습 수준", value: detailView.currentLevel },
-                    { label: "신청 시 희망 일정", value: detailView.normalizedPreferredRegularSchedule },
+                    { label: "정규 희망 시간", value: detailView.normalizedPreferredRegularSchedule },
                     { label: "학생 메모", value: detailView.childNotes },
                     { label: "학부모 메모", value: detailView.parentMemo },
-                    { label: "희망 사항", value: detailView.normalizedGoalNote }
-                  ].filter(item => item.value).map(item => <div key={item.label} className={styles.infoCell}>
-                    <dt className={styles.summaryLabel}>{item.label}</dt><dd className={styles.summaryValueMultiline}>{item.value}</dd>
-                  </div>)}
+                    { label: "희망 사항", value: detailView.normalizedGoalNote },
+                    { label: "신청일", value: detailView.applicationDateDetail }
+                  ].filter((item) => item.value).map((item) => (
+                    <div key={item.label}><dt>{item.label}</dt><dd>{item.value}</dd></div>
+                  ))}
                 </dl>
-                <p className={styles.referenceHint}>신청 당시 입력한 정보입니다.</p>
+                <Link href={studioPath("/studio/schedule")} className={styles.infoLink}>일정 관리 →</Link>
               </section>
-            }
-            sidebarContent={<Fragment key="application-sidebar">
-        <section key="basic-info" className={styles.applicationInfoSection} aria-labelledby="application-info-title">
-            <div className={styles.applicationInfoHeader}>
-              <h2 id="application-info-title" className={styles.applicationInfoTitle}>
-                <ApplicationDetailIcon name="person" />학생 / 학부모 정보
-              </h2>
-            </div>
-            <div className={styles.applicationInfoBody}>
-              <dl className={styles.applicationInfoGrid}>
-                <div className={styles.infoCell}><dt className={styles.summaryLabel}>학생</dt><dd className={styles.summaryValue}>{data.childName}{detailView.childGrade ? ` · ${detailView.childGrade}` : ""}</dd></div>
-                {detailView.parentName ? (
-                  <div className={styles.infoCell}>
-                    <dt className={styles.summaryLabel}>보호자</dt>
-                    <dd className={styles.summaryValue}>{detailView.parentName}</dd>
-                  </div>
-                ) : null}
-                {detailView.parentPhone ? (
-                  <div className={styles.infoCell}>
-                    <dt className={styles.summaryLabel}>연락처</dt>
-                    <dd className={styles.summaryValueStrong}>{detailView.parentPhone}</dd>
-                  </div>
-                ) : null}
-                <div className={styles.infoCell}>
-                  <dt className={styles.summaryLabel}>신청일</dt>
-                  <dd className={styles.summaryValue}>{detailView.applicationDateDetail}</dd>
-                </div>
-
-
-                {detailView.childSchool ? (
-                  <div className={styles.infoCell}>
-                    <dt className={styles.summaryLabel}>학교</dt>
-                    <dd className={styles.summaryValue}>{detailView.childSchool}</dd>
-                  </div>
-                ) : null}
-              </dl>
-
-
-
-
-            </div>
-        </section>
-        {!beforeSending ? <section id="detail-trial-schedule" key="trial-schedule" className={styles.applicationInfoSection} aria-label="체험 일정">
-          <div className={styles.scheduleHead}><h2 className={styles.applicationInfoTitle}><ApplicationDetailIcon name="calendar" />체험 일정</h2>
-            <StudioStatusBadge tone={data.status === "canceled" ? "red" : detailView.confirmedSchedule ? "green" : "gray"}>
-              {data.status === "canceled" ? detailView.caseStageLabel : data.status === "completed" ? "완료" : detailView.confirmedSchedule ? "확정" : "미확정"}
-            </StudioStatusBadge>
-          </div>
-          <p className={styles.scheduleDate}>{detailView.confirmedSchedule ?? `희망 · ${detailView.requestedSchedule}`}</p>
-          <Link href={studioPath("/studio/schedule")} className={styles.caseInlineLink}>일정 관리 →</Link>
-        </section> : <Link id="detail-trial-schedule" href={studioPath("/studio/schedule")} className={styles.caseInlineLink}>일정 관리 →</Link>}</Fragment>
             }
           />
         </>
