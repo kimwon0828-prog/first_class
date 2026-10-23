@@ -4,7 +4,7 @@ const root=path.resolve(__dirname,'..');
 function load(file,deps){const m={exports:{}};const code=ts.transpileModule(fs.readFileSync(path.join(root,file),'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;new Function('require','module','exports',code)(name=>{if(!(name in deps))throw Error('unmocked '+name);return deps[name]},m,m.exports);return m.exports;}
 const pending=()=>{let resolve;return {promise:new Promise(r=>resolve=r),resolve:v=>resolve(v)}};
 const id='11111111-1111-4111-8111-111111111111';
-const item={id,title:'class',targetAge:'elem_3',trialPrice:0,trialPriceConfirmed:false,organization:{id:'org',name:'academy'},assignmentMode:'preassigned'};
+const item={id,title:'class',targetAge:'elem_3',trialPrice:0,trialPriceConfirmed:false,organization:{id:'org',name:'academy',latitude:37.65,longitude:127.06},assignmentMode:'preassigned'};
 let calls=[],visible=true,visibilityError=null,detail=async()=>({data:item,error:null}),slots=async()=>({data:[{optionId:'open',startAt:'2030-01-01',endAt:'2030-01-02',isClosed:false,remainingCount:1},{optionId:'secret',hidden:true}],error:null});
 let context=async()=>({classes:[item],subjectCatalog:[],error:null}),academies=async()=>[];
 const feedback={chips:[{id:'clear',count:2}]};
@@ -31,10 +31,11 @@ stub['@/features/native/server/catalog-slots']=load('src/features/native/server/
  '@/features/applications/lib/public-class-slots':stub['@/features/applications/lib/public-class-slots'],
  '@/features/applications/queries/get-public-class-available-slots':{getPublicClassesAvailableSlots:async ids=>new Map(await Promise.all(ids.map(async id=>[id,await slots()])))},
  '@/features/native/server/academy-cards':stub['@/features/native/server/academy-cards']});
+stub['@/features/native/server/catalog-projection']=load('src/features/native/server/catalog-projection.ts',stub);
 const {GET}=load('app/api/native/catalog/[...path]/route.ts',stub);
 const get=(view)=>GET(new Request('https://example.invalid/api/native/catalog/classes/'+id+(view?'?view='+view:'')),{params:Promise.resolve({path:['classes',id]})});
 (async()=>{
- const summary=await get('summary');assert.equal(summary.status,200);const body=await summary.json();assert.equal(body.title,'class');assert.equal(body.trialPriceConfirmed,false);assert.ok(!('slots' in body));assert.deepEqual(calls,['detail'],'summary never waits for slots/feedback');
+ const summary=await get('summary');assert.equal(summary.status,200);const body=await summary.json();assert.equal(body.title,'class');assert.deepEqual(body.mapLocation,{latitude:37.65,longitude:127.06});assert.equal(body.trialPriceConfirmed,false);assert.ok(!('slots' in body));assert.deepEqual(calls,['detail'],'summary never waits for slots/feedback');
  calls=[];const live=await get('availability');assert.equal(live.status,200);const liveBody=await live.json();assert.deepEqual(liveBody.slots.map(s=>s.optionId),['open']);assert.equal(liveBody.slots[0].remainingCount,1);assert.ok(!calls.includes('detail'));assert.ok(!('title' in liveBody));
  visible=false;assert.equal((await get('availability')).status,404);visible=true;visibilityError={message:'permission'};assert.equal((await get('availability')).status,503);visibilityError=null;
  calls=[];const delayed=pending();detail=()=>delayed.promise;const full=get();await new Promise(r=>setImmediate(r));assert.ok(calls.includes('slots'));assert.ok(calls.includes('feedback'),'legacy independent reads start before detail resolves');delayed.resolve({data:item,error:null});const old=await full;assert.equal(old.status,200);const oldBody=await old.json();assert.equal(oldBody.title,'class');assert.equal(oldBody.slots.length,1);assert.equal(oldBody.feedback.chips[0].count,2);

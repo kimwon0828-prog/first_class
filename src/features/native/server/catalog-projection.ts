@@ -11,5 +11,14 @@ export const projectNativeCatalogClass = (item: ClassSummary) => ({
  organizationId:item.organization?.id ?? null, locationLabel:[item.organization?.sigungu,item.organization?.bname].filter(Boolean).join(" "),
  description:item.description, recommendedFor:item.recommendedFor, experiencePoints:item.experiencePoints,
  curriculum:item.curriculum, teacherIntro:item.teacherIntro, classFormat:item.classFormat,
+ mapLocation:projectNativeMapLocation(item.organization?.latitude,item.organization?.longitude),
  address:[item.organization?.address,item.organization?.addressDetail].filter(Boolean).join(" ")
 })
+
+// Never substitute a default city pin when a stored coordinate is absent or invalid.
+export function projectNativeMapLocation(latitude: unknown, longitude: unknown) {
+ if (typeof latitude !== "number" || typeof longitude !== "number" ||
+     !Number.isFinite(latitude) || !Number.isFinite(longitude) ||
+     Math.abs(latitude)>90 || Math.abs(longitude)>180 || (latitude===0 && longitude===0)) return null
+ return {latitude,longitude}
+}
