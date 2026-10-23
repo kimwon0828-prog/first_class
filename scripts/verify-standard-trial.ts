@@ -29,7 +29,11 @@ import {
 import { readFileSync } from "node:fs"
 import { join } from "node:path"
 
+import { buildRenewalBillingPeriod } from "@/features/billing/lib/billing-period"
 import { resolveStudioEntitlements } from "@/features/billing/lib/entitlements"
+import { decideRenewal } from "@/features/billing/lib/renewal/renewal-schedule"
+import { buildRenewalBillingAttempt, buildTrialFirstChargeAttempt } from "@/features/billing/lib/toss/identifiers"
+import { TOSS_ORDER_ID_MAX_LENGTH, TOSS_ORDER_ID_PATTERN } from "@/features/billing/lib/toss/contract"
 import { checkTrialCardRegistration } from "@/features/billing/lib/standard-trial"
 import { buildTrialBannerMessage, describeTrialStatus } from "@/features/billing/lib/standard-trial"
 import {
@@ -316,6 +320,57 @@ console.log("\n[8] 카드 등록(자동 결제 동의)")
   const ui = read("src/features/billing/ui/trial-card-registration.tsx")
   check("화면: 동의 전에는 [카드 등록하기]를 누를 수 없다", ui.includes("disabled={!agreed || pending}"))
   check("화면: 결제일 · 금액 · 자동 결제 · 해지를 말한다", ui.includes("매월 자동 결제") && ui.includes("그 전에 해지하면 결제되지 않아요") && ui.includes("첫 결제일"))
+}
+
+console.log("\n[9] 첫 결제 실행(갱신 크론)")
+{
+  const ORG = "0f000000-0000-4000-8000-0000000000aa"
+  const end = "2027-01-20T15:00:00.000Z" // 2027-01-21 00:00 KST
+  const first = buildTrialFirstChargeAttempt(ORG, end)
+  check("주문번호가 Toss 규칙을 지킨다", TOSS_ORDER_ID_PATTERN.test(first.orderId) && first.orderId.length <= TOSS_ORDER_ID_MAX_LENGTH, first.orderId)
+  check("같은 (조직, 종료)면 같은 키(크론 중복 · 재시도에 결제 한 번)", JSON.stringify(first) === JSON.stringify(buildTrialFirstChargeAttempt(ORG, end)))
+  const retry = buildRenewalBillingAttempt(ORG, end, 0)
+  check(
+    "첫 결제 실패 뒤 유예 재시도(a0)와 키가 겹치지 않는다",
+    first.orderId !== retry.orderId && first.attemptKey !== retry.attemptKey && first.idempotencyKey !== retry.idempotencyKey
+  )
+
+  const period = buildRenewalBillingPeriod(at(end), resolveTrialFirstChargeAnchorDay(at(end)))
+  check("새 기간은 체험 종료 시각부터", period.periodStart === end)
+  check("새 기간 끝 = 한 달 뒤 같은 날 00:00 KST(2027-02-21)", period.periodEnd === "2027-02-20T15:00:00.000Z", period.periodEnd)
+  check("기준일 21일", period.anchorDay === 21)
+  const monthEnd = buildRenewalBillingPeriod(at("2027-03-30T15:00:00.000Z"), resolveTrialFirstChargeAnchorDay(at("2027-03-30T15:00:00.000Z")))
+  check("월말 종료(3월 31일 00:00 KST) → 4월 30일 00:00 KST, 기준일 31", monthEnd.periodEnd === "2027-04-29T15:00:00.000Z" && monthEnd.anchorDay === 31, monthEnd.periodEnd)
+
+  // 첫 결제 실패 → past_due(유예 = 종료 + 3일). 그 뒤 재시도는 기존 갱신 규칙이 한다.
+  const pastDue = { subscriptionStatus: "past_due", currentPeriodEnd: end, gracePeriodEnd: "2027-01-23T15:00:00.000Z", cancelAtPeriodEnd: false }
+  const retryAt = (iso: string) => {
+    const decision = decideRenewal(pastDue, at(iso))
+    return decision.due ? `a${decision.attemptNumber}` : decision.reason
+  }
+  check("종료 다음 날 12:00 KST → 재시도 a0", retryAt("2027-01-21T03:00:00Z") === "a0")
+  check("이틀째 12:00 KST → 재시도 a1", retryAt("2027-01-22T03:00:00Z") === "a1")
+  check("사흘째 12:00 KST → 재시도 a2(유예는 1월 24일 00:00 KST까지)", retryAt("2027-01-23T03:00:00Z") === "a2")
+  check("나흘째 → 유예 끝(무료)", retryAt("2027-01-24T03:00:00Z") === "grace_over")
+  // 체험 중(trialing)은 기존 갱신 규칙의 대상이 아니다 — 첫 결제는 위 규칙만 한다.
+  check(
+    "trialing 은 기존 갱신 규칙으로 결제되지 않는다",
+    !decideRenewal({ subscriptionStatus: "trialing", currentPeriodEnd: end, gracePeriodEnd: null, cancelAtPeriodEnd: false }, at("2027-01-21T03:00:00Z")).due
+  )
+
+  const read = (path: string) => readFileSync(join(process.cwd(), path), "utf8")
+  const candidates = read("src/features/billing/lib/renewal/renewal-candidates.ts")
+  const trialQuery = candidates.slice(candidates.indexOf("export const findTrialFirstChargeCandidates"))
+  check("후보: 해지 예약(cancel_at_period_end) 제외를 조회에서 고정한다", trialQuery.includes('.eq("cancel_at_period_end", false)'))
+  check("후보: 자동 체험만 고른다", trialQuery.includes('.eq("trial_origin", "signup_approval")') && trialQuery.includes('.eq("subscription_status", "trialing")'))
+  check("후보: 동의는 register_card 완료 세션에서 읽는다", trialQuery.includes('.eq("purpose", "register_card")') && trialQuery.includes('.eq("status", "completed")'))
+  check("후보: 활성 카드만", trialQuery.includes('.eq("billing_key_status", "active")'))
+  const renewals = read("src/features/billing/actions/run-billing-renewals.ts")
+  const trialRun = renewals.slice(renewals.indexOf("// ── 스탠다드 무료 체험 첫 결제"))
+  check("실행: decideTrialFirstCharge 가 due 일 때만 결제한다", trialRun.includes("decideTrialFirstCharge(candidate, now)") && trialRun.indexOf("decideTrialFirstCharge") < trialRun.indexOf("chargeSubscription("))
+  check("실행: 금액은 카탈로그", trialRun.includes("amount: plan.amount") && trialRun.includes("BILLING_PLANS.standard"))
+  check("실행: renewal_succeeded · 기준일 = 종료 시각(KST)의 일", trialRun.includes('eventType: "renewal_succeeded"') && trialRun.includes("resolveTrialFirstChargeAnchorDay(trialEndsAt)"))
+  check("실행: 로컬 가드를 거친 runtime 이 ready 일 때만", renewals.includes('if (runtime.status !== "ready")') && renewals.indexOf('if (runtime.status !== "ready")') < renewals.indexOf("findTrialFirstChargeCandidates(now)"))
 }
 
 if (failures > 0) {

@@ -101,6 +101,23 @@ export const buildRenewalBillingAttempt = (
   }
 }
 
+/**
+ * 스탠다드 무료 체험의 첫 결제(마지막 체험일).
+ *
+ * (조직, 체험 종료 시각) 하나에 한 번이다. 갱신 결제(fsr-…-aN)와 이름을 나눈다 — 첫 결제가
+ * 실패해 유예(past_due)로 넘어가면 그다음 재시도는 기존 갱신 규칙이 같은 종료 시각으로
+ * a0, a1 … 를 만든다. 같은 이름을 쓰면 첫 재시도가 이미 실패한 시도와 겹쳐 POST 되지 않는다.
+ */
+export const buildTrialFirstChargeAttempt = (organizationId: string, trialEndsAt: string): BillingAttempt => {
+  const orderId = assertOrderId(`fst-${compactUuid(organizationId)}-${compactInstant(trialEndsAt)}`)
+
+  return {
+    attemptKey: `trial-first:${organizationId}:${new Date(trialEndsAt).toISOString()}`,
+    orderId,
+    idempotencyKey: assertIdempotencyKey(orderId)
+  }
+}
+
 /** 주문명. 명세서에 그대로 찍히므로 조직명 같은 식별 정보를 넣지 않는다. */
 export const buildBillingOrderName = (planName: string) => `첫수업 ${planName} 구독`
 

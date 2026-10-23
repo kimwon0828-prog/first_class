@@ -48,7 +48,8 @@ export const decideRenewal = (subject: RenewalSubject, now: Date): RenewalDecisi
     return { due: false, reason: "cancel_at_period_end" }
   }
 
-  // trialing 은 자동결제 대상이 아니다. 수동으로 넣은 PoC 구독이 여기에 해당한다.
+  // trialing 은 이 규칙의 대상이 아니다. 수동 PoC 구독은 결제하지 않고, 자동 체험(승인 90일)의
+  // 첫 결제는 decideTrialFirstCharge(standard-trial.ts)가 마지막 체험일에 따로 판정한다.
   if (subject.subscriptionStatus !== "active" && subject.subscriptionStatus !== "past_due") {
     return { due: false, reason: "status_not_renewable" }
   }
