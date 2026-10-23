@@ -373,6 +373,32 @@ console.log("\n[9] 첫 결제 실행(갱신 크론)")
   check("실행: 로컬 가드를 거친 runtime 이 ready 일 때만", renewals.includes('if (runtime.status !== "ready")') && renewals.indexOf('if (runtime.status !== "ready")') < renewals.indexOf("findTrialFirstChargeCandidates(now)"))
 }
 
+console.log("\n[10] 환불 정책 · 파트너 랜딩의 체험 조항")
+{
+  const read = (path: string) => readFileSync(join(process.cwd(), path), "utf8")
+  const refund = read("app/(legal)/refund-policy/page.tsx")
+  check("환불 정책: 무료 체험 조항이 있다", refund.includes('title: "제3조 (Standard 무료 체험)"'))
+  check(
+    "환불 정책: 일수는 코드 상수에서 읽는다(90 · 30 · 3)",
+    refund.includes("{STANDARD_TRIAL_DAYS}일 동안") && refund.includes("체험 종료 {TRIAL_CARD_WINDOW_DAYS}일 전부터") && refund.includes("{BILLING_GRACE_PERIOD_DAYS}일 동안")
+  )
+  check(
+    "환불 정책: 동의 · 등록 시 결제 없음 · 마지막 날 결제 · 그 전 해지 시 결제 없음 · 자동 전환",
+    refund.includes("이에 동의한 경우에만 등록") &&
+      refund.includes("등록 시점에는") &&
+      refund.includes("체험 마지막 날에 첫 이용료가 결제") &&
+      refund.includes("결제 전에 해지하면 결제되지 않으며") &&
+      refund.includes("자동으로 Free 플랜으로")
+  )
+  check("환불 정책: 조항 번호가 이어진다(제1~8조)", [1, 2, 3, 4, 5, 6, 7, 8].every((n) => refund.includes(`title: "제${n}조 (`)) && !refund.includes("제9조"))
+  check("환불 정책: 해지 조항의 환불 참조가 제5조 제4항으로 옮겨졌다", refund.includes("제5조 제4항") && !refund.includes("제4조 제4항"))
+  const landing = read("app/partner/PartnerLanding.tsx")
+  check("랜딩: 체험 일수 · 카드 창 · 유예는 코드 상수", landing.includes("STANDARD_TRIAL_DAYS") && landing.includes("TRIAL_CARD_WINDOW_DAYS") && landing.includes("BILLING_GRACE_PERIOD_DAYS"))
+  check("랜딩: 가격은 카탈로그(리터럴 49,000 · 39,000 없음)", !/[34]9,000/.test(landing) && landing.includes("BILLING_PLANS.standard.amount"))
+  check("랜딩: 부가세 · 인원 제한 문구 없음", !landing.includes("부가세") && !/선생님\s*\d+\s*명까지/.test(landing))
+  check("랜딩: 카드 등록 동의 뒤에만 결제 · 그 전 해지 시 결제 없음", landing.includes("동의한 경우에만") && landing.includes("그 전에 해지하면 결제되지 않습니다"))
+}
+
 if (failures > 0) {
   console.error(`FAIL: 체험 규칙 검증 실패 ${failures}건`)
   process.exit(1)

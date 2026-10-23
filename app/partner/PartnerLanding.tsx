@@ -5,7 +5,8 @@ import PartnerCopyButton from "./PartnerCopyButton"
 import PartnerInquiryForm from "./PartnerInquiryForm"
 import PartnerLossCalculator from "./PartnerLossCalculator"
 import styles from "./partner.module.css"
-import { BILLING_PLANS } from "@/features/billing/lib/plan-catalog"
+import { BILLING_GRACE_PERIOD_DAYS, BILLING_PLANS } from "@/features/billing/lib/plan-catalog"
+import { STANDARD_TRIAL_DAYS, TRIAL_CARD_WINDOW_DAYS } from "@/features/billing/lib/standard-trial"
 import { COMPANY_ADDRESS, COMPANY_INFO } from "@/shared/config/company-info"
 import { getStudioCrossProductHrefResolver } from "@/shared/lib/cross-product-navigation-server"
 
@@ -23,6 +24,7 @@ const navItems = [
 const STANDARD_PRICE_TEXT = `월 ${BILLING_PLANS.standard.amount.toLocaleString("ko-KR")}원`
 
 const stripItems = [
+  `입점 승인 후 Standard ${STANDARD_TRIAL_DAYS}일 무료 체험`,
   "체험 기록과 학부모 리포트는 Free로 시작",
   `등록 전환 분석은 Standard ${STANDARD_PRICE_TEXT}`
 ]
@@ -637,7 +639,7 @@ export default async function PartnerLanding() {
               <p className={styles.pN}>등록 전환 분석 · 미등록 사유 분석</p>
               <div className={styles.pA}>
                 <span className={styles.pFree}>{STANDARD_PRICE_TEXT}</span>
-                <span className={styles.pCycle}>월 단위 정기결제</span>
+                <span className={styles.pCycle}>승인 후 {STANDARD_TRIAL_DAYS}일 무료 · 월 단위 정기결제</span>
               </div>
               <ul className={styles.pList}>
                 {standardFeatures.map((item) => (
@@ -655,6 +657,14 @@ export default async function PartnerLanding() {
             작은 회색 각주로 숨기지 않는다(카드사 심사 요건).
           */}
           <div className={styles.pTerms}>
+            <p>
+              <b>입점 승인 후 {STANDARD_TRIAL_DAYS}일 동안 Standard를 무료로 쓸 수 있습니다.</b> 체험을
+              시작할 때 카드를 등록하지 않으며, 카드는 체험 종료 {TRIAL_CARD_WINDOW_DAYS}일 전부터 등록할 수
+              있습니다. 카드를 등록하고 동의한 경우에만 체험 마지막 날 첫 이용료({STANDARD_PRICE_TEXT})가
+              결제되고, 그 전에 해지하면 결제되지 않습니다. 카드를 등록하지 않으면 체험이 끝날 때 Free
+              플랜으로 자동 전환됩니다. 첫 결제가 되지 않으면 {BILLING_GRACE_PERIOD_DAYS}일 동안 다시
+              시도합니다.
+            </p>
             <p>
               <b>Standard는 월 단위 정기결제 상품입니다.</b> 결제일을 기준으로 1개월 동안 이용할 수
               있으며, 해지하기 전까지 매월 자동 결제됩니다.
