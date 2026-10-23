@@ -74,18 +74,10 @@ export const StudioScheduleDayPanel = ({
     return status === "closed" || bookingStatus === "closed" ? "amber" as const : "green" as const
   }
 
-  if (!day) {
-    return (
-      <section className={styles.panel}>
-        <div className={styles.header}>
-          <div className={styles.headerText}>
-            <h3 className={styles.title}>날짜 상세</h3>
-            <p className={styles.description}>캘린더에서 날짜를 선택하면 해당 날짜의 예약 가능 일정을 볼 수 있습니다.</p>
-          </div>
-        </div>
-      </section>
-    )
-  }
+  // 예약 시간이 하나도 없는 날짜도 이 날짜에만 시간을 추가할 수 있다(추가 액션은 요일 · 운영일을 묻지 않는다).
+  // 그래서 빈 날짜도 같은 패널을 그리고, 날짜 전체 마감 버튼만 감춘다.
+  const isEmptyDay = !day || day.items.length === 0
+  const items = day?.items ?? []
 
   const closeDateDisabled = isPending || isPast || oneTimeItems.length === 0 || isDateClosed || hasWeeklyItems
   const reopenDateDisabled = isPending || isPast || oneTimeItems.length === 0 || !isDateClosed || hasWeeklyItems
@@ -95,10 +87,12 @@ export const StudioScheduleDayPanel = ({
       <div className={styles.header}>
         <div className={styles.headerText}>
           <h3 className={styles.title}>{formatDateHeadline(selectedDate)}</h3>
-          <p className={styles.description}>이 날짜의 예약 가능 시간 · 총 {day.items.length}타임</p>
+          <p className={styles.description}>
+            {isEmptyDay ? "이 날짜에는 아직 예약 가능 시간이 없어요." : `이 날짜의 예약 가능 시간 · 총 ${items.length}타임`}
+          </p>
         </div>
         {/* 날짜 전체 마감 / 다시 열기는 지금 상태에 맞는 하나만 보인다. 실행 조건은 그대로다. */}
-        {isDateClosed ? (
+        {isEmptyDay ? null : isDateClosed ? (
           <button
             type="button"
             className={v2ButtonClassName({ variant: "outline", size: "sm" })}
@@ -151,7 +145,7 @@ export const StudioScheduleDayPanel = ({
       {message ? <p className={styles.message} role="status">{message}</p> : null}
       {error ? <p className={styles.errorText} role="alert">{error}</p> : null}
 
-      {day.items.map((item) => (
+      {items.map((item) => (
         <article key={item.classScheduleId} className={styles.timeCard}>
           <div className={styles.timeHeader}>
             <strong className={styles.timeHeadline}>
