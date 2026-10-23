@@ -6,7 +6,6 @@ import { getSession } from "@/features/auth/lib/session"
 import { StudioHomeLogo } from "@/features/studio/ui/studio-home-logo"
 import { StudioSignUpForm } from "@/features/studio/ui/studio-sign-up-form"
 import { getSupabaseServerClient } from "@/integrations/supabase/server"
-import { formatAdministrativeRegionLabel } from "@/features/location/lib/region-selection"
 import { getParentCrossProductHref } from "@/shared/config/cross-product-navigation"
 import { getRequestHostname } from "@/shared/lib/request-host"
 import { V2ClockIcon } from "@/features/studio/ui/v2/v2-icons"
@@ -94,19 +93,11 @@ export default async function StudioPendingPage() {
   }
 
   const request = (signupRequest as SignupRequestRow | null) ?? null
-  // 신청자가 입력한 주소를 우선 보여주고, 행정지역 metadata 가 있으면 함께 노출한다.
-  // legacy 학원가 값으로 fallback 하지 않는다.
+  // 신청한 주소는 신청자가 입력한 기본 주소 + 상세 주소만 보인다(우편번호 · 행정구역 꼬리 없이).
   const requestAddressLabel = request
-    ? [request.postal_code ? `(${request.postal_code})` : null, request.address_line1, request.address_line2]
+    ? [request.address_line1, request.address_line2]
         .filter((value): value is string => Boolean(value && value.trim()))
         .join(" ") || null
-    : null
-  const requestRegionLabel = request
-    ? formatAdministrativeRegionLabel({
-        sido: request.sido,
-        sigungu: request.sigungu,
-        bname: request.bname
-      })
     : null
   const isRejected = request?.status === "rejected"
   const rejectionReason = request?.rejection_reason?.trim() || "운영팀에 문의해 주세요."
@@ -180,7 +171,7 @@ export default async function StudioPendingPage() {
             {request ? (
               <dl>
                 <div><dt>학원</dt><dd>{[request.organization_name, request.branch_name].filter(Boolean).join(" ")}</dd></div>
-                <div><dt>주소</dt><dd>{requestAddressLabel ?? "주소 정보 없음"}{requestRegionLabel ? ` · ${requestRegionLabel}` : ""}</dd></div>
+                <div><dt>주소</dt><dd>{requestAddressLabel ?? "주소 정보 없음"}</dd></div>
                 <div><dt>서류</dt><dd>{documentName ? `${documentName} · 확인 중` : "확인 중"}</dd></div>
                 <div><dt>신청일</dt><dd>{requestedAt ?? "-"}</dd></div>
               </dl>

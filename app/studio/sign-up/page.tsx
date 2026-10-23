@@ -38,23 +38,8 @@ export default async function StudioSignUpPage() {
         <Link href={studioPath("/studio/sign-in")} className={styles.topLink}>이미 계정이 있어요 · 로그인</Link>
       </header>
 
-      {/* 단계 (Figma 2148:4769). 계정과 학원 정보를 한 화면에서 받으므로 두 단계를 함께 "지금"으로 보인다. */}
-      <ol className={styles.steps} aria-label="가입 단계">
-        <li data-state="current" aria-current="step"><span className={styles.stepDot}>1</span>계정 만들기</li>
-        <li className={styles.stepLine} data-state="current" aria-hidden="true" />
-        <li data-state="current"><span className={styles.stepDot}>2</span>학원 정보</li>
-        <li className={styles.stepLine} aria-hidden="true" />
-        <li><span className={styles.stepDot}>3</span>첫수업 팀 확인</li>
-      </ol>
-
-      <section className={styles.card} aria-labelledby="studio-sign-up-title">
-        <div className={styles.cardHead}>
-          <h1 id="studio-sign-up-title" className={styles.title}>학원을 알려주세요</h1>
-          <p className={styles.description}>학부모 앱에 보이는 정보예요. 승인 뒤 설정에서 정보 수정을 요청할 수 있어요.</p>
-        </div>
-        <StudioSignUpForm />
-        <p className={styles.note}>첫수업 팀이 1영업일 안에 학원 정보를 확인해요. 승인되면 바로 수업을 등록할 수 있어요.</p>
-      </section>
+      {/* 단계 표시와 카드는 폼이 그린다 — 단계(1 계정 · 2 학원 정보)가 폼 안 상태라서. */}
+      <StudioSignUpForm />
     </main>
   )
 }
