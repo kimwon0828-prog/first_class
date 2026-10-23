@@ -25,6 +25,7 @@ import { formatClassSubjectDisplayLabel } from "@/shared/lib/subject-master"
 import { BookingTimeDialog } from "./booking-time-dialog"
 import { StudioClassLifecycleActions } from "./studio-class-lifecycle-actions"
 import { StudioClassScheduleEditor } from "./studio-class-schedule-editor"
+import { isRepeatingSchedule } from "./studio-schedule-day-panel"
 import { StudioClassesScheduleHeader } from "./studio-classes-schedule-header"
 import { StudioQueryRetry } from "./studio-query-retry"
 import { V2Chip } from "./v2/v2-chip"
@@ -400,7 +401,7 @@ export const StudioClassesManager = ({
                                   ? "숨김"
                                   : booked
                                     ? `신청 ${counts}`
-                                    : slot.scheduleType === "one_time" && !slot.seriesId
+                                    : !isRepeatingSchedule(slot)
                                       ? `이 날만 · ${counts}`
                                       : `모집 ${counts}`}
                             </small>

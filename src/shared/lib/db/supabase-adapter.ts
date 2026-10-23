@@ -422,6 +422,8 @@ type ClassScheduleRow = {
   day_of_week?: number | null
   specific_date?: string | null
   series_id?: string | null
+  /** 운영 규칙이 만든 회차면 규칙 id. 달력 조회(listClassSchedulesInRange)에서만 읽는다. */
+  generated_by_rule_id?: string | null
   start_time: string
   end_time: string
   capacity?: number | null
@@ -1946,7 +1948,8 @@ const buildStudioScheduleCalendarItem = (
     minimumCapacity,
     remainingCapacity,
     status: buildCalendarItemStatus(capacity, activeReservationCount, bookingStatus),
-    seriesId: row.series_id ?? null
+    seriesId: row.series_id ?? null,
+    generatedByRuleId: row.generated_by_rule_id ?? null
   }
 }
 
@@ -2004,7 +2007,7 @@ const listClassSchedulesInRange = async (
     let query = supabase
       .from("class_schedules")
       .select(
-        "id, class_id, schedule_type, booking_status, day_of_week, specific_date, series_id, start_time, end_time, capacity, display_label, sort_order, created_at, classes!inner(id, organization_id, title, teacher_id, teacher_display_name)", { count: "exact" }
+        "id, class_id, schedule_type, booking_status, day_of_week, specific_date, series_id, generated_by_rule_id, start_time, end_time, capacity, display_label, sort_order, created_at, classes!inner(id, organization_id, title, teacher_id, teacher_display_name)", { count: "exact" }
       )
       .eq("classes.organization_id", organizationId)
       .or(`schedule_type.eq.weekly,and(schedule_type.eq.one_time,specific_date.gte.${startDate},specific_date.lte.${endDate})`)

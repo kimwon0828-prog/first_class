@@ -20,13 +20,17 @@ import {
   reopenStudioClassScheduleAction,
   updateStudioClassScheduleCapacityAction
 } from "@/features/studio/actions/update-studio-class-schedule"
-import type { StudioScheduleCalendarDay } from "@/shared/lib/db/adapter"
+import type { StudioScheduleCalendarDay, StudioScheduleCalendarItem } from "@/shared/lib/db/adapter"
 
 import { v2ButtonClassName } from "./v2/v2-button"
 import { V2PlusIcon } from "./v2/v2-icons"
 import { V2StatusBadge } from "./v2/v2-status-badge"
 import styles from "./studio-schedule-day-panel.module.css"
 import { useStudioNavigationPath } from "@/features/studio/ui/studio-navigation-provider"
+
+/** 반복 일정 = 매주 일정(weekly)이거나 운영 규칙이 만든 회차. 학원이 이 날짜에 직접 추가한 회차만 "이 날만". */
+export const isRepeatingSchedule = (item: Pick<StudioScheduleCalendarItem, "scheduleType" | "generatedByRuleId">) =>
+  item.scheduleType === "weekly" || Boolean(item.generatedByRuleId)
 
 type StudioScheduleDayPanelProps = {
   classId: string
@@ -151,7 +155,7 @@ export const StudioScheduleDayPanel = ({
             <strong className={styles.timeHeadline}>
               {format24HourTime(item.startTime)} – {format24HourTime(item.endTime)}
             </strong>
-            <V2StatusBadge tone="gray">{item.scheduleType === "weekly" ? "반복 일정" : "이 날만"}</V2StatusBadge>
+            <V2StatusBadge tone="gray">{isRepeatingSchedule(item) ? "반복 일정" : "이 날만"}</V2StatusBadge>
             <span className={styles.timeMeta}>
               신청 {item.activeReservationCount}/{item.capacity} · 남은 자리 {item.remainingCapacity}명
             </span>

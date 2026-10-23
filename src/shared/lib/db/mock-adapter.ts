@@ -1630,7 +1630,8 @@ export const mockDataAdapter: DataAdapter = {
               minimumCapacity: Math.max(1, applications.filter(application => application.classScheduleId === schedule.id && ACTIVE_APPLICATION_STATUSES.includes(application.status)).length),
               remainingCapacity,
               status,
-              seriesId: schedule.seriesId ?? null
+              seriesId: schedule.seriesId ?? null,
+              generatedByRuleId: schedule.generatedByRuleId ?? null
             } satisfies StudioScheduleCalendarItem
           })
       )

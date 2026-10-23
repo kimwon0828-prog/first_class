@@ -290,6 +290,8 @@ export type StudioScheduleCalendarItem = {
   remainingCapacity: number
   status: StudioScheduleCalendarStatus
   seriesId: string | null
+  /** 운영 규칙이 자동으로 만든 회차면 규칙 id, 학원이 직접 추가한 회차면 null. */
+  generatedByRuleId: string | null
 }
 
 export type StudioScheduleCalendarDay = {
