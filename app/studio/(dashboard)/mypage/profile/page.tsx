@@ -8,6 +8,9 @@ import {
   getStudioAcademyPublicProfile,
   type StudioAcademyPublicProfile
 } from "@/features/studio/queries/get-studio-academy-public-profile"
+import { getAcademyUpdateRequestHistory } from "@/features/studio/queries/get-academy-update-request-history"
+import { getPendingAcademyUpdateRequest } from "@/features/studio/queries/get-pending-academy-update-request"
+import { getStudioAcademySubjectCategories } from "@/features/studio/queries/get-studio-academy-subject-categories"
 import { getSupabaseServerClient } from "@/integrations/supabase/server"
 
 export default async function StudioMypageProfileRoute() {
@@ -21,23 +24,27 @@ export default async function StudioMypageProfileRoute() {
   let canEditPublicProfile = false
   let publicPageSlug: string | null = null
 
-  const [organizationResult, publicProfileResult, profileRoleResult, publicPageLinkResult] = await Promise.allSettled([
+  const [organizationResult, publicProfileResult, profileRoleResult, publicPageLinkResult, pendingResult, historyResult, subjectsResult] = await Promise.allSettled([
     getStudioSettingsOrganization(access),
     getStudioAcademyPublicProfile(access.organizationId),
     supabase.from("profiles").select("role").eq("id", access.id).maybeSingle(),
-    supabase.from("academy_public_profiles").select("slug").eq("organization_id", access.organizationId).maybeSingle()
+    supabase.from("academy_public_profiles").select("slug").eq("organization_id", access.organizationId).maybeSingle(),
+    // 공식 정보 잠금 표시용(읽기 전용): 검토 중 요청 · 요청 이력 · 등록한 수업의 과목.
+    getPendingAcademyUpdateRequest(access.organizationId),
+    getAcademyUpdateRequestHistory(access.organizationId),
+    getStudioAcademySubjectCategories(access.organizationId)
   ])
 
   if (organizationResult.status === "fulfilled") {
     organization = organizationResult.value
   } else {
-    organizationError = "학원 기본 정보를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요."
+    organizationError = "학원 기본 정보를 불러오지 못했어요. 잠시 후 다시 시도해 주세요."
   }
 
   if (publicProfileResult.status === "fulfilled") {
     publicProfile = publicProfileResult.value
   } else {
-    publicProfileError = "학원 공개 프로필 정보를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요."
+    publicProfileError = "학원 소개 정보를 불러오지 못했어요. 잠시 후 다시 시도해 주세요."
   }
 
   if (profileRoleResult.status === "fulfilled") {
@@ -62,6 +69,10 @@ export default async function StudioMypageProfileRoute() {
       initialSlug={publicPageSlug}
       publicProfileError={publicProfileError}
       canEditPublicProfile={canEditPublicProfile}
+      pendingUpdateRequestedAt={pendingResult.status === "fulfilled" ? pendingResult.value?.createdAt ?? null : null}
+      updateRequestStatusError={pendingResult.status === "rejected" || historyResult.status === "rejected"}
+      updateRequestHistory={historyResult.status === "fulfilled" ? historyResult.value : []}
+      subjectCategories={subjectsResult.status === "fulfilled" ? subjectsResult.value : null}
     />
   )
 }

@@ -56,7 +56,7 @@ const createFieldRows = (organization: StudioSettingsOrganization) => {
     { label: "우편번호", value: toText(organization.postalCode) },
     { label: "기본 주소", value: toText(organization.addressLine1 ?? organization.address) },
     { label: "상세 주소", value: toText(organization.addressLine2 ?? organization.addressDetail) },
-    { label: "사업자등록증 경로", value: toText(organization.businessRegistrationFilePath, "등록된 파일 없음") }
+    { label: "사업자등록증", value: organization.businessRegistrationFilePath ? "올림" : "등록된 파일 없음" }
   ]
 }
 
@@ -73,7 +73,7 @@ export function StudioSettingsPage({
     return (
       <div className={styles.page}>
         <section className={styles.alertCard}>
-          <p className={styles.alertTitle}>학원 정보를 불러오지 못했습니다.</p>
+          <p className={styles.alertTitle}>학원 정보를 불러오지 못했어요.</p>
           <p className={styles.alertDescription}>{organizationError ?? "잠시 후 다시 시도해 주세요."}</p>
         </section>
       </div>
@@ -93,12 +93,12 @@ export function StudioSettingsPage({
         <section className={styles.heroCard}>
           <div>
             <p className={styles.description}>
-              현재 등록된 학원의 공식 정보를 확인하고, 변경이 필요한 경우 수정 요청을 제출할 수 있어요.
+              학원 이름 · 지점 · 주소 · 전화 · 사업자 정보는 바로 바꿀 수 없어요. 수정 요청을 보내면 첫수업 팀이 확인한 뒤 반영해요.
             </p>
           </div>
           <div className={styles.heroMeta}>
-            <p className={styles.heroMetaLabel}>요청 정책</p>
-            <p className={styles.heroMetaValue}>즉시 반영되지 않고 관리자 검토 후 `organizations`에 반영됩니다.</p>
+            <p className={styles.heroMetaLabel}>반영</p>
+            <p className={styles.heroMetaValue}>첫수업 팀 검토 후 반영돼요</p>
           </div>
         </section>
 
@@ -115,7 +115,7 @@ export function StudioSettingsPage({
 
         {pendingError ? (
           <section className={styles.alertCard}>
-            <p className={styles.alertTitle}>기존 정보수정 요청 상태를 확인하지 못했습니다.</p>
+            <p className={styles.alertTitle}>기존 정보수정 요청 상태를 확인하지 못했어요.</p>
             <p className={styles.alertDescription}>{pendingError}</p>
           </section>
         ) : null}
@@ -123,8 +123,8 @@ export function StudioSettingsPage({
         <section className={styles.sectionCard}>
           <div className={styles.sectionHeader}>
             <div>
-              <h2 className={styles.sectionTitle}>현재 학원 정보</h2>
-              <p className={styles.sectionDescription}>현재 `organizations`에 저장된 공식 정보입니다.</p>
+              <h2 className={styles.sectionTitle}>지금 학원 정보</h2>
+              <p className={styles.sectionDescription}>지금 반영되어 있는 공식 정보예요.</p>
             </div>
           </div>
           <div className={styles.infoGrid}>
@@ -143,10 +143,10 @@ export function StudioSettingsPage({
               <div>
                 <h2 className={styles.sectionTitle}>검토 중인 정보수정 요청</h2>
                 <p className={styles.sectionDescription}>
-                  현재 요청이 검토 중이므로 새 요청은 제출할 수 없습니다.
+                  검토가 끝날 때까지 새 요청은 보낼 수 없어요.
                 </p>
               </div>
-              <span className={styles.pendingBadge}>관리자 검토 중입니다</span>
+              <span className={styles.pendingBadge}>검토 중</span>
             </div>
 
             <div className={styles.metaRow}>
@@ -190,8 +190,8 @@ export function StudioSettingsPage({
                 <p className={styles.infoValue}>{toText(pendingRequest.requestedSnapshot.addressLine2)}</p>
               </article>
               <article className={`${styles.infoItem} ${styles.fullWidthItem}`}>
-                <p className={styles.infoLabel}>요청 사업자등록증 경로</p>
-                <p className={styles.infoValue}>{toText(requestedDocumentPath, "기존 문서 유지")}</p>
+                <p className={styles.infoLabel}>요청 사업자등록증</p>
+                <p className={styles.infoValue}>{requestedDocumentPath ? "새로 올림" : "기존 문서 유지"}</p>
               </article>
             </div>
           </section>
@@ -199,9 +199,9 @@ export function StudioSettingsPage({
 
         {!canRequestUpdate ? (
           <section className={styles.alertCard}>
-            <p className={styles.alertTitle}>대표 계정 전용 기능입니다.</p>
+            <p className={styles.alertTitle}>학원 대표 계정만 요청할 수 있어요.</p>
             <p className={styles.alertDescription}>
-              현재 로그인한 계정은 학원 대표 계정이 아니어서 정보수정 요청을 제출할 수 없습니다.
+              지금 로그인한 계정은 학원 대표 계정이 아니라서 정보수정 요청을 보낼 수 없어요.
             </p>
           </section>
         ) : null}
@@ -212,7 +212,7 @@ export function StudioSettingsPage({
               <div>
                 <h2 className={styles.sectionTitle}>정보수정 요청 제출</h2>
                 <p className={styles.sectionDescription}>
-                  제출 후에는 관리자 검토가 끝날 때까지 동일 학원에서 중복 요청을 보낼 수 없습니다.
+                  보낸 뒤에는 검토가 끝날 때까지 새 요청을 보낼 수 없어요.
                 </p>
               </div>
               <div className={styles.sectionActions}>
@@ -231,7 +231,7 @@ export function StudioSettingsPage({
                     className={styles.primaryButton}
                     onClick={() => setIsUpdateRequestOpen(true)}
                   >
-                    수정하기
+                    수정 요청 쓰기
                   </button>
                 )}
               </div>
@@ -342,20 +342,19 @@ export function StudioSettingsPage({
                     className={`${styles.input} ${styles.fileInput}`}
                   />
                   <p className={styles.fieldHint}>
-                    새 이미지를 올리지 않으면 기존 사업자등록증 경로를 유지합니다. JPG, PNG, WEBP만 지원하며 최대
-                    5MB까지 업로드할 수 있습니다.
+                    새 이미지를 올리지 않으면 지금 사업자등록증을 그대로 써요. JPG · PNG · WEBP, 5MB까지 올릴 수 있어요.
                   </p>
                 </label>
 
                 <button type="submit" disabled={isPending} className={styles.submitButton}>
-                  {isPending ? "요청 제출 중..." : "정보수정 요청 제출"}
+                  {isPending ? "보내는 중…" : "정보수정 요청 보내기"}
                 </button>
               </form>
             ) : (
               <div className={styles.sectionHint}>
-                <p className={styles.sectionHintTitle}>현재 정보와 다른 부분이 있나요?</p>
+                <p className={styles.sectionHintTitle}>지금 정보와 다른 부분이 있나요?</p>
                 <p className={styles.sectionHintDescription}>
-                  수정하기를 누르면 학원명, 연락처, 주소, 사업자등록증 등을 수정 요청할 수 있어요.
+                  [수정 요청 쓰기]를 누르면 학원 이름, 연락처, 주소, 사업자등록증을 고쳐 달라고 요청할 수 있어요.
                 </p>
               </div>
             )}

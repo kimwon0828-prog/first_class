@@ -1,22 +1,19 @@
 /* 설정 탭(StudioSettingsFrame) 안에 들어가므로 제목과 바깥 여백은 틀이 갖는다. */
 .container {
   display: grid;
-  gap: 24px;
+  gap: var(--sv2-space-24);
 }
 
 .errorCard {
-  border: 1px solid var(--red-bg);
-  border-radius: var(--r-lg);
-  background: var(--surface);
-  padding: 14px 16px;
+  padding: 14px var(--sv2-space-16);
+  border-radius: var(--sv2-radius-control);
+  background: var(--sv2-state-danger-bg);
 }
 
 .errorText {
   margin: 0;
-  font-size: 13px;
-  line-height: 18px;
-  font-weight: 600;
-  color: var(--red-fg);
+  color: var(--sv2-state-danger-fg);
+  font-size: 14px;
+  line-height: 1.45;
+  font-weight: 500;
 }
-
-
