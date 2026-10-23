@@ -19,7 +19,7 @@ const Svg = ({
   size,
   viewBox,
   children
-}: IconProps & { viewBox: 16 | 18 | 20 | 24; children: ReactNode }) => (
+}: IconProps & { viewBox: 14 | 16 | 18 | 20 | 24; children: ReactNode }) => (
   <svg
     className={className}
     width={size ?? viewBox}
@@ -120,5 +120,30 @@ export const V2InfoIcon = (props: IconProps) => (
   <Svg viewBox={18} {...props}>
     <path d="M15.375 9C15.375 12.5208 12.5208 15.375 9 15.375C5.47918 15.375 2.625 12.5208 2.625 9C2.625 5.47918 5.47918 2.625 9 2.625C12.5208 2.625 15.375 5.47918 15.375 9Z" />
     <path d="M9 8.25V12M9 6V6.0075" strokeLinecap="round" />
+  </Svg>
+)
+
+/* 수업·일정 화면(Figma 2148:6043 · 2178:373) 에서 더한 아이콘. */
+export const V2PencilIcon = (props: IconProps) => (
+  <Svg viewBox={16} {...props}>
+    <path
+      d="M10.3333 3C10.5985 2.73478 10.9583 2.58579 11.3333 2.58579C11.7084 2.58579 12.0681 2.73478 12.3333 3C12.5985 3.26522 12.7475 3.62493 12.7475 4C12.7475 4.37507 12.5985 4.73478 12.3333 5L5.33333 12L2.66667 12.6667L3.33333 10L10.3333 3Z"
+      strokeLinejoin="round"
+    />
+  </Svg>
+)
+
+/* Icon/check (2012:493) — Studio/Checkbox 켜짐 상태 안의 체크. */
+export const V2CheckIcon = (props: IconProps) => (
+  <Svg viewBox={14} {...props}>
+    <path d="M2.91667 7.29167L5.54167 9.91667L11.0833 4.375" strokeLinecap="round" strokeLinejoin="round" />
+  </Svg>
+)
+
+/* Icon/calendar (2002:53) — 날짜 입력 앞 아이콘. 메뉴의 V2CalendarIcon(viewBox 20)과 모양이 다르다. */
+export const V2DateIcon = (props: IconProps) => (
+  <Svg viewBox={24} {...props}>
+    <path d="M6 5H18C19.3807 5 20.5 6.11929 20.5 7.5V18C20.5 19.3807 19.3807 20.5 18 20.5H6C4.61929 20.5 3.5 19.3807 3.5 18V7.5C3.5 6.11929 4.61929 5 6 5Z" />
+    <path d="M3.5 10H20.5M8 3.5V6.5M16 3.5V6.5" strokeLinecap="round" />
   </Svg>
 )
