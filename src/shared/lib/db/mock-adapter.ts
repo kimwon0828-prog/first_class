@@ -2667,6 +2667,11 @@ export const mockDataAdapter: DataAdapter = {
         }))
     }
   },
+  async listCurrentParentDecisions(applicationIds: string[]) {
+    return parentDecisions
+      .filter((item) => item.supersededAt === null && applicationIds.includes(item.applicationId))
+      .map((item) => ({ applicationId: item.applicationId, decision: item.decision, preferredDays: item.preferredDays ?? [] }))
+  },
   async getCurrentParentDecision(applicationId: string) {
     const current = parentDecisions.find(
       (item) => item.applicationId === applicationId && item.supersededAt === null

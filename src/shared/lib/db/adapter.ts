@@ -777,6 +777,12 @@ export type ApplicationLogEntry = {
   createdAt: string
 }
 
+export type StudioCurrentParentDecision = {
+  applicationId: string
+  decision: ParentDecisionSummary["decision"]
+  preferredDays: NonNullable<ParentDecisionSummary["preferredDays"]>
+}
+
 export type StudioRecentExperienceFeedback = {
   latest: (StudioExperienceFeedback & { applicationId: string; childName: string; childGrade: string }) | null
   recentCount: number
@@ -1478,6 +1484,8 @@ export interface DataAdapter {
   upsertStudioTrialResult(input: UpsertStudioTrialResultInput): Promise<"created" | "updated">
   /** 지금의 생각. 지나간 기록은 돌려주지 않는다. */
   getCurrentParentDecision(applicationId: string): Promise<ParentDecisionSummary | null>
+  /** 여러 신청의 지금 유효한(superseded_at is null) 학부모 의향. 홈 "다시 연락할 학생"용, 읽기 전용. */
+  listCurrentParentDecisions(applicationIds: string[]): Promise<StudioCurrentParentDecision[]>
   /**
    * 전환 분석용 일괄 조회.
    *

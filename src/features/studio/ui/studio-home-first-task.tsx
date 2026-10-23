@@ -17,7 +17,9 @@ import styles from "./studio-home-first-task.module.css"
 export type StudioHomeFirstTaskItem = {
   id: string
   href: string
-  title: string
+  /** 제목 앞 학생 이름(길면 이름만 말줄임)과 뒤 문장. */
+  titleName: string
+  titleRest: string
   meta: string
   subjectCategory: string | null
   /** confirm: 학부모 희망 시간 그대로 확정(상세 일정 확정과 같은 서버 액션). link: 상세의 해당 칸으로 이동만. */
@@ -80,7 +82,7 @@ export function StudioHomeFirstTask({ items, totalCount }: { items: StudioHomeFi
     <div className={styles.body}>
       <span className={styles.subject}><V2SubjectIcon3D categoryCode={current.subjectCategory} size={48} /></span>
       <div className={styles.text}>
-        <h2 id="first-task-title" className={styles.title}>{current.title}</h2>
+        <h2 id="first-task-title" className={styles.title}><span className={styles.titleName}>{current.titleName}</span>{current.titleRest}</h2>
         <p className={styles.meta}>{current.meta}</p>
       </div>
     </div>

@@ -105,6 +105,7 @@ import type {
   StudioApplicationListOptions,
   StudioApplicationDetail,
   StudioApplicationSummary,
+  StudioCurrentParentDecision,
   StudioConsultationPipelineApplicationItem,
   StudioUnregisteredApplicationItem,
   StudioUnregisteredListOptions,
@@ -5698,6 +5699,25 @@ export const supabaseDataAdapter: DataAdapter = {
           result: row.result as RegistrationResult
         }))
     }
+  },
+  async listCurrentParentDecisions(applicationIds: string[]) {
+    if (!applicationIds.length) return []
+    const supabase = await getSupabaseServerClient()
+    const rows: StudioCurrentParentDecision[] = []
+    // RLS 가 조직 scope 를 판정한다. id 목록은 이미 조직 안에서 읽은 신청이다. URL 길이 때문에 나눠 읽는다.
+    for (let offset = 0; offset < applicationIds.length; offset += 100) {
+      const { data, error } = await supabase.from("parent_decisions")
+        .select("application_id, decision, preferred_days")
+        .in("application_id", applicationIds.slice(offset, offset + 100))
+        .is("superseded_at", null)
+      if (error) throw new Error("failed_to_fetch_parent_decisions")
+      for (const row of data ?? []) {
+        if (!isParentDecision(row.decision)) continue
+        rows.push({ applicationId: row.application_id, decision: row.decision,
+          preferredDays: Array.isArray(row.preferred_days) ? row.preferred_days.filter(isPreferredDay) : [] })
+      }
+    }
+    return rows
   },
   async getCurrentParentDecision(applicationId: string) {
     const supabase = await getSupabaseServerClient()

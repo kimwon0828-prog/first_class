@@ -7,7 +7,8 @@ import { getStudioEntitlementsForDisplay } from "@/features/billing/queries/get-
 import { getStudioRecentExperienceFeedback } from "@/features/feedback/queries/get-experience-feedback"
 import { feedbackChipLabel } from "@/features/feedback/lib/experience-feedback"
 import { requireTeacherStudioAccess } from "@/features/studio/lib/require-teacher-studio-access"
-import { buildStudioDashboardView, type StudioDashboardActionItem } from "@/features/studio/lib/studio-dashboard-view"
+import { buildStudioDashboardView, buildStudioRecontact, getStudioRecontactCandidateIds, type StudioDashboardActionItem } from "@/features/studio/lib/studio-dashboard-view"
+import { listStudioCurrentParentDecisions } from "@/features/decisions/queries/list-studio-current-parent-decisions"
 import { buildStudioMonthlyConversion } from "@/features/studio/lib/studio-dashboard-monthly"
 import { formatCasesDate, getCasesScheduleLabel } from "@/features/studio/lib/cases-workflow"
 import { getSeoulTodayKey, toSeoulDateKey } from "@/features/studio/lib/studio-schedule-month"
@@ -60,6 +61,9 @@ export default async function StudioIndexPage() {
     getStudioRecentExperienceFeedback(teacher.organizationId, now)
   ])
   const view = buildStudioDashboardView(applications, now)
+  // 다시 연락할 학생: 등록 결과 "고민 중" + 학부모 의향 "고민 중"(지금 유효한 것). 의향 조회가 실패하면 등록 결과만으로 센다.
+  const parentDecisions = await listStudioCurrentParentDecisions(getStudioRecontactCandidateIds(applications))
+  const recontact = buildStudioRecontact(applications, parentDecisions.data)
   // 전환 지표는 유료다. 권한이 없으면 집계 자체를 하지 않는다(값이 payload 에 실리지 않게).
   const monthly = entitlements.canUseConversionAnalytics ? buildStudioMonthlyConversion(applications, now) : null
   const thisMonth = monthly?.at(-1) ?? null
@@ -83,12 +87,12 @@ export default async function StudioIndexPage() {
     // 체험 완료 뒤 할 일(기록 · 리포트 · 등록 결과)은 신청 목록과 같은 판정(deriveCasesWorkflow)으로 나눈다.
     const completedAction = item.kind === "NEEDS_REGISTRATION" ? stageBoard.data.completedActionById[item.id] ?? "registration" : null
     const waitedDays = daysBetween(toSeoulDateKey(item.createdAt), todayKey)
-    const title = isConfirmKind ? (waitedDays > 0 ? `${name} 학부모님이 ${waitedDays}일째 답을 기다려요` : `${name} 학부모님이 오늘 신청했어요`)
-      : item.kind === "NEEDS_COMPLETION" ? `${name} 체험이 끝났어요. 완료 처리해 주세요`
-      : completedAction === "record" ? `${name} 체험 기록을 남겨 주세요`
-      : completedAction === "report" ? `${name} 학부모님께 리포트를 보내 주세요`
-      : completedAction === "registration" ? `${name} 학부모님 등록 결과를 알려 주세요`
-      : `${name} 담당 선생님을 정해 주세요`
+    const titleRest = isConfirmKind ? (waitedDays > 0 ? ` 학부모님이 ${waitedDays}일째 답을 기다려요` : " 학부모님이 오늘 신청했어요")
+      : item.kind === "NEEDS_COMPLETION" ? " 체험이 끝났어요. 완료 처리해 주세요"
+      : completedAction === "record" ? " 체험 기록을 남겨 주세요"
+      : completedAction === "report" ? " 학부모님께 리포트를 보내 주세요"
+      : completedAction === "registration" ? " 학부모님 등록 결과를 알려 주세요"
+      : " 담당 선생님을 정해 주세요"
     const schedule = item.scheduleAt ? getCasesScheduleLabel({ requestedSlotAt: item.scheduleAt, confirmedSlotAt: item.scheduleConfirmed ? item.scheduleAt : null }) : null
     const meta = [gradeLabel(item.studentGrade), item.classTitle, schedule].filter(Boolean).join(" · ")
     // 희망 시간이 남아 있고 확정할 일정이 있을 때만 홈에서 바로 확정한다(상세의 확정 버튼 막힘 조건과 같다).
@@ -102,7 +106,7 @@ export default async function StudioIndexPage() {
       : completedAction === "registration" ? { type: "link", label: "결과 입력", section: "registration-result-title" }
       : { type: "link", label: "담당 배정하러 가기", section: null }
     return {
-      id: item.id, href: item.href, title, meta, subjectCategory: item.classSubjectCategory, primary,
+      id: item.id, href: item.href, titleName: name, titleRest, meta, subjectCategory: item.classSubjectCategory, primary,
       secondary: canConfirmHere ? { label: "다른 시간 보기", section: "confirm-schedule" } : null,
       hint: canConfirmHere ? "확정하면 학부모에게 바로 알림이 가요" : null
     }
@@ -130,7 +134,7 @@ export default async function StudioIndexPage() {
   const feedbackQuote = latestFeedback
     ? latestFeedback.privateNote?.trim() || latestFeedback.selectedChipIds.map(id => feedbackChipLabel(id)).join(" · ")
     : null
-  const pending = view.pendingRegistrationItems
+  const pending = recontact.items
 
   return (
     <div className={styles.page}>
@@ -168,7 +172,7 @@ export default async function StudioIndexPage() {
                   <span className={styles.slotTime}>{item.timeLabel}</span>
                   <span className={styles.slotDot} aria-hidden="true" />
                   <span className={styles.slotBody}>
-                    <span className={styles.slotName}>{item.studentName}{item.studentGrade ? ` · ${gradeLabel(item.studentGrade)}` : ""}<V2StatusBadge tone={item.statusTone}>{item.statusLabel}</V2StatusBadge></span>
+                    <span className={styles.slotName}><span className={styles.nameLine}><span className={styles.nameClip}>{item.studentName}</span>{item.studentGrade ? <span className={styles.nameGrade}> · {gradeLabel(item.studentGrade)}</span> : null}</span><V2StatusBadge tone={item.statusTone}>{item.statusLabel}</V2StatusBadge></span>
                     <span className={item.teacherName ? styles.slotMeta : `${styles.slotMeta} ${styles.slotMetaAlert}`}>{item.classTitle} · {item.teacherName ?? "담당 미배정"}</span>
                   </span>
                   {button ? <span className={v2ButtonClassName({ variant: "tonal", size: "sm" })}>{button}</span> : null}
@@ -183,7 +187,7 @@ export default async function StudioIndexPage() {
                 {view.upcomingItems.map(item => <li key={item.id}>
                   <StudioDetailLink internalPath={item.href} className={styles.upcomingRow}>
                     <span className={styles.upcomingWhen}>{item.dateLabel} {item.timeLabel}</span>
-                    <span className={styles.upcomingName}>{item.studentName}{item.studentGrade ? ` · ${gradeLabel(item.studentGrade)}` : ""}</span>
+                    <span className={`${styles.upcomingName} ${styles.nameLine}`}><span className={styles.nameClip}>{item.studentName}</span>{item.studentGrade ? <span className={styles.nameGrade}> · {gradeLabel(item.studentGrade)}</span> : null}</span>
                   </StudioDetailLink>
                 </li>)}
               </ul>
@@ -217,7 +221,7 @@ export default async function StudioIndexPage() {
                     <span className={styles.stageHeadRow}>
                       <V2SubjectIcon3D categoryCode={card.subjectCategory} size={32} />
                       <span className={styles.stageWho}>
-                        <span><strong>{card.student.name}</strong><small>{gradeLabel(card.student.grade)}</small></span>
+                        <span className={styles.nameLine}><strong className={styles.nameClip}>{card.student.name}</strong><small className={styles.nameGrade}>{gradeLabel(card.student.grade)}</small></span>
                         <span className={styles.stageClass}>{card.klass.title ?? "수업 정보 없음"}</span>
                       </span>
                     </span>
@@ -287,6 +291,7 @@ export default async function StudioIndexPage() {
               {pending.slice(0, 3).map((item, index) => <V2Avatar key={item.id} name={item.studentName} size={32} tone={index === 0 ? "brand" : "neutral"} className={styles.avatar} />)}
               {pending.length > 3 ? <span className={styles.avatarMore}>+{pending.length - 3}</span> : null}
             </div>
+            {recontact.topDay ? <p className={styles.recontactNote}>그중 {recontact.topDay.count}명이 {recontact.topDay.label}요일 반을 원했어요.</p> : null}
           </> : <p className={styles.cardCaption}>지금 고민 중인 학생이 없어요</p>}
         </section>
       </div>

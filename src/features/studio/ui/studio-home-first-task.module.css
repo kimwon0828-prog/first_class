@@ -127,6 +127,16 @@
   letter-spacing: -0.5px;
 }
 
+/* 이름이 길면 이름만 말줄임(최대 8글자 폭), 뒤 문장은 그대로 */
+.titleName {
+  display: inline-block;
+  max-width: 8em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: bottom;
+}
+
 .meta {
   margin: 0;
   color: var(--sv2-ink-700);
