@@ -21,6 +21,7 @@ import {
 import { V2Avatar } from "@/features/studio/ui/v2/v2-avatar"
 import {
   V2CalendarIcon,
+  V2ChartIcon,
   V2ChevronDownIcon,
   V2GearIcon,
   V2HelpIcon,
@@ -48,7 +49,14 @@ const NAV_ICONS: Record<StudioNavKey, (props: { className?: string }) => ReactNo
   home: V2HomeIcon,
   cases: V2InboxIcon,
   classes: V2CalendarIcon,
+  analytics: V2ChartIcon,
   settings: V2GearIcon
+}
+
+/* 메뉴 건수 배지를 화면 읽기로 풀어 말할 때 쓰는 이름. */
+const NAV_COUNT_LABELS: Partial<Record<StudioNavKey, string>> = {
+  home: "오늘 할 일",
+  cases: "일정 확정이 필요한 신청"
 }
 
 const MYPAGE_HREF = "/studio/mypage"
@@ -56,7 +64,7 @@ const MYPAGE_HREF = "/studio/mypage"
 /**
  * Studio v2 사이드바 (Figma "Studio v2/Sidebar", 기준 화면 2148:6043 · 2148:6939).
  *
- * 위: 로고 + 파트너 · 학원 카드 · 메뉴(홈 / 신청 / 수업·일정)
+ * 위: 로고 + 파트너 · 학원 카드 · 메뉴(홈 / 신청 / 수업·일정 / 분석)
  * 아래: 현재 플랜 · 도움말·문의 · 설정
  *
  * 메뉴 묶음과 활성 판정은 studio-nav.ts 한 곳에서 정한다. URL 은 바꾸지 않았다.
@@ -131,7 +139,7 @@ export const StudioShell = ({ children, organizationName, logoImagePath, plan, n
             <span className={styles.navCount} aria-hidden="true">
               {count}
             </span>
-            <span className={styles.srOnly}>, 일정 확정이 필요한 신청 {count}건</span>
+            <span className={styles.srOnly}>{NAV_COUNT_LABELS[entry.key] ? `, ${NAV_COUNT_LABELS[entry.key]} ${count}건` : `, ${count}건`}</span>
           </>
         ) : null}
       </Link>

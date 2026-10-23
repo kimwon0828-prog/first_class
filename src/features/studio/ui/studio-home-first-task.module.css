@@ -1,0 +1,168 @@
+/* 홈 "가장 먼저" (Figma 2148:4978). ground-green · 모서리 20 · 안쪽 28 · 간격 20. STUDIO_DESIGN_SYSTEM.md §5.20 */
+.card {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  gap: var(--sv2-space-20);
+  min-width: 0;
+  padding: 28px;
+  border-radius: var(--sv2-radius-sheet);
+  background: var(--sv2-surface-ground-green);
+  color: var(--sv2-ink-900);
+  font-family: var(--sv2-font);
+}
+
+.head,
+.actions {
+  display: flex;
+  align-items: center;
+  gap: var(--sv2-space-8);
+}
+
+.spacer {
+  flex: 1 1 auto;
+}
+
+.badge {
+  flex: 0 0 auto;
+  padding: var(--sv2-space-4) 10px;
+  border-radius: var(--sv2-radius-pill);
+  background: var(--sv2-brand-700);
+  color: var(--sv2-surface-white);
+  font-size: 12px;
+  line-height: 1.45;
+  font-weight: 700;
+}
+
+.caption,
+.hint {
+  color: var(--sv2-ink-500);
+  font-size: 13px;
+  line-height: 1.45;
+  font-weight: 500;
+  letter-spacing: -0.2px;
+  white-space: nowrap;
+}
+
+/* 점: 20×6 · 모서리 3 · 간격 4, 지금 brand/500 · 나머지 brand/200 */
+.dots {
+  display: flex;
+  gap: var(--sv2-space-4);
+}
+
+.dots span {
+  width: 20px;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--sv2-brand-200);
+}
+
+.dots span[data-current] {
+  background: var(--sv2-brand-500);
+}
+
+/* [코드 결정] 한 장씩 넘기는 화살표: 24 원 · ghost 모양 */
+.arrow {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--sv2-radius-pill);
+  background: transparent;
+  color: var(--sv2-ink-500);
+  cursor: pointer;
+}
+
+.arrow:hover:not(:disabled) {
+  background: var(--sv2-surface-fill);
+  color: var(--sv2-ink-900);
+}
+
+.arrow:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.arrow:focus-visible {
+  outline: 2px solid var(--sv2-brand-700);
+  outline-offset: 2px;
+}
+
+.body {
+  display: flex;
+  align-items: center;
+  gap: var(--sv2-space-20);
+}
+
+/* 과목 원 72(흰 바탕 · line/default) 안에 3D 48 */
+.subject {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 72px;
+  height: 72px;
+  border: 1px solid var(--sv2-line-default);
+  border-radius: var(--sv2-radius-pill);
+  background: var(--sv2-surface-white);
+  overflow: hidden;
+}
+
+.text {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.title {
+  margin: 0;
+  font-size: 24px;
+  line-height: 1.32;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+}
+
+.meta {
+  margin: 0;
+  color: var(--sv2-ink-700);
+  font-size: 15px;
+  line-height: 1.45;
+  letter-spacing: -0.2px;
+}
+
+.confirmForm {
+  display: flex;
+  align-items: center;
+  gap: var(--sv2-space-8);
+}
+
+.message,
+.messageError {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.45;
+  font-weight: 500;
+}
+
+.message {
+  color: var(--sv2-brand-700);
+}
+
+.messageError {
+  color: var(--sv2-state-danger-fg);
+}
+
+@media (max-width: 720px) {
+  .card {
+    padding: var(--sv2-space-20);
+  }
+
+  .actions {
+    flex-wrap: wrap;
+  }
+}

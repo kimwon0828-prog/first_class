@@ -9,7 +9,7 @@
  * studio-navigation 으로 한다.
  */
 
-export type StudioNavKey = "home" | "cases" | "classes" | "settings"
+export type StudioNavKey = "home" | "cases" | "classes" | "analytics" | "settings"
 
 export type StudioNavEntry = {
   key: StudioNavKey
@@ -20,7 +20,7 @@ export type StudioNavEntry = {
   matchPrefixes: readonly string[]
 }
 
-/** 위쪽 메뉴. "학생" · "분석"은 기능이 생기는 2단계에서 추가한다. */
+/** 위쪽 메뉴. "학생"은 기능이 생기는 2차에서 추가한다. */
 export const STUDIO_PRIMARY_NAV: readonly StudioNavEntry[] = [
   { key: "home", label: "홈", href: "/studio", matchPrefixes: ["/studio"] },
   {
@@ -37,7 +37,9 @@ export const STUDIO_PRIMARY_NAV: readonly StudioNavEntry[] = [
     label: "수업·일정",
     href: "/studio/classes",
     matchPrefixes: ["/studio/classes", "/studio/schedule"]
-  }
+  },
+  // 분석: 홈에 있던 성과 분석(흐름 · 도넛 · 미등록 사유 · 인포그래픽 · 최근 등록 결과)을 옮긴 화면.
+  { key: "analytics", label: "분석", href: "/studio/analytics", matchPrefixes: ["/studio/analytics"] }
 ]
 
 export type StudioSettingsTabKey = "academy" | "teachers" | "billing" | "account"

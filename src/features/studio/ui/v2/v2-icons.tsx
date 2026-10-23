@@ -63,6 +63,13 @@ export const V2CalendarIcon = (props: IconProps) => (
   </Svg>
 )
 
+/* nav/분석 아이콘 (Figma 2148:4964 사이드바 "분석"). */
+export const V2ChartIcon = (props: IconProps) => (
+  <Svg viewBox={20} {...props}>
+    <path d="M3.33333 16.6667V8.33333M3.33333 16.6667H8.33333M3.33333 16.6667H2.5M8.33333 16.6667V3.33333M8.33333 16.6667H13.3333M13.3333 16.6667V10.8333M13.3333 16.6667H17.5" strokeLinecap="round" />
+  </Svg>
+)
+
 export const V2HelpIcon = (props: IconProps) => (
   <Svg viewBox={20} {...props}>
     <path d="M17.0833 10C17.0833 13.912 13.912 17.0833 10 17.0833C6.08798 17.0833 2.91667 13.912 2.91667 10C2.91667 6.08798 6.08798 2.91667 10 2.91667C13.912 2.91667 17.0833 6.08798 17.0833 10Z" />
