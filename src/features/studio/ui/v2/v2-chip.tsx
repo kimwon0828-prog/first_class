@@ -10,6 +10,13 @@ type V2ChipProps = Omit<ButtonHTMLAttributes<HTMLButtonElement>, "className" | "
   className?: string
 }
 
+/** 링크처럼 <button> 이 아닌 요소를 칩 모양으로 그릴 때 쓴다(신청 목록 필터는 주소를 바꾸는 링크다). */
+export const v2ChipClassName = ({ selected = false, className }: { selected?: boolean; className?: string } = {}) =>
+  [styles.chip, selected ? styles.selected : null, className].filter(Boolean).join(" ")
+
+/** 칩 안 글자 · 건수 칸. v2ChipClassName 과 같이 쓴다. */
+export const v2ChipPartClassName = { label: styles.label, count: styles.count }
+
 /**
  * Studio v2/Chip (Figma 2024:152).
  *

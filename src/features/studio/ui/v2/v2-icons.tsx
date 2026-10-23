@@ -147,3 +147,49 @@ export const V2DateIcon = (props: IconProps) => (
     <path d="M3.5 10H20.5M8 3.5V6.5M16 3.5V6.5" strokeLinecap="round" />
   </Svg>
 )
+
+/* 신청 화면(Figma 2148:5142 · 5195 · 5465) 에서 더한 아이콘. */
+export const V2SearchIcon = (props: IconProps) => (
+  <Svg viewBox={18} {...props}>
+    <path d="M13.5 8.25C13.5 11.1495 11.1495 13.5 8.25 13.5C5.35051 13.5 3 11.1495 3 8.25C3 5.35051 5.35051 3 8.25 3C11.1495 3 13.5 5.35051 13.5 8.25Z" />
+    <path d="M15 15L12.375 12.375" strokeLinecap="round" />
+  </Svg>
+)
+
+export const V2DownloadIcon = (props: IconProps) => (
+  <Svg viewBox={16} {...props}>
+    <path
+      d="M8 2.66667V10M11 7L8 10L5 7M3 10V12.3333C3 12.5986 3.10536 12.8529 3.29289 13.0404C3.48043 13.228 3.73478 13.3333 4 13.3333H12C12.2652 13.3333 12.5196 13.228 12.7071 13.0404C12.8946 12.8529 13 12.5986 13 12.3333V10"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </Svg>
+)
+
+export const V2PhoneIcon = (props: IconProps) => (
+  <Svg viewBox={16} {...props}>
+    <path
+      d="M3.33333 2.33333H5.66667L6.66667 5.33333L5.2 6.33333C5.56462 7.36365 6.15493 8.29944 6.92775 9.07225C7.70056 9.84507 8.63635 10.4354 9.66667 10.8L10.6667 9.33333L13.6667 10.3333V12.6667C13.6667 13.0203 13.5262 13.3594 13.2761 13.6095C13.0261 13.8595 12.687 14 12.3333 14C9.64452 13.8414 7.10733 12.7018 5.20275 10.7973C3.29816 8.89267 2.15857 6.35548 2 3.66667C2 3.31304 2.14048 2.97391 2.39052 2.72386C2.64057 2.47381 2.97971 2.33333 3.33333 2.33333Z"
+      strokeLinejoin="round"
+    />
+  </Svg>
+)
+
+export const V2MessageIcon = (props: IconProps) => (
+  <Svg viewBox={16} {...props}>
+    <path d="M2.66667 3.33333H13.3333V10.6667H6L2.66667 13.3333V3.33333Z" strokeLinejoin="round" />
+  </Svg>
+)
+
+/* Icon/back — 화면 위 "‹ 신청" 돌아가기. */
+export const V2BackIcon = (props: IconProps) => (
+  <Svg viewBox={18} {...props}>
+    <path d="M11.25 4.5L6.75 9L11.25 13.5" strokeLinecap="round" strokeLinejoin="round" />
+  </Svg>
+)
+
+export const V2SendIcon = (props: IconProps) => (
+  <Svg viewBox={18} {...props}>
+    <path d="M15.75 2.25L7.5 10.5M7.5 10.5L2.25 7.5L15.75 2.25L10.5 15.75L7.5 10.5Z" strokeLinejoin="round" />
+  </Svg>
+)
