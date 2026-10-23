@@ -17,6 +17,6 @@ export async function manageBookingTimesAction(input: Omit<BookingClosureMutatio
     try { for (const path of ["/studio/schedule","/studio/classes","/classes"]) revalidatePath(path) } catch { /* The database transaction has already committed. */ }
     return { changed: result.changed, error: null }
   } catch (e) {
-    return { changed: 0, error: e instanceof Error && e.message.includes("booking_slots_changed") ? "공개 과정 또는 예약 시간이 변경됐습니다. 다시 불러온 뒤 적용 대상을 확인해 주세요." : "변경을 적용하지 못했습니다. 선택을 유지했으니 다시 시도해 주세요." }
+    return { changed: 0, error: e instanceof Error && e.message.includes("booking_slots_changed") ? "공개 수업 또는 예약 시간이 변경됐습니다. 다시 불러온 뒤 적용 대상을 확인해 주세요." : "변경을 적용하지 못했습니다. 선택을 유지했으니 다시 시도해 주세요." }
   }
 }
