@@ -1,0 +1,50 @@
+/*
+ * 수업·일정 하위 탭 (Figma "수업·일정 · 전체 일정" 2178:232).
+ * 글자 아래 2px 선으로 선택을 표시하고, 탭 줄 전체 아래에 line/default 1px.
+ */
+.tabs {
+  display: flex;
+  align-items: flex-end;
+  gap: 24px;
+  border-bottom: 1px solid var(--sv2-line-default);
+  font-family: var(--sv2-font);
+}
+
+.tab {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  color: var(--sv2-ink-500);
+  font-size: 15px;
+  line-height: 1.45;
+  font-weight: 500;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+/* 선택 표시 선. 선택되지 않은 탭도 같은 높이를 차지해 글자 위치가 흔들리지 않는다. */
+.tab::after {
+  content: "";
+  display: block;
+  height: 2px;
+  background: transparent;
+}
+
+.tab:not(.active):hover {
+  color: var(--sv2-ink-900);
+}
+
+.tab:focus-visible {
+  outline: 2px solid var(--sv2-brand-700);
+  outline-offset: 2px;
+  border-radius: var(--sv2-radius-badge);
+}
+
+.active {
+  color: var(--sv2-brand-700);
+  font-weight: 700;
+}
+
+.active::after {
+  background: var(--sv2-brand-700);
+}

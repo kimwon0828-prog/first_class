@@ -3,6 +3,7 @@ import Link from "next/link"
 import { requireTeacherStudioAccess } from "@/features/studio/lib/require-teacher-studio-access"
 import { getStudioClassListItems } from "@/features/studio/queries/get-studio-classes"
 import { StudioClassesManager } from "@/features/studio/ui/studio-classes-manager"
+import { StudioClassesScheduleTabs } from "@/features/studio/ui/studio-classes-schedule-tabs"
 import { getStudioNavigationPathResolver } from "@/shared/lib/studio-navigation-server"
 import styles from "./page.module.css"
 
@@ -14,6 +15,11 @@ export default async function StudioClassesPage() {
   return (
     <div className={styles.page}>
       <div className={styles.container}>
+        <StudioClassesScheduleTabs
+          active="classes"
+          classesHref={studioPath("/studio/classes")}
+          scheduleHref={studioPath("/studio/schedule")}
+        />
         <header className={styles.header}>
           <div className={styles.headerLeft}>
             <h1 className={styles.title}>수업 관리</h1>

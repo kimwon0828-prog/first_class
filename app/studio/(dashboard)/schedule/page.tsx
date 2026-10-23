@@ -8,7 +8,9 @@ import {
   parseStudioScheduleUrlState,
   type StudioScheduleSearchParams
 } from "@/features/studio/lib/studio-schedule-url-state"
+import { StudioClassesScheduleTabs } from "@/features/studio/ui/studio-classes-schedule-tabs"
 import { StudioScheduleManager } from "@/features/studio/ui/studio-schedule-manager"
+import { getStudioNavigationPathResolver } from "@/shared/lib/studio-navigation-server"
 
 import styles from "./page.module.css"
 
@@ -18,6 +20,7 @@ type StudioSchedulePageProps = {
 
 export default async function StudioSchedulePage({ searchParams }: StudioSchedulePageProps) {
   const teacher = await requireTeacherStudioAccess()
+  const studioPath = await getStudioNavigationPathResolver()
   // view/date/filter 를 서버에서 먼저 읽어 첫 렌더부터 URL 상태를 반영한다.
   const initialUrlState = parseStudioScheduleUrlState((await searchParams) ?? {})
   const now = new Date()
@@ -37,6 +40,11 @@ export default async function StudioSchedulePage({ searchParams }: StudioSchedul
   return (
     <div className={styles.page}>
       <div className={styles.container}>
+        <StudioClassesScheduleTabs
+          active="schedule"
+          classesHref={studioPath("/studio/classes")}
+          scheduleHref={studioPath("/studio/schedule")}
+        />
         <StudioScheduleManager
           key={JSON.stringify(initialUrlState)}
           items={result.data}
