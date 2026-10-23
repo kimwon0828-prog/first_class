@@ -592,6 +592,7 @@ export default async function StudioApplicationDetailPage({ params, searchParams
             ))}
           </ol>
 
+          {/* 워크플로에 넘기는 서버 요소는 모두 key 를 단다 — 클라이언트에서 늦게 풀리는 요소가 형제 목록에 들어가면 key 경고가 난다. */}
           <ApplicationTrialResultWorkflow
             application={data}
             evidence={evidence}
@@ -608,6 +609,7 @@ export default async function StudioApplicationDetailPage({ params, searchParams
                 teachersError: assigneeOptionsResult.error, scheduleHref: studioPath("/studio/schedule")}}
             /> : null}
             assigneeSection={data.status !== "new" && data.status !== "reviewing" && data.status !== "canceled" ? <ApplicationAssigneeControl
+              key="assignee"
               applicationId={data.id}
               currentAssignedTeacherId={data.assignedTeacherId}
               currentAssignedTeacherName={data.assignedTeacherName}
@@ -627,10 +629,10 @@ export default async function StudioApplicationDetailPage({ params, searchParams
               blockers: reportView.blockers,
               canPublishReport: entitlements.canPublishParentReport
             } : null}
-            feedbackSection={<StudioFeedback {...feedbackResult} />}
+            feedbackSection={<StudioFeedback key="feedback" {...feedbackResult} />}
             parentDecisionSection={<StudioParentDecision key="parent-decision" decision={parentDecisionResult.data} loadError={parentDecisionResult.error} />}
             infoSection={
-              <section className={styles.info} aria-labelledby="application-info-title">
+              <section key="application-info" className={styles.info} aria-labelledby="application-info-title">
                 <h2 id="application-info-title">신청 정보</h2>
                 <dl>
                   {[
