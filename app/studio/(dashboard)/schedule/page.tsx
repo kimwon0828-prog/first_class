@@ -8,7 +8,6 @@ import {
   parseStudioScheduleUrlState,
   type StudioScheduleSearchParams
 } from "@/features/studio/lib/studio-schedule-url-state"
-import { StudioClassesScheduleTabs } from "@/features/studio/ui/studio-classes-schedule-tabs"
 import { StudioScheduleManager } from "@/features/studio/ui/studio-schedule-manager"
 import { getStudioNavigationPathResolver } from "@/shared/lib/studio-navigation-server"
 
@@ -39,23 +38,21 @@ export default async function StudioSchedulePage({ searchParams }: StudioSchedul
 
   return (
     <div className={styles.page}>
-      <div className={styles.container}>
-        <StudioClassesScheduleTabs
-          active="schedule"
-          classesHref={studioPath("/studio/classes")}
-          scheduleHref={studioPath("/studio/schedule")}
-        />
-        <StudioScheduleManager
-          key={JSON.stringify(initialUrlState)}
-          items={result.data}
-          error={result.error ?? optionsResult.error}
-          filterOptions={optionsResult.data}
-          initialUrlState={initialUrlState}
-          nowIso={now.toISOString()}
-          initialClosures={closuresResult.data}
-          closuresError={closuresResult.error}
-        />
-      </div>
+      <StudioScheduleManager
+        key={JSON.stringify(initialUrlState)}
+        items={result.data}
+        error={result.error ?? optionsResult.error}
+        filterOptions={optionsResult.data}
+        initialUrlState={initialUrlState}
+        nowIso={now.toISOString()}
+        initialClosures={closuresResult.data}
+        closuresError={closuresResult.error}
+        header={{
+          classesHref: studioPath("/studio/classes"),
+          scheduleHref: studioPath("/studio/schedule"),
+          newClassHref: studioPath("/studio/classes/new")
+        }}
+      />
     </div>
   )
 }

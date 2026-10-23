@@ -1,872 +1,584 @@
+/*
+ * 수업·일정 · 전체 일정 탭 (Figma 2178:144). STUDIO_DESIGN_SYSTEM.md §5.14.
+ * 색 · 간격 · 모서리는 --sv2-* 만 쓴다. Figma 에 적힌 부품 치수(10 · 14 · 6 · 3 …)는 문서 §5.14 에 옮겨 두었다.
+ */
 .root {
-  display: grid;
-  gap: 32px;
-}
-
-/*
- * Page-level 요소(제목·설명·페이지 액션·독립 Toolbar)는 Studio 컨테이너 축에 맞춘다.
- * 목록·카드 내부 텍스트는 각 component 의 기존 inset 을 그대로 쓴다.
- * 제목을 목록 본문 축에 맞추려고 surface 외곽선보다 안쪽으로 들여쓰지 않는다.
- */
-.pageHeader {
   display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: var(--s4);
+  flex-direction: column;
+  gap: var(--sv2-space-20);
+  min-width: 0;
+  color: var(--sv2-ink-900);
+  font-family: var(--sv2-font);
 }
 
-.pageHeading {
-  display: grid;
-  gap: var(--s2);
-}
-
-.pageTitle {
-  margin: 0;
-  color: var(--text-1);
-  font-size: 30px;
-  font-weight: 800;
-  line-height: 36px;
-  letter-spacing: -0.04em;
-}
-
-.pageSubtitle {
-  margin: 0;
-  color: var(--text-2);
-  font-size: 14px;
-  line-height: 22px;
-}
-
-.viewControl {
-  display: inline-flex;
-  padding: 2px;
-  border: 1px solid var(--border);
-  border-radius: var(--r-md);
-  background: var(--surface-sub);
-}
-
-.viewButton {
-  min-width: 40px;
-  height: 32px;
-  padding: 0 var(--s3);
-  border: 0;
-  border-radius: var(--r-sm);
-  background: transparent;
-  color: var(--text-2);
-  font-size: 13px;
-  font-weight: 700;
-  cursor: pointer;
-}
-
-.viewButton:hover {
-  color: var(--text-1);
-}
-
-.viewButtonActive {
-  background: var(--brand-50);
-  color: var(--brand-700);
-}
-
-/* page-level alert 다. 헤더와 같은 축에서 시작한다. */
 .errorCard {
-  margin: 0;
-  padding: 14px 16px;
-  border: 1px solid var(--red-bg);
-  border-radius: var(--r-lg);
-  background: var(--surface);
-}
-
-.errorText {
-  margin: 0;
-  color: var(--red-fg);
-  font-size: 13px;
-  font-weight: 600;
-  line-height: 18px;
-}
-
-/* ── 2-column workspace ──────────────────────────────────────────── */
-
-/*
- * 좌측 보조 패널 + 메인 캘린더. card-in-card 로 감싸지 않는다.
- * 232px: --studio-max(1200) - container padding(64) - gap(24) = canvas 880px 이 남고
- * 7열 Month cell 이 약 120px 을 확보한다.
- */
-.workspace {
-  display: grid;
-  grid-template-columns: 232px minmax(0, 1fr);
-  gap: 24px;
-  align-items: start;
-}
-
-.sidebarPanel {
-  display: grid;
-  gap: var(--s4);
-  padding: var(--s4);
-  border: 1px solid var(--border);
-  border-radius: var(--r-lg);
-  background: var(--surface);
-}
-
-/* ── Mini Calendar ───────────────────────────────────────────────── */
-
-.mini {
-  display: grid;
-  gap: var(--s2);
-}
-
-.miniHeader {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--s1);
-}
-
-.miniMonth {
-  color: var(--text-1);
-  font-size: 13px;
-  font-weight: 700;
-}
-
-.miniNavButton {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 24px;
-  height: 24px;
-  border: 0;
-  border-radius: var(--r-sm);
-  background: transparent;
-  color: var(--text-2);
+  gap: var(--sv2-space-16);
+  padding: 14px var(--sv2-space-16);
+  border-radius: var(--sv2-radius-control);
+  background: var(--sv2-state-danger-bg);
+  color: var(--sv2-state-danger-fg);
   font-size: 14px;
-  line-height: 1;
-  cursor: pointer;
+  font-weight: 500;
 }
 
-.miniNavButton:hover {
-  background: var(--surface-sub);
-  color: var(--text-1);
-}
-
-.miniWeekdayRow,
-.miniGrid {
-  display: grid;
-  grid-template-columns: repeat(7, minmax(0, 1fr));
-  gap: 2px;
-}
-
-.miniWeekday {
-  padding: 2px 0;
-  color: var(--text-3);
-  font-size: 11px;
-  font-weight: 600;
-  text-align: center;
-}
-
-.miniDay {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  aspect-ratio: 1;
-  border: 1px solid transparent;
-  border-radius: var(--r-full);
-  background: transparent;
-  color: var(--text-1);
-  font-size: 12px;
-  line-height: 1;
-  cursor: pointer;
-}
-
-.miniDay:hover {
-  background: var(--surface-sub);
-}
-
-.miniDayMuted {
-  color: var(--text-3);
-}
-
-/* 선택일은 soft brand, 오늘은 글자색. 겹쳐도 장식이 과하지 않다. */
-.miniDaySelected {
-  border-color: var(--brand-700);
-  background: var(--brand-50);
-  color: var(--brand-700);
-  font-weight: 800;
-}
-
-.miniDayToday {
-  color: var(--brand-700);
-  font-weight: 800;
-}
-
-/* ── Filters ─────────────────────────────────────────────────────── */
-
-.filterPanel {
-  display: grid;
-  gap: var(--s4);
-  padding-top: var(--s4);
-  border-top: 1px solid var(--border);
-}
-
-.filterGroup {
-  display: grid;
-  gap: var(--s2);
+.errorCard p {
   margin: 0;
-  padding: 0;
-  border: 0;
 }
 
-.filterLegend {
-  padding: 0;
-  color: var(--text-3);
-  font-size: 12px;
-  font-weight: 700;
-}
-
-.filterOptions {
-  display: grid;
-  gap: 2px;
-}
-
-/* 큰 버튼 카드를 세로로 쌓지 않는다. compact 한 선택 행이다. */
-.filterOption {
-  display: flex;
-  align-items: center;
-  gap: var(--s2);
-  min-width: 0;
-  padding: 5px var(--s2);
-  border-radius: var(--r-sm);
-  cursor: pointer;
-}
-
-.filterOption:hover {
-  background: var(--surface-sub);
-}
-
-.filterRadio {
-  flex: 0 0 auto;
-  width: 13px;
-  height: 13px;
+.status {
   margin: 0;
-  accent-color: var(--brand-700);
-}
-
-.filterOptionLabel {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  color: var(--text-1);
+  color: var(--sv2-ink-500);
   font-size: 13px;
+  font-weight: 500;
 }
 
-/* 목록을 접고 펴는 작은 텍스트 액션. 버튼 위계를 만들지 않는다. */
-.filterMore {
-  justify-self: start;
-  border: 0;
-  padding: 0 var(--s2);
-  background: none;
-  color: var(--text-2);
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
+/* ── 위 줄: 기간 이동 · 오늘 · 일/주/월 · 필터 ─────────────────── */
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
 }
 
-.filterMore:hover {
-  color: var(--text-1);
-  text-decoration: underline;
-}
-
-.filterReset {
-  justify-self: start;
-  border: 0;
-  padding: 0;
-  background: none;
-  color: var(--brand-700);
-  font-size: 12px;
-  font-weight: 700;
-  cursor: pointer;
-}
-
-.filterReset:hover {
-  text-decoration: underline;
-}
-
-.canvas {
-  display: grid;
-  gap: var(--s3);
-  padding: 18px;
-  border: 1px solid var(--border);
-  border-radius: var(--r-lg);
-  background: var(--surface);
-}
-
-.canvasHeader {
+.periodNav {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: var(--s3);
-  flex-wrap: wrap;
+  gap: 10px;
+}
+
+/* 기간 글자 위에 투명한 날짜 입력을 덮는다. 어디를 눌러도 브라우저 달력이 열린다. */
+.periodPicker {
+  position: relative;
+  border-radius: var(--sv2-radius-badge);
+  cursor: pointer;
+}
+
+.periodPicker:hover .periodLabel {
+  text-decoration: underline;
+}
+
+.periodPicker:focus-within {
+  outline: 2px solid var(--sv2-brand-700);
+  outline-offset: 2px;
+}
+
+.periodInput {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.periodInput::-webkit-calendar-picker-indicator {
+  position: absolute;
+  inset: 0;
+  width: auto;
+  height: auto;
+  cursor: pointer;
 }
 
 .periodLabel {
   margin: 0;
+  font-size: 16px;
+  line-height: 1.45;
+  font-weight: 700;
   white-space: nowrap;
-  color: var(--text-1);
-  font-size: 20px;
-  font-weight: 800;
-  line-height: 28px;
-  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
 }
 
-.canvasNav {
+/* 일/주/월: surface/fill 틀 · 안쪽 3 · 모서리 10, 항목 6/14 · 모서리 8, 선택은 흰 바탕 + Bold */
+.segment {
   display: flex;
-  align-items: center;
-  gap: var(--s1);
+  gap: 2px;
+  padding: 3px;
+  border-radius: var(--sv2-radius-chip-time);
+  background: var(--sv2-surface-fill);
 }
 
-.navButton,
-.navIconButton {
-  height: 32px;
-  border: 1px solid var(--border);
-  border-radius: var(--r-md);
-  background: var(--surface);
-  color: var(--text-1);
+.segmentItem {
+  padding: 6px 14px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--sv2-ink-500);
+  font: inherit;
+  font-size: 13px;
+  line-height: 1.2;
+  font-weight: 500;
   cursor: pointer;
 }
 
-.navButton {
-  padding: 0 var(--s3);
-  font-size: 13px;
+.segmentItem:hover:not(.segmentItemActive) {
+  color: var(--sv2-ink-900);
+}
+
+.segmentItem:focus-visible {
+  outline: 2px solid var(--sv2-brand-700);
+  outline-offset: 2px;
+}
+
+.segmentItemActive {
+  background: var(--sv2-surface-white);
+  color: var(--sv2-ink-900);
   font-weight: 700;
 }
 
-.navIconButton {
-  flex-shrink: 0;
-  display: inline-flex;
+.filters {
+  display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  justify-content: center;
-  width: 32px;
-  padding: 0;
-  color: var(--text-2);
-  font-size: 16px;
-  line-height: 1;
+  gap: 10px;
+  margin-left: auto;
 }
 
-.navButton:hover,
-.navIconButton:hover {
-  background: var(--surface-sub);
-  color: var(--text-1);
+/* 필터 선택: 높이 40 · 너비 140 · 좌우 12 · 모서리 10 · 13 Medium */
+.filterSelect {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--sv2-space-8);
+  width: 140px;
+  height: 40px;
+  padding: 0 var(--sv2-space-12);
+  border: 1px solid var(--sv2-line-default);
+  border-radius: var(--sv2-radius-chip-time);
+  background: var(--sv2-surface-white);
+  font-size: 13px;
+  line-height: 1.2;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.filterSelect:focus-within {
+  border-color: var(--sv2-brand-700);
+}
+
+.filterSelectText {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.filterSelectIcon {
+  flex: 0 0 auto;
+  color: var(--sv2-ink-500);
+}
+
+.filterSelect select {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+  font: inherit;
 }
 
 .alertRow {
   display: flex;
-  gap: var(--s2);
   flex-wrap: wrap;
+  gap: var(--sv2-space-8);
 }
 
-.alert {
-  display: inline-flex;
+/* ── 주 · 일 보기: 날짜 칸 + 신청 카드 ─────────────────────────── */
+.week {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sv2-space-12);
+}
+
+.weekGrid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(128px, 1fr));
+  align-items: start;
+  gap: var(--sv2-space-8);
+  overflow-x: auto;
+}
+
+.dayGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+/* 날짜 칸: surface/fill · 모서리 14 · 12/10 · 간격 8 */
+.day {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sv2-space-8);
+  min-width: 0;
+  padding: var(--sv2-space-12) 10px;
+  border-radius: 14px;
+  background: var(--sv2-surface-fill);
+}
+
+.dayHead {
+  display: flex;
   align-items: center;
-  height: 24px;
-  padding: 0 var(--s2);
-  border-radius: var(--r-full);
+  gap: 6px;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  border-radius: var(--sv2-radius-badge);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  line-height: 1.45;
+  text-align: left;
+  cursor: pointer;
+}
+
+.dayHead strong {
+  flex: 1 1 auto;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.dayHead:hover strong {
+  text-decoration: underline;
+}
+
+.dayHead:focus-visible,
+.closure:focus-visible,
+.monthDay:focus-visible {
+  outline: 2px solid var(--sv2-brand-700);
+  outline-offset: 2px;
+}
+
+.weekday,
+.sunday {
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.weekday {
+  color: var(--sv2-ink-500);
+}
+
+.sunday {
+  color: var(--sv2-state-alert);
+}
+
+.todayMark {
+  color: var(--sv2-brand-700);
   font-size: 12px;
   font-weight: 700;
   white-space: nowrap;
 }
 
-.alertAmber {
-  background: var(--amber-bg);
-  color: var(--amber-fg);
+.dayEmpty {
+  color: var(--sv2-ink-400);
+  font-size: 12px;
+  font-weight: 500;
 }
 
-.alertGray {
-  background: var(--gray-bg);
-  color: var(--gray-fg);
+/* 예약 마감 띠: state/warn-bg · 모서리 8 · 6/8 · 11 Bold state/warn-fg */
+.closure {
+  display: block;
+  width: 100%;
+  padding: 6px var(--sv2-space-8);
+  border: 0;
+  border-radius: 8px;
+  background: var(--sv2-state-warn-bg);
+  color: var(--sv2-state-warn-fg);
+  font: inherit;
+  font-size: 11px;
+  line-height: 1.45;
+  font-weight: 700;
+  text-align: left;
+  overflow-wrap: anywhere;
+  cursor: pointer;
 }
 
-.calendarEmptyNote {
+.dayCards {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sv2-space-8);
+}
+
+.dayCardsWide {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: var(--sv2-space-8);
+}
+
+/* 신청 카드: 흰 바탕 · line/subtle · 모서리 10 · 안쪽 10 · 간격 4. 일정 확정 필요는 state/warn-fg 1.2px */
+.card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--sv2-space-4);
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid var(--sv2-line-subtle);
+  border-radius: var(--sv2-radius-chip-time);
+  background: var(--sv2-surface-white);
+  color: var(--sv2-ink-900);
+  text-decoration: none;
+}
+
+.card:hover {
+  border-color: var(--sv2-line-default);
+}
+
+.card:focus-visible {
+  outline: 2px solid var(--sv2-brand-700);
+  outline-offset: 2px;
+}
+
+.cardNeedsConfirm,
+.cardNeedsConfirm:hover {
+  border: 1.2px solid var(--sv2-state-warn-fg);
+}
+
+.cardTime {
+  font-size: 14px;
+  line-height: 1.2;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.cardCanceled .cardTime,
+.cardCanceled .monthEventTime {
+  color: var(--sv2-ink-400);
+}
+
+.cardName {
+  width: 100%;
+  font-size: 12px;
+  line-height: 1.45;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.cardMeta {
+  width: 100%;
+  color: var(--sv2-ink-500);
+  font-size: 11px;
+  line-height: 1.45;
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+
+.cardUnassigned {
+  color: var(--sv2-state-alert);
+}
+
+.emptyNote {
   margin: 0;
-  color: var(--text-3);
+  color: var(--sv2-ink-500);
   font-size: 13px;
-  line-height: 18px;
+  font-weight: 500;
 }
 
-.weekdayRow,
+/* ── 월 보기 ─────────────────────────────────────────────────── */
+.month {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sv2-space-8);
+}
+
+.monthWeekdays,
 .monthGrid {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: var(--sv2-space-8);
 }
 
-.weekdayRow,
-.monthGrid {
-  gap: 6px;
+.monthWeekdays span {
+  padding: 0 10px;
+  color: var(--sv2-ink-500);
+  font-size: 13px;
+  font-weight: 500;
 }
 
-.weekdayCell {
-  padding: var(--s1) var(--s2);
-  color: var(--text-3);
-  font-size: 12px;
-  font-weight: 600;
+.monthWeekdays span:first-child {
+  color: var(--sv2-state-alert);
 }
 
-.cell {
+.monthCell {
   position: relative;
-  min-height: 112px;
-  display: grid;
-  align-content: start;
-  gap: var(--s1);
-  padding: var(--s2);
-  border: 1px solid var(--border);
-  border-radius: var(--r-md);
-  background: var(--surface);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  min-height: 132px;
+  padding: 10px;
+  border-radius: 14px;
+  background: var(--sv2-surface-fill);
 }
 
-.cellMuted {
-  background: var(--surface-sub);
+.monthCellMuted {
+  background: var(--sv2-surface-white);
+  box-shadow: inset 0 0 0 1px var(--sv2-line-subtle);
 }
 
-.cellSelected {
-  border-color: var(--brand-700);
-  background: var(--brand-50);
+.monthCellMuted .monthDay {
+  color: var(--sv2-ink-400);
 }
 
-.cellToday .cellDay {
-  color: var(--brand-700);
-  font-weight: 800;
+.monthCellToday {
+  background: var(--sv2-surface-ground-green);
 }
 
-.cellSelect {
+/* 칸 빈 곳을 누르면 일간 보기. 안의 버튼 · 링크는 그 위에 올라온다. */
+.monthCellSelect {
   position: absolute;
-  z-index: 0;
   inset: 0;
-  width: 100%;
   border: 0;
-  border-radius: var(--r-md);
+  border-radius: 14px;
   background: transparent;
   cursor: pointer;
 }
 
-.cellSelect:hover {
-  background: var(--surface-sub);
+.monthCellSelect:focus-visible {
+  outline: 2px solid var(--sv2-brand-700);
+  outline-offset: 2px;
 }
 
-.cellSelected .cellSelect:hover {
-  background: transparent;
-}
-
-.cellHead,
-.cellEvents {
+.monthCellHead,
+.monthCell .closure,
+.monthEvent,
+.monthMore {
   position: relative;
-  z-index: 1;
 }
 
-.cellHead {
+.monthCellHead {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: var(--s1);
+  gap: 6px;
   pointer-events: none;
 }
 
-.cellDay {
-  color: var(--text-1);
-  font-size: 13px;
+.monthDay {
+  padding: 0;
+  border: 0;
+  border-radius: var(--sv2-radius-badge);
+  background: transparent;
+  color: var(--sv2-ink-900);
+  font: inherit;
+  font-size: 15px;
   font-weight: 700;
+  pointer-events: auto;
+  cursor: pointer;
 }
 
-.cellMuted .cellDay {
-  color: var(--text-3);
-}
-
-.todayMark {
-  color: var(--brand-700);
-  font-size: 11px;
-  font-weight: 700;
-}
-
-.cellEvents {
-  display: grid;
-  gap: 2px;
-  min-width: 0;
+.monthDay:hover {
+  text-decoration: underline;
 }
 
 .monthEvent {
-  display: grid;
-  grid-template-columns: 3px auto minmax(0, 1fr);
+  display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 5px;
+  gap: var(--sv2-space-4);
   min-width: 0;
-  padding: 2px 4px;
-  border-radius: var(--r-sm);
-  background: transparent;
-  color: var(--text-1);
+  padding: 6px var(--sv2-space-8);
+  border: 1px solid var(--sv2-line-subtle);
+  border-radius: 8px;
+  background: var(--sv2-surface-white);
+  color: var(--sv2-ink-900);
   font-size: 12px;
-  line-height: 18px;
+  line-height: 1.45;
   text-decoration: none;
 }
 
-.monthEvent:hover {
-  background: var(--surface-sub);
+.monthEventNeedsConfirm {
+  border: 1.2px solid var(--sv2-state-warn-fg);
 }
 
-.monthEventTone {
-  flex: 0 0 auto;
-  width: 3px;
-  height: 12px;
-  border-radius: var(--r-full);
-}
-
-.monthToneGreen {
-  background: var(--green-fg);
-}
-
-.monthToneAmber {
-  background: var(--amber-fg);
-}
-
-.monthToneBlue {
-  background: var(--blue-fg);
-}
-
-.monthToneGray {
-  background: var(--gray-fg);
-}
-
-.monthToneRed {
-  background: var(--red-fg);
+.monthEvent:focus-visible {
+  outline: 2px solid var(--sv2-brand-700);
+  outline-offset: 2px;
 }
 
 .monthEventTime {
-  flex: 0 0 auto;
-  color: var(--text-2);
   font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
 
 .monthEventName {
+  flex: 1 1 auto;
   min-width: 0;
   overflow: hidden;
+  font-weight: 500;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-weight: 600;
 }
 
-.eventMore {
-  padding: 0 4px;
-  color: var(--text-3);
-  font-size: 11px;
-  font-weight: 600;
-  pointer-events: none;
-}
-
-.timeGridScroll {
-  overflow-x: auto;
-  border-top: 1px solid var(--border);
-}
-
-.dayTimeGrid {
-  width: 100%;
-  min-width: 0;
-}
-
-.weekTimeGrid {
-  min-width: 1080px;
-}
-
-.timeGridHeader {
-  display: grid;
-  grid-template-columns: 64px repeat(var(--time-column-count), minmax(0, 1fr));
-  min-height: 56px;
-  border-bottom: 1px solid var(--border);
-}
-
-.timeGridCorner {
-  border-right: 1px solid var(--border);
-}
-
-.timeGridDateHead {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--s2);
-  padding: var(--s2);
-  border-right: 1px solid var(--border);
-  color: var(--text-2);
+.monthMore {
+  color: var(--sv2-ink-500);
   font-size: 12px;
-  line-height: 18px;
-}
-
-.timeGridDateHead:last-child {
-  border-right: 0;
-}
-
-.timeGridDateHead strong {
-  color: var(--text-1);
-  font-size: 16px;
-}
-
-.timeGridDateHeadToday,
-.timeGridDateHeadToday strong {
-  color: var(--brand-700);
-}
-
-.timeGridBody {
-  position: relative;
-  display: grid;
-  grid-template-columns: 64px minmax(0, 1fr);
-  height: var(--grid-height);
-}
-
-.timeAxis {
-  position: relative;
-  height: 100%;
-  border-right: 1px solid var(--border);
-}
-
-.timeLabel {
-  position: absolute;
-  top: var(--marker-top);
-  right: var(--s2);
-  transform: translateY(-50%);
-  color: var(--text-3);
-  font-size: 11px;
-  line-height: 16px;
-  font-variant-numeric: tabular-nums;
-}
-
-.timeColumns {
-  display: grid;
-  grid-template-columns: repeat(var(--time-column-count), minmax(0, 1fr));
-  min-width: 0;
-}
-
-.timeColumn {
-  position: relative;
-  min-width: 0;
-  border-right: 1px solid var(--border);
-}
-
-.timeColumn:last-child {
-  border-right: 0;
-}
-
-.timeColumnToday {
-  background: var(--brand-50);
-}
-
-.hourLine {
-  position: absolute;
-  z-index: 0;
-  top: var(--marker-top);
-  right: 0;
-  left: 0;
-  border-top: 1px solid var(--border);
+  font-weight: 500;
   pointer-events: none;
 }
 
-.timeEvent {
-  position: absolute;
-  z-index: 1;
-  top: var(--event-top);
-  left: calc(var(--event-left) + 4px);
-  width: calc(var(--event-width) - 8px);
-  height: var(--event-height);
-  min-height: 34px;
-  overflow: hidden;
-  display: grid;
-  align-content: start;
-  gap: 1px;
-  padding: 5px 7px;
-  border: 0;
-  border-left: 3px solid currentcolor;
-  border-radius: var(--r-sm);
-  color: var(--text-1);
-  font-size: 11px;
-  line-height: 14px;
-  text-decoration: none;
+/* ── 아래 ───────────────────────────────────────────────────── */
+.uncertainRecords {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sv2-space-8);
+  padding: 14px var(--sv2-space-16);
+  border-radius: var(--sv2-radius-control);
+  background: var(--sv2-state-warn-bg);
+  color: var(--sv2-state-warn-fg);
+  font-size: 13px;
+  font-weight: 500;
 }
 
-.timeEvent:hover {
-  filter: brightness(0.98);
+.uncertainRecords summary {
+  font-weight: 700;
+  cursor: pointer;
 }
 
-.timeEventHead {
+.uncertainRecords p {
+  margin: var(--sv2-space-8) 0;
+}
+
+.uncertainRecords a {
+  display: block;
+  padding: var(--sv2-space-4) 0;
+  color: var(--sv2-ink-900);
+}
+
+.legend {
   display: flex;
   align-items: center;
-  gap: var(--s1);
-  min-width: 0;
-}
-
-.timeEventTime,
-.timeEventStatus {
-  font-weight: 800;
-  white-space: nowrap;
-}
-
-.timeEventStatus {
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.timeEventName,
-.timeEventClass,
-.timeEventTeacher {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.timeEventName {
-  font-weight: 700;
-}
-
-.timeEventCompact {
-  padding-right: 5px;
-  padding-left: 5px;
-}
-
-.timeToneGreen {
-  border-left-color: var(--green-fg);
-  background: var(--green-bg);
-  color: var(--green-fg);
-}
-
-.timeToneAmber {
-  border-left-color: var(--amber-fg);
-  background: var(--amber-bg);
-  color: var(--amber-fg);
-}
-
-.timeToneBlue {
-  border-left-color: var(--blue-fg);
-  background: var(--blue-bg);
-  color: var(--blue-fg);
-}
-
-.timeToneGray {
-  border-left-color: var(--gray-fg);
-  background: var(--gray-bg);
-  color: var(--gray-fg);
-}
-
-.timeToneRed {
-  border-left-color: var(--red-fg);
-  background: var(--red-bg);
-  color: var(--red-fg);
-}
-
-.timeGridEmpty {
-  position: absolute;
-  z-index: 2;
-  top: 32px;
-  right: 0;
-  left: 64px;
+  gap: 10px;
   margin: 0;
-  color: var(--text-3);
-  font-size: 13px;
-  line-height: 18px;
-  text-align: center;
-  pointer-events: none;
+  color: var(--sv2-ink-500);
+  font-size: 12px;
+  line-height: 1.45;
+  font-weight: 500;
 }
 
-@media (max-width: 1024px) {
-  /* 두 열을 유지하면 Month cell 이 100px 아래로 떨어진다. 패널을 캘린더 위로 올린다. */
-  .workspace {
-    grid-template-columns: minmax(0, 1fr);
-  }
+.legend svg {
+  flex: 0 0 auto;
+}
 
-  .sidebarPanel {
-    grid-template-columns: 232px minmax(0, 1fr);
-    align-items: start;
-  }
-
-  .filterPanel {
-    grid-auto-flow: column;
-    grid-auto-columns: minmax(0, 1fr);
-    align-content: start;
-    padding-top: 0;
-    padding-left: var(--s4);
-    border-top: 0;
-    border-left: 1px solid var(--border);
-  }
-
-  .filterReset {
-    grid-column: 1 / -1;
+@media (max-width: 1100px) {
+  .filters {
+    margin-left: 0;
   }
 }
 
-@media (max-width: 640px) {
-  /* Main Month View 가 이미 있으므로 Mini Calendar 로 공간을 쓰지 않는다. */
-  .mini {
-    display: none;
+@media (max-width: 720px) {
+  .monthCell {
+    min-height: 88px;
+    padding: 6px;
   }
 
-  .sidebarPanel {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .filterPanel {
-    grid-auto-flow: row;
-    padding-left: 0;
-    border-left: 0;
-  }
-
-  .filterOptions {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--s1);
-  }
-
-  .filterOption {
-    border: 1px solid var(--border);
-    border-radius: var(--r-full);
-  }
-}
-
-@media (max-width: 760px) {
-  .root {
-    gap: 24px;
-  }
-
-  .pageHeader {
-    align-items: flex-start;
-    padding: 0;
-    flex-direction: column;
-  }
-
-  .canvas {
-    padding: var(--s3);
-  }
-
-  .monthGrid,
-  .weekdayRow {
-    gap: 4px;
-  }
-
-  .cell {
-    min-height: 96px;
-    padding: var(--s1);
-  }
-
-  .monthEvent {
-    padding-right: 2px;
-    padding-left: 2px;
-  }
-
-  .monthEventTime {
+  .monthEventName,
+  .monthEvent > span:last-child {
     display: none;
   }
 }
-
-.pastRecord { color: var(--text-muted, #647067); opacity: .75; }
-.uncertainRecords { padding: 16px; border-top: 1px solid #e4e9e6; color: #616b64; font-size: 13px; }
-.uncertainRecords summary { cursor: pointer; }
-.uncertainRecords a { display: block; padding: 8px 0; color: inherit; }
-
-.monthEventKind { grid-column: 2 / -1; color: var(--text-2); font-size: 10px; line-height: 14px; }
-.bookingManage { margin-left: 12px; padding: 9px 14px; border: 1px solid var(--border-strong); border-radius: 8px; background: var(--surface); color: var(--text-1); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; }
-.bookingDateButton { position: relative; z-index: 2; display: block; margin: 3px 8px; padding: 3px 6px; border: 0; border-radius: 4px; background: transparent; color: var(--text-2); font-size: 11px; cursor: pointer; }
-.bookingClosure { position: relative; z-index: 2; display: block; width: calc(100% - 16px); margin: 3px 8px; padding: 5px 7px; border: 1px solid var(--border); border-radius: 5px; background: #eef0f0; color: var(--text-2); font-size: 11px; line-height: 16px; text-align: left; cursor: pointer; overflow-wrap: anywhere; }
-.bookingDayStrip { display: flex; flex-wrap: wrap; gap: 8px; padding: 8px 0; }.bookingDayStrip > div { min-width: 160px; flex: 1; }
-.bookingManage:focus-visible,.bookingDateButton:focus-visible,.bookingDateTrigger:focus-visible,.bookingClosure:focus-visible { outline: 2px solid var(--brand-500); outline-offset: 2px; }
-
-.bookingDateTrigger { position: relative; z-index: 2; pointer-events: auto; border: 0; padding: 0; background: transparent; font-family: inherit; cursor: pointer; }

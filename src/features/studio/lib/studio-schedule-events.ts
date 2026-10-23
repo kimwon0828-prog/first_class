@@ -21,6 +21,8 @@ export type StudioScheduleEvent = {
   isDurationFallback: boolean
   timeLabel: string
   childName: string
+  /** 신청서의 학년 그대로. 카드에 "이름 · 학년" 으로 쓴다. */
+  childGrade: string
   classId: string
   classTitle: string
   /** 필터 key 는 이름이 아니라 id 다(동명이인 방지). 미배정이면 null. */
@@ -154,6 +156,7 @@ export const buildStudioScheduleEvents = (
       isDurationFallback: duration.isDurationFallback,
       timeLabel: formatClockMinutes(startMinutes),
       childName: item.childName,
+      childGrade: item.childGrade,
       classId: item.classId,
       classTitle: item.classTitle?.trim() || "수업 정보 없음",
       assignedTeacherId: item.assignedTeacherId,
