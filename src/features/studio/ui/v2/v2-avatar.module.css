@@ -1,0 +1,32 @@
+/*
+ * Studio v2/Avatar (Figma 2024:166). 원형, 기본 36px · 첫 글자 14 / Bold / ink/700.
+ * 글자 크기는 지름에 비례한다(Figma 40px 아바타는 15.56px).
+ * 학원은 원형 — 로고가 있으면 원 안을 채운다(디자인 규칙 "학원은 원형").
+ */
+.avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: var(--v2-avatar-size);
+  height: var(--v2-avatar-size);
+  border-radius: var(--sv2-radius-pill);
+  overflow: hidden;
+  background: var(--sv2-surface-fill);
+  color: var(--sv2-ink-700);
+  font-family: var(--sv2-font);
+  font-size: calc(var(--v2-avatar-size) * 14 / 36);
+  line-height: 1;
+  font-weight: 700;
+}
+
+.brand {
+  background: var(--sv2-brand-50);
+}
+
+.image {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+}

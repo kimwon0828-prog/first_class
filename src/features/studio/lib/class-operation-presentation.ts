@@ -139,3 +139,60 @@ export const presentOperatingDraft = (
       : groups.length > 1 ? `운영시간 ${groups.length}개 그룹` : "요일·시간 미설정"
   }
 }
+
+/* ── 수업 탭 "체험 일정" 운영 시간 요약 (Figma 2148:6104) ─────────────────── */
+
+const toMinutes = (time: string) => Number(time.slice(0, 2)) * 60 + Number(time.slice(3, 5))
+const formatMonthDay = (value: string) => `${Number(value.slice(5, 7))}/${Number(value.slice(8, 10))}`
+
+/** 한 회차 길이(분). 운영 규칙은 모든 회차 길이가 같다(parseClassOperatingRule). */
+export const getOperatingRuleSlotMinutes = (rule: ClassOperatingRule) => {
+  const first = rule.slots[0]
+  return first ? toMinutes(first.endTime) - toMinutes(first.startTime) : null
+}
+
+/** "상시 운영 (10/20부터)" · "기간 지정 (12/22–1/30)" — 운영 방식 이름은 목록 · 등록 화면과 같다. */
+export const presentOperatingRuleHeading = (rule: ClassOperatingRule) =>
+  rule.operationType === "rolling"
+    ? `상시 운영 (${formatMonthDay(rule.startDate)}부터)`
+    : `기간 지정 (${formatMonthDay(rule.startDate)}–${rule.endDate ? formatMonthDay(rule.endDate) : ""})`
+
+export type OperatingRuleGroupPresentation = {
+  id: string
+  /** "매주 화 · 목 · 금" */
+  weekdayLabel: string
+  /** "16:00 – 18:00 · 60분 간격 · 정원 4명" */
+  ruleLabel: string
+  /** 생기는 시간 "16:00, 17:00" */
+  timesLabel: string
+}
+
+/** 운영 규칙을 등록 화면의 그룹(seriesId) 단위로 요약한다. 그룹 안에서는 요일마다 시간 · 정원이 같다. */
+export const presentOperatingRuleGroups = (rule: ClassOperatingRule): OperatingRuleGroupPresentation[] => {
+  const minutes = getOperatingRuleSlotMinutes(rule)
+  return [...new Set(rule.slots.map((slot) => slot.seriesId))].map((seriesId) => {
+    const series = rule.slots.filter((slot) => slot.seriesId === seriesId)
+    const weekdays = [...new Set(series.map((slot) => slot.weekday))].sort(
+      (left, right) => WEEKDAY_ORDER.indexOf(left) - WEEKDAY_ORDER.indexOf(right)
+    )
+    const daySlots = series.filter((slot) => slot.weekday === weekdays[0]).sort((a, b) => a.startTime.localeCompare(b.startTime))
+    const capacities = [...new Set(daySlots.map((slot) => slot.capacity))].sort((a, b) => a - b)
+    const capacityLabel =
+      capacities.length === 1 ? `정원 ${capacities[0]}명` : `정원 ${capacities[0]}~${capacities[capacities.length - 1]}명`
+    const first = daySlots[0]
+    const last = daySlots[daySlots.length - 1]
+    const times = daySlots.map((slot) => format24HourTime(slot.startTime))
+    return {
+      id: seriesId,
+      weekdayLabel: `매주 ${weekdays.map((weekday) => weekdayLabels[weekday] ?? "").join(" · ")}`,
+      ruleLabel: [
+        first && last ? `${format24HourTime(first.startTime)} – ${format24HourTime(last.endTime)}` : null,
+        minutes ? `${minutes}분 간격` : null,
+        capacityLabel
+      ]
+        .filter(Boolean)
+        .join(" · "),
+      timesLabel: times.length <= 6 ? times.join(", ") : `${times.slice(0, 6).join(", ")} 외 ${times.length - 6}개`
+    }
+  })
+}

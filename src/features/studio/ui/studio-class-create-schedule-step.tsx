@@ -51,7 +51,9 @@ const buildDraftCalendarDays = (generatedSlots: CreateClassScheduleDraftSlot[]):
       minimumCapacity: 1,
       remainingCapacity: slot.capacity,
       status: slot.bookingStatus === "closed" ? "closed" : "open",
-      seriesId: slot.seriesId
+      seriesId: slot.seriesId,
+      // 아직 저장 전 미리보기라 규칙 id 가 없다.
+      generatedByRuleId: null
     })
     dayMap.set(slot.specificDate, current)
   }

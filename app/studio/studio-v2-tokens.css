@@ -1,0 +1,94 @@
+/*
+ * Studio Design System v2 토큰 (STUDIO_DESIGN_SYSTEM.md §3).
+ *
+ * 값의 출처는 Figma 파일 ZXrXxnX3ae33Hp81alIEmO 의 변수 컬렉션 "첫수업 / Color, Size" 다.
+ * Figma 변수 이름 brand/700 → --sv2-brand-700 처럼 "/" 를 "-" 로 바꿔 그대로 옮긴다.
+ * 값을 여기서 고치지 않는다. Figma 가 바뀌면 문서와 이 파일을 같이 바꾼다.
+ *
+ * ⚠️ 기존 globals.css 의 --brand-50 · --text-1 · --border 같은 이름은 건드리지 않는다.
+ *    v2 로 아직 옮기지 않은 Studio 본문이 그 값을 그대로 쓰고 있다. v2 는 --sv2- 접두로만
+ *    읽고, 화면을 v2 로 옮길 때 그 화면의 CSS 가 --sv2-* 로 바꿔 탄다.
+ *
+ * Studio layout(app/studio/layout.tsx) 에서만 불러온다. 이름이 접두로 갈려 있어서
+ * 다른 제품 화면에 같은 문서가 남아 있어도 값이 섞이지 않는다.
+ */
+:root {
+  /* Color · brand. 키 컬러(500 · 700)는 바꾸지 않는다. 초록은 진행 버튼 · 선택 상태에만. */
+  --sv2-brand-50: #eef7ef;
+  --sv2-brand-200: #bfdfc3;
+  --sv2-brand-500: #2aad38;
+  --sv2-brand-700: #1b7a26;
+  --sv2-brand-800: #145c1d;
+
+  /* Color · ink (텍스트 · 아이콘) */
+  --sv2-ink-900: #111312;
+  --sv2-ink-700: #454b48;
+  --sv2-ink-500: #626966;
+  --sv2-ink-400: #8a908d;
+  --sv2-ink-300: #aeb4b1;
+
+  /* Color · line (구분선. 그림자 대신 이것으로 나눈다) */
+  --sv2-line-default: #e6e9e7;
+  --sv2-line-subtle: #eef0ef;
+
+  /* Color · surface */
+  --sv2-surface-white: #ffffff;
+  --sv2-surface-fill: #f3f4f3;
+  --sv2-surface-ground-green: #f4f7f3;
+
+  /* Color · state */
+  --sv2-state-warn-fg: #8a4b00;
+  --sv2-state-warn-bg: #fff4e5;
+  --sv2-state-alert: #e5484d;
+  /*
+   * StatusBadge red 는 Figma 에서 변수가 아니라 고정값(#B4232A / #FDECEC)으로 칠해져 있다
+   * (node 2002:96). 값은 그대로 옮기고 이름만 붙인다.
+   */
+  --sv2-state-danger-fg: #b4232a;
+  --sv2-state-danger-bg: #fdecec;
+
+  /* Color · subject (과목 색. StatusBadge blue 는 subject/math 쌍을 쓴다) */
+  --sv2-subject-math-fg: #245ea8;
+  --sv2-subject-math-bg: #e8f0fb;
+  --sv2-subject-coding-bg: #e7f3fa;
+  --sv2-subject-english-bg: #f1ecfb;
+
+  /* Size · radius */
+  --sv2-radius-badge: 6px;
+  --sv2-radius-chip-time: 10px;
+  --sv2-radius-control: 12px;
+  --sv2-radius-card: 16px;
+  --sv2-radius-sheet: 20px;
+  --sv2-radius-pill: 999px;
+
+  /* Size · space */
+  --sv2-space-4: 4px;
+  --sv2-space-8: 8px;
+  --sv2-space-12: 12px;
+  --sv2-space-16: 16px;
+  --sv2-space-20: 20px;
+  --sv2-space-24: 24px;
+  --sv2-space-32: 32px;
+
+  /* Layout (디자인 규칙 2148:4687: 기준 폭 1440, 사이드바 240, 본문 좌우 48) */
+  --sv2-sidebar-w: 240px;
+  --sv2-main-px: 48px;
+
+  /*
+   * Font. Figma 는 Noto Sans KR 로 그려져 있지만 제품 글꼴은 Pretendard 로 정했다.
+   * 실제 웹폰트는 아래 [data-studio-root] 에서 연결한다. 여기 값은 그 밖(body 로 portal 되는
+   * 요소 등)에서 쓰는 대체값이다.
+   */
+  --sv2-font: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+}
+
+/*
+ * Studio 화면 전체에 Pretendard 웹폰트를 적용한다(app/studio/layout.tsx 의 next/font/local).
+ * --font-pretendard 는 next/font 가 이 요소에 붙이는 글꼴 이름이다. v2 로 옮기지 않은
+ * 기존 화면도 font: inherit 로 이 글꼴을 이어받는다.
+ */
+[data-studio-root] {
+  --sv2-font: var(--font-pretendard), "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, system-ui,
+    sans-serif;
+  font-family: var(--sv2-font);
+}

@@ -1,149 +1,102 @@
+/*
+ * 월 달력 (Studio v2, Figma 2178:970). 칸 38 × 38 · 간격 2 · 모서리 10.
+ * - 요일: 13 Medium ink/400
+ * - 예약 시간 없는 날: 13 Medium ink/400(지난날 ink/300)
+ * - 예약 시간 있는 날: 13 Bold ink/900(지난날 ink/300) + 4px 점
+ * - 선택: brand/700 바탕 + 흰 글자 · 흰 점
+ */
 .calendar {
-  display: grid;
-  gap: var(--s3);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-family: var(--sv2-font);
 }
 
 .weekdayRow,
 .monthGrid {
   display: grid;
-  grid-template-columns: repeat(7, minmax(0, 1fr));
-  gap: var(--s2);
+  grid-template-columns: repeat(7, 38px);
+  gap: 2px;
+}
+
+.monthGrid {
+  row-gap: 8px;
 }
 
 .weekdayCell {
-  padding: 8px 0;
-  color: var(--text-2);
-  font-size: 12px;
-  line-height: 16px;
-  font-weight: 700;
-  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 38px;
+  color: var(--sv2-ink-400);
+  font-size: 13px;
+  line-height: 1;
+  font-weight: 500;
 }
 
-.weekdayCellSunday {
-  color: var(--red-fg);
+.dayCellEmpty {
+  height: 38px;
 }
 
 .dayCell {
-  min-height: 108px;
-  border: 1px solid var(--border);
-  border-radius: var(--r-md);
-  background: var(--surface);
-  padding: 10px 10px 12px;
-  display: grid;
-  align-content: start;
-  gap: 10px;
-  text-align: left;
-}
-
-.dayCellMuted {
-  background: var(--surface-sub);
-  color: var(--text-3);
-}
-
-.dayCellPast {
-  opacity: 0.58;
-}
-
-.dayCellSelected {
-  border-color: var(--brand-500);
-  background: var(--brand-50);
-  box-shadow: inset 0 0 0 1px rgba(42, 173, 56, 0.14);
-}
-
-.dayCellToday {
-  border-color: var(--brand-100);
-}
-
-.dayTop {
   display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: var(--s2);
-}
-
-.dayNumber {
-  color: var(--text-1);
-  font-size: 16px;
-  line-height: 20px;
-  font-weight: 800;
-}
-
-.dayCellMuted .dayNumber {
-  color: inherit;
-}
-
-.countBadge {
-  display: inline-flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-height: 20px;
-  padding: 0 8px;
-  border-radius: var(--r-full);
-  background: var(--brand-50);
-  color: var(--brand-700);
-  font-size: 11px;
-  line-height: 14px;
-  font-weight: 800;
+  gap: 2px;
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--sv2-radius-chip-time);
+  background: transparent;
+  color: var(--sv2-ink-400);
+  font: inherit;
+  font-size: 13px;
+  line-height: 1;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
 }
 
-.dayBody {
-  display: grid;
-  gap: 6px;
+.dayCell:hover:not(.dayCellSelected) {
+  background: var(--sv2-surface-fill);
 }
 
-.dayMetric,
-.dayStatus,
-.lockBadge {
-  width: fit-content;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 20px;
-  padding: 0 8px;
-  border-radius: var(--r-full);
-  font-size: 11px;
-  line-height: 14px;
+.dayCell:focus-visible {
+  outline: 2px solid var(--sv2-brand-700);
+  outline-offset: 1px;
+}
+
+.dayCellHasItems {
+  color: var(--sv2-ink-900);
   font-weight: 700;
 }
 
-.dayMetric {
-  background: var(--surface-sub);
-  color: var(--text-2);
+.dayCellPast {
+  color: var(--sv2-ink-300);
 }
 
-.dayStatus {
-  background: var(--brand-50);
-  color: var(--brand-700);
+.dayCellSelected {
+  background: var(--sv2-brand-700);
+  color: var(--sv2-surface-white);
 }
 
-.dayStatusClosed {
-  background: var(--amber-bg);
-  color: var(--amber-fg);
+.dayNumber {
+  display: block;
 }
 
-.dayStatusHidden {
-  background: var(--gray-bg);
-  color: var(--gray-fg);
+.dayDot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--sv2-brand-500);
 }
 
-.lockBadge {
-  background: #111827;
-  color: #ffffff;
+.dayDotChanged {
+  background: var(--sv2-state-warn-fg);
 }
 
-@media (max-width: 720px) {
-  .weekdayRow,
-  .monthGrid {
-    gap: 6px;
-  }
-
-  .dayCell {
-    min-height: 84px;
-    padding: var(--s2);
-  }
-
-  .dayNumber {
-    font-size: 14px;
-    line-height: 18px;
-  }
+.dayCellSelected .dayDot {
+  background: var(--sv2-surface-white);
 }

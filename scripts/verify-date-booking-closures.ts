@@ -38,7 +38,7 @@ const privateLegacy={...closure("legacy",null,18,19)}
 assert.equal(bookingReleaseTargets(reported,[privateLegacy]).length,4)
 assert.equal(bookingReleaseTargets(reported,[{...privateLegacy,classId:"A",selectionScope:"public"}]).length,1)
 assert.equal(bookingClosureScopeLabel(privateLegacy),"기존 학원 전체 마감")
-assert.equal(bookingClosureScopeLabel({...privateLegacy,classId:"A",selectionScope:"public"}),"전체 공개 과정에서 적용")
+assert.equal(bookingClosureScopeLabel({...privateLegacy,classId:"A",selectionScope:"public"}),"전체 공개 수업에서 적용")
 assert.deepEqual(previewBookingClosure({...reported,classes:reported.classes.map(c=>({...c,isActive:true}))},[reported.occurrences[0].key],null,"close").targets.map(o=>o.id),["piano","private1","private2","private3"])
 const compat=readFileSync("supabase/migrations/20261006160000_public_booking_closure_scope_compat.sql","utf8")
 assert(!/\bdrop\b/i.test(compat));assert(!/update public\.(classes|class_schedules|trial_applications)\b/i.test(compat));assert(compat.includes('mutate_studio_booking_closures_v2'));assert(compat.includes('on conflict do nothing'))

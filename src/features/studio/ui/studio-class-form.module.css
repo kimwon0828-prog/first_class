@@ -1,147 +1,855 @@
-.page { --class-summary-offset: 24px; max-width: 1180px; margin: 0 auto; padding: 24px 24px 40px; color: var(--text-1); }
-.pageHeader { display: flex; justify-content: space-between; align-items: center; gap: 20px; margin-bottom: 22px; }
-.pageHeader h1 { margin: 8px 0 5px; font-size: 24px; line-height: 1.35; letter-spacing: -.025em; }
-.pageHeader p { margin: 0; color: var(--text-2); font-size: 14px; }
-.backLink { color: var(--text-2); text-decoration: none; font-size: 13px; }
-.backLink:hover { color: var(--brand-700); }
-.dirtyText { color: var(--text-2); font-size: 13px; }
-.unifiedForm { display: grid; grid-template-columns: minmax(0, 1.95fr) minmax(340px, 1fr); align-items: start; gap: 24px; }
-.sections { min-width: 0; display: grid; gap: 10px; }
-.formSection { min-width: 0; scroll-margin-top: 24px; border: 1px solid var(--border); border-radius: var(--r-md); background: var(--surface); overflow: clip; }
-.sectionHeading { display: flex; align-items: center; gap: 10px; min-height: 60px; padding: 14px 18px; cursor: pointer; list-style: none; background: var(--surface-sub); transition: background 150ms; }
-.sectionHeading h2 { flex-shrink: 0; margin: 0; font-size: 15px; line-height: 22px; font-weight: 650; }
-.basicInfoGrid { display: grid; gap: 16px; }
-.detailsGrid { display: grid; gap: 16px; }
-.field { min-width: 0; display: grid; gap: 8px; }
-.fieldLabel { font-size: 14px; font-weight: 600; line-height: 20px; }
-.input, .select, .textarea { box-sizing: border-box; width: 100%; min-height: 44px; padding: 10px 12px; border: 1px solid var(--border); border-radius: var(--r-sm); background: var(--surface); color: var(--text-1); font: inherit; font-size: 14px; line-height: 22px; }
-.textarea { resize: vertical; }
-.compactTextarea { min-height: 78px; }
-.input::placeholder, .textarea::placeholder { color: var(--text-3); }
-.input:focus, .select:focus, .textarea:focus { outline: 2px solid var(--brand-100); outline-offset: 1px; border-color: var(--brand-500); }
-.input[aria-invalid=true], .textarea[aria-invalid=true] { border-color: var(--red-fg); }
-.fieldHint, .storageHint { margin: 0; color: var(--text-2); font-size: 12px; line-height: 1.7; }
-.chipGroup { display: flex; gap: 8px; flex-wrap: wrap; }
-.chipButton { min-height: 38px; padding: 7px 13px; border: 1px solid var(--border); border-radius: var(--r-sm); background: var(--surface); color: var(--text-2); cursor: pointer; font: inherit; font-size: 13px; transition: background 150ms, border-color 150ms; }
-.chipButton:hover { border-color: var(--brand-500); }
-.chipButtonSelected { border-color: var(--brand-500); color: var(--brand-700); background: var(--brand-50); font-weight: 600; }
-.gradeGroupList { display: grid; gap: 6px; }
-.gradeGroup { display: grid; grid-template-columns: 42px 1fr; align-items: start; gap: 6px; }
-.gradeGroupLabel { padding-top: 7px; color: var(--text-2); font-size: 12px; }
-.priceChoices { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
-.priceInput { display: flex; align-items: center; gap: 8px; flex: 1; min-width: 150px; max-width: 240px; font-size: 14px; }
-.radioCard { display: flex; align-items: flex-start; gap: 10px; padding: 14px 16px; border: 1px solid var(--border); border-radius: var(--r-md); background: var(--surface); cursor: pointer; font-size: 14px; line-height: 22px; }
-.radioCard:has(input:checked) { border-color: var(--brand-500); background: var(--brand-50); }
-.radioCard input { margin: 4px 0 0; accent-color: var(--brand-500); flex: 0 0 auto; }
-.radioCard strong { font-size: 14px; font-weight: 600; }
-.radioCard small { display: block; margin-top: 4px; color: var(--text-2); font-size: 12px; line-height: 1.6; }
-.operationBlock { display: grid; gap: 16px; }
-.notice { margin: 0; padding: 12px 14px; border-radius: var(--r-sm); background: var(--surface-sub); color: var(--text-2); font-size: 13px; line-height: 1.7; }
-.notice p { margin: 0; }
-.legacyNotice { display: grid; gap: 4px; padding: 12px 14px; border: 1px solid var(--border); border-radius: var(--r-sm); background: var(--surface-sub); color: var(--text-1); font-size: 13px; line-height: 1.6; }
-.legacyNotice strong { color: var(--text-1); font-size: 13px; }
-.legacyNotice p { margin: 0; color: var(--text-2); }
-.protectionInfo { display: flex; align-items: center; gap: 9px; padding: 10px 12px; border-radius: var(--r-sm); background: var(--surface-sub); color: var(--text-2); font-size: 12px; line-height: 18px; }
-.protectionInfo > span { display: grid; place-items: center; flex: 0 0 auto; width: 18px; height: 18px; border: 1px solid var(--border-strong); border-radius: 50%; font-size: 11px; font-weight: 700; }
-.protectionInfo p, .pendingOperationNote p { margin: 0; }
-.dateOverrideAction { display: flex; justify-content: space-between; align-items: center; gap: 18px; width: 100%; padding: 14px 2px; border: 0; border-top: 1px solid var(--border); background: transparent; color: var(--text-1); text-align: left; cursor: pointer; }
-.dateOverrideAction > span:first-child { display: grid; gap: 4px; }
-.dateOverrideAction strong { font-size: 14px; line-height: 20px; }
-.dateOverrideAction small { color: var(--text-2); font-size: 12px; line-height: 18px; }
-.dateOverrideAction > span:last-child { color: var(--text-2); font-size: 24px; }
-.dateOverrideAction:hover:not(:disabled) strong { color: var(--brand-700); }
-.pendingOperationNote { display: flex; justify-content: space-between; align-items: center; gap: 14px; padding: 10px 12px; border-radius: var(--r-sm); background: var(--surface-sub); color: var(--text-2); font-size: 12px; line-height: 18px; }
-.summaryRail { position: sticky; top: var(--class-summary-offset); min-width: 0; }
-.summaryCard { display: flex; flex-direction: column; border: 1px solid var(--border-strong); border-radius: var(--r-lg); background: var(--surface); max-height: calc(100dvh - var(--class-summary-offset) - 24px); overflow: hidden; box-shadow: 0 3px 16px rgb(26 26 26 / 3%); }
-.summaryCard h2 { font-size: 21px; line-height: 1.45; letter-spacing: -.025em; margin: 0; overflow-wrap: anywhere; }
-.summaryImage { display: block; width: 100%; height: 100%; object-fit: cover; }
-.summaryCard dl { margin: 0; display: grid; gap: 8px; font-size: 13px; line-height: 1.6; padding-bottom: 16px; border-bottom: 1px solid var(--border); }
-.summaryCard dl > div { display: grid; grid-template-columns: 56px 1fr; gap: 12px; }
-.summaryCard dt { color: var(--text-2); }
-.summaryCard dd { margin: 0; overflow-wrap: anywhere; }
-.summaryPrice { font-size: 19px; line-height: 1.5; color: var(--brand-700); }
-.summaryCard .operationSummary { gap: 7px; padding: 13px 0; border-top: 1px solid var(--border); }
-.summaryCard .operationSummary > div { grid-template-columns: 82px minmax(0, 1fr); gap: 10px; }
-.summaryCard .operationSummary dd { font-weight: 550; }
-.visibilityStatus { display: flex; justify-content: space-between; gap: 12px; padding-top: 12px; margin: 0; border-top: 1px solid var(--border); color: var(--text-2); font-size: 12px; line-height: 1.6; }
-.visibilityStatus strong { color: var(--text-1); font-size: 12px; font-weight: 600; text-align: right; }
-.summaryActions { display: grid; gap: 10px; }
-.secondaryButton, .saveButton { min-height: 44px; padding: 10px 16px; border-radius: var(--r-sm); font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; line-height: 20px; }
-.secondaryButton { border: 1px solid var(--border); background: var(--surface); color: var(--text-1); white-space: nowrap; }
-.secondaryButton:hover:not(:disabled) { background: var(--surface-sub); border-color: var(--border-strong); }
-.saveButton { border: 1px solid var(--brand-500); background: var(--brand-500); color: white; }
-.saveButton:hover:not(:disabled) { background: var(--brand-700); }
-.page button:disabled, .page input:disabled, .page select:disabled { opacity: .55; cursor: not-allowed; }
-.textButton { padding: 6px 0; border: 0; background: transparent; color: var(--brand-700); text-decoration: underline; font: inherit; cursor: pointer; }
-.errorText, .feedbackMessageError { margin: 0; color: var(--red-fg); font-size: 13px; line-height: 1.6; }
-.successText { color: var(--brand-700); font-size: 13px; }
-.feedbackMessage { margin: 0; }
-.draftNotice { display: flex; gap: 16px; align-items: center; min-height: 42px; padding: 6px 12px; margin-bottom: 14px; border: 1px solid var(--border); border-radius: var(--r-sm); background: var(--surface-sub); color: var(--text-2); font-size: 13px; }
-.draftNotice > span { flex: 1; }
-.uploader { position: relative; display: block; width: min(100%, 560px); aspect-ratio: 16 / 9; overflow: hidden; border: 1px dashed var(--border-strong); border-radius: var(--r-md); background: var(--surface-sub); cursor: pointer; }
-.uploader:focus-within { outline: 2px solid var(--brand-500); outline-offset: 2px; }
-.uploaderInput { position: absolute; width: 1px; height: 1px; opacity: 0; }
-.uploaderImage { display: block; width: 100%; height: 100%; object-fit: cover; }
-.uploaderOverlay { position: absolute; bottom: 12px; right: 12px; border-radius: var(--r-sm); padding: 8px 12px; background: var(--surface); color: var(--text-1); font-size: 13px; }
-.uploaderEmpty { height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 16px; text-align: center; }
-.uploaderEmptyTitle { font-size: 15px; font-weight: 600; }
-.uploaderEmptyHint { color: var(--text-2); font-size: 13px; }
-.uploaderEmptyMeta { color: var(--text-3); font-size: 12px; }
-.visibilitySetting { display: flex; align-items: center; justify-content: space-between; gap: 20px; min-height: 52px; padding: 4px 2px; cursor: pointer; }
-.visibilitySetting > span { display: grid; gap: 3px; }
-.visibilitySetting strong { color: var(--text-1); font-size: 14px; line-height: 20px; }
-.visibilitySetting small { color: var(--text-2); font-size: 12px; line-height: 18px; }
-.visibilitySetting input { width: 18px; height: 18px; margin: 0; accent-color: var(--brand-500); flex: 0 0 auto; }
+/*
+ * 수업 등록 · 수정 (Studio v2). Figma "수업 등록 · 체험 운영" 2173:423 · 2173:722,
+ * "수업 등록 · 기본 정보·가격·소개·공개" 2173:1081, "수업 수정 · 특정 날짜만 변경하기" 2178:602.
+ *
+ * 본문 1104 = [섹션 720 | 24 | 미리보기 360]. 섹션은 v2 접이식 Section(V2Section) 이고,
+ * 섹션 안 한 줄은 [라벨 116 | 16 | 입력] 이다. 체험 운영(C)만 라벨을 위에 쌓는다.
+ */
+.page {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 40px var(--sv2-main-px) 56px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sv2-space-20);
+  color: var(--sv2-ink-900);
+  font-family: var(--sv2-font);
+}
+
+/* 머리: ← 수업·일정 / 제목 28 / 설명 */
+.pageHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: var(--sv2-space-20);
+}
+
+.pageHeaderText {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.pageHeaderText h1 {
+  margin: 0;
+  font-size: 28px;
+  line-height: 1.3;
+  font-weight: 700;
+}
+
+.pageHeaderText p {
+  margin: 0;
+  color: var(--sv2-ink-500);
+  font-size: 14px;
+  line-height: 1.45;
+  font-weight: 500;
+}
+
+.backLink {
+  width: fit-content;
+  color: var(--sv2-ink-500);
+  font-size: 13px;
+  line-height: 1.45;
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.backLink:hover {
+  color: var(--sv2-ink-900);
+}
+
+.dirtyText {
+  color: var(--sv2-ink-500);
+  font-size: 13px;
+  line-height: 1.45;
+  font-weight: 500;
+}
+
+/* 이 브라우저 임시 보관 안내 */
+.draftNotice {
+  display: flex;
+  align-items: center;
+  gap: var(--sv2-space-12);
+  padding: var(--sv2-space-12) var(--sv2-space-16);
+  border-radius: var(--sv2-radius-control);
+  background: var(--sv2-surface-fill);
+  color: var(--sv2-ink-700);
+  font-size: 13px;
+  line-height: 1.45;
+  font-weight: 500;
+}
+
+.draftNotice > span {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.draftIcon {
+  flex: 0 0 auto;
+  color: var(--sv2-ink-500);
+}
+
+.draftContinue,
+.draftReset {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  font-size: 13px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.draftContinue {
+  color: var(--sv2-brand-700);
+  font-weight: 700;
+}
+
+.draftReset {
+  color: var(--sv2-ink-500);
+}
+
+.draftContinue:hover,
+.draftReset:hover {
+  text-decoration: underline;
+}
+
+/* 본문 두 칸 */
+.unifiedForm {
+  display: grid;
+  grid-template-columns: minmax(0, 720px) 360px;
+  justify-content: space-between;
+  align-items: start;
+  gap: var(--sv2-space-24);
+}
+
+.sections {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sv2-space-12);
+}
+
+.formSection {
+  scroll-margin-top: var(--sv2-space-24);
+}
+
+/* 섹션 안 한 줄 */
+.row {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sv2-space-16);
+}
+
+.rowLabel {
+  flex: 0 0 116px;
+  width: 116px;
+  color: var(--sv2-ink-900);
+  font-size: 14px;
+  line-height: 1.45;
+  font-weight: 700;
+}
+
+.rowBody {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--sv2-space-8);
+}
+
+.rowBody > * {
+  max-width: 100%;
+}
+
+.stackField {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--sv2-space-8);
+}
+
+.fieldLabel {
+  color: var(--sv2-ink-900);
+  font-size: 14px;
+  line-height: 1.45;
+  font-weight: 700;
+}
+
+.fieldHint {
+  margin: 0;
+  color: var(--sv2-ink-500);
+  font-size: 12px;
+  line-height: 1.45;
+  font-weight: 500;
+}
+
+/* 입력 공통 (Figma input: 높이 44 · 좌우 14 · 모서리 12 · 14 Medium) */
+.input,
+.select,
+.textarea {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid var(--sv2-line-default);
+  border-radius: var(--sv2-radius-control);
+  background: var(--sv2-surface-white);
+  color: var(--sv2-ink-900);
+  font: inherit;
+  font-size: 14px;
+  line-height: 1.45;
+  font-weight: 500;
+  outline: none;
+}
+
+.input:focus-visible,
+.select:focus-visible,
+.textarea:focus-visible {
+  border-color: var(--sv2-brand-700);
+}
+
+.input[aria-invalid="true"],
+.select[aria-invalid="true"],
+.textarea[aria-invalid="true"] {
+  border-color: var(--sv2-state-alert);
+}
+
+.input::placeholder,
+.textarea::placeholder {
+  color: var(--sv2-ink-400);
+}
+
+.input:disabled,
+.select:disabled,
+.textarea:disabled {
+  background: var(--sv2-surface-fill);
+  color: var(--sv2-ink-400);
+  cursor: not-allowed;
+}
+
+.textarea {
+  min-height: 96px;
+  padding: var(--sv2-space-12) 14px;
+  resize: vertical;
+}
+
+/* 선택 항목은 Figma 에서 한 줄(44) 입력이다. 여러 줄도 쓸 수 있게 textarea 를 유지한다. */
+.compactTextarea {
+  min-height: 44px;
+  padding-block: 11px;
+}
+
+.wideControl {
+  max-width: 560px;
+}
+
+.selectWrap {
+  position: relative;
+  display: flex;
+  width: 100%;
+}
+
+.select {
+  appearance: none;
+  -webkit-appearance: none;
+  padding-right: 38px;
+  cursor: pointer;
+}
+
+.selectIcon {
+  position: absolute;
+  top: 50%;
+  right: 14px;
+  transform: translateY(-50%);
+  color: var(--sv2-ink-500);
+  pointer-events: none;
+}
+
+.teacherSelect {
+  max-width: 360px;
+}
+
+/* 칩 묶음 */
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.gradeGroupList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sv2-space-8);
+}
+
+.gradeGroup {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.gradeGroupLabel {
+  flex: 0 0 40px;
+  color: var(--sv2-ink-500);
+  font-size: 12px;
+  line-height: 1.45;
+  font-weight: 700;
+}
+
+/* 무료/유료는 form 의 radio(priceChoice)라 V2Chip 과 같은 모양을 label 로 입힌다. */
+.radioChip {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  padding: 8px 14px;
+  border: 1px solid var(--sv2-line-default);
+  border-radius: var(--sv2-radius-pill);
+  background: var(--sv2-surface-white);
+  color: var(--sv2-ink-700);
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.radioChip input {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.radioChip:not(:has(input:checked)):hover {
+  background: var(--sv2-surface-fill);
+}
+
+.radioChip:has(input:checked) {
+  border-color: var(--sv2-brand-700);
+  background: var(--sv2-brand-50);
+  color: var(--sv2-brand-700);
+  font-weight: 700;
+}
+
+.radioChip:has(input:focus-visible) {
+  outline: 2px solid var(--sv2-brand-700);
+  outline-offset: 2px;
+}
+
+.radioChip:has(input:disabled) {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+/* 단위가 붙는 입력 (금액 · 원) */
+.unitInput {
+  display: flex;
+  align-items: center;
+  gap: var(--sv2-space-8);
+  height: 44px;
+  padding: 0 14px;
+  border: 1px solid var(--sv2-line-default);
+  border-radius: var(--sv2-radius-control);
+  background: var(--sv2-surface-white);
+}
+
+.unitInput:focus-within {
+  border-color: var(--sv2-brand-700);
+}
+
+.unitInput:has(input[aria-invalid="true"]) {
+  border-color: var(--sv2-state-alert);
+}
+
+.unitInput input {
+  flex: 1 1 auto;
+  min-width: 0;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--sv2-ink-900);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  outline: none;
+}
+
+.unitInput span {
+  flex: 0 0 auto;
+  color: var(--sv2-ink-500);
+  font-size: 13px;
+}
+
+.amountInput {
+  width: 180px;
+}
+
+.inlineControls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sv2-space-8);
+}
+
+.noteInput {
+  width: 300px;
+}
+
+/* 체험 운영(C) */
+.operationBlock {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sv2-space-24);
+}
+
+.legacyNotice {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sv2-space-4);
+  padding: var(--sv2-space-12) var(--sv2-space-16);
+  border-radius: var(--sv2-radius-control);
+  background: var(--sv2-surface-fill);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.legacyNotice strong {
+  font-weight: 700;
+}
+
+.legacyNotice p {
+  margin: 0;
+  color: var(--sv2-ink-500);
+  font-size: 12px;
+}
+
+.protectionInfo {
+  display: flex;
+  align-items: center;
+  gap: var(--sv2-space-8);
+  padding: var(--sv2-space-12) 14px;
+  border-radius: var(--sv2-radius-control);
+  background: var(--sv2-surface-fill);
+  color: var(--sv2-ink-700);
+  font-size: 13px;
+  line-height: 1.45;
+  font-weight: 500;
+}
+
+.protectionInfo svg {
+  flex: 0 0 auto;
+  color: var(--sv2-ink-500);
+}
+
+.protectionInfo p,
+.pendingOperationNote p {
+  margin: 0;
+}
+
+.dateOverrideAction {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sv2-space-16);
+  width: 100%;
+  padding: 14px var(--sv2-space-16);
+  border: 1px solid var(--sv2-line-default);
+  border-radius: var(--sv2-radius-control);
+  background: var(--sv2-surface-white);
+  color: var(--sv2-ink-900);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.dateOverrideAction > span {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.dateOverrideAction strong {
+  font-size: 14px;
+  line-height: 1.45;
+  font-weight: 700;
+}
+
+.dateOverrideAction small {
+  color: var(--sv2-ink-500);
+  font-size: 12px;
+  line-height: 1.45;
+  font-weight: 500;
+}
+
+.dateOverrideAction svg {
+  flex: 0 0 auto;
+  color: var(--sv2-ink-500);
+}
+
+.dateOverrideAction:hover:not(:disabled) {
+  background: var(--sv2-surface-fill);
+}
+
+.dateOverrideAction:focus-visible {
+  outline: 2px solid var(--sv2-brand-700);
+  outline-offset: 2px;
+}
+
+.dateOverrideAction:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+.pendingOperationNote {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sv2-space-12);
+  padding: var(--sv2-space-12) var(--sv2-space-16);
+  border-radius: var(--sv2-radius-control);
+  background: var(--sv2-surface-fill);
+  color: var(--sv2-ink-700);
+  font-size: 12px;
+  line-height: 1.45;
+  font-weight: 500;
+}
+
+.textButton {
+  flex: 0 0 auto;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--sv2-brand-700);
+  font: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+/* 이미지(E): 회색 상자 320 × 180 자체가 업로드 버튼이다. */
+.uploader {
+  position: relative;
+  display: flex;
+  width: 320px;
+  height: 180px;
+  overflow: hidden;
+  border-radius: var(--sv2-radius-control);
+  background: var(--sv2-surface-fill);
+  cursor: pointer;
+}
+
+.uploader:focus-within {
+  outline: 2px solid var(--sv2-brand-700);
+  outline-offset: 2px;
+}
+
+.uploaderInput {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+
+.uploaderImage {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.uploaderOverlay {
+  position: absolute;
+  right: var(--sv2-space-12);
+  bottom: var(--sv2-space-12);
+  padding: 6px 10px;
+  border-radius: var(--sv2-radius-chip-time);
+  background: var(--sv2-surface-white);
+  color: var(--sv2-ink-900);
+  font-size: 13px;
+  line-height: 1.45;
+  font-weight: 700;
+}
+
+.uploaderEmpty {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: var(--sv2-space-16);
+  text-align: center;
+  line-height: 1.45;
+}
+
+.uploaderEmptyTitle {
+  color: var(--sv2-ink-700);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.uploaderEmptyMeta {
+  color: var(--sv2-ink-500);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.errorText {
+  margin: 0;
+  color: var(--sv2-state-danger-fg);
+  font-size: 12px;
+  line-height: 1.45;
+  font-weight: 500;
+}
+
+.successText {
+  margin: 0;
+  color: var(--sv2-brand-700);
+  font-size: 13px;
+  line-height: 1.45;
+  font-weight: 500;
+}
+
+/* 오른쪽 수업 미리보기 (Figma 2173:1031) */
+.summaryRail {
+  position: sticky;
+  top: var(--sv2-space-24);
+  min-width: 0;
+}
+
+.summaryCard {
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100dvh - 48px);
+  overflow: hidden;
+  border: 1px solid var(--sv2-line-default);
+  border-radius: var(--sv2-radius-card);
+  background: var(--sv2-surface-white);
+}
+
+.summaryHeader {
+  flex: 0 0 auto;
+  padding: var(--sv2-space-16) var(--sv2-space-20);
+  border-bottom: 1px solid var(--sv2-line-subtle);
+  font-size: 14px;
+  line-height: 1.45;
+  font-weight: 700;
+}
+
+.summaryContent {
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: var(--sv2-space-20);
+}
+
+.summaryImageFrame {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  height: 150px;
+  overflow: hidden;
+  border: 1px solid var(--sv2-line-subtle);
+  border-radius: var(--sv2-radius-control);
+  background: var(--sv2-surface-white);
+}
+
+.summaryImage {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.summaryTitle {
+  margin: 0;
+  font-size: 18px;
+  line-height: 1.45;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.kv {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sv2-space-8);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.kv > div {
+  display: flex;
+  gap: var(--sv2-space-12);
+}
+
+.kv dt {
+  flex: 0 0 84px;
+  color: var(--sv2-ink-500);
+  font-weight: 500;
+}
+
+.kv dd {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+  color: var(--sv2-ink-900);
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+/* 구분선 뒤에 오는 묶음 (Figma: line/subtle 1px 위아래 14) */
+.kvDivided {
+  padding-top: 14px;
+  border-top: 1px solid var(--sv2-line-subtle);
+}
+
+.summaryPrice {
+  color: var(--sv2-brand-700);
+  font-size: 16px;
+  line-height: 1.45;
+  font-weight: 700;
+}
+
+.summaryActions {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.fullWidth {
+  width: 100%;
+}
+
+.saveFeedback:empty {
+  display: none;
+}
+
+.saveFeedback:focus {
+  outline: none;
+}
+
+/* 수업 미리보기 팝업 내용 */
+.parentPreview {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sv2-space-8);
+}
+
+.parentPreviewImage {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 220px;
+  overflow: hidden;
+  border: 1px solid var(--sv2-line-subtle);
+  border-radius: var(--sv2-radius-control);
+  background: var(--sv2-surface-white);
+}
+
+.parentPreviewImage img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.previewMeta {
+  margin: 0;
+  color: var(--sv2-ink-500);
+  font-size: 13px;
+  line-height: 1.45;
+  font-weight: 500;
+}
+
+.previewTitle {
+  margin: 0;
+  font-size: 20px;
+  line-height: 1.3;
+  font-weight: 700;
+}
+
+.parentPreviewSection {
+  padding: var(--sv2-space-16) 0 0;
+  border-top: 1px solid var(--sv2-line-subtle);
+}
+
+.parentPreviewSection h4 {
+  margin: 0 0 6px;
+  font-size: 15px;
+  line-height: 1.45;
+  font-weight: 700;
+}
+
+.parentPreviewSection p,
+.parentPreviewSection ul {
+  margin: 0;
+  color: var(--sv2-ink-700);
+  font-size: 14px;
+  line-height: 1.7;
+  white-space: pre-wrap;
+}
+
+@media (max-width: 1180px) {
+  .unifiedForm {
+    grid-template-columns: minmax(0, 1fr) 320px;
+  }
+}
+
+@media (max-width: 900px) {
+  .page {
+    padding: var(--sv2-space-24) var(--sv2-space-20) var(--sv2-space-32);
+  }
+
+  .unifiedForm {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .summaryRail {
+    position: static;
+  }
+
+  .summaryCard {
+    max-height: none;
+  }
+
+  .pageHeader,
+  .draftNotice,
+  .pendingOperationNote {
+    flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 640px) {
+  .row {
+    flex-direction: column;
+    gap: var(--sv2-space-8);
+  }
+
+  .rowLabel {
+    flex: 0 0 auto;
+    width: auto;
+  }
+
+  .uploader {
+    width: 100%;
+  }
+}
+
+/*
+ * ── 수업 목록 화면의 확인 팝업(StudioClassFormDialog) ──────────────────────
+ * studio-class-lifecycle-actions 가 이 네 클래스를 그대로 쓴다. 그 화면은 아직 v2 로
+ * 옮기지 않았으므로 기존 토큰 · 값을 그대로 둔다(수업 등록 · 수정 화면에서는 쓰지 않는다).
+ */
 .dialog { width: min(920px, calc(100vw - 48px)); max-height: calc(100dvh - 64px); padding: 0; border: 1px solid var(--border); border-radius: var(--r-lg); background: var(--surface); color: var(--text-1); box-shadow: 0 20px 64px rgb(15 23 42 / 16%); }
 .dialog::backdrop { background: rgb(15 23 42 / 35%); }
 .dialogHeader { display: flex; justify-content: space-between; gap: 20px; align-items: center; padding: 18px 24px; position: sticky; top: 0; z-index: 2; background: var(--surface); border-bottom: 1px solid var(--border); }
 .dialogHeader h2 { font-size: 18px; margin: 0; }
 .dialogBody { padding: 24px; }
-.parentPreviewImage { display: block; width: 100%; max-height: 320px; object-fit: cover; margin: 20px 0; border-radius: var(--r-md); }
-.previewMeta { color: var(--text-2); font-size: 13px; margin-top: 24px; }
-.parentPreviewSection { padding: 20px 0; border-bottom: 1px solid var(--border); }
-.parentPreviewSection h3 { font-size: 17px; }
-.parentPreviewSection p { white-space: pre-wrap; font-size: 14px; line-height: 1.8; }
-
-.sectionHeading::-webkit-details-marker { display: none; }
-.sectionHeading:hover { background: var(--brand-50); }
-.sectionHeading:focus-visible { outline: 2px solid var(--brand-500); outline-offset: -3px; }
-.sectionLetter { display: grid; place-items: center; flex-shrink: 0; width: 23px; height: 23px; border: 1px solid var(--brand-500); border-radius: 50%; color: var(--brand-700); background: var(--surface); font-size: 11px; font-weight: 600; }
-.sectionSummary { min-width: 0; margin-left: auto; color: var(--text-2); font-size: 12px; text-overflow: ellipsis; white-space: nowrap; overflow: hidden; }
-.sectionError { color: var(--red-fg); font-size: 11px; white-space: nowrap; }
-.sectionChevron { width: 7px; height: 7px; border-right: 1.5px solid var(--text-2); border-bottom: 1.5px solid var(--text-2); transform: rotate(-45deg); flex-shrink: 0; margin: 0 2px 0 6px; }
-.formSection[open] > .sectionHeading { border-bottom: 1px solid var(--border); }
-.formSection[open] > .sectionHeading .sectionSummary { visibility: hidden; }
-.formSection[open] > .sectionHeading .sectionChevron { transform: rotate(225deg); }
-.sectionBody { padding: 18px; display: grid; gap: 18px; }
-.formSection:not([open]) > .sectionBody { display: none; }
-.basicInfoGrid > .field { display: grid; grid-template-columns: 92px minmax(0, 1fr); column-gap: 14px; row-gap: 6px; align-items: start; }
-.basicInfoGrid > .field > .fieldLabel { grid-column: 1; grid-row: 1; padding-top: 10px; font-size: 13px; }
-.basicInfoGrid > .field > :not(.fieldLabel) { grid-column: 2; }
-.basicInfoGrid .fieldHint { font-size: 11px; line-height: 1.5; }
-.basicInfoGrid .chipGroup { gap: 6px; }
-.basicInfoGrid .gradeGroupList .chipButton { min-height: 30px; padding: 3px 9px; font-size: 12px; }
-.summaryHeader { flex-shrink: 0; padding: 15px 20px; border-bottom: 1px solid var(--border); font-size: 14px; font-weight: 650; }
-.summaryContent { min-height: 0; overflow-y: auto; display: grid; grid-template-columns: minmax(0, 1fr); grid-auto-rows: max-content; align-content: start; gap: 14px; padding: 20px; }
-.summaryImageFrame { position: relative; display: block; width: 100%; min-width: 0; aspect-ratio: 16 / 9; overflow: hidden; border-radius: var(--r-md); background: var(--surface-sub); }
-.summaryImageEmpty { height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; color: var(--text-3); font-size: 12px; }
-.programBadge { position: absolute; top: 12px; left: 12px; padding: 5px 10px; border: 1px solid var(--brand-100); border-radius: var(--r-sm); background: var(--surface); color: var(--brand-700); font-size: 12px; font-weight: 600; }
-.summaryFooter { flex-shrink: 0; display: grid; gap: 10px; padding: 18px 20px; border-top: 1px solid var(--border); background: var(--surface); }
-.summaryFooter .saveButton { min-height: 46px; }
-.summaryFooter .storageHint { font-size: 11px; }
-.summaryFooter [aria-live]:empty { display: none; }
-.draftContinue, .draftReset { padding: 6px 2px; min-height: 30px; border: 0; background: transparent; font: inherit; font-size: 12px; white-space: nowrap; cursor: pointer; }
-.draftContinue { color: var(--brand-700); font-weight: 600; }
-.draftReset { color: var(--text-2); }
-.draftContinue:hover, .draftReset:hover { text-decoration: underline; }
-@media (max-width: 1100px) { .page { padding: 20px; } .unifiedForm { grid-template-columns: minmax(0, 1fr) 320px; gap: 18px; } .basicInfoGrid > .field { grid-template-columns: 84px minmax(0, 1fr); } }
-@media (max-width: 850px) { .unifiedForm { grid-template-columns: minmax(0, 1fr); } .summaryRail { position: static; } .summaryCard { max-height: none; } .pageHeader { align-items: flex-start; flex-direction: column; gap: 12px; } .draftNotice, .pendingOperationNote { flex-wrap: wrap; } .sectionSummary { max-width: 50%; } }
-@media (prefers-reduced-motion: reduce) { .chipButton { transition: none; } }
-@media (max-width: 600px) { .basicInfoGrid > .field { grid-template-columns: minmax(0, 1fr); } .basicInfoGrid > .field > :not(.fieldLabel), .basicInfoGrid > .field > .fieldLabel { grid-column: 1; } .sectionHeading { padding: 12px; gap: 8px; } .sectionBody { padding: 14px; } .sectionSummary { max-width: 45%; } }
-
-/* Display-only regular tuition, separate from the application fee. */
-.regularPriceFields { display: grid; gap: 10px; border-top: 1px solid var(--border); padding-top: 18px; margin-top: 8px; }
-.regularPriceFields p { margin: 0; }
-.regularPriceRow { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; }
-.regularPriceRow > * { min-width: 0; }
-@media (max-width: 600px) { .regularPriceRow { grid-template-columns: 1fr; } }
+.secondaryButton { min-height: 44px; padding: 10px 16px; border-radius: var(--r-sm); font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; line-height: 20px; border: 1px solid var(--border); background: var(--surface); color: var(--text-1); white-space: nowrap; }
+.secondaryButton:hover:not(:disabled) { background: var(--surface-sub); border-color: var(--border-strong); }

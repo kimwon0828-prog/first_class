@@ -14,6 +14,7 @@ import {
 } from "@/features/studio/actions/studio-resubmit-sign-up"
 import type { KakaoAdministrativeRegionInput } from "@/features/maps/lib/kakao-postcode"
 import { StudioAddressFields } from "@/features/studio/ui/studio-address-fields"
+import { V2CheckIcon, V2UploadIcon } from "@/features/studio/ui/v2/v2-icons"
 import styles from "@/features/studio/ui/studio-sign-up-form.module.css"
 
 type SharedActionState = StudioSignUpActionState | StudioResubmitSignUpActionState
@@ -139,6 +140,10 @@ export const StudioSignUpForm = ({
     Boolean(initialValues?.businessRegistrationFilePath)
   )
   const [hasAttemptedSubmit, setHasAttemptedSubmit] = useState(false)
+  // 가입은 두 단계(1 계정 만들기 · 2 학원 정보)로 보인다. 재신청은 계정 칸이 없어 한 화면이다.
+  const [step, setStep] = useState<1 | 2>(1)
+  const [accountAttempted, setAccountAttempted] = useState(false)
+  const emailInputRef = useRef<HTMLInputElement | null>(null)
   const businessRegistrationFileRef = useRef<HTMLInputElement | null>(null)
   const allAgreementRef = useRef<HTMLInputElement | null>(null)
   const formContentRef = useRef<HTMLDivElement | null>(null)
@@ -149,7 +154,7 @@ export const StudioSignUpForm = ({
   const formLocked = isPending || isSuccess
   const passwordMismatch = passwordConfirm.length > 0 && password !== passwordConfirm
   const passwordRuleError =
-    (hasAttemptedSubmit || password.length >= 8) && password.length > 0 && !isPasswordValid(password)
+    (hasAttemptedSubmit || accountAttempted || password.length >= 8) && password.length > 0 && !isPasswordValid(password)
       ? "영문과 숫자를 포함해 8자 이상 입력해 주세요."
       : null
   const businessRegistrationNumberError =
@@ -270,6 +275,21 @@ export const StudioSignUpForm = ({
     return true
   }
 
+  /* [다음]: 1단계 칸(이메일 · 비밀번호 · 비밀번호 확인)이 맞아야 2단계로 넘어간다. 검증 규칙은 제출 때와 같다. */
+  const goNextStep = () => {
+    setAccountAttempted(true)
+    const emailInput = emailInputRef.current
+    if (emailInput && !emailInput.checkValidity()) {
+      emailInput.reportValidity()
+      return
+    }
+    if (!isPasswordValid(password) || passwordConfirm.length === 0 || password !== passwordConfirm) {
+      return
+    }
+    setStep(2)
+    window.scrollTo({ top: 0 })
+  }
+
   const handleDisabledSubmitAttempt = () => {
     setHasAttemptedSubmit(true)
     handleAgreementValidation()
@@ -339,9 +359,120 @@ export const StudioSignUpForm = ({
     }
   }
 
-  return (
+  const formNode = (
     <form action={formAction} className={styles.form} onSubmit={handleSubmit}>
       <div ref={formContentRef} className={styles.formContent}>
+        {/* 1단계: 계정. 단계가 바뀌어도 칸은 언마운트하지 않고 보이기만 바꾼다(같은 form 으로 한 번에 제출). */}
+        <div className={styles.stepGroup} hidden={!isResubmitMode && step !== 1}>
+
+        {!isResubmitMode ? (
+          <label className={styles.field}>
+            <FieldLabel text="이메일 (아이디)" required />
+            <input
+              ref={emailInputRef}
+              name="email"
+              type="email"
+              required
+              autoComplete="email"
+              placeholder="you@example.com"
+              disabled={formLocked}
+              className={styles.input}
+            />
+          </label>
+        ) : null}
+
+        {!isResubmitMode ? (
+          <>
+            <div className={styles.field}>
+              <FieldLabel text="비밀번호" required error={Boolean(passwordRuleError) || (accountAttempted && password.length === 0)} />
+              <div className={`${styles.inputWithAction} ${passwordRuleError ? styles.inputWithActionError : ""}`}>
+                <input
+                  name="password"
+                  type={showPassword ? "text" : "password"}
+                  required
+                  minLength={8}
+                  autoComplete="new-password"
+                  disabled={formLocked}
+                  className={`${styles.input} ${styles.inputWithButtonPadding}`}
+                  placeholder="영문, 숫자 포함 8자 이상"
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                />
+                <button
+                  type="button"
+                  disabled={formLocked}
+                  className={styles.inputActionButton}
+                  onClick={() => {
+                    setShowPassword((current) => !current)
+                  }}
+                >
+                  <span
+                    className={`${styles.eyeIcon} ${showPassword ? styles.eyeIconOpen : styles.eyeIconClosed}`}
+                    aria-hidden="true"
+                  />
+                  <span className={styles.srOnly}>{showPassword ? "비밀번호 숨기기" : "비밀번호 보기"}</span>
+                </button>
+              </div>
+              <p className={styles.fieldHint}>영문과 숫자를 포함해 8자 이상 입력해 주세요.</p>
+              {passwordRuleError ? <p className={styles.inlineErrorText}>{passwordRuleError}</p> : null}
+            </div>
+
+            <div className={styles.field}>
+              <FieldLabel
+                text="비밀번호 확인"
+                required
+                error={(hasAttemptedSubmit || accountAttempted) && passwordConfirm.length === 0 ? true : passwordMismatch}
+              />
+              <div
+                className={`${styles.inputWithAction} ${
+                  (hasAttemptedSubmit || accountAttempted) && passwordConfirm.length === 0 ? styles.inputWithActionError : ""
+                } ${passwordMismatch ? styles.inputWithActionError : ""}`}
+              >
+                <input
+                  type={showPasswordConfirm ? "text" : "password"}
+                  required
+                  autoComplete="new-password"
+                  disabled={formLocked}
+                  className={`${styles.input} ${styles.inputWithButtonPadding}`}
+                  placeholder="비밀번호를 한 번 더 입력해 주세요"
+                  value={passwordConfirm}
+                  onChange={(event) => setPasswordConfirm(event.target.value)}
+                />
+                <button
+                  type="button"
+                  disabled={formLocked}
+                  className={styles.inputActionButton}
+                  onClick={() => {
+                    setShowPasswordConfirm((current) => !current)
+                  }}
+                >
+                  <span
+                    className={`${styles.eyeIcon} ${showPasswordConfirm ? styles.eyeIconOpen : styles.eyeIconClosed}`}
+                    aria-hidden="true"
+                  />
+                  <span className={styles.srOnly}>
+                    {showPasswordConfirm ? "비밀번호 확인 숨기기" : "비밀번호 확인 보기"}
+                  </span>
+                </button>
+              </div>
+              {passwordMismatch ? (
+                <p className={styles.inlineErrorText}>비밀번호가 일치하지 않습니다.</p>
+              ) : null}
+            </div>
+          </>
+        ) : null}
+
+          {!isResubmitMode ? (
+            <div className={styles.stepActions}>
+              <button type="button" className={styles.submitButton} disabled={formLocked} onClick={goNextStep}>다음</button>
+            </div>
+          ) : null}
+        </div>
+
+        {/* 2단계: 학원 정보 · 약관 · 제출 */}
+        <div className={styles.stepGroup} hidden={!isResubmitMode && step !== 2}>
+        {/* Figma 2148:4788: 학원 이름 | 지점 두 칸 */}
+        <div className={styles.row}>
         <label className={styles.field}>
           <FieldLabel text="학원명" required />
           <input
@@ -369,6 +500,9 @@ export const StudioSignUpForm = ({
             defaultValue={initialValues?.branchName ?? ""}
           />
         </label>
+        </div>
+
+        <div className={styles.row}>
 
         <label className={styles.field}>
           <FieldLabel text="대표자명" required />
@@ -411,6 +545,9 @@ export const StudioSignUpForm = ({
             <p className={styles.inlineErrorText}>{businessRegistrationNumberError}</p>
           ) : null}
         </label>
+        </div>
+
+        <div className={styles.row}>
 
         <label className={styles.field}>
           <FieldLabel text="학원 대표 전화번호" required />
@@ -424,7 +561,7 @@ export const StudioSignUpForm = ({
             placeholder="예: 02-1234-5678"
             defaultValue={initialValues?.academyPhone ?? ""}
           />
-          <p className={styles.fieldHint}>학부모에게 노출되는 번호입니다.</p>
+          <p className={styles.fieldHint}>학부모 앱의 &lsquo;전화하기&rsquo;에 쓰여요.</p>
         </label>
 
         <label className={styles.field}>
@@ -440,9 +577,10 @@ export const StudioSignUpForm = ({
             defaultValue={initialValues?.contactPhone ?? ""}
           />
           <p className={styles.fieldHint}>
-            체험수업 신청 알림 문자를 받으실 번호입니다. 실제로 확인 가능한 번호를 입력해 주세요.
+            체험수업 신청 알림 문자를 받으실 번호예요. 실제로 확인할 수 있는 번호를 입력해 주세요.
           </p>
         </label>
+        </div>
 
         <StudioAddressFields
           initialPostalCode={initialValues?.postalCode}
@@ -504,7 +642,7 @@ export const StudioSignUpForm = ({
                   기존
                 </div>
               ) : (
-                <div className={styles.uploadPlaceholderIcon} aria-hidden="true" />
+                <div className={styles.uploadPlaceholderIcon} aria-hidden="true"><V2UploadIcon size={20} /></div>
               )}
             </div>
             <div className={styles.uploadTextBlock}>
@@ -555,109 +693,12 @@ export const StudioSignUpForm = ({
             </div>
           </div>
           <p className={styles.fieldHint}>
-            PDF, JPG, PNG, WEBP 파일을 업로드할 수 있으며 최대 5MB까지 지원합니다.
+            사진이나 PDF로 올려 주세요(PDF · JPG · PNG · WEBP, 5MB까지). 학원 확인에만 쓰고 학부모에게는 보이지 않아요.
           </p>
           {fileError ? <p className={styles.inlineErrorText}>{fileError}</p> : null}
         </div>
 
-        <p className={styles.bottomHint}>입력한 주소와 연락처는 가입 심사 및 학원 공식 정보 검토에 사용됩니다.</p>
-
-        {!isResubmitMode ? (
-          <label className={styles.field}>
-            <FieldLabel text="이메일 (아이디)" required />
-            <input
-              name="email"
-              type="email"
-              required
-              autoComplete="email"
-              placeholder="you@example.com"
-              disabled={formLocked}
-              className={styles.input}
-            />
-          </label>
-        ) : null}
-
-        {!isResubmitMode ? (
-          <>
-            <div className={styles.field}>
-              <FieldLabel text="비밀번호" required error={Boolean(passwordRuleError)} />
-              <div className={`${styles.inputWithAction} ${passwordRuleError ? styles.inputWithActionError : ""}`}>
-                <input
-                  name="password"
-                  type={showPassword ? "text" : "password"}
-                  required
-                  minLength={8}
-                  autoComplete="new-password"
-                  disabled={formLocked}
-                  className={`${styles.input} ${styles.inputWithButtonPadding}`}
-                  placeholder="영문, 숫자 포함 8자 이상"
-                  value={password}
-                  onChange={(event) => setPassword(event.target.value)}
-                />
-                <button
-                  type="button"
-                  disabled={formLocked}
-                  className={styles.inputActionButton}
-                  onClick={() => {
-                    setShowPassword((current) => !current)
-                  }}
-                >
-                  <span
-                    className={`${styles.eyeIcon} ${showPassword ? styles.eyeIconOpen : styles.eyeIconClosed}`}
-                    aria-hidden="true"
-                  />
-                  <span className={styles.srOnly}>{showPassword ? "비밀번호 숨기기" : "비밀번호 보기"}</span>
-                </button>
-              </div>
-              <p className={styles.fieldHint}>영문과 숫자를 포함해 8자 이상 입력해 주세요.</p>
-              {passwordRuleError ? <p className={styles.inlineErrorText}>{passwordRuleError}</p> : null}
-            </div>
-
-            <div className={styles.field}>
-              <FieldLabel
-                text="비밀번호 확인"
-                required
-                error={hasAttemptedSubmit && passwordConfirm.length === 0 ? true : passwordMismatch}
-              />
-              <div
-                className={`${styles.inputWithAction} ${
-                  hasAttemptedSubmit && passwordConfirm.length === 0 ? styles.inputWithActionError : ""
-                } ${passwordMismatch ? styles.inputWithActionError : ""}`}
-              >
-                <input
-                  type={showPasswordConfirm ? "text" : "password"}
-                  required
-                  autoComplete="new-password"
-                  disabled={formLocked}
-                  className={`${styles.input} ${styles.inputWithButtonPadding}`}
-                  placeholder="비밀번호를 한 번 더 입력해 주세요"
-                  value={passwordConfirm}
-                  onChange={(event) => setPasswordConfirm(event.target.value)}
-                />
-                <button
-                  type="button"
-                  disabled={formLocked}
-                  className={styles.inputActionButton}
-                  onClick={() => {
-                    setShowPasswordConfirm((current) => !current)
-                  }}
-                >
-                  <span
-                    className={`${styles.eyeIcon} ${showPasswordConfirm ? styles.eyeIconOpen : styles.eyeIconClosed}`}
-                    aria-hidden="true"
-                  />
-                  <span className={styles.srOnly}>
-                    {showPasswordConfirm ? "비밀번호 확인 숨기기" : "비밀번호 확인 보기"}
-                  </span>
-                </button>
-              </div>
-              {passwordMismatch ? (
-                <p className={styles.inlineErrorText}>비밀번호가 일치하지 않습니다.</p>
-              ) : null}
-            </div>
-          </>
-        ) : null}
-
+        <p className={styles.bottomHint}>입력한 주소와 연락처는 가입 확인과 학원 공식 정보 검토에 쓰여요.</p>
         {!isResubmitMode ? (
           <section className={styles.agreementSection} aria-label="약관 동의">
             <label className={styles.agreementAllRow}>
@@ -757,6 +798,10 @@ export const StudioSignUpForm = ({
           </div>
         ) : null}
 
+        <div className={styles.stepActions}>
+          {!isResubmitMode ? (
+            <button type="button" className={styles.backButton} disabled={formLocked} onClick={() => { setStep(1); window.scrollTo({ top: 0 }) }}>이전</button>
+          ) : null}
         <div className={styles.submitArea}>
           <button type="submit" disabled={isSubmitDisabled} className={styles.submitButton}>
             {isSuccess
@@ -769,7 +814,7 @@ export const StudioSignUpForm = ({
                   : "신청 중..."
                 : isResubmitMode
                   ? "수정 후 재신청"
-                  : "운영보드 계정 신청"}
+                  : "가입 신청하기"}
           </button>
           {isSubmitDisabledByValidation && !formLocked ? (
             <button
@@ -779,6 +824,8 @@ export const StudioSignUpForm = ({
               onClick={handleDisabledSubmitAttempt}
             />
           ) : null}
+        </div>
+        </div>
         </div>
       </div>
 
@@ -793,23 +840,55 @@ export const StudioSignUpForm = ({
           >
             <div className={styles.modalCheckIcon} aria-hidden="true" />
             <h2 id="studio-sign-up-success-title" className={styles.modalTitle}>
-              학원 계정 신청이 접수되었습니다
+              가입 신청을 받았어요
             </h2>
             <p id="studio-sign-up-success-description" className={styles.modalDescription}>
-              운영팀이 학원 정보를 확인한 뒤
+              첫수업 팀이 1영업일 안에 학원 정보를 확인하고
               <br />
-              영업일 기준 1일 이내에 담당자 전화번호로 연락드립니다.
+              담당자 전화번호로 연락드릴게요.
             </p>
             <Link
               ref={successActionButtonRef}
               href={signInHref}
               className={styles.modalActionButton}
             >
-              {isResubmitMode ? "운영보드 로그인으로 이동" : "운영보드 로그인으로 이동"}
+              로그인으로 이동
             </Link>
           </div>
         </div>
       ) : null}
     </form>
+  )
+
+  if (isResubmitMode) {
+    return formNode
+  }
+
+  // 가입: 단계 표시(Figma 2148:4769) → 카드 640. 1단계 = 1 진행, 2단계 = 1 완료(체크) · 2 진행.
+  return (
+    <div className={styles.flow}>
+      <ol className={styles.steps} aria-label="가입 단계">
+        <li data-state={step === 1 ? "current" : "done"} aria-current={step === 1 ? "step" : undefined}>
+          <span className={styles.stepDot}>{step === 1 ? "1" : <V2CheckIcon size={14} />}</span>계정 만들기
+        </li>
+        <li className={styles.stepLine} data-state={step === 2 ? "done" : undefined} aria-hidden="true" />
+        <li data-state={step === 2 ? "current" : undefined} aria-current={step === 2 ? "step" : undefined}>
+          <span className={styles.stepDot}>2</span>학원 정보
+        </li>
+        <li className={styles.stepLine} aria-hidden="true" />
+        <li><span className={styles.stepDot}>3</span>첫수업 팀 확인</li>
+      </ol>
+
+      <section className={styles.card} aria-labelledby="studio-sign-up-title">
+        <div className={styles.cardHead}>
+          <h1 id="studio-sign-up-title" className={styles.cardTitle}>{step === 1 ? "계정을 만들어 주세요" : "학원을 알려주세요"}</h1>
+          <p className={styles.cardDescription}>
+            {step === 1 ? "파트너 센터에 로그인할 이메일과 비밀번호예요." : "학부모 앱에 보이는 정보예요. 승인 뒤 설정에서 정보 수정을 요청할 수 있어요."}
+          </p>
+        </div>
+        {formNode}
+        {step === 2 ? <p className={styles.cardNote}>첫수업 팀이 1영업일 안에 학원 정보를 확인해요. 승인되면 바로 수업을 등록할 수 있어요.</p> : null}
+      </section>
+    </div>
   )
 }

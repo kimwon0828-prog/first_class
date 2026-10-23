@@ -20,7 +20,7 @@ export const STUDIO_APPLICATION_FILTERS: Array<{
   { key: "confirmed", label: "일정 확정" },
   { key: "completed", label: "체험 완료" },
   { key: "canceled", label: "취소" },
-  { key: "no_show", label: "노쇼" },
+  { key: "no_show", label: "불참" },
   { key: "enrolled", label: "등록 완료" },
   { key: "not_enrolled", label: "미등록" }
 ]

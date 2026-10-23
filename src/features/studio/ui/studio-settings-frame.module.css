@@ -1,0 +1,95 @@
+/*
+ * 설정 화면 틀(STUDIO_DESIGN_SYSTEM.md §4.2). Figma "설정 · 학원 정보"(2148:6742) · "설정 · 선생님"(2148:6939).
+ *
+ * 제목 "설정" → 24px → [왼쪽 탭 180px | 40px | 탭 내용].
+ * 탭 내용은 1단계에서 기존 화면을 그대로 넣는다. 기존 화면이 자기 여백을 갖고 있어서
+ * 내용 칸에는 여백을 더하지 않는다.
+ */
+.frame {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sv2-space-24);
+  padding: 36px var(--sv2-main-px) 56px;
+  font-family: var(--sv2-font);
+}
+
+.title {
+  margin: 0;
+  color: var(--sv2-ink-900);
+  font-size: 30px;
+  line-height: 1.32;
+  font-weight: 700;
+  letter-spacing: -0.7px;
+}
+
+.body {
+  display: flex;
+  align-items: flex-start;
+  gap: 40px;
+}
+
+.tabs {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 0 0 180px;
+  width: 180px;
+  position: sticky;
+  top: 36px;
+}
+
+.tab {
+  padding: 10px 14px;
+  border-radius: var(--sv2-radius-control);
+  color: var(--sv2-ink-700);
+  text-decoration: none;
+  font-size: 15px;
+  line-height: 1.45;
+  font-weight: 500;
+}
+
+.tab:not(.tabActive):hover {
+  background: var(--sv2-surface-fill);
+  color: var(--sv2-ink-900);
+}
+
+.tab:focus-visible {
+  outline: 2px solid var(--sv2-brand-700);
+  outline-offset: 2px;
+}
+
+.tabActive {
+  background: var(--sv2-brand-50);
+  color: var(--sv2-brand-700);
+  font-weight: 700;
+}
+
+.content {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+@media (max-width: 960px) {
+  .body {
+    flex-direction: column;
+    gap: var(--sv2-space-16);
+  }
+
+  .tabs {
+    position: static;
+    flex: 0 0 auto;
+    width: 100%;
+    flex-direction: row;
+    overflow-x: auto;
+  }
+
+  .tab {
+    white-space: nowrap;
+  }
+}
+
+@media (max-width: 719px) {
+  .frame {
+    padding: var(--sv2-space-20) var(--sv2-space-16) var(--sv2-space-32);
+  }
+}

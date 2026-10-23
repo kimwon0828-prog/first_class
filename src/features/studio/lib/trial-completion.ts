@@ -155,5 +155,7 @@ export const resolveTrialDisplayStatus = (
     return base
   }
 
-  return isTrialStarted(input, now) ? "in_trial" : "confirmed"
+  // 체험 시간 중은 "체험 진행 중", 예정 종료 시각이 지나면 "완료 확인 필요". 어느 쪽도 DB 를 바꾸지 않는다.
+  const progress = getTrialProgressState(input, now)
+  return progress === "after_scheduled_end" ? "completion_needed" : progress === "in_trial" ? "in_trial" : "confirmed"
 }

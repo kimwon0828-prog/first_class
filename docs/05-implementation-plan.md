@@ -1,5 +1,10 @@
 # 첫수업 MVP 구현 계획 (role 정책 반영)
 
+> ⚠️ 2026-05 시점의 계획 문서다. 이후 역할 체계가 다시 바뀌었으므로 아래 §0~§5의 `parent | teacher` 설명은 현재와 다르다.
+> 현재(2026-10): `profiles.role`은 `parent | academy | admin`, 선생님(`teachers`)은 로그인 없는 명부,
+> 학원 계정은 공개 가입 신청(`/studio/sign-up`) + 운영자 승인으로 만든다. RLS의 `'teacher'`는 academy/admin을 접은 값이다.
+> 현재 정책은 `AGENTS.md`, 현재 구조는 `CLAUDE.md`를 기준으로 한다. 아래 본문은 당시 결정 기록으로 남긴다.
+
 ## 0) 전제
 - 역할(role)은 `parent | teacher`만 사용한다.
 - `operator`는 더 이상 사용하지 않는다.

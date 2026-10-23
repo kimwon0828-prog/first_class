@@ -7,9 +7,8 @@
  */
 
 /* canvas 는 StudioShell 이 칠한다. */
+/* 설정 탭(StudioSettingsFrame) 안에 들어가므로 제목과 바깥 여백은 틀이 갖는다. */
 .page {
-  min-height: 100dvh;
-  padding: 32px 24px 56px;
   color: var(--text-1);
 }
 
@@ -18,7 +17,6 @@
   width: 100%;
   /* 링크 한 줄짜리 목록이라 1200px 를 다 채우면 읽기 나빠진다. */
   max-width: 720px;
-  margin: 0 auto;
 }
 
 .header {
@@ -144,9 +142,6 @@
 }
 
 @media (max-width: 640px) {
-  .page {
-    padding: 24px 16px 48px;
-  }
 
   .title {
     font-size: 24px;

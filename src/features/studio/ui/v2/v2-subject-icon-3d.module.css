@@ -1,0 +1,17 @@
+/* 시트 크기는 아이콘 한 칸 대비 612.24% × 457.14% (Figma SubjectIcon3D 값). */
+.icon {
+  position: relative;
+  display: inline-block;
+  flex: 0 0 auto;
+  width: var(--v2-subject-icon-size);
+  height: var(--v2-subject-icon-size);
+  overflow: hidden;
+}
+
+.sheet {
+  position: absolute;
+  width: 612.24%;
+  height: 457.14%;
+  max-width: none;
+  pointer-events: none;
+}

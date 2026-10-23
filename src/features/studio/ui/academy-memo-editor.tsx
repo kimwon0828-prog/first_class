@@ -5,7 +5,8 @@ import { useRouter } from "next/navigation"
 import { saveAcademyMemoAction, type AcademyMemoSaveState } from "@/features/studio/actions/save-academy-memo"
 import type { StudioAcademyMemo } from "@/shared/lib/db/adapter"
 import { StudioQueryRetry } from "./studio-query-retry"
-import styles from "./application-trial-result-workflow.module.css"
+import { V2Button } from "./v2/v2-button"
+import styles from "./academy-memo-editor.module.css"
 
 export type AcademyMemoData = { data: StudioAcademyMemo | null; error: string | null }
 
@@ -38,24 +39,24 @@ export function AcademyMemoEditor({ applicationId, initial, legacyNote, canWrite
     window.addEventListener("beforeunload", unload)
     return () => window.removeEventListener("beforeunload", unload)
   }, [changed])
-  return <section id="academy-memo" aria-labelledby="academy-memo-title" className={styles.registrationSection}>
-    <div className={styles.operationHead}>
-      <h3 id="academy-memo-title" className={styles.sectionTitle}>등록 상담 메모</h3>
-      {!editing ? <button type="button" className={styles.viewEditButton} disabled={!canWrite || Boolean(disabledReason) || !saved} aria-describedby={disabledReason ? "academy-memo-block" : undefined}
-        onClick={() => { setDraft(savedText); setEditorText(savedText); setEditorRevision(saved?.revision ?? ""); setShowMessage(false); setEditing(true) }}>{savedText.trim() ? "수정" : "메모 추가"}</button> : null}
+  return <section id="academy-memo" aria-labelledby="academy-memo-title" className={styles.section}>
+    <div className={styles.head}>
+      <h3 id="academy-memo-title" className={styles.title}>등록 상담 메모 <small>학부모에게 보이지 않아요</small></h3>
+      {!editing ? <V2Button variant="outline" size="sm" disabled={!canWrite || Boolean(disabledReason) || !saved} aria-describedby={disabledReason ? "academy-memo-block" : undefined}
+        onClick={() => { setDraft(savedText); setEditorText(savedText); setEditorRevision(saved?.revision ?? ""); setShowMessage(false); setEditing(true) }}>{savedText.trim() ? "수정" : "메모 추가"}</V2Button> : null}
     </div>
-    {!editing ? <p className={styles.savedText}>{savedText.trim() ? savedText : "아직 남긴 메모가 없어요."}</p> : null}
-    {disabledReason ? <p id="academy-memo-block" role="alert" className={styles.fieldHint}>{disabledReason}{initial.error ? <StudioQueryRetry /> : null}</p> : null}
-    {showMessage && state.message ? <p role={state.status === "error" ? "alert" : "status"}>{state.message}</p> : null}
+    {!editing ? <p className={savedText.trim() ? styles.savedText : styles.empty}>{savedText.trim() ? savedText : "아직 남긴 메모가 없어요."}</p> : null}
+    {disabledReason ? <p id="academy-memo-block" role="alert" className={styles.hint}>{disabledReason}{initial.error ? <StudioQueryRetry /> : null}</p> : null}
+    {showMessage && state.message ? <p className={state.status === "error" ? styles.messageError : styles.message} role={state.status === "error" ? "alert" : "status"}>{state.message}</p> : null}
     {editing ? <form action={submit} onSubmit={event => { if (inFlight.current || pending || !changed || !canWrite || disabledReason || !saved) { event.preventDefault(); return }; inFlight.current = true; setShowMessage(true) }}>
       <div className={styles.field}>
         <textarea className={styles.textarea} name="note" rows={4} maxLength={10000} value={draft} onChange={event => setDraft(event.target.value)}
           aria-label="등록 상담 메모 (선택)" aria-describedby={disabledReason ? "academy-memo-block" : undefined} readOnly={!canWrite || Boolean(disabledReason)} disabled={pending} />
       </div>
       <input type="hidden" name="expectedRevision" value={editorRevision} />
-      <div className={styles.editorActions} role="group" aria-label="등록 상담 메모 편집 버튼">
-        <button type="button" className={styles.secondaryButton} disabled={pending} onClick={() => { setEditing(false); setDraft(savedText); setShowMessage(false) }}>취소</button>
-        <button type="submit" className={styles.primaryButton} aria-describedby={disabledReason ? "academy-memo-block" : undefined} disabled={pending || !canWrite || Boolean(disabledReason) || !saved || !changed}>{pending ? "저장 중…" : "메모 저장"}</button>
+      <div className={styles.actions} role="group" aria-label="등록 상담 메모 편집 버튼">
+        <V2Button variant="ghost" size="sm" disabled={pending} onClick={() => { setEditing(false); setDraft(savedText); setShowMessage(false) }}>취소</V2Button>
+        <V2Button type="submit" variant="tonal" size="sm" aria-describedby={disabledReason ? "academy-memo-block" : undefined} disabled={pending || !canWrite || Boolean(disabledReason) || !saved || !changed}>{pending ? "저장 중…" : "메모 저장"}</V2Button>
       </div>
     </form> : null}
   </section>

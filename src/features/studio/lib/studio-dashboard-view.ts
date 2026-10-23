@@ -20,14 +20,15 @@ import {
   type StudioStatusTone
 } from "@/features/studio/lib/application-status-labels"
 import { getCaseDisplayStage, isCaseClosedStage } from "@/features/studio/lib/case-view-model"
-import { resolveTrialDisplayStatus } from "@/features/studio/lib/trial-completion"
+import { getTrialProgressState, resolveTrialDisplayStatus } from "@/features/studio/lib/trial-completion"
 import { buildStudioScheduleEvents } from "@/features/studio/lib/studio-schedule-events"
 import {
   formatSelectedDateLabel,
   getSeoulTodayKey,
   toSeoulDateKey
 } from "@/features/studio/lib/studio-schedule-month"
-import type { StudioApplicationSummary } from "@/shared/lib/db/adapter"
+import { PREFERRED_DAY_OPTIONS } from "@/features/decisions/lib/parent-decision"
+import type { StudioApplicationSummary, StudioCurrentParentDecision } from "@/shared/lib/db/adapter"
 
 /** 각 섹션에 한 번에 보여줄 최대 행 수. 나머지는 "모두 보기" 로 넘긴다. */
 export const STUDIO_DASHBOARD_SECTION_LIMIT = 5
@@ -55,6 +56,15 @@ const ACTION_LABELS: Record<StudioDashboardActionKind, string> = {
 }
 
 /** 신규·확인 중 신청이 후속 등록 업무에 밀려 5건 미리보기에서 빠지지 않도록 한다. */
+/** 상세 화면의 단계 칸. 일정 확정만 칸이 따로 있고, 나머지는 상세 맨 위 "지금 할 일" 카드가 맡는다. */
+const ACTION_SECTIONS: Record<StudioDashboardActionKind, string | null> = {
+  UNASSIGNED: null,
+  NEEDS_COMPLETION: null,
+  REVIEW_NEW: "confirm-schedule",
+  NEEDS_REGISTRATION: null,
+  CONFIRM_SCHEDULE: "confirm-schedule"
+}
+
 const ACTION_ORDER: StudioDashboardActionKind[] = [
   "UNASSIGNED",
   "NEEDS_COMPLETION",
@@ -73,6 +83,16 @@ export type StudioDashboardActionItem = {
   statusLabel: string
   statusTone: StudioStatusTone
   actionLabel: string
+  /** 홈 "가장 먼저" 카드의 일시. 확정 일정이 있으면 확정, 없으면 학부모 희망. */
+  scheduleAt: string | null
+  scheduleConfirmed: boolean
+  /** 상세에서 열 단계 칸. 이동만 한다(홈에서 상태를 바꾸지 않는다). */
+  section: string | null
+  applicationStatus: StudioApplicationSummary["status"]
+  createdAt: string
+  /** 일정 확정에 쓸 일정(수업 일정 또는 예약 블록)이 있는가. 상세 확정 버튼의 막힘 조건과 같다. */
+  hasSchedule: boolean
+  classSubjectCategory: string | null
 }
 
 export type StudioDashboardScheduleItem = {
@@ -87,6 +107,10 @@ export type StudioDashboardScheduleItem = {
   teacherName: string | null
   statusLabel: string
   statusTone: StudioStatusTone
+  /** 확정 체험이 진행 중인가(시각 · 점을 초록으로). */
+  inTrial: boolean
+  /** 진행 중 · 완료 확인 필요 — 홈에서 [완료] 모양 버튼(상세로 이동)을 둔다. */
+  completionDue: boolean
 }
 
 export type StudioDashboardRegistrationItem = {
@@ -108,6 +132,12 @@ export type StudioDashboardView = {
   scheduleMode: "today" | "upcoming"
   scheduleItems: StudioDashboardScheduleItem[]
   todayScheduleCount: number
+  /** 오늘 체험이 없을 때 같은 칸에 작게 보이는 다가오는 체험(최대 3건). */
+  upcomingItems: StudioDashboardScheduleItem[]
+  /** 확정 · 체험 시작 전 신청 수("체험 예정 N명"). */
+  scheduledUpcomingCount: number
+  /** 등록 결과가 "고민 중"인 체험 완료 신청(다시 연락할 학생). */
+  pendingRegistrationItems: Array<{ id: string; studentName: string }>
   recentRegistrationItems: StudioDashboardRegistrationItem[]
   todayLabel: string
 }
@@ -224,7 +254,14 @@ const buildActionItems = (applications: StudioApplicationSummary[], now: Date) =
     classTitle: normalizeClassTitle(item.classTitle),
     statusLabel: STUDIO_APPLICATION_STATUS_LABELS[toBadgeStatus(item, now)],
     statusTone: STUDIO_APPLICATION_STATUS_TONES[toBadgeStatus(item, now)],
-    actionLabel: ACTION_LABELS[kind]
+    actionLabel: ACTION_LABELS[kind],
+    scheduleAt: item.confirmedBlockStartAt ?? item.confirmedSlotAt ?? item.requestedSlotAt ?? null,
+    scheduleConfirmed: Boolean(item.confirmedBlockStartAt ?? item.confirmedSlotAt),
+    section: ACTION_SECTIONS[kind],
+    applicationStatus: item.status,
+    createdAt: item.createdAt,
+    hasSchedule: Boolean(item.classScheduleId || item.requestedScheduleBlockId),
+    classSubjectCategory: item.classSubjectCategory ?? null
   }))
 }
 
@@ -264,35 +301,39 @@ const buildScheduleSection = (
   todayKey: string,
   now: Date
 ) => {
-  const gradeById = new Map(applications.map(item => [item.id, item.childGrade]))
+  const byId = new Map(applications.map(item => [item.id, item]))
   // Calendar records include cancellations/completion actions with no visit time.
   // Dashboard appointments must have an actual confirmed occurrence.
   const events = buildStudioScheduleEvents(
     applications.filter(item => item.status === "confirmed" || item.status === "completed"), now
   ).filter(event => !event.isDateUncertain)
   const todayEvents = events.filter((event) => event.dateKey === todayKey)
-  const isToday = todayEvents.length > 0
-  const visible = isToday
-    ? todayEvents
-    : events.filter((event) => event.dateKey > todayKey).slice(0, STUDIO_DASHBOARD_SECTION_LIMIT)
+  const toItem = (event: (typeof events)[number], withDate: boolean): StudioDashboardScheduleItem => {
+    const application = byId.get(event.id)
+    // 배지는 공용 표시 상태(resolveTrialDisplayStatus)를 따른다 — 확정 예정 건은 "체험 예정".
+    const status = application ? toBadgeStatus(application, now) : null
+    return {
+      id: event.id,
+      href: event.detailHref,
+      timeLabel: event.timeLabel,
+      dateLabel: withDate ? formatSelectedDateLabel(event.dateKey) : null,
+      studentName: event.childName,
+      studentGrade: application?.childGrade ?? "",
+      classTitle: event.classTitle,
+      teacherName: event.assignedTeacherName,
+      statusLabel: status ? STUDIO_APPLICATION_STATUS_LABELS[status] : event.statusLabel,
+      statusTone: status ? STUDIO_APPLICATION_STATUS_TONES[status] : event.tone,
+      inTrial: status === "in_trial",
+      completionDue: status === "in_trial" || status === "completion_needed"
+    }
+  }
+  const upcomingEvents = events.filter((event) => event.dateKey > todayKey)
 
   return {
-    scheduleMode: (isToday ? "today" : "upcoming") as "today" | "upcoming",
+    scheduleMode: (todayEvents.length > 0 ? "today" : "upcoming") as "today" | "upcoming",
     todayScheduleCount: todayEvents.length,
-    scheduleItems: visible.slice(0, STUDIO_DASHBOARD_SECTION_LIMIT).map<StudioDashboardScheduleItem>(
-      (event) => ({
-        id: event.id,
-        href: event.detailHref,
-        timeLabel: event.timeLabel,
-        dateLabel: isToday ? null : formatSelectedDateLabel(event.dateKey),
-        studentName: event.childName,
-        studentGrade: gradeById.get(event.id) ?? "",
-        classTitle: event.classTitle,
-        teacherName: event.assignedTeacherName,
-        statusLabel: event.statusLabel,
-        statusTone: event.tone
-      })
-    )
+    scheduleItems: todayEvents.slice(0, STUDIO_DASHBOARD_SECTION_LIMIT).map(event => toItem(event, false)),
+    upcomingItems: todayEvents.length ? [] : upcomingEvents.slice(0, 3).map(event => toItem(event, true))
   }
 }
 
@@ -310,7 +351,43 @@ export const buildStudioDashboardView = (
     scheduleMode: schedule.scheduleMode,
     scheduleItems: schedule.scheduleItems,
     todayScheduleCount: schedule.todayScheduleCount,
+    upcomingItems: schedule.upcomingItems,
+    scheduledUpcomingCount: applications.filter(item => item.status === "confirmed" && !item.noShowAt && !item.canceledAt &&
+      getTrialProgressState(item, now) === "before_start").length,
+    pendingRegistrationItems: applications
+      .filter(item => item.status === "completed" && item.registrationStatus === "pending" && !item.noShowAt && !item.canceledAt)
+      .map(item => ({ id: item.id, studentName: item.childName })),
     recentRegistrationItems: buildRecentRegistrationItems(applications),
     todayLabel: formatSelectedDateLabel(todayKey)
   }
+}
+
+/** 다시 연락할 학생 후보: 체험 완료 · 취소/불참 아님 · 등록 결과가 확정(등록/미등록)되지 않은 신청. */
+export const getStudioRecontactCandidateIds = (applications: StudioApplicationSummary[]) =>
+  applications
+    .filter(item => item.status === "completed" && !item.noShowAt && !item.canceledAt &&
+      item.registrationStatus !== "enrolled" && item.registrationStatus !== "not_enrolled")
+    .map(item => item.id)
+
+/**
+ * 홈 "다시 연락할 학생"(Figma 2148:5120).
+ * 학원이 기록한 등록 결과 "고민 중"(registration_status = pending) + 학부모가 남긴 지금 유효한 의향 "고민 중"(considering).
+ * 같은 신청은 한 번만 센다. 요일 문장은 considering 학부모들의 희망 요일 중 가장 많은 요일(같으면 월→일 순).
+ */
+export const buildStudioRecontact = (
+  applications: StudioApplicationSummary[],
+  decisions: StudioCurrentParentDecision[]
+) => {
+  const candidateIds = new Set(getStudioRecontactCandidateIds(applications))
+  const considering = decisions.filter(item => item.decision === "considering" && candidateIds.has(item.applicationId))
+  const consideringIds = new Set(considering.map(item => item.applicationId))
+  const items = applications
+    .filter(item => candidateIds.has(item.id) && (item.registrationStatus === "pending" || consideringIds.has(item.id)))
+    .map(item => ({ id: item.id, studentName: item.childName }))
+  let topDay: { label: string; count: number } | null = null
+  for (const option of PREFERRED_DAY_OPTIONS) {
+    const count = considering.filter(item => item.preferredDays.includes(option.value)).length
+    if (count > 0 && (!topDay || count > topDay.count)) topDay = { label: option.label, count }
+  }
+  return { items, topDay }
 }

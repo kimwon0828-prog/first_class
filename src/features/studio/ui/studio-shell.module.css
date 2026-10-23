@@ -1,227 +1,279 @@
 /*
- * Studio workspace canvas 의 주인은 여기 한 곳이다(STUDIO_DESIGN_SYSTEM.md §2.7).
+ * Studio v2 앱 셸(STUDIO_DESIGN_SYSTEM.md §4.1). Figma "Studio v2/Sidebar".
  *
- * 흰 작업 공간 위에서 정보의 구분은 넓은 회색 면이 아니라 border · spacing ·
- * typography 로 만든다. 그래서 각 페이지 wrapper 는 캔버스를 다시 칠하지 않는다 —
- * 페이지마다 background 를 반복하면 어느 값이 참인지 알 수 없게 된다.
+ * Workspace canvas 의 주인은 여기 한 곳이다. 흰 바탕이고, 사이드바와 본문의 경계는
+ * .sidebar 의 border-right 하나다. 그림자를 더하지 않는다.
  *
- * 사이드바도 --surface 라, 둘 사이의 경계는 .sidebar 의 border-right 하나다.
- * 여기에 shadow 를 더하지 않는다(§2.5).
+ * 본문(.content)은 아직 v2 로 옮기지 않은 화면들이 그대로 들어온다. 그래서 본문 여백은
+ * 여기서 주지 않는다 — 각 화면이 기존처럼 스스로 잡는다.
  */
 .shell {
   min-height: 100dvh;
-  background: var(--surface);
+  background: var(--sv2-surface-white);
   display: flex;
 }
 
 .sidebar {
-  width: var(--side-w);
+  width: var(--sv2-sidebar-w);
   flex: 0 0 auto;
-  background: var(--surface);
-  border-right: 1px solid var(--border);
-  padding: 18px 16px 16px;
+  background: var(--sv2-surface-white);
+  border-right: 1px solid var(--sv2-line-default);
+  padding: 28px 16px 20px;
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 4px;
   position: sticky;
   top: 0;
   height: 100dvh;
+  overflow-y: auto;
+  font-family: var(--sv2-font);
 }
 
-.sidebarTop {
+/* 로고 + 파트너 */
+.brand {
   display: flex;
-  flex-direction: column;
-  gap: var(--s2);
-  padding: 6px 6px 10px;
+  align-items: center;
+  gap: var(--sv2-space-8);
+  padding: 0 var(--sv2-space-8) var(--sv2-space-20);
 }
 
 .logoLink {
   align-items: center;
 }
 
-.logoLabel {
-  margin: 0;
-  font-size: 12px;
-  line-height: 16px;
-  font-weight: 800;
-  letter-spacing: 0.14em;
-  color: var(--brand-500);
+/* Figma Logo/첫수업 76 × 25. .logo 의 width:auto 가 원본 크기로 되돌리지 않게 폭을 고정한다. */
+.logoImage {
+  width: 76px;
+  height: auto;
 }
 
+.partnerBadge {
+  padding: 2px 6px;
+  border-radius: var(--sv2-radius-badge);
+  background: var(--sv2-surface-fill);
+  color: var(--sv2-ink-700);
+  font-size: 11px;
+  line-height: 16px;
+  font-weight: 700;
+}
+
+/* 학원 카드. 아래 메뉴와 12px(4 + 8) 떨어진다. */
+.academyCard {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  /* flex container 자신도 줄어들 수 있어야 .academyName 의 ellipsis 가 작동한다. */
+  min-width: 0;
+  margin-bottom: 8px;
+  padding: 10px var(--sv2-space-12);
+  border: 1px solid var(--sv2-line-default);
+  border-radius: var(--sv2-radius-control);
+  color: inherit;
+  text-decoration: none;
+}
+
+.academyCard:hover {
+  background: var(--sv2-surface-fill);
+}
+
+.academyCard:focus-visible {
+  outline: 2px solid var(--sv2-brand-700);
+  outline-offset: 2px;
+}
+
+.academyText {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.academyName {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--sv2-ink-900);
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 700;
+}
+
+.academyRole {
+  color: var(--sv2-ink-500);
+  font-size: 12px;
+  line-height: 18px;
+  font-weight: 500;
+  letter-spacing: -0.2px;
+}
+
+.academyChevron {
+  flex: 0 0 auto;
+  color: var(--sv2-ink-500);
+}
+
+/* 메뉴 */
 .nav {
-  display: grid;
-  gap: 6px;
-  padding: var(--s1);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
 .navItem {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 10px 12px;
-  border-radius: var(--r-md);
-  color: var(--text-2);
+  gap: 12px;
+  height: 44px;
+  padding: 0 12px;
+  border-radius: var(--sv2-radius-control);
+  color: var(--sv2-ink-700);
   text-decoration: none;
-  font-size: 14px;
+  font-size: 15px;
   line-height: 20px;
-  font-weight: 700;
-  border: 1px solid transparent;
+  font-weight: 500;
 }
 
 .navLabel {
+  flex: 1 1 auto;
   min-width: 0;
 }
 
 /*
- * hover visual 은 inactive 메뉴에만 적용한다.
- * :not(.navItemActive) 가 없으면 이 rule 이 .navItemActive 보다 specificity 가 높아,
- * active 항목에 마우스를 올릴 때 brand 배경이 neutral 로 바뀐다.
- * 아이콘의 hover rule 과 같은 원칙이다.
+ * hover 는 비활성 메뉴에만. 초록은 활성(선택) 상태 하나만 쓴다.
+ * :not(.navItemActive) 가 없으면 활성 항목에 마우스를 올릴 때 초록 배경이 회색으로 바뀐다.
  */
 .navItem:not(.navItemActive):hover {
-  background: var(--surface-sub);
-  border-color: var(--border);
-  color: var(--text-1);
+  background: var(--sv2-surface-fill);
+  color: var(--sv2-ink-900);
 }
 
-/*
- * hover 는 inactive 보다 진하지만 brand 색까지 가지 않는다. green 은 active 하나만 쓴다.
- * :not(.navItemActive) 로 한정하지 않으면 이 rule 이 active rule 보다
- * specificity 가 높아, active 항목에 마우스를 올릴 때 green 이 사라진다.
- */
-.navItem:not(.navItemActive):hover .navIcon {
-  color: var(--text-1);
+.navItem:focus-visible {
+  outline: 2px solid var(--sv2-brand-700);
+  outline-offset: 2px;
 }
 
 .navItemActive {
-  background: var(--brand-50);
-  border-color: var(--brand-100);
-  color: var(--brand-700);
+  background: var(--sv2-brand-50);
+  color: var(--sv2-brand-700);
+  font-weight: 700;
 }
 
 .navItemPending {
   opacity: 0.7;
 }
 
-/*
- * 메뉴 아이콘. 크기와 stroke 는 다섯 개가 동일하고 색만 상태에 따라 바뀐다.
- * 아이콘별 색은 쓰지 않는다.
- */
+/* 메뉴 아이콘은 20px. 기본 ink/500, 활성은 글자와 같은 brand/700. */
 .navIcon {
   flex: 0 0 auto;
-  color: var(--text-2);
+  width: 20px;
+  height: 20px;
+  color: var(--sv2-ink-500);
 }
 
 .navItemActive .navIcon {
-  color: var(--brand-700);
+  color: var(--sv2-brand-700);
+}
+
+/* 메뉴 건수 (Figma Studio v2/NavItem count). 기본 surface/fill + ink/700, 선택 brand/700 + white. */
+.navCount {
+  flex: 0 0 auto;
+  padding: 1px var(--sv2-space-8);
+  border-radius: var(--sv2-radius-pill);
+  background: var(--sv2-surface-fill);
+  color: var(--sv2-ink-700);
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.navItemActive .navCount {
+  background: var(--sv2-brand-700);
+  color: var(--sv2-surface-white);
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 .navPendingText {
-  margin-left: auto;
+  flex: 0 0 auto;
+  color: var(--sv2-ink-500);
   font-size: 11px;
   line-height: 16px;
-  color: var(--brand-500);
-  font-weight: 800;
+  font-weight: 700;
 }
 
-.sidebarBottom {
+/* 아래 묶음: 플랜 카드 → 8px → 도움말·문의 · 설정 */
+.bottom {
   margin-top: auto;
-  padding: var(--s1);
+  padding-top: var(--sv2-space-16);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sv2-space-8);
 }
 
-/*
- * 로그아웃 link 가 빠지고 한 줄짜리 account entry 만 남았다.
- * 카드 padding 14 -> 6, 안쪽 row padding 8 -> 5, avatar 42 -> 36 으로
- * 전체 높이를 86px 에서 58px 로 줄인다(약 33%).
- */
-/*
- * grid column 을 minmax(0, 1fr) 로 고정한다.
- * auto 로 두면 열이 항목의 max-content 만큼 늘어나서, 긴 학원명이 카드와 사이드바를
- * 밀고 나가고 chevron 이 화면 밖으로 나간다(.accountName 의 ellipsis 는 그때 동작하지 않는다).
- */
-.accountCard {
-  border: 1px solid var(--border);
-  border-radius: var(--r-lg);
-  background: var(--surface);
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: var(--s3);
-  padding: 6px 14px;
+.planCard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sv2-space-8);
+  padding: 14px;
+  border-radius: var(--sv2-radius-control);
+  background: var(--sv2-surface-fill);
+  color: inherit;
+  text-decoration: none;
 }
 
-.accountProfileLink {
+.planCard:focus-visible {
+  outline: 2px solid var(--sv2-brand-700);
+  outline-offset: 2px;
+}
+
+.planHead {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: var(--s3);
-  /* flex container 자신도 줄어들 수 있어야 .accountName 의 ellipsis 가 작동한다. */
-  min-width: 0;
-  text-decoration: none;
-  color: inherit;
-  border: 1px solid transparent;
-  border-radius: var(--r-md);
-  padding: 5px 10px;
+  gap: var(--sv2-space-8);
 }
 
-.accountProfileLink:hover {
-  color: inherit;
-}
-
-.accountProfileLinkActive {
-  background: var(--brand-50);
-  border-color: var(--brand-100);
-}
-
-.accountProfileLinkPending {
-  opacity: 0.75;
-}
-
-.accountProfileLink:focus-visible {
-  outline: none;
-  box-shadow: 0 0 0 3px rgba(42, 173, 56, 0.16);
-  border-color: var(--brand-500);
-}
-
-.accountAvatar {
-  width: 36px;
-  height: 36px;
-  border-radius: var(--r-full);
-  display: grid;
-  place-items: center;
-  overflow: hidden;
-  flex: 0 0 auto;
-  background: var(--brand-50);
-  color: var(--brand-700);
-  font-weight: 900;
-  font-size: 16px;
-  line-height: 1;
-}
-
-.accountAvatarImage {
-  width: 100%;
-  height: 100%;
-  display: block;
-  object-fit: cover;
-}
-
-.accountName {
+.planLabel {
   flex: 1 1 auto;
   min-width: 0;
-  font-size: 15px;
-  line-height: 22px;
-  color: var(--text-1);
-  font-weight: 800;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  color: var(--sv2-ink-900);
+  font-size: 13px;
+  line-height: 20px;
+  font-weight: 700;
 }
 
-.accountChevron {
+.planDays {
   flex: 0 0 auto;
-  color: var(--text-3);
-  font-size: 14px;
-  line-height: 1;
-  font-weight: 800;
+  color: var(--sv2-brand-700);
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.planBar {
+  display: flex;
+  border-radius: var(--sv2-radius-pill);
+  background: var(--sv2-surface-white);
+  overflow: hidden;
+}
+
+/* 지난 비율만큼 채운다. 시작 직후에도 보이도록 Figma 의 최소 폭(10px)을 둔다. */
+.planBarFill {
+  width: var(--plan-elapsed);
+  min-width: 10px;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--sv2-brand-500);
 }
 
 .main {
@@ -236,12 +288,10 @@
   padding: 0;
 }
 
-@media (max-width: 840px) {
-  .sidebar {
-    width: 220px;
-  }
-}
-
+/*
+ * 좁은 화면. Studio 는 desktop-first 라 별도 모바일 디자인이 없다 —
+ * 기존처럼 사이드바를 위쪽 가로 줄로 접어 메뉴만 쓸 수 있게 둔다.
+ */
 @media (max-width: 719px) {
   .shell {
     flex-direction: column;
@@ -250,48 +300,47 @@
   .sidebar {
     width: 100%;
     height: auto;
-    position: static;
-    border-right: none;
-    border-bottom: 1px solid var(--border);
+    /* 메뉴 줄 안에서만 옆으로 넘긴다. relative 여야 건수 배지의 화면 읽기용 글자(absolute)가 페이지 밖으로 새지 않는다. */
+    position: relative;
     flex-direction: row;
-    align-items: flex-start;
-    gap: 14px;
+    align-items: center;
+    gap: var(--sv2-space-12);
+    padding: var(--sv2-space-12) var(--sv2-space-16);
+    border-right: none;
+    border-bottom: 1px solid var(--sv2-line-default);
     overflow-x: auto;
   }
 
-  .sidebarTop {
+  .brand {
     flex: 0 0 auto;
     padding: 0;
-    gap: 6px;
   }
 
-  .logoLabel {
+  .academyCard {
+    flex: 0 0 auto;
+    margin: 0;
+    max-width: 200px;
+  }
+
+  .academyRole,
+  .academyChevron,
+  .planCard,
+  .navPendingText {
     display: none;
   }
 
   .nav {
-    grid-auto-flow: column;
-    grid-auto-columns: max-content;
-    gap: var(--s2);
+    flex-direction: row;
+    flex: 0 0 auto;
+  }
+
+  .navItem {
+    white-space: nowrap;
+  }
+
+  .bottom {
+    flex-direction: row;
+    margin: 0;
     padding: 0;
-  }
-
-  .sidebarBottom {
-    display: block;
-    padding: 0;
-  }
-
-  .accountCard {
-    padding: 6px 12px;
-    border-radius: var(--r-md);
-    min-width: max-content;
-  }
-
-  .accountProfileLink {
-    min-width: max-content;
-  }
-
-  .content {
-    padding: 20px;
   }
 }

@@ -57,7 +57,7 @@ const ACTION_CONFIG: Record<
     allowedCurrentStatuses: ["new", "reviewing", "confirmed"]
   },
   no_show: {
-    label: "노쇼",
+    label: "불참",
     note: "teacher가 신청을 노쇼 처리했습니다.",
     nextStatus: "canceled",
     allowedCurrentStatuses: ["confirmed"]
@@ -256,7 +256,7 @@ export async function updateApplicationStatusAction(
         requestedActionType === "move_to_completed" ? `${applicationId}:${Date.now()}` : null,
       message:
         requestedActionType === "no_show"
-          ? "신청을 노쇼로 처리했습니다."
+          ? "신청을 불참으로 처리했습니다."
           : `신청 상태를 ${STATUS_LABELS[requestedActionConfig.nextStatus]}(으)로 변경했습니다.`
     }
   } catch (error) {

@@ -1,0 +1,56 @@
+/*
+ * Studio v2/Chip (Figma 2024:152). 필터 · 단일 선택용.
+ * 선택 상태만 초록이다(연한 초록 + 진한 초록 테두리 · 글자).
+ * 글자 크기는 Figma 칩 높이 38px(8 + 20 + 8 + 테두리 2)에서 14px / 20px 로 맞췄다.
+ */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex: 0 0 auto;
+  padding: 8px 14px;
+  border: 1px solid var(--sv2-line-default);
+  border-radius: var(--sv2-radius-pill);
+  background: var(--sv2-surface-white);
+  color: var(--sv2-ink-700);
+  font-family: var(--sv2-font);
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.chip:focus-visible {
+  outline: 2px solid var(--sv2-brand-700);
+  outline-offset: 2px;
+}
+
+.chip:not(.selected):hover {
+  background: var(--sv2-surface-fill);
+}
+
+.chip:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+.count {
+  color: var(--sv2-ink-400);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+.selected {
+  background: var(--sv2-brand-50);
+  border-color: var(--sv2-brand-700);
+  color: var(--sv2-brand-700);
+}
+
+.selected .label {
+  font-weight: 700;
+}
+
+.selected .count {
+  color: var(--sv2-brand-700);
+}

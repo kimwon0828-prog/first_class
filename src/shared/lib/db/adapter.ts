@@ -290,6 +290,8 @@ export type StudioScheduleCalendarItem = {
   remainingCapacity: number
   status: StudioScheduleCalendarStatus
   seriesId: string | null
+  /** 운영 규칙이 자동으로 만든 회차면 규칙 id, 학원이 직접 추가한 회차면 null. */
+  generatedByRuleId: string | null
 }
 
 export type StudioScheduleCalendarDay = {
@@ -775,8 +777,21 @@ export type ApplicationLogEntry = {
   createdAt: string
 }
 
+export type StudioCurrentParentDecision = {
+  applicationId: string
+  decision: ParentDecisionSummary["decision"]
+  preferredDays: NonNullable<ParentDecisionSummary["preferredDays"]>
+}
+
+export type StudioRecentExperienceFeedback = {
+  latest: (StudioExperienceFeedback & { applicationId: string; childName: string; childGrade: string }) | null
+  recentCount: number
+}
+
 export type StudioApplicationSummary = TrialApplicationSummary & {
   classSubject: string | null
+  /** 수업의 과목 대분류 코드(subject_categories.code). 3D 과목 아이콘용. 읽지 않는 조회에서는 비어 있다. */
+  classSubjectCategory?: string | null
   classRegion: string | null
   classAssignmentMode: ClassAssignmentMode
   scheduleStartTime: string | null
@@ -1372,6 +1387,8 @@ export interface DataAdapter {
   /** @deprecated Final submission only; always rejects. */
   saveParentExperienceFeedback(applicationId: string, parentId: string, selectedChipIds: string[], privateNote: string | null): Promise<void>
   getStudioExperienceFeedback(applicationId: string, organizationId: string): Promise<StudioExperienceFeedback | null>
+  /** 학원의 가장 최근 학부모 체험 의견 1건과 since 이후 새 의견 수. 홈 "학부모 의견" 카드용, 읽기 전용. */
+  getStudioRecentExperienceFeedback(organizationId: string, sinceIso: string): Promise<StudioRecentExperienceFeedback>
   getPublicClassFeedbackSummary(classId: string): Promise<PublicFeedbackSummary>
   getPublicAcademyFeedbackSummary(organizationId: string): Promise<PublicFeedbackSummary>
   listClasses(options?: ListClassesOptions): Promise<ClassSummary[]>
@@ -1467,6 +1484,8 @@ export interface DataAdapter {
   upsertStudioTrialResult(input: UpsertStudioTrialResultInput): Promise<"created" | "updated">
   /** 지금의 생각. 지나간 기록은 돌려주지 않는다. */
   getCurrentParentDecision(applicationId: string): Promise<ParentDecisionSummary | null>
+  /** 여러 신청의 지금 유효한(superseded_at is null) 학부모 의향. 홈 "다시 연락할 학생"용, 읽기 전용. */
+  listCurrentParentDecisions(applicationIds: string[]): Promise<StudioCurrentParentDecision[]>
   /**
    * 전환 분석용 일괄 조회.
    *

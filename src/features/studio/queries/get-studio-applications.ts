@@ -1,3 +1,4 @@
+import { cache } from "react"
 import { dataAdapter } from "@/shared/lib/db"
 import type { StudioApplicationListOptions, StudioApplicationSummary } from "@/shared/lib/db/adapter"
 import type { QueryResult } from "@/shared/queries"
@@ -16,3 +17,9 @@ export const getStudioApplications = async (
     }
   }
 }
+
+/**
+ * 한 요청 안에서 사이드바 "홈" 건수(layout)와 홈 화면이 같은 조회 결과를 쓴다.
+ * React cache 라 요청이 끝나면 버려진다. 조회 조건은 getStudioApplications 와 같다.
+ */
+export const getStudioApplicationsForDashboard = cache((organizationId: string) => getStudioApplications(organizationId))

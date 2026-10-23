@@ -4,9 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Product
 
-첫수업 (First Class) — a Korean pre-enrollment operations platform. Parents browse and apply for trial classes (체험수업) / level tests (레벨테스트); academies and teachers manage those applications, confirm schedules, and track conversion to enrollment.
+첫수업 (First Class) — a Korean pre-enrollment operations platform. Parents browse and apply for trial classes (체험수업) / level tests (레벨테스트); academies manage those applications, confirm schedules, record the trial, share a parent report, and track conversion to enrollment.
 
-`AGENTS.md` holds the product/development rules in Korean and is authoritative for product policy. `docs/` (00-brief → 05-implementation-plan, 04-data-model) is the reference for scope, flows, screens, and the data model — read the relevant doc before changing behavior in that area.
+`AGENTS.md` holds the product/development rules in Korean and is authoritative for product policy. `docs/00-brief` → `05-implementation-plan` started as MVP-era planning docs; they now carry "현재 상태" notes where the code moved on. For the data model, `supabase/migrations/` is the source of truth (`docs/04-data-model.md` only summarizes it). The other `docs/*.md` files are per-feature release/review notes — read the relevant one before changing behavior in that area.
 
 ## Commands
 
@@ -35,16 +35,16 @@ Next.js 15 App Router (React 19, server components by default) + Supabase (auth,
 Three audiences, each with its own auth posture:
 
 - **Parent** (`/classes`, `/classes/[id]`, `/academies`, `/favorites`, `/my/*`) — mobile-first. Listing and detail are public (no login); applying and `/my/*` require a session.
-- **Studio** (`/studio/*`, dashboard under `app/studio/(dashboard)`) — desktop-first, for teacher/academy accounts. Not public signup — accounts come from invite/manual creation plus an admin approval queue (`teacher_signup_requests`).
-- **Admin** (`/admin/*`) — academy approvals and update requests.
+- **Studio** (`/studio/*`, dashboard under `app/studio/(dashboard)`) — desktop-first, for academy accounts. Served on its own host `studio.firstsuup.com`, where internal `/studio/x` paths appear as `/x` (see `shared/config/studio-routes.ts`, `studio-navigation.ts`). Academies sign up publicly at `/studio/sign-up`, which files a `teacher_signup_requests` row (pending); an admin approves it at `/admin/academy-approvals`, which creates the `organizations` row and an `academy` profile. There is no invite flow. Teachers (`teachers`) are a roster the academy maintains — they have no login (`profile_id` is null).
+- **Admin** (`/admin/*`) — academy approvals and update requests. Requires `profiles.role = admin`.
 
-Plus `/partner` (landing), `(legal)` pages, and `app/api/*` (health, debug, admin geocode, and `/api/cron/trial-reminders`, scheduled by `vercel.json` and guarded by `CRON_SECRET` in production).
+Plus `/partner` (landing), `(legal)` pages, and `app/api/*`: health, admin geocode, Toss webhook, report attachments, parent phone OTP, native app APIs, partner inquiry, and cron routes. `vercel.json` schedules five crons — `rolling-schedules`, `trial-reminders`, `billing-renewals`, `billing-reconciliation`, `trial-privacy-retention` — and `/api/cron/schedule-confirmed-push` is invoked by a pg_cron job that its migration creates **inactive**. All cron routes check `CRON_SECRET`.
 
-`middleware.ts` runs the Supabase SSR cookie refresh for `/my`, `/applications`, `/studio`, and the apply route only — it refreshes the session, it does **not** authorize. Authorization lives in the server helpers below.
+`middleware.ts` matches `/my`, `/applications`, `/studio`, the apply route, and every path on the Studio host. It refreshes the Supabase session cookie, rewrites Studio-host paths to internal `/studio/*`, and redirects legacy `/studio/...` URLs to the Studio host — it does **not** authorize. Authorization lives in the server helpers below.
 
 ### Feature modules (`src/features/<domain>/`)
 
-Consistent subfolders: `actions/` (`"use server"` mutations), `queries/` (server reads), `lib/` (pure logic, guards, formatters), `ui/` (components). Domains: `auth`, `classes`, `applications`, `children`, `my`, `favorites`, `studio`, `admin`, `academies`, `organizations`, `maps`, `notifications`.
+Consistent subfolders: `actions/` (`"use server"` mutations), `queries/` (server reads), `lib/` (pure logic, guards, formatters), `ui/` (components). Main domains: `auth`, `classes`, `applications`, `children`, `my`, `record`, `favorites`, `studio`, `admin`, `academies`, `organizations`, `billing`, `registration`, `reports`, `feedback`, `decisions`, `reservation-import`, `schedule`, `subjects`, `location`, `maps`, `notifications`, `native` (see `src/features/` for the full list).
 
 `app/**` route files stay thin: they compose feature `queries` for data and pass feature `actions` to forms.
 
@@ -67,19 +67,19 @@ Env is read through `shared/config/env.ts` (public) and `shared/config/server-en
 
 ### Auth and roles
 
-DB roles (`profiles.role`) and app roles differ. `normalizeProfileRole` in `features/auth/lib/profile-sync.ts` maps them: `parent → parent`; `teacher | academy → academy`; `operator | admin → admin`. Always normalize before comparing roles.
+DB roles (`profiles.role`) and app roles differ. The DB CHECK allows only `parent | academy | admin`. `normalizeProfileRole` in `features/auth/lib/profile-sync.ts` maps `parent → parent`; `academy → academy`; `operator | admin → admin`; anything else (including the removed `teacher` role) → `null` (unsupported). `operator` survives only as a legacy value in app code and some RLS policies. In RLS, `app.current_role()` folds `academy`/`admin` into `'teacher'`, so `'teacher'` in policy names means "academy login account". Always normalize before comparing roles.
 
 Guards, all `cache()`-wrapped and redirect-on-failure:
 
 - `features/auth/lib/session.ts` — `getSession` / `requireSession`.
 - `features/my/lib/require-parent-access.ts` — parent routes.
-- `features/studio/lib/require-teacher-studio-access.ts` — studio routes; resolves profile → role → `organization_id` → `teachers` row, and redirects to `/studio/access?reason=…`, `/studio/pending`, or `/classes` with a specific reason for each failure. Keep new failure paths distinguishable by reason.
+- `features/studio/lib/require-teacher-studio-access.ts` — studio routes; resolves profile → role (academy/admin/operator) → `organization_id` (no `teachers` row is involved), and redirects to `/studio/access?reason=…`, `/studio/pending`, or `/classes` with a specific reason for each failure. Keep new failure paths distinguishable by reason.
 
 Set `NEXT_PUBLIC_DEBUG_AUTH=1` to log the middleware, server-client cookie state, and every studio-access decision.
 
 ### Database
 
-Migrations are timestamped SQL in `supabase/migrations/` — append a new file, never edit an applied one. RLS is the primary authorization mechanism (parents see only their own children/applications; teachers are scoped to their organization); a schema change that adds a parent- or teacher-visible table needs its policies in the same migration. `supabase/seed.sql` seeds teacher accounts only — public signup is parent-only.
+Migrations are timestamped SQL in `supabase/migrations/` — append a new file, never edit an applied one. RLS is the primary authorization mechanism (parents see only their own children/applications; teachers are scoped to their organization); a schema change that adds a parent- or teacher-visible table needs its policies in the same migration. `supabase/seed.sql` seeds one parent and one academy account for local use (the `teacher@example.com` login gets `role = academy`). Public signup on the parent side creates `parent` profiles only; academy accounts come from the sign-up → approval flow above.
 
 ### Notifications
 
@@ -92,12 +92,13 @@ Migrations are timestamped SQL in `supabase/migrations/` — append a new file, 
 - Every screen handles loading, empty, and error states.
 - Server actions return a discriminated result (`{ status: "success" | "error", message }` or `ActionResult<T>` from `shared/actions`) rather than throwing to the UI.
 - User-facing copy is Korean.
-- Academy areas are constrained to `shared/config/academy-areas.ts`, and only 은행사거리학원가 is currently enabled — the others are deliberately marked 준비 중.
-- MVP program types are exactly `trial_class` and `level_test`; application status is `new | reviewing | confirmed | completed | canceled`. Don't widen either without a docs change — planned expansion is along separate attendance/result/consultation/registration axes.
+- The academy-area concept is gone (`academy_area` column dropped). Parent-facing discovery is limited to 서울 노원구 via `features/location/lib/parent-launch-region.ts`.
+- MVP program types are exactly `trial_class` and `level_test`; application status is `new | reviewing | confirmed | completed | canceled`. Don't widen either without a docs change — attendance/result/consultation/registration live on separate axes (`no_show_at`, `trial_results`, `experience_reports`, `registration_results`, …). Academy actions today: confirm (new·reviewing → confirmed), complete (confirmed → completed), cancel (→ canceled), no-show (confirmed → canceled + `no_show_at`). Nothing moves an application *into* `reviewing` anymore; it remains for older rows.
 
 ## Studio UI 작업
 
-`/studio` 하위 UI를 생성하거나 수정할 때는 루트의 `STUDIO_DESIGN_SYSTEM.md`(현재 Studio Design System)를 **먼저 읽고 준수한다.**
+`/studio` 하위 UI를 생성하거나 수정할 때는 루트의 `STUDIO_DESIGN_SYSTEM.md`(Studio Design System v2, Figma `2148:4687` 기준)를 **먼저 읽고 준수한다.**
+v2 토큰은 `app/studio/studio-v2-tokens.css`(`--sv2-*`), 공통 부품은 `src/features/studio/ui/v2/`에 있다.
 
 - 문서에 정의되지 않은 color / spacing / radius / max-width / card pattern / button hierarchy / status representation / page layout pattern 을 임의로 추가하지 않는다.
 - List / Detail / Settings / Form 화면을 만들기 전에 문서의 해당 Page Pattern(특히 Case List Pattern, Case Detail Pattern)을 먼저 확인하고, 화면마다 새 레이아웃을 발명하지 않는다.

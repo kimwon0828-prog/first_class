@@ -17,7 +17,7 @@
 | 대상 | 탈퇴 처리 |
 |---|---|
 | Auth, profile(이름/전화/생년월일), 개인 children | 삭제 |
-| ParentDecision | 삭제. Studio는 `학부모 응답 정보가 없습니다.` 표시 |
+| ParentDecision | 삭제. Studio는 `학부모 응답 정보가 없어요.` 표시 |
 | experience_feedback / selected chips / private_note | row 삭제. 공개 집계에서 제외되며 최소 표본 기준도 재계산 |
 | parent_notification_reads / parent_report_engagement | 삭제. 계정용 알림·읽음·리포트 반응 상태 제거 |
 | favorites | 서버 테이블이 없는 browser localStorage. 현재 브라우저 삭제, 계정 UUID 변경/로그아웃 시 이전 목록 제거 |

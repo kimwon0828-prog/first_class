@@ -1,35 +1,41 @@
-/* 요금제 카드 안에서 다른 CTA 상태(비활성·현재 상태)와 폭이 같아야 한다. */
+/* 플랜 카드 안의 [스탠다드 시작] — v2 primary lg 전체 폭(STUDIO_DESIGN_SYSTEM.md §5.1, Figma 2148:7105). */
 .wrapper {
   display: grid;
-  gap: 8px;
+  gap: var(--sv2-space-8);
 }
 
-/* Studio primary button(§6.1). 결제 화면만 큰 버튼을 쓰지 않는다. */
 .primary {
   width: 100%;
-  height: 36px;
-  padding: 0 16px;
-  border: 1px solid var(--brand-700);
-  border-radius: var(--r-md);
-  background: var(--brand-700);
-  color: #ffffff;
-  font-size: 13px;
+  height: 52px;
+  padding: 0 var(--sv2-space-20);
+  border: 0;
+  border-radius: var(--sv2-radius-control);
+  background: var(--sv2-brand-700);
+  color: var(--sv2-surface-white);
+  font-family: var(--sv2-font);
+  font-size: 16px;
+  line-height: 22px;
   font-weight: 700;
   cursor: pointer;
 }
 
 .primary:hover:not(:disabled) {
-  background: var(--brand-900);
+  background: var(--sv2-brand-800);
+}
+
+.primary:focus-visible {
+  outline: 2px solid var(--sv2-brand-700);
+  outline-offset: 2px;
 }
 
 .primary:disabled {
   cursor: progress;
-  opacity: 0.7;
+  opacity: 0.4;
 }
 
 .message {
   margin: 0;
-  font-size: 12px;
-  line-height: 20px;
-  color: var(--red-fg);
+  color: var(--sv2-state-danger-fg);
+  font-size: 13px;
+  line-height: 1.45;
 }

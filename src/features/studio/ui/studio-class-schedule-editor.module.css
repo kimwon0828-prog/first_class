@@ -170,3 +170,116 @@
     padding: 18px;
   }
 }
+
+/*
+ * ── 특정 날짜만 변경하기 팝업 (Studio v2, Figma 2178:959) ─────────────────
+ * 왼쪽 달력 카드(line/default · 모서리 14 · 여백 16) + 오른쪽 날짜 패널, 사이 24.
+ * 모서리 14 는 Figma 달력 카드에 직접 적힌 값이다(토큰에 없는 값 — 디자인 시스템 문서 §5.10).
+ */
+.dateOverrideLayout {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sv2-space-24);
+}
+
+.calendarCard {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sv2-space-8);
+  padding: var(--sv2-space-16);
+  border: 1px solid var(--sv2-line-default);
+  border-radius: 14px;
+  background: var(--sv2-surface-white);
+}
+
+.calendarCardHead {
+  display: flex;
+  align-items: center;
+  gap: var(--sv2-space-4);
+}
+
+.calendarCardHead strong {
+  flex: 1 1 auto;
+  color: var(--sv2-ink-900);
+  font-size: 15px;
+  line-height: 1.45;
+  font-weight: 700;
+}
+
+.monthButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--sv2-radius-badge);
+  background: transparent;
+  color: var(--sv2-ink-500);
+  cursor: pointer;
+}
+
+.monthButton:hover {
+  background: var(--sv2-surface-fill);
+  color: var(--sv2-ink-900);
+}
+
+.monthButton:focus-visible {
+  outline: 2px solid var(--sv2-brand-700);
+  outline-offset: 2px;
+}
+
+.calendarLegend {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--sv2-ink-500);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.legendDotOpen,
+.legendDotChanged {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+
+.legendDotOpen {
+  background: var(--sv2-brand-500);
+}
+
+.legendDotChanged {
+  background: var(--sv2-state-warn-fg);
+}
+
+.legendGap {
+  width: 8px;
+}
+
+.dayColumn {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sv2-space-12);
+}
+
+.weeklyNote {
+  margin: 0;
+  padding: 10px 14px;
+  border-radius: var(--sv2-radius-control);
+  background: var(--sv2-surface-fill);
+  color: var(--sv2-ink-700);
+  font-size: 12px;
+  line-height: 1.45;
+  font-weight: 500;
+}
+
+@media (max-width: 760px) {
+  .dateOverrideLayout {
+    flex-direction: column;
+  }
+}

@@ -4,10 +4,14 @@ import { getMyProfile } from "@/features/auth/queries/get-my-profile"
 import { getSession } from "@/features/auth/lib/session"
 import { StudioHomeLogo } from "@/features/studio/ui/studio-home-logo"
 import { StudioSignInForm } from "@/features/studio/ui/studio-sign-in-form"
+import { V2SubjectIcon3D } from "@/features/studio/ui/v2/v2-subject-icon-3d"
 import { getParentCrossProductHref } from "@/shared/config/cross-product-navigation"
 import { getRequestHostname } from "@/shared/lib/request-host"
 import { getStudioNavigationPathResolver } from "@/shared/lib/studio-navigation-server"
 import styles from "./page.module.css"
+
+/* Figma 로그인 브랜드 칸의 과목 원 6개(수학 · 영어 · 코딩 · 과학 · 음악 · 미술). */
+const BRAND_SUBJECTS = ["math", "english", "coding_it_robotics", "science", "music", "art_design"]
 
 type StudioSignInPageProps = {
   searchParams?: Promise<{
@@ -47,57 +51,32 @@ export default async function StudioSignInPage({ searchParams }: StudioSignInPag
 
   return (
     <main className={styles.page}>
-      <div className={styles.shell}>
-        <section className={styles.brand}>
-          <StudioHomeLogo width={132} height={44} priority logoClassName={styles.logo} />
-          <p className={styles.kicker}>파트너 센터</p>
-          <h1 className={styles.headline}>
-            체험수업 신청부터 상담,
-            <br />
-            등록 전환까지 한 곳에서 관리하세요.
-          </h1>
-          <p className={styles.subcopy}>
-            학원에 들어온 첫수업 신청을 빠르게 확인하고 상담 상태를 놓치지 않도록 도와드려요.
-          </p>
+      {/* 왼쪽 브랜드 칸 (Figma 2148:4724). 과목 원은 장식이라 화면 읽기에서 뺀다. */}
+      <section className={styles.brand} aria-label="첫수업 파트너 센터">
+        <StudioHomeLogo width={106} height={35} priority />
+        <span className={styles.spacer} />
+        <h1 className={styles.headline}>
+          전화 상담 없이,
+          <br />
+          체험 예약부터 등록까지
+        </h1>
+        <p className={styles.subcopy}>
+          학부모는 첫수업 앱에서 체험을 예약하고, 학원은 여기서 일정·기록·리포트·등록 결과까지 한 번에 관리해요.
+        </p>
+        <div className={styles.subjects} aria-hidden="true">
+          {BRAND_SUBJECTS.map((code) => <span key={code} className={styles.subject}><V2SubjectIcon3D categoryCode={code} size={40} /></span>)}
+        </div>
+        <span className={styles.spacer} />
+        <p className={styles.copyright}>© 첫수업</p>
+      </section>
 
-          <ul className={styles.points}>
-            <li className={styles.point}>
-              <span className={styles.pointIcon} aria-hidden="true" />
-              신규 신청 확인
-            </li>
-            <li className={styles.point}>
-              <span className={styles.pointIcon} aria-hidden="true" />
-              상담 메모 관리
-            </li>
-            <li className={styles.point}>
-              <span className={styles.pointIcon} aria-hidden="true" />
-              체험수업, 레벨테스트 일정 확인
-            </li>
-            <li className={styles.point}>
-              <span className={styles.pointIcon} aria-hidden="true" />
-              등록 전환 관리
-            </li>
-          </ul>
-        </section>
-
-        <section className={styles.card} aria-label="선생님 로그인">
-          <header className={styles.cardHeader}>
-            <span className={styles.badge}>파트너 센터</span>
-            <h2 className={styles.cardTitle}>선생님 로그인</h2>
-            <p className={styles.cardDescription}>
-              첫수업 운영보드에 로그인해 신청 현황을 확인하세요.
-            </p>
-          </header>
-
-          <div className={styles.formArea}>
-            <StudioSignInForm returnTo={returnTo ?? undefined} />
-          </div>
-
-          <p className={styles.notice}>
-            운영자 계정은 첫수업에 등록된 학원/선생님만 사용할 수 있어요.
-          </p>
-        </section>
-      </div>
+      <section className={styles.formArea} aria-labelledby="studio-sign-in-title">
+        <div className={styles.form}>
+          <h2 id="studio-sign-in-title" className={styles.title}>파트너 센터 로그인</h2>
+          <p className={styles.description}>학원 계정으로 로그인해 주세요.</p>
+          <StudioSignInForm returnTo={returnTo ?? undefined} />
+        </div>
+      </section>
     </main>
   )
 }

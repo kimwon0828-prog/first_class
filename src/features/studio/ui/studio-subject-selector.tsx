@@ -1,6 +1,7 @@
 "use client"
 
 import type { SubjectCatalogCategory } from "@/shared/lib/subject-master"
+import { V2ChevronDownIcon } from "@/features/studio/ui/v2/v2-icons"
 import styles from "./studio-subject-selector.module.css"
 
 type StudioSubjectSelectorProps = {
@@ -39,6 +40,7 @@ export const StudioSubjectSelector = ({
       <div className={styles.selectGrid}>
         <label className={styles.field}>
           <span className={styles.label}>대분류 *</span>
+          <span className={styles.selectWrap}>
           <select
             value={categoryId}
             onChange={(event) => handleCategoryChange(event.target.value)}
@@ -54,10 +56,13 @@ export const StudioSubjectSelector = ({
               </option>
             ))}
           </select>
+          <V2ChevronDownIcon className={styles.selectIcon} size={16} />
+          </span>
         </label>
 
         <label className={styles.field}>
           <span className={styles.label}>세부 과목 (선택)</span>
+          <span className={styles.selectWrap}>
           <select
             value={subjectId}
             onChange={(event) => onSubjectChange(event.target.value)}
@@ -72,6 +77,8 @@ export const StudioSubjectSelector = ({
               </option>
             ))}
           </select>
+          <V2ChevronDownIcon className={styles.selectIcon} size={16} />
+          </span>
         </label>
       </div>
 

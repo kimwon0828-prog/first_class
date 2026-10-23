@@ -41,11 +41,6 @@ export async function StudioMypagePage({ academyName }: StudioMypagePageProps) {
   const hostname = await getRequestHostname()
   return (
     <div className={styles.page}>
-      <header className={styles.header}>
-        <h1 className={styles.title}>마이페이지</h1>
-        <p className={styles.subtitle}>학원 정보와 정책 문서를 확인하세요.</p>
-      </header>
-
       <section className={styles.section} aria-labelledby="mypage-academy-title">
         <div className={styles.sectionHead}>
           <h2 className={styles.sectionTitle} id="mypage-academy-title">

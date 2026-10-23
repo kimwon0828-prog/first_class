@@ -6,7 +6,7 @@ const RETURN_PARAMS: Record<string, readonly string[]> = {
   "/studio/applications": ["teacherId", "startDate", "endDate"]
 }
 export function resolveStudioDetailReturn(value: unknown): { pathname: string; search: string; label: string } {
-  const fallback = { pathname: "/studio/cases", search: "", label: "신청 관리로 돌아가기" }
+  const fallback = { pathname: "/studio/cases", search: "", label: "신청으로 돌아가기" }
   if (typeof value !== "string" || !value.startsWith("/studio") || /[\\\u0000-\u0020]/.test(value)) return fallback
   try {
     const url = new URL(value, "https://studio.invalid")

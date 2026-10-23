@@ -7,6 +7,7 @@ import {
   studioSignInAction,
   type StudioSignInActionState
 } from "@/features/studio/actions/studio-sign-in"
+import { V2InfoIcon } from "@/features/studio/ui/v2/v2-icons"
 import styles from "@/features/studio/ui/studio-sign-in-form.module.css"
 
 const initialState: StudioSignInActionState = {
@@ -35,6 +36,7 @@ export const StudioSignInForm = ({ returnTo }: StudioSignInFormProps) => {
           name="email"
           type="email"
           autoComplete="email"
+          placeholder="academy@example.com"
           required
           disabled={isPending}
         />
@@ -65,25 +67,23 @@ export const StudioSignInForm = ({ returnTo }: StudioSignInFormProps) => {
         </p>
       ) : null}
 
-      <div className={styles.links}>
-        <Link href="/auth/find-email?type=academy">이메일 찾기</Link>
-        <span className={styles.separator}>|</span>
-        <Link href="/auth/reset-password?type=academy">비밀번호 찾기</Link>
-      </div>
-
       <button type="submit" disabled={isPending} className={styles.submitButton}>
-        {isPending ? "로그인 중..." : "운영보드 로그인"}
+        {isPending ? "로그인 중…" : "로그인"}
       </button>
 
-      <div className={styles.footer}>
-        <p className={styles.footerText}>
-          아직 계정이 없으신가요?{" "}
-          <Link href={signUpHref} className={styles.footerLink}>
-            학원 계정 신청
-          </Link>
-        </p>
+      {/* 기존 링크(이메일 찾기 · 비밀번호 찾기 · 학원 계정 신청)를 그대로 둔다. */}
+      <div className={styles.links}>
+        <Link href="/auth/find-email?type=academy">이메일 찾기</Link>
+        <span className={styles.separator} aria-hidden="true">·</span>
+        <Link href="/auth/reset-password?type=academy">비밀번호 찾기</Link>
+        <span className={styles.separator} aria-hidden="true">|</span>
+        <Link href={signUpHref} className={styles.signUpLink}>학원 계정 만들기</Link>
       </div>
 
+      <p className={styles.note}>
+        <V2InfoIcon size={18} className={styles.noteIcon} />
+        학부모님이라면 첫수업 앱에서 카카오로 로그인해 주세요.
+      </p>
     </form>
   )
 }

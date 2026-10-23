@@ -1,0 +1,105 @@
+/*
+ * Studio v2 팝업 (Figma 2178:959).
+ * 머리 22/24/16 · 본문 4/24/20 · line/subtle 구분선 · 발 16/24.
+ * 디자인 규칙 "그림자 없음"의 예외(팝오버)다 — 대신 배경을 어둡게 덮어 층을 나눈다.
+ */
+.dialog {
+  max-height: calc(100dvh - 64px);
+  padding: 0;
+  border: 0;
+  border-radius: var(--sv2-radius-sheet);
+  background: var(--sv2-surface-white);
+  color: var(--sv2-ink-900);
+  font-family: var(--sv2-font);
+  overflow: hidden;
+}
+
+.dialog[open] {
+  display: flex;
+  flex-direction: column;
+}
+
+/* [코드 결정] 배경 덮개 색. Figma 화면의 어두운 덮개를 ink/900 계열 반투명으로 옮겼다. */
+.dialog::backdrop {
+  background: rgb(17 19 18 / 40%);
+}
+
+.head {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 22px 24px 16px;
+}
+
+.headText {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.title {
+  margin: 0;
+  font-size: 20px;
+  line-height: 1.3;
+  font-weight: 700;
+}
+
+.description {
+  margin: 0;
+  color: var(--sv2-ink-500);
+  font-size: 13px;
+  line-height: 1.45;
+  font-weight: 500;
+}
+
+.closeIcon {
+  display: inline-flex;
+  flex: 0 0 auto;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--sv2-ink-500);
+  cursor: pointer;
+}
+
+.closeIcon:hover:not(:disabled) {
+  color: var(--sv2-ink-900);
+}
+
+.closeIcon:focus-visible {
+  outline: 2px solid var(--sv2-brand-700);
+  outline-offset: 2px;
+  border-radius: var(--sv2-radius-badge);
+}
+
+.closeIcon:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+.body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 4px 24px 20px;
+}
+
+.foot {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 24px;
+  border-top: 1px solid var(--sv2-line-subtle);
+}
+
+.footNote {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+  color: var(--sv2-ink-500);
+  font-size: 12px;
+  line-height: 1.45;
+  font-weight: 500;
+}

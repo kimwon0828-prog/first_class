@@ -18,11 +18,17 @@ import {
   saveAcademyPublicProfileAction,
   type SaveAcademyPublicProfileActionState
 } from "@/features/studio/actions/save-academy-public-profile"
-import { formatAdministrativeRegionLabel } from "@/features/location/lib/region-selection"
 import type { StudioAcademyPublicProfile } from "@/features/studio/queries/get-studio-academy-public-profile"
 import type { StudioSettingsOrganization } from "@/features/studio/queries/get-studio-settings-organization"
 import { getSupabaseBrowserClient } from "@/integrations/supabase/client"
 import { OPERATING_DAYS, PARKING_PREFIX, parseHours, formatHours, hoursError, parseParking, formatParking, type HoursDraft, type ParkingDraft } from "@/features/studio/lib/academy-profile-visit-info"
+import type { AcademyUpdateRequestHistoryItem } from "@/features/studio/queries/get-academy-update-request-history"
+import { getSubjectCategoryLabel } from "@/shared/lib/subject-master"
+import { getSeoulDateTimeParts } from "@/shared/lib/seoul-datetime"
+import { V2Button, v2ButtonClassName } from "./v2/v2-button"
+import { V2LockIcon, V2UploadIcon } from "./v2/v2-icons"
+import { V2StatusBadge } from "./v2/v2-status-badge"
+import { V2SubjectIcon3D } from "./v2/v2-subject-icon-3d"
 import styles from "./studio-mypage-profile-page.module.css"
 
 const toNullableText = (value: string | null | undefined) => {
@@ -39,6 +45,13 @@ const formatAddress = (organization: StudioSettingsOrganization) => {
   const line2 = toNullableText(organization.addressLine2 ?? organization.addressDetail ?? null)
   const combined = [line1, line2].filter((value): value is string => Boolean(value)).join(" ")
   return combined.length > 0 ? combined : "미입력"
+}
+
+const SHORT_WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"]
+/** "10월 17일(토)" */
+const formatShortDate = (value: string) => {
+  const parts = getSeoulDateTimeParts(value)
+  return parts ? `${parts.month}월 ${parts.day}일(${SHORT_WEEKDAYS[parts.weekday]})` : value
 }
 
 const formatPhone = (organization: StudioSettingsOrganization) =>
@@ -182,6 +195,13 @@ type StudioMypageProfilePageProps = {
   initialSlug: string | null
   publicProfileError: string | null
   canEditPublicProfile: boolean
+  /** 검토 중인 정보수정 요청의 신청 시각. 없으면 null. */
+  pendingUpdateRequestedAt?: string | null
+  /** 요청 상태 · 이력 조회 실패. 실패를 "요청 없음"으로 접지 않는다. */
+  updateRequestStatusError?: boolean
+  updateRequestHistory?: AcademyUpdateRequestHistoryItem[]
+  /** 등록한 수업의 과목 대분류(많은 순). null 이면 조회 실패. */
+  subjectCategories?: string[] | null
 }
 
 import { useStudioNavigationPathFactory } from "@/features/studio/ui/studio-navigation-provider"
@@ -196,7 +216,11 @@ export function StudioMypageProfilePage({
   publicProfile,
   initialSlug,
   publicProfileError,
-  canEditPublicProfile
+  canEditPublicProfile,
+  pendingUpdateRequestedAt = null,
+  updateRequestStatusError = false,
+  updateRequestHistory = [],
+  subjectCategories = []
 }: StudioMypageProfilePageProps) {
   const studioPath = useStudioNavigationPathFactory()
   const router = useRouter()
@@ -305,9 +329,9 @@ export function StudioMypageProfilePage({
     router.refresh()
   }, [router, state.completedAt, state.status])
 
-  const permissionMessage = canEditPublicProfile ? null : "학원 대표 계정만 프로필을 수정할 수 있습니다."
-  const logoButtonLabel = isLogoUploading ? "업로드 중..." : currentLogoImagePath ? "로고 변경" : "로고 등록"
-  const coverButtonLabel = isCoverUploading ? "업로드 중..." : currentCoverImagePath ? "대표 이미지 변경" : "대표 이미지 등록"
+  const permissionMessage = canEditPublicProfile ? null : "학원 대표 계정만 학원 정보를 고칠 수 있어요."
+  const logoButtonLabel = isLogoUploading ? "올리는 중…" : currentLogoImagePath ? "로고 바꾸기" : "로고 올리기"
+  const coverButtonLabel = isCoverUploading ? "올리는 중…" : currentCoverImagePath ? "대표 이미지 바꾸기" : "대표 이미지 올리기"
   const publicPageUrl = useMemo(
     () => buildAcademyPublicPageUrl(formValues.slug, organizationId),
     [formValues.slug, organizationId]
@@ -693,311 +717,231 @@ export function StudioMypageProfilePage({
     )
   }
 
+  const fallbackSubject = subjectCategories?.[0] ?? null
+  const officialRows = organization
+    ? [
+        { label: "학원 이름", value: academyName },
+        { label: "지점", value: toText(organization.branchName) },
+        { label: "대표자명", value: toText(organization.representativeName) },
+        { label: "사업자등록번호", value: toText(organization.businessRegistrationNumber) },
+        { label: "주소", value: formatAddress(organization), wide: true },
+        { label: "학원 전화번호", value: formatPhone(organization), wide: true, helper: "학부모 앱의 '전화하기'에 쓰여요." }
+      ]
+    : []
+
   return (
-    <div className={styles.page}>
-      <div className={styles.container}>
-        <header className={styles.header}>
-          <Link href={studioPath("/studio/mypage")} prefetch={false} className={styles.backLink}>
-            <span aria-hidden="true" className={styles.backIcon}>
-              {"←"}
-            </span>
-            마이페이지
-          </Link>
-          <div className={styles.topRow}>
-            <div className={styles.sectionHeaderStack}>
-              <h1 className={styles.title}>학원 프로필</h1>
-              <p className={styles.sectionDescription}>학원 소개와 방문에 필요한 정보를 관리해요.</p>
-            </div>
-            <div className={styles.topActions}>
-              <a href={buildAcademyPublicPageUrl(initialSlug, organizationId)} target="_blank" rel="noopener noreferrer" className={styles.secondaryLink}>공개 페이지 보기</a>
-              <button type="submit" form="academy-profile-form" className={styles.primaryButton} disabled={disableSaveButton}>
-                {isPending ? "저장 중..." : "저장"}
-              </button>
-            </div>
-          </div>
-        </header>
+    <div className={styles.root}>
+      {permissionMessage ? <p className={styles.notice} role="status">{permissionMessage}</p> : null}
+      {publicProfileError ? <p className={styles.errorNotice} role="alert">{publicProfileError}</p> : null}
 
-        <section className={styles.sectionCard} aria-label="공식 학원정보">
-          <div className={styles.sectionHeader}>
-            <div>
-              <h2 className={styles.sectionTitle}>공식 학원정보</h2>
-              <p className={styles.sectionDescription}>
-                학원명, 대표자명, 사업자정보, 주소와 연락처는 관리자 승인 후 변경됩니다.
-              </p>
-            </div>
-            <Link href={studioPath("/studio/settings")} prefetch={false} className={styles.secondaryLink}>
-              공식정보 수정 요청
-            </Link>
-          </div>
-
-          {organizationError || !organization ? (
-            <div className={styles.errorCard} role="status">
-              <p className={styles.errorText}>
-                {organizationError ?? "학원 기본 정보를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요."}
-              </p>
-            </div>
+      {/* 학원 로고 (Figma 2148:6761): 원 80 · 간격 16 · 제목 15 Bold + 설명 13 | [로고 바꾸기] outline sm. 바로 저장된다. */}
+      <section className={styles.imageRow} aria-label="학원 로고">
+        <div className={styles.logoCircle}>
+          {logoPublicUrl && !isLogoImageBroken ? (
+            /* eslint-disable-next-line @next/next/no-img-element */
+            <img
+              src={logoPublicUrl}
+              alt={`${academyName} 로고`}
+              className={styles.logoImage}
+              onLoad={event => {
+                const image = event.currentTarget
+                if (!image.naturalWidth || !image.naturalHeight) return
+                const ratio = Math.min(image.naturalWidth, image.naturalHeight) / Math.max(image.naturalWidth, image.naturalHeight)
+                // Fit every image corner inside the circle; never blindly enlarge a square logo.
+                const scale = Math.min(1.1, 0.995 / (0.7 * Math.hypot(1, ratio)))
+                image.style.setProperty("--logo-preview-scale", String(scale))
+              }}
+              onError={() => setIsLogoImageBroken(true)}
+            />
+          ) : fallbackSubject ? (
+            <V2SubjectIcon3D categoryCode={fallbackSubject} size={48} />
           ) : (
-            <div className={styles.infoGrid} aria-label="공식 학원 정보">
-              <article className={styles.infoItem}>
-                <p className={styles.infoLabel}>학원명</p>
-                <p className={styles.infoValue}>{academyName}</p>
-              </article>
-              <article className={styles.infoItem}>
-                <p className={styles.infoLabel}>지점명</p>
-                <p className={styles.infoValue}>{toText(organization.branchName)}</p>
-              </article>
-              {formatAdministrativeRegionLabel(organization) ? (
-                <article className={styles.infoItem}>
-                  <p className={styles.infoLabel}>지역</p>
-                  <p className={styles.infoValue}>{formatAdministrativeRegionLabel(organization)}</p>
-                </article>
-              ) : null}
-              <article className={styles.infoItem}>
-                <p className={styles.infoLabel}>대표 전화번호</p>
-                <p className={styles.infoValue}>{formatPhone(organization)}</p>
-              </article>
-              <article className={`${styles.infoItem} ${styles.fullWidthInfoItem}`}>
-                <p className={styles.infoLabel}>주소</p>
-                <p className={styles.infoValue}>{formatAddress(organization)}</p>
-              </article>
-            </div>
+            <span className={styles.logoInitial} role="img" aria-label={`${academyName} 로고 없음`}>{logoInitial}</span>
           )}
+        </div>
+        <div className={styles.imageText}>
+          <strong>학원 로고</strong>
+          <p>학부모 앱에서 동그랗게 보여요. JPG · PNG · WEBP, 5MB까지(권장 500×500).</p>
+        </div>
+        <input ref={logoFileInputRef} type="file" accept="image/jpeg,image/png,image/webp" className={styles.visuallyHidden} tabIndex={-1} onChange={handleLogoFileChange} />
+        <V2Button variant="outline" size="sm" icon={<V2UploadIcon size={16} />} disabled={!canEditPublicProfile || isLogoUploading} onClick={handleLogoButtonClick}>
+          {logoButtonLabel}
+        </V2Button>
+      </section>
+      {logoFeedback.message ? <p className={logoFeedbackClassName} role="status">{logoFeedback.message}</p> : null}
+
+      <section className={styles.imageRow} aria-label="대표 이미지">
+        <div className={styles.coverThumb}>
+          {visibleCoverImageUrl && !isCoverImageBroken ? (
+            /* eslint-disable-next-line @next/next/no-img-element */
+            <img src={visibleCoverImageUrl} alt={`${academyName} 대표 이미지`} className={styles.coverImage} onError={() => setIsCoverImageBroken(true)} />
+          ) : (
+            <span className={styles.placeholderText} role="img" aria-label={`${academyName} 대표 이미지 없음`}>대표 이미지</span>
+          )}
+        </div>
+        <div className={styles.imageText}>
+          <strong>대표 이미지</strong>
+          <p>학원 화면 위쪽에 보여요. 16:9 · JPG · PNG · WEBP, 10MB까지(권장 1600×900).</p>
+        </div>
+        <input ref={coverFileInputRef} type="file" accept="image/jpeg,image/png,image/webp" className={styles.visuallyHidden} tabIndex={-1} onChange={handleCoverFileChange} />
+        <V2Button variant="outline" size="sm" icon={<V2UploadIcon size={16} />} disabled={!canEditPublicProfile || isCoverUploading} onClick={handleCoverButtonClick}>
+          {coverButtonLabel}
+        </V2Button>
+      </section>
+      {coverFeedback.message ? <p className={coverFeedbackClassName} role="status">{coverFeedback.message}</p> : null}
+
+      {/* 공식 정보: 바로 고칠 수 없다. 정보수정 요청 → 첫수업 팀 검토(academy_update_requests) 흐름 그대로. */}
+      <section className={styles.official} aria-labelledby="official-title">
+        <div className={styles.officialHead}>
+          <div className={styles.officialTitle}>
+            <h2 id="official-title"><V2LockIcon size={16} />공식 정보</h2>
+            <p>학원 이름 · 지점 · 주소 · 전화 · 사업자 정보는 첫수업 팀이 확인한 뒤 바뀌어요.</p>
+          </div>
+          {pendingUpdateRequestedAt ? <V2StatusBadge tone="amber">검토 중</V2StatusBadge> : null}
+          <Link href={studioPath("/studio/settings")} prefetch={false} className={v2ButtonClassName({ variant: "outline", size: "sm" })}>
+            {pendingUpdateRequestedAt ? "요청 보기" : "수정 요청"}
+          </Link>
+        </div>
+        {organizationError || !organization ? (
+          <p className={styles.errorNotice} role="alert">{organizationError ?? "학원 기본 정보를 불러오지 못했어요. 잠시 후 다시 시도해 주세요."}</p>
+        ) : (
+          <dl className={styles.lockedGrid}>
+            {officialRows.map(row => (
+              <div key={row.label} className={row.wide ? `${styles.lockedField} ${styles.lockedFieldWide}` : styles.lockedField}>
+                <dt>{row.label}</dt>
+                <dd><span>{row.value}</span><V2LockIcon size={16} className={styles.lockIcon} /></dd>
+                {row.helper ? <p className={styles.fieldHint}>{row.helper}</p> : null}
+              </div>
+            ))}
+          </dl>
+        )}
+        {updateRequestStatusError ? <p className={styles.fieldHint}>정보수정 요청 상태를 불러오지 못했어요.</p> : null}
+        {updateRequestHistory.length ? (
+          <div className={styles.history}>
+            <p className={styles.historyTitle}>요청 이력</p>
+            <ul>
+              {updateRequestHistory.map(item => (
+                <li key={item.id}>
+                  <span className={styles.historyDate}>{formatShortDate(item.createdAt)} 요청</span>
+                  <V2StatusBadge tone={item.status === "pending" ? "amber" : item.status === "approved" ? "green" : "red"}>
+                    {item.status === "pending" ? "검토 중" : item.status === "approved" ? "반영됨" : "반려됨"}
+                  </V2StatusBadge>
+                  {item.adminNote ? <span className={styles.historyNote}>{item.adminNote}</span> : null}
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
+      </section>
+
+      {/* 과목 (Figma 2148:6771): 학원 단위 과목 칸은 DB 에 없어서 등록한 수업의 과목 대분류를 보여준다(읽기 전용). */}
+      <section className={styles.subjects} aria-labelledby="subjects-title">
+        <h2 id="subjects-title" className={styles.fieldLabel}>과목</h2>
+        {subjectCategories === null ? (
+          <p className={styles.fieldHint}>과목을 불러오지 못했어요.</p>
+        ) : subjectCategories.length ? (
+          <ul className={styles.subjectChips}>
+            {subjectCategories.map(code => (
+              <li key={code}><V2SubjectIcon3D categoryCode={code} size={26} />{getSubjectCategoryLabel(code) ?? code}</li>
+            ))}
+          </ul>
+        ) : (
+          <p className={styles.fieldHint}>아직 등록한 수업이 없어요.</p>
+        )}
+        <p className={styles.fieldHint}>등록한 수업의 과목이에요. 수업을 등록하거나 바꾸면 함께 바뀌어요.</p>
+      </section>
+
+      <form id="academy-profile-form" action={formAction} className={styles.profileForm} onSubmit={event => { if (visitError) event.preventDefault() }}>
+        <section className={styles.formSection} aria-labelledby="intro-title">
+          <h2 id="intro-title" className={styles.sectionTitle}>학원 소개</h2>
+          {publicProfileFields.filter(field => field.key === "shortDescription" || field.key === "description").map(renderProfileField)}
         </section>
 
-        <section className={styles.sectionCard} aria-label="대표 이미지">
-          <div className={styles.sectionHeaderStack}>
-            <h2 className={styles.sectionTitle}>대표 이미지</h2>
-            <p className={styles.sectionDescription}>학원의 로고와 대표 이미지를 설정해요.</p>
-          </div>
-
-          {publicProfileError ? (
-            <div className={styles.errorCard} role="status">
-              <p className={styles.errorText}>{publicProfileError}</p>
+        <section id="visit-info" className={styles.formSection} aria-labelledby="visit-title">
+          <h2 id="visit-title" className={styles.sectionTitle}>방문 정보</h2>
+          <input type="hidden" name="operatingHours" value={formValues.operatingHours} />
+          <input type="hidden" name="parkingInfo" value={formValues.parkingInfo} />
+          <fieldset className={styles.visitFieldset} disabled={disableVisitControls}>
+            <legend className={styles.fieldLabel}>운영 요일 · 시간</legend>
+            {!hoursChanged && parseHours(formValues.operatingHours) === null ? <div className={styles.legacyInfo}>
+              <span>직접 입력된 기존 안내</span><p>{formValues.operatingHours}</p>
+              <small>요일과 시간을 고르기 전까지 기존 안내가 그대로 보여요.</small>
+            </div> : null}
+            <div className={styles.visitChoices}>{OPERATING_DAYS.map(day => <button key={day} type="button" aria-label={`${day}요일`} aria-pressed={hoursDraft.days.includes(day)} onClick={() => updateHours({ ...hoursDraft, days: hoursDraft.days.includes(day) ? hoursDraft.days.filter(value => value !== day) : [...hoursDraft.days, day] })}>{day}</button>)}</div>
+            <div className={styles.visitTimeRow}>
+              <label className={styles.field}><span className={styles.fieldLabel}>시작 시간</span><input className={styles.input} type="time" value={hoursDraft.start} aria-describedby={visitError ? "visit-input-error" : undefined} onChange={event => updateHours({ ...hoursDraft, start: event.target.value })} /></label>
+              <label className={styles.field}><span className={styles.fieldLabel}>종료 시간</span><input className={styles.input} type="time" value={hoursDraft.end} aria-describedby={visitError ? "visit-input-error" : undefined} onChange={event => updateHours({ ...hoursDraft, end: event.target.value })} /></label>
             </div>
-          ) : null}
-
-          {permissionMessage ? (
-            <div className={styles.noticeCard} role="status">
-              <p className={styles.noticeText}>{permissionMessage}</p>
+          </fieldset>
+          <fieldset className={styles.visitFieldset} disabled={disableVisitControls}>
+            <legend className={styles.fieldLabel}>주차</legend>
+            <div className={styles.visitChoices}>
+              <button type="button" aria-pressed={parkingDraft.available === true} onClick={() => updateParking({ ...parkingDraft, available: true })}>주차 가능</button>
+              <button type="button" aria-pressed={parkingDraft.available === false} onClick={() => updateParking({ ...parkingDraft, available: false })}>주차 불가</button>
             </div>
-          ) : null}
-
-          <div className={styles.imageGrid}>
-            <article className={styles.imageCard}>
-              {logoPublicUrl && !isLogoImageBroken ? (
-                <div className={`${styles.imagePlaceholder} ${styles.logoPlaceholder}`}>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={logoPublicUrl}
-                    alt={`${academyName} 로고`}
-                    className={styles.logoImage}
-                    onLoad={event => {
-                      const image = event.currentTarget
-                      if (!image.naturalWidth || !image.naturalHeight) return
-                      const ratio = Math.min(image.naturalWidth, image.naturalHeight) / Math.max(image.naturalWidth, image.naturalHeight)
-                      // Fit every image corner inside the circle; never blindly enlarge a square logo.
-                      const scale = Math.min(1.1, 0.995 / (0.7 * Math.hypot(1, ratio)))
-                      image.style.setProperty("--logo-preview-scale", String(scale))
-                    }}
-                    onError={() => setIsLogoImageBroken(true)}
-                  />
-                </div>
-              ) : (
-                <div
-                  className={`${styles.imagePlaceholder} ${styles.logoPlaceholder}`}
-                  role="img"
-                  aria-label={`${academyName} 로고 placeholder`}
-                >
-                  <span className={styles.logoInitial}>{logoInitial}</span>
-                </div>
-              )}
-              <div className={styles.imageMeta}>
-                <div>
-                  <p className={styles.rowTitle}>학원 로고</p>
-                  <p className={styles.metaText}>권장 크기 500×500 · JPG, PNG, WEBP · 최대 5MB</p>
-                  <p className={styles.metaText}>이미지가 잘리지 않게 원본 비율로 전체가 표시돼요.</p>
-                </div>
-                <div className={styles.imageActionColumn}>
-                  <input
-                    ref={logoFileInputRef}
-                    type="file"
-                    accept="image/jpeg,image/png,image/webp"
-                    className={styles.visuallyHidden}
-                    tabIndex={-1}
-                    onChange={handleLogoFileChange}
-                  />
-                  <button
-                    type="button"
-                    className={canEditPublicProfile ? styles.secondaryButton : styles.disabledButton}
-                    disabled={!canEditPublicProfile || isLogoUploading}
-                    onClick={handleLogoButtonClick}
-                  >
-                    {logoButtonLabel}
-                  </button>
-                </div>
-              </div>
-              {logoFeedback.message ? (
-                <p className={logoFeedbackClassName} role="status">
-                  {logoFeedback.message}
-                </p>
-              ) : null}
-            </article>
-
-            <article className={styles.imageCard}>
-              {visibleCoverImageUrl && !isCoverImageBroken ? (
-                <div className={`${styles.imagePlaceholder} ${styles.coverPlaceholder}`}>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={visibleCoverImageUrl}
-                    alt={`${academyName} 대표 이미지`}
-                    className={styles.coverImage}
-                    onError={() => setIsCoverImageBroken(true)}
-                  />
-                </div>
-              ) : (
-                <div
-                  className={`${styles.imagePlaceholder} ${styles.coverPlaceholder}`}
-                  role="img"
-                  aria-label={`${academyName} 대표 이미지 placeholder`}
-                >
-                  <span className={styles.placeholderText}>대표 이미지</span>
-                </div>
-              )}
-              <div className={styles.imageMeta}>
-                <div>
-                  <p className={styles.rowTitle}>대표 이미지</p>
-                  <p className={styles.metaText}>권장 크기 1600×900 · 16:9 · JPG, PNG, WEBP · 최대 10MB</p>
-                  <p className={styles.metaText}>이미지가 잘리지 않게 원본 비율로 전체가 표시돼요.</p>
-                </div>
-                <div className={styles.imageActionColumn}>
-                  <input
-                    ref={coverFileInputRef}
-                    type="file"
-                    accept="image/jpeg,image/png,image/webp"
-                    className={styles.visuallyHidden}
-                    tabIndex={-1}
-                    onChange={handleCoverFileChange}
-                  />
-                  <button
-                    type="button"
-                    className={canEditPublicProfile ? styles.secondaryButton : styles.disabledButton}
-                    disabled={!canEditPublicProfile || isCoverUploading}
-                    onClick={handleCoverButtonClick}
-                  >
-                    {coverButtonLabel}
-                  </button>
-                </div>
-              </div>
-              {coverFeedback.message ? (
-                <p className={coverFeedbackClassName} role="status">
-                  {coverFeedback.message}
-                </p>
-              ) : null}
-            </article>
-          </div>
-
+            <label className={styles.field}>
+              <span className={styles.fieldHeader}><span className={styles.fieldLabel}>주차 안내</span><span className={styles.fieldCount}>{formValues.parkingInfo.length}/500</span></span>
+              <textarea className={styles.textarea} rows={3} placeholder="예: 건물 지하주차장 2시간 무료" maxLength={parkingDraft.available === true ? 500 - PARKING_PREFIX.length : 500} value={parkingDraft.available === false ? "" : parkingDraft.detail} disabled={parkingDraft.available === false} onChange={event => updateParking({ ...parkingDraft, detail: event.target.value })} />
+              {parkingDraft.available === false ? <span className={styles.fieldHint}>주차 불가로 안내해요.</span> : null}
+              {parkingDraft.available === null && formValues.parkingInfo ? <span className={styles.fieldHint}>주차 선택을 바꾸기 전까지 기존 안내를 유지해요.</span> : null}
+            </label>
+          </fieldset>
+          {visitError ? <p id="visit-input-error" className={styles.errorText} role="alert">{visitError}</p> : null}
+          {publicProfileFields.filter(field => field.key === "directions").map(renderProfileField)}
         </section>
 
-        <form id="academy-profile-form" action={formAction} className={styles.profileForm} onSubmit={event => { if (visitError) event.preventDefault() }}>
-          <section className={styles.sectionCard} aria-label="학원 소개">
-            <h2 className={styles.sectionTitle}>학원 소개</h2>
-            <div className={styles.formGrid}>{publicProfileFields.filter(field => field.key === "shortDescription" || field.key === "description").map(renderProfileField)}</div>
-          </section>
-          <section className={styles.sectionCard} aria-label="방문 정보">
-            <h2 className={styles.sectionTitle}>방문 정보</h2>
-            <input type="hidden" name="operatingHours" value={formValues.operatingHours} />
-            <input type="hidden" name="parkingInfo" value={formValues.parkingInfo} />
-            <fieldset className={styles.visitFieldset} disabled={disableVisitControls}>
-              <legend className={styles.fieldLabel}>운영 요일</legend>
-              {!hoursChanged && parseHours(formValues.operatingHours) === null ? <div className={styles.legacyInfo}>
-                <span>직접 입력된 기존 안내</span><p>{formValues.operatingHours}</p>
-                <small>요일과 시간을 선택하기 전까지 기존 안내가 유지돼요.</small>
-              </div> : null}
-              <div className={styles.visitChoices}>{OPERATING_DAYS.map(day => <button key={day} type="button" aria-label={`${day}요일`} aria-pressed={hoursDraft.days.includes(day)} onClick={() => updateHours({ ...hoursDraft, days: hoursDraft.days.includes(day) ? hoursDraft.days.filter(value => value !== day) : [...hoursDraft.days, day] })}>{day}</button>)}</div>
-              <div className={styles.visitTimeRow}>
-                <label className={styles.field}><span className={styles.fieldLabel}>시작 시간</span><input className={styles.input} type="time" value={hoursDraft.start} aria-describedby={visitError ? "visit-input-error" : undefined} onChange={event => updateHours({ ...hoursDraft, start: event.target.value })} /></label>
-                <label className={styles.field}><span className={styles.fieldLabel}>종료 시간</span><input className={styles.input} type="time" value={hoursDraft.end} aria-describedby={visitError ? "visit-input-error" : undefined} onChange={event => updateHours({ ...hoursDraft, end: event.target.value })} /></label>
+        <details className={styles.urlDetails}>
+          <summary>공개 페이지 주소</summary>
+          <div className={styles.urlBody}>
+            <div className={styles.linkCard}>
+              <p className={styles.linkLabel}>지금 주소</p>
+              <p className={styles.linkValue}>{publicPageUrl}</p>
+              <div className={styles.linkActions}>
+                <a href={buildAcademyPublicPageUrl(initialSlug, organizationId)} target="_blank" rel="noopener noreferrer" className={v2ButtonClassName({ variant: "ghost", size: "sm" })}>공개 페이지 보기</a>
+                <V2Button variant="outline" size="sm" onClick={handleCopyPublicLink}>{copyButtonLabel}</V2Button>
               </div>
-            </fieldset>
-            <fieldset className={styles.visitFieldset} disabled={disableVisitControls}>
-              <legend className={styles.fieldLabel}>주차</legend>
-              <div className={styles.visitChoices}>
-                <button type="button" aria-pressed={parkingDraft.available === true} onClick={() => updateParking({ ...parkingDraft, available: true })}>주차 가능</button>
-                <button type="button" aria-pressed={parkingDraft.available === false} onClick={() => updateParking({ ...parkingDraft, available: false })}>주차 불가</button>
-              </div>
-              <label className={styles.field}>
-                <span className={styles.fieldHeader}><span className={styles.fieldLabel}>주차 안내</span><span className={styles.fieldCount}>{formValues.parkingInfo.length}/500</span></span>
-                <textarea className={styles.textarea} rows={3} placeholder="예: 건물 지하주차장 2시간 무료" maxLength={parkingDraft.available === true ? 500 - PARKING_PREFIX.length : 500} value={parkingDraft.available === false ? "" : parkingDraft.detail} disabled={parkingDraft.available === false} onChange={event => updateParking({ ...parkingDraft, detail: event.target.value })} />
-                {parkingDraft.available === false ? <span className={styles.fieldHint}>주차 불가로 안내해요.</span> : null}
-                {parkingDraft.available === null && formValues.parkingInfo ? <span className={styles.fieldHint}>주차 선택을 바꾸기 전까지 기존 안내를 유지해요.</span> : null}
-              </label>
-            </fieldset>
-            {visitError ? <p id="visit-input-error" className={styles.errorText} role="alert">{visitError}</p> : null}
-            {publicProfileFields.filter(field => field.key === "directions").map(renderProfileField)}
-          </section>
-
-            <div className={styles.saveBar}>
-              <div className={styles.saveMeta}>
-                {state.message ? (
-                  <p className={feedbackClassName} role="status">
-                    {state.message}
-                  </p>
-                ) : null}
-                <p className={styles.saveHint}>텍스트 정보 저장과 이미지 업로드는 서로 독립적으로 동작합니다.</p>
-              </div>
-              <button type="submit" className={styles.primaryButton} disabled={disableSaveButton}>
-                {isPending ? "저장 중..." : "변경사항 저장"}
-              </button>
             </div>
-          <details className={`${styles.sectionCard} ${styles.urlDetails}`}><summary>공개 URL</summary>
-          <div className={styles.sectionHeader}>
-            <div className={styles.sectionHeaderStack}>
-
-              <p className={styles.sectionDescription}>학원 공개 페이지 주소를 확인하고 공유할 수 있어요.</p>
-            </div>
-            <button type="button" className={styles.secondaryButton} onClick={handleCopyPublicLink}>
-              {copyButtonLabel}
-            </button>
+            <label className={styles.field}>
+              <span className={styles.fieldHeader}>
+                <span className={styles.fieldLabel}>페이지 주소</span>
+                <span className={styles.fieldCount}>{formValues.slug.length}/50</span>
+              </span>
+              <div className={styles.slugInputShell}>
+                <span className={styles.slugPrefix}>firstsuup.com/academy/</span>
+                <input
+                  name="slug"
+                  type="text"
+                  inputMode="url"
+                  autoCapitalize="off"
+                  autoCorrect="off"
+                  spellCheck={false}
+                  className={styles.slugInput}
+                  placeholder="my-academy"
+                  maxLength={50}
+                  value={formValues.slug}
+                  readOnly={readOnlyFields}
+                  disabled={disableFormByQueryError}
+                  onChange={(event) =>
+                    setFormValues((current) => ({
+                      ...current,
+                      slug: sanitizeSlugInput(event.target.value)
+                    }))
+                  }
+                />
+              </div>
+              <span className={styles.fieldHint}>소문자 영문 · 숫자 · 하이픈 2~50자. 비워 두면 지금 주소가 그대로예요.</span>
+            </label>
           </div>
-          <div className={styles.linkCard}>
-            <p className={styles.linkLabel}>현재 주소</p>
-            <p className={styles.linkValue}>{publicPageUrl}</p>
-            <p className={styles.linkHint}>slug를 비워두면 UUID 주소가 유지됩니다.</p>
-          </div>
+        </details>
 
-              <label className={`${styles.field} ${styles.fullWidthField}`}>
-                <span className={styles.fieldHeader}>
-                  <span className={styles.fieldLabel}>페이지 주소</span>
-                  <span className={styles.fieldCount}>{formValues.slug.length}/50</span>
-                </span>
-                <div className={styles.slugInputShell}>
-                  <span className={styles.slugPrefix}>firstsuup.com/academy/</span>
-                  <input
-                    name="slug"
-                    type="text"
-                    inputMode="url"
-                    autoCapitalize="off"
-                    autoCorrect="off"
-                    spellCheck={false}
-                    className={styles.slugInput}
-                    placeholder="my-academy"
-                    maxLength={50}
-                    value={formValues.slug}
-                    readOnly={readOnlyFields}
-                    disabled={disableFormByQueryError}
-                    onChange={(event) =>
-                      setFormValues((current) => ({
-                        ...current,
-                        slug: sanitizeSlugInput(event.target.value)
-                      }))
-                    }
-                  />
-                </div>
-                <span className={styles.fieldHint}>소문자 영문, 숫자, 하이픈만 허용하며 2~50자까지 저장됩니다.</span>
-              </label>
-          </details>
-        </form>
-      </div>
+        <div className={styles.saveBar}>
+          <div className={styles.saveMeta}>
+            {state.message ? <p className={feedbackClassName} role="status">{state.message}</p> : null}
+            <p className={styles.saveHint}>소개 · 방문 정보 · 주소는 [저장]으로, 로고 · 대표 이미지는 올리는 즉시 저장돼요.</p>
+          </div>
+          <V2Button type="submit" size="lg" disabled={disableSaveButton}>{isPending ? "저장 중…" : "저장"}</V2Button>
+        </div>
+      </form>
     </div>
   )
 }

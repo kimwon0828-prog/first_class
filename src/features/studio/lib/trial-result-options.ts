@@ -319,3 +319,10 @@ export const getTrialResultUnregisteredReasonLabel = (
 
   return TRIAL_RESULT_UNREGISTERED_REASON_OPTIONS.find((item) => item.value === value)?.label ?? null
 }
+
+/**
+ * 한 번에 고를 수 있는 관찰 항목 수. 저장 RPC(save_studio_trial_result)가 7개를 넘으면
+ * invalid_trial_observations 로 거절한다(supabase/migrations/20261007120000_report_edit_before_publication.sql).
+ * 화면은 8번째 선택을 미리 막는다 — 서버 규칙을 바꾸지 않는다.
+ */
+export const TRIAL_RESULT_OBSERVATION_MAX = 7

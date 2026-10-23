@@ -1,427 +1,345 @@
-/* canvas 는 StudioShell 이 칠한다. */
-.page {
-  min-height: 100dvh;
-  padding: 24px 24px 48px;
-}
-
 /*
- * 상세의 모든 섹션(Header / 다음 할 일 / 활동 기록 / 체험 결과 / 신청 정보)은
- * 같은 content width 를 쓴다. 섹션마다 다른 폭을 쓰지 않는다.
- * workflow 가 fragment 로 렌더하므로 그 섹션들도 .page 의 직계 자식이다.
+ * 신청 상세 틀 (Figma 2148:5195). STUDIO_DESIGN_SYSTEM.md §5.16.
+ * 위 28 · 좌우 48 · 아래 56 · 세로 24. 본문은 ApplicationTrialResultWorkflow 가 그린다.
  */
-.page > * {
-  width: 100%;
-  max-width: var(--studio-max);
-  margin-left: auto;
-  margin-right: auto;
-}
-
-.page > * + * {
-  margin-top: var(--s3);
-}
-
-.header {
-  margin: 0;
-}
-
-.headerTopRow {
+.page {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: var(--s3);
-  flex-wrap: wrap;
-  margin-bottom: var(--s4);
+  flex-direction: column;
+  gap: var(--sv2-space-24);
+  min-height: 100dvh;
+  padding: 28px var(--sv2-main-px) 56px;
+  color: var(--sv2-ink-900);
+  font-family: var(--sv2-font);
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
 }
 
 .backLink {
   display: inline-flex;
+  align-self: flex-start;
   align-items: center;
-  justify-content: center;
-  min-height: 44px;
-  padding: 0 var(--s3);
-  border-radius: var(--r-md);
-  border: 1px solid var(--border);
-  background: var(--surface);
-  color: var(--text-2);
-  font-size: 13px;
-  font-weight: 800;
+  gap: var(--sv2-space-4);
+  color: var(--sv2-ink-500);
+  font-size: 14px;
+  line-height: 1.45;
+  font-weight: 500;
+  letter-spacing: -0.2px;
   text-decoration: none;
 }
 
 .backLink:hover {
-  border-color: var(--border-strong);
+  color: var(--sv2-ink-900);
 }
 
 .errorCard {
-  border: 1px solid #fecaca;
-  border-radius: var(--r-lg);
-  background: var(--surface);
-  padding: 16px 18px;
-}
-
-.errorText {
-  margin: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sv2-space-16);
+  padding: 14px var(--sv2-space-16);
+  border-radius: var(--sv2-radius-control);
+  background: var(--sv2-state-danger-bg);
+  color: var(--sv2-state-danger-fg);
   font-size: 14px;
-  line-height: 20px;
-  color: var(--red-fg);
-  font-weight: 700;
+  font-weight: 500;
 }
 
-.actionButtonSecondary,
-.actionButtonTint {
+.errorCard p {
+  margin: 0;
+}
+
+/* 학생 머리: 아이콘 원 64(3D 40) · 간격 16 · 이름 28 Bold · 학년 17 Bold ink/500 · 배지 */
+.student {
+  display: flex;
+  align-items: center;
+  gap: var(--sv2-space-16);
+}
+
+.studentIcon {
   display: inline-flex;
+  flex: 0 0 auto;
   align-items: center;
   justify-content: center;
-  min-height: 42px;
-  padding: 0 14px;
-  border-radius: var(--r-md);
-  border: 1px solid var(--border);
-  background: var(--surface);
-  color: var(--text-2);
-  font-size: 14px;
-  font-weight: 800;
-  text-decoration: none;
-}
-
-.actionButtonTint {
-  border-color: #cfe9d2;
-  background: var(--green-bg);
-  color: var(--green-fg);
-}
-
-.actionButtonSecondary:hover,
-.actionButtonTint:hover {
-  border-color: #bfd0bf;
-}
-
-.summaryLabel {
-  font-size: 12px;
-  line-height: 16px;
-  font-weight: 800;
-  color: var(--text-2);
-}
-
-.summaryValue {
-  margin: 0;
-  font-size: 14px;
-  line-height: 20px;
-  color: var(--text-1);
-  font-weight: 800;
-}
-
-.summaryValueStrong {
-  margin: 0;
-  font-size: 15px;
-  line-height: 20px;
-  color: var(--green-fg);
-  font-weight: 900;
-}
-
-.summaryValueMultiline {
-  margin: 0;
-  font-size: 14px;
-  line-height: 22px;
-  color: var(--text-1);
-  font-weight: 700;
-  white-space: pre-wrap;
-}
-
-.infoCell {
-  display: grid;
-  gap: var(--s2);
-  padding: var(--s4);
-  border-right: 1px solid var(--border);
-  border-bottom: 1px solid var(--border);
-  background: var(--surface);
-}
-
-.infoCell:nth-child(2n) {
-  border-right: 0;
-}
-
-.infoCellWide {
-  grid-column: 1 / -1;
-  border-right: 0;
-}
-
-@media (max-width: 720px) {
-  .page {
-    padding: 28px 20px 48px;
-  }
-
-  .infoCell {
-    border-right: 0;
-  }}
-
-/* ── Phase 2A: 상태와 무관하게 동일한 Case Header / 진행 상태 / 신청 정보 ── */
-
-.caseHeader {
-  border: 1px solid var(--border);
-  border-radius: var(--r-md);
-  background: var(--surface);
-  padding: var(--s5);
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: var(--s3);
-}
-
-.caseHeaderTop {
-  grid-column: 1 / -1;
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: var(--s4);
-  flex-wrap: wrap;
-}
-
-.caseIdentity {
-  display: grid;
-  gap: 6px;
-  min-width: 0;
-}
-
-.caseTitle {
-  margin: 0;
-  display: flex;
-  align-items: baseline;
-  gap: var(--s2);
-  flex-wrap: wrap;
-  font-size: 26px;
-  line-height: 32px;
-  font-weight: 900;
-  letter-spacing: -0.02em;
-  color: var(--text-1);
-}
-
-.caseTitleSub {
-  font-size: 15px;
-  line-height: 22px;
-  font-weight: 700;
-  color: var(--text-2);
-}
-
-.caseSubline {
-  margin: 0;
-  display: flex;
-  align-items: baseline;
-  gap: 6px;
-  flex-wrap: wrap;
-  font-size: 15px;
-  line-height: 22px;
-  font-weight: 700;
-  color: var(--text-2);
-}
-
-.caseClassName {
-  font-weight: 800;
-}
-
-.caseInlineLink {
-  color: var(--green-fg);
-  font-size: 13px;
-  font-weight: 700;
-  text-decoration: none;
-}
-
-.caseInlineLink:hover {
-  text-decoration: underline;
-}
-
-.caseDivider {
-  color: var(--text-3);
-}
-
-.caseGuardian {
-  margin: 0;
-  display: flex;
-  align-items: baseline;
-  gap: 6px;
-  flex-wrap: wrap;
-  font-size: 14px;
-  line-height: 20px;
-  font-weight: 700;
-  color: var(--text-2);
-}
-
-.caseBadgeWrap {
-  flex-shrink: 0;
-}
-
-.caseActions {
-  display: flex;
-  align-items: center;
-  gap: var(--s2);
-  flex-wrap: wrap;
-}
-
-.progressStrip {
-  grid-column: 1 / -1;
-  display: flex;
-  align-items: baseline;
-  gap: 10px;
-  flex-wrap: wrap;
-  padding-top: 14px;
-  border-top: 1px solid var(--border);
-  font-size: 13px;
-  line-height: 20px;
-}
-
-.progressLabel {
-  color: var(--text-3);
-  font-weight: 700;
-}
-
-.progressSteps {
-  color: var(--text-2);
-  font-weight: 700;
-}
-
-.progressCurrent {
-  color: var(--green-fg);
-  font-weight: 800;
-}
-
-.applicationInfoSection {
-  border: 1px solid var(--border);
-  background: var(--surface);
-  border-radius: var(--r-md);
+  width: 64px;
+  height: 64px;
+  border: 1px solid var(--sv2-line-default);
+  border-radius: var(--sv2-radius-pill);
+  background: var(--sv2-surface-white);
   overflow: hidden;
 }
 
-.applicationInfoHeader {
-  padding: var(--s4) var(--s5);
+.studentText {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: var(--sv2-space-4);
+  min-width: 0;
 }
 
-.applicationInfoTitle {
+.studentLine {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sv2-space-8);
+}
+
+.studentName {
   margin: 0;
-  font-size: 16px;
-  line-height: 24px;
+  font-size: 28px;
+  line-height: 1.32;
   font-weight: 700;
-  color: var(--text-1);
+  letter-spacing: -0.7px;
 }
 
-.applicationInfoBody {
-  border-top: 1px solid var(--border);
-  padding: 18px 20px 20px;
-  display: grid;
-  gap: 18px;
+.studentGrade {
+  color: var(--sv2-ink-500);
+  font-size: 17px;
+  line-height: 1.45;
+  font-weight: 700;
+  letter-spacing: -0.2px;
+}
+
+.studentClass {
+  margin: 0;
+  color: var(--sv2-ink-700);
+  font-size: 15px;
+  line-height: 1.45;
+  letter-spacing: -0.2px;
+}
+
+.studentGuardian {
+  margin: 0;
+  color: var(--sv2-ink-500);
+  font-size: 14px;
+  line-height: 1.45;
+  font-weight: 500;
+  letter-spacing: -0.2px;
+}
+
+.contactButtons {
+  display: flex;
+  flex: 0 0 auto;
+  gap: var(--sv2-space-12);
+}
+
+/* 6단계: surface/fill · 모서리 16 · 18/20. 원 28 · 선 2. 지난 단계 brand/500 + 체크, 지금 brand/700, 남은 단계 흰 원 + ink/400 */
+.stepper {
+  /* 좁은 화면에서 단계 줄 안에서만 옆으로 넘긴다(화면 읽기용 글자가 바깥으로 새지 않게 relative). */
+  position: relative;
+  display: flex;
+  margin: 0;
+  padding: 18px var(--sv2-space-20);
+  border-radius: var(--sv2-radius-card);
+  background: var(--sv2-surface-fill);
+  list-style: none;
+}
+
+.step {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sv2-space-8);
+  min-width: 0;
+}
+
+.stepTrack {
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.stepLine {
+  flex: 1 1 0;
+  height: 2px;
+  background: var(--sv2-line-default);
+}
+
+.stepLine[data-hidden] {
+  visibility: hidden;
+}
+
+.step[data-state="done"] .stepLine,
+.step[data-state="current"] .stepLine:first-child {
+  background: var(--sv2-brand-500);
+}
+
+.stepDot {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--sv2-radius-pill);
+  background: var(--sv2-surface-white);
+  color: var(--sv2-ink-400);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.step[data-state="done"] .stepDot {
+  background: var(--sv2-brand-500);
+  color: var(--sv2-surface-white);
+}
+
+.step[data-state="current"] .stepDot {
+  background: var(--sv2-brand-700);
+  color: var(--sv2-surface-white);
+}
+
+.stepLabel {
+  color: var(--sv2-ink-400);
+  font-size: 14px;
+  line-height: 1.45;
+  font-weight: 500;
+  text-align: center;
+}
+
+.step[data-state="done"] .stepLabel {
+  color: var(--sv2-ink-900);
+}
+
+.step[data-state="current"] .stepLabel {
+  color: var(--sv2-brand-700);
+  font-weight: 700;
+}
+
+/* 신청 정보: surface/fill · 모서리 16 · 안쪽 24 · 간격 14, 줄 [라벨 92 · 14 ink/500 | 값 14 ink/900] */
+.info {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: var(--sv2-space-24);
+  border-radius: var(--sv2-radius-card);
+  background: var(--sv2-surface-fill);
+}
+
+.info h2 {
+  margin: 0;
+  font-size: 18px;
+  line-height: 1.45;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+}
+
+.info dl {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin: 0;
+}
+
+.info dl div {
+  display: flex;
+  gap: var(--sv2-space-12);
+  font-size: 14px;
+  line-height: 1.45;
+  font-weight: 500;
+  letter-spacing: -0.2px;
+}
+
+.info dt {
+  flex: 0 0 92px;
+  color: var(--sv2-ink-500);
+}
+
+.info dd {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.infoLink {
+  align-self: flex-start;
+  color: var(--sv2-brand-700);
+  font-size: 13px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+/* 개인정보 삭제된 신청(남은 운영 기록만) */
+.header {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.pageTitle {
+  margin: 0;
+  font-size: 30px;
+  line-height: 1.32;
+  font-weight: 700;
+  letter-spacing: -0.7px;
+}
+
+.pageDescription {
+  margin: 0;
+  color: var(--sv2-ink-500);
+  font-size: 15px;
+  line-height: 1.45;
+}
+
+.applicationInfoSection {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: var(--sv2-space-24);
+  border-radius: var(--sv2-radius-card);
+  background: var(--sv2-surface-fill);
+  font-size: 14px;
+}
+
+.applicationInfoSection p {
+  margin: 0;
 }
 
 .applicationInfoGrid {
-  margin: 0;
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14px 20px;
+  gap: 14px;
+  margin: 0;
+}
+
+.infoCell dt {
+  color: var(--sv2-ink-500);
+}
+
+.infoCell dd {
+  margin: 4px 0 0;
+  font-weight: 500;
+}
+
+.caseInlineLink {
+  align-self: flex-start;
+  color: var(--sv2-brand-700);
+  font-weight: 700;
+  text-decoration: none;
 }
 
 @media (max-width: 860px) {
-  .caseHeader {
-    padding: 18px 16px 16px;
+  .page {
+    padding-inline: var(--sv2-space-20);
   }
 
-  .caseTitle {
-    font-size: 22px;
-    line-height: 28px;
+  .student {
+    flex-wrap: wrap;
   }
 
-  .caseHeaderTop {
-  grid-column: 1 / -1;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 10px;
+  .stepper {
+    overflow-x: auto;
   }
 
-  .caseActions a {
-    flex: 1 1 auto;
-    text-align: center;
-  }
-
-  .applicationInfoGrid {
-    grid-template-columns: minmax(0, 1fr);
+  .step {
+    min-width: 88px;
   }
 }
-
-/* 신청 정보 셀은 카드형 테두리를 쓰지 않는다. */
-.applicationInfoGrid .infoCell {
-  padding: var(--s3) 0;
-  border-right: 0;
-  border-bottom: 1px solid var(--border);
-  border-radius: 0;
-}
-
-.applicationInfoGrid .infoCellWide {
-  grid-column: 1 / -1;
-}
-
-/* 신청 시 자유 입력이 "정규수업 희망 일정"(등록 상담) 과 혼동되지 않게 출처를 덧붙인다. */
-.scheduleSourceHint {
-  display: block;
-  margin-top: 2px;
-  color: var(--text-3);
-  font-size: 12px;
-  line-height: 18px;
-}
-
-.assigneeDisclosure { margin: 0; }
-.assigneeDisclosure[open] { grid-column: 1 / -1; }
-.assigneeDisclosure > summary { cursor: pointer; min-height: 44px; align-content: center; }
-.assigneeDisclosure:target { scroll-margin-top: 24px; }
-
-.progressTerminal { color: var(--red-fg); }
-@media (max-width: 640px) { .caseHeader { grid-template-columns: minmax(0, 1fr); } }
-
-/* V2 slots: the workflow owns the workspace surface and column layout. */
-.pageTitle { margin: 0 0 6px; font-size: 25px; line-height: 34px; color: var(--text-1); }
-.pageDescription { margin: 0; font-size: 13px; line-height: 22px; color: var(--text-2); }
-.headerTopRow { margin-bottom: 12px; }
-.backLink { border: 0; padding: 0; min-height: 28px; background: transparent; font-weight: 600; }
-.caseHeader { padding: 0; border: 0; border-radius: 0; display: block; }
-.caseHeaderTop { flex-wrap: nowrap; }
-.identityLine { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
-.caseTitle { font-size: 26px; }
-.caseGuardian { gap: 0; font-size: 13px; margin-top: 6px; align-items: center; }
-.caseActions { align-items: flex-start; flex-shrink: 0; }
-.assigneeDisclosure { font-size: 13px; color: var(--text-2); }
-.caseActions .assigneeDisclosure { max-width: 280px; }
-.caseActions .assigneeDisclosure > summary { min-height: 42px; padding: 0 10px; border: 1px solid var(--border); border-radius: var(--r-md); }
-.caseActions .assigneeDisclosure[open] { flex-basis: 100%; }
-.applicationInfoSection { padding: 18px; min-width: 0; }
-.applicationInfoHeader { padding: 0; margin-bottom: 12px; }
-.applicationInfoTitle { font-size: 16px; line-height: 24px; margin: 0; }
-.applicationInfoBody { padding: 0; }
-.applicationInfoGrid { display: grid; grid-template-columns: minmax(0, 1fr); margin: 0; gap: 12px; }
-.infoCell { padding: 0; border: 0; display: grid; grid-template-columns: 62px minmax(0, 1fr); gap: 10px; align-items: baseline; }
-.summaryLabel { font-size: 12px; font-weight: 500; }
-.summaryValue, .summaryValueStrong, .summaryValueMultiline { font-size: 13px; line-height: 21px; font-weight: 600; overflow-wrap: anywhere; }
-.summaryValueStrong { color: var(--text-1); }
-.referenceHint { color: var(--text-2); font-size: 12px; margin: 10px 0 0; }
-.scheduleSourceHint { display: block; margin-top: 4px; font-size: 12px; font-weight: 400; }
-@media (max-width: 720px) {
-  .page { padding: 20px 12px 32px; }
-  .caseHeaderTop { flex-direction: column; gap: 12px; }
-  .caseTitle { font-size: 24px; }
-  .caseActions { flex-wrap: wrap; width: 100%; }
-  .caseActions .assigneeDisclosure { max-width: 100%; }
-}
-.header { margin-inline: auto; }
-.applicationInfoGrid .infoCell { padding: 0; border: 0; }
-.applicationInfoGrid { gap: 14px; }
-.applicationInfoHeader { border: 0; }
-.summaryValue .caseInlineLink { display: block; margin-top: 6px; }
-
-/* Final detail header: actions and a collapsed assignee editor. */
-.headerControls { display: grid; gap: 16px; min-width: 250px; }
-.teacherBlock { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; padding-top: 12px; border-top: 1px solid var(--border); }
-.teacherBlock p { margin: 4px 0 0; font-size: 14px; font-weight: 700; }
-.teacherBlock .assigneeDisclosure > summary { min-height: 32px; color: var(--green-fg); font-weight: 700; }
-.teacherBlock:has(.assigneeDisclosure[open]) { flex-wrap: wrap; }
-.teacherBlock .assigneeDisclosure[open] { width: 100%; }
-.moreDisclosure { position: relative; font-size: 13px; }
-.moreDisclosure > summary { min-height: 42px; align-content: center; padding: 0 12px; border: 1px solid var(--border); border-radius: var(--r-md); cursor: pointer; }
-.moreDisclosure > a { position: absolute; top: calc(100% + 6px); right: 0; white-space: nowrap; background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-md); padding: 12px; z-index: 2; }
-.applicationInfoBody { border: 0; }
-.referenceGrid { display: grid; gap: 14px; margin: 18px 0 0; }
-.referenceGrid .infoCell { grid-template-columns: 82px minmax(0, 1fr); }
-.scheduleHead { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
-.scheduleDate { color: var(--text-1); font-size: 14px; line-height: 24px; margin: 14px 0; overflow-wrap: anywhere; }
-@media (max-width: 860px) { .headerControls { width: 100%; min-width: 0; } }

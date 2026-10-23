@@ -1,9 +1,24 @@
 import type { Metadata } from "next"
+import localFont from "next/font/local"
 import type { ReactNode } from "react"
 
 import { StudioNavigationProvider } from "@/features/studio/ui/studio-navigation-provider"
 import { STUDIO_ORIGIN } from "@/shared/config/site-origins"
 import { getRequestHostname } from "@/shared/lib/request-host"
+
+import "./studio-v2-tokens.css"
+
+/*
+ * Studio 글꼴. Pretendard Variable(OFL) 원본 woff2 를 저장소에 두고 next/font 로 직접 서빙한다
+ * (app/studio/fonts/README.md). 외부 CDN · npm 패키지를 쓰지 않는다.
+ * 굵기 축 45–920 을 한 파일로 쓴다.
+ */
+const pretendard = localFont({
+  src: "./fonts/PretendardVariable.woff2",
+  weight: "45 920",
+  display: "swap",
+  variable: "--font-pretendard"
+})
 
 /*
  * Studio 의 metadata 경계.
@@ -54,5 +69,9 @@ export const metadata: Metadata = {
  *    access · pending 은 예전처럼 가드 밖에 남는다.
  */
 export default async function StudioLayout({ children }: { children: ReactNode }) {
-  return <StudioNavigationProvider hostname={await getRequestHostname()}>{children}</StudioNavigationProvider>
+  return (
+    <div className={pretendard.variable} data-studio-root="">
+      <StudioNavigationProvider hostname={await getRequestHostname()}>{children}</StudioNavigationProvider>
+    </div>
+  )
 }

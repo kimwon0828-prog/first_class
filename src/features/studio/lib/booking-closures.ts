@@ -34,7 +34,7 @@ export function visibleScheduleClassOptions<T extends { value: string; label: st
 }
 export type BookingClosureMutation = { organizationId: string; dateKey: string; classId: string | null; mode: "close" | "release"; slotKeys: string[]; expectedTargets: string[]; closureIds: string[]; reason: string | null }
 export const bookingIntervalsOverlap = (a: Pick<BookingClosure, "startAt" | "endAt">, b: Pick<BookingOccurrence, "startAt" | "endAt">) => Date.parse(a.startAt) < Date.parse(b.endAt) && Date.parse(a.endAt) > Date.parse(b.startAt)
-export const bookingClosureScopeLabel = (c: BookingClosure) => !c.classId ? "기존 학원 전체 마감" : c.selectionScope === "public" ? "전체 공개 과정에서 적용" : "과정별 마감"
+export const bookingClosureScopeLabel = (c: BookingClosure) => !c.classId ? "기존 학원 전체 마감" : c.selectionScope === "public" ? "전체 공개 수업에서 적용" : "수업별 마감"
 export function bookingReleaseTargets(day: BookingDay, closures: BookingClosure[]) {
   return day.occurrences.filter(o => closures.some(c => (!c.classId || c.classId === o.classId) && bookingIntervalsOverlap(c,o)))
 }

@@ -1,0 +1,102 @@
+/*
+ * Studio v2/Button (Figma 2024:145). variant 4 × size 3.
+ *
+ * - primary: 진한 초록. 한 화면에 1개("지금 할 일" 카드의 버튼).
+ * - tonal:   연한 초록. 표의 행 버튼.
+ * - outline: 흰 바탕 + 테두리. 화면 상단 보조 행동.
+ * - ghost:   배경 없음.
+ *
+ * hover · focus · disabled 는 Figma 에 그려져 있지 않다. 새 색을 만들지 않고 있는 토큰 안에서만
+ * 정했다(STUDIO_DESIGN_SYSTEM.md §5.1).
+ */
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  flex: 0 0 auto;
+  border: 1px solid transparent;
+  border-radius: var(--sv2-radius-control);
+  font-family: var(--sv2-font);
+  font-weight: 700;
+  white-space: nowrap;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background-color 120ms ease, border-color 120ms ease;
+}
+
+.button:focus-visible {
+  outline: 2px solid var(--sv2-brand-700);
+  outline-offset: 2px;
+}
+
+.button:disabled,
+.button[aria-disabled="true"] {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+/* size — 높이 · 좌우 여백 · 글자 */
+.lg {
+  height: 52px;
+  padding: 0 20px;
+  font-size: 16px;
+  line-height: 22px;
+}
+
+.md {
+  height: 44px;
+  padding: 0 16px;
+  font-size: 15px;
+  line-height: 20px;
+}
+
+.sm {
+  height: 36px;
+  padding: 0 12px;
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.icon {
+  display: inline-flex;
+  flex: 0 0 auto;
+}
+
+/* variant */
+.primary {
+  background: var(--sv2-brand-700);
+  color: var(--sv2-surface-white);
+}
+
+.primary:not(:disabled):hover {
+  background: var(--sv2-brand-800);
+}
+
+.tonal {
+  background: var(--sv2-brand-50);
+  color: var(--sv2-brand-700);
+}
+
+.tonal:not(:disabled):hover {
+  border-color: var(--sv2-brand-200);
+}
+
+.outline {
+  background: var(--sv2-surface-white);
+  border-color: var(--sv2-line-default);
+  color: var(--sv2-ink-900);
+}
+
+.outline:not(:disabled):hover {
+  background: var(--sv2-surface-fill);
+}
+
+.ghost {
+  background: transparent;
+  color: var(--sv2-ink-700);
+}
+
+.ghost:not(:disabled):hover {
+  background: var(--sv2-surface-fill);
+}

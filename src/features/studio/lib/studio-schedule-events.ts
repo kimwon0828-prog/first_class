@@ -21,6 +21,8 @@ export type StudioScheduleEvent = {
   isDurationFallback: boolean
   timeLabel: string
   childName: string
+  /** 신청서의 학년 그대로. 카드에 "이름 · 학년" 으로 쓴다. */
+  childGrade: string
   classId: string
   classTitle: string
   /** 필터 key 는 이름이 아니라 id 다(동명이인 방지). 미배정이면 null. */
@@ -140,7 +142,7 @@ export const buildStudioScheduleEvents = (
       : item.status === "canceled" && item.noShowAt ? "no_show" : item.status
     const scheduleLabel = scheduleKind === "requested" ? "희망 일정 · 확정 필요"
       : scheduleKind === "confirmed" ? "확정 일정" : scheduleKind === "completed" ? "체험 완료"
-      : scheduleKind === "no_show" ? "노쇼" : "취소"
+      : scheduleKind === "no_show" ? "불참" : "취소"
     const startMinutes = seoulParts ? seoulParts.hour * 60 + seoulParts.minute : 0
     const duration = getScheduleDuration(item.scheduleStartTime, item.scheduleEndTime)
 
@@ -154,6 +156,7 @@ export const buildStudioScheduleEvents = (
       isDurationFallback: duration.isDurationFallback,
       timeLabel: formatClockMinutes(startMinutes),
       childName: item.childName,
+      childGrade: item.childGrade,
       classId: item.classId,
       classTitle: item.classTitle?.trim() || "수업 정보 없음",
       assignedTeacherId: item.assignedTeacherId,
@@ -359,7 +362,7 @@ export const STUDIO_SCHEDULE_STATUS_FILTERS: Array<{
   { value: "confirmed", label: "일정 확정", statuses: ["confirmed"] },
   { value: "completed", label: "체험 완료", statuses: ["completed"] },
   { value: "canceled", label: "취소", statuses: ["canceled"] },
-  { value: "no_show", label: "노쇼", statuses: ["canceled"] }
+  { value: "no_show", label: "불참", statuses: ["canceled"] }
 ]
 
 const STATUS_FILTER_MAP = new Map(

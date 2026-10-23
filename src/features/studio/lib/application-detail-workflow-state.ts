@@ -69,8 +69,8 @@ export function deriveApplicationDetailWorkflow({ application: a, evidence: e, n
 
   // Terminal results precede missing records. No large task CTA on closed cases.
   if (closed) {
-    title = a.status === "canceled" ? (a.noShowAt ? "불참으로 종료되었습니다." : "취소된 신청입니다.") :
-      result === "enrolled" ? "등록이 완료되었습니다." : "등록하지 않은 신청입니다."
+    title = a.status === "canceled" ? (a.noShowAt ? "불참으로 종료됐어요." : "취소된 신청이에요.") :
+      result === "enrolled" ? "등록이 완료됐어요." : "등록하지 않은 신청이에요."
     description = "확정된 체험 기록과 리포트는 보존되며 등록 결과는 변경할 수 있어요."
   } else if (!completed) {
     if (a.status === "new" || a.status === "reviewing") act("status", "일정 확정하기", "trial", "체험 일정을 확인하고 확정해 주세요.")
@@ -129,5 +129,35 @@ export function getApplicationJourney(a: StudioApplicationDetail, now: Date) {
       : index === 1 && !confirmed && !closed ? "체험 일정을 확정해 주세요."
       : index === 2 && confirmed && !closed ? ended ? "예정 시간 경과" : started ? "체험 진행 중" : "체험 예정"
       : index === 3 && started && !closed ? a.status === "completed" ? "체험 완료" : "완료 또는 불참 처리" : ""
+  }))
+}
+
+/**
+ * 신청 상세 위 6단계 표시(Figma 2148:5195). 저장된 값에서 계산만 한다 — 새 상태를 만들지 않는다.
+ *
+ * 신청 접수 → 일정 확정(confirmed·completed) → 체험(completed) → 기록 작성(체험 기록 있음)
+ * → 리포트 보내기(보낸 이력 있음) → 등록 결과(등록 완료 · 미등록 확정).
+ * 지금 단계는 끝나지 않은 첫 단계다. 취소 · 불참 · 등록 결과 확정이면 지금 단계가 없다.
+ */
+export type ApplicationDetailStep = { label: string; state: "done" | "current" | "waiting" }
+
+export function getApplicationDetailSteps(a: StudioApplicationDetail, e: ApplicationWorkflowEvidence): ApplicationDetailStep[] {
+  const completed = a.status === "completed"
+  const confirmed = a.status === "confirmed" || completed || Boolean(a.confirmedSlotAt && a.status === "canceled")
+  const registrationResult = e.registration.error ? null : e.registration.result ??
+    (completed && (a.registrationStatus === "enrolled" || a.registrationStatus === "not_enrolled") ? a.registrationStatus : null)
+  const done = [
+    true,
+    confirmed,
+    completed,
+    completed && Boolean(a.trialResult),
+    completed && Boolean(e.report.everSent || e.report.version),
+    completed && Boolean(registrationResult)
+  ]
+  const finished = a.status === "canceled" || Boolean(registrationResult)
+  const current = finished ? -1 : done.findIndex((value) => !value)
+  return ["신청 접수", "일정 확정", "체험", "기록 작성", "리포트 보내기", "등록 결과"].map((label, index) => ({
+    label,
+    state: done[index] ? "done" : index === current ? "current" : "waiting"
   }))
 }

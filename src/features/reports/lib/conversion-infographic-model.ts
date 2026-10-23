@@ -69,7 +69,7 @@ const REMAINDER_REASON_KEY = "remainder"
 const REMAINDER_REASON_LABEL = "그 외"
 
 const APPLICATION_FOOTNOTE =
-  "신청 수에는 해당 기간에 접수된 취소·노쇼 신청이 포함됩니다."
+  "신청 수에는 해당 기간에 접수된 취소·불참 신청이 포함됩니다."
 
 /** 첫 단계 대비 비율. 신청이 0건이면 0으로 둔다(0 나누기 방어). */
 const toVisualPercent = (count: number, base: number) =>

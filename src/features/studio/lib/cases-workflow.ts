@@ -2,6 +2,11 @@ import { registrationReasons } from "@/features/registration/lib/registration-in
 import type { ApplicationRegistrationStatus, ApplicationStatus } from "@/shared/lib/db/adapter"
 import { getTrialProgressState, resolveTrialStartAtMs, type TrialScheduleWindow } from "./trial-completion"
 import { getSeoulDateTimeParts } from "@/shared/lib/seoul-datetime"
+import {
+  STUDIO_APPLICATION_STATUS_TONES,
+  STUDIO_REGISTRATION_STATUS_TONES,
+  type StudioStatusTone
+} from "./application-status-labels"
 
 // Cases-only projection: Dashboard and Application Detail keep their existing contracts.
 export type CasesWorkflowInput = TrialScheduleWindow & {
@@ -80,11 +85,45 @@ export const formatCasesDate = (value: string) => {
   const parts = getSeoulDateTimeParts(value)
   return parts ? `${parts.month}월 ${parts.day}일` : "—"
 }
-export function getCasesScheduleLabel(item: CasesListItem) {
+/** "희망 10월 20일(화) 16:00" · 확정이면 날짜만 "10월 20일(화) 16:00" (날짜 표기 규칙: 요일을 꼭 함께). */
+export function getCasesScheduleLabel(item: Pick<CasesListItem, "confirmedSlotAt" | "requestedSlotAt">) {
   const parts = getSeoulDateTimeParts(item.confirmedSlotAt ?? item.requestedSlotAt)
   if (!parts) return null
   const weekday = ["일", "월", "화", "수", "목", "금", "토"][parts.weekday]
-  return `${parts.month}/${parts.day} (${weekday}) ${String(parts.hour).padStart(2, "0")}:${String(parts.minute).padStart(2, "0")} · ${item.confirmedSlotAt ? "확정" : "희망"}`
+  const at = `${parts.month}월 ${parts.day}일(${weekday}) ${String(parts.hour).padStart(2, "0")}:${String(parts.minute).padStart(2, "0")}`
+  return item.confirmedSlotAt ? at : `희망 ${at}`
+}
+
+/*
+ * 목록 행의 표시값(Figma 2148:5142). 판정은 deriveCasesWorkflow 가 이미 했다 — 여기서는 글자와 tone 만 고른다.
+ * tone 은 공용 표(application-status-labels)의 같은 상태 tone 을 따른다.
+ */
+const PROGRESS_TONES: Record<string, StudioStatusTone> = {
+  "신규 신청": STUDIO_APPLICATION_STATUS_TONES.new,
+  "체험 예정": STUDIO_APPLICATION_STATUS_TONES.confirmed,
+  "체험 진행 중": STUDIO_APPLICATION_STATUS_TONES.in_trial,
+  "완료 확인 필요": STUDIO_APPLICATION_STATUS_TONES.completion_needed,
+  "체험 완료": STUDIO_APPLICATION_STATUS_TONES.completed,
+  "취소": STUDIO_APPLICATION_STATUS_TONES.canceled,
+  "불참": STUDIO_APPLICATION_STATUS_TONES.no_show
+}
+
+export function getCasesRowPresentation(item: CasesListItem) {
+  const action = getCasesNextActions(item)[0]
+  const progress = item.workflow.progress
+  // "지금 할 일" 칸: 행 전체가 상세로 가는 링크라 버튼 모양의 글자만 둔다. 누르면 그 단계 칸으로 이동한다.
+  const now: { label: string; muted: boolean } =
+    action === "trial"
+      ? progress === "체험 예정" ? { label: "체험일까지 대기", muted: true } : { label: "체험 완료", muted: false }
+      : action === "detail" ? { label: "상세 보기", muted: item.workflow.closed }
+      : { label: CASES_ACTIONS[action].title, muted: false }
+  return {
+    progressTone: PROGRESS_TONES[progress] ?? "gray",
+    registrationTone: item.workflow.registration === "취소" || item.workflow.registration === "불참"
+      ? STUDIO_APPLICATION_STATUS_TONES.canceled
+      : STUDIO_REGISTRATION_STATUS_TONES[item.registrationStatus ?? "undecided"],
+    now
+  }
 }
 
 // Presentation only: never changes active/closed membership or loads private notes.
