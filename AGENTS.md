@@ -2,7 +2,7 @@
 
 ## 제품 정의
 첫수업은 학부모가 아이에게 맞는 체험수업을 탐색하고 신청할 수 있고,
-학원/선생님이 체험 신청을 확인하고 일정을 확정/관리하며 등록 전 전환 흐름까지 운영할 수 있는 플랫폼이다.
+학원이 체험 신청을 확인하고 일정을 확정/관리하며 등록 전 전환 흐름까지 운영할 수 있는 플랫폼이다.
 
 ## 기술 기준
 - 웹앱은 Next.js 기반으로 개발한다.
@@ -13,33 +13,45 @@
 - 이미 package.json과 src가 있으면 새로운 nested app(frontend 등)를 만들지 않는다.
 
 ## 사용자 역할
-- parent: 학부모
-- teacher: 선생님(운영 주체)
+로그인 계정의 역할은 `profiles.role` 기준 세 가지다(DB CHECK: `parent | academy | admin`).
+- parent: 학부모. 공개 회원가입(이메일·카카오·Apple).
+- academy: 학원 로그인 계정(운영 주체). 운영자 승인 시 1개 생성된다(같은 학원에 계정을 추가·초대하는 기능은 없다).
+- admin: 운영자. `/admin/*`를 쓰고, `organization_id`가 있으면 Studio에도 들어갈 수 있다.
+
+선생님(`teachers`)은 로그인 계정이 아니다. 학원이 Studio에서 등록하는 **명부**(이름·연락처·문자 수신)이고,
+수업 담당과 신청 담당으로 지정하는 데 쓴다(`teachers.profile_id`는 null).
+
+용어 주의:
+- 앱 코드에 `operator`가 남아 있다(`normalizeProfileRole`이 admin으로 접음). DB CHECK상 operator 행은 만들 수 없다.
+- RLS의 `'teacher'`는 "학원 로그인 계정"을 뜻한다. `app.current_role()`이 academy/admin을 `'teacher'`로 접는다.
+- 서버 액션 로그 문구("teacher가 …")와 함수 이름(`requireTeacherStudioAccess`, `teacher_signup_requests`)의 teacher도 같은 뜻이다.
 
 ## 제품 원칙
 1. 학부모는 로그인 없이 수업 리스트와 상세를 볼 수 있다.
 2. 체험 신청, 내 신청내역 확인은 로그인 후 가능하다.
-3. teacher 계정은 공개 회원가입이 아니라 초대/수동 생성으로 시작한다.
+3. 학원 계정은 공개 가입 신청(`/studio/sign-up`) → 운영자 승인(`/admin/academy-approvals`)으로 만든다.
+   승인 시 organization과 academy 프로필이 생성된다. 초대 기능은 없다. 선생님은 로그인하지 않는다.
 4. 학부모 화면은 mobile-first로 구현한다.
-5. studio(teacher) 화면은 desktop-first로 구현한다.
+5. studio(학원) 화면은 desktop-first로 구현한다.
 6. MVP 프로그램 유형은 `trial_class`(체험수업), `level_test`(레벨테스트) 2개만 지원한다.
 7. 입학고시는 MVP 범위에서 제외하고 후순위로 미룬다.
 8. 상태값은 당장 크게 늘리지 않고 후속 phase에서 attendance/result/consultation/registration 축으로 분리한다.
 9. 과한 기능을 한 번에 만들지 않는다.
+10. 학부모에게 공개되는 학원·수업은 현재 서울 노원구만이다(`src/features/location/lib/parent-launch-region.ts`). 학원가(academy_area) 개념은 삭제됐다.
 
 ## 요금제 정책 (Free / Standard)
 경계는 한 문장이다. **Free는 기록하고 운영한다. Standard는 기록을 분석하고 학부모와 공유한다.**
 
 Free에서 가능:
 - 체험 결과 작성
-- 상담 작성/수정, 상담 재오픈
+- 상담 작성/수정, 상담 재오픈 — ⚠️ 현재 UI 미제공. server action과 entitlement flag(`canWriteConsultations`, `canReopenConsultation`)만 남아 있고 화면에서는 이전 상담 기록 조회만 된다.
 - 등록 결과 기록
 - 리포트 내부 미리보기
 - Excel 예약 가져오기
 
 Standard 전용:
 - 학부모 리포트 신규 발행
-- 학부모 리포트 새 버전 재발행
+- 학부모 리포트 새 버전 재발행 — ⚠️ 현재 불가. DB 트리거 `report_send_once`가 신청당 1회 발행만 허용하고(superseded 전환도 막음) 화면도 "보낸 뒤 읽기 전용"이다.
 - 등록 전환 분석
 - 미등록 사유 분석
 - 등록 전환 인포그래픽
@@ -68,7 +80,10 @@ Standard 전용:
 
 ## 지속 작업 안전 규칙
 - 변경 전에는 반드시 실제 route, caller, server action, adapter 호출부를 먼저 확인한다.
-- 신청 상태 기본 계약 `new -> reviewing -> confirmed -> completed`는 유지한다. 상태 이름/의미를 임의로 바꾸거나 별도 상태 체계로 재설계하지 않는다.
+- 신청 상태 값은 `new | reviewing | confirmed | completed | canceled` 다섯 개를 유지한다. 상태 이름/의미를 임의로 바꾸거나 별도 상태 체계로 재설계하지 않는다.
+  - 현재 학원 액션: 일정 확정(new·reviewing → confirmed), 체험 완료(confirmed → completed), 취소(new·reviewing·confirmed → canceled), 노쇼(confirmed → canceled + `no_show_at`).
+  - `reviewing`은 기존 신청 호환용이다. `move_to_reviewing`의 허용 상태가 비어 있어 새로 reviewing이 되는 경로는 없고, 화면은 new/reviewing을 같은 "신규 신청"으로 보여준다.
+  - 노쇼는 별도 상태가 아니라 canceled + `no_show_at`이다. "체험 진행 중"은 화면 전용 파생 상태다.
 - 신청 상태 관련 작업에서는 항상 `trial_applications`, `application_logs`, 일정 데이터, SMS/알림톡 로그, 등록 전환 데이터를 함께 확인한다.
 - 체험 완료 이후 전환 흐름에서는 `trial_applications.completed_at`, `last_activity_at`, `next_contact_at`를 핵심 원천 데이터로 취급한다. `next_contact_at`은 nullable이며 임의로 필수화하지 않는다.
 - 상담 파이프라인은 신청 관리와 목적이 다르다. 신청일 기준 월/기간 필터 때문에 상담 중 리드가 사라지는 구조로 바꾸지 않는다.

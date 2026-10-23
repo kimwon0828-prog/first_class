@@ -1,11 +1,15 @@
 # 데이터 모델 초안
 
+> MVP 시점 초안에서 출발했다. 실제 스키마의 기준은 `supabase/migrations/`다.
+> 아래는 핵심 테이블만 2026-10 현재 기준으로 고친 요약이며, 이후 추가된 테이블(수업 운영 규칙·회차,
+> 체험 기록·리포트·피드백·등록 결과, 결제, 알림 등)은 각 migration과 기능별 docs를 본다.
+
 ## auth.users
 Supabase 기본 인증 사용자 테이블
 
 ## profiles
 - id (auth.users.id 참조)
-- role: parent | teacher
+- role: parent | academy | admin  (parent ⇒ organization_id null, academy/admin ⇒ not null)
 - name
 - phone
 - organization_id nullable
@@ -15,32 +19,40 @@ Supabase 기본 인증 사용자 테이블
 - id
 - name
 - branch_name
-- created_at
+- 대표자·사업자번호·사업자등록증 경로·학원/담당자 전화·주소·행정구역(sido, sigungu, bname 등)·좌표
+- created_at, updated_at
+- (academy_area, teacher_seat_limit 컬럼은 삭제됨)
 
 ## teachers
+로그인 없는 선생님 명부.
 - id
-- profile_id
+- profile_id nullable (현재 항상 null — 로그인 계정과 연결하지 않음)
 - organization_id
-- intro
-- specialty
-- career_years
-- created_at
+- display_name
+- phone nullable
+- sms_enabled
+- is_active
+- created_at, updated_at
+- (intro, specialty, career_years 등 공개 프로필 컬럼은 삭제됨)
 
 ## classes
 - id
 - organization_id
 - teacher_id
 - program_type: trial_class | level_test
+- assignment_mode: post_assign | preassigned
 - title
-- subject
+- subject (legacy text), subject_category_id, subject_id
 - target_age
-- region
 - description
-- trial_price
-- is_active
+- trial_price, trial_price_confirmed_at
+- regular_price_type / regular_price_amount / regular_price_note
+- is_active (공개 여부), archived_at (종료)
 - created_at
+- (region 컬럼은 삭제됨)
 
-## schedule_blocks
+## schedule_blocks (legacy)
+> 현재 예약 가능 시간은 `class_operating_rules` + `class_schedules`(회차)가 기준이다. schedule_blocks는 회차가 없는 수업의 fallback과 가져온 예약에만 쓰인다.
 - id
 - teacher_id
 - class_id nullable
@@ -62,8 +74,11 @@ Supabase 기본 인증 사용자 테이블
 - confirmed_slot_at nullable
 - confirmed_schedule_block_id nullable
 - memo
+- class_schedule_id nullable (회차 기반 신청)
 - status: new | reviewing | confirmed | completed | canceled
+- no_show_at nullable (노쇼 = canceled + no_show_at)
 - created_at
+- (그 밖의 신청 정보·전환 컬럼은 migration 참고)
 
 ## children
 - id
