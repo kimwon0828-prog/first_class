@@ -8,7 +8,7 @@
 //   3. development + 호스팅 DB + BILLING_LOCAL_ALLOW=1 → allowed (명시적으로 연 경우만)
 //   4. production · preview 판정은 DB 주소와 무관하게 바뀌지 않는다
 //   5. 모르는 주소(빈 값 · 잘못된 형식)는 로컬로 보지 않는다(fail closed)
-//   6. 결제 env(getTossBillingEnv)가 이 가드를 실제로 거친다(소스 계약)
+//   6. 결제 env(getTossBillingEnv)와 체험 알림 작업이 이 가드를 실제로 거친다(소스 계약)
 //
 // 순수 함수와 소스 텍스트만 본다. DB · 네트워크 · process.env 를 건드리지 않는다.
 
@@ -85,6 +85,13 @@ check(
   guardIndex > 0 && readyIndex > guardIndex
 )
 check("BILLING_LOCAL_ALLOW 는 정확히 1 일 때만 연다", serverEnv.includes('process.env.BILLING_LOCAL_ALLOW?.trim() === "1"'))
+
+const notices = read("src/features/billing/actions/run-trial-notices.ts")
+const guardAt = notices.indexOf("getLocalMutationGuard()")
+check(
+  "체험 알림 작업이 DB 를 읽기 전에 가드를 본다",
+  guardAt > 0 && guardAt < notices.indexOf("getSupabaseServiceRoleClient()", guardAt)
+)
 
 if (failures > 0) {
   console.error(`FAIL: 로컬 안전 가드 검증 실패 ${failures}건`)
