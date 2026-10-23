@@ -38,6 +38,7 @@ import {
 } from "@/features/studio/lib/studio-schedule-url-state"
 import { getChildGradeLabel } from "@/shared/constants/education-taxonomy"
 import type { StudioApplicationSummary } from "@/shared/lib/db/adapter"
+import type { StudioStatusTone } from "@/features/studio/lib/application-status-labels"
 
 import { mergeBookingClosureRanges, visibleScheduleClassOptions, type BookingClosure } from "../lib/booking-closures"
 import { BookingTimeDialog, bookingTimeLabel } from "./booking-time-dialog"
@@ -69,6 +70,15 @@ const VIEW_LABELS: Array<{ value: CalendarView; label: string }> = [
 ]
 
 const MAX_EVENTS_PER_MONTH_CELL = 3
+
+/* 월 보기 상태 점 색. tone 판정은 기존 그대로(event.tone), 색은 STUDIO_DESIGN_SYSTEM.md §5.14. */
+const DOT_TONE_CLASS: Record<StudioStatusTone, string> = {
+  green: styles.dotGreen,
+  amber: styles.dotAmber,
+  blue: styles.dotBlue,
+  gray: styles.dotGray,
+  red: styles.dotRed
+}
 
 const groupEventsByDate = (events: StudioScheduleEvent[]) => {
   const grouped = new Map<string, StudioScheduleEvent[]>()
@@ -471,9 +481,11 @@ export const StudioScheduleManager = ({
                       }`}
                       title={`${event.timeLabel} ${event.childName} · ${event.classTitle} · ${event.statusLabel}`}
                     >
+                      {/* 칸이 좁아 배지 대신 상태 색 점. 색만으로 전하지 않도록 상태 글자는 화면 읽기용으로 둔다. */}
+                      <span className={`${styles.monthEventDot} ${DOT_TONE_CLASS[event.tone]}`} aria-hidden="true" />
                       <span className={styles.monthEventTime}>{event.timeLabel}</span>
                       <span className={styles.monthEventName}>{event.childName}</span>
-                      <V2StatusBadge tone={event.tone}>{event.statusLabel}</V2StatusBadge>
+                      <span className={styles.srOnly}>{event.statusLabel}</span>
                     </StudioDetailLink>
                   ))}
                   {overflowCount > 0 ? <span className={styles.monthMore}>+{overflowCount}개 더보기</span> : null}

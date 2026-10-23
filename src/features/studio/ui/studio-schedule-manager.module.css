@@ -348,7 +348,44 @@
 }
 
 .cardCanceled .cardTime,
-.cardCanceled .monthEventTime {
+.cardCanceled /* 상태 색 점 6px. 색은 상태 배지 글자색과 같은 토큰. */
+.monthEventDot {
+  flex: 0 0 auto;
+  width: 6px;
+  height: 6px;
+  border-radius: var(--sv2-radius-pill);
+}
+
+.dotGreen {
+  background: var(--sv2-brand-700);
+}
+
+.dotAmber {
+  background: var(--sv2-state-warn-fg);
+}
+
+.dotBlue {
+  background: var(--sv2-subject-math-fg);
+}
+
+.dotGray {
+  background: var(--sv2-ink-400);
+}
+
+.dotRed {
+  background: var(--sv2-state-danger-fg);
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.monthEventTime {
   color: var(--sv2-ink-400);
 }
 
@@ -478,7 +515,7 @@
 
 .monthEvent {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
   gap: var(--sv2-space-4);
   min-width: 0;
@@ -577,8 +614,7 @@
     padding: 6px;
   }
 
-  .monthEventName,
-  .monthEvent > span:last-child {
+  .monthEventName {
     display: none;
   }
 }
