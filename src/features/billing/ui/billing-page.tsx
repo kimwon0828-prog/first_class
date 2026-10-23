@@ -157,6 +157,9 @@ export const BillingPage = ({ overview, notice }: BillingPageProps) => {
         </div>
       </section>
 
+      {/* Figma 2148:7112. 리포트 보내기는 2차-1부터 모든 플랜에서 무료다(AGENTS.md 요금제 정책). */}
+      <p className={styles.notice}>리포트 보내기는 모든 플랜에서 무료예요. 학부모가 리포트를 보고 등록을 결정하기 때문이에요.</p>
+
       <section className={styles.section} aria-labelledby="payment-history-title">
         <h2 className={styles.sectionTitle} id="payment-history-title">결제 내역</h2>
         {payments.length > 0 ? (

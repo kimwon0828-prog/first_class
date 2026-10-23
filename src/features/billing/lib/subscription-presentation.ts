@@ -166,7 +166,7 @@ export const resolveBillingPresentation = (
 
   const planLabel = PLAN_LABEL[billedPlanCode] ?? PLAN_LABEL.standard
   // 월 요금은 실제로 청구되는 구독에만 쓴다. 수동으로 부여한 체험처럼 결제수단이 없는
-  // 구독에 "월 요금 49,000원" 이라고 적으면 청구되고 있다고 오해하게 된다.
+  // 구독에 월 요금을 적으면 청구되고 있다고 오해하게 된다.
   const monthlyAmount =
     billedPlanCode === "standard" && hasActiveBillingMethod ? standardAmount : null
   const periodEnd = subscription?.currentPeriodEnd ?? null
@@ -316,19 +316,20 @@ export type PricingCard = {
 
 // 카드 혜택 문구.
 //
-// ⚠️ 순서가 곧 우선순위다. 스탠다드는 "무료에서 기록을 못 해서 사는 플랜" 이 아니라
-//    "무료에서 쌓은 기록을 학부모와 나누고 분석하려고 사는 플랜" 이다.
-//    그래서 학부모 리포트 발행을 맨 위에 둔다.
+// ⚠️ 순서가 곧 우선순위다. 리포트 보내기는 2차-1부터 무료다(Figma 2148:7069 "체험 기록 · 리포트 보내기").
+//    스탠다드는 "무료에서 쌓은 기록을 분석하려고 사는 플랜" 이다.
+//    인원 제한은 어느 플랜에도 없다 — "선생님 N명까지" 같은 문구를 적지 않는다.
 const FREE_BENEFITS = [
   "학원·수업 등록",
   "체험 신청·일정 관리",
   "체험 결과·상담 기록",
-  "Excel 예약 가져오기"
+  "학부모 리포트 보내기",
+  "Excel 예약 가져오기",
+  "선생님 인원 제한 없음"
 ]
 
 const STANDARD_BENEFITS = [
-  "무료의 모든 기능",
-  "학부모 리포트 발행",
+  "무료 플랜의 모든 기능",
   "등록 전환 분석",
   "미등록 사유 분석",
   "등록 전환 인포그래픽"

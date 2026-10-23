@@ -166,13 +166,13 @@ const run = async () => {
   console.log("\n[1] 서버 canonical 가격")
   {
     const before = failures
-    check(plan.amount === 49000, `스탠다드 금액이 다르다: ${plan.amount}`)
+    check(plan.amount === 39000, `스탠다드 금액이 다르다: ${plan.amount}`)
     check(plan.currency === "KRW" && plan.interval === "month", "통화·주기가 다르다")
-    check(getPurchasableBillingPlan("standard")?.amount === 49000, "판매 플랜 조회가 다르다")
+    check(getPurchasableBillingPlan("standard")?.amount === 39000, "판매 플랜 조회가 다르다")
     // pro 는 도메인에만 있고 결제를 만들 수 없다.
     check(getPurchasableBillingPlan("pro") === null, "pro 로 결제를 만들 수 있다")
     check(getPurchasableBillingPlan("free") === null, "존재하지 않는 플랜이 통과했다")
-    passLine(before, "스탠다드 49,000원/월 · pro 결제 불가")
+    passLine(before, "스탠다드 39,000원/월(부가세 포함) · pro 결제 불가")
   }
 
   // ───────────────────────────────────────────────────────────
@@ -476,8 +476,8 @@ const run = async () => {
         snapshot,
         new Date(new Date(item.expected).getTime() + 60 * 1000)
       )
-      check(justBefore.entitlements.canPublishParentReport, `${item.label}: 유예 직전에 닫혔다`)
-      check(!justAfter.entitlements.canPublishParentReport, `${item.label}: 유예 이후에도 열려 있다`)
+      check(justBefore.entitlements.canUseConversionAnalytics, `${item.label}: 유예 직전에 닫혔다`)
+      check(!justAfter.entitlements.canUseConversionAnalytics, `${item.label}: 유예 이후에도 열려 있다`)
 
       // 결제된 기간이 끝나기 전에는 절대 닫히지 않는다.
       const atPeriodEnd = resolveStudioEntitlements(
@@ -485,7 +485,7 @@ const run = async () => {
         new Date(new Date(item.periodEnd).getTime() - 60 * 1000)
       )
       check(
-        atPeriodEnd.entitlements.canPublishParentReport,
+        atPeriodEnd.entitlements.canUseConversionAnalytics,
         `${item.label}: 이미 결제된 기간 안인데 닫혔다`
       )
 
@@ -580,13 +580,13 @@ const run = async () => {
       const lateAt = new Date("2026-10-14T00:00:00.000Z")
       // 실패가 오기 전에 이미 닫혀 있다.
       check(
-        !resolveStudioEntitlements(snapshotOf(FIRST_GRACE), lateAt).entitlements.canPublishParentReport,
+        !resolveStudioEntitlements(snapshotOf(FIRST_GRACE), lateAt).entitlements.canUseConversionAnalytics,
         "D: 유예가 끝났는데 열려 있다"
       )
 
       const grace = await failAt("D 늦은 실패 10-14", "episode-d-4", lateAt.toISOString(), FIRST_GRACE)
       check(
-        !resolveStudioEntitlements(snapshotOf(grace), lateAt).entitlements.canPublishParentReport,
+        !resolveStudioEntitlements(snapshotOf(grace), lateAt).entitlements.canUseConversionAnalytics,
         "D: 늦은 실패 이벤트로 유료 접근이 다시 열렸다"
       )
       passLine(stepBefore, "D 유예 종료 후 실패      → 재오픈 0")
@@ -658,7 +658,7 @@ const run = async () => {
         container,
         `select public.apply_billing_event(
            '${ORG_E}'::uuid, 'payment_failed', '2026-10-10T00:00:00+00'::timestamptz,
-           'concurrent-e-1', 'toss', null, 'standard', 49000, null, null, 'CARD_LIMIT_EXCEEDED'
+           'concurrent-e-1', 'toss', null, 'standard', ${BILLING_PLANS.standard.amount}, null, null, 'CARD_LIMIT_EXCEEDED'
          ); select pg_sleep(2);`
       )
 
@@ -784,7 +784,7 @@ const run = async () => {
         },
         new Date()
       )
-      check(!entitlements.entitlements.canPublishParentReport, `${item.label}: Studio 유료 접근이 열렸다`)
+      check(!entitlements.entitlements.canUseConversionAnalytics, `${item.label}: Studio 유료 접근이 열렸다`)
 
       passLine(caseBefore, `${item.label.padEnd(32)} → ignored · 상태 유지 · 재오픈 0`)
     }

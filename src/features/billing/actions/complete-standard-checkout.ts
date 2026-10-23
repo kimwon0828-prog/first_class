@@ -28,8 +28,8 @@ import { pickStorableCardDisplay } from "@/features/billing/lib/toss/verify-paym
 // 카드 인증이 끝난 뒤의 서버 처리.
 //
 // 순서를 지킨다. 빌링키가 나왔다고 스탠다드를 열지 않는다.
-//   빌링키 발급 → 최초 49,000원 결제 → 결제 검증 → initial_payment_succeeded → active
-// 첫 결제가 실패하면 entitlement 는 열리지 않는다(신규 무료체험 없음).
+//   빌링키 발급 → 최초 결제(plan-catalog 금액) → 결제 검증 → initial_payment_succeeded → active
+// 첫 결제가 실패하면 entitlement 는 열리지 않는다. 무료 체험은 checkout 이 아니라 승인 RPC 가 연다.
 
 export type CheckoutCompletion =
   | { status: "activated" }

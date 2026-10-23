@@ -5,6 +5,7 @@ import PartnerCopyButton from "./PartnerCopyButton"
 import PartnerInquiryForm from "./PartnerInquiryForm"
 import PartnerLossCalculator from "./PartnerLossCalculator"
 import styles from "./partner.module.css"
+import { BILLING_PLANS } from "@/features/billing/lib/plan-catalog"
 import { COMPANY_ADDRESS, COMPANY_INFO } from "@/shared/config/company-info"
 import { getStudioCrossProductHrefResolver } from "@/shared/lib/cross-product-navigation-server"
 
@@ -19,9 +20,11 @@ const navItems = [
   { href: "#price", label: "요금" }
 ]
 
+const STANDARD_PRICE_TEXT = `월 ${BILLING_PLANS.standard.amount.toLocaleString("ko-KR")}원`
+
 const stripItems = [
-  "체험·상담·등록 기록은 Free로 시작",
-  "학부모 리포트와 전환 분석은 Standard 월 49,000원"
+  "체험 기록과 학부모 리포트는 Free로 시작",
+  `등록 전환 분석은 Standard ${STANDARD_PRICE_TEXT}`
 ]
 
 const flowCards = [
@@ -128,13 +131,14 @@ const freeFeatures = [
   "담당 교사 관리",
   "체험수업 운영 및 완료 처리",
   "체험 결과 기록",
+  "학부모 리포트 발행",
   "상담 이력 · 등록 전환 기록",
-  "Excel 예약 가져오기"
+  "Excel 예약 가져오기",
+  "선생님 인원 제한 없음"
 ]
 
 const standardFeatures = [
   "Free의 모든 기능",
-  "학부모 리포트 발행",
   "등록 전환 분석",
   "미등록 사유 분석",
   "등록 전환 인포그래픽"
@@ -146,8 +150,8 @@ const perks = [
     description: "체험 모집부터 상담·등록 기록까지 Free로 시작할 수 있습니다."
   },
   {
-    title: "공유와 분석으로 확장",
-    description: "필요할 때 Standard로 전환해 학부모 리포트를 보내고 등록 전환을 분석합니다."
+    title: "분석으로 확장",
+    description: "필요할 때 Standard로 전환해 등록 전환과 미등록 사유를 분석합니다."
   },
   {
     title: "도입 지원",
@@ -598,19 +602,19 @@ export default async function PartnerLanding() {
         <div className={styles.wrap}>
           <p className={styles.kick}>요금</p>
           <h2 className={styles.sectionHeading}>
-            기록과 운영은 무료로,
+            기록과 리포트는 무료로,
             <br />
-            학부모 공유와 분석은 필요할 때 확장하세요
+            등록 전환 분석은 필요할 때 확장하세요
           </h2>
           <p className={styles.sub}>
-            체험·상담·등록 기록은 Free로 시작할 수 있습니다. 그 기록을 학부모에게 리포트로
-            보내고 등록 전환을 분석할 때 Standard로 확장하세요.
+            체험·상담·등록 기록과 학부모 리포트는 Free로 쓸 수 있습니다. 쌓인 기록으로
+            등록 전환과 미등록 사유를 분석할 때 Standard로 확장하세요.
           </p>
 
           <div className={styles.price}>
             <div className={styles.pc}>
               <p className={styles.pK}>FREE</p>
-              <p className={styles.pN}>입점 · 모객 · 체험 · 상담 기록</p>
+              <p className={styles.pN}>입점 · 모객 · 체험 기록 · 학부모 리포트</p>
               <div className={styles.pA}>
                 <span className={styles.pFree}>0원</span>
                 <span className={styles.pCycle}>별도 결제 없음</span>
@@ -630,9 +634,9 @@ export default async function PartnerLanding() {
                 <p className={styles.pK}>STANDARD</p>
                 <span className={styles.pTag}>추천</span>
               </div>
-              <p className={styles.pN}>학부모 리포트 · 등록 전환 분석</p>
+              <p className={styles.pN}>등록 전환 분석 · 미등록 사유 분석</p>
               <div className={styles.pA}>
-                <span className={styles.pFree}>월 49,000원</span>
+                <span className={styles.pFree}>{STANDARD_PRICE_TEXT}</span>
                 <span className={styles.pCycle}>월 단위 정기결제</span>
               </div>
               <ul className={styles.pList}>

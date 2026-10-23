@@ -2,24 +2,23 @@
 //
 // 화면과 action 은 요금제 이름을 비교하지 않는다. 항상 여기서 나온 flag 만 본다.
 //   나쁨:  if (plan === "standard")
-//   좋음:  if (!entitlements.canPublishParentReport)
+//   좋음:  if (!entitlements.canUseConversionAnalytics)
 //
 // 누적 모델이다. STANDARD 는 FREE 전체를 포함하고, PRO 는 STANDARD 전체를 포함한다.
 //
 // 경계는 한 문장이다(AGENTS.md 요금제 정책).
-//   FREE      기록하고 운영한다.
-//   STANDARD  기록을 분석하고 학부모와 공유한다.
+//   FREE      기록하고 운영하고 학부모와 공유한다.
+//   STANDARD  기록을 분석한다.
 //
-// 그래서 작성(체험 결과 · 상담 · 등록 결과)은 무료다. 유료는 그 기록을 바깥으로
-// 내보내는 일 — 학부모 리포트 발행과 전환 분석 — 에만 붙는다.
+// 그래서 작성(체험 결과 · 상담 · 등록 결과)과 학부모 리포트 보내기는 무료다(2차-1, 2026-10).
+// 학부모가 리포트를 보고 등록을 결정하기 때문이다. 유료는 전환 분석에만 붙는다.
 //
 // 읽기와 쓰기를 나눈 것은 downgrade 때문이다. 유료를 쓰다 무료로 내려온 학원도
 // 과거 체험 결과와 상담 이력은 계속 볼 수 있어야 한다.
 // 그래서 열람 flag 는 과거 결제 이력을 조회해서 계산하지 않고 항상 참이다.
 //
-// ⚠️ "지금 유료인가" 를 확인하는 코드는 canWriteConsultations 를 쓰지 않는다.
-//    그 flag 는 이제 무료에서도 참이다. 유료 여부의 대표값은
-//    canPublishParentReport 나 canUseConversionAnalytics 다.
+// ⚠️ "지금 유료인가" 를 확인하는 코드는 canWriteConsultations · canPublishParentReport 를
+//    쓰지 않는다. 둘 다 무료에서도 참이다. 유료 여부의 대표값은 canUseConversionAnalytics 다.
 
 import type { OrganizationBillingSnapshot, OrganizationPlanCode } from "@/shared/lib/db/adapter"
 
@@ -48,13 +47,13 @@ export type StudioEntitlements = {
   canViewTrialResults: boolean
   canViewConsultationHistory: boolean
 
-  // ── STANDARD: 학부모 공유 · 전환 분석 ───────────────────────
+  // ── 학부모 공유: 2차-1부터 FREE 에 포함된다 ─────────────────
   /**
    * 학부모 리포트 신규 발행 · 새 버전 재발행.
    *
    * ⚠️ canWriteTrialResults 와 묶지 않는다. 작성과 발행은 다른 행위다 —
-   *    작성은 학원 안에 남는 기록이고(무료), 발행은 학부모에게 나가는 문서다(유료).
-   *    둘을 다시 합치면 무료 학원이 학부모에게 리포트를 보내게 된다.
+   *    작성은 학원 안에 남는 기록이고, 발행은 학부모에게 나가는 문서다.
+   *    지금은 둘 다 무료지만, 발행 정책이 다시 바뀔 수 있으므로 flag 는 따로 둔다.
    *
    * 철회(withdraw)는 여기에 포함되지 않는다. 이미 발행된 리포트를 거두는 일은
    * 요금제와 무관하게 허용한다 — 발행을 막는 것과 이미 보낸 것을 거두는 것은
@@ -62,6 +61,8 @@ export type StudioEntitlements = {
    * 되돌릴 방법이 사라진다.
    */
   canPublishParentReport: boolean
+
+  // ── STANDARD: 전환 분석 ─────────────────────────────────────
   canUseConversionAnalytics: boolean
 
   // ⚠️ 여기에 "공개 목록 우선 노출" 류의 flag 를 다시 만들지 않는다.
@@ -88,7 +89,7 @@ const FREE_ENTITLEMENTS: StudioEntitlements = {
   canViewTrialResults: true,
   canViewConsultationHistory: true,
 
-  canPublishParentReport: false,
+  canPublishParentReport: true,
   canUseConversionAnalytics: false,
 
   canUseAdvancedAnalytics: false,
@@ -98,7 +99,6 @@ const FREE_ENTITLEMENTS: StudioEntitlements = {
 
 const STANDARD_ENTITLEMENTS: StudioEntitlements = {
   ...FREE_ENTITLEMENTS,
-  canPublishParentReport: true,
   canUseConversionAnalytics: true
 }
 

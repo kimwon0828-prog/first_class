@@ -29,7 +29,8 @@ export const BILLING_PLANS: Record<OrganizationPaidPlanCode, BillingPlan> = {
   standard: {
     planCode: "standard",
     name: "스탠다드",
-    amount: 49000,
+    // 부가세 포함 총액이다. 화면에 "부가세 별도"를 붙이지 않는다(AGENTS.md 요금제 정책).
+    amount: 39000,
     currency: "KRW",
     interval: "month",
     purchasable: true

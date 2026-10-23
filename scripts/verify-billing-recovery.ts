@@ -9,8 +9,12 @@ import type {
   BillingPaymentAttemptInput
 } from "@/features/billing/lib/charge/payment-attempt"
 import { checkCheckoutCallback } from "@/features/billing/lib/checkout/checkout-guards"
+import { BILLING_PLANS } from "@/features/billing/lib/plan-catalog"
 import { settleStoredPayment } from "@/features/billing/lib/settle/settle-payment-core"
 import { issueTossBillingKey } from "@/features/billing/lib/toss/client"
+
+/** 금액의 주인은 plan-catalog 다. 리터럴로 고정하지 않는다(2차-1에서 49,000 → 39,000). */
+const STANDARD_AMOUNT = BILLING_PLANS.standard.amount
 
 let failures = 0
 const check = (value: unknown, message: string) => {
@@ -180,7 +184,7 @@ const run = async () => {
     billingKey: "bk_recovery",
     customerKey: "fs-recovery-customer",
     planCode: "standard" as const,
-    amount: 49000,
+    amount: STANDARD_AMOUNT,
     orderId: "fsc-b31f00000000400080000000000000c1",
     orderName: "첫수업 스탠다드 구독",
     idempotencyKey: "fsc-b31f00000000400080000000000000c1",
@@ -201,7 +205,7 @@ const run = async () => {
       organization_id: ORGS[0],
       customer_key: "fs-recovery-customer",
       plan_code: "standard",
-      amount: 49000,
+      amount: STANDARD_AMOUNT,
       order_id: initialInput.orderId,
       payment_idempotency_key: initialInput.attemptKey,
       billing_key_issue_idempotency_key: `billing-key:${SESSION}`,
@@ -228,7 +232,7 @@ const run = async () => {
     check(result.status === "pending", "timeout이 pending이 아니다")
     check(ordering.join(",") === "pending_saved,provider_post", `호출 순서가 다르다: ${ordering}`)
     check(
-      stored?.status === "pending" && stored.orderId === initialInput.orderId && stored.amount === 49000,
+      stored?.status === "pending" && stored.orderId === initialInput.orderId && stored.amount === STANDARD_AMOUNT,
       "정확한 pending attempt가 남지 않았다"
     )
     pass(before, "pending 저장 → provider POST · timeout 후 exact orderId 유지")
@@ -241,7 +245,7 @@ const run = async () => {
       paymentKey: "pk_recovery_initial",
       orderId: initialInput.orderId,
       status: "DONE",
-      totalAmount: 49000,
+      totalAmount: STANDARD_AMOUNT,
       approvedAt: "2027-01-31T10:00:00+09:00",
       currency: "KRW"
     }
@@ -345,7 +349,7 @@ const run = async () => {
         paymentKey: "pk_verified_correction",
         orderId,
         status: "DONE",
-        totalAmount: 49000,
+        totalAmount: STANDARD_AMOUNT,
         approvedAt: "2027-02-28T10:00:00+09:00",
         currency: "KRW"
       }
@@ -415,7 +419,7 @@ const run = async () => {
         organization_id: ORGS[1],
         customer_key: "fs-decline-customer",
         plan_code: "standard",
-        amount: 49000,
+        amount: STANDARD_AMOUNT,
         order_id: orderId,
         payment_idempotency_key: key,
         billing_key_issue_idempotency_key: `billing-key:${DECLINE_SESSION}`,
@@ -456,7 +460,7 @@ const run = async () => {
       organizationId: ORGS[0],
       customerKey: "fs-recovery-customer",
       planCode: "standard",
-      amount: 49000,
+      amount: STANDARD_AMOUNT,
       orderId: initialInput.orderId,
       paymentIdempotencyKey: initialInput.attemptKey,
       billingKeyIssueIdempotencyKey: `billing-key:${SESSION}`,

@@ -235,7 +235,7 @@ console.log("\n[6] 결제 내역 표현")
     "pending 시도가 결제 내역에 노출된다"
   )
   check(USER_VISIBLE_PAYMENT_STATUSES.length === 4, "노출 대상 상태 목록이 바뀌었다")
-  check(formatBillingAmount(49000) === "49,000원", `금액 표기가 다르다: ${formatBillingAmount(49000)}`)
+  check(formatBillingAmount(39000) === "39,000원", `금액 표기가 다르다: ${formatBillingAmount(39000)}`)
   passLine(before, "K·L 결제 결과만 · 사용자 문구 · 천 단위 구분")
 }
 
@@ -376,7 +376,8 @@ console.log("\n[10] 기능 비교표")
         "수업·체험 운영",
         "체험 결과 작성",
         "상담·등록 기록",
-        "Excel 예약 가져오기"
+        "Excel 예약 가져오기",
+        "학부모 리포트 발행"
       ]),
     `무료 지원 항목이 다르다: ${freeRows.join(", ")}`
   )
@@ -386,7 +387,6 @@ console.log("\n[10] 기능 비교표")
   check(
     JSON.stringify(paidOnlyRows) ===
       JSON.stringify([
-        "학부모 리포트 발행",
         "등록 전환 분석",
         "미등록 사유 분석",
         "등록 전환 인포그래픽"
@@ -442,7 +442,7 @@ console.log("\n[11] 다음 결제 카드")
   const active = fact({ subscription: subscription(), override: null }, true)
   check(active.title === "다음 결제", `제목이 다르다: ${active.title}`)
   check(active.value === "2026년 10월 8일", `날짜가 다르다: ${active.value}`)
-  check(active.caption === "49,000원", `금액이 다르다: ${active.caption}`)
+  check(active.caption === "39,000원", `금액이 다르다: ${active.caption}`)
 
   // G. 수동 체험은 종료 예정일만. 금액을 적지 않는다.
   const poc = fact(
@@ -496,6 +496,22 @@ console.log("\n[12] 카드 문구가 실제 경계를 말한다")
     freeCard.benefits.some((item) => item.includes("Excel")),
     "무료 혜택에 Excel 예약 가져오기가 없다"
   )
+  // 리포트 보내기는 2차-1부터 무료다. 스탠다드 혜택으로 남으면 화면이 거짓말을 한다.
+  check(freeCard.benefits.includes("학부모 리포트 보내기"), "무료 혜택에 학부모 리포트 보내기가 없다")
+  check(
+    !standardCard.benefits.some((item) => item.includes("리포트")),
+    "스탠다드 혜택에 리포트가 남아 있다"
+  )
+  // 인원 제한은 어느 플랜에도 없다.
+  check(
+    ![...freeCard.benefits, ...standardCard.benefits].some((item) => /\d+\s*명까지/.test(item)),
+    "혜택에 선생님 인원 제한 문구가 있다"
+  )
+  // 39,000원은 부가세 포함 총액이다. "부가세 별도"를 붙이지 않는다.
+  check(
+    ![freeCard, standardCard].some((card) => /부가세/.test(`${card.priceLabel} ${card.priceUnit ?? ""}`)),
+    "가격에 부가세 표기가 붙었다"
+  )
 
   // 스탠다드는 공유·분석으로 읽혀야 한다.
   check(
@@ -507,10 +523,10 @@ console.log("\n[12] 카드 문구가 실제 경계를 말한다")
     "스탠다드 카드가 기록을 파는 것처럼 말한다"
   )
 
-  // 우선순위: 학부모 리포트 발행이 "무료의 모든 기능" 바로 다음이다.
-  check(standardCard.benefits[0] === "무료의 모든 기능", "스탠다드 첫 줄이 무료 포함이 아니다")
+  // 우선순위: 등록 전환 분석이 "무료 플랜의 모든 기능" 바로 다음이다.
+  check(standardCard.benefits[0] === "무료 플랜의 모든 기능", "스탠다드 첫 줄이 무료 포함이 아니다")
   check(
-    standardCard.benefits[1] === "학부모 리포트 발행",
+    standardCard.benefits[1] === "등록 전환 분석",
     `스탠다드 핵심 가치가 맨 위가 아니다: ${standardCard.benefits[1]}`
   )
   check(

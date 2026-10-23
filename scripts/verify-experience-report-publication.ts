@@ -515,16 +515,19 @@ check(
   reportUi.includes("canPublishReport: boolean") && !reportUi.includes("canWrite:")
 )
 check("운영 철회 action의 기존 무료 권한 유지", !withdrawAction.includes("requireStudioEntitlement("))
-// 무료 학원은 여기까지 와서 발행만 막힌다. 버튼만 사라지면 화면이 고장난 것처럼 보인다.
-check(
-  "발행이 잠기면 이유를 글자로 말한다",
-  reportUi.includes("{!canPublishReport && !publishedVersion && !everSent ? (") &&
-    reportUi.includes("리포트 보내기는 스탠다드 플랜에서 사용할 수 있어요.")
-)
-check(
-  "잠금 안내가 기존 기록·발행본이 살아 있음을 말한다",
-  reportUi.includes("체험 결과 작성과 미리보기는 계속 사용할 수 있고")
-)
+// 2차-1(2026-10): 리포트 보내기는 모든 플랜에서 무료다. 잠금 안내가 남아 있으면 화면이 거짓말을 한다.
+{
+  const entitlementsSource = read("src/features/billing/lib/entitlements.ts")
+  const freeBlock = entitlementsSource.slice(
+    entitlementsSource.indexOf("const FREE_ENTITLEMENTS"),
+    entitlementsSource.indexOf("const STANDARD_ENTITLEMENTS")
+  )
+  check("무료 플랜도 리포트를 보낼 수 있다", /canPublishParentReport:\s*true/.test(freeBlock))
+  check(
+    "리포트 보내기 잠금 안내가 없다",
+    !reportUi.includes("스탠다드 플랜에서") && !reportUi.includes("lockedNotice")
+  )
+}
 // 기록은 무료다. 작성이 유료라고 말하던 화면 계약이 남아 있으면 안 된다.
 {
   const workflowUi = read(WORKFLOW_UI_PATH)
@@ -548,28 +551,6 @@ check(
   )
 }
 
-// 잠금 안내는 갈 곳을 준다. 막아 놓고 길을 안 알려주면 원장은 여기서 끝난다.
-check(
-  "잠금 안내가 플랜 화면으로 가는 길을 준다",
-  reportUi.includes('studioPath("/studio/billing")') && reportUi.includes("플랜 확인하기")
-)
-// 같은 화면에 업그레이드 안내를 여러 개 두지 않는다(디자인 시스템 §10.2).
-const compactReportStart = reportUi.indexOf("if (actionsOnly) return")
-const fullReportStart = reportUi.indexOf("\n  return (", compactReportStart)
-check(
-  "서로 배타적인 간결/전체 리포트 화면마다 잠금 안내는 한 곳뿐이다",
-  compactReportStart >= 0 && fullReportStart > compactReportStart &&
-    (reportUi.slice(compactReportStart, fullReportStart).match(/스탠다드 플랜에서/g) ?? []).length === 1 &&
-    (reportUi.slice(fullReportStart).match(/스탠다드 플랜에서/g) ?? []).length === 1
-)
-
-check(
-  "잠금 안내는 경고 색을 쓰지 않는다",
-  reportUi.includes("styles.lockedNotice") &&
-    read("src/features/studio/ui/application-report-publishing.module.css").includes(
-      "var(--surface-sub)"
-    )
-)
 check(
   "미리보기는 계속 보여 준다",
   !/publishedReportLoadError[\s\S]{0,40}preview \? null/.test(reportUi)
