@@ -5,6 +5,8 @@ import { StudioNavigationProvider } from "@/features/studio/ui/studio-navigation
 import { STUDIO_ORIGIN } from "@/shared/config/site-origins"
 import { getRequestHostname } from "@/shared/lib/request-host"
 
+import "./studio-v2-tokens.css"
+
 /*
  * Studio 의 metadata 경계.
  *

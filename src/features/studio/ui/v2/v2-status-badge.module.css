@@ -1,0 +1,41 @@
+/*
+ * Studio/StatusBadge (Figma 2002:100). tone 다섯 개.
+ * 배경 · 글자색은 항상 같은 tone 의 쌍으로 쓴다.
+ */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+  padding: 3px 8px;
+  border-radius: var(--sv2-radius-badge);
+  font-family: var(--sv2-font);
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.green {
+  background: var(--sv2-brand-50);
+  color: var(--sv2-brand-700);
+}
+
+.amber {
+  background: var(--sv2-state-warn-bg);
+  color: var(--sv2-state-warn-fg);
+}
+
+.gray {
+  background: var(--sv2-surface-fill);
+  color: var(--sv2-ink-500);
+}
+
+.red {
+  background: var(--sv2-state-danger-bg);
+  color: var(--sv2-state-danger-fg);
+}
+
+.blue {
+  background: var(--sv2-subject-math-bg);
+  color: var(--sv2-subject-math-fg);
+}

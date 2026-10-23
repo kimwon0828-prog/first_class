@@ -1,0 +1,98 @@
+/*
+ * Studio v2/TextField (Figma 2024:168) 와 선택 입력(수업 등록 화면 2173:186) 의 공통 틀.
+ * 라벨 → 입력 → 도움말을 세로로 8px 간격으로 쌓는다.
+ */
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  font-family: var(--sv2-font);
+}
+
+.label {
+  color: var(--sv2-ink-900);
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 700;
+}
+
+/* 첫수업/Caption: 13 / 18 / Medium / -0.2 */
+.helper {
+  margin: 0;
+  color: var(--sv2-ink-500);
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 500;
+  letter-spacing: -0.2px;
+}
+
+.error {
+  color: var(--sv2-state-danger-fg);
+}
+
+.control {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid var(--sv2-line-default);
+  border-radius: var(--sv2-radius-control);
+  background: var(--sv2-surface-white);
+  color: var(--sv2-ink-900);
+  font-family: inherit;
+  outline: none;
+}
+
+.control:focus-visible {
+  border-color: var(--sv2-brand-700);
+}
+
+.control[aria-invalid="true"] {
+  border-color: var(--sv2-state-alert);
+}
+
+.control:disabled {
+  background: var(--sv2-surface-fill);
+  color: var(--sv2-ink-400);
+  cursor: not-allowed;
+}
+
+.control::placeholder {
+  color: var(--sv2-ink-400);
+}
+
+/* TextField 입력: 높이 48 · 첫수업/Body(15 / 22 / Regular / -0.2) */
+.input {
+  height: 48px;
+  padding: 0 14px;
+  font-size: 15px;
+  line-height: 22px;
+  font-weight: 400;
+  letter-spacing: -0.2px;
+}
+
+/* 선택 입력: 높이 44 · 14 / Medium. 화살표 자리(16 + 간격 8)만큼 오른쪽을 비운다. */
+.selectWrap {
+  position: relative;
+  display: flex;
+  min-width: 0;
+}
+
+.select {
+  height: 44px;
+  padding: 0 38px 0 14px;
+  font-size: 14px;
+  line-height: 1.2;
+  font-weight: 500;
+  appearance: none;
+  -webkit-appearance: none;
+  cursor: pointer;
+}
+
+.selectIcon {
+  position: absolute;
+  top: 50%;
+  right: 14px;
+  transform: translateY(-50%);
+  color: var(--sv2-ink-500);
+  pointer-events: none;
+}
