@@ -798,6 +798,11 @@
     padding-inline: var(--sv2-space-16);
   }
 
+  /* 좁으면 상태 배지를 이름 아래로 내려 이름이 덜 잘리게 한다 */
+  .slotName {
+    flex-wrap: wrap;
+  }
+
   .search {
     flex-basis: 100%;
   }

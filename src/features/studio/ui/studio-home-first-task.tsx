@@ -72,12 +72,13 @@ export function StudioHomeFirstTask({ items, totalCount }: { items: StudioHomeFi
     <div className={styles.head}>
       <span className={styles.badge}>가장 먼저</span>
       <span className={styles.caption}>오늘 할 일 {totalCount}개 중 {position + 1}번째</span>
-      <span className={styles.spacer} />
-      {items.length > 1 ? <button type="button" className={styles.arrow} aria-label="이전 할 일" disabled={position === 0} onClick={() => setIndex(position - 1)}><V2ChevronLeftIcon size={16} /></button> : null}
-      <span className={styles.dots} aria-hidden="true">
-        {items.map((item, dot) => <span key={item.id} data-current={dot === position ? "" : undefined} />)}
+      <span className={styles.pager}>
+        {items.length > 1 ? <button type="button" className={styles.arrow} aria-label="이전 할 일" disabled={position === 0} onClick={() => setIndex(position - 1)}><V2ChevronLeftIcon size={16} /></button> : null}
+        <span className={styles.dots} aria-hidden="true">
+          {items.map((item, dot) => <span key={item.id} data-current={dot === position ? "" : undefined} />)}
+        </span>
+        {items.length > 1 ? <button type="button" className={styles.arrow} aria-label="다음 할 일" disabled={position === items.length - 1} onClick={() => setIndex(position + 1)}><V2ChevronRightIcon size={16} /></button> : null}
       </span>
-      {items.length > 1 ? <button type="button" className={styles.arrow} aria-label="다음 할 일" disabled={position === items.length - 1} onClick={() => setIndex(position + 1)}><V2ChevronRightIcon size={16} /></button> : null}
     </div>
     <div className={styles.body}>
       <span className={styles.subject}><V2SubjectIcon3D categoryCode={current.subjectCategory} size={48} /></span>

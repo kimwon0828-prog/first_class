@@ -220,6 +220,8 @@
 
 /* 표: 머리 아래 line/default, 행 아래 line/subtle, 행 16/8 · 칸 사이 16 */
 .table {
+  /* 화면이 좁으면 표 안에서만 옆으로 넘긴다. relative 여야 화면 읽기용 글자(absolute)가 바깥으로 새지 않는다. */
+  position: relative;
   overflow-x: auto;
 }
 

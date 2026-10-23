@@ -44,6 +44,14 @@
   white-space: nowrap;
 }
 
+/* 점 · 화살표 묶음: 오른쪽 끝. 좁으면 다음 줄로 내려간다 */
+.pager {
+  display: flex;
+  align-items: center;
+  gap: var(--sv2-space-4);
+  margin-left: auto;
+}
+
 /* 점: 20×6 · 모서리 3 · 간격 4, 지금 brand/500 · 나머지 brand/200 */
 .dots {
   display: flex;
@@ -170,6 +178,28 @@
 @media (max-width: 720px) {
   .card {
     padding: var(--sv2-space-20);
+  }
+
+  .head {
+    flex-wrap: wrap;
+  }
+
+  .caption {
+    white-space: normal;
+  }
+
+  .body {
+    align-items: flex-start;
+    gap: var(--sv2-space-16);
+  }
+
+  .subject {
+    width: 56px;
+    height: 56px;
+  }
+
+  .title {
+    font-size: 20px;
   }
 
   .actions {

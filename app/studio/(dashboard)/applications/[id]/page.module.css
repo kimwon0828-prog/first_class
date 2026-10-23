@@ -131,6 +131,8 @@
 
 /* 6단계: surface/fill · 모서리 16 · 18/20. 원 28 · 선 2. 지난 단계 brand/500 + 체크, 지금 brand/700, 남은 단계 흰 원 + ink/400 */
 .stepper {
+  /* 좁은 화면에서 단계 줄 안에서만 옆으로 넘긴다(화면 읽기용 글자가 바깥으로 새지 않게 relative). */
+  position: relative;
   display: flex;
   margin: 0;
   padding: 18px var(--sv2-space-20);

@@ -300,7 +300,8 @@
   .sidebar {
     width: 100%;
     height: auto;
-    position: static;
+    /* 메뉴 줄 안에서만 옆으로 넘긴다. relative 여야 건수 배지의 화면 읽기용 글자(absolute)가 페이지 밖으로 새지 않는다. */
+    position: relative;
     flex-direction: row;
     align-items: center;
     gap: var(--sv2-space-12);
