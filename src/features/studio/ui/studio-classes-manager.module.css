@@ -1,550 +1,786 @@
+/*
+ * 수업·일정 · 수업 탭 (Figma 2148:6043). STUDIO_DESIGN_SYSTEM.md §5.12.
+ * 본문 [수업 목록 300 | 32 | 선택한 수업]. 값은 Figma 그대로이고 색 · 간격 · 모서리는 --sv2-* 만 쓴다.
+ * 행 메뉴 클래스(rowMenu* · destructive · confirmActions …)는 StudioClassLifecycleActions 도 같이 쓴다.
+ */
 .root {
-  display: grid;
-  gap: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sv2-space-24);
+  min-width: 0;
+  color: var(--sv2-ink-900);
+  font-family: var(--sv2-font);
 }
 
-.toastWrap {
-  position: fixed;
-  right: 24px;
-  bottom: 24px;
-  z-index: 50;
-  width: min(420px, calc(100vw - 32px));
+/* ── 알림 · 빈 상태 ───────────────────────────────────────────── */
+.alert,
+.operationNotice,
+.toast {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sv2-space-16);
+  padding: 14px var(--sv2-space-16);
+  border-radius: var(--sv2-radius-control);
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.alert {
+  background: var(--sv2-state-danger-bg);
+  color: var(--sv2-state-danger-fg);
+  font-weight: 500;
+}
+
+.alert p {
+  margin: 0;
+}
+
+.operationNotice {
+  background: var(--sv2-state-warn-bg);
+  color: var(--sv2-state-warn-fg);
+}
+
+.operationNotice p {
+  margin: 2px 0 0;
+  font-size: 13px;
+  font-weight: 500;
 }
 
 .toast {
-  border: 1px solid var(--border);
-  border-radius: var(--r-lg);
-  background: var(--surface);
-  box-shadow: 0 18px 50px rgba(17, 17, 17, 0.12);
-  padding: 14px 14px;
-  display: flex;
-  gap: 12px;
-  align-items: flex-start;
-}
-
-.toastIcon {
-  width: 36px;
-  height: 36px;
-  border-radius: var(--r-md);
-  background: var(--brand-50);
-  border: 1px solid var(--border);
-  flex: 0 0 auto;
-  position: relative;
-}
-
-.toastIcon::after {
-  content: "";
-  position: absolute;
-  left: 10px;
-  top: 16px;
-  width: 14px;
-  height: 8px;
-  border-left: 3px solid var(--brand-500);
-  border-bottom: 3px solid var(--brand-500);
-  transform: rotate(-45deg);
+  background: var(--sv2-surface-fill);
 }
 
 .toastBody {
-  flex: 1 1 auto;
-  display: grid;
-  gap: 4px;
-  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 
 .toastTitle {
   margin: 0;
-  font-size: 14px;
-  line-height: 20px;
-  font-weight: 900;
-  color: var(--text-1);
+  font-weight: 700;
 }
 
 .toastDescription {
   margin: 0;
+  color: var(--sv2-ink-500);
   font-size: 13px;
-  line-height: 18px;
-  color: var(--text-2);
+  font-weight: 500;
 }
 
-.toastClose {
-  border: 0;
-  background: transparent;
-  color: var(--text-3);
-  font-size: 12px;
-  font-weight: 800;
-  cursor: pointer;
-  padding: 6px 8px;
-  border-radius: var(--r-md);
-  flex: 0 0 auto;
-}
-
-.toastClose:hover {
-  background: var(--surface-sub);
-  color: var(--text-1);
-}
-
-/* 목록 surface 밖에 있는 page-level toolbar 다. 컨테이너 축을 그대로 쓴다. */
-.toolbar {
+.empty,
+.listEmpty,
+.detailEmpty {
   display: flex;
-  align-items: center;
-  gap: var(--s2);
-  flex-wrap: wrap;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--sv2-space-8);
+  padding: var(--sv2-space-24);
+  border-radius: var(--sv2-radius-card);
+  background: var(--sv2-surface-fill);
 }
 
-.searchWrap {
-  /* 검색은 목록의 보조 도구다. 가로 공간을 독차지하지 않는다. */
-  flex: 1 1 240px;
-  max-width: 420px;
+.listEmpty {
+  padding: var(--sv2-space-16);
 }
 
-.search {
-  width: 100%;
-  height: 40px;
-  border-radius: var(--r-md);
-  border: 1px solid var(--border);
-  padding: 0 12px;
+.detailEmpty {
+  color: var(--sv2-ink-500);
   font-size: 14px;
-  line-height: 20px;
-  color: var(--text-1);
-  background: var(--surface);
-}
-
-.search:focus {
-  outline: none;
-  border-color: var(--brand-500);
-  box-shadow: 0 0 0 3px rgba(42, 173, 56, 0.16);
-}
-
-.pills {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.pill {
-  height: 40px;
-  padding: 0 var(--s3);
-  border-radius: var(--r-full);
-  border: 1px solid var(--border);
-  background: var(--surface);
-  color: var(--text-2);
-  font-size: 13px;
-  font-weight: 800;
-  cursor: pointer;
-}
-
-.pillActive {
-  border-color: var(--brand-500);
-  background: var(--brand-50);
-  color: var(--brand-700);
-}
-
-.operationNotice {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--s4);
-  padding: 14px 16px;
-  border: 1px solid var(--amber-bg);
-  border-radius: var(--r-md);
-  background: var(--amber-bg);
-  color: var(--text-1);
-}
-
-.operationNotice strong {
-  font-size: 14px;
-  line-height: 20px;
-  font-weight: 800;
-}
-
-.operationNotice p {
-  margin: 3px 0 0;
-  color: var(--text-2);
-  font-size: 12px;
-  line-height: 18px;
-}
-
-.operationNoticeAction {
-  flex: 0 0 auto;
-  min-height: 38px;
-  padding: 0 13px;
-  border: 1px solid var(--border-strong);
-  border-radius: var(--r-md);
-  background: var(--surface);
-  color: var(--text-1);
-  font-size: 13px;
-  font-weight: 700;
-  cursor: pointer;
-}
-
-@media (max-width: 480px) {
-
-}
-
-.badge {
-  border-radius: var(--r-full);
-  padding: 6px 10px;
-  font-size: 12px;
-  font-weight: 800;
-  line-height: 14px;
-}
-
-.badgeActive {
-  background: var(--green-bg);
-  color: var(--green-fg);
-  border: 1px solid transparent;
-}
-
-.badgeInactive {
-  background: var(--gray-bg);
-  color: var(--gray-fg);
-  border: 1px solid transparent;
-}
-
-.primaryButton {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  height: 48px;
-  padding: 0 16px;
-  border-radius: var(--r-md);
-  background: var(--brand-700);
-  border: 1px solid var(--brand-700);
-  color: #ffffff;
-  font-size: 15px;
-  font-weight: 800;
-  text-decoration: none;
-  white-space: nowrap;
-  cursor: pointer;
-}
-
-.primaryButton:hover {
-  background: var(--brand-900);
-  border-color: var(--brand-900);
-}
-
-.empty {
-  border: 1px dashed var(--border);
-  border-radius: var(--r-lg);
-  padding: 28px 20px;
-  display: grid;
-  gap: 10px;
-  justify-items: center;
-  text-align: center;
 }
 
 .emptyTitle {
   margin: 0;
   font-size: 16px;
-  line-height: 22px;
-  font-weight: 800;
-  color: var(--text-1);
+  font-weight: 700;
 }
 
 .emptyDescription {
-  margin: 0;
-  font-size: 13px;
-  line-height: 20px;
-  color: var(--text-3);
+  margin: 0 0 var(--sv2-space-8);
+  color: var(--sv2-ink-500);
+  font-size: 14px;
+  font-weight: 500;
 }
 
-@media (max-width: 640px) {
-  .searchWrap {
-    flex: 1 1 100%;
-    max-width: none;
-  }
-}
-
-@media (min-width: 960px) {
-
-}
-
-/* ── v2 List Page: 행은 행이다. 카드로 띄우지 않는다. ────────────────── */
-
-.workspace {
-  border: 1px solid var(--border);
-  border-radius: var(--r-lg);
-  background: var(--surface);
-  overflow: visible;
-}
-
-.resultMeta {
-  margin: 0;
-  padding: var(--s3) 18px;
-  border-bottom: 1px solid var(--border);
-  color: var(--text-2);
-  font-size: 13px;
-}
-
-.listHead,
-.row {
-  display: grid;
-  grid-template-columns: 2fr 1fr 0.9fr 0.8fr 0.7fr auto;
-  gap: 14px;
+/* ── 필터 · 검색 ─────────────────────────────────────────────── */
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  padding: var(--s3) 18px;
+  justify-content: space-between;
+  gap: var(--sv2-space-12);
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sv2-space-8);
+}
+
+/* 검색 입력: TextField 입력 칸 (§5.4) */
+.search {
+  width: min(320px, 100%);
+  height: 44px;
+  padding: 0 14px;
+  border: 1px solid var(--sv2-line-default);
+  border-radius: var(--sv2-radius-control);
+  background: var(--sv2-surface-white);
+  color: var(--sv2-ink-900);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  outline: none;
+}
+
+.search::placeholder {
+  color: var(--sv2-ink-400);
+}
+
+.search:focus-visible {
+  border-color: var(--sv2-brand-700);
+}
+
+/* ── 본문 2단 ────────────────────────────────────────────────── */
+.content {
+  display: grid;
+  grid-template-columns: 300px minmax(0, 1fr);
+  align-items: start;
+  gap: var(--sv2-space-32);
+}
+
+/* 왼쪽 수업 목록 */
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
 }
 
 .listHead {
-  border-bottom: 1px solid var(--border);
-  background: var(--surface-sub);
-  color: var(--text-3);
-  font-size: 12px;
-  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sv2-space-8);
+  padding: 0 var(--sv2-space-4) 6px;
+  font-size: 15px;
+  line-height: 1.45;
 }
 
-.list {
+.listHead span {
+  color: var(--sv2-ink-500);
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: -0.2px;
+}
+
+.listItems {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
-.row + .row {
-  border-top: 1px solid var(--border);
+.classRow {
+  display: flex;
+  align-items: center;
+  gap: var(--sv2-space-12);
+  width: 100%;
+  padding: var(--sv2-space-12);
+  border: 0;
+  border-radius: var(--sv2-radius-card);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
 }
 
-.row:hover {
-  background: var(--surface-sub);
+.classRow:hover {
+  background: var(--sv2-surface-fill);
 }
 
-.cellClass {
-  display: grid;
+.classRow:focus-visible {
+  outline: 2px solid var(--sv2-brand-700);
+  outline-offset: 2px;
+}
+
+.classRowActive,
+.classRowActive:hover {
+  background: var(--sv2-brand-50);
+}
+
+/* 과목 아이콘 상자: 흰 원 44 · 테두리 · 3D 아이콘 28 */
+.classIcon {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border: 1px solid var(--sv2-line-default);
+  border-radius: var(--sv2-radius-pill);
+  background: var(--sv2-surface-white);
+  overflow: hidden;
+}
+
+.classText {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
   gap: 2px;
   min-width: 0;
+  line-height: 1.45;
 }
 
 .classTitle {
-  color: var(--text-1);
-  font-size: 15px;
-  font-weight: 700;
-  letter-spacing: -0.01em;
-  text-decoration: none;
   overflow: hidden;
+  color: var(--sv2-ink-900);
+  font-size: 15px;
+  font-weight: 500;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.classTitle:hover {
-  color: var(--brand-700);
-}
-
-.classMeta {
-  color: var(--text-2);
-  font-size: 12px;
-}
-
-.cellText {
-  display: grid;
-  gap: 2px;
-  min-width: 0;
-  color: var(--text-1);
-  font-size: 13px;
-}
-
-.cellSub {
-  color: var(--text-2);
-  font-size: 12px;
-}
-
-.operationTitle,
-.operationRequired,
-.operationError {
-  font-size: 13px;
-  line-height: 18px;
-  font-weight: 800;
-}
-
-.operationTitle {
-  color: var(--brand-700);
-}
-
-.operationRequired {
-  color: var(--amber-fg);
-}
-
-.operationError {
-  color: var(--text-2);
-}
-
-.operationSetupLink {
-  width: fit-content;
-  color: var(--brand-700);
-  font-size: 12px;
-  line-height: 18px;
-  font-weight: 800;
-  text-decoration: none;
-}
-
-.operationSetupLink:hover {
-  text-decoration: underline;
-}
-
-.cellMuted {
-  color: var(--text-3);
-}
-
-.cellStatus {
-  min-width: 0;
-}
-
-.cellActions {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: var(--s3);
-}
-
-/* 행 안의 보조 액션. 버튼처럼 채우지 않아 목록 밀도를 해치지 않는다. */
-.rowActionStrong {
-  border: 0;
-  padding: 0;
-  background: transparent;
-  font-size: 13px;
-  line-height: 20px;
-  text-decoration: none;
-  cursor: pointer;
-  white-space: nowrap;
-}
-
-.rowActionStrong {
-  color: var(--brand-700);
+.classRowActive .classTitle {
+  color: var(--sv2-brand-700);
   font-weight: 700;
 }
 
-.rowActionStrong:hover {
-  text-decoration: underline;
+.classMeta {
+  color: var(--sv2-ink-500);
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: -0.2px;
 }
 
-@media (max-width: 1024px) {
-  .listHead {
-    display: none;
-  }
-
-  .row {
-    grid-template-columns: 1fr auto;
-    gap: var(--s2) var(--s3);
-    align-items: start;
-  }
-
-  .cellClass {
-    grid-column: 1;
-  }
-
-  .cellStatus {
-    grid-column: 2;
-    justify-self: end;
-  }
-
-  .cellText,
-  .cellActions {
-    grid-column: 1 / -1;
-  }
-
-  .cellText {
-    display: flex;
-    align-items: baseline;
-    gap: var(--s2);
-    flex-wrap: wrap;
-  }
-
-  .operationCell {
-    display: grid;
-    align-items: start;
-    gap: 2px;
-  }
-
-  .cellActions {
-    justify-content: flex-start;
-  }
+/* 오른쪽 선택한 수업 */
+.detail {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sv2-space-24);
+  min-width: 0;
 }
 
-@media (max-width: 640px) {
-  .operationNotice {
-    align-items: flex-start;
-    flex-direction: column;
-  }
-}
-
-/* ── 행 보조 액션 메뉴. 새 UI 인프라를 만들지 않고 이 목록 안에서만 쓴다. ── */
-
-.rowMenu {
-  position: relative;
+.detailHead {
   display: flex;
   align-items: center;
+  gap: var(--sv2-space-16);
+}
+
+.detailIcon {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 64px;
+  height: 64px;
+  border: 1px solid var(--sv2-line-default);
+  border-radius: var(--sv2-radius-card);
+  background: var(--sv2-surface-white);
+  overflow: hidden;
+}
+
+.detailTitleBox {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: var(--sv2-space-4);
+  min-width: 0;
+}
+
+.detailTitleRow {
+  display: flex;
+  align-items: center;
+  gap: var(--sv2-space-8);
+  min-width: 0;
+}
+
+.detailTitle {
+  margin: 0;
+  overflow: hidden;
+  font-size: 24px;
+  line-height: 1.32;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.detailSummary {
+  margin: 0;
+  color: var(--sv2-ink-700);
+  font-size: 14px;
+  line-height: 1.45;
+  font-weight: 500;
+  letter-spacing: -0.2px;
+}
+
+.detailSubject {
+  color: var(--sv2-ink-500);
+}
+
+.detailActions {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: var(--sv2-space-4);
+}
+
+/* 상세 안 탭 (Figma 2148:6097): 글자 15 · 탭 사이 28 · 아래 12 띄우고 2px 선 */
+.detailTabs {
+  display: flex;
+  gap: 28px;
+  border-bottom: 1px solid var(--sv2-line-default);
+}
+
+.detailTab {
+  margin-bottom: -1px;
+  padding: 0 0 var(--sv2-space-12);
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: var(--sv2-ink-500);
+  font: inherit;
+  font-size: 15px;
+  line-height: 1.45;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.detailTab:hover {
+  color: var(--sv2-ink-900);
+}
+
+.detailTab:focus-visible {
+  outline: 2px solid var(--sv2-brand-700);
+  outline-offset: 2px;
+}
+
+.detailTabActive,
+.detailTabActive:hover {
+  border-bottom-color: var(--sv2-brand-700);
+  color: var(--sv2-brand-700);
+  font-weight: 700;
+}
+
+.tabPanel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sv2-space-24);
+}
+
+.blockHead {
+  display: flex;
+  align-items: center;
+  gap: var(--sv2-space-8);
+  min-height: 36px;
+}
+
+.blockTitle {
+  margin: 0;
+  font-size: 17px;
+  line-height: 1.45;
+  font-weight: 700;
+  letter-spacing: -0.2px;
+}
+
+.blockMeta {
+  flex: 1 1 auto;
+  color: var(--sv2-ink-500);
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: -0.2px;
+}
+
+.blockHead > a:last-child {
+  margin-left: auto;
+}
+
+/* 운영 시간 (Figma 2148:6104): 그룹마다 surface/fill 줄 · 14/16 · 간격 16 */
+.rules {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.ruleRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sv2-space-16);
+  padding: 14px var(--sv2-space-16);
+  border-radius: var(--sv2-radius-control);
+  background: var(--sv2-surface-fill);
+  font-size: 14px;
+  line-height: 1.45;
+  font-weight: 500;
+  letter-spacing: -0.2px;
+}
+
+.ruleDays {
+  width: 140px;
+  font-size: 15px;
+  letter-spacing: 0;
+}
+
+.ruleTimes {
+  color: var(--sv2-ink-500);
+}
+
+.ruleNote {
+  margin: 0;
+  padding: 14px var(--sv2-space-16);
+  border-radius: var(--sv2-radius-control);
+  background: var(--sv2-surface-fill);
+  color: var(--sv2-ink-700);
+  font-size: 14px;
+  line-height: 1.45;
+  font-weight: 500;
+}
+
+.ruleWarn {
+  background: var(--sv2-state-warn-bg);
+  color: var(--sv2-state-warn-fg);
+}
+
+.ruleError {
+  margin: 0;
+  background: var(--sv2-state-danger-bg);
+  color: var(--sv2-state-danger-fg);
+}
+
+/* 다음 7일 (Figma 2148:6121) */
+.week {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sv2-space-12);
+}
+
+.weekGrid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(96px, 1fr));
+  gap: var(--sv2-space-8);
+  overflow-x: auto;
+}
+
+/* 날짜 칸: surface/fill · 모서리 12 · 10/8/12 · 최소 높이 170. 오늘은 surface/ground-green */
+.dayCell {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+  min-width: 0;
+  min-height: 170px;
+  padding: 10px var(--sv2-space-8) var(--sv2-space-12);
+  border: 0;
+  border-radius: var(--sv2-radius-control);
+  background: var(--sv2-surface-fill);
+  color: inherit;
+  font: inherit;
+  line-height: 1.45;
+  text-align: left;
+  cursor: pointer;
+}
+
+.dayCell:hover:not(:disabled) {
+  box-shadow: inset 0 0 0 1px var(--sv2-line-default);
+}
+
+.dayCell:focus-visible {
+  outline: 2px solid var(--sv2-brand-700);
+  outline-offset: 2px;
+}
+
+.dayCell:disabled {
+  cursor: progress;
+}
+
+.dayCellToday {
+  background: var(--sv2-surface-ground-green);
+}
+
+.dayHead {
+  display: flex;
+  align-items: center;
+  gap: var(--sv2-space-4);
+  padding: 0 var(--sv2-space-4) var(--sv2-space-4);
+}
+
+.dayHead strong {
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.weekday,
+.saturday,
+.sunday {
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: -0.2px;
+}
+
+.weekday {
+  color: var(--sv2-ink-500);
+}
+
+.saturday {
+  color: var(--sv2-subject-math-fg);
+}
+
+.sunday {
+  color: var(--sv2-state-danger-fg);
+}
+
+.todayMark {
+  margin-left: auto;
+  color: var(--sv2-brand-700);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.dayEmpty {
+  color: var(--sv2-ink-300);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: -0.2px;
+}
+
+.dayAdd {
+  color: var(--sv2-ink-400);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: -0.2px;
+}
+
+/* 회차 칸: 모서리 chip-time · 8/10 · 시간 15 Bold + 12 Medium */
+.slot {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: var(--sv2-space-8) 10px;
+  border: 1px solid var(--sv2-line-default);
+  border-radius: var(--sv2-radius-chip-time);
+  background: var(--sv2-surface-white);
+}
+
+.slot strong {
+  font-size: 15px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.slot small {
+  color: var(--sv2-ink-500);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: -0.2px;
+}
+
+.slotBooked {
+  border: 1.5px solid var(--sv2-brand-700);
+  background: var(--sv2-brand-50);
+}
+
+.slotBooked strong,
+.slotBooked small {
+  color: var(--sv2-brand-700);
+}
+
+.slotClosed {
+  opacity: 0.8;
+}
+
+.slotClosed strong {
+  color: var(--sv2-ink-300);
+  text-decoration: line-through;
+}
+
+.caption {
+  margin: 0;
+  color: var(--sv2-ink-500);
+  font-size: 13px;
+  line-height: 1.45;
+  font-weight: 500;
+  letter-spacing: -0.2px;
+}
+
+/* 수업 소개 */
+.introSection {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.introTitle {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.45;
+  font-weight: 700;
+}
+
+.introText,
+.introEmpty {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.6;
+  font-weight: 500;
+  white-space: pre-wrap;
+}
+
+.introEmpty {
+  color: var(--sv2-ink-400);
+}
+
+/* ── 행 메뉴 (공개 전환 · 종료 · 복구 · 영구 삭제) ─────────────── */
+.rowMenu {
+  position: relative;
 }
 
 .rowMenuButton {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
+  width: 36px;
+  height: 36px;
   border: 0;
-  border-radius: var(--r-sm);
+  border-radius: var(--sv2-radius-control);
   background: transparent;
-  color: var(--text-3);
-  font-size: 16px;
-  line-height: 1;
+  color: var(--sv2-ink-700);
+  font: inherit;
+  font-size: 18px;
+  font-weight: 700;
   cursor: pointer;
 }
 
 .rowMenuButton:hover,
 .rowMenuButtonOpen {
-  background: var(--surface-sub);
-  color: var(--text-1);
+  background: var(--sv2-surface-fill);
 }
 
+.rowMenuButton:focus-visible {
+  outline: 2px solid var(--sv2-brand-700);
+  outline-offset: 2px;
+}
+
+/* 팝오버는 그림자 예외(§1). */
 .rowMenuList {
   position: absolute;
-  top: calc(100% + 4px);
+  top: calc(100% + var(--sv2-space-4));
   right: 0;
   z-index: 20;
-  min-width: 240px;
-  display: grid;
-  padding: var(--s1);
-  border: 1px solid var(--border);
-  border-radius: var(--r-md);
-  background: var(--surface);
-  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.07);
-}
-
-/*
- * 마지막 2개 행은 메뉴를 위로 열어 페이지 아래로 벗어나는 것을 줄인다.
- * workspace는 overflow: visible로 단일 행에서도 메뉴 상단을 자르지 않는다.
- * .list 의 자식은 .row 뿐이라 nth-last-child 가 행 순서와 정확히 일치한다.
- */
-.row:nth-last-child(-n + 2) .rowMenuList {
-  top: auto;
-  bottom: calc(100% + 4px);
+  display: flex;
+  flex-direction: column;
+  min-width: 180px;
+  padding: 6px;
+  border: 1px solid var(--sv2-line-default);
+  border-radius: var(--sv2-radius-control);
+  background: var(--sv2-surface-white);
+  box-shadow: 0 8px 24px rgb(17 19 18 / 12%);
 }
 
 .rowMenuItem {
   display: block;
   width: 100%;
+  padding: 10px var(--sv2-space-12);
   border: 0;
-  padding: var(--s2) var(--s3);
-  border-radius: var(--r-sm);
+  border-radius: var(--sv2-radius-control);
   background: transparent;
-  color: var(--text-1);
-  font-size: 13px;
-  line-height: 20px;
-  font-weight: 600;
+  color: var(--sv2-ink-900);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 500;
   text-align: left;
   text-decoration: none;
   cursor: pointer;
 }
 
-.rowMenuItem:hover {
-  background: var(--surface-sub);
+.rowMenuItem:hover:not(:disabled) {
+  background: var(--sv2-surface-fill);
 }
 
-.rowMenuForm {
-  display: block;
+.rowMenuItem:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
 
-.badgeArchived { background: #f1eafa; color: #69458b; }
-.destructive { color: #b42318; }
-.deleteExplanation { max-width: 240px; padding: 8px 12px; margin: 0; font-size: 12px; line-height: 1.6; color: #667085; }
-.confirmActions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 24px; }
-.destructiveButton { border: 0; border-radius: 8px; padding: 10px 18px; background: #b42318; color: white; cursor: pointer; }
-.destructiveButton:disabled { opacity: .6; cursor: wait; }
+.destructive {
+  color: var(--sv2-state-danger-fg);
+}
+
+.deleteExplanation {
+  max-width: 240px;
+  margin: 0;
+  padding: var(--sv2-space-8) var(--sv2-space-12);
+  color: var(--sv2-ink-500);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+/* 종료 · 삭제 확인 팝업의 버튼 (V2Button 과 같은 치수) */
+.confirmActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: var(--sv2-space-24);
+}
+
+.pill,
+.primaryButton,
+.destructiveButton {
+  height: 44px;
+  padding: 0 var(--sv2-space-16);
+  border: 1px solid transparent;
+  border-radius: var(--sv2-radius-control);
+  font: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.pill {
+  border-color: var(--sv2-line-default);
+  background: var(--sv2-surface-white);
+  color: var(--sv2-ink-900);
+}
+
+.primaryButton {
+  background: var(--sv2-brand-700);
+  color: var(--sv2-surface-white);
+}
+
+.destructiveButton {
+  background: var(--sv2-state-danger-fg);
+  color: var(--sv2-surface-white);
+}
+
+.pill:disabled,
+.primaryButton:disabled,
+.destructiveButton:disabled {
+  opacity: 0.4;
+  cursor: wait;
+}
+
+@media (max-width: 1100px) {
+  .content {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .detailHead {
+    flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 720px) {
+  .detailIcon {
+    display: none;
+  }
+
+  .detailActions {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+
+  .search {
+    width: 100%;
+  }
+}

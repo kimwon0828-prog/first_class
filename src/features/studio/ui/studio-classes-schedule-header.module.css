@@ -1,0 +1,39 @@
+/* 수업·일정 머리 (STUDIO_DESIGN_SYSTEM.md §2 화면 제목 · §5.12). */
+.head {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sv2-space-20);
+}
+
+.header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--sv2-space-12);
+}
+
+.titleBox {
+  display: flex;
+  flex: 1 1 320px;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.title {
+  margin: 0;
+  color: var(--sv2-ink-900);
+  font-size: 30px;
+  line-height: 1.32;
+  font-weight: 700;
+  letter-spacing: -0.7px;
+}
+
+.description {
+  margin: 0;
+  color: var(--sv2-ink-500);
+  font-size: 15px;
+  line-height: 1.45;
+  font-weight: 400;
+  letter-spacing: -0.2px;
+}

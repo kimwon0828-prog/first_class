@@ -1,110 +1,12 @@
-/* canvas 는 StudioShell 이 칠한다. */
+/* 수업·일정 본문 틀 (STUDIO_DESIGN_SYSTEM.md §2): 위 36 · 좌우 48 · 아래 56. canvas 는 StudioShell 이 칠한다. */
 .page {
   min-height: 100dvh;
+  padding: 36px var(--sv2-main-px) 56px;
+  font-family: var(--sv2-font);
 }
 
-/*
- * Page-level 요소(제목·설명·페이지 액션·독립 Toolbar)는 Studio 컨테이너 축에 맞춘다.
- * 목록·카드 내부 텍스트는 각 component 의 기존 inset 을 그대로 쓴다.
- * 제목을 목록 본문 축에 맞추려고 surface 외곽선보다 안쪽으로 들여쓰지 않는다.
- */
-.container {
-  max-width: var(--studio-max);
-  margin: 0 auto;
-  padding: 32px 24px 48px;
-  display: grid;
-  gap: 24px;
-}
-
-.header {
-  display: flex;
-  justify-content: space-between;
-  gap: 16px;
-  flex-wrap: wrap;
-  align-items: flex-end;
-}
-
-.headerLeft {
-  display: grid;
-  gap: 8px;
-}
-
-.headerRight {
-  display: flex;
-  justify-content: flex-end;
-}
-
-.title {
-  margin: 0;
-  font-size: 30px;
-  line-height: 36px;
-  letter-spacing: -0.04em;
-  font-weight: 800;
-  color: var(--text-1);
-}
-
-.description {
-  margin: 0;
-  font-size: 14px;
-  line-height: 22px;
-  color: var(--text-2);
-}
-
-.primaryButton {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  height: 40px;
-  padding: 0 16px;
-  border-radius: var(--r-md);
-  background: var(--brand-700);
-  border: 1px solid var(--brand-700);
-  color: #ffffff;
-  font-size: 15px;
-  font-weight: 800;
-  text-decoration: none;
-  white-space: nowrap;
-}
-
-.primaryButton:hover {
-  background: var(--brand-900);
-  border-color: var(--brand-900);
-}
-
-.alertDanger {
-  background: var(--surface);
-  border: 1px solid #fecaca;
-  border-radius: var(--r-lg);
-  padding: 14px 16px;
-}
-
-.alertText {
-  margin: 0;
-  font-size: 13px;
-  line-height: 18px;
-  color: var(--red-fg);
-  font-weight: 600;
-}
-
-@media (min-width: 960px) {
-  .container {
-    /*
-     * 좌우는 24px 를 유지한다. Studio 본문 축은 대시보드·상담·등록·구독 화면과
-     * StudioWorkspaceFooter 가 모두 쓰는 24px 하나뿐이라, 여기만 32px 로 키우면
-     * 화면을 옮길 때 본문이 8px 흔들리고 footer 축과도 어긋난다.
-     */
-    padding: 32px 24px 56px;
-    gap: 32px;
-  }
-}
-
-/*
- * 모바일 좌우 여백. cases · billing 과 같은 860px 기준, 같은 20px 을 쓴다.
- * StudioShell 의 모바일 .content inset 과 같은 값이라 Studio 전체가 하나의 축을 갖는다.
- * 세로 리듬은 건드리지 않으므로 padding-inline 만 덮어쓴다.
- */
 @media (max-width: 860px) {
-  .container {
-    padding-inline: 20px;
+  .page {
+    padding-inline: var(--sv2-space-20);
   }
 }

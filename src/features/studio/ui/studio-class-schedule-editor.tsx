@@ -29,6 +29,8 @@ type StudioClassScheduleEditorProps = {
   days: StudioScheduleCalendarDay[]
   scheduleSlots: EditableStudioScheduleSlotDraft[]
   onChangeScheduleSlots: (next: EditableStudioScheduleSlotDraft[]) => void
+  /** 처음 고를 날짜. 수업 탭의 다음 7일 칸에서 연 팝업은 누른 날짜로 연다. */
+  initialSelectedDate?: string
 }
 
 const parseMonth = (value: string) => {
@@ -62,14 +64,15 @@ export const StudioClassScheduleEditor = ({
   month,
   days,
   scheduleSlots,
-  onChangeScheduleSlots
+  onChangeScheduleSlots,
+  initialSelectedDate
 }: StudioClassScheduleEditorProps) => {
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const visibleMonthDate = useMemo(() => parseMonth(month), [month])
   const dayMap = useMemo(() => new Map(days.map((day) => [day.date, day])), [days])
-  const [selectedDate, setSelectedDate] = useState(() => pickInitialSelectedDate(days, month))
+  const [selectedDate, setSelectedDate] = useState(() => initialSelectedDate ?? pickInitialSelectedDate(days, month))
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isExceptionOpen, setIsExceptionOpen] = useState(operationsOnly)
   const todayKey = toDateKey(new Date())
@@ -80,9 +83,14 @@ export const StudioClassScheduleEditor = ({
         return current
       }
 
+      // 일정이 없는 날짜를 눌러 연 경우에도, 같은 달을 보는 동안은 그 날짜를 유지한다.
+      if (current === initialSelectedDate && current.startsWith(month)) {
+        return current
+      }
+
       return pickInitialSelectedDate(days, month)
     })
-  }, [dayMap, days, month])
+  }, [dayMap, days, month, initialSelectedDate])
 
   const selectedDay = dayMap.get(selectedDate) ?? null
   const monthLabel = `${visibleMonthDate.getFullYear()}년 ${visibleMonthDate.getMonth() + 1}월`
