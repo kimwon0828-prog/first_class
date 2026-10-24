@@ -105,6 +105,9 @@ import type {
   StudioApplicationListOptions,
   StudioApplicationDetail,
   StudioApplicationSummary,
+  StudioStudentContactEvent,
+  RecontactRecipientStatus,
+  RecontactTemplateKind,
   StudioCurrentParentDecision,
   StudioConsultationPipelineApplicationItem,
   StudioUnregisteredApplicationItem,
@@ -325,6 +328,8 @@ type TrialApplicationRow = {
   registration_reason_ids?: string[] | null
   regular_schedule_preference_note?: string | null
   regular_schedule_preference_updated_at?: string | null
+  registration_note?: string | null
+  import_batch_id?: string | null
   memo?: string | null
   status: TrialApplicationSummary["status"]
   created_at: string
@@ -1060,7 +1065,17 @@ const mapStudioApplication = (
       : null,
     // 분석 화면용(목록 조회만 select 한다). 없으면 빈 목록 · null.
     registrationReasonIds: Array.isArray(row.registration_reason_ids) ? row.registration_reason_ids : [],
-    regularSchedulePreference: row.regular_schedule_preference ?? null
+    regularSchedulePreference: row.regular_schedule_preference ?? null,
+    // 학생 화면(2차-3)용. 목록 조회만 select 한다 — 다른 조회에서는 null.
+    childId: row.child_id ?? null,
+    childSchool: row.child_school ?? null,
+    interestSubjects: row.interest_subjects ?? null,
+    currentLevel: row.current_level ?? null,
+    preferredRegularSchedule: row.preferred_regular_schedule ?? null,
+    registrationNote: row.registration_note ?? null,
+    nextContactAt: row.next_contact_at ?? null,
+    followUpNote: row.follow_up_note ?? null,
+    importBatchId: row.import_batch_id ?? null
   }
 }
 
@@ -4684,7 +4699,7 @@ export const supabaseDataAdapter: DataAdapter = {
       let query = supabase
         .from("studio_trial_applications")
         .select(
-          "id, class_id, parent_id, child_name, child_grade, parent_name, parent_phone, class_schedule_id, requested_schedule_block_id, selected_schedule_label, requested_slot_at, confirmed_slot_at, assigned_teacher_id, contacted_at, scheduled_at, completed_at, enrolled_at, lost_at, canceled_at, no_show_at, goal_type, registration_status, registration_reason_ids, regular_schedule_preference, unregistered_reason, status, created_at, updated_at, classes!inner(title, subject, organization_id, program_type, organizations(sido, sigungu, bname), report_category:subject_categories(code), report_subject:subjects(code, subject_categories(code))), class_schedules(start_time, end_time), confirmed_block:schedule_blocks!trial_applications_confirmed_schedule_block_id_fkey(start_at, end_at)".replace("_fkey(start_at", blockOnly ? "_fkey!inner(start_at" : "_fkey(start_at"),
+          "id, class_id, parent_id, child_id, child_name, child_grade, child_school, interest_subjects, current_level, preferred_regular_schedule, parent_name, parent_phone, class_schedule_id, requested_schedule_block_id, selected_schedule_label, requested_slot_at, confirmed_slot_at, assigned_teacher_id, contacted_at, scheduled_at, completed_at, enrolled_at, lost_at, canceled_at, no_show_at, goal_type, registration_status, registration_reason_ids, registration_note, regular_schedule_preference, unregistered_reason, next_contact_at, follow_up_note, import_batch_id, status, created_at, updated_at, classes!inner(title, subject, organization_id, program_type, organizations(sido, sigungu, bname), report_category:subject_categories(code), report_subject:subjects(code, subject_categories(code))), class_schedules(start_time, end_time), confirmed_block:schedule_blocks!trial_applications_confirmed_schedule_block_id_fkey(start_at, end_at)".replace("_fkey(start_at", blockOnly ? "_fkey!inner(start_at" : "_fkey(start_at"),
           // 총 개수를 알아야 서버가 page 를 잘라도 끝을 정확히 안다.
           // 같은 request 에 실려 오므로 query 가 늘지 않는다(getStudioCases 와 같은 방식).
           { count: "exact" }
@@ -4870,6 +4885,242 @@ export const supabaseDataAdapter: DataAdapter = {
     }
 
     return count ?? 0
+  },
+  // ── 학생 · 안내 보내기 (2차-3) ──────────────────────────────────
+  async listStudioStudentActivity(_organizationId, applicationIds, options = {}) {
+    const ids = Array.from(new Set(applicationIds))
+    if (ids.length === 0) {
+      return { events: [], trialSummaries: [] }
+    }
+
+    // 조직 범위는 RLS(학원은 자기 조직 신청의 기록만 읽는다)가 정한다. 호출자는 같은 조직 목록에서 고른 id 만 넘긴다.
+    const supabase = await getSupabaseServerClient()
+    const events: StudioStudentContactEvent[] = []
+    const trialSummaries: Array<{ applicationId: string; publicSummary: string }> = []
+    const consultationRows: Array<{ application_id: string; channel: ConsultationLogChannel; note?: string | null; created_by?: string | null; occurred_at: string }> = []
+
+    // 신청 50개씩. PostgREST max_rows(1000)에 걸리지 않게 작게 자른다.
+    for (const chunk of chunkArray(ids, 50)) {
+      const [consultations, reports, recontacts, summaries] = await Promise.all([
+        supabase
+          .from("consultation_logs")
+          .select(options.includeNotes ? "application_id, channel, note, created_by, occurred_at" : "application_id, channel, occurred_at")
+          .in("application_id", chunk),
+        supabase
+          .from("experience_reports")
+          .select("application_id, published_at")
+          .eq("status", "published")
+          .in("application_id", chunk),
+        supabase
+          .from("recontact_recipients")
+          .select("application_id, status, sent_at, created_at, recontact_batches(template_kind)")
+          .in("application_id", chunk),
+        options.includeTrialSummaries
+          ? supabase.from("trial_results").select("application_id, public_summary").in("application_id", chunk)
+          : Promise.resolve({ data: [], error: null })
+      ])
+
+      if (consultations.error || reports.error || recontacts.error || summaries.error) {
+        throw new Error("failed_to_fetch_studio_student_activity")
+      }
+
+      consultationRows.push(...((consultations.data ?? []) as unknown as typeof consultationRows))
+      for (const row of (reports.data ?? []) as Array<{ application_id: string; published_at: string | null }>) {
+        if (row.published_at) events.push({ kind: "report", applicationId: row.application_id, at: row.published_at })
+      }
+      for (const row of (recontacts.data ?? []) as unknown as Array<{
+        application_id: string
+        status: RecontactRecipientStatus
+        sent_at: string | null
+        created_at: string
+        recontact_batches: { template_kind: RecontactTemplateKind } | Array<{ template_kind: RecontactTemplateKind }> | null
+      }>) {
+        const batch = Array.isArray(row.recontact_batches) ? row.recontact_batches[0] : row.recontact_batches
+        events.push({
+          kind: "recontact",
+          applicationId: row.application_id,
+          at: row.sent_at ?? row.created_at,
+          status: row.status,
+          templateKind: batch?.template_kind ?? null
+        })
+      }
+      for (const row of (summaries.data ?? []) as Array<{ application_id: string; public_summary: string | null }>) {
+        const text = row.public_summary?.trim()
+        if (text) trialSummaries.push({ applicationId: row.application_id, publicSummary: text })
+      }
+    }
+
+    const authorNameById = options.includeNotes
+      ? await getProfileNameMap(Array.from(new Set(consultationRows.map((row) => row.created_by).filter((id): id is string => Boolean(id)))))
+      : new Map<string, string>()
+    for (const row of consultationRows) {
+      events.push({
+        kind: "consultation",
+        applicationId: row.application_id,
+        at: row.occurred_at,
+        channel: row.channel,
+        note: options.includeNotes ? row.note?.trim() || null : null,
+        authorName: options.includeNotes && row.created_by ? authorNameById.get(row.created_by) ?? null : null
+      })
+    }
+
+    return { events, trialSummaries }
+  },
+  async listStudioMarketingConsents(organizationId, parentIds) {
+    const ids = Array.from(new Set(parentIds))
+    if (ids.length === 0) {
+      return []
+    }
+
+    // 학원은 자기 학원 행의 동의 여부 · 시각 열만 읽는다(column grant + RLS).
+    const supabase = await getSupabaseServerClient()
+    const rows: Array<{ parent_id: string; consented: boolean; consented_at: string | null; withdrawn_at: string | null }> = []
+    for (const chunk of chunkArray(ids, 100)) {
+      const { data, error } = await supabase
+        .from("parent_marketing_consents")
+        .select("parent_id, consented, consented_at, withdrawn_at")
+        .eq("organization_id", organizationId)
+        .in("parent_id", chunk)
+
+      if (error) {
+        throw new Error("failed_to_fetch_studio_marketing_consents")
+      }
+
+      rows.push(...((data ?? []) as typeof rows))
+    }
+
+    return rows.map((row) => ({
+      parentId: row.parent_id,
+      consented: row.consented,
+      consentedAt: row.consented_at,
+      withdrawnAt: row.withdrawn_at
+    }))
+  },
+  async getStudioRecontactUsage() {
+    const supabase = await getSupabaseServerClient()
+    const { data, error } = await supabase.rpc("get_recontact_month_usage")
+    if (error || !data || typeof data !== "object") {
+      throw new Error("failed_to_fetch_recontact_usage")
+    }
+
+    const usage = data as { used?: unknown; limit?: unknown }
+    return { used: Number(usage.used ?? 0), limit: Number(usage.limit ?? 200) }
+  },
+  async getStudioRecontactSender(organizationId) {
+    // 학원 설정 화면(getStudioSettingsOrganization)과 같이 서버가 확인한 조직 id 하나만 읽는다.
+    const { data, error } = await getSupabaseServiceRoleClient()
+      .from("organizations")
+      .select("name, branch_name, academy_phone, contact_phone")
+      .eq("id", organizationId)
+      .maybeSingle()
+
+    if (error || !data) {
+      throw new Error("failed_to_fetch_recontact_sender")
+    }
+
+    const row = data as { name: string; branch_name: string | null; academy_phone: string | null; contact_phone: string | null }
+    return {
+      academyName: [row.name, row.branch_name].map((value) => value?.trim()).filter(Boolean).join(" "),
+      academyPhone: row.academy_phone?.trim() || row.contact_phone?.trim() || null
+    }
+  },
+  async setStudioNextContact(_organizationId, applicationId, input) {
+    // 조직 확인은 RPC 가 한다(신청 → 수업 → 조직 = 내 프로필의 조직).
+    const supabase = await getSupabaseServerClient()
+    const { error } = await supabase.rpc("set_studio_next_contact", {
+      p_application_id: applicationId,
+      p_next_contact_on: input.date,
+      p_note: input.note
+    })
+
+    if (error) {
+      throw new Error(error.message?.includes("invalid_next_contact") ? "invalid_next_contact" : "failed_to_set_next_contact")
+    }
+  },
+  async reserveRecontactBatch(_organizationId, input) {
+    const supabase = await getSupabaseServerClient()
+    const { data, error } = await supabase.rpc("reserve_recontact_batch", {
+      p_batch_id: input.batchId,
+      p_application_ids: input.applicationIds,
+      p_template_kind: input.templateKind,
+      p_class_id: input.classId,
+      p_body_template: input.bodyTemplate,
+      p_link_url: input.linkUrl,
+      p_opt_out_number: input.optOutNumber,
+      p_sender_phone: input.senderPhone
+    })
+
+    if (error) {
+      // RPC 가 던진 코드만 넘긴다(원문 · 세부 사항은 넘기지 않는다).
+      const code = [
+        "recontact_plan_required",
+        "recontact_no_eligible_recipient",
+        "recontact_recipient_count_invalid",
+        "recontact_class_forbidden",
+        "recontact_batch_conflict",
+        "studio_required"
+      ].find((item) => error.message?.includes(item))
+      throw new Error(code ?? "failed_to_reserve_recontact_batch")
+    }
+
+    const result = data as {
+      mode: "reserved" | "duplicate" | "limit_exceeded"
+      reserved?: number
+      skipped?: number
+      used?: number
+      limit?: number
+      requested?: number
+      recipients?: Array<{ recipientId: string; applicationId: string }>
+    }
+
+    if (result.mode === "duplicate") {
+      return { mode: "duplicate" }
+    }
+
+    if (result.mode === "limit_exceeded") {
+      return { mode: "limit_exceeded", used: Number(result.used ?? 0), limit: Number(result.limit ?? 200), requested: Number(result.requested ?? 0) }
+    }
+
+    return {
+      mode: "reserved",
+      reserved: Number(result.reserved ?? 0),
+      skipped: Number(result.skipped ?? 0),
+      used: Number(result.used ?? 0),
+      limit: Number(result.limit ?? 200),
+      recipients: Array.isArray(result.recipients) ? result.recipients : []
+    }
+  },
+  async finishRecontactBatch(organizationId, batchId, results) {
+    // 학원 계정에는 받는 사람 결과를 쓰는 권한이 없다(한도를 우회하지 못하게). 서버만 service role 로 쓴다.
+    const client = getSupabaseServiceRoleClient()
+    for (const result of results) {
+      const { error } = await client
+        .from("recontact_recipients")
+        .update({
+          status: result.status,
+          provider_message_id: result.providerMessageId,
+          error_code: result.errorCode,
+          sent_at: result.sentAt
+        })
+        .eq("id", result.recipientId)
+        .eq("batch_id", batchId)
+        .eq("organization_id", organizationId)
+        .eq("status", "queued")
+
+      if (error) {
+        throw new Error("failed_to_record_recontact_delivery")
+      }
+    }
+
+    const { error } = await client
+      .from("recontact_batches")
+      .update({ status: "done", finished_at: new Date().toISOString() })
+      .eq("id", batchId)
+      .eq("organization_id", organizationId)
+
+    if (error) {
+      throw new Error("failed_to_finish_recontact_batch")
+    }
   },
   async listStudioConsultationPipelineApplications(organizationId) {
     const supabase = await getSupabaseServerClient()

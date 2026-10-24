@@ -55,6 +55,10 @@ import type {
   StudioConsultationLog,
   StudioTrialResult,
   StudioApplicationSummary,
+  StudioStudentContactEvent,
+  StudioRecontactSender,
+  RecontactRecipientStatus,
+  RecontactTemplateKind,
   StudioClassListItem,
   StudioClassScheduleItem,
   StudioScheduleCalendarDay,
@@ -787,6 +791,44 @@ const getProfileDisplayNameById = (profileId: string | null | undefined) => {
 // 발행 이력. mock 에서도 supabase 와 같은 lifecycle 을 지킨다 —
 // 한 application 에 published 는 최대 1개, version 은 재사용하지 않는다.
 const experienceReports: ExperienceReportSummary[] = []
+
+/*
+ * 학생 · 안내 보내기(2차-3) mock 저장소. supabase 의 parent_marketing_consents · recontact_* 와 같은 규칙만 흉내 낸다
+ * (동의 · 같은 번호 한 통 · 1회 50명 · 월 200건 · 중복 클릭). 080 수신거부는 mock 에 없다.
+ */
+type MockMarketingConsent = { parentId: string; organizationId: string; consented: boolean; consentedAt: string | null; withdrawnAt: string | null }
+type MockRecontactRecipient = {
+  id: string
+  batchId: string
+  organizationId: string
+  applicationId: string
+  phoneDigits: string
+  status: RecontactRecipientStatus
+  templateKind: RecontactTemplateKind
+  createdAt: string
+  sentAt: string | null
+}
+const recontactStore = globalThis as typeof globalThis & {
+  __firstClassMockMarketingConsents__?: MockMarketingConsent[]
+  __firstClassMockRecontactBatchIds__?: Set<string>
+  __firstClassMockRecontactRecipients__?: MockRecontactRecipient[]
+  __firstClassMockRecontactSender__?: StudioRecontactSender
+}
+const marketingConsents = recontactStore.__firstClassMockMarketingConsents__ ?? (recontactStore.__firstClassMockMarketingConsents__ = [])
+const recontactBatchIds = recontactStore.__firstClassMockRecontactBatchIds__ ?? (recontactStore.__firstClassMockRecontactBatchIds__ = new Set())
+const recontactRecipients = recontactStore.__firstClassMockRecontactRecipients__ ?? (recontactStore.__firstClassMockRecontactRecipients__ = [])
+const recontactSender = recontactStore.__firstClassMockRecontactSender__ ??
+  (recontactStore.__firstClassMockRecontactSender__ = { academyName: [mockOrganizationLocation.name, mockOrganizationLocation.branchName].filter(Boolean).join(" "), academyPhone: "02-123-4567" })
+const RECONTACT_MONTH_LIMIT = 200
+const RECONTACT_PER_BATCH = 50
+const seoulMonthStartIso = () => {
+  const now = new Date(Date.now() + 9 * 3600_000)
+  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1) - 9 * 3600_000).toISOString()
+}
+const recontactMonthUsed = () => {
+  const since = seoulMonthStartIso()
+  return recontactRecipients.filter((row) => row.createdAt >= since && (row.status === "queued" || row.status === "sent")).length
+}
 
 
 // 학부모 선택 기록. supabase 와 같은 규칙을 지킨다 —
@@ -2051,6 +2093,147 @@ export const mockDataAdapter: DataAdapter = {
         return mapped
       })
       .sort((a, b) => (a.completedAt < b.completedAt ? 1 : -1))
+  },
+  async listStudioStudentActivity(organizationId, applicationIds, options = {}) {
+    if (organizationId !== mockOrganizationId) {
+      return { events: [], trialSummaries: [] }
+    }
+
+    const ids = new Set(applicationIds)
+    const events: StudioStudentContactEvent[] = [
+      ...consultationLogs
+        .filter((row) => ids.has(row.applicationId))
+        .map((row) => ({
+          kind: "consultation" as const,
+          applicationId: row.applicationId,
+          at: row.occurredAt,
+          channel: row.channel ?? "OTHER",
+          note: options.includeNotes ? row.note : null,
+          authorName: options.includeNotes ? (row.createdBy === mockStudioActorProfileId ? "원장" : null) : null
+        })),
+      ...experienceReports
+        .filter((row) => ids.has(row.applicationId) && row.status === "published")
+        .map((row) => ({ kind: "report" as const, applicationId: row.applicationId, at: row.publishedAt })),
+      ...recontactRecipients
+        .filter((row) => ids.has(row.applicationId))
+        .map((row) => ({
+          kind: "recontact" as const,
+          applicationId: row.applicationId,
+          at: row.sentAt ?? row.createdAt,
+          status: row.status,
+          templateKind: row.templateKind
+        }))
+    ]
+    const trialSummaries = options.includeTrialSummaries
+      ? trialResults
+          .filter((row) => ids.has(row.applicationId) && row.publicSummary?.trim())
+          .map((row) => ({ applicationId: row.applicationId, publicSummary: row.publicSummary!.trim() }))
+      : []
+    return { events, trialSummaries }
+  },
+  async listStudioMarketingConsents(organizationId, parentIds) {
+    const ids = new Set(parentIds)
+    return marketingConsents
+      .filter((row) => row.organizationId === organizationId && ids.has(row.parentId))
+      .map(({ parentId, consented, consentedAt, withdrawnAt }) => ({ parentId, consented, consentedAt, withdrawnAt }))
+  },
+  async getStudioRecontactUsage() {
+    return { used: recontactMonthUsed(), limit: RECONTACT_MONTH_LIMIT }
+  },
+  async getStudioRecontactSender(organizationId) {
+    if (organizationId !== mockOrganizationId) {
+      throw new Error("failed_to_fetch_recontact_sender")
+    }
+
+    return { ...recontactSender }
+  },
+  async setStudioNextContact(organizationId, applicationId, input) {
+    const target = applications.find((item) => item.id === applicationId)
+    if (organizationId !== mockOrganizationId || !target) {
+      throw new Error("failed_to_set_next_contact")
+    }
+
+    const note = input.note?.trim() || null
+    if ((input.date === null) !== (note === null) || (note && note.length > 200)) {
+      throw new Error("invalid_next_contact")
+    }
+
+    // supabase RPC 와 같다: 그 날 09:00 KST.
+    target.nextContactAt = input.date ? new Date(`${input.date}T09:00:00+09:00`).toISOString() : null
+    target.followUpNote = note
+    target.updatedAt = new Date().toISOString()
+  },
+  async reserveRecontactBatch(organizationId, input) {
+    if (organizationId !== mockOrganizationId) {
+      throw new Error("studio_required")
+    }
+
+    if (recontactBatchIds.has(input.batchId)) {
+      return { mode: "duplicate" }
+    }
+
+    if (input.applicationIds.length === 0 || input.applicationIds.length > RECONTACT_PER_BATCH) {
+      throw new Error("recontact_recipient_count_invalid")
+    }
+
+    const consentedParents = new Set(
+      marketingConsents.filter((row) => row.organizationId === organizationId && row.consented).map((row) => row.parentId)
+    )
+    const picked = new Map<string, MockApplicationRecord>()
+    for (const item of applications
+      .filter((row) => input.applicationIds.includes(row.id))
+      .sort((left, right) => (right.createdAt < left.createdAt ? -1 : 1))) {
+      const digits = (item.parentPhone ?? "").replace(/\D/g, "")
+      if (!item.parentId || !digits || !consentedParents.has(item.parentId) || picked.has(digits)) continue
+      picked.set(digits, item)
+    }
+
+    if (picked.size === 0) {
+      throw new Error("recontact_no_eligible_recipient")
+    }
+
+    const used = recontactMonthUsed()
+    if (used + picked.size > RECONTACT_MONTH_LIMIT) {
+      return { mode: "limit_exceeded", used, limit: RECONTACT_MONTH_LIMIT, requested: picked.size }
+    }
+
+    recontactBatchIds.add(input.batchId)
+    const createdAt = new Date().toISOString()
+    const recipients = Array.from(picked.entries()).map(([phoneDigits, item]) => {
+      const row: MockRecontactRecipient = {
+        id: crypto.randomUUID(),
+        batchId: input.batchId,
+        organizationId,
+        applicationId: item.id,
+        phoneDigits,
+        status: "queued",
+        templateKind: input.templateKind,
+        createdAt,
+        sentAt: null
+      }
+      recontactRecipients.push(row)
+      return { recipientId: row.id, applicationId: item.id }
+    })
+
+    return {
+      mode: "reserved",
+      reserved: recipients.length,
+      skipped: input.applicationIds.length - recipients.length,
+      used: used + recipients.length,
+      limit: RECONTACT_MONTH_LIMIT,
+      recipients
+    }
+  },
+  async finishRecontactBatch(organizationId, batchId, results) {
+    for (const result of results) {
+      const row = recontactRecipients.find(
+        (item) => item.id === result.recipientId && item.batchId === batchId && item.organizationId === organizationId && item.status === "queued"
+      )
+      if (row) {
+        row.status = result.status
+        row.sentAt = result.sentAt
+      }
+    }
   },
   async getStudioUnregisteredActionRequiredCount(organizationId) {
     if (organizationId !== mockOrganizationId) {
