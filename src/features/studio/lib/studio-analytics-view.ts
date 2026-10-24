@@ -16,7 +16,6 @@ import {
   resolveNotEnrolledReasonIds
 } from "@/features/registration/lib/registration-input"
 import { getCaseStage } from "@/features/studio/lib/case-view-model"
-import { parseRegularSchedulePreference, type IsoWeekday } from "@/features/studio/lib/regular-schedule-preference"
 import {
   buildStudioDashboardMetrics,
   computeTrialEnrollmentRate,
@@ -34,7 +33,6 @@ import type { StudioApplicationSummary, StudioCurrentParentDecision } from "@/sh
 
 const DAY_MS = 24 * 60 * 60 * 1000
 const KST_OFFSET_MS = 9 * 60 * 60 * 1000
-const WEEKDAY_LABEL: Record<IsoWeekday, string> = { 1: "월", 2: "화", 3: "수", 4: "목", 5: "금", 6: "토", 7: "일" }
 
 /** 정수 % (분모 0 이면 null) — 화면의 모든 비율 표기 */
 const percent = (numerator: number, denominator: number): number | null =>
