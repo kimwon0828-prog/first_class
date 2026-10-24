@@ -4,16 +4,20 @@
 //
 //   1. 학생 묶기: child_id · 학부모 계정 + 이름 · 엑셀(번호 + 이름) · 파기 제외 · 대표 신청
 //   2. 학생 결과 · 탭(다시 연락할 학생 = 미등록 + 고민 중) · 사유 이름(앱 목록 그대로)
+//      홈 "다시 연락할 학생" 카드 = 학생 탭과 같은 함수(건수 · 아바타 · 요일 문장)
 //   3. 고를 수 없는 학생(엑셀 · 동의 안 함 · 번호 없음) · 마지막 연락
 //   4. 문자: 첫 줄 "(광고) [학원명] 대표번호" · 인사 치환 · 링크 · 080 · 바이트
 //   5. 막는 이유 순서: 요금제 → 로컬 가드 → 080 → 대표번호 → 시간(21~8시) → 고른 학생 → 50명 → 한도
 
 import {
+  buildRecontactStudents,
   buildStudentListRows,
+  getStudentDecisionApplicationIds,
   groupStudentApplications,
   isStudentInTab,
   resolveLastContact,
-  resolveStudentResult
+  resolveStudentResult,
+  toConsideringIds
 } from "@/features/students/lib/student-grouping"
 import {
   buildRecontactBodyTemplate,
@@ -124,6 +128,37 @@ const app = (id: string, patch: Partial<StudioApplicationSummary> = {}): StudioA
   check("Figma 배지: 미등록 red · 고민 중 amber",
     STUDIO_STUDENT_RESULT_LABELS.not_enrolled === "미등록" && STUDIO_STUDENT_RESULT_TONES.not_enrolled === "red" &&
     STUDIO_STUDENT_RESULT_LABELS.considering === "고민 중" && STUDIO_STUDENT_RESULT_TONES.considering === "amber")
+
+  // 홈 카드 = 학생 탭: 같은 묶음 · 같은 판정 · 같은 의향
+  {
+    const homeGroups = groupStudentApplications([
+      app("h-ne", { childId: "c-ne", childName: "김미등", parentId: "p-ne", createdAt: "2026-09-10T00:00:00.000Z" }),
+      // 같은 학생의 신청 둘(옛 미등록 + 새 고민 중) — 학생 하나로 센다
+      app("h-old", { childId: "c-two", childName: "박두번", parentId: "p-two", createdAt: "2026-08-01T00:00:00.000Z" }),
+      app("h-new", { childId: "c-two", childName: "박두번", parentId: "p-two", registrationStatus: "pending", createdAt: "2026-09-20T00:00:00.000Z" }),
+      app("h-par", { childId: "c-par", childName: "이의향", parentId: "p-par", registrationStatus: "undecided", createdAt: "2026-09-15T00:00:00.000Z" }),
+      app("h-und", { childId: "c-und", childName: "최결정", parentId: "p-und", registrationStatus: "undecided" }),
+      app("h-enr", { childId: "c-enr", childName: "정등록", parentId: "p-enr", registrationStatus: "enrolled" }),
+      app("h-cxl", { childId: "c-cxl", childName: "한불참", parentId: "p-cxl", registrationStatus: "pending", noShowAt: "2026-09-21T07:00:00.000Z" })
+    ])
+    const decisionIds = getStudentDecisionApplicationIds(homeGroups)
+    check("의향은 체험 완료 · 취소 아님 · 등록 아님인 대표 신청만 읽는다(미등록 포함)",
+      decisionIds.sort().join() === ["h-ne", "h-new", "h-par", "h-und"].sort().join(), decisionIds.join())
+    const decisions = [
+      { applicationId: "h-par", decision: "considering" as const, preferredDays: ["sat" as const] },
+      { applicationId: "h-ne", decision: "declined" as const, preferredDays: ["sat" as const, "mon" as const] },
+      { applicationId: "h-new", decision: "considering" as const, preferredDays: ["mon" as const] }
+    ]
+    const home = buildRecontactStudents(homeGroups, decisions as never)
+    const tabRows = buildStudentListRows({ groups: homeGroups, consideringIds: toConsideringIds(decisions as never), consents: [], events: [], now: NOW })
+      .filter((row) => isStudentInTab(row.result, "recontact"))
+    check("홈 건수 = 학생 탭 건수(3명: 미등록 · 고민 중 · 학부모 의향 고민 중)", home.students.length === 3 && tabRows.length === 3, `${home.students.length} / ${tabRows.length}`)
+    check("홈 아바타 학생 = 학생 탭 학생",
+      home.students.map((item) => item.applicationId).sort().join() === tabRows.map((row) => row.applicationId).sort().join())
+    check("홈 아바타는 최근 신청 먼저", home.students.map((item) => item.name).join() === "박두번,이의향,김미등", home.students.map((item) => item.name).join())
+    check("요일 문장: 세 학생 중 월 2 · 토 2 → 같으면 월 먼저", home.topDay?.label === "월" && home.topDay.count === 2, JSON.stringify(home.topDay))
+    check("다시 연락할 학생이 아니면 요일에 세지 않는다", buildRecontactStudents(homeGroups, [{ applicationId: "h-und", decision: "declined", preferredDays: ["sun"] }] as never).topDay === null)
+  }
 
   const rows = buildStudentListRows({
     groups: groupStudentApplications([

@@ -393,7 +393,7 @@ export const getStudioRecontactCandidateIds = (applications: StudioApplicationSu
     .map(item => item.id)
 
 /**
- * 홈 "다시 연락할 학생"(Figma 2148:5120).
+ * 분석 "고민 중 N명"(신청 단위). 홈 "다시 연락할 학생" 카드는 학생 단위 buildRecontactStudents(students/lib)를 쓴다.
  * 학원이 기록한 등록 결과 "고민 중"(registration_status = pending) + 학부모가 남긴 지금 유효한 의향 "고민 중"(considering).
  * 같은 신청은 한 번만 센다. 요일 문장은 considering 학부모들의 희망 요일 중 가장 많은 요일(같으면 월→일 순).
  */

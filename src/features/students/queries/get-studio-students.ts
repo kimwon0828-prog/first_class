@@ -7,23 +7,25 @@ import {
   STUDIO_STUDENT_RESULT_LABELS,
   type StudioStudentResult
 } from "@/features/studio/lib/application-status-labels"
-import { getStudioRecontactCandidateIds } from "@/features/studio/lib/studio-dashboard-view"
 import {
   formatRegularSchedulePreference,
   parseRegularSchedulePreference
 } from "@/features/studio/lib/regular-schedule-preference"
 import { toSeoulDateKey } from "@/features/studio/lib/studio-schedule-month"
 import {
+  buildRecontactStudents,
   buildStudentListRows,
   buildTrialLabel,
   findStudentGroup,
   formatStudentDate,
   formatStudentDateWithWeekday,
+  getStudentDecisionApplicationIds,
   gradeLabel,
   groupStudentApplications,
   resolveStudentLock,
   resolveStudentReason,
   resolveStudentResult,
+  toConsideringIds,
   type StudentGroup,
   type StudentListRow,
   type StudentLockReason
@@ -43,16 +45,23 @@ export const formatStudentDateTime = (value: string) => {
   return `${parts.month}월 ${parts.day}일(${WEEKDAYS[parts.weekday]}) ${String(parts.hour).padStart(2, "0")}:${String(parts.minute).padStart(2, "0")}`
 }
 
-/** 같은 요청 안에서 목록 · 상세가 같은 조회를 쓴다. */
+/** 같은 요청 안에서 목록 · 상세가 같은 조회를 쓴다. 의향 조회가 실패하면 등록 결과만으로 판정한다. */
 const loadStudentGroups = cache(async (organizationId: string) => {
   const applications = await dataAdapter.listStudioApplications(organizationId)
   const groups = groupStudentApplications(applications)
-  const decisions = await listStudioCurrentParentDecisions(getStudioRecontactCandidateIds(groups.map((group) => group.representative)))
-  const consideringIds = new Set(
-    decisions.data.filter((item) => item.decision === "considering").map((item) => item.applicationId)
-  )
-  return { groups, consideringIds }
+  const decisions = await listStudioCurrentParentDecisions(getStudentDecisionApplicationIds(groups))
+  return { groups, consideringIds: toConsideringIds(decisions.data) }
 })
+
+/**
+ * 홈 "다시 연락할 학생" 카드. 학생 메뉴 "다시 연락할 학생" 탭과 같은 묶음 · 같은 판정(buildRecontactStudents)이다.
+ * 신청 목록은 홈이 이미 읽은 것을 받는다(같은 조회를 두 번 하지 않게).
+ */
+export const getStudioRecontactStudents = async (applications: StudioApplicationSummary[]) => {
+  const groups = groupStudentApplications(applications)
+  const decisions = await listStudioCurrentParentDecisions(getStudentDecisionApplicationIds(groups))
+  return buildRecontactStudents(groups, decisions.data)
+}
 
 const parentIdsOf = (groups: StudentGroup[]) =>
   Array.from(new Set(groups.map((group) => group.representative.parentId).filter((id): id is string => Boolean(id))))

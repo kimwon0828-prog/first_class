@@ -57,7 +57,7 @@ export default async function StudioAnalyticsPage({ searchParams }: StudioAnalyt
 
   let view = null
   if (entitlements.canUseConversionAnalytics && !error) {
-    // 고민 중 인원 = 홈 "다시 연락할 학생"과 같은 기준(학원 기록 고민 중 + 학부모 의향 고민 중).
+    // 고민 중 인원 = 학원 기록 고민 중 + 학부모 의향 고민 중(신청 단위).
     const decisions = await listStudioCurrentParentDecisions(getStudioRecontactCandidateIds(applications))
     view = buildStudioAnalyticsView({
       applications,

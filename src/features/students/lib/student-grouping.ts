@@ -11,12 +11,14 @@ import {
   type StudioStudentResult
 } from "@/features/studio/lib/application-status-labels"
 import { resolveTrialDisplayStatus } from "@/features/studio/lib/trial-completion"
+import { PREFERRED_DAY_OPTIONS } from "@/features/decisions/lib/parent-decision"
 import { getNotEnrolledReasonLabel, PENDING_REASONS, resolveNotEnrolledReasonIds } from "@/features/registration/lib/registration-input"
 import { LEARNER_GRADES, getChildGradeLabel } from "@/shared/constants/education-taxonomy"
 import { getSeoulDateTimeParts } from "@/shared/lib/seoul-datetime"
 import type {
   ConsultationLogChannel,
   StudioApplicationSummary,
+  StudioCurrentParentDecision,
   StudioMarketingConsent,
   StudioStudentContactEvent
 } from "@/shared/lib/db/adapter"
@@ -136,6 +138,39 @@ export const isStudentInTab = (result: StudioStudentResult, tab: StudentTab) => 
   if (tab === "recontact") return result === "not_enrolled" || result === "considering"
   if (tab === "enrolled") return result === "enrolled"
   return result === "in_progress" || result === "undecided"
+}
+
+/**
+ * 학부모 의향을 읽을 신청: 체험을 마쳤고 취소 · 불참 · 등록이 아닌 학생의 대표 신청.
+ * 고민 중 판정(resolveStudentResult)과 "다시 연락할 학생"의 희망 요일 문장이 이 의향을 쓴다.
+ */
+export const getStudentDecisionApplicationIds = (groups: StudentGroup[]) =>
+  groups
+    .map((group) => group.representative)
+    .filter((item) => !isCanceledOrNoShow(item) && item.status === "completed" && item.registrationStatus !== "enrolled")
+    .map((item) => item.id)
+
+export const toConsideringIds = (decisions: StudioCurrentParentDecision[]): ReadonlySet<string> =>
+  new Set(decisions.filter((item) => item.decision === "considering").map((item) => item.applicationId))
+
+/**
+ * "다시 연락할 학생"(미등록 + 고민 중). 학생 메뉴 탭과 홈 카드가 이 함수 하나를 쓴다.
+ * 요일 문장: 이 학생들의 학부모가 남긴 희망 요일 중 가장 많은 요일(같으면 월→일 순).
+ * 학생 순서는 최근 신청 먼저(홈 아바타).
+ */
+export const buildRecontactStudents = (groups: StudentGroup[], decisions: StudioCurrentParentDecision[]) => {
+  const consideringIds = toConsideringIds(decisions)
+  const students = groups
+    .filter((group) => isStudentInTab(resolveStudentResult(group.representative, consideringIds), "recontact"))
+    .map((group) => group.representative)
+    .sort((left, right) => right.createdAt.localeCompare(left.createdAt))
+  const daysById = new Map(decisions.map((item) => [item.applicationId, item.preferredDays]))
+  let topDay: { label: string; count: number } | null = null
+  for (const option of PREFERRED_DAY_OPTIONS) {
+    const count = students.filter((item) => daysById.get(item.id)?.includes(option.value)).length
+    if (count > 0 && (!topDay || count > topDay.count)) topDay = { label: option.label, count }
+  }
+  return { students: students.map((item) => ({ applicationId: item.id, name: item.childName })), topDay }
 }
 
 const pendingReasonLabel = (id: string): string | null => PENDING_REASONS.find(([value]) => value === id)?.[1] ?? null

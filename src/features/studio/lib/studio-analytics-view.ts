@@ -168,7 +168,7 @@ const SCHEDULE_REASON = "schedule_mismatch"
 export const buildStudioAnalyticsView = (input: {
   applications: StudioApplicationSummary[]
   range: StudioResolvedDateRange
-  /** 홈 "다시 연락할 학생"과 같은 기준의 고민 중 인원(buildStudioRecontact) */
+  /** 고민 중 인원(신청 단위, buildStudioRecontact) */
   consideringCount: number
   now?: Date
 }): StudioAnalyticsView => {
