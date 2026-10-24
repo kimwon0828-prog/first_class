@@ -841,7 +841,8 @@ export type StudioApplicationSummary = TrialApplicationSummary & {
 // ── 학생 · 안내 보내기 (2차-3) ─────────────────────────────────────
 
 export type RecontactTemplateKind = "new_class" | "special" | "schedule_change" | "custom"
-export type RecontactRecipientStatus = "queued" | "sent" | "failed" | "dry_run"
+/** opted_out = 080 수신거부로 발송 안 됨(NCP 결과 확인 뒤, 20261025120000). 한도에서 빠진다. */
+export type RecontactRecipientStatus = "queued" | "sent" | "failed" | "dry_run" | "opted_out"
 
 /** 학생 상세 "연락 기록"과 목록 "마지막 연락"이 읽는 사실. 판정은 화면 lib 가 한다. */
 export type StudioStudentContactEvent =
@@ -871,6 +872,8 @@ export type StudioMarketingConsent = {
   consented: boolean
   consentedAt: string | null
   withdrawnAt: string | null
+  /** 학부모 계정 번호(010 휴대폰)가 있는가. 안내 문자는 이 번호로만 간다 — 없으면 "보호자 휴대폰 번호가 필요해요"로 잠긴다. */
+  phoneReady: boolean
 }
 
 export type RecontactUsage = { used: number; limit: number }
@@ -1567,6 +1570,11 @@ export interface DataAdapter {
     input: { date: string | null; note: string | null }
   ): Promise<void>
   reserveRecontactBatch(organizationId: string, input: ReserveRecontactBatchInput): Promise<ReserveRecontactBatchResult>
+  /**
+   * 자리를 잡은 받는 사람의 학부모 계정 번호(서버 전용, service role). 자리 잡을 때 DB 가 고른 번호(해시)와
+   * 같을 때만 번호를 돌려준다 — 그 사이 계정 번호가 바뀌었으면 null(보내지 않는다).
+   */
+  listRecontactRecipientPhones(organizationId: string, batchId: string): Promise<Array<{ recipientId: string; phone: string | null }>>
   /** 발송 결과 기록. 학원 계정에는 쓰기 권한이 없어 서버(service role)가 쓴다. */
   finishRecontactBatch(organizationId: string, batchId: string, results: RecontactDeliveryResult[]): Promise<void>
   listStudioConsultationPipelineApplications(

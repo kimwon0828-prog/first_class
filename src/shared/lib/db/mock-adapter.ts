@@ -1,3 +1,4 @@
+import { toAccountPhone } from "@/features/marketing-consent/lib/account-phone"
 import { getReportSubjectCategory } from "@/features/studio/lib/trial-result-options"
 import { withBookingClassHistory, bookingIntervalsOverlap, type BookingClosure, type BookingDay, type BookingOccurrence } from "@/features/studio/lib/booking-closures"
 import { decisionDraftError } from "@/features/feedback/lib/experience-submission"
@@ -824,6 +825,14 @@ const RECONTACT_PER_BATCH = 50
 const seoulMonthStartIso = () => {
   const now = new Date(Date.now() + 9 * 3600_000)
   return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1) - 9 * 3600_000).toISOString()
+}
+// 학부모 계정 번호(supabase 는 profiles.phone). mock 에는 학부모 계정 표가 없어 그 학부모의 가장 최근 신청 번호로 대신한다.
+const mockAccountPhone = (parentId: string | null) => {
+  if (!parentId) return null
+  const latest = applications
+    .filter((row) => row.parentId === parentId)
+    .sort((left, right) => (right.createdAt < left.createdAt ? -1 : 1))[0]
+  return toAccountPhone(latest?.parentPhone ?? null)
 }
 const recontactMonthUsed = () => {
   const since = seoulMonthStartIso()
@@ -2135,7 +2144,7 @@ export const mockDataAdapter: DataAdapter = {
     const ids = new Set(parentIds)
     return marketingConsents
       .filter((row) => row.organizationId === organizationId && ids.has(row.parentId))
-      .map(({ parentId, consented, consentedAt, withdrawnAt }) => ({ parentId, consented, consentedAt, withdrawnAt }))
+      .map(({ parentId, consented, consentedAt, withdrawnAt }) => ({ parentId, consented, consentedAt, withdrawnAt, phoneReady: mockAccountPhone(parentId) !== null }))
   },
   async getStudioRecontactUsage() {
     return { used: recontactMonthUsed(), limit: RECONTACT_MONTH_LIMIT }
@@ -2183,7 +2192,8 @@ export const mockDataAdapter: DataAdapter = {
     for (const item of applications
       .filter((row) => input.applicationIds.includes(row.id))
       .sort((left, right) => (right.createdAt < left.createdAt ? -1 : 1))) {
-      const digits = (item.parentPhone ?? "").replace(/\D/g, "")
+      // supabase 와 같다: 신청서 번호가 아니라 학부모 계정 번호로 고른다.
+      const digits = mockAccountPhone(item.parentId)
       if (!item.parentId || !digits || !consentedParents.has(item.parentId) || picked.has(digits)) continue
       picked.set(digits, item)
     }
@@ -2223,6 +2233,14 @@ export const mockDataAdapter: DataAdapter = {
       limit: RECONTACT_MONTH_LIMIT,
       recipients
     }
+  },
+  async listRecontactRecipientPhones(organizationId, batchId) {
+    return recontactRecipients
+      .filter((row) => row.batchId === batchId && row.organizationId === organizationId && row.status === "queued")
+      .map((row) => {
+        const phone = mockAccountPhone(applications.find((item) => item.id === row.applicationId)?.parentId ?? null)
+        return { recipientId: row.id, phone: phone === row.phoneDigits ? phone : null }
+      })
   },
   async finishRecontactBatch(organizationId, batchId, results) {
     for (const result of results) {

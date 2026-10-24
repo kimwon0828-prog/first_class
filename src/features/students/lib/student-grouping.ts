@@ -11,12 +11,14 @@ import {
   type StudioStudentResult
 } from "@/features/studio/lib/application-status-labels"
 import { resolveTrialDisplayStatus } from "@/features/studio/lib/trial-completion"
+import { countTopPreferredDay, resolvePreferredDays } from "@/features/students/lib/preferred-days"
 import { getNotEnrolledReasonLabel, PENDING_REASONS, resolveNotEnrolledReasonIds } from "@/features/registration/lib/registration-input"
 import { LEARNER_GRADES, getChildGradeLabel } from "@/shared/constants/education-taxonomy"
 import { getSeoulDateTimeParts } from "@/shared/lib/seoul-datetime"
 import type {
   ConsultationLogChannel,
   StudioApplicationSummary,
+  StudioCurrentParentDecision,
   StudioMarketingConsent,
   StudioStudentContactEvent
 } from "@/shared/lib/db/adapter"
@@ -138,6 +140,43 @@ export const isStudentInTab = (result: StudioStudentResult, tab: StudentTab) => 
   return result === "in_progress" || result === "undecided"
 }
 
+/**
+ * 학부모 의향을 읽을 신청: 체험을 마쳤고 취소 · 불참 · 등록이 아닌 학생의 대표 신청.
+ * 고민 중 판정(resolveStudentResult)과 "다시 연락할 학생"의 희망 요일 문장이 이 의향을 쓴다.
+ */
+export const getStudentDecisionApplicationIds = (groups: StudentGroup[]) =>
+  groups
+    .map((group) => group.representative)
+    .filter((item) => !isCanceledOrNoShow(item) && item.status === "completed" && item.registrationStatus !== "enrolled")
+    .map((item) => item.id)
+
+export const toConsideringIds = (decisions: StudioCurrentParentDecision[]): ReadonlySet<string> =>
+  new Set(decisions.filter((item) => item.decision === "considering").map((item) => item.applicationId))
+
+/** 학생이 원하는 요일: 학부모 희망 요일(대표 신청의 지금 의향) 먼저, 없으면 상담 기록(최근 신청부터). */
+export const resolveStudentPreferredDays = (group: StudentGroup, decisions: ReadonlyArray<StudioCurrentParentDecision>) =>
+  resolvePreferredDays({
+    decisionDays: decisions.find((item) => item.applicationId === group.representative.id)?.preferredDays ?? null,
+    regularSchedulePreferences: group.applications.map((item) => item.regularSchedulePreference)
+  })
+
+/**
+ * "다시 연락할 학생"(미등록 + 고민 중). 학생 메뉴 탭 · 홈 카드 · 분석 안내가 이 함수 하나를 쓴다.
+ * 요일 문장: 이 학생들이 원하는 요일(resolveStudentPreferredDays) 중 가장 많은 요일(같으면 월→일 순).
+ * 학생 순서는 최근 신청 먼저(홈 아바타).
+ */
+export const buildRecontactStudents = (groups: StudentGroup[], decisions: StudioCurrentParentDecision[]) => {
+  const consideringIds = toConsideringIds(decisions)
+  const students = groups
+    .filter((group) => isStudentInTab(resolveStudentResult(group.representative, consideringIds), "recontact"))
+    .sort((left, right) => right.representative.createdAt.localeCompare(left.representative.createdAt))
+  const top = countTopPreferredDay(students.map((group) => resolveStudentPreferredDays(group, decisions)?.days))
+  return {
+    students: students.map((group) => ({ applicationId: group.representative.id, name: group.representative.childName })),
+    topDay: top ? { label: top.label, count: top.count } : null
+  }
+}
+
 const pendingReasonLabel = (id: string): string | null => PENDING_REASONS.find(([value]) => value === id)?.[1] ?? null
 
 const firstWithMore = (labels: string[]) =>
@@ -204,14 +243,26 @@ export const resolveLastContact = (
 
 export type StudentLockReason = "no_account" | "no_consent" | "no_phone"
 
-/** 안내를 보낼 수 있는가. 080 수신거부는 번호 해시가 서버에만 있어 보낼 때 서버가 다시 뺀다. */
+/**
+ * 안내를 보낼 수 있는가. 받는 번호는 학부모 계정 번호다(신청서 번호가 아니다).
+ * 엑셀(계정 없음) → 수신 동의 안 함 → 계정 번호 없음("보호자 휴대폰 번호가 필요해요") 순서로 본다.
+ * 080 수신거부는 번호 해시가 서버에만 있어 보낼 때 서버가 다시 뺀다.
+ */
 export const resolveStudentLock = (
   item: StudioApplicationSummary,
   consentByParent: ReadonlyMap<string, StudioMarketingConsent>
 ): StudentLockReason | null => {
   if (!item.parentId) return "no_account"
-  if (!phoneDigits(item.parentPhone)) return "no_phone"
-  return consentByParent.get(item.parentId)?.consented ? null : "no_consent"
+  const consent = consentByParent.get(item.parentId)
+  if (!consent?.consented) return "no_consent"
+  return consent.phoneReady ? null : "no_phone"
+}
+
+/** 잠긴 학생의 한 줄 이유(목록 · 상세 같은 문구). */
+export const STUDENT_LOCK_LABELS: Record<StudentLockReason, { short: string; long: string }> = {
+  no_account: { short: "엑셀 학생", long: "엑셀로 가져온 학생은 안내를 보낼 수 없어요" },
+  no_consent: { short: "수신 동의 안 함", long: "광고성 정보 수신에 동의한 보호자에게만 보낼 수 있어요" },
+  no_phone: { short: "보호자 휴대폰 번호가 필요해요", long: "보호자가 마이에서 휴대폰 번호를 등록해야 안내를 보낼 수 있어요" }
 }
 
 export const gradeOrder = (grade: string | null | undefined) => {

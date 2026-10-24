@@ -10,10 +10,17 @@ import {
 // 서버에서만 부른다(native-handler · 웹 action). 학부모 세션의 client 로만 부른다(웹: 쿠키 세션, 앱: Bearer 토큰). service role 을 쓰지 않는다 —
 // RPC 가 auth.uid() 로 본인만 바꾸게 막는다.
 
+/**
+ * changed: RPC 가 학부모 · 학원 잠금 안에서 판정한 "상태가 실제로 바뀌었는가"(없음→동의 · 동의→거부 · 거부→동의).
+ * 처리 결과 알림은 이 값이 true 일 때만 보낸다. 값이 없으면(옛 RPC) null — 보내지 않는다.
+ */
 export const setAcademyMarketingConsent = async (
   db: SupabaseClient,
   input: MarketingConsentInput
-): Promise<{ ok: true; item: MarketingConsentItem } | { ok: false; error: MarketingConsentErrorCode }> => {
+): Promise<
+  | { ok: true; item: MarketingConsentItem; changed: boolean | null }
+  | { ok: false; error: MarketingConsentErrorCode }
+> => {
   const { data, error } = await db.rpc("set_my_academy_marketing_consent", {
     p_organization_id: input.organizationId,
     p_consented: input.consented,
@@ -21,10 +28,11 @@ export const setAcademyMarketingConsent = async (
     p_text_version: input.textVersion
   })
   if (error || !data || typeof data !== "object") return { ok: false, error: toMarketingConsentError(error?.message) }
-  const row = data as { organizationId: string; consented: boolean; consentedAt: string | null; withdrawnAt: string | null }
+  const row = data as { organizationId: string; consented: boolean; consentedAt: string | null; withdrawnAt: string | null; changed?: unknown }
   return {
     ok: true,
-    item: { organizationId: row.organizationId, consented: row.consented, consentedAt: row.consentedAt, withdrawnAt: row.withdrawnAt }
+    item: { organizationId: row.organizationId, consented: row.consented, consentedAt: row.consentedAt, withdrawnAt: row.withdrawnAt },
+    changed: typeof row.changed === "boolean" ? row.changed : null
   }
 }
 

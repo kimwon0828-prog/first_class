@@ -7,8 +7,8 @@ import { getStudioEntitlementsForDisplay } from "@/features/billing/queries/get-
 import { getStudioRecentExperienceFeedback } from "@/features/feedback/queries/get-experience-feedback"
 import { feedbackChipLabel } from "@/features/feedback/lib/experience-feedback"
 import { requireTeacherStudioAccess } from "@/features/studio/lib/require-teacher-studio-access"
-import { buildStudioDashboardView, buildStudioRecontact, getStudioRecontactCandidateIds, type StudioDashboardActionItem } from "@/features/studio/lib/studio-dashboard-view"
-import { listStudioCurrentParentDecisions } from "@/features/decisions/queries/list-studio-current-parent-decisions"
+import { buildStudioDashboardView, type StudioDashboardActionItem } from "@/features/studio/lib/studio-dashboard-view"
+import { getStudioRecontactStudents } from "@/features/students/queries/get-studio-students"
 import { buildStudioMonthlyConversion } from "@/features/studio/lib/studio-dashboard-monthly"
 import { formatEnrollmentRate } from "@/features/studio/lib/studio-dashboard-metrics"
 import { formatCasesDate, getCasesScheduleLabel } from "@/features/studio/lib/cases-workflow"
@@ -62,9 +62,8 @@ export default async function StudioIndexPage() {
     getStudioRecentExperienceFeedback(teacher.organizationId, now)
   ])
   const view = buildStudioDashboardView(applications, now)
-  // 다시 연락할 학생: 등록 결과 "고민 중" + 학부모 의향 "고민 중"(지금 유효한 것). 의향 조회가 실패하면 등록 결과만으로 센다.
-  const parentDecisions = await listStudioCurrentParentDecisions(getStudioRecontactCandidateIds(applications))
-  const recontact = buildStudioRecontact(applications, parentDecisions.data)
+  // 다시 연락할 학생: 학생 메뉴 "다시 연락할 학생" 탭과 같은 함수 · 기준(학생 단위, 미등록 + 고민 중).
+  const recontact = await getStudioRecontactStudents(applications)
   // 전환 지표는 유료다. 권한이 없으면 집계 자체를 하지 않는다(값이 payload 에 실리지 않게).
   const monthly = entitlements.canUseConversionAnalytics ? buildStudioMonthlyConversion(applications, now) : null
   const thisMonth = monthly?.at(-1) ?? null
@@ -144,7 +143,7 @@ export default async function StudioIndexPage() {
   const feedbackQuote = latestFeedback
     ? latestFeedback.privateNote?.trim() || latestFeedback.selectedChipIds.map(id => feedbackChipLabel(id)).join(" · ")
     : null
-  const pending = recontact.items
+  const pending = recontact.students
 
   return (
     <div className={styles.page}>
@@ -299,13 +298,13 @@ export default async function StudioIndexPage() {
             <Link href={studioPath("/studio/students")} className={styles.moreLink}>학생 ›</Link>
           </div>
           {pending.length ? <>
-            <div className={styles.bigValue}><strong>{pending.length}명</strong><span className={styles.mutedValue}>고민 중</span></div>
-            <div className={styles.avatars} aria-label={`고민 중인 학생 ${pending.length}명`}>
-              {pending.slice(0, 3).map((item, index) => <V2Avatar key={item.id} name={item.studentName} size={32} tone={index === 0 ? "brand" : "neutral"} className={styles.avatar} />)}
+            <div className={styles.bigValue}><strong>{pending.length}명</strong><span className={styles.mutedValue}>미등록 · 고민 중</span></div>
+            <div className={styles.avatars} aria-label={`다시 연락할 학생 ${pending.length}명`}>
+              {pending.slice(0, 3).map((item, index) => <V2Avatar key={item.applicationId} name={item.name} size={32} tone={index === 0 ? "brand" : "neutral"} className={styles.avatar} />)}
               {pending.length > 3 ? <span className={styles.avatarMore}>+{pending.length - 3}</span> : null}
             </div>
             {recontact.topDay ? <p className={styles.recontactNote}>그중 {recontact.topDay.count}명이 {recontact.topDay.label}요일 반을 원했어요.</p> : null}
-          </> : <p className={styles.cardCaption}>지금 고민 중인 학생이 없어요</p>}
+          </> : <p className={styles.cardCaption}>지금 다시 연락할 학생이 없어요</p>}
         </section>
       </div>
     </div>

@@ -25,7 +25,8 @@ import {
   EXPERIENCE_REPORT_STATUSES,
   decodeExperienceReportSnapshot
 } from "@/features/reports/lib/experience-report-snapshot"
-import { randomUUID } from "node:crypto"
+import { createHash, randomUUID } from "node:crypto"
+import { toAccountPhone } from "@/features/marketing-consent/lib/account-phone"
 
 import type { SupabaseClient } from "@supabase/supabase-js"
 
@@ -4989,11 +4990,25 @@ export const supabaseDataAdapter: DataAdapter = {
       rows.push(...((data ?? []) as typeof rows))
     }
 
+    // 안내 문자는 학부모 계정 번호로만 간다. 번호 자체는 받지 않고 "준비됨" 여부만 묻는다(20261025120000).
+    // 조회가 실패하면 준비 안 됨으로 둔다(보내기 전에 DB 가 다시 고른다).
+    const ready = new Set<string>()
+    const consentedIds = rows.filter((row) => row.consented).map((row) => row.parent_id)
+    for (const chunk of chunkArray(consentedIds, 100)) {
+      const { data, error } = await supabase.rpc("list_studio_recontact_phone_ready", { p_parent_ids: chunk })
+      if (error || !Array.isArray(data)) break
+      for (const id of data as unknown[]) {
+        const value = typeof id === "string" ? id : (id as { list_studio_recontact_phone_ready?: string } | null)?.list_studio_recontact_phone_ready
+        if (value) ready.add(value)
+      }
+    }
+
     return rows.map((row) => ({
       parentId: row.parent_id,
       consented: row.consented,
       consentedAt: row.consented_at,
-      withdrawnAt: row.withdrawn_at
+      withdrawnAt: row.withdrawn_at,
+      phoneReady: ready.has(row.parent_id)
     }))
   },
   async getStudioRecontactUsage() {
@@ -5089,6 +5104,41 @@ export const supabaseDataAdapter: DataAdapter = {
       limit: Number(result.limit ?? 200),
       recipients: Array.isArray(result.recipients) ? result.recipients : []
     }
+  },
+  async listRecontactRecipientPhones(organizationId, batchId) {
+    const client = getSupabaseServiceRoleClient()
+    const { data, error } = await client
+      .from("recontact_recipients")
+      .select("id, phone_hash, trial_applications!inner(parent_id)")
+      .eq("batch_id", batchId)
+      .eq("organization_id", organizationId)
+      .eq("status", "queued")
+
+    if (error) {
+      throw new Error("failed_to_fetch_recontact_recipient_phones")
+    }
+
+    const rows = (data ?? []) as unknown as Array<{ id: string; phone_hash: string; trial_applications: { parent_id: string | null } | Array<{ parent_id: string | null }> }>
+    const parentOf = (row: (typeof rows)[number]) =>
+      (Array.isArray(row.trial_applications) ? row.trial_applications[0]?.parent_id : row.trial_applications?.parent_id) ?? null
+    const parentIds = Array.from(new Set(rows.map(parentOf).filter((id): id is string => Boolean(id))))
+    const phoneByParent = new Map<string, string | null>()
+    for (const chunk of chunkArray(parentIds, 100)) {
+      const { data: profiles, error: profileError } = await client.from("profiles").select("id, role, phone").in("id", chunk)
+      if (profileError) {
+        throw new Error("failed_to_fetch_recontact_recipient_phones")
+      }
+      for (const profile of (profiles ?? []) as Array<{ id: string; role: string; phone: string | null }>) {
+        phoneByParent.set(profile.id, profile.role === "parent" ? toAccountPhone(profile.phone) : null)
+      }
+    }
+
+    return rows.map((row) => {
+      const parentId = parentOf(row)
+      const phone = parentId ? phoneByParent.get(parentId) ?? null : null
+      // 자리 잡을 때 고른 번호와 같아야 보낸다(그 사이 계정 번호가 바뀌면 보내지 않는다).
+      return { recipientId: row.id, phone: phone && createHash("sha256").update(phone).digest("hex") === row.phone_hash ? phone : null }
+    })
   },
   async finishRecontactBatch(organizationId, batchId, results) {
     // 학원 계정에는 받는 사람 결과를 쓰는 권한이 없다(한도를 우회하지 못하게). 서버만 service role 로 쓴다.

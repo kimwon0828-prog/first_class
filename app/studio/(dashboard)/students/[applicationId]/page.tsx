@@ -13,7 +13,7 @@ import { V2Avatar } from "@/features/studio/ui/v2/v2-avatar"
 import { V2BackIcon, V2MessageIcon, V2PhoneIcon, V2SendIcon } from "@/features/studio/ui/v2/v2-icons"
 import { V2StatusBadge } from "@/features/studio/ui/v2/v2-status-badge"
 import { V2SubjectIcon3D } from "@/features/studio/ui/v2/v2-subject-icon-3d"
-import { formatStudentDateWithWeekday } from "@/features/students/lib/student-grouping"
+import { formatStudentDateWithWeekday, STUDENT_LOCK_LABELS } from "@/features/students/lib/student-grouping"
 import { getRecontactPanelContext } from "@/features/students/queries/get-recontact-panel-context"
 import { getStudioStudentDetail, type StudioStudentDetail } from "@/features/students/queries/get-studio-students"
 import { NextContactCard } from "@/features/students/ui/next-contact-card"
@@ -32,7 +32,10 @@ const consentLine = (detail: StudioStudentDetail) => {
 
 const consentInfo = (detail: StudioStudentDetail) => {
   if (detail.lock === "no_account") return "받을 수 없음 · 엑셀 학생"
-  if (detail.consent?.consented && detail.consent.consentedAt) return `동의함 · ${formatStudentDateWithWeekday(detail.consent.consentedAt)}`
+  if (detail.consent?.consented && detail.consent.consentedAt) {
+    const base = `동의함 · ${formatStudentDateWithWeekday(detail.consent.consentedAt)}`
+    return detail.lock === "no_phone" ? `${base} · 휴대폰 인증 필요` : base
+  }
   if (detail.consent?.withdrawnAt) return `동의 철회 · ${formatStudentDateWithWeekday(detail.consent.withdrawnAt)}`
   return "동의 안 함"
 }
@@ -75,10 +78,7 @@ export default async function StudioStudentDetailPage({ params }: StudioStudentD
 
   const phoneDigits = detail.parentPhone?.replace(/\D/g, "") ?? ""
   const recipient = { applicationId: detail.applicationId, name: detail.name, trialLabel: detail.trialLabel }
-  const sendLock = detail.lock === "no_account" ? "엑셀로 가져온 학생은 안내를 보낼 수 없어요"
-    : detail.lock === "no_phone" ? "보호자 번호가 없어 보낼 수 없어요"
-    : detail.lock === "no_consent" ? "광고성 정보 수신에 동의한 보호자에게만 보낼 수 있어요"
-    : null
+  const sendLock = detail.lock ? STUDENT_LOCK_LABELS[detail.lock].long : null
   const info: Array<[string, string]> = [
     ["관심 과목", detail.info.interestSubjects ?? "—"],
     ["학습 수준", detail.info.currentLevel ?? "—"],

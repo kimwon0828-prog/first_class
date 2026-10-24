@@ -5,6 +5,7 @@ import {
   parseMarketingConsentInput
 } from "@/features/marketing-consent/lib/marketing-consent"
 import { listAcademyMarketingConsents, setAcademyMarketingConsent } from "@/features/marketing-consent/server/marketing-consent-db"
+import { toMarketingConsentChange, type MarketingConsentChange } from "@/features/marketing-consent/lib/consent-notice"
 
 const reply = (body: unknown, status = 200) => Response.json(body, {
   status, headers: { "Cache-Control": "private, no-store", Vary: "Authorization" }
@@ -15,8 +16,12 @@ const reply = (body: unknown, status = 200) => Response.json(body, {
  *
  * 입구 확인은 push-device 와 같다: Bearer 토큰 → 학부모 계정 → 탈퇴 진행 중 아님 → 휴대폰 확인.
  * 동의 · 철회 자체의 권한(본인만)은 RPC 가 auth.uid() 로 다시 본다.
+ * RPC 가 changed = true 를 돌려주면 onChanged 를 부른다(처리 결과 알림 — 같은 값 재요청이면 false).
  */
-export function createNativeMarketingConsentHandler(deps: { client: (token: string) => SupabaseClient }) {
+export function createNativeMarketingConsentHandler(deps: {
+  client: (token: string) => SupabaseClient
+  onChanged?: (change: MarketingConsentChange) => void
+}) {
   return async (request: Request): Promise<Response> => {
     try {
       const token = /^Bearer ([A-Za-z0-9._~-]+)$/.exec(request.headers.get("authorization") ?? "")?.[1]
@@ -55,7 +60,11 @@ export function createNativeMarketingConsentHandler(deps: { client: (token: stri
       const input = parseMarketingConsentInput(body, "parent_app")
       if (!input.ok) return reply({ error: input.error }, MARKETING_CONSENT_ERROR_STATUS[input.error])
       const result = await setAcademyMarketingConsent(db, input.value)
-      return result.ok ? reply(result.item) : reply({ error: result.error }, MARKETING_CONSENT_ERROR_STATUS[result.error])
+      if (!result.ok) return reply({ error: result.error }, MARKETING_CONSENT_ERROR_STATUS[result.error])
+      if (result.changed === true) {
+        try { deps.onChanged?.(toMarketingConsentChange(user.id, "parent_app", result.item)) } catch { /* 알림 실패가 저장 응답을 바꾸지 않는다 */ }
+      }
+      return reply(result.item)
     } catch {
       return reply({ error: "temporarily_unavailable" }, 503)
     }

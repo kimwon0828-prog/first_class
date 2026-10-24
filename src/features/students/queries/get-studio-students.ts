@@ -7,30 +7,40 @@ import {
   STUDIO_STUDENT_RESULT_LABELS,
   type StudioStudentResult
 } from "@/features/studio/lib/application-status-labels"
-import { getStudioRecontactCandidateIds } from "@/features/studio/lib/studio-dashboard-view"
 import {
   formatRegularSchedulePreference,
   parseRegularSchedulePreference
 } from "@/features/studio/lib/regular-schedule-preference"
 import { toSeoulDateKey } from "@/features/studio/lib/studio-schedule-month"
 import {
+  buildRecontactStudents,
   buildStudentListRows,
   buildTrialLabel,
   findStudentGroup,
   formatStudentDate,
   formatStudentDateWithWeekday,
+  getStudentDecisionApplicationIds,
   gradeLabel,
   groupStudentApplications,
   resolveStudentLock,
+  resolveStudentPreferredDays,
   resolveStudentReason,
   resolveStudentResult,
+  toConsideringIds,
   type StudentGroup,
   type StudentListRow,
   type StudentLockReason
 } from "@/features/students/lib/student-grouping"
+import { formatPreferredDays } from "@/features/students/lib/preferred-days"
 import { RECONTACT_TEMPLATES } from "@/features/students/lib/recontact-message"
 import { dataAdapter } from "@/shared/lib/db"
-import type { ConsultationLogChannel, StudioApplicationSummary, StudioMarketingConsent } from "@/shared/lib/db/adapter"
+import type {
+  ConsultationLogChannel,
+  RecontactRecipientStatus,
+  StudioApplicationSummary,
+  StudioCurrentParentDecision,
+  StudioMarketingConsent
+} from "@/shared/lib/db/adapter"
 import { getSeoulDateTimeParts } from "@/shared/lib/seoul-datetime"
 import type { QueryResult } from "@/shared/queries"
 
@@ -43,16 +53,23 @@ export const formatStudentDateTime = (value: string) => {
   return `${parts.month}월 ${parts.day}일(${WEEKDAYS[parts.weekday]}) ${String(parts.hour).padStart(2, "0")}:${String(parts.minute).padStart(2, "0")}`
 }
 
-/** 같은 요청 안에서 목록 · 상세가 같은 조회를 쓴다. */
+/** 같은 요청 안에서 목록 · 상세가 같은 조회를 쓴다. 의향 조회가 실패하면 등록 결과만으로 판정한다. */
 const loadStudentGroups = cache(async (organizationId: string) => {
   const applications = await dataAdapter.listStudioApplications(organizationId)
   const groups = groupStudentApplications(applications)
-  const decisions = await listStudioCurrentParentDecisions(getStudioRecontactCandidateIds(groups.map((group) => group.representative)))
-  const consideringIds = new Set(
-    decisions.data.filter((item) => item.decision === "considering").map((item) => item.applicationId)
-  )
-  return { groups, consideringIds }
+  const decisions = await listStudioCurrentParentDecisions(getStudentDecisionApplicationIds(groups))
+  return { groups, decisions: decisions.data, consideringIds: toConsideringIds(decisions.data) }
 })
+
+/**
+ * 홈 "다시 연락할 학생" 카드. 학생 메뉴 "다시 연락할 학생" 탭과 같은 묶음 · 같은 판정(buildRecontactStudents)이다.
+ * 신청 목록은 홈이 이미 읽은 것을 받는다(같은 조회를 두 번 하지 않게).
+ */
+export const getStudioRecontactStudents = async (applications: StudioApplicationSummary[]) => {
+  const groups = groupStudentApplications(applications)
+  const decisions = await listStudioCurrentParentDecisions(getStudentDecisionApplicationIds(groups))
+  return buildRecontactStudents(groups, decisions.data)
+}
 
 const parentIdsOf = (groups: StudentGroup[]) =>
   Array.from(new Set(groups.map((group) => group.representative.parentId).filter((id): id is string => Boolean(id))))
@@ -113,6 +130,15 @@ export type StudioStudentDetail = {
   info: { interestSubjects: string | null; currentLevel: string | null; regularSchedule: string | null }
 }
 
+/** 연락 기록의 안내 문자 상태. opted_out 은 080 거부로 NCP 가 걸러낸 것(매일 결과 확인 뒤 바뀐다). */
+const RECONTACT_STATUS_TEXT: Record<RecontactRecipientStatus, string> = {
+  queued: "보내는 중",
+  sent: "보냄",
+  failed: "보내지 못했어요",
+  dry_run: "시험 발송(실제로 가지 않음)",
+  opted_out: "수신거부로 발송 안 됨"
+}
+
 const CHANNEL_TITLES: Record<ConsultationLogChannel, string> = {
   PHONE: "전화",
   SMS: "문자",
@@ -132,6 +158,15 @@ const resolveRegularSchedule = (items: StudioApplicationSummary[]) => {
   return firstText(items, (item) => item.preferredRegularSchedule)
 }
 
+/**
+ * "정규 희망 시간": 학부모가 남긴 희망 요일 먼저(홈 · 분석과 같은 resolveStudentPreferredDays),
+ * 없으면 상담 기록(요일 · 시간), 그것도 없으면 신청 당시 적은 글.
+ */
+const resolveStudentRegularSchedule = (group: StudentGroup, decisions: StudioCurrentParentDecision[]) => {
+  const preferred = resolveStudentPreferredDays(group, decisions)
+  return preferred?.source === "parent" ? `${formatPreferredDays(preferred.days)} (학부모 희망)` : resolveRegularSchedule(group.applications)
+}
+
 /** 다음 연락: 학생의 신청 중 다음 연락이 적힌 가장 최근 것. 저장은 대표 신청에 한다. */
 const resolveNextContact = (items: StudioApplicationSummary[]) => {
   const item = items
@@ -149,7 +184,7 @@ export const getStudioStudentDetail = async (
   now: Date
 ): Promise<QueryResult<StudioStudentDetail | null>> => {
   try {
-    const { groups, consideringIds } = await loadStudentGroups(organizationId)
+    const { groups, decisions, consideringIds } = await loadStudentGroups(organizationId)
     const group = findStudentGroup(groups, applicationId)
     if (!group) return { data: null, error: null }
 
@@ -191,7 +226,7 @@ export const getStudioStudentDetail = async (
           return { key: `r${index}`, at: event.at, title: "리포트 보냄", detail: `${titleById.get(event.applicationId) ?? ""} · ${at}` }
         }
         if (event.kind === "recontact") {
-          const state = event.status === "failed" ? "보내지 못했어요" : event.status === "dry_run" ? "시험 발송(실제로 가지 않음)" : event.status === "queued" ? "보내는 중" : "보냄"
+          const state = RECONTACT_STATUS_TEXT[event.status]
           return { key: `m${index}`, at: event.at, title: `안내 문자 · ${templateLabel(event.templateKind)}`, detail: `${state} · ${at}` }
         }
         return {
@@ -228,7 +263,7 @@ export const getStudioStudentDetail = async (
         info: {
           interestSubjects: firstText(group.applications, (row) => row.interestSubjects),
           currentLevel: firstText(group.applications, (row) => row.currentLevel),
-          regularSchedule: resolveRegularSchedule(group.applications)
+          regularSchedule: resolveStudentRegularSchedule(group, decisions)
         }
       },
       error: null

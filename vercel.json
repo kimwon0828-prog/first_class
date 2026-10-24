@@ -27,6 +27,10 @@
     {
       "path": "/api/cron/trial-privacy-retention",
       "schedule": "0 18 * * *"
+    },
+    {
+      "path": "/api/cron/marketing-opt-out-sync",
+      "schedule": "0 0 * * *"
     }
   ]
 }

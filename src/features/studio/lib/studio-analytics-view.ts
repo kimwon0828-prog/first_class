@@ -16,7 +16,6 @@ import {
   resolveNotEnrolledReasonIds
 } from "@/features/registration/lib/registration-input"
 import { getCaseStage } from "@/features/studio/lib/case-view-model"
-import { parseRegularSchedulePreference, type IsoWeekday } from "@/features/studio/lib/regular-schedule-preference"
 import {
   buildStudioDashboardMetrics,
   computeTrialEnrollmentRate,
@@ -29,11 +28,11 @@ import {
   getStudioDateRangeStartIso,
   type StudioResolvedDateRange
 } from "@/features/studio/lib/studio-date-range"
-import type { StudioApplicationSummary } from "@/shared/lib/db/adapter"
+import { countTopPreferredDay, resolvePreferredDays } from "@/features/students/lib/preferred-days"
+import type { StudioApplicationSummary, StudioCurrentParentDecision } from "@/shared/lib/db/adapter"
 
 const DAY_MS = 24 * 60 * 60 * 1000
 const KST_OFFSET_MS = 9 * 60 * 60 * 1000
-const WEEKDAY_LABEL: Record<IsoWeekday, string> = { 1: "월", 2: "화", 3: "수", 4: "목", 5: "금", 6: "토", 7: "일" }
 
 /** 정수 % (분모 0 이면 null) — 화면의 모든 비율 표기 */
 const percent = (numerator: number, denominator: number): number | null =>
@@ -42,23 +41,40 @@ const percent = (numerator: number, denominator: number): number | null =>
 const percentText = (value: number | null) => (value == null ? "—" : `${value}%`)
 
 // ─────────────────────────────────────────────────────────────
-// 직전 같은 길이 기간
+// 비교 기간
 // ─────────────────────────────────────────────────────────────
 
 const ymd = (ms: number) => new Date(ms).toISOString().slice(0, 10)
 
+/** 그 달의 1일(UTC 자정 ms). monthOffset 만큼 앞뒤 달로 옮긴다. */
+const monthStartMs = (dateKey: string, monthOffset: number) =>
+  Date.UTC(Number(dateKey.slice(0, 4)), Number(dateKey.slice(5, 7)) - 1 + monthOffset, 1)
+
 /**
- * 선택 기간 바로 앞의 같은 길이 기간(KST 날짜). 전체 기간이면 null.
- * 예: 10월 1일~24일(24일) → 9월 7일~30일.
+ * 비교할 기간(KST 날짜). 전체 기간이면 null.
+ *   이번 달 칩  지난달 1일 ~ 같은 날짜(지난달에 그 날이 없으면 말일). 예: 10월 1~24일 → 9월 1~24일.
+ *   지난달 칩  전전달 전체. 예: 9월 → 8월 1~31일.
+ *   그 밖      바로 앞의 같은 길이 기간. 예: 10월 5~11일 → 9월 28일~10월 4일.
  */
 export const resolvePreviousStudioDateRange = (range: StudioResolvedDateRange): StudioResolvedDateRange | null => {
   if (!range.startDate || !range.endDate) return null
   const start = Date.parse(`${range.startDate}T00:00:00Z`)
   const end = Date.parse(`${range.endDate}T00:00:00Z`)
   if (Number.isNaN(start) || Number.isNaN(end) || end < start) return null
-  const lengthDays = Math.round((end - start) / DAY_MS) + 1
-  const previousEnd = ymd(start - DAY_MS)
-  const previousStart = ymd(start - lengthDays * DAY_MS)
+  let previousStart: string
+  let previousEnd: string
+  if (range.preset === "thisMonth" || range.preset === "lastMonth") {
+    const from = monthStartMs(range.startDate, -1)
+    const lastDay = monthStartMs(range.startDate, 0) - DAY_MS
+    previousStart = ymd(from)
+    previousEnd = range.preset === "thisMonth"
+      ? ymd(Math.min(from + (Number(range.endDate.slice(8, 10)) - 1) * DAY_MS, lastDay))
+      : ymd(lastDay)
+  } else {
+    const lengthDays = Math.round((end - start) / DAY_MS) + 1
+    previousEnd = ymd(start - DAY_MS)
+    previousStart = ymd(start - lengthDays * DAY_MS)
+  }
   return {
     preset: "custom",
     startDate: previousStart,
@@ -151,8 +167,10 @@ const SCHEDULE_REASON = "schedule_mismatch"
 export const buildStudioAnalyticsView = (input: {
   applications: StudioApplicationSummary[]
   range: StudioResolvedDateRange
-  /** 홈 "다시 연락할 학생"과 같은 기준의 고민 중 인원(buildStudioRecontact) */
-  consideringCount: number
+  /** 다시 연락할 학생 수(학생 단위, 미등록 + 고민 중 — 학생 탭 · 홈과 같은 buildRecontactStudents) */
+  recontactCount: number
+  /** 학부모가 남긴 지금 유효한 의향(희망 요일). "희망 시간 불일치" 요일 문장이 상담 기록보다 먼저 쓴다. */
+  decisions?: ReadonlyArray<StudioCurrentParentDecision>
   now?: Date
 }): StudioAnalyticsView => {
   const now = input.now ?? new Date()
@@ -239,10 +257,10 @@ export const buildStudioAnalyticsView = (input: {
   let insight: StudioAnalyticsView["insight"] = null
   if (applicationCount > 0) {
     const dropKey = dropIndex > 0 ? (flowInput[dropIndex].key as keyof typeof DROP_SENTENCE) : null
-    const parts = [dropKey ? DROP_SENTENCE[dropKey] : null, input.consideringCount > 0 ? `고민 중인 ${input.consideringCount}명에게 다시 연락해 보세요.` : null].filter(
+    const parts = [dropKey ? DROP_SENTENCE[dropKey] : null, input.recontactCount > 0 ? `다시 연락할 학생이 ${input.recontactCount}명 있어요.` : null].filter(
       (part): part is string => Boolean(part)
     )
-    insight = parts.length ? { text: parts.join(" "), showStudents: input.consideringCount > 0 } : null
+    insight = parts.length ? { text: parts.join(" "), showStudents: input.recontactCount > 0 } : null
   }
 
   // ── 등록하지 않은 이유 ──────────────────────────────────
@@ -267,28 +285,19 @@ export const buildStudioAnalyticsView = (input: {
       top: index === 0 && item.key !== "unrecorded"
     }))
 
-  // "희망 시간 불일치" 학생이 상담에서 남긴 정규수업 희망 요일 중 가장 많은 요일(같으면 월→일)
+  // "희망 시간 불일치" 학생이 원하는 요일 중 가장 많은 요일(같으면 월→일).
+  // 요일은 학생 상세 · 홈과 같은 함수(resolvePreferredDays): 학부모 희망 요일 먼저, 없으면 상담 기록.
   let reasonDayNote: string | null = null
   const scheduleStudents = notEnrolled.filter((item) => resolveNotEnrolledReasonIds(item).includes(SCHEDULE_REASON))
   if (scheduleStudents.length > 0) {
-    const dayCounts = new Map<IsoWeekday, number>()
-    for (const item of scheduleStudents) {
-      const parsed = parseRegularSchedulePreference(item.regularSchedulePreference ?? null)
-      if (parsed.status !== "valid" || parsed.value.state !== "specified") continue
-      const days = new Set<IsoWeekday>()
-      for (const group of parsed.value.groups) {
-        if (group.dayMode === "selected") group.days.forEach((day) => days.add(day))
-      }
-      days.forEach((day) => dayCounts.set(day, (dayCounts.get(day) ?? 0) + 1))
-    }
-    let top: { day: IsoWeekday; count: number } | null = null
-    for (const day of [1, 2, 3, 4, 5, 6, 7] as IsoWeekday[]) {
-      const count = dayCounts.get(day) ?? 0
-      if (count > 0 && (!top || count > top.count)) top = { day, count }
-    }
+    const daysById = new Map((input.decisions ?? []).map((item) => [item.applicationId, item.preferredDays]))
+    const top = countTopPreferredDay(scheduleStudents.map((item) => resolvePreferredDays({
+      decisionDays: daysById.get(item.id) ?? null,
+      regularSchedulePreferences: [item.regularSchedulePreference]
+    })?.days))
     if (top) {
       const label = getNotEnrolledReasonLabel(SCHEDULE_REASON)
-      reasonDayNote = `"${label}" ${scheduleStudents.length}명 중 ${top.count}명이 ${WEEKDAY_LABEL[top.day]}요일을 원했어요.`
+      reasonDayNote = `"${label}" ${scheduleStudents.length}명 중 ${top.count}명이 ${top.label}요일을 원했어요.`
     }
   }
 
