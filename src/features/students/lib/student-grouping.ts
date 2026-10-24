@@ -245,7 +245,7 @@ export type StudentLockReason = "no_account" | "no_consent" | "no_phone"
 
 /**
  * 안내를 보낼 수 있는가. 받는 번호는 학부모 계정 번호다(신청서 번호가 아니다).
- * 엑셀(계정 없음) → 수신 동의 안 함 → 계정 번호 없음("휴대폰 인증이 필요해요") 순서로 본다.
+ * 엑셀(계정 없음) → 수신 동의 안 함 → 계정 번호 없음("보호자 휴대폰 번호가 필요해요") 순서로 본다.
  * 080 수신거부는 번호 해시가 서버에만 있어 보낼 때 서버가 다시 뺀다.
  */
 export const resolveStudentLock = (
@@ -262,7 +262,7 @@ export const resolveStudentLock = (
 export const STUDENT_LOCK_LABELS: Record<StudentLockReason, { short: string; long: string }> = {
   no_account: { short: "엑셀 학생", long: "엑셀로 가져온 학생은 안내를 보낼 수 없어요" },
   no_consent: { short: "수신 동의 안 함", long: "광고성 정보 수신에 동의한 보호자에게만 보낼 수 있어요" },
-  no_phone: { short: "휴대폰 인증이 필요해요", long: "보호자가 휴대폰 인증을 해야 안내를 보낼 수 있어요" }
+  no_phone: { short: "보호자 휴대폰 번호가 필요해요", long: "보호자가 마이에서 휴대폰 번호를 등록해야 안내를 보낼 수 있어요" }
 }
 
 export const gradeOrder = (grade: string | null | undefined) => {

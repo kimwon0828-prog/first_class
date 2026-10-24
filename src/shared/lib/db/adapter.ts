@@ -872,7 +872,7 @@ export type StudioMarketingConsent = {
   consented: boolean
   consentedAt: string | null
   withdrawnAt: string | null
-  /** 학부모 계정 번호(010 휴대폰)가 있는가. 안내 문자는 이 번호로만 간다 — 없으면 "휴대폰 인증이 필요해요"로 잠긴다. */
+  /** 학부모 계정 번호(010 휴대폰)가 있는가. 안내 문자는 이 번호로만 간다 — 없으면 "보호자 휴대폰 번호가 필요해요"로 잠긴다. */
   phoneReady: boolean
 }
 

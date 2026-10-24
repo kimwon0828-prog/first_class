@@ -203,7 +203,7 @@ const app = (id: string, patch: Partial<StudioApplicationSummary> = {}): StudioA
       app("b1", { childId: "child-b", childName: "문서윤", parentId: "parent-2", parentPhone: "010-1111-2222", registrationStatus: "pending", registrationReasonIds: ["comparing_academies"] }),
       app("c1", { childId: "child-c", childName: "서지호", parentId: "parent-3", registrationReasonIds: [], unregisteredReason: "class_level_mismatch" }),
       app("x1", { parentId: null, childId: null, childName: "조하준", parentPhone: "010-9999-0000" }),
-      // 신청서 번호는 있지만 학부모 계정 번호가 없다 → 휴대폰 인증이 필요해요
+      // 신청서 번호는 있지만 학부모 계정 번호가 없다 → 보호자 휴대폰 번호가 필요해요
       app("d1", { childId: "child-d", childName: "한지안", parentId: "parent-4", parentPhone: "010-4444-5555" }),
       // 계정 번호도 없고 동의도 안 함 → 동의가 먼저
       app("e1", { childId: "child-e", childName: "윤이안", parentId: "parent-5" })
@@ -232,7 +232,7 @@ const app = (id: string, patch: Partial<StudioApplicationSummary> = {}): StudioA
   check("엑셀 학생은 잠긴다(학부모 계정 없음)", row("조하준").lock === "no_account")
   check("동의했어도 계정 번호가 없으면 잠긴다(신청서 번호는 보지 않는다)", row("한지안").lock === "no_phone")
   check("잠금 이유는 동의가 먼저(동의 안 함 + 번호 없음 → 동의 안 함)", row("윤이안").lock === "no_consent")
-  check("잠금 문구: 휴대폰 인증이 필요해요", STUDENT_LOCK_LABELS.no_phone.short === "휴대폰 인증이 필요해요")
+  check("잠금 문구: 보호자 휴대폰 번호가 필요해요", STUDENT_LOCK_LABELS.no_phone.short === "보호자 휴대폰 번호가 필요해요")
   check("목록 행에 전화번호 · 메모가 없다", !JSON.stringify(rows).includes("010-") && !JSON.stringify(rows).includes("note"))
 }
 
