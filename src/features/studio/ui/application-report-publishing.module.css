@@ -91,7 +91,6 @@
 
 /* 경고 · 막힌 이유: state/warn-bg · 모서리 12 · 12/14 · 13 Medium state/warn-fg */
 .warn,
-.locked,
 .error {
   display: flex;
   gap: var(--sv2-space-8);
@@ -115,7 +114,6 @@
 }
 
 .warn p,
-.locked p,
 .error p {
   margin: 0;
 }
@@ -125,20 +123,9 @@
   padding-left: 18px;
 }
 
-.locked,
 .error {
   flex-direction: column;
   align-items: flex-start;
-}
-
-.locked {
-  background: var(--sv2-surface-fill);
-  color: var(--sv2-ink-700);
-}
-
-.locked a {
-  color: var(--sv2-brand-700);
-  font-weight: 700;
 }
 
 .error {

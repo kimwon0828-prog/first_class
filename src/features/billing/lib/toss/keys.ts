@@ -180,6 +180,8 @@ export type TossBillingBlockCode =
   | "test_key_in_production"
   /** live 키가 있지만 명시적으로 켜지 않았다. */
   | "live_billing_not_enabled"
+  /** 로컬 개발 서버가 호스팅(운영) DB 를 보고 있다. shared/config/local-mutation-guard.ts */
+  | "hosted_database_in_development"
 
 /**
  * 이 배포에서 provider 결제를 실행해도 되는가.

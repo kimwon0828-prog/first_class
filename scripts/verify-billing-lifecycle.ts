@@ -260,8 +260,8 @@ const run = async () => {
     )
 
     check(
-      entitlements.canPublishParentReport === row.expectStudioPaid,
-      `${row.label}: Studio 유료 기능 기대 ${row.expectStudioPaid} / 실제 ${entitlements.canPublishParentReport}`
+      entitlements.canUseConversionAnalytics === row.expectStudioPaid,
+      `${row.label}: Studio 유료 기능 기대 ${row.expectStudioPaid} / 실제 ${entitlements.canUseConversionAnalytics}`
     )
     // 결제 사실은 override 로 위조되지 않는다.
     check(
@@ -342,9 +342,9 @@ const run = async () => {
       new Date("2027-01-01T00:00:00.000Z")
     )
 
-    check(inside.entitlements.canPublishParentReport, "PoC 기간 안인데 Standard 가 닫혔다")
+    check(inside.entitlements.canUseConversionAnalytics, "PoC 기간 안인데 Standard 가 닫혔다")
     // DB status 가 아직 trialing 이어도 기간이 지나면 닫힌다.
-    check(!after.entitlements.canPublishParentReport, "기간이 지났는데 Standard 가 열려 있다")
+    check(!after.entitlements.canUseConversionAnalytics, "기간이 지났는데 Standard 가 열려 있다")
     check(after.entitlements.canProcessTrial, "만료 후 무료 운영까지 막혔다")
     check(after.entitlements.canViewTrialResults, "만료 후 기존 체험 결과 열람이 막혔다")
     // downgrade 후에도 기록은 계속된다. 잠기는 것은 학부모 공유와 분석뿐이다.

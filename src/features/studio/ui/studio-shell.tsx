@@ -43,6 +43,8 @@ type StudioShellProps = {
   navCounts?: Partial<Record<StudioNavKey, number | null>>
   /** 본문 하단 footer. 서버에서 만들어 넘긴다(연도 계산이 hydration 을 타지 않게). */
   footer?: ReactNode
+  /** 상단 안내(§5.25, 자동 체험 종료 14일 전부터). null 이면 그리지 않는다. */
+  trialBanner?: { message: string } | null
 }
 
 const NAV_ICONS: Record<StudioNavKey, (props: { className?: string }) => ReactNode> = {
@@ -69,7 +71,7 @@ const MYPAGE_HREF = "/studio/mypage"
  *
  * 메뉴 묶음과 활성 판정은 studio-nav.ts 한 곳에서 정한다. URL 은 바꾸지 않았다.
  */
-export const StudioShell = ({ children, organizationName, logoImagePath, plan, navCounts, footer }: StudioShellProps) => {
+export const StudioShell = ({ children, organizationName, logoImagePath, plan, navCounts, footer, trialBanner }: StudioShellProps) => {
   /* 링크는 host 에 맞춰 나가고, 위치 비교는 내부 경로로 한다. */
   const studioPath = useStudioNavigationPathFactory()
   const pathname = useStudioInternalPathname()
@@ -207,7 +209,20 @@ export const StudioShell = ({ children, organizationName, logoImagePath, plan, n
       </aside>
 
       <div className={styles.main}>
-        <main className={styles.content}>{children}</main>
+        <main className={styles.content}>
+          {/* 플랜·결제에서는 같은 내용이 지금 상태 카드에 있으므로 띄우지 않는다. */}
+          {trialBanner && !pathname.startsWith("/studio/billing") ? (
+            <div className={styles.trialBanner}>
+              <p className={styles.trialBannerBox} role="status">
+                <span>{trialBanner.message}</span>
+                <Link href={studioPath("/studio/billing")} prefetch={false} className={styles.trialBannerLink}>
+                  플랜·결제 보기
+                </Link>
+              </p>
+            </div>
+          ) : null}
+          {children}
+        </main>
         {footer}
       </div>
     </div>

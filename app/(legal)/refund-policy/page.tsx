@@ -1,7 +1,8 @@
 import type { Metadata } from "next"
 
 import { LegalPageLayout } from "../legal-page-layout"
-import { BILLING_PLANS } from "@/features/billing/lib/plan-catalog"
+import { BILLING_GRACE_PERIOD_DAYS, BILLING_PLANS } from "@/features/billing/lib/plan-catalog"
+import { STANDARD_TRIAL_DAYS, TRIAL_CARD_WINDOW_DAYS } from "@/features/billing/lib/standard-trial"
 import { COMPANY_INFO } from "@/shared/config/company-info"
 
 // 환불 및 해지 정책.
@@ -15,6 +16,16 @@ import { COMPANY_INFO } from "@/shared/config/company-info"
 // 다른 하나도 같이 바꿔야 한다.
 //
 // 백엔드가 보장하지 못하는 환불 조건(일할 계산·무조건 전액 등)은 적지 않는다.
+//
+// 제3조(무료 체험)는 standard-trial.ts · run-billing-renewals.ts · trial-notices.ts 의 동작을
+// 그대로 서술한다(90일 · 종료 30일 전부터 카드 등록 · 마지막 체험일 첫 결제 · 3일 유예).
+// 일수는 같은 상수에서 읽는다. 동작이 바뀌면 이 조항도 같이 바꾼다.
+
+/**
+ * 최종 수정일. 배포하는 날로 바꾼다 — 이 상수 한 곳만 고치면 된다.
+ * (2차-1: 제3조 Standard 무료 체험 추가 · 조항 번호 조정)
+ */
+const REFUND_POLICY_LAST_UPDATED = "2026년 10월 24일"
 
 const STANDARD = BILLING_PLANS.standard
 
@@ -31,9 +42,9 @@ export default function RefundPolicyPage() {
     <LegalPageLayout
       eyebrow="법적 안내"
       title="환불 및 해지 정책"
-      description="첫수업 Standard 플랜의 정기결제, 이용기간, 해지 및 환불 기준을 안내합니다."
+      description="첫수업 Standard 플랜의 무료 체험, 정기결제, 이용기간, 해지 및 환불 기준을 안내합니다."
       effectiveDate="2026년 9월 9일"
-      lastUpdatedDate={null}
+      lastUpdatedDate={REFUND_POLICY_LAST_UPDATED}
       sections={[
         {
           title: "제1조 (적용 대상)",
@@ -64,7 +75,7 @@ export default function RefundPolicyPage() {
               </p>
               <p>
                 Free 플랜에서 Standard 플랜으로 전환하는 경우, 유료 이용기간은 Standard 결제가
-                성공한 시점부터 시작됩니다.
+                성공한 시점부터 시작됩니다. 무료 체험 뒤 전환하는 경우는 제3조에 따릅니다.
               </p>
               <p>
                 자동결제가 정상적으로 처리되지 않은 경우 서비스 이용 상태가 변경될 수 있습니다.
@@ -73,7 +84,44 @@ export default function RefundPolicyPage() {
           )
         },
         {
-          title: "제3조 (정기결제 해지)",
+          title: "제3조 (Standard 무료 체험)",
+          body: (
+            <>
+              <p>
+                1. 첫수업 입점 승인을 받은 학원에는 승인일부터 {STANDARD_TRIAL_DAYS}일 동안 Standard
+                기능을 무료로 제공합니다. 무료 체험은 사업자등록번호당 1회이며, 체험을 시작할 때
+                결제수단을 등록하지 않아도 됩니다.
+              </p>
+              <p>
+                2. 결제수단(카드)은 체험 종료 {TRIAL_CARD_WINDOW_DAYS}일 전부터 등록할 수 있습니다.
+                등록 화면에서 첫 결제일, 금액({standardPriceText}), 이후 매월 자동결제된다는 사실과
+                해지 방법을 안내하며, 이에 동의한 경우에만 등록됩니다. 카드를 등록해도 등록 시점에는
+                결제되지 않습니다.
+              </p>
+              <p>
+                3. 카드를 등록한 경우 체험 마지막 날에 첫 이용료가 결제되고, 체험이 끝나는 시점부터
+                1개월 단위로 이용기간이 시작되며 이후 매월 자동결제됩니다.
+              </p>
+              <p>
+                4. 체험 마지막 날의 결제 전에 해지하면 결제되지 않으며, 체험이 끝나면 Free 플랜으로
+                전환됩니다. 카드를 등록하지 않은 경우에도 체험이 끝나면 자동으로 Free 플랜으로
+                전환되고, 별도의 이용료는 청구되지 않습니다. 체험 중 작성한 기록과 이미 보낸
+                리포트는 그대로 유지됩니다.
+              </p>
+              <p>
+                5. 첫 결제가 이루어지지 않은 경우 {BILLING_GRACE_PERIOD_DAYS}일 동안 다시 결제를
+                시도하며, 그 기간에는 Standard 기능을 계속 이용할 수 있습니다. 그때까지 결제가
+                완료되지 않으면 Free 플랜으로 전환됩니다.
+              </p>
+              <p>
+                6. 첫수업은 카드 등록이 열리는 날, 체험 마지막 날 7일 전과 전날, 그리고 체험이 끝난
+                뒤 결과를 학원 담당자 연락처로 문자 안내합니다.
+              </p>
+            </>
+          )
+        },
+        {
+          title: "제4조 (정기결제 해지)",
           body: (
             <>
               <p>
@@ -85,13 +133,13 @@ export default function RefundPolicyPage() {
               <p>
                 정기결제 해지는 향후 자동결제를 중단하는 절차이며, 이미 결제된 현재 이용기간의
                 결제 취소 또는 환불을 자동으로 의미하지는 않습니다. 다만 관계 법령에 따라
-                이용자에게 청약철회 또는 환불 권리가 인정되는 경우에는 제4조 제4항에 따릅니다.
+                이용자에게 청약철회 또는 환불 권리가 인정되는 경우에는 제5조 제4항에 따릅니다.
               </p>
             </>
           )
         },
         {
-          title: "제4조 (환불)",
+          title: "제5조 (환불)",
           body: (
             <>
               <p>
@@ -121,7 +169,7 @@ export default function RefundPolicyPage() {
           )
         },
         {
-          title: "제5조 (환불 요청 방법)",
+          title: "제6조 (환불 요청 방법)",
           body: (
             <>
               <p>
@@ -149,7 +197,7 @@ export default function RefundPolicyPage() {
           )
         },
         {
-          title: "제6조 (환불 처리)",
+          title: "제7조 (환불 처리)",
           body: (
             <>
               <p>
@@ -164,7 +212,7 @@ export default function RefundPolicyPage() {
           )
         },
         {
-          title: "제7조 (관계 법령의 우선 적용)",
+          title: "제8조 (관계 법령의 우선 적용)",
           body: (
             <p>
               본 정책에서 정하지 않은 사항, 또는 본 정책의 내용이 관계 법령과 다른 경우에는 관계

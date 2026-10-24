@@ -1,7 +1,9 @@
 import Link from "next/link"
+import type { CSSProperties } from "react"
 
 import { StartStandardButton } from "@/features/billing/ui/start-standard-button"
 import { SubscriptionActions } from "@/features/billing/ui/subscription-actions"
+import { TrialCardRegistration } from "@/features/billing/ui/trial-card-registration"
 import {
   formatBillingAmount,
   formatBillingDate,
@@ -13,6 +15,7 @@ import { v2ButtonClassName } from "@/features/studio/ui/v2/v2-button"
 import { V2CheckIcon } from "@/features/studio/ui/v2/v2-icons"
 import { V2StatusBadge } from "@/features/studio/ui/v2/v2-status-badge"
 import type { StudioBillingOverview } from "@/features/billing/queries/get-studio-billing-overview"
+import { describeTrialStatus } from "@/features/billing/lib/standard-trial"
 import styles from "./billing-page.module.css"
 
 // 설정 · 플랜·결제 (Figma 2148:7024). STUDIO_DESIGN_SYSTEM.md §5.23.
@@ -35,6 +38,10 @@ export const BillingPage = ({ overview, notice }: BillingPageProps) => {
   // 지금 쓰는 플랜(결제 사실 기준)의 이름 · 설명. 문구는 subscription-presentation 값 그대로다.
   const planName = presentation.planLabel.endsWith("플랜") ? presentation.planLabel : `${presentation.planLabel} 플랜`
   const currentCard = pricingCards.find((card) => card.planCode === presentation.billedPlanCode) ?? null
+  const trial = presentation.trial
+  // 카드 등록(§5.26)은 자동 체험 · 카드 전 · 창(종료 30일 전부터) 안 · 결제 가능한 배포에서만 연다.
+  const canRegisterCard = Boolean(trial && trial.state === "no_card" && trial.cardWindowOpen && overview.billingAvailable)
+  const amountLabel = formatBillingAmount(overview.standardAmount)
 
   return (
     <div className={styles.page}>
@@ -56,7 +63,28 @@ export const BillingPage = ({ overview, notice }: BillingPageProps) => {
         </p>
       ) : null}
 
-      {/* 지금 상태: 유예 · 결제 실패 같은 안내(alert)가 있으면 그것을, 없으면 지금 플랜과 날짜를 말한다. */}
+      {/* 자동 체험(Figma 2148:7041): 배지 대신 "N일 남음", 설명 아래 진행 막대. */}
+      {trial ? (
+        <section className={styles.statusCard} aria-labelledby="billing-status-title">
+          <div className={styles.statusHead}>
+            <h2 className={styles.statusTitle} id="billing-status-title">지금은 스탠다드 무료 체험 중이에요</h2>
+            <span className={styles.trialDays}>{trial.daysLeft}일 남음</span>
+          </div>
+          <p className={styles.statusBody}>{describeTrialStatus(trial, overview.standardAmount)}</p>
+          {trial.elapsedRatio !== null ? (
+            <span className={styles.trialBar} aria-hidden="true">
+              <span
+                className={styles.trialBarFill}
+                style={{ "--trial-elapsed": `${Math.round(trial.elapsedRatio * 100)}%` } as CSSProperties}
+              />
+            </span>
+          ) : null}
+          {presentation.hasInternalFullAccess ? (
+            <p className={styles.internalNote}>내부 테스트 권한으로 전체 기능을 이용 중이에요. 결제 상태와는 별개예요.</p>
+          ) : null}
+        </section>
+      ) : (
+      /* 지금 상태: 유예 · 결제 실패 같은 안내(alert)가 있으면 그것을, 없으면 지금 플랜과 날짜를 말한다. */
       <section className={presentation.alert ? `${styles.statusCard} ${styles.statusCardAlert}` : styles.statusCard} aria-labelledby="billing-status-title">
         <div className={styles.statusHead}>
           <h2 className={styles.statusTitle} id="billing-status-title">
@@ -75,6 +103,7 @@ export const BillingPage = ({ overview, notice }: BillingPageProps) => {
           <p className={styles.internalNote}>내부 테스트 권한으로 전체 기능을 이용 중이에요. 결제 상태와는 별개예요.</p>
         ) : null}
       </section>
+      )}
 
       <section className={styles.planGrid} aria-label="플랜">
         {pricingCards.map((card) => (
@@ -105,7 +134,9 @@ export const BillingPage = ({ overview, notice }: BillingPageProps) => {
             <div className={styles.planCta}>
               {card.cta.kind === "action" ? (
                 <StartStandardButton />
-              ) : card.cta.kind === "disabled" ? (
+              ) : card.cta.kind === "register_card" && trial ? (
+                <TrialCardRegistration placement="plan" label={card.cta.label} lastDayLabel={trial.lastDayLabel} amountLabel={amountLabel} />
+              ) : card.cta.kind === "disabled" || card.cta.kind === "register_card" ? (
                 <>
                   <button type="button" className={v2ButtonClassName({ variant: "outline", size: "lg", className: styles.ctaFull })} disabled>
                     {card.cta.label}
@@ -136,9 +167,16 @@ export const BillingPage = ({ overview, notice }: BillingPageProps) => {
             <p>
               {billingMethod
                 ? `${billingMethod.issuerName ? `${billingMethod.issuerName} ` : ""}${billingMethod.maskedNumber ?? "카드 정보 없음"}`
-                : "등록된 결제수단이 없어요."}
+                : trial
+                  ? trial.cardWindowOpen
+                    ? "아직 등록하지 않았어요 · 체험이 끝나기 전에 알려드릴게요"
+                    : `아직 등록하지 않았어요 · ${trial.cardWindowStartLabel}부터 카드를 등록할 수 있어요`
+                  : "등록된 결제수단이 없어요."}
             </p>
           </div>
+          {canRegisterCard && trial ? (
+            <TrialCardRegistration placement="payment" label="카드 등록" lastDayLabel={trial.lastDayLabel} amountLabel={amountLabel} />
+          ) : null}
         </div>
         <div className={styles.factRow}>
           <div className={styles.factText}>
@@ -153,9 +191,13 @@ export const BillingPage = ({ overview, notice }: BillingPageProps) => {
             canCancel={presentation.canCancel}
             canResume={presentation.canResume}
             endDate={presentation.dateRow?.value ?? null}
+            variant={trial ? "trial" : "subscription"}
           />
         </div>
       </section>
+
+      {/* Figma 2148:7112. 리포트 보내기는 2차-1부터 모든 플랜에서 무료다(AGENTS.md 요금제 정책). */}
+      <p className={styles.notice}>리포트 보내기는 모든 플랜에서 무료예요. 학부모가 리포트를 보고 등록을 결정하기 때문이에요.</p>
 
       <section className={styles.section} aria-labelledby="payment-history-title">
         <h2 className={styles.sectionTitle} id="payment-history-title">결제 내역</h2>

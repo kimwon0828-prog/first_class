@@ -31,6 +31,9 @@ import {
 } from "@/shared/config/studio-host-rewrite"
 
 const CHECKOUT = "src/features/billing/actions/start-standard-checkout.ts"
+// 결제창 successUrl · failUrl 은 스탠다드 시작과 체험 중 카드 등록이 같이 쓰도록 이 파일로 옮겼다(2차-1).
+const CHECKOUT_URLS = "src/features/billing/lib/checkout/checkout-urls.ts"
+const TRIAL_CARD = "src/features/billing/actions/start-trial-card-registration.ts"
 const CALLBACK_URL_HELPER = "src/features/billing/lib/callback-url.ts"
 const CALLBACK_PAGE = "app/studio/(dashboard)/billing/callback/page.tsx"
 const CHECKOUT_BUTTON = "src/features/billing/ui/start-standard-button.tsx"
@@ -55,6 +58,7 @@ const walk = (path: string): string[] => {
 }
 
 const checkout = codeOf(CHECKOUT)
+const checkoutUrls = codeOf(CHECKOUT_URLS)
 const middleware = codeOf(MIDDLEWARE)
 
 let failures = 0
@@ -76,8 +80,9 @@ const url = (internalPath: string, hostname: string, origin: string) =>
 
 console.log("[A] 내부 route 는 그대로다")
 
-check("A) CALLBACK_PATH 상수가 그대로다", checkout.includes(`const CALLBACK_PATH = "${CALLBACK_PATH}"`))
-check("A) FAIL_PATH 상수가 그대로다", checkout.includes(`const FAIL_PATH = "${FAIL_PATH}"`))
+check("A) 스탠다드 시작 · 카드 등록이 같은 결제창 주소를 쓴다", checkout.includes("buildCheckoutReturnUrls()") && codeOf(TRIAL_CARD).includes("buildCheckoutReturnUrls("))
+check("A) CALLBACK_PATH 상수가 그대로다", checkoutUrls.includes(`const CALLBACK_PATH = "${CALLBACK_PATH}"`))
+check("A) FAIL_PATH 상수가 그대로다", checkoutUrls.includes(`const FAIL_PATH = "${FAIL_PATH}"`))
 check("A) 내부 callback route 파일이 그대로 있다", exists(CALLBACK_PAGE))
 /* route 를 옮기거나 rename 하지 않았다. */
 check("A) /billing/callback route 를 새로 만들지 않았다", !exists("app/billing/callback/page.tsx") && !exists("app/(dashboard)/billing/callback/page.tsx"))
@@ -95,7 +100,9 @@ equals(
 for (const hostname of [STUDIO_HOST.toUpperCase(), `${STUDIO_HOST}:443`, `${STUDIO_HOST}.`]) {
   equals(`B) ${hostname} successUrl`, url(CALLBACK_PATH, hostname, STUDIO_ORIGIN), `${STUDIO_ORIGIN}/billing/callback`)
 }
-check("C) 실패 query 이름·값을 바꾸지 않았다", checkout.includes("?billing=failed"))
+check("C) 실패 query 이름·값을 바꾸지 않았다", checkoutUrls.includes('"card_failed" : "failed"') && checkoutUrls.includes("?billing=${"))
+check("C) 카드 등록만 card_failed 를 쓴다", codeOf(TRIAL_CARD).includes('buildCheckoutReturnUrls("register_card")') && checkout.includes("buildCheckoutReturnUrls()"))
+check("C) 카드 등록 실패는 callback 에서도 card_failed 다", codeOf(CALLBACK_PAGE).includes('result.purpose === "register_card"') && codeOf(CALLBACK_PAGE).includes('"card_failed"'))
 check("C) failUrl 은 여전히 billing 화면으로 간다", url(FAIL_PATH, STUDIO_HOST, STUDIO_ORIGIN).endsWith("/billing"))
 
 console.log("\n[D] /studio prefix 가 붙은 주소를 새로 만들지 않는다")
@@ -113,7 +120,7 @@ check(
   url(CALLBACK_PATH, STUDIO_HOST, STUDIO_ORIGIN) !== `${STUDIO_ORIGIN}${CALLBACK_PATH}`
 )
 /* 절대 주소를 코드에 박지 않았다. */
-check("D) checkout 이 origin 을 하드코딩하지 않는다", !checkout.includes("firstsuup.com") && !checkout.includes("STUDIO_ORIGIN"))
+check("D) checkout 이 origin 을 하드코딩하지 않는다", ![checkout, checkoutUrls].some((code) => code.includes("firstsuup.com") || code.includes("STUDIO_ORIGIN")))
 check("D) helper 도 origin 을 하드코딩하지 않는다", !codeOf(CALLBACK_URL_HELPER).includes("firstsuup.com"))
 
 console.log("\n[E-F] localhost 는 기존 개발 경로를 지킨다")
@@ -200,7 +207,12 @@ const callbackPage = codeOf(CALLBACK_PAGE)
 check("I) callback 이 authKey · customerKey 를 그대로 읽는다", callbackPage.includes("customerKey") && callbackPage.includes("authKey"))
 check("I) callback 이 completeStandardCheckout 을 부른다", callbackPage.includes("completeStandardCheckout({"))
 check("I) callback 이 조직을 guard 에서 얻는다", callbackPage.includes("actorOrganizationId: access.organizationId"))
-check("I) 성공/실패 판정이 그대로다", callbackPage.includes('result.status === "activated" ? "activated" : result.status === "pending" ? "pending" : "failed"'))
+// 2차-1: 체험 중 카드 등록 결과(card_registered)가 더해졌다. 그 밖의 결과는 여전히 failed 다.
+check(
+  "I) 성공/실패 판정이 그대로다(카드 등록 결과만 더함)",
+  callbackPage.includes('result.status === "activated" || result.status === "card_registered" || result.status === "pending"') &&
+    callbackPage.includes(': "failed"')
+)
 check("I) complete-standard-checkout 을 건드리지 않았다", exists(COMPLETE_CHECKOUT))
 /* client 는 서버가 준 URL 을 그대로 넘긴다. */
 const button = codeOf(CHECKOUT_BUTTON)
@@ -216,8 +228,9 @@ check("J) clientKey 만 client 로 내려간다", checkout.includes("clientKey: 
 check("J) toss server 모듈을 건드리지 않았다", exists(TOSS_SERVER))
 check("J) checkout 이 환경변수를 직접 읽지 않는다", !checkout.includes("process.env"))
 check("J) helper 가 환경변수를 읽지 않는다", !codeOf(CALLBACK_URL_HELPER).includes("process.env"))
-check("J) origin 은 요청 헤더에서 온다", checkout.includes('headerList.get("x-forwarded-host") ?? headerList.get("host")'))
-check("J) protocol 판단이 그대로다", checkout.includes('headerList.get("x-forwarded-proto")'))
+check("J) origin 은 요청 헤더에서 온다", checkoutUrls.includes('headerList.get("x-forwarded-host") ?? headerList.get("host")'))
+check("J) protocol 판단이 그대로다", checkoutUrls.includes('headerList.get("x-forwarded-proto")'))
+check("J) 결제창 주소 모듈은 서버 전용이다", checkoutUrls.includes('import "server-only"'))
 
 console.log("\n[K] middleware cookie 계약 무변경")
 
@@ -240,7 +253,7 @@ check("L) Partner 요금제 CTA 가 그대로다", codeOf("app/partner/PartnerLa
 check("L) account-conflict 가 그대로다", codeOf("app/auth/account-conflict/page.tsx").includes('resolveStudioCrossProductHref("/studio/sign-in")'))
 check("L) require-parent-access 가 그대로다", codeOf("src/features/my/lib/require-parent-access.ts").includes("getStudioCrossProductHref"))
 check("L) studio guard 의 Studio→Parent 가 그대로다", codeOf("src/features/studio/lib/require-teacher-studio-access.ts").includes("getParentCrossProductHref"))
-check("L) billing 이 cross-product helper 를 쓰지 않는다", !checkout.includes("cross-product-navigation") && !codeOf(CALLBACK_URL_HELPER).includes("cross-product-navigation"))
+check("L) billing 이 cross-product helper 를 쓰지 않는다", !checkout.includes("cross-product-navigation") && !checkoutUrls.includes("cross-product-navigation") && !codeOf(CALLBACK_URL_HELPER).includes("cross-product-navigation"))
 /* 경로 규칙은 S3D contract 하나만 쓴다. */
 check("L) helper 가 S3D contract 를 재사용한다", codeOf(CALLBACK_URL_HELPER).includes("getStudioNavigationPath"))
 check("L) helper 가 경로를 다시 매핑하지 않는다", !/"\/studio\//.test(codeOf(CALLBACK_URL_HELPER)))

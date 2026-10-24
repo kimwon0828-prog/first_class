@@ -52,6 +52,9 @@ import {
 } from "@/features/billing/lib/billing-period"
 import { BILLING_PLANS } from "@/features/billing/lib/plan-catalog"
 
+/** 금액의 주인은 plan-catalog 다. 리터럴로 고정하지 않는다(2차-1에서 49,000 → 39,000). */
+const STANDARD_AMOUNT = BILLING_PLANS.standard.amount
+
 let failures = 0
 const check = (condition: unknown, message: string) => {
   if (condition) {
@@ -280,7 +283,7 @@ const run = async () => {
     const charged = chargeMock.calls[0]
     check(charged.url.endsWith("/v1/billing/bk_live_1"), `승인 endpoint 가 다르다: ${charged.url}`)
     const chargeBody = JSON.parse(String(charged.init.body))
-    check(chargeBody.amount === 49000, "서버 카탈로그 금액이 전달되지 않았다")
+    check(chargeBody.amount === STANDARD_AMOUNT, "서버 카탈로그 금액이 전달되지 않았다")
     check(
       chargeBody.customerKey && chargeBody.orderId && chargeBody.orderName,
       "필수 필드가 빠졌다"
@@ -303,7 +306,7 @@ const run = async () => {
       paymentKey: "pk_1",
       orderId: "fsc-abc123",
       status: "DONE" as const,
-      totalAmount: 49000,
+      totalAmount: STANDARD_AMOUNT,
       approvedAt: "2026-09-08T01:00:00+09:00",
       currency: "KRW"
     }
@@ -400,7 +403,7 @@ const run = async () => {
       organizationId: ORG_A,
       customerKey: "fs-00000000000000000000000000000001",
       planCode: "standard",
-      amount: 49000,
+      amount: STANDARD_AMOUNT,
       orderId: "fsc-3f2b1a4400004000800000000000abc",
       paymentIdempotencyKey: "checkout:3f2b1a44-0000-4000-8000-000000000abc",
       billingKeyIssueIdempotencyKey: "billing-key:3f2b1a44-0000-4000-8000-000000000abc",
@@ -499,7 +502,7 @@ const run = async () => {
       paymentKey: "pk_1",
       orderId: ORDER_ID,
       status: "DONE",
-      totalAmount: 49000,
+      totalAmount: STANDARD_AMOUNT,
       approvedAt: "2026-10-10T09:00:00+09:00",
       currency: "KRW"
     }
@@ -652,7 +655,7 @@ const run = async () => {
           organization_id: ORG_ID,
           customer_key: customerKey,
           plan_code: "standard",
-          amount: 49000,
+          amount: STANDARD_AMOUNT,
           order_id: orderId,
           payment_idempotency_key: key,
           billing_key_issue_idempotency_key: `billing-key:${id}`,
@@ -685,7 +688,7 @@ const run = async () => {
         organization_id: ORG_ID,
         customer_key: "fs-000000000000000000000000000000c2",
         plan_code: "standard",
-        amount: 49000,
+        amount: STANDARD_AMOUNT,
         order_id: attempt.orderId,
         payment_idempotency_key: "checkout:other",
         billing_key_issue_idempotency_key: "billing-key:b21e0000-0000-4000-8000-0000000000c2",
@@ -1076,7 +1079,7 @@ const run = async () => {
       attemptNumber: 0,
       checkoutSessionId: null,
       planCode: "standard" as const,
-      amount: 49000,
+      amount: STANDARD_AMOUNT,
       periodStart: "2026-10-10T00:00:00.000Z",
       periodEnd: "2026-11-10T00:00:00.000Z",
       anchorDay: 10,
@@ -1089,7 +1092,7 @@ const run = async () => {
       paymentKey: "pk_1",
       orderId: attempt.orderId,
       status: "DONE",
-      totalAmount: 49000,
+      totalAmount: STANDARD_AMOUNT,
       approvedAt: "2026-10-10T09:00:00+09:00",
       currency: "KRW"
     }
@@ -1166,7 +1169,7 @@ const run = async () => {
       organization_id: organizationId,
       customer_key: `fs-cc1111111111111111111111111111${suffix}`,
       plan_code: "standard",
-      amount: 49000,
+      amount: STANDARD_AMOUNT,
       order_id: `fsc-${id.replace(/-/g, "")}`,
       payment_idempotency_key: `checkout:${id}`,
       billing_key_issue_idempotency_key: `bk-${suffix}`,
@@ -1187,7 +1190,7 @@ const run = async () => {
       provider: "toss",
       idempotency_key: key,
       plan_code: "standard",
-      amount: 49000,
+      amount: STANDARD_AMOUNT,
       status: "succeeded",
       period_start: new Date().toISOString(),
       period_end: new Date(Date.now() + 30 * 86400000).toISOString(),

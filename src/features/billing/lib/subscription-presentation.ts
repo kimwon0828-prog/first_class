@@ -11,6 +11,7 @@
 //   5. 청구되지 않는 구독에 월 요금을 적지 않는다.
 
 import type { ResolvedStudioEntitlements } from "@/features/billing/lib/entitlements"
+import type { StandardTrialView } from "@/features/billing/lib/standard-trial"
 import type { OrganizationSubscription } from "@/shared/lib/db/adapter"
 
 /** Toss 공식 카드사 코드. 추정해서 채우지 않는다. */
@@ -87,6 +88,11 @@ export type BillingPresentation = {
   canResume: boolean
   /** 유료인데 결제수단이 없다. 사람이 확인해야 하는 상태다. */
   billingMethodMissing: boolean
+  /**
+   * 승인 RPC 가 만든 자동 체험(90일) 중일 때만 있다. 수동 trialing(PoC)은 null 이다.
+   * 날짜 · 창 · 상태는 standard-trial.ts 가 정한다.
+   */
+  trial: StandardTrialView | null
 }
 
 const KST_OFFSET_MS = 9 * 60 * 60 * 1000
@@ -136,6 +142,8 @@ export type BillingPresentationInput = {
   /** 활성 결제수단이 있는가. 자동 결제 예정 여부를 가르는 유일한 근거다. */
   hasActiveBillingMethod: boolean
   standardAmount: number
+  /** 자동 체험 화면 모델(buildStandardTrialView). 자동 체험이 아니면 null. */
+  trial?: StandardTrialView | null
 }
 
 export const resolveBillingPresentation = (
@@ -146,7 +154,8 @@ export const resolveBillingPresentation = (
   const base = {
     billedPlanCode,
     hasInternalFullAccess: resolved.hasInternalFullAccess,
-    billingMethodMissing: false
+    billingMethodMissing: false,
+    trial: null
   }
 
   // 결제 기준으로 무료다. 내부 권한이 있어도 결제 사실은 무료다.
@@ -166,7 +175,7 @@ export const resolveBillingPresentation = (
 
   const planLabel = PLAN_LABEL[billedPlanCode] ?? PLAN_LABEL.standard
   // 월 요금은 실제로 청구되는 구독에만 쓴다. 수동으로 부여한 체험처럼 결제수단이 없는
-  // 구독에 "월 요금 49,000원" 이라고 적으면 청구되고 있다고 오해하게 된다.
+  // 구독에 월 요금을 적으면 청구되고 있다고 오해하게 된다.
   const monthlyAmount =
     billedPlanCode === "standard" && hasActiveBillingMethod ? standardAmount : null
   const periodEnd = subscription?.currentPeriodEnd ?? null
@@ -191,6 +200,28 @@ export const resolveBillingPresentation = (
       showStandardOffer: false,
       canCancel: false,
       canResume: false
+    }
+  }
+
+  // 자동 체험(승인 90일). 수동 체험과 달리 카드 등록 · 첫 결제일을 말한다.
+  // 해지 예약도 여기서 체험 문구로 말한다 — "이용 종료 예정 · 해지 취소" 는 결제한 구독의 말이다.
+  if (status === "trialing" && input.trial) {
+    const trial = input.trial
+    const charges = trial.state === "card_registered"
+    return {
+      ...base,
+      trial,
+      planLabel,
+      statusBadge:
+        trial.state === "cancel_scheduled"
+          ? { label: "해지 예정", tone: "amber" }
+          : { label: "무료 체험 중", tone: "blue" },
+      monthlyAmount: charges ? standardAmount : null,
+      dateRow: { label: charges ? "첫 결제일" : "체험 종료일", value: trial.lastDayLabel },
+      alert: null,
+      showStandardOffer: false,
+      canCancel: charges,
+      canResume: trial.state === "cancel_scheduled"
     }
   }
 
@@ -293,8 +324,11 @@ export const formatBillingAmount = (amount: number): string =>
 import { getPlanEntitlements, type StudioEntitlements } from "@/features/billing/lib/entitlements"
 
 export type PricingCardCta = {
-  /** action 이면 실제 결제 진입 버튼을 렌더한다. static 은 현재 상태 표시다. */
-  kind: "action" | "static" | "disabled"
+  /**
+   * action 이면 실제 결제 진입 버튼을 렌더한다. static 은 현재 상태 표시다.
+   * register_card 는 자동 체험 중 카드 등록(동의 팝업 → 빌링키만 발급) 버튼이다.
+   */
+  kind: "action" | "register_card" | "static" | "disabled"
   label: string
   /** 버튼만으로 이유를 알 수 없을 때의 보조 문구. */
   note: string | null
@@ -316,19 +350,20 @@ export type PricingCard = {
 
 // 카드 혜택 문구.
 //
-// ⚠️ 순서가 곧 우선순위다. 스탠다드는 "무료에서 기록을 못 해서 사는 플랜" 이 아니라
-//    "무료에서 쌓은 기록을 학부모와 나누고 분석하려고 사는 플랜" 이다.
-//    그래서 학부모 리포트 발행을 맨 위에 둔다.
+// ⚠️ 순서가 곧 우선순위다. 리포트 보내기는 2차-1부터 무료다(Figma 2148:7069 "체험 기록 · 리포트 보내기").
+//    스탠다드는 "무료에서 쌓은 기록을 분석하려고 사는 플랜" 이다.
+//    인원 제한은 어느 플랜에도 없다 — "선생님 N명까지" 같은 문구를 적지 않는다.
 const FREE_BENEFITS = [
   "학원·수업 등록",
   "체험 신청·일정 관리",
   "체험 결과·상담 기록",
-  "Excel 예약 가져오기"
+  "학부모 리포트 보내기",
+  "Excel 예약 가져오기",
+  "선생님 인원 제한 없음"
 ]
 
 const STANDARD_BENEFITS = [
-  "무료의 모든 기능",
-  "학부모 리포트 발행",
+  "무료 플랜의 모든 기능",
   "등록 전환 분석",
   "미등록 사유 분석",
   "등록 전환 인포그래픽"
@@ -345,16 +380,37 @@ export const buildPricingCards = (
   options: { billingAvailable: boolean; standardAmount: number }
 ): PricingCard[] => {
   const isFree = presentation.billedPlanCode === "free"
+  const trial = presentation.trial
+
+  // 자동 체험 중(Figma 2148:7024): 무료 카드는 "체험이 끝나면 자동 전환", 스탠다드 카드는 계속 쓰기(카드 등록).
+  // 카드 등록은 종료 30일 전부터만 열린다 — 그 전에는 여는 날짜를 말한다.
+  const trialStandardCta = (): PricingCardCta => {
+    if (!trial) return { kind: "static", label: presentation.statusBadge.label, note: null }
+    if (trial.state === "card_registered") {
+      return { kind: "static", label: `${trial.lastDayLabel} 첫 결제`, note: null }
+    }
+    if (trial.state === "cancel_scheduled") {
+      return { kind: "static", label: "해지 예정", note: null }
+    }
+    if (!trial.cardWindowOpen) {
+      return { kind: "disabled", label: "스탠다드 계속 쓰기", note: `${trial.cardWindowStartLabel}부터 카드를 등록할 수 있어요.` }
+    }
+    return options.billingAvailable
+      ? { kind: "register_card", label: "스탠다드 계속 쓰기", note: null }
+      : { kind: "disabled", label: "스탠다드 계속 쓰기", note: "결제 기능을 준비 중이에요." }
+  }
 
   const freeCta: PricingCardCta = isFree
     ? { kind: "static", label: "현재 이용 중", note: null }
-    : { kind: "static", label: "무료 플랜", note: null }
+    : trial && trial.state !== "card_registered"
+      ? { kind: "static", label: "체험이 끝나면 자동 전환", note: null }
+      : { kind: "static", label: "무료 플랜", note: null }
 
   const standardCta: PricingCardCta = isFree
     ? options.billingAvailable
       ? { kind: "action", label: "스탠다드 시작하기", note: null }
       : { kind: "disabled", label: "스탠다드 시작하기", note: "결제 기능을 준비 중이에요." }
-    : { kind: "static", label: presentation.statusBadge.label, note: null }
+    : trialStandardCta()
 
   return [
     {
@@ -376,9 +432,9 @@ export const buildPricingCards = (
       priceLabel: formatBillingAmount(options.standardAmount),
       priceUnit: "/ 월",
       description:
-        "쌓인 체험·상담 기록을 분석하고 학부모에게 리포트를 공유하세요.",
+        "쌓인 체험·상담 기록으로 등록 전환과 미등록 사유를 분석하세요.",
       benefits: STANDARD_BENEFITS,
-      featured: isFree,
+      featured: isFree || Boolean(trial),
       cta: standardCta
     }
   ]
@@ -452,6 +508,12 @@ export type BillingFact = {
  * 자동 결제가 예정된 경우에만 금액과 함께 다음 결제일을 말한다.
  * 수동 체험·해지 예정은 이용 종료 예정일이고, 금액을 적지 않는다.
  */
+const FACT_TITLE: Record<string, string> = {
+  "다음 결제일": "다음 결제",
+  "첫 결제일": "첫 결제",
+  "체험 종료일": "체험 종료"
+}
+
 export const buildNextBillingFact = (presentation: BillingPresentation): BillingFact => {
   if (!presentation.dateRow) {
     return {
@@ -462,15 +524,24 @@ export const buildNextBillingFact = (presentation: BillingPresentation): Billing
     }
   }
 
-  const isCharge = presentation.dateRow.label === "다음 결제일"
+  // 금액은 실제로 결제가 예정된 줄(다음 결제 · 체험 첫 결제)에만 붙인다.
+  const isCharge = presentation.dateRow.label === "다음 결제일" || presentation.dateRow.label === "첫 결제일"
+
+  // 자동 체험이 결제 없이 끝나는 경우 무엇이 되는지 함께 말한다.
+  const trialCaption =
+    presentation.trial?.state === "no_card"
+      ? "카드가 없으면 무료 플랜으로 바뀌어요"
+      : presentation.trial?.state === "cancel_scheduled"
+        ? "해지 예정 · 결제되지 않아요"
+        : null
 
   return {
-    title: isCharge ? "다음 결제" : "이용 종료 예정",
+    title: FACT_TITLE[presentation.dateRow.label] ?? "이용 종료 예정",
     value: presentation.dateRow.value,
     caption:
       isCharge && presentation.monthlyAmount !== null
         ? formatBillingAmount(presentation.monthlyAmount)
-        : null,
+        : trialCaption,
     emptyText: null
   }
 }

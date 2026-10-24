@@ -7,8 +7,16 @@ import { ensureBillingPaymentAttempt } from "@/features/billing/lib/charge/payme
 import { markBillingKeyInvalid } from "@/features/billing/lib/checkout/billing-customer-store"
 import { BILLING_PLANS } from "@/features/billing/lib/plan-catalog"
 import { decideRenewal } from "@/features/billing/lib/renewal/renewal-schedule"
-import { findRenewalCandidates } from "@/features/billing/lib/renewal/renewal-candidates"
-import { buildBillingOrderName, buildRenewalBillingAttempt } from "@/features/billing/lib/toss/identifiers"
+import {
+  findRenewalCandidates,
+  findTrialFirstChargeCandidates
+} from "@/features/billing/lib/renewal/renewal-candidates"
+import { decideTrialFirstCharge, resolveTrialFirstChargeAnchorDay } from "@/features/billing/lib/standard-trial"
+import {
+  buildBillingOrderName,
+  buildRenewalBillingAttempt,
+  buildTrialFirstChargeAttempt
+} from "@/features/billing/lib/toss/identifiers"
 import { getTossRuntime } from "@/features/billing/lib/toss/server"
 
 // 갱신 결제 실행(Cron).
@@ -17,6 +25,11 @@ import { getTossRuntime } from "@/features/billing/lib/toss/server"
 // Cron 이 중복 실행되거나 Vercel 이 재시도해도 결제는 한 번이다.
 //
 // 결과를 모르면(timeout 등) 아무것도 반영하지 않는다. 대사가 마무리한다.
+//
+// 스탠다드 무료 체험의 첫 결제도 여기서 한다(마지막 체험일 KST 의 크론).
+//   대상: 자동 체험 · 해지 예약 아님 · 활성 카드 · 종료 30일 전 ~ 종료 안의 동의(standard-trial.ts)
+//   이벤트: renewal_succeeded — 새 기간은 체험 종료 시각부터, 기준일은 종료 시각(KST)의 일
+//   실패: payment_failed → past_due(종료 시각 + 3일 유예). 그 뒤 재시도는 위의 갱신 규칙이 한다.
 
 export type RenewalRunSummary = {
   /** 이 배포에서 결제를 실행할 수 없어 아무것도 하지 않았을 때의 사유. */
@@ -27,7 +40,27 @@ export type RenewalRunSummary = {
   pending: number
   mismatched: number
   skipped: number
+  /** 스탠다드 무료 체험 첫 결제. */
+  trial: TrialChargeSummary
 }
+
+export type TrialChargeSummary = {
+  scanned: number
+  charged: number
+  declined: number
+  pending: number
+  mismatched: number
+  skipped: number
+}
+
+const emptyTrialSummary = (): TrialChargeSummary => ({
+  scanned: 0,
+  charged: 0,
+  declined: 0,
+  pending: 0,
+  mismatched: 0,
+  skipped: 0
+})
 
 /** 빌링키 자체가 무효라고 Toss 가 알려 주는 경우. 재시도해도 소용없다. */
 const BILLING_KEY_INVALID_CODES = new Set([
@@ -50,7 +83,8 @@ export const runBillingRenewals = async (now: Date = new Date()): Promise<Renewa
       declined: 0,
       pending: 0,
       mismatched: 0,
-      skipped: 0
+      skipped: 0,
+      trial: emptyTrialSummary()
     }
   }
 
@@ -61,7 +95,8 @@ export const runBillingRenewals = async (now: Date = new Date()): Promise<Renewa
     declined: 0,
     pending: 0,
     mismatched: 0,
-    skipped: 0
+    skipped: 0,
+    trial: emptyTrialSummary()
   }
 
   for (const candidate of candidates) {
@@ -134,6 +169,64 @@ export const runBillingRenewals = async (now: Date = new Date()): Promise<Renewa
     }
 
     summary.mismatched += 1
+  }
+
+  // ── 스탠다드 무료 체험 첫 결제 ─────────────────────────────
+  const plan = BILLING_PLANS.standard
+  const trialCandidates = await findTrialFirstChargeCandidates(now)
+  summary.trial.scanned = trialCandidates.length
+
+  for (const candidate of trialCandidates) {
+    const decision = decideTrialFirstCharge(candidate, now)
+    if (!decision.due || !candidate.billingKey || !candidate.customerKey || !plan || plan.amount <= 0) {
+      summary.trial.skipped += 1
+      continue
+    }
+
+    const trialEndsAt = new Date(decision.trialEndsAt)
+    const attempt = buildTrialFirstChargeAttempt(candidate.organizationId, decision.trialEndsAt)
+    // 새 기간은 체험 종료 시각부터. 기준일 = 종료 시각(KST)의 일 → 이후 갱신일이 밀리지 않는다.
+    const period = buildRenewalBillingPeriod(trialEndsAt, resolveTrialFirstChargeAnchorDay(trialEndsAt))
+
+    const result = await chargeSubscription(runtime.config, {
+      organizationId: candidate.organizationId,
+      billingKey: candidate.billingKey,
+      customerKey: candidate.customerKey,
+      planCode: "standard",
+      amount: plan.amount,
+      orderId: attempt.orderId,
+      orderName: buildBillingOrderName(plan.name),
+      idempotencyKey: attempt.idempotencyKey,
+      attemptKey: attempt.attemptKey,
+      attemptKind: "renewal",
+      attemptNumber: 0,
+      checkoutSessionId: null,
+      attemptPeriod: period,
+      eventType: "renewal_succeeded",
+      resolvePeriod: () => ({ periodStart: period.periodStart, periodEnd: period.periodEnd, anchorDay: period.anchorDay }),
+      applyEvent: applyVerifiedBillingEvent,
+      ensureAttempt: ensureBillingPaymentAttempt
+    })
+
+    if (result.status === "succeeded") {
+      summary.trial.charged += 1
+      continue
+    }
+
+    if (result.status === "declined") {
+      summary.trial.declined += 1
+      if (BILLING_KEY_INVALID_CODES.has(result.code)) {
+        await markBillingKeyInvalid(candidate.organizationId)
+      }
+      continue
+    }
+
+    if (result.status === "pending") {
+      summary.trial.pending += 1
+      continue
+    }
+
+    summary.trial.mismatched += 1
   }
 
   return summary

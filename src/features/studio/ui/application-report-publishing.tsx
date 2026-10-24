@@ -4,7 +4,6 @@ import { getReportAttachments } from "@/features/reports/lib/experience-report-s
 import { ReportObservations } from "@/features/reports/ui/report-observations"
 
 import { useActionState, useEffect, useRef } from "react"
-import Link from "next/link"
 import { useRouter } from "next/navigation"
 
 import {
@@ -12,7 +11,6 @@ import {
   type PublishExperienceReportActionState
 } from "@/features/studio/actions/publish-experience-report"
 import { formatSeoulDateTime } from "@/features/studio/lib/seoul-datetime"
-import { useStudioNavigationPathFactory } from "@/features/studio/ui/studio-navigation-provider"
 import { getExperienceReportSummary, type ExperienceReportSnapshotV1 } from "@/features/reports/lib/experience-report-snapshot"
 import { getSeoulDateTimeParts } from "@/shared/lib/seoul-datetime"
 import { getChildGradeLabel } from "@/shared/constants/education-taxonomy"
@@ -59,7 +57,7 @@ export type ApplicationReportPublishingProps = {
   assessmentChangedSincePublish: boolean
   blockers: ReportPublishBlocker[]
   /**
-   * 학부모에게 발행할 수 있는가(스탠다드).
+   * 학부모에게 발행할 수 있는가(entitlement canPublishParentReport — 2차-1부터 무료도 참).
    *
    * ⚠️ 체험 결과 작성 권한과 다른 값이다. 작성은 학원 안에 남는 기록이고
    *    발행은 학부모에게 나가는 문서다. 미리보기는 이 값과 무관하게 보여 준다 —
@@ -185,7 +183,6 @@ export const ApplicationReportPublishing = ({
   canPublishReport
 }: Props) => {
   const router = useRouter()
-  const studioPath = useStudioNavigationPathFactory()
   const publishAction = publishExperienceReportAction.bind(null, applicationId)
   const [publishState, submitPublish, isPublishing] = useActionState(publishAction, initialPublishState)
   const handledPublishTokenRef = useRef<string | null>(null)
@@ -233,18 +230,6 @@ export const ApplicationReportPublishing = ({
     </div>
   ) : null
 
-  /*
-    발행이 요금제로 잠긴 상태. 버튼만 조용히 지우지 않는다 — 잠긴 것은 발행 하나이고,
-    작성 · 미리보기는 그대로 돌아간다(요금 정책은 이번 단계에서 바꾸지 않는다).
-  */
-  const lockedNotice = !canPublishReport && !sent ? (
-    <div className={styles.locked} role="status">
-      <p className={styles.noticeTitle}>리포트 보내기는 스탠다드 플랜에서 사용할 수 있어요.</p>
-      <p>체험 결과 작성과 미리보기는 계속 사용할 수 있고, 이미 보낸 리포트는 학부모가 그대로 볼 수 있어요.</p>
-      <Link href={studioPath("/studio/billing")} prefetch={false}>플랜 확인하기</Link>
-    </div>
-  ) : null
-
   const loadErrorNotice = publishedReportLoadError ? (
     <div className={styles.error} role="alert">
       <p className={styles.noticeTitle}>보낸 리포트 정보를 불러오지 못했어요.</p>
@@ -276,7 +261,7 @@ export const ApplicationReportPublishing = ({
         {sent && publishedDateText ? <p className={styles.sentAt}>{publishedDateText} 보냄</p> : null}
         {sent ? <p className={styles.hint}>보낸 리포트는 수정할 수 없어요.</p> : needsRecord ? <p className={styles.hint}>기록 저장 후 리포트를 보낼 수 있어요.</p> : null}
         {loadErrorNotice}
-        {!sent ? lockedNotice ?? blockerNotice : null}
+        {!sent ? blockerNotice : null}
         {shown ? (
           <details className={styles.details}>
             <summary>리포트 보기</summary>
@@ -316,7 +301,7 @@ export const ApplicationReportPublishing = ({
           </ul>
         ) : null}
         {loadErrorNotice}
-        {lockedNotice ?? blockerNotice}
+        {blockerNotice}
         {!sent && canPublishReport ? (
           <div className={styles.warn}>
             <V2InfoIcon size={18} />

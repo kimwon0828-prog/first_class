@@ -21,9 +21,15 @@ type SubscriptionActionsProps = {
   canResume: boolean
   /** 실제 이용 종료 예정일. 없으면 문구에서 날짜를 뺀다. */
   endDate: string | null
+  /**
+   * trial: 자동 체험 중 등록한 카드의 첫 결제를 막는 해지다. 문구가 "구독" 이 아니라
+   * "자동 결제" 를 말한다(아직 결제한 적이 없다). 서버 동작은 같다(cancel_scheduled).
+   */
+  variant?: "subscription" | "trial"
 }
 
-export const SubscriptionActions = ({ canCancel, canResume, endDate }: SubscriptionActionsProps) => {
+export const SubscriptionActions = ({ canCancel, canResume, endDate, variant = "subscription" }: SubscriptionActionsProps) => {
+  const trial = variant === "trial"
   const router = useRouter()
   const dialogRef = useRef<HTMLDialogElement>(null)
   const [open, setOpen] = useState(false)
@@ -85,7 +91,7 @@ export const SubscriptionActions = ({ canCancel, canResume, endDate }: Subscript
 
       {canCancel ? (
         <button type="button" className={styles.text} onClick={() => setOpen(true)}>
-          구독 해지
+          {trial ? "자동 결제 해지" : "구독 해지"}
         </button>
       ) : null}
 
@@ -103,12 +109,16 @@ export const SubscriptionActions = ({ canCancel, canResume, endDate }: Subscript
         onCancel={() => setOpen(false)}
       >
         <h2 className={styles.dialogTitle} id="cancel-dialog-title">
-          스탠다드 구독을 해지할까요?
+          {trial ? "자동 결제를 해지할까요?" : "스탠다드 구독을 해지할까요?"}
         </h2>
         <p className={styles.dialogBody}>
-          {endDate
-            ? `${endDate}까지 스탠다드 기능을 그대로 이용할 수 있고, 이후 무료 플랜으로 전환돼요.`
-            : "이용 기간이 끝날 때까지 스탠다드 기능을 그대로 이용할 수 있고, 이후 무료 플랜으로 전환돼요."}
+          {trial
+            ? endDate
+              ? `${endDate}까지 스탠다드를 무료로 쓰고, 결제 없이 무료 플랜으로 바뀌어요.`
+              : "체험이 끝날 때까지 스탠다드를 무료로 쓰고, 결제 없이 무료 플랜으로 바뀌어요."
+            : endDate
+              ? `${endDate}까지 스탠다드 기능을 그대로 이용할 수 있고, 이후 무료 플랜으로 전환돼요.`
+              : "이용 기간이 끝날 때까지 스탠다드 기능을 그대로 이용할 수 있고, 이후 무료 플랜으로 전환돼요."}
         </p>
         <p className={styles.dialogBody}>
           수업·신청·체험 결과·상담 기록은 삭제되지 않고, 무료 플랜에서도 계속 볼 수 있어요.
@@ -135,7 +145,7 @@ export const SubscriptionActions = ({ canCancel, canResume, endDate }: Subscript
             disabled={pending}
             onClick={() => run(cancelStandardSubscription)}
           >
-            {pending ? "처리 중" : "구독 해지하기"}
+            {pending ? "처리 중" : trial ? "해지하기" : "구독 해지하기"}
           </button>
         </div>
       </dialog>

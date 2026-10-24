@@ -40,26 +40,38 @@
 10. 학부모에게 공개되는 학원·수업은 현재 서울 노원구만이다(`src/features/location/lib/parent-launch-region.ts`). 학원가(academy_area) 개념은 삭제됐다.
 
 ## 요금제 정책 (Free / Standard)
-경계는 한 문장이다. **Free는 기록하고 운영한다. Standard는 기록을 분석하고 학부모와 공유한다.**
+경계는 한 문장이다. **Free는 기록하고 운영하고 학부모와 공유한다. Standard는 기록을 분석한다.**
 
 Free에서 가능:
 - 체험 결과 작성
 - 상담 작성/수정, 상담 재오픈 — ⚠️ 현재 UI 미제공. server action과 entitlement flag(`canWriteConsultations`, `canReopenConsultation`)만 남아 있고 화면에서는 이전 상담 기록 조회만 된다.
 - 등록 결과 기록
 - 리포트 내부 미리보기
+- 학부모 리포트 보내기(신규 발행) — 2차-1(2026-10)부터 무료다. 학부모가 리포트를 보고 등록을 결정하기 때문이다.
 - Excel 예약 가져오기
+- 선생님 등록 — 인원 제한 없음(Free · Standard 모두)
 
 Standard 전용:
-- 학부모 리포트 신규 발행
-- 학부모 리포트 새 버전 재발행 — ⚠️ 현재 불가. DB 트리거 `report_send_once`가 신청당 1회 발행만 허용하고(superseded 전환도 막음) 화면도 "보낸 뒤 읽기 전용"이다.
 - 등록 전환 분석
 - 미등록 사유 분석
 - 등록 전환 인포그래픽
+- 학부모 리포트 새 버전 재발행 — ⚠️ 현재 불가. DB 트리거 `report_send_once`가 신청당 1회 발행만 허용하고(superseded 전환도 막음) 화면도 "보낸 뒤 읽기 전용"이다.
+
+가격 · 체험:
+- Standard는 월 39,000원(부가세 포함 총액, 별도 표기 없음). 금액의 주인은 `src/features/billing/lib/plan-catalog.ts` 하나다.
+- 새로 승인된 학원은 승인과 같은 transaction에서 Standard 90일 무료 체험이 시작된다(카드 없음, `approve_teacher_signup_request`).
+  - 체험 종료 시각은 (승인일 KST + 90일) 00:00 KST다. 화면 · 문자의 "M월 D일까지 / M월 D일에 끝나요"의 D는 그 전날(마지막 체험일)이다.
+  - 사업자등록번호(숫자만)당 1회. 기존 승인 학원 · 수동 trialing(PoC) · 데모 override는 손대지 않는다(`trial_origin`이 null).
+- 체험 중 카드 등록은 **종료 30일 전부터만** 열린다(전자상거래법 무료→유료 전환 동의). 등록 화면에 결제일 · 금액 · 자동결제 · 해지 방법을 적고 동의 체크를 받는다.
+  등록은 빌링키만 발급하고 결제하지 않는다. 마지막 체험일에 첫 39,000원을 결제하고, 새 기간은 종료 시각부터 시작한다.
+- 카드를 등록하지 않았거나 체험 중 해지했으면 종료 시각에 무료 플랜이 된다. 첫 결제가 실패하면 기존 갱신과 같이 3일 유예 후 무료다.
+- 알림(`src/features/billing/lib/trial-notices.ts`, 크론 `billing-trial-notices` KST 12:30): 카드 등록 창이 열리는 날(종료 30일 전) · 마지막 체험일 7일 전 · 전날("내일") 문자와,
+  종료 시각 뒤 결과 문자(무료 전환 / 결제 성공 / 결제 실패). 받는 번호는 학원 담당자 → 학원 대표 → 승인된 가입 신청 담당자, 없으면 skipped.
+  중복 발송은 `organization_billing_notices`가 막는다. Studio에는 종료 14일 전부터 상단 안내.
 
 이미 발행된 리포트:
 - downgrade 이후에도 학부모 열람을 유지한다. 발행본은 발행 시점 snapshot이고, Parent RLS는 요금제를 보지 않는다.
-- Free에서도 철회할 수 있다. 철회를 발행 권한과 같은 flag로 묶지 않는다 — 발행을 막는 것과 이미 보낸 것을 거두는 것은 다른 행위다.
-- Free 전환 이후 막히는 것은 새 발행과 새 버전 발행뿐이다.
+- 철회는 요금제와 무관하게 할 수 있다.
 
 운영 규칙:
 - 요금제 판정의 단일 소스는 `src/features/billing/lib/entitlements.ts`다. 화면과 action은 요금제 이름을 비교하지 않고 entitlement flag만 본다.

@@ -16,6 +16,11 @@ export type CheckoutSessionSnapshot = {
   billingKeyIssueIdempotencyKey: string
   status: string
   expiresAt: string
+  /**
+   * subscribe = 최초 결제까지. register_card = 자동 체험 중 빌링키만 발급(결제 없음).
+   * 없으면 subscribe 로 본다(기존 세션 · verifier fixture).
+   */
+  purpose?: "subscribe" | "register_card"
 }
 
 export type CheckoutCallbackInput = {

@@ -1032,6 +1032,13 @@ export type OrganizationSubscription = {
   cancelAtPeriodEnd: boolean
   /** 갱신 실패(past_due) 유예 종료 시각. 다른 상태에서는 null 이다. */
   gracePeriodEnd: string | null
+  /**
+   * 자동 체험 출처. 'signup_approval' = 승인 RPC 가 만든 90일 체험.
+   * null · 없음 = 자동 체험이 아니다(수동 trialing PoC · 결제로 생긴 구독).
+   */
+  trialOrigin?: "signup_approval" | null
+  /** 자동 체험 종료 시각. 첫 결제 뒤에도 바뀌지 않는다. standard-trial.ts 참고. */
+  trialEndsAt?: string | null
 }
 
 /**

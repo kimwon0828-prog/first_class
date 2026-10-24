@@ -67,9 +67,8 @@ const fullAccessOverride = (
   expiresAt
 })
 
-// 유료로 남는 것은 기록을 바깥으로 내보내는 일뿐이다 — 학부모 공유와 전환 분석.
+// 유료로 남는 것은 전환 분석뿐이다. 학부모 리포트 보내기는 2차-1부터 무료다.
 const STANDARD_KEYS: Array<keyof StudioEntitlements> = [
-  "canPublishParentReport",
   "canUseConversionAnalytics"
 ]
 // 기록과 운영은 전부 무료다(AGENTS.md 요금제 정책).
@@ -82,7 +81,8 @@ const FREE_KEYS: Array<keyof StudioEntitlements> = [
   "canProcessTrial",
   "canWriteTrialResults",
   "canWriteConsultations",
-  "canReopenConsultation"
+  "canReopenConsultation",
+  "canPublishParentReport"
 ]
 const READ_KEYS: Array<keyof StudioEntitlements> = [
   "canViewTrialResults",
@@ -295,10 +295,9 @@ console.log("\n[4] full_access=false override 는 아무 효과가 없다")
 // ─────────────────────────────────────────────────────────────
 // 상품 경계를 flag 이름으로 못박는다.
 //
-// 기록(작성)은 무료, 공유(발행)와 분석은 유료다. 위의 KEYS 묶음 검증만으로는
+// 기록(작성)과 공유(발행)는 무료, 분석은 유료다(2차-1). 위의 KEYS 묶음 검증만으로는
 // 두 묶음을 동시에 잘못 옮겨도 통과할 수 있어, 여기서 개별 flag 를 이름으로 확인한다.
-// 특히 작성과 발행이 다시 한 덩어리가 되면 무료 학원이 학부모에게 리포트를 보낸다.
-console.log("\n[5] 기록은 무료 · 공유와 분석은 유료")
+console.log("\n[5] 기록 · 공유는 무료 · 분석은 유료")
 {
   const before = failures
   const free = getPlanEntitlements("free")
@@ -306,7 +305,7 @@ console.log("\n[5] 기록은 무료 · 공유와 분석은 유료")
   const pro = getPlanEntitlements("pro")
 
   check("canPublishParentReport" in free, "canPublishParentReport 계약이 없다")
-  check(free.canPublishParentReport === false, "FREE 가 학부모 리포트를 발행할 수 있다")
+  check(free.canPublishParentReport === true, "FREE 가 학부모 리포트를 보내지 못한다(2차-1 정책)")
   check(standard.canPublishParentReport === true, "STANDARD 가 리포트를 발행하지 못한다")
   check(pro.canPublishParentReport === true, "PRO 가 리포트를 발행하지 못한다")
 
@@ -315,10 +314,10 @@ console.log("\n[5] 기록은 무료 · 공유와 분석은 유료")
   check(free.canWriteConsultations === true, "FREE 상담 작성이 막혔다")
   check(free.canReopenConsultation === true, "FREE 상담 재개가 막혔다")
 
-  // 작성이 열렸다고 해서 발행이 따라 열리면 안 된다. 이 둘의 간격이 상품 경계다.
+  // 작성과 발행은 지금 둘 다 무료지만 flag 는 따로 남는다(정책이 다시 갈릴 수 있다).
   check(
-    free.canWriteTrialResults === true && free.canPublishParentReport === false,
-    "작성과 발행이 다시 한 덩어리가 됐다"
+    "canWriteTrialResults" in free && "canPublishParentReport" in free,
+    "작성과 발행 flag 가 한 덩어리가 됐다"
   )
 
   // 분석은 유료로 남는다.

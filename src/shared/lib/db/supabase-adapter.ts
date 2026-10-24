@@ -5430,7 +5430,7 @@ export const supabaseDataAdapter: DataAdapter = {
       supabase
         .from("organization_subscriptions")
         .select(
-          "organization_id, plan_code, subscription_status, current_period_start, current_period_end, cancel_at_period_end, grace_period_end"
+          "organization_id, plan_code, subscription_status, current_period_start, current_period_end, cancel_at_period_end, grace_period_end, trial_origin, trial_ends_at"
         )
         .eq("organization_id", organizationId)
         .maybeSingle(),
@@ -5459,6 +5459,8 @@ export const supabaseDataAdapter: DataAdapter = {
       current_period_end: string | null
       cancel_at_period_end: boolean
       grace_period_end: string | null
+      trial_origin: string | null
+      trial_ends_at: string | null
     } | null
 
     const overrideRow = overrideResult.data as {
@@ -5476,7 +5478,9 @@ export const supabaseDataAdapter: DataAdapter = {
           currentPeriodStart: subscriptionRow.current_period_start,
           currentPeriodEnd: subscriptionRow.current_period_end,
           cancelAtPeriodEnd: subscriptionRow.cancel_at_period_end,
-          gracePeriodEnd: subscriptionRow.grace_period_end
+          gracePeriodEnd: subscriptionRow.grace_period_end,
+          trialOrigin: subscriptionRow.trial_origin === "signup_approval" ? "signup_approval" : null,
+          trialEndsAt: subscriptionRow.trial_ends_at
         }
       : null
 

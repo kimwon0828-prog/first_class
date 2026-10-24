@@ -9,6 +9,7 @@ import {
   type TossKeyEnvironment
 } from "@/features/billing/lib/toss/keys"
 import { getPublicEnv } from "@/shared/config/env"
+import { resolveLocalMutationGuard, type LocalMutationGuard } from "@/shared/config/local-mutation-guard"
 
 type ServerEnv = {
   supabaseUrl: string
@@ -77,6 +78,17 @@ export const getPartnerInquiryMailEnv = (): PartnerInquiryMailEnv | null => {
   }
 }
 
+/**
+ * 로컬 개발 서버가 운영 DB 를 보고 있으면 결제 · 문자 실행을 막는다.
+ * BILLING_LOCAL_ALLOW=1 일 때만 연다. production · preview 에서는 항상 allowed 다.
+ */
+export const getLocalMutationGuard = (): LocalMutationGuard =>
+  resolveLocalMutationGuard({
+    deployment: normalizeDeploymentEnvironment(process.env.VERCEL_ENV),
+    databaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL ?? null,
+    localAllow: process.env.BILLING_LOCAL_ALLOW?.trim() === "1"
+  })
+
 export type TossBillingEnv = {
   /** 브라우저 SDK 에 넘길 수 있는 값. 서버에서 읽어 prop 으로 전달한다. */
   clientKey: string
@@ -124,6 +136,12 @@ export const getTossBillingEnv = (
   const checked = checkTossKeyPair(clientKey, secretKey, { allowLive })
   if (!checked.ok) {
     return { status: "invalid", code: checked.code, message: checked.message }
+  }
+
+  // 로컬 개발 서버가 운영 DB 를 보고 있으면 test 키여도 결제 진입 · 갱신 · 대사를 열지 않는다.
+  const localGuard = getLocalMutationGuard()
+  if (!localGuard.allowed) {
+    return { status: "blocked", code: localGuard.code }
   }
 
   // 배포 환경까지 본다. production 에 test 키가 꽂혀 있으면 결제를 열지 않는다.

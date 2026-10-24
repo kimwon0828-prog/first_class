@@ -196,9 +196,9 @@ console.log("\n[4] billing 이 우선 노출을 팔지 않는다")
       },
       subscription: null,
       hasActiveBillingMethod: false,
-      standardAmount: 49000
+      standardAmount: 39000
     }),
-    { billingAvailable: true, standardAmount: 49000 }
+    { billingAvailable: true, standardAmount: 39000 }
   )
   for (const card of cards) {
     check(
@@ -287,7 +287,9 @@ console.log("\n[7] 공개 파트너 랜딩이 없앤 기능을 팔지 않는다"
   for (const banned of ["체험 결과 기록", "상담 이력 관리", "등록 전환 관리", "후속 상담 관리"]) {
     check(!standardBlock.includes(banned), `무료 기능이 Standard 혜택에 남아 있다: ${banned}`)
   }
-  check(standardBlock.includes("학부모 리포트 발행"), "Standard 혜택에 학부모 리포트 발행이 없다")
+  // 리포트 보내기는 2차-1부터 무료다. Standard 혜택에 남으면 가입 페이지가 거짓말을 한다.
+  check(!standardBlock.includes("리포트"), "Standard 혜택에 학부모 리포트가 남아 있다")
+  check(standardBlock.includes("등록 전환 분석"), "Standard 혜택에 등록 전환 분석이 없다")
 
   const freeBlock = landing.slice(
     landing.indexOf("const freeFeatures"),
