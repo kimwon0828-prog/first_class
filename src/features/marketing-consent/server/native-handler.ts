@@ -16,7 +16,7 @@ const reply = (body: unknown, status = 200) => Response.json(body, {
  *
  * 입구 확인은 push-device 와 같다: Bearer 토큰 → 학부모 계정 → 탈퇴 진행 중 아님 → 휴대폰 확인.
  * 동의 · 철회 자체의 권한(본인만)은 RPC 가 auth.uid() 로 다시 본다.
- * 상태가 실제로 바뀌었으면 onChanged 를 부른다(처리 결과 알림 — 같은 값 재요청 · 이전 값을 못 읽은 경우는 부르지 않는다).
+ * RPC 가 changed = true 를 돌려주면 onChanged 를 부른다(처리 결과 알림 — 같은 값 재요청이면 false).
  */
 export function createNativeMarketingConsentHandler(deps: {
   client: (token: string) => SupabaseClient
@@ -59,10 +59,10 @@ export function createNativeMarketingConsentHandler(deps: {
       try { body = JSON.parse(raw) } catch { return reply({ error: "invalid_consent_input" }, 400) }
       const input = parseMarketingConsentInput(body, "parent_app")
       if (!input.ok) return reply({ error: input.error }, MARKETING_CONSENT_ERROR_STATUS[input.error])
-      const result = await setAcademyMarketingConsent(db, input.value, user.id)
+      const result = await setAcademyMarketingConsent(db, input.value)
       if (!result.ok) return reply({ error: result.error }, MARKETING_CONSENT_ERROR_STATUS[result.error])
       if (result.changed === true) {
-        try { deps.onChanged?.(toMarketingConsentChange(user.id, result.item)) } catch { /* 알림 실패가 저장 응답을 바꾸지 않는다 */ }
+        try { deps.onChanged?.(toMarketingConsentChange(user.id, "parent_app", result.item)) } catch { /* 알림 실패가 저장 응답을 바꾸지 않는다 */ }
       }
       return reply(result.item)
     } catch {

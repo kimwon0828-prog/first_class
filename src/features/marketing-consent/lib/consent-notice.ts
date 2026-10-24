@@ -1,29 +1,31 @@
 // 수신 동의 · 철회 처리 결과 알림(정보통신망법 제50조 제7항). 광고가 아닌 서비스 문자다.
 // 학부모가 학원 안내 문자에 동의하거나 철회하면 그 학부모 휴대폰으로 한 통 보낸다.
-// 같은 값을 다시 요청한 경우(상태가 그대로)는 보내지 않는다.
+// 상태가 실제로 바뀐 경우만 보낸다 — 판정은 RPC set_my_academy_marketing_consent 의 changed(20261025120000).
 
 import { getSeoulDateTimeParts } from "@/shared/lib/seoul-datetime"
 
 export type MarketingConsentNoticeAction = "consent" | "withdraw"
 
 /** 알림 한 통의 입력. at = RPC 가 돌려준 동의 · 철회 시각(문자에 날짜로 적는다). */
-export type MarketingConsentChange = { parentId: string; organizationId: string; action: MarketingConsentNoticeAction; at: Date }
+export type MarketingConsentChange = {
+  parentId: string
+  organizationId: string
+  action: MarketingConsentNoticeAction
+  source: "parent_app" | "parent_web"
+  at: Date
+}
 
 export const toMarketingConsentChange = (
   parentId: string,
+  source: MarketingConsentChange["source"],
   item: { organizationId: string; consented: boolean; consentedAt: string | null; withdrawnAt: string | null }
 ): MarketingConsentChange => ({
   parentId,
   organizationId: item.organizationId,
   action: item.consented ? "consent" : "withdraw",
+  source,
   at: new Date((item.consented ? item.consentedAt : item.withdrawnAt) ?? Date.now())
 })
-
-/**
- * 상태가 실제로 바뀌었는가. previous: 이전 동의 값, null = 이전 행 없음("동의 안 함"으로 본다 —
- * 처음 보낸 철회는 바뀐 것이 아니다). 이전 상태를 읽지 못했으면 부르는 쪽이 보내지 않는다.
- */
-export const isMarketingConsentChange = (previous: boolean | null, next: boolean) => (previous ?? false) !== next
 
 /** "2026년 10월 24일" (KST). */
 export const formatConsentNoticeDate = (at: Date) => {

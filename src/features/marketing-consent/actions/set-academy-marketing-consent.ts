@@ -33,11 +33,11 @@ export async function setAcademyMarketingConsentAction(input: {
     const supabase = await getSupabaseServerClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { ok: false, message: MESSAGES.parent_required }
-    const result = await setAcademyMarketingConsent(supabase, parsed.value, user.id)
+    const result = await setAcademyMarketingConsent(supabase, parsed.value)
     if (!result.ok) return { ok: false, message: MESSAGES[result.error] }
     // 상태가 실제로 바뀐 경우만 처리 결과 알림(앱 API 와 같다). 응답을 보낸 뒤 보내고, 실패해도 저장은 성공이다.
     if (result.changed === true) {
-      const change = toMarketingConsentChange(user.id, result.item)
+      const change = toMarketingConsentChange(user.id, "parent_web", result.item)
       after(() => sendMarketingConsentNoticeSafely(change).then(() => undefined))
     }
     revalidatePath("/my")

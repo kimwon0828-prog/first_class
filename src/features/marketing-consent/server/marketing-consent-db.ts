@@ -1,6 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
 
-import { isMarketingConsentChange } from "@/features/marketing-consent/lib/consent-notice"
 import {
   toMarketingConsentError,
   type MarketingConsentErrorCode,
@@ -12,33 +11,16 @@ import {
 // RPC 가 auth.uid() 로 본인만 바꾸게 막는다.
 
 /**
- * 학부모 본인의 지금 동의 값(RLS: 본인 행만). null = 행 없음, undefined = 읽지 못함.
- * 처리 결과 알림을 "상태가 실제로 바뀐 경우"에만 보내려고 RPC 바로 앞에서 읽는다.
+ * changed: RPC 가 학부모 · 학원 잠금 안에서 판정한 "상태가 실제로 바뀌었는가"(없음→동의 · 동의→거부 · 거부→동의).
+ * 처리 결과 알림은 이 값이 true 일 때만 보낸다. 값이 없으면(옛 RPC) null — 보내지 않는다.
  */
-const readMyAcademyMarketingConsent = async (db: SupabaseClient, parentId: string, organizationId: string) => {
-  try {
-    const { data, error } = await db
-      .from("parent_marketing_consents")
-      .select("consented")
-      .eq("parent_id", parentId)
-      .eq("organization_id", organizationId)
-      .maybeSingle()
-    if (error) return undefined
-    return data ? Boolean((data as { consented: boolean }).consented) : null
-  } catch {
-    return undefined
-  }
-}
-
 export const setAcademyMarketingConsent = async (
   db: SupabaseClient,
-  input: MarketingConsentInput,
-  parentId: string
+  input: MarketingConsentInput
 ): Promise<
   | { ok: true; item: MarketingConsentItem; changed: boolean | null }
   | { ok: false; error: MarketingConsentErrorCode }
 > => {
-  const previous = await readMyAcademyMarketingConsent(db, parentId, input.organizationId)
   const { data, error } = await db.rpc("set_my_academy_marketing_consent", {
     p_organization_id: input.organizationId,
     p_consented: input.consented,
@@ -46,12 +28,11 @@ export const setAcademyMarketingConsent = async (
     p_text_version: input.textVersion
   })
   if (error || !data || typeof data !== "object") return { ok: false, error: toMarketingConsentError(error?.message) }
-  const row = data as { organizationId: string; consented: boolean; consentedAt: string | null; withdrawnAt: string | null }
+  const row = data as { organizationId: string; consented: boolean; consentedAt: string | null; withdrawnAt: string | null; changed?: unknown }
   return {
     ok: true,
     item: { organizationId: row.organizationId, consented: row.consented, consentedAt: row.consentedAt, withdrawnAt: row.withdrawnAt },
-    // null = 이전 값을 읽지 못함(알림을 보내지 않는다).
-    changed: previous === undefined ? null : isMarketingConsentChange(previous, row.consented)
+    changed: typeof row.changed === "boolean" ? row.changed : null
   }
 }
 
