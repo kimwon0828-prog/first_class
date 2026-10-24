@@ -1,14 +1,14 @@
 .control {
   display: flex;
   align-items: center;
-  gap: var(--s2);
+  gap: var(--sv2-space-8);
   position: relative;
 }
 
 .quickList {
   display: flex;
   align-items: center;
-  gap: var(--s2);
+  gap: var(--sv2-space-8);
 }
 
 /* 기간 칩: v2 Chip 모양(STUDIO_DESIGN_SYSTEM.md §5.2). 직접 설정 팝오버는 기존 모양이다. */
@@ -160,7 +160,10 @@
     flex-wrap: wrap;
   }
 
+  /* 좁은 화면에서는 칩이 줄을 바꿔 왼쪽에 오므로 팝오버도 왼쪽에 붙인다(화면 밖으로 나가지 않게). */
   .popover {
+    right: auto;
+    left: 0;
     width: min(360px, calc(100vw - 32px));
   }
 

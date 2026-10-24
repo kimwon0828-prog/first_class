@@ -19,6 +19,8 @@ type StudioDashboardPeriodPickerProps = {
   selectedPreset: StudioDateRangePreset
   startDate: string
   endDate: string
+  /** 직접 고르는 칩 이름. 기본 "직접 설정". */
+  customLabel?: string
 }
 
 export const StudioDashboardPeriodPicker = ({
@@ -26,7 +28,8 @@ export const StudioDashboardPeriodPicker = ({
   options,
   selectedPreset,
   startDate,
-  endDate
+  endDate,
+  customLabel = "직접 설정"
 }: StudioDashboardPeriodPickerProps) => {
   const [isOpen, setIsOpen] = useState(false)
   const rootRef = useRef<HTMLDivElement | null>(null)
@@ -93,7 +96,7 @@ export const StudioDashboardPeriodPicker = ({
           aria-controls={popoverId}
           onClick={() => setIsOpen(current => !current)}
         >
-          직접 설정
+          {customLabel}
         </button>
 
         {isOpen ? (
