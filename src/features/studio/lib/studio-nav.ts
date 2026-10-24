@@ -9,7 +9,7 @@
  * studio-navigation 으로 한다.
  */
 
-export type StudioNavKey = "home" | "cases" | "classes" | "analytics" | "settings"
+export type StudioNavKey = "home" | "cases" | "students" | "classes" | "analytics" | "settings"
 
 export type StudioNavEntry = {
   key: StudioNavKey
@@ -20,7 +20,7 @@ export type StudioNavEntry = {
   matchPrefixes: readonly string[]
 }
 
-/** 위쪽 메뉴. "학생"은 기능이 생기는 2차에서 추가한다. */
+/** 위쪽 메뉴. */
 export const STUDIO_PRIMARY_NAV: readonly StudioNavEntry[] = [
   { key: "home", label: "홈", href: "/studio", matchPrefixes: ["/studio"] },
   {
@@ -32,6 +32,8 @@ export const STUDIO_PRIMARY_NAV: readonly StudioNavEntry[] = [
     // /studio/applications/[id](신청 상세)도 prefix 로 함께 잡힌다.
     matchPrefixes: ["/studio/cases", "/studio/applications", "/studio/unregistered"]
   },
+  // 학생(2차-3, Figma 2148:5869): 체험 온 학생을 등록하지 않아도 남겨 두고 다시 연락하는 곳.
+  { key: "students", label: "학생", href: "/studio/students", matchPrefixes: ["/studio/students"] },
   {
     key: "classes",
     label: "수업·일정",

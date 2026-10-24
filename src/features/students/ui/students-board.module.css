@@ -1,0 +1,556 @@
+/*
+ * 학생 · 다시 연락 (Figma 2148:5869). STUDIO_DESIGN_SYSTEM.md §5.27.
+ * 머리 → 탭 칩 → [목록 1fr | 32 | 보내기 패널 360].
+ */
+.board {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sv2-space-24);
+  min-width: 0;
+}
+
+.header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--sv2-space-12);
+}
+
+.headerText {
+  display: flex;
+  flex: 1 1 320px;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.title {
+  margin: 0;
+  font-size: 30px;
+  line-height: 1.32;
+  font-weight: 700;
+  letter-spacing: -0.7px;
+}
+
+.description {
+  margin: 0;
+  color: var(--sv2-ink-500);
+  font-size: 15px;
+  line-height: 1.45;
+  font-weight: 400;
+  letter-spacing: -0.2px;
+}
+
+/* 검색: surface/fill · 240 × 40 · 모서리 12 · 좌우 14 · 아이콘 18 + 14 Medium */
+.search {
+  display: flex;
+  flex: 0 0 240px;
+  align-items: center;
+  gap: var(--sv2-space-8);
+  height: 40px;
+  padding: 0 14px;
+  border-radius: var(--sv2-radius-control);
+  background: var(--sv2-surface-fill);
+  color: var(--sv2-ink-500);
+}
+
+.search:focus-within {
+  outline: 2px solid var(--sv2-brand-700);
+  outline-offset: 2px;
+}
+
+.search input {
+  flex: 1 1 auto;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  color: var(--sv2-ink-900);
+  font: inherit;
+  font-size: 14px;
+  line-height: 1.45;
+  font-weight: 500;
+  letter-spacing: -0.2px;
+  outline: none;
+}
+
+.search input::placeholder {
+  color: var(--sv2-ink-400);
+}
+
+.tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sv2-space-8);
+}
+
+.content {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 360px;
+  align-items: start;
+  gap: var(--sv2-space-32);
+}
+
+.contentSolo {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sv2-space-12);
+  min-width: 0;
+}
+
+/* ── 조건 줄 ── */
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sv2-space-8);
+}
+
+/* 조건 칩: surface/fill · pill · 6/8/6/12 · 13 Medium ink/900 + x 14 ink/400 */
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sv2-space-4);
+  padding: 6px var(--sv2-space-8) 6px var(--sv2-space-12);
+  border-radius: var(--sv2-radius-pill);
+  background: var(--sv2-surface-fill);
+  color: var(--sv2-ink-900);
+  font-size: 13px;
+  line-height: 1.45;
+  font-weight: 500;
+  letter-spacing: -0.2px;
+  white-space: nowrap;
+}
+
+.pill button {
+  display: inline-flex;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--sv2-ink-400);
+  cursor: pointer;
+}
+
+.pill button:focus-visible {
+  outline: 2px solid var(--sv2-brand-700);
+  outline-offset: 2px;
+  border-radius: var(--sv2-radius-pill);
+}
+
+.addWrap {
+  position: relative;
+}
+
+/* [조건 추가] ghost sm — 36 · 좌우 12 · 13 Bold ink/700 · 더하기 16 */
+.addButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 36px;
+  padding: 0 var(--sv2-space-12);
+  border: 0;
+  border-radius: var(--sv2-radius-control);
+  background: transparent;
+  color: var(--sv2-ink-700);
+  font: inherit;
+  font-size: 13px;
+  line-height: 20px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.addButton:hover {
+  background: var(--sv2-surface-fill);
+}
+
+.addButton:focus-visible {
+  outline: 2px solid var(--sv2-brand-700);
+  outline-offset: 2px;
+}
+
+/* 팝오버(그림자 예외 · §1) [코드 결정] */
+.popover {
+  position: absolute;
+  top: calc(100% + var(--sv2-space-8));
+  left: 0;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sv2-space-8);
+  width: min(360px, calc(100vw - 32px));
+  padding: var(--sv2-space-16);
+  border: 1px solid var(--sv2-line-default);
+  border-radius: var(--sv2-radius-control);
+  background: var(--sv2-surface-white);
+  box-shadow: 0 8px 24px rgb(17 19 18 / 12%);
+}
+
+.popoverTitle {
+  margin: var(--sv2-space-4) 0 0;
+  color: var(--sv2-ink-700);
+  font-size: 13px;
+  line-height: 1.45;
+  font-weight: 700;
+}
+
+.popoverTitle:first-child {
+  margin-top: 0;
+}
+
+.popoverChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.popoverEmpty {
+  color: var(--sv2-ink-400);
+  font-size: 13px;
+}
+
+.gradeRange {
+  display: flex;
+  align-items: center;
+  gap: var(--sv2-space-8);
+  color: var(--sv2-ink-500);
+}
+
+.gradeRange select {
+  flex: 1 1 0;
+  min-width: 0;
+  height: 44px;
+  padding: 0 14px;
+  border: 1px solid var(--sv2-line-default);
+  border-radius: var(--sv2-radius-control);
+  background: var(--sv2-surface-white);
+  color: var(--sv2-ink-900);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.gradeRange select:focus-visible {
+  border-color: var(--sv2-brand-700);
+  outline: none;
+}
+
+.spacer {
+  flex: 1 1 auto;
+}
+
+.count {
+  color: var(--sv2-ink-500);
+  font-size: 13px;
+  line-height: 1.45;
+  font-weight: 500;
+  letter-spacing: -0.2px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── 선택 줄: brand/50 · 모서리 12 · 10/12 · 간격 10 ── */
+.selection {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px var(--sv2-space-12);
+  border-radius: var(--sv2-radius-control);
+  background: var(--sv2-brand-50);
+}
+
+.selectionCount {
+  color: var(--sv2-brand-700);
+  font-size: 14px;
+  line-height: 1.45;
+  font-weight: 700;
+}
+
+.selectionClear,
+.selectionAll {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  cursor: pointer;
+}
+
+.selectionClear {
+  color: var(--sv2-ink-500);
+  font-size: 13px;
+  line-height: 1.45;
+  font-weight: 500;
+  letter-spacing: -0.2px;
+}
+
+.selectionAll {
+  color: var(--sv2-ink-700);
+  font-size: 14px;
+  line-height: 1.45;
+  font-weight: 500;
+  text-align: left;
+}
+
+.selectionAll:disabled {
+  color: var(--sv2-ink-400);
+  cursor: default;
+}
+
+.selectionClear:focus-visible,
+.selectionAll:focus-visible {
+  outline: 2px solid var(--sv2-brand-700);
+  outline-offset: 2px;
+}
+
+/* ── Studio/Checkbox 18 ── */
+.checkbox {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+}
+
+.checkbox input {
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  border: 1.5px solid var(--sv2-line-default);
+  border-radius: 5px;
+  background: var(--sv2-surface-white);
+  cursor: pointer;
+}
+
+.checkbox input:checked {
+  border-color: var(--sv2-brand-700);
+  background: var(--sv2-brand-700);
+}
+
+.checkbox input:disabled {
+  background: var(--sv2-surface-fill);
+  cursor: not-allowed;
+}
+
+.checkbox input:focus-visible {
+  outline: 2px solid var(--sv2-brand-700);
+  outline-offset: 2px;
+}
+
+.checkMark {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  color: var(--sv2-surface-white);
+  pointer-events: none;
+  visibility: hidden;
+}
+
+.checkbox input:checked + .checkMark {
+  visibility: visible;
+}
+
+/* ── 표: 머리 아래 line/default, 행 아래 line/subtle ── */
+.tableScroll {
+  position: relative;
+  overflow-x: auto;
+}
+
+.table {
+  min-width: 640px;
+}
+
+.headRow,
+.row {
+  display: grid;
+  grid-template-columns: 18px 36px 112px minmax(0, 1fr) 150px 88px;
+  gap: 14px;
+  padding-inline: var(--sv2-space-8);
+}
+
+.headRow {
+  align-items: start;
+  padding-block: var(--sv2-space-8);
+  border-bottom: 1px solid var(--sv2-line-default);
+  color: var(--sv2-ink-500);
+  font-size: 13px;
+  line-height: 1.45;
+  font-weight: 500;
+  letter-spacing: -0.2px;
+}
+
+/* 체크 + 과목 자리(68) */
+.headLead {
+  grid-column: span 2;
+}
+
+.rows {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.row {
+  position: relative;
+  align-items: center;
+  padding-block: 14px;
+  border-bottom: 1px solid var(--sv2-line-subtle);
+}
+
+.row:hover {
+  background: var(--sv2-surface-fill);
+}
+
+.rowLocked {
+  opacity: 0.5;
+}
+
+.subject {
+  display: inline-flex;
+}
+
+.colStudent,
+.colClass,
+.colResult,
+.colLast {
+  min-width: 0;
+}
+
+.colStudent {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+/* 이름을 누르면 상세. 줄 전체를 덮어 행 어디를 눌러도 간다(체크만 따로). */
+.rowLink {
+  color: inherit;
+  text-decoration: none;
+}
+
+.rowLink::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+}
+
+.rowLink:focus-visible {
+  outline: none;
+}
+
+.rowLink:focus-visible::after {
+  outline: 2px solid var(--sv2-brand-700);
+  outline-offset: -2px;
+}
+
+.name {
+  overflow: hidden;
+  font-size: 16px;
+  line-height: 1.45;
+  font-weight: 700;
+  letter-spacing: -0.2px;
+  text-overflow: ellipsis;
+}
+
+.grade {
+  flex: 0 0 auto;
+  color: var(--sv2-ink-500);
+  font-size: 14px;
+  line-height: 1.45;
+  font-weight: 500;
+  letter-spacing: -0.2px;
+}
+
+.classCell,
+.resultCell,
+.lastCell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  white-space: nowrap;
+}
+
+.resultCell {
+  align-items: flex-start;
+  gap: var(--sv2-space-4);
+}
+
+.classTitle,
+.classSub {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.45;
+  font-weight: 500;
+}
+
+.classTitle {
+  font-size: 15px;
+}
+
+.classSub {
+  color: var(--sv2-ink-500);
+  font-size: 13px;
+  letter-spacing: -0.2px;
+}
+
+.reason {
+  max-width: 100%;
+  overflow: hidden;
+  color: var(--sv2-ink-700);
+  font-size: 13px;
+  line-height: 1.45;
+  font-weight: 500;
+  letter-spacing: -0.2px;
+  text-overflow: ellipsis;
+}
+
+.lastDate {
+  font-size: 14px;
+  line-height: 1.45;
+  font-weight: 500;
+  letter-spacing: -0.2px;
+}
+
+.lastKind {
+  overflow: hidden;
+  color: var(--sv2-ink-400);
+  font-size: 12px;
+  line-height: 1.45;
+  font-weight: 500;
+  letter-spacing: -0.2px;
+  text-overflow: ellipsis;
+}
+
+.empty {
+  margin: 0;
+  padding: var(--sv2-space-24) var(--sv2-space-8);
+  color: var(--sv2-ink-500);
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.footnote {
+  margin: 0;
+  color: var(--sv2-ink-500);
+  font-size: 13px;
+  line-height: 1.45;
+  font-weight: 500;
+  letter-spacing: -0.2px;
+}
+
+@media (max-width: 1100px) {
+  .content {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 720px) {
+  .search {
+    flex: 1 1 100%;
+  }
+}

@@ -26,7 +26,8 @@ import {
   V2GearIcon,
   V2HelpIcon,
   V2HomeIcon,
-  V2InboxIcon
+  V2InboxIcon,
+  V2StudentsIcon
 } from "@/features/studio/ui/v2/v2-icons"
 import { COMPANY_EMAIL_HREF } from "@/shared/config/company-info"
 import styles from "./studio-shell.module.css"
@@ -50,6 +51,7 @@ type StudioShellProps = {
 const NAV_ICONS: Record<StudioNavKey, (props: { className?: string }) => ReactNode> = {
   home: V2HomeIcon,
   cases: V2InboxIcon,
+  students: V2StudentsIcon,
   classes: V2CalendarIcon,
   analytics: V2ChartIcon,
   settings: V2GearIcon

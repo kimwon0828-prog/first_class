@@ -1,0 +1,39 @@
+/*
+ * 학생 · 다시 연락 (Figma 2148:5869). STUDIO_DESIGN_SYSTEM.md §5.27.
+ * 위 36 · 좌우 48 · 아래 56.
+ */
+.page {
+  min-height: 100dvh;
+  padding: 36px var(--sv2-main-px) 56px;
+  color: var(--sv2-ink-900);
+  font-family: var(--sv2-font);
+}
+
+.errorCard {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sv2-space-16);
+  margin-bottom: var(--sv2-space-24);
+  padding: 14px var(--sv2-space-16);
+  border-radius: var(--sv2-radius-control);
+  background: var(--sv2-state-danger-bg);
+  color: var(--sv2-state-danger-fg);
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.errorCard p {
+  margin: 0;
+}
+
+@media (max-width: 720px) {
+  .page {
+    padding-inline: var(--sv2-space-16);
+  }
+
+  .errorCard {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}

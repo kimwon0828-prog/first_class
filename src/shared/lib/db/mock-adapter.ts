@@ -1999,7 +1999,7 @@ export const mockDataAdapter: DataAdapter = {
           ...item,
           lostAt: item.lostAt ?? null,
           classSubject: classItem?.subject ?? null,
-          classSubjectCategory: getReportSubjectCategory(null, null, classItem?.subject),
+          classSubjectCategory: getReportSubjectCategory(classItem?.subjectCategoryCode ?? null, null, classItem?.subject),
           classRegion: formatAdministrativeRegionLabel(mockOrganizationLocation),
           // mock 은 예약 블록 시각을 따로 갖지 않는다. confirmedSlotAt / 수업 길이로만 판정된다.
           confirmedBlockStartAt: null,
@@ -2013,7 +2013,7 @@ export const mockDataAdapter: DataAdapter = {
           unregisteredReason:
             "unregisteredReason" in item ? item.unregisteredReason ?? null : null,
           // supabase 목록 조회와 같은 표면. 등록 결과 사유는 저장 때 남긴 값을 읽는다.
-          registrationReasonIds: registrationDetails.get(item.id)?.reasonIds ?? [],
+          registrationReasonIds: registrationDetails.get(item.id)?.reasonIds ?? item.registrationReasonIds ?? [],
           regularSchedulePreference:
             "regularSchedulePreference" in item ? (item as { regularSchedulePreference?: unknown }).regularSchedulePreference ?? null : null
         }
