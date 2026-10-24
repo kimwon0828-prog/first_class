@@ -32,7 +32,7 @@ import {
 } from "@/features/students/lib/student-grouping"
 import { RECONTACT_TEMPLATES } from "@/features/students/lib/recontact-message"
 import { dataAdapter } from "@/shared/lib/db"
-import type { ConsultationLogChannel, StudioApplicationSummary, StudioMarketingConsent } from "@/shared/lib/db/adapter"
+import type { ConsultationLogChannel, RecontactRecipientStatus, StudioApplicationSummary, StudioMarketingConsent } from "@/shared/lib/db/adapter"
 import { getSeoulDateTimeParts } from "@/shared/lib/seoul-datetime"
 import type { QueryResult } from "@/shared/queries"
 
@@ -122,6 +122,15 @@ export type StudioStudentDetail = {
   info: { interestSubjects: string | null; currentLevel: string | null; regularSchedule: string | null }
 }
 
+/** 연락 기록의 안내 문자 상태. opted_out 은 080 거부로 NCP 가 걸러낸 것(매일 결과 확인 뒤 바뀐다). */
+const RECONTACT_STATUS_TEXT: Record<RecontactRecipientStatus, string> = {
+  queued: "보내는 중",
+  sent: "보냄",
+  failed: "보내지 못했어요",
+  dry_run: "시험 발송(실제로 가지 않음)",
+  opted_out: "수신거부로 발송 안 됨"
+}
+
 const CHANNEL_TITLES: Record<ConsultationLogChannel, string> = {
   PHONE: "전화",
   SMS: "문자",
@@ -200,7 +209,7 @@ export const getStudioStudentDetail = async (
           return { key: `r${index}`, at: event.at, title: "리포트 보냄", detail: `${titleById.get(event.applicationId) ?? ""} · ${at}` }
         }
         if (event.kind === "recontact") {
-          const state = event.status === "failed" ? "보내지 못했어요" : event.status === "dry_run" ? "시험 발송(실제로 가지 않음)" : event.status === "queued" ? "보내는 중" : "보냄"
+          const state = RECONTACT_STATUS_TEXT[event.status]
           return { key: `m${index}`, at: event.at, title: `안내 문자 · ${templateLabel(event.templateKind)}`, detail: `${state} · ${at}` }
         }
         return {

@@ -44,7 +44,8 @@ on conflict (id) do update set role = 'parent', phone = excluded.phone;
 insert into public.classes(id, organization_id, title, program_type, subject, target_age, description) values
   ('e3000000-0000-4000-8000-000000000001', 'e1000000-0000-4000-8000-000000000001', '로봇 코딩 체험', 'trial_class', 'coding', '초등', '검증'),
   ('e3000000-0000-4000-8000-000000000002', 'e1000000-0000-4000-8000-000000000002', '다른 학원 수업', 'trial_class', 'coding', '초등', '검증');
-create temp table _slot as select date_trunc('hour', now() - interval '2 days') as recent;
+-- 체험 시각: 2일 전 10:00 KST(1시간 일정이 자정을 넘지 않게 시각을 고정한다).
+create temp table _slot as select ((date_trunc('day', now() at time zone 'Asia/Seoul') - interval '2 days' + interval '10 hours') at time zone 'Asia/Seoul') as recent;
 insert into public.class_schedules(id, class_id, schedule_type, specific_date, start_time, end_time, capacity)
 select 'e6000000-0000-4000-8000-000000000001', 'e3000000-0000-4000-8000-000000000001', 'one_time',
   (recent at time zone 'Asia/Seoul')::date, (recent at time zone 'Asia/Seoul')::time, ((recent + interval '1 hour') at time zone 'Asia/Seoul')::time, 10 from _slot;
@@ -70,6 +71,8 @@ from public.profiles where id in ('e2000000-0000-4000-8000-000000000002', 'e2000
   'e2000000-0000-4000-8000-000000000004', 'e2000000-0000-4000-8000-000000000005');
 
 -- ── 1. 계정 번호 ─────────────────────────────────────────────
+-- 앱(080 동기화 · 발송)이 node crypto 로 만든 해시와 같아야 한다: sha256('01012345678')
+insert into _r(ok, label) select app.recontact_phone_hash('010-1234-5678') = 'e60124f2fe2045215abda1ae912aa80bb66dab5fc231a758387682c9c0e70c01', '번호 해시 = 앱의 sha256(숫자만)';
 insert into _r(ok, label) select app.recontact_account_phone('e2000000-0000-4000-8000-000000000002') = '01020000001', '계정 번호: 숫자만(010-2000-0001 → 01020000001)';
 insert into _r(ok, label) select app.recontact_account_phone('e2000000-0000-4000-8000-000000000003') = '01020000002', '계정 번호: +82 10 → 010';
 insert into _r(ok, label) select app.recontact_account_phone('e2000000-0000-4000-8000-000000000004') is null, '계정 번호 없음 → null';

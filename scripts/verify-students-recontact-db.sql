@@ -44,9 +44,10 @@ insert into public.classes(id, organization_id, title, program_type, subject, ta
   ('d3000000-0000-4000-8000-000000000002', 'd1000000-0000-4000-8000-000000000002', '다른 학원 수업', 'trial_class', 'coding', '초등', '검증');
 
 -- 체험 시각: 최근(2일 전) · 오래전(400일 전, 12개월 보관 기간 지남). 날짜 하나짜리 일정으로 둔다.
+-- 시각은 10:00 KST 로 고정한다(1시간 일정이 자정을 넘으면 class_schedules_time_check 에 걸린다).
 create temp table _slot as select
-  date_trunc('hour', now() - interval '2 days') as recent,
-  date_trunc('hour', now() - interval '400 days') as old;
+  ((date_trunc('day', now() at time zone 'Asia/Seoul') - interval '2 days' + interval '10 hours') at time zone 'Asia/Seoul') as recent,
+  ((date_trunc('day', now() at time zone 'Asia/Seoul') - interval '400 days' + interval '10 hours') at time zone 'Asia/Seoul') as old;
 insert into public.class_schedules(id, class_id, schedule_type, specific_date, start_time, end_time, capacity)
 select 'd6000000-0000-4000-8000-000000000001', 'd3000000-0000-4000-8000-000000000001', 'one_time',
   (recent at time zone 'Asia/Seoul')::date, (recent at time zone 'Asia/Seoul')::time, ((recent + interval '1 hour') at time zone 'Asia/Seoul')::time, 10 from _slot;

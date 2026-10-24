@@ -36,6 +36,9 @@ const buildDryRunResult = ({
   byteLength: preparedContent.byteLength
 })
 
+/** NCP SENS 설정(키 · 서비스 id · 발신 번호). 하나라도 없으면 null. 080 동기화 · 결과 조회도 같은 설정을 쓴다. */
+export const getNcloudSmsConfig = () => getNcloudConfig()
+
 const getNcloudConfig = () => {
   const accessKey = resolveEnvValue(process.env.NCP_ACCESS_KEY)
   const secretKey = resolveEnvValue(process.env.NCP_SECRET_KEY)
