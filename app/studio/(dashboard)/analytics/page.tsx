@@ -150,8 +150,13 @@ export default async function StudioAnalyticsPage({ searchParams }: StudioAnalyt
               <article key={card.key} className={card.tone === "brand" ? `${styles.card} ${styles.cardBrand}` : styles.card}>
                 <h2 className={styles.cardLabel}>{card.label}</h2>
                 <p className={styles.cardValue}>{card.value}</p>
-                {card.caption ? <p className={styles.cardCaption}>{card.caption}</p> : null}
-                {card.sub ? <p className={styles.cardSub}>{card.sub}</p> : null}
+                {card.caption || card.sub ? (
+                  <p className={styles.cardCaption}>
+                    {card.caption}
+                    {/* 결과 대기는 캡션 줄 끝에 작게 — Figma 카드 높이를 그대로 둔다 */}
+                    {card.sub ? <span className={styles.cardSub}>{card.caption ? " · " : ""}{card.sub}</span> : null}
+                  </p>
+                ) : null}
               </article>
             ))}
           </section>

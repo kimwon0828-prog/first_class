@@ -102,13 +102,10 @@
   color: var(--sv2-brand-700);
 }
 
-/* "결과 대기 N명" — 등록 카드 안 작게 */
+/* "결과 대기 N명" — 캡션 줄 끝에 작게(ink/500) */
 .cardSub {
-  margin: 0;
   color: var(--sv2-ink-500);
   font-size: 12px;
-  line-height: 1.45;
-  font-weight: 500;
 }
 
 /* ── 흐름 | 이유 ── */
@@ -224,6 +221,7 @@
 
 .insightLink {
   flex: 0 0 auto;
+  text-decoration: none;
   color: var(--sv2-brand-700);
   font-size: 13px;
   line-height: 1.45;

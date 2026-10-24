@@ -54,11 +54,12 @@
   position: relative;
 }
 
+/* 칩 왼쪽 끝에서 오른쪽으로 연다 — 기간 칩이 화면 왼쪽(분석 머리 아래)에 있다. */
 .popover {
   position: absolute;
   z-index: 30;
   top: calc(100% + 8px);
-  right: 0;
+  left: 0;
   width: 360px;
   padding: var(--s5);
   border: 1px solid var(--border);
@@ -160,7 +161,11 @@
     flex-wrap: wrap;
   }
 
-  /* 좁은 화면에서는 칩이 줄을 바꿔 왼쪽에 오므로 팝오버도 왼쪽에 붙인다(화면 밖으로 나가지 않게). */
+  /* 좁은 화면에서는 팝오버를 칩 줄 전체(.control)의 왼쪽에 붙인다 — 오른쪽 칩 기준이면 화면 밖으로 나간다. */
+  .custom {
+    position: static;
+  }
+
   .popover {
     right: auto;
     left: 0;
