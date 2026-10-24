@@ -12,6 +12,10 @@
 //   7. 조직 경계를 넘지 않는다.
 //   8. 기간이 바뀌면 모든 지표가 같은 cohort 로 함께 바뀐다.
 //   9. 원인 · 점수 · 순위 표현을 만들지 않는다.
+//  10. 등록 전환율은 어디서나 등록 ÷ 체험 완료 하나다(computeTrialEnrollmentRate) —
+//      분석 화면(app/studio/(dashboard)/analytics) · 홈 "이번 달 등록 전환" 카드 · 성과 리포트.
+//
+// 분석은 리뉴얼 때 홈에서 /studio/analytics 로 옮겨졌다. 화면 계약은 그 페이지를 본다.
 //
 // 순수 함수와 소스 검사만 쓴다. DB · 네트워크를 건드리지 않는다.
 
@@ -24,11 +28,16 @@ import {
   formatRateFraction,
   selectConversionCohort
 } from "@/features/studio/lib/studio-conversion-analytics"
+import { computeTrialEnrollmentRate, formatEnrollmentRate } from "@/features/studio/lib/studio-dashboard-metrics"
 
 const LIB_PATH = "src/features/studio/lib/studio-conversion-analytics.ts"
 const QUERY_PATH = "src/features/studio/queries/get-studio-conversion-analytics.ts"
 const PAGE_PATH = "app/studio/(dashboard)/page.tsx"
 const PAGE_CSS_PATH = "app/studio/(dashboard)/page.module.css"
+const ANALYTICS_PAGE_PATH = "app/studio/(dashboard)/analytics/page.tsx"
+const ANALYTICS_CSS_PATH = "app/studio/(dashboard)/analytics/page.module.css"
+const ANALYTICS_VIEW_PATH = "src/features/studio/lib/studio-analytics-view.ts"
+const METRICS_PATH = "src/features/studio/lib/studio-dashboard-metrics.ts"
 const ADAPTER_PATH = "src/shared/lib/db/adapter.ts"
 const SUPABASE_ADAPTER_PATH = "src/shared/lib/db/supabase-adapter.ts"
 const MOCK_PATH = "src/shared/lib/db/mock-adapter.ts"
@@ -44,6 +53,11 @@ const queryCode = stripComments(read(QUERY_PATH))
 const page = read(PAGE_PATH)
 const pageCode = stripComments(stripJsxComments(page))
 const pageCss = stripComments(read(PAGE_CSS_PATH))
+const analyticsPage = read(ANALYTICS_PAGE_PATH)
+const analyticsCode = stripComments(stripJsxComments(analyticsPage))
+const analyticsCss = stripComments(read(ANALYTICS_CSS_PATH))
+const analyticsView = stripComments(read(ANALYTICS_VIEW_PATH))
+const metricsCode = stripComments(read(METRICS_PATH))
 const supabaseAdapterCode = stripComments(read(SUPABASE_ADAPTER_PATH))
 
 let failures = 0
@@ -269,18 +283,40 @@ check(
 )
 check(
   "화면에 '다음 단계 전환율' 이 없다",
-  !pageCode.includes("다음 단계") && !pageCode.includes("단계 전환율")
+  [pageCode, analyticsCode, analyticsView].every((code) => !code.includes("다음 단계") && !code.includes("단계 전환율"))
 )
 check(
   "funnel 도형을 쓰지 않는다",
-  !/funnel/i.test(pageCode) && !/funnel/i.test(pageCss)
+  [pageCode, pageCss, analyticsCode, analyticsCss].every((code) => !/funnel/i.test(code))
 )
 
 console.log("\n── 7. 분모를 화면에 적는다 ──")
 check("분수 표기 helper 가 있다", formatRateFraction(12, 24) === "12 / 24")
 check("Dashboard는 별도 체험일 cohort 카드를 중복 표시하지 않는다", !pageCode.includes("체험 이후 전환 현황"))
-check("흐름 비율은 이전 단계 기준을 밝힌다", pageCode.includes("단계별 비율은 바로 앞 단계 대비입니다"))
-check("등록 도넛의 분모는 체험 완료다", pageCode.includes('analytics.donutTotal, "체험 완료"'))
+check(
+  "흐름 비율은 이전 단계 기준을 밝힌다",
+  analyticsView.includes("`이전 단계의 ") && analyticsCode.includes("step.fromPrevious")
+)
+check(
+  "등록 비율의 분모는 체험 완료다(정의는 한 함수)",
+  computeTrialEnrollmentRate(7, 18) === 38.9 &&
+    formatEnrollmentRate(computeTrialEnrollmentRate(7, 18)) === "39%" &&
+    computeTrialEnrollmentRate(0, 0) === null &&
+    formatEnrollmentRate(null) === "—" &&
+    metricsCode.includes("registrationConversionRate: computeTrialEnrollmentRate(enrolledCount, counts[3])")
+)
+check(
+  "분석 · 홈 · 리포트가 같은 정의를 쓴다",
+  analyticsView.includes("computeTrialEnrollmentRate(") &&
+    pageCode.includes("formatEnrollmentRate(thisMonth.rate)") &&
+    read("src/features/studio/lib/studio-dashboard-monthly.ts").includes("rate: metrics.registrationConversionRate") &&
+    read("src/features/studio/lib/studio-dashboard-analytics.ts").includes("formatEnrollmentRate(metrics.registrationConversionRate)") &&
+    !metricsCode.includes("roundPercentage(enrolledCount, decidedCount)")
+)
+check(
+  "홈 카드 문구: 체험한 학생 N명 중 M명이 등록 · 결과 대기",
+  page.includes("체험한 학생 {thisMonth.completedCount}명 중 {thisMonth.enrolledCount}명이 등록했어요") && page.includes("결과 대기 {thisMonth.pendingDecisionCount}명")
+)
 check("미확정을 미등록과 분리한다", read("src/features/studio/lib/studio-dashboard-analytics.ts").includes('label: "결과 미확정"'))
 
 console.log("\n── 8. 조직 경계 · 기간 ──")
@@ -294,13 +330,16 @@ check(
 )
 check(
   "유료 권한이 없으면 조회하지 않는다",
-  pageCode.includes("entitlements.canUseConversionAnalytics") &&
-    pageCode.includes("? buildStudioDashboardMetrics(")
+  analyticsCode.includes("if (entitlements.canUseConversionAnalytics && !error)") &&
+    analyticsCode.includes("view = buildStudioAnalyticsView(") &&
+    pageCode.includes("entitlements.canUseConversionAnalytics ? buildStudioMonthlyConversion(")
 )
 check(
   "기간 state 를 새로 만들지 않는다",
   queryCode.includes("StudioResolvedDateRange") &&
-    pageCode.includes("buildStudioDashboardMetrics(applications, selectedDateRange)")
+    analyticsCode.includes("resolveStudioDateRange({") &&
+    analyticsCode.includes("range: selectedDateRange") &&
+    analyticsView.includes("buildStudioDashboardMetrics(input.applications, input.range, now)")
 )
 check(
   "모든 지표가 같은 cohort 에서 나온다",
@@ -319,7 +358,7 @@ console.log("\n── 9. 원인 · 점수 · 순위를 말하지 않는다 ─�
     "덕분에", "상담 효과", "기여", "성공률", "예측", "AI 분석", "등록 가능성",
     "설득", "정확도", "점수", "순위", "랭킹", "상위", "강점", "약점", "추천"
   ]
-  for (const [name, code] of [["lib", libCode], ["query", queryCode], ["page", pageCode]] as const) {
+  for (const [name, code] of [["lib", libCode], ["query", queryCode], ["page", pageCode], ["analytics page", analyticsCode], ["analytics view", analyticsView]] as const) {
     const hits = forbidden.filter((word) => code.includes(word))
     check(`${name} 에 인과 · 점수 · 순위 표현이 없다`, hits.length === 0, hits.join(", "))
   }
@@ -361,14 +400,15 @@ const unregisteredPage = read(UNREGISTERED_PAGE_PATH)
 
 check(
   "대시보드 잠금 안내가 분석 기능을 가리킨다",
-  page.includes("등록 전환 분석은 스탠다드 플랜에서 사용할 수 있어요")
+  analyticsPage.includes("등록 전환 분석은 스탠다드 플랜에서 사용할 수 있어요") &&
+    page.includes("등록 전환은 스탠다드 플랜에서 볼 수 있어요")
 )
 check(
   "미등록 잠금 안내가 분석 기능을 가리킨다",
   unregisteredPage.includes("미등록 사유 분석은 스탠다드 플랜에서 사용할 수 있어요")
 )
 for (const [label, source] of [
-  ["대시보드", page],
+  ["대시보드", analyticsPage],
   ["미등록", unregisteredPage]
 ] as const) {
   // "이미 저장된 …은 계속 확인할 수 있습니다" 는 새 기록이 막힌 것처럼 읽힌다.
@@ -378,7 +418,7 @@ for (const [label, source] of [
   )
   check(
     `${label} 잠금 안내가 기록은 계속된다고 말한다`,
-    /상담 기록은 지금도|기록은 지금도 그대로|지금도 그대로 남길 수 있어요/.test(source)
+    /상담 기록은 지금도|기록은 지금도 그대로|지금도 그대로 남길 수 있어요|메모에 남기고 확인할 수 있어요/.test(source)
   )
 }
 

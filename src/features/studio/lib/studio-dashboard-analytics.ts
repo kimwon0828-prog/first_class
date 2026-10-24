@@ -107,7 +107,7 @@ export const buildStudioDashboardAnalytics = (
 
   // 사유가 없는 Case 도 버리지 않는다. 목록의 합이 미등록 수와 같아야 한다.
   const MISSING_REASON_KEY = "unrecorded"
-  const MISSING_REASON_LABEL = "미등록 사유 미기록"
+  const MISSING_REASON_LABEL = "사유 기록 없음"
   const unregisteredReasons = metrics.unregisteredReasonCounts
     .map((item) => ({
       key: item.reason ?? MISSING_REASON_KEY,
