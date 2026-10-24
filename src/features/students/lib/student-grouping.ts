@@ -21,6 +21,9 @@ import type {
   StudioStudentContactEvent
 } from "@/shared/lib/db/adapter"
 
+/** 다음 연락 메모 최대 길이(RPC set_studio_next_contact 와 같다). */
+export const NEXT_CONTACT_NOTE_MAX = 200
+
 export type StudentGroup = {
   key: string
   /** 대표 신청: 가장 최근의 취소 · 불참 아닌 신청(없으면 가장 최근 신청). 결과 · 보내기 · 다음 연락은 이 신청이 기준이다. */
