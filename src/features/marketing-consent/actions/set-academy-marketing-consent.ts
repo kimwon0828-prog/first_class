@@ -1,8 +1,11 @@
 "use server"
 
 import { revalidatePath } from "next/cache"
+import { after } from "next/server"
 
+import { toMarketingConsentChange } from "@/features/marketing-consent/lib/consent-notice"
 import { parseMarketingConsentInput, type MarketingConsentItem } from "@/features/marketing-consent/lib/marketing-consent"
+import { sendMarketingConsentNoticeSafely } from "@/features/marketing-consent/server/consent-notice-sender"
 import { listAcademyMarketingConsents, setAcademyMarketingConsent } from "@/features/marketing-consent/server/marketing-consent-db"
 import { getSupabaseServerClient } from "@/integrations/supabase/server"
 import type { ActionResult } from "@/shared/actions"
@@ -16,7 +19,7 @@ const MESSAGES: Record<string, string> = {
 }
 
 /**
- * 학부모 웹의 학원 안내 문자 수신 동의 · 철회(2차-3). 앱 API 와 같은 계약 · 같은 RPC 다(source = parent_web).
+ * 학부모 웹의 학원 안내 문자 수신 동의 · 철회(2차-3). 앱 API 와 같은 계약 · 같은 RPC · 같은 처리 결과 알림이다(source = parent_web).
  * 화면(신청 완료 직전 선택 체크 · 내 정보 › 알림 설정)은 이 액션을 부른다.
  */
 export async function setAcademyMarketingConsentAction(input: {
@@ -30,8 +33,13 @@ export async function setAcademyMarketingConsentAction(input: {
     const supabase = await getSupabaseServerClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { ok: false, message: MESSAGES.parent_required }
-    const result = await setAcademyMarketingConsent(supabase, parsed.value)
+    const result = await setAcademyMarketingConsent(supabase, parsed.value, user.id)
     if (!result.ok) return { ok: false, message: MESSAGES[result.error] }
+    // 상태가 실제로 바뀐 경우만 처리 결과 알림(앱 API 와 같다). 응답을 보낸 뒤 보내고, 실패해도 저장은 성공이다.
+    if (result.changed === true) {
+      const change = toMarketingConsentChange(user.id, result.item)
+      after(() => sendMarketingConsentNoticeSafely(change).then(() => undefined))
+    }
     revalidatePath("/my")
     return { ok: true, data: result.item }
   } catch {

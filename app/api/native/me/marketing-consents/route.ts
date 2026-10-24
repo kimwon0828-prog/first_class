@@ -1,5 +1,7 @@
 import { createClient } from "@supabase/supabase-js"
+import { after } from "next/server"
 
+import { sendMarketingConsentNoticeSafely } from "@/features/marketing-consent/server/consent-notice-sender"
 import { createNativeMarketingConsentHandler } from "@/features/marketing-consent/server/native-handler"
 import { getPublicEnv } from "@/shared/config/env"
 
@@ -13,7 +15,9 @@ const handle = createNativeMarketingConsentHandler({
       global: { headers: { Authorization: `Bearer ${token}` } },
       auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false }
     })
-  }
+  },
+  // 처리 결과 알림(정보통신망법 제50조 제7항)은 응답을 보낸 뒤 보낸다.
+  onChanged: (change) => after(() => sendMarketingConsentNoticeSafely(change).then(() => undefined))
 })
 
 export const GET = handle
