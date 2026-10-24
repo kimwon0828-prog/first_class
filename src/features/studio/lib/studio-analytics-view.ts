@@ -42,23 +42,40 @@ const percent = (numerator: number, denominator: number): number | null =>
 const percentText = (value: number | null) => (value == null ? "—" : `${value}%`)
 
 // ─────────────────────────────────────────────────────────────
-// 직전 같은 길이 기간
+// 비교 기간
 // ─────────────────────────────────────────────────────────────
 
 const ymd = (ms: number) => new Date(ms).toISOString().slice(0, 10)
 
+/** 그 달의 1일(UTC 자정 ms). monthOffset 만큼 앞뒤 달로 옮긴다. */
+const monthStartMs = (dateKey: string, monthOffset: number) =>
+  Date.UTC(Number(dateKey.slice(0, 4)), Number(dateKey.slice(5, 7)) - 1 + monthOffset, 1)
+
 /**
- * 선택 기간 바로 앞의 같은 길이 기간(KST 날짜). 전체 기간이면 null.
- * 예: 10월 1일~24일(24일) → 9월 7일~30일.
+ * 비교할 기간(KST 날짜). 전체 기간이면 null.
+ *   이번 달 칩  지난달 1일 ~ 같은 날짜(지난달에 그 날이 없으면 말일). 예: 10월 1~24일 → 9월 1~24일.
+ *   지난달 칩  전전달 전체. 예: 9월 → 8월 1~31일.
+ *   그 밖      바로 앞의 같은 길이 기간. 예: 10월 5~11일 → 9월 28일~10월 4일.
  */
 export const resolvePreviousStudioDateRange = (range: StudioResolvedDateRange): StudioResolvedDateRange | null => {
   if (!range.startDate || !range.endDate) return null
   const start = Date.parse(`${range.startDate}T00:00:00Z`)
   const end = Date.parse(`${range.endDate}T00:00:00Z`)
   if (Number.isNaN(start) || Number.isNaN(end) || end < start) return null
-  const lengthDays = Math.round((end - start) / DAY_MS) + 1
-  const previousEnd = ymd(start - DAY_MS)
-  const previousStart = ymd(start - lengthDays * DAY_MS)
+  let previousStart: string
+  let previousEnd: string
+  if (range.preset === "thisMonth" || range.preset === "lastMonth") {
+    const from = monthStartMs(range.startDate, -1)
+    const lastDay = monthStartMs(range.startDate, 0) - DAY_MS
+    previousStart = ymd(from)
+    previousEnd = range.preset === "thisMonth"
+      ? ymd(Math.min(from + (Number(range.endDate.slice(8, 10)) - 1) * DAY_MS, lastDay))
+      : ymd(lastDay)
+  } else {
+    const lengthDays = Math.round((end - start) / DAY_MS) + 1
+    previousEnd = ymd(start - DAY_MS)
+    previousStart = ymd(start - lengthDays * DAY_MS)
+  }
   return {
     preset: "custom",
     startDate: previousStart,
