@@ -12,7 +12,6 @@ import { ConversionInfographicLauncher } from "@/features/reports/ui/conversion-
 import { requireTeacherStudioAccess } from "@/features/studio/lib/require-teacher-studio-access"
 import { buildStudioAnalyticsView, resolveAnalyticsMonthLabels } from "@/features/studio/lib/studio-analytics-view"
 import { buildStudioDashboardAnalytics } from "@/features/studio/lib/studio-dashboard-analytics"
-import { buildStudioRecontact, getStudioRecontactCandidateIds } from "@/features/studio/lib/studio-dashboard-view"
 import { resolveStudioDateRange } from "@/features/studio/lib/studio-date-range"
 import { getStudioApplicationsForDashboard } from "@/features/studio/queries/get-studio-applications"
 import { getStudioSettingsOrganization } from "@/features/studio/queries/get-studio-settings-organization"
@@ -21,6 +20,7 @@ import { StudioQueryRetry } from "@/features/studio/ui/studio-query-retry"
 import { v2ButtonClassName } from "@/features/studio/ui/v2/v2-button"
 import { V2DownloadIcon, V2InfoIcon } from "@/features/studio/ui/v2/v2-icons"
 import { V2SubjectIcon3D } from "@/features/studio/ui/v2/v2-subject-icon-3d"
+import { buildRecontactStudents, getStudentDecisionApplicationIds, groupStudentApplications } from "@/features/students/lib/student-grouping"
 import { getStudioNavigationPathResolver } from "@/shared/lib/studio-navigation-server"
 
 import styles from "./page.module.css"
@@ -57,12 +57,19 @@ export default async function StudioAnalyticsPage({ searchParams }: StudioAnalyt
 
   let view = null
   if (entitlements.canUseConversionAnalytics && !error) {
-    // 고민 중 인원 = 학원 기록 고민 중 + 학부모 의향 고민 중(신청 단위).
-    const decisions = await listStudioCurrentParentDecisions(getStudioRecontactCandidateIds(applications))
+    // 다시 연락할 학생 = 학생 탭 · 홈과 같은 함수(학생 단위, 미등록 + 고민 중).
+    // 의향은 그 판정용 대표 신청 + "희망 시간 불일치" 요일 문장용 미등록 신청을 한 번에 읽는다.
+    const groups = groupStudentApplications(applications)
+    const decisionIds = new Set([
+      ...getStudentDecisionApplicationIds(groups),
+      ...applications.filter((item) => item.registrationStatus === "not_enrolled" && !item.personalDataErased).map((item) => item.id)
+    ])
+    const decisions = await listStudioCurrentParentDecisions(Array.from(decisionIds))
     view = buildStudioAnalyticsView({
       applications,
       range: selectedDateRange,
-      consideringCount: buildStudioRecontact(applications, decisions.data).items.length
+      recontactCount: buildRecontactStudents(groups, decisions.data).students.length,
+      decisions: decisions.data
     })
   }
 
@@ -193,7 +200,7 @@ export default async function StudioAnalyticsPage({ searchParams }: StudioAnalyt
                   <V2InfoIcon size={18} className={styles.insightIcon} />
                   <p>{view.insight.text}</p>
                   {view.insight.showStudents ? (
-                    <Link href={`${studioPath("/studio/cases")}?view=closed&filter=pending`} className={styles.insightLink}>
+                    <Link href={`${studioPath("/studio/students")}?tab=recontact`} className={styles.insightLink}>
                       학생 보기 ›
                     </Link>
                   ) : null}

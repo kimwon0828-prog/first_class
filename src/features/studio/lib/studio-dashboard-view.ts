@@ -27,8 +27,7 @@ import {
   getSeoulTodayKey,
   toSeoulDateKey
 } from "@/features/studio/lib/studio-schedule-month"
-import { PREFERRED_DAY_OPTIONS } from "@/features/decisions/lib/parent-decision"
-import type { StudioApplicationSummary, StudioCurrentParentDecision } from "@/shared/lib/db/adapter"
+import type { StudioApplicationSummary } from "@/shared/lib/db/adapter"
 
 /** 각 섹션에 한 번에 보여줄 최대 행 수. 나머지는 "모두 보기" 로 넘긴다. */
 export const STUDIO_DASHBOARD_SECTION_LIMIT = 5
@@ -383,34 +382,4 @@ export const buildStudioDashboardView = (
     recentRegistrationItems: buildRecentRegistrationItems(applications),
     todayLabel: formatSelectedDateLabel(todayKey)
   }
-}
-
-/** 다시 연락할 학생 후보: 체험 완료 · 취소/불참 아님 · 등록 결과가 확정(등록/미등록)되지 않은 신청. */
-export const getStudioRecontactCandidateIds = (applications: StudioApplicationSummary[]) =>
-  applications
-    .filter(item => item.status === "completed" && !item.noShowAt && !item.canceledAt &&
-      item.registrationStatus !== "enrolled" && item.registrationStatus !== "not_enrolled")
-    .map(item => item.id)
-
-/**
- * 분석 "고민 중 N명"(신청 단위). 홈 "다시 연락할 학생" 카드는 학생 단위 buildRecontactStudents(students/lib)를 쓴다.
- * 학원이 기록한 등록 결과 "고민 중"(registration_status = pending) + 학부모가 남긴 지금 유효한 의향 "고민 중"(considering).
- * 같은 신청은 한 번만 센다. 요일 문장은 considering 학부모들의 희망 요일 중 가장 많은 요일(같으면 월→일 순).
- */
-export const buildStudioRecontact = (
-  applications: StudioApplicationSummary[],
-  decisions: StudioCurrentParentDecision[]
-) => {
-  const candidateIds = new Set(getStudioRecontactCandidateIds(applications))
-  const considering = decisions.filter(item => item.decision === "considering" && candidateIds.has(item.applicationId))
-  const consideringIds = new Set(considering.map(item => item.applicationId))
-  const items = applications
-    .filter(item => candidateIds.has(item.id) && (item.registrationStatus === "pending" || consideringIds.has(item.id)))
-    .map(item => ({ id: item.id, studentName: item.childName }))
-  let topDay: { label: string; count: number } | null = null
-  for (const option of PREFERRED_DAY_OPTIONS) {
-    const count = considering.filter(item => item.preferredDays.includes(option.value)).length
-    if (count > 0 && (!topDay || count > topDay.count)) topDay = { label: option.label, count }
-  }
-  return { items, topDay }
 }

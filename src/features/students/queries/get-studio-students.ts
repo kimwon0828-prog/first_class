@@ -23,6 +23,7 @@ import {
   gradeLabel,
   groupStudentApplications,
   resolveStudentLock,
+  resolveStudentPreferredDays,
   resolveStudentReason,
   resolveStudentResult,
   toConsideringIds,
@@ -30,9 +31,16 @@ import {
   type StudentListRow,
   type StudentLockReason
 } from "@/features/students/lib/student-grouping"
+import { formatPreferredDays } from "@/features/students/lib/preferred-days"
 import { RECONTACT_TEMPLATES } from "@/features/students/lib/recontact-message"
 import { dataAdapter } from "@/shared/lib/db"
-import type { ConsultationLogChannel, RecontactRecipientStatus, StudioApplicationSummary, StudioMarketingConsent } from "@/shared/lib/db/adapter"
+import type {
+  ConsultationLogChannel,
+  RecontactRecipientStatus,
+  StudioApplicationSummary,
+  StudioCurrentParentDecision,
+  StudioMarketingConsent
+} from "@/shared/lib/db/adapter"
 import { getSeoulDateTimeParts } from "@/shared/lib/seoul-datetime"
 import type { QueryResult } from "@/shared/queries"
 
@@ -50,7 +58,7 @@ const loadStudentGroups = cache(async (organizationId: string) => {
   const applications = await dataAdapter.listStudioApplications(organizationId)
   const groups = groupStudentApplications(applications)
   const decisions = await listStudioCurrentParentDecisions(getStudentDecisionApplicationIds(groups))
-  return { groups, consideringIds: toConsideringIds(decisions.data) }
+  return { groups, decisions: decisions.data, consideringIds: toConsideringIds(decisions.data) }
 })
 
 /**
@@ -150,6 +158,15 @@ const resolveRegularSchedule = (items: StudioApplicationSummary[]) => {
   return firstText(items, (item) => item.preferredRegularSchedule)
 }
 
+/**
+ * "정규 희망 시간": 학부모가 남긴 희망 요일 먼저(홈 · 분석과 같은 resolveStudentPreferredDays),
+ * 없으면 상담 기록(요일 · 시간), 그것도 없으면 신청 당시 적은 글.
+ */
+const resolveStudentRegularSchedule = (group: StudentGroup, decisions: StudioCurrentParentDecision[]) => {
+  const preferred = resolveStudentPreferredDays(group, decisions)
+  return preferred?.source === "parent" ? `${formatPreferredDays(preferred.days)} (학부모 희망)` : resolveRegularSchedule(group.applications)
+}
+
 /** 다음 연락: 학생의 신청 중 다음 연락이 적힌 가장 최근 것. 저장은 대표 신청에 한다. */
 const resolveNextContact = (items: StudioApplicationSummary[]) => {
   const item = items
@@ -167,7 +184,7 @@ export const getStudioStudentDetail = async (
   now: Date
 ): Promise<QueryResult<StudioStudentDetail | null>> => {
   try {
-    const { groups, consideringIds } = await loadStudentGroups(organizationId)
+    const { groups, decisions, consideringIds } = await loadStudentGroups(organizationId)
     const group = findStudentGroup(groups, applicationId)
     if (!group) return { data: null, error: null }
 
@@ -246,7 +263,7 @@ export const getStudioStudentDetail = async (
         info: {
           interestSubjects: firstText(group.applications, (row) => row.interestSubjects),
           currentLevel: firstText(group.applications, (row) => row.currentLevel),
-          regularSchedule: resolveRegularSchedule(group.applications)
+          regularSchedule: resolveStudentRegularSchedule(group, decisions)
         }
       },
       error: null

@@ -5,6 +5,7 @@
 //   1. 학생 묶기: child_id · 학부모 계정 + 이름 · 엑셀(번호 + 이름) · 파기 제외 · 대표 신청
 //   2. 학생 결과 · 탭(다시 연락할 학생 = 미등록 + 고민 중) · 사유 이름(앱 목록 그대로)
 //      홈 "다시 연락할 학생" 카드 = 학생 탭과 같은 함수(건수 · 아바타 · 요일 문장)
+//      원하는 요일: 학부모 희망 요일 먼저, 없으면 상담 기록(홈 · 분석 · 학생 상세 같은 함수)
 //   3. 고를 수 없는 학생(엑셀 · 동의 안 함 · 번호 없음) · 마지막 연락
 //   4. 문자: 첫 줄 "(광고) [학원명] 대표번호" · 인사 치환 · 링크 · 080 · 바이트
 //   5. 막는 이유 순서: 요금제 → 로컬 가드 → 080 → 대표번호 → 시간(21~8시) → 고른 학생 → 50명 → 한도
@@ -17,6 +18,7 @@ import {
   groupStudentApplications,
   isStudentInTab,
   resolveLastContact,
+  resolveStudentPreferredDays,
   resolveStudentResult,
   toConsideringIds
 } from "@/features/students/lib/student-grouping"
@@ -29,6 +31,7 @@ import {
   toFriendlyStudentName
 } from "@/features/students/lib/recontact-message"
 import { resolveRecontactBlock } from "@/features/students/lib/recontact-gate"
+import { countTopPreferredDay, formatPreferredDays, resolvePreferredDays } from "@/features/students/lib/preferred-days"
 import { STUDIO_STUDENT_RESULT_LABELS, STUDIO_STUDENT_RESULT_TONES } from "@/features/studio/lib/application-status-labels"
 import type { StudioApplicationSummary } from "@/shared/lib/db/adapter"
 
@@ -159,6 +162,39 @@ const app = (id: string, patch: Partial<StudioApplicationSummary> = {}): StudioA
     check("홈 아바타는 최근 신청 먼저", home.students.map((item) => item.name).join() === "박두번,이의향,김미등", home.students.map((item) => item.name).join())
     check("요일 문장: 세 학생 중 월 2 · 토 2 → 같으면 월 먼저", home.topDay?.label === "월" && home.topDay.count === 2, JSON.stringify(home.topDay))
     check("다시 연락할 학생이 아니면 요일에 세지 않는다", buildRecontactStudents(homeGroups, [{ applicationId: "h-und", decision: "declined", preferredDays: ["sun"] }] as never).topDay === null)
+  }
+
+  // 원하는 요일(홈 · 분석 · 학생 상세 공용)
+  {
+    const pref = (...groups: Array<{ dayMode: "selected" | "any"; days: number[] }>) => ({
+      version: 1, state: "specified",
+      groups: groups.map((group) => ({ ...group, timeMode: "any", startTime: null, endTime: null }))
+    })
+    check("학부모 희망 요일이 상담 기록보다 먼저",
+      JSON.stringify(resolvePreferredDays({ decisionDays: ["sun", "mon"], regularSchedulePreferences: [pref({ dayMode: "selected", days: [6] })] })) ===
+      JSON.stringify({ days: ["mon", "sun"], source: "parent" }))
+    check("학부모 요일이 없으면 상담 기록(요일 고른 묶음만, 무관은 빼고)",
+      JSON.stringify(resolvePreferredDays({ decisionDays: [], regularSchedulePreferences: [pref({ dayMode: "any", days: [] }, { dayMode: "selected", days: [6, 2] })] })) ===
+      JSON.stringify({ days: ["tue", "sat"], source: "consultation" }))
+    check("상담 기록은 최근 신청부터 처음으로 요일이 있는 것",
+      resolvePreferredDays({ regularSchedulePreferences: [null, { version: 1, state: "undecided", groups: [] }, pref({ dayMode: "selected", days: [3] })] })?.days.join() === "wed")
+    check("둘 다 없으면 null", resolvePreferredDays({ decisionDays: null, regularSchedulePreferences: [null] }) === null)
+    check("가장 많은 요일(같으면 월 먼저)", countTopPreferredDay([["sat"], ["mon", "sat"], ["mon"]])?.label === "월")
+    check("표기 \"토요일 · 일요일\"", formatPreferredDays(["sat", "sun"]) === "토요일 · 일요일")
+    const [group] = groupStudentApplications([app("pd1", { regularSchedulePreference: pref({ dayMode: "selected", days: [6] }) as never })])
+    check("학생 단위: 대표 신청의 학부모 의향 먼저",
+      resolveStudentPreferredDays(group, [{ applicationId: "pd1", decision: "considering", preferredDays: ["fri"] }] as never)?.days.join() === "fri" &&
+      resolveStudentPreferredDays(group, [])?.days.join() === "sat")
+    const homeWithConsultation = buildRecontactStudents(
+      groupStudentApplications([
+        app("hc1", { childId: "c1", childName: "가", parentId: "p1", regularSchedulePreference: pref({ dayMode: "selected", days: [6] }) as never }),
+        app("hc2", { childId: "c2", childName: "나", parentId: "p2", regularSchedulePreference: pref({ dayMode: "selected", days: [6, 7] }) as never }),
+        app("hc3", { childId: "c3", childName: "다", parentId: "p3", regularSchedulePreference: pref({ dayMode: "selected", days: [6] }) as never })
+      ]),
+      [{ applicationId: "hc3", decision: "considering", preferredDays: ["tue"] }] as never
+    )
+    check("홈 요일 문장: 학부모 요일 없는 학생은 상담 기록으로 센다(토 2 · 화 1)",
+      homeWithConsultation.topDay?.label === "토" && homeWithConsultation.topDay.count === 2, JSON.stringify(homeWithConsultation.topDay))
   }
 
   const rows = buildStudentListRows({
