@@ -1,7 +1,7 @@
 // 홈 "이번 달 등록 전환" 카드(Figma 2148:5081)의 최근 6개월 값.
 //
 // 새 계산식을 만들지 않는다. 기존 buildStudioDashboardMetrics 를 달마다(신청일 cohort) 한 번씩 부를 뿐이다.
-// 등록 전환율 = 등록 ÷ (등록 + 미등록) 도 그 함수의 registrationConversionRate 그대로다.
+// 등록 전환율 = 등록 ÷ 체험 완료(computeTrialEnrollmentRate) — 그 함수의 registrationConversionRate 그대로다.
 // 이미 읽어 둔 신청 목록 위의 계산이라 조회가 늘지 않는다.
 
 import { buildStudioDashboardMetrics } from "./studio-dashboard-metrics"
@@ -11,9 +11,13 @@ import type { StudioApplicationSummary } from "@/shared/lib/db/adapter"
 
 export type StudioMonthlyConversion = {
   month: number
-  /** 등록 ÷ (등록 + 미등록). 결과가 나온 학생이 없으면 null. */
+  /** 등록 ÷ 체험 완료. 체험을 마친 학생이 없으면 null. */
   rate: number | null
   enrolledCount: number
+  /** 체험을 마친 학생(전환율의 분모). */
+  completedCount: number
+  /** 결과 대기: 체험을 마쳤지만 등록 · 미등록 결과가 아직 없다. */
+  pendingDecisionCount: number
   decidedCount: number
   current: boolean
 }
@@ -43,6 +47,8 @@ export const buildStudioMonthlyConversion = (
       month: first.getUTCMonth() + 1,
       rate: metrics.registrationConversionRate,
       enrolledCount: metrics.enrolledCount,
+      completedCount: metrics.completedCount,
+      pendingDecisionCount: metrics.pendingDecisionCount,
       decidedCount: metrics.decidedCount,
       current: offset === 0
     }

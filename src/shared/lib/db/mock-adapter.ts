@@ -1969,7 +1969,11 @@ export const mockDataAdapter: DataAdapter = {
           registrationStatus:
             "registrationStatus" in item ? item.registrationStatus ?? "undecided" : "undecided",
           unregisteredReason:
-            "unregisteredReason" in item ? item.unregisteredReason ?? null : null
+            "unregisteredReason" in item ? item.unregisteredReason ?? null : null,
+          // supabase 목록 조회와 같은 표면. 등록 결과 사유는 저장 때 남긴 값을 읽는다.
+          registrationReasonIds: registrationDetails.get(item.id)?.reasonIds ?? [],
+          regularSchedulePreference:
+            "regularSchedulePreference" in item ? (item as { regularSchedulePreference?: unknown }).regularSchedulePreference ?? null : null
         }
 
         return mapped
