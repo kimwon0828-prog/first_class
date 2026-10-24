@@ -143,7 +143,8 @@ const standardFeatures = [
   "Free의 모든 기능",
   "등록 전환 분석",
   "미등록 사유 분석",
-  "등록 전환 인포그래픽"
+  "등록 전환 인포그래픽",
+  "미등록 학생 다시 연락 · 안내 문자 월 200건"
 ]
 
 const perks = [
@@ -153,7 +154,7 @@ const perks = [
   },
   {
     title: "분석으로 확장",
-    description: "필요할 때 Standard로 전환해 등록 전환과 미등록 사유를 분석합니다."
+    description: "필요할 때 Standard로 전환해 등록 전환을 분석하고, 등록하지 않은 학생에게 다시 안내합니다."
   },
   {
     title: "도입 지원",
@@ -610,7 +611,7 @@ export default async function PartnerLanding() {
           </h2>
           <p className={styles.sub}>
             체험·상담·등록 기록과 학부모 리포트는 Free로 쓸 수 있습니다. 쌓인 기록으로
-            등록 전환과 미등록 사유를 분석할 때 Standard로 확장하세요.
+            등록 전환을 분석하고 등록하지 않은 학생에게 다시 안내할 때 Standard로 확장하세요.
           </p>
 
           <div className={styles.price}>
@@ -636,7 +637,7 @@ export default async function PartnerLanding() {
                 <p className={styles.pK}>STANDARD</p>
                 <span className={styles.pTag}>추천</span>
               </div>
-              <p className={styles.pN}>등록 전환 분석 · 미등록 사유 분석</p>
+              <p className={styles.pN}>등록 전환 분석 · 미등록 학생 다시 연락</p>
               <div className={styles.pA}>
                 <span className={styles.pFree}>{STANDARD_PRICE_TEXT}</span>
                 <span className={styles.pCycle}>승인 후 {STANDARD_TRIAL_DAYS}일 무료 · 월 단위 정기결제</span>

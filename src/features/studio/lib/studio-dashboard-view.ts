@@ -8,9 +8,9 @@
 //   - getStudioStatusLabel / getStudioStatusTone : 공식 배지 매핑(디자인 시스템 §2.2)
 //   - buildStudioScheduleEvents : 캘린더와 같은 KST 일정 파생
 //
-// ⚠️ StudioApplicationSummary 에는 next_contact_at / trial_results / consultation_logs 가 없다.
-//    그래서 "다음 연락일이 지났다" 같은 후속 연락 판정은 이 화면에서 하지 않는다.
-//    그 판정은 Case 목록의 getCaseAttentionState 가 담당한다(중복 판정을 만들지 않는다).
+// ⚠️ StudioApplicationSummary 에는 trial_results / consultation_logs 가 없다.
+//    next_contact_at 은 2차-3부터 목록 조회가 읽는다 — 학생 상세에서 정한 "다음 연락"(follow_up_note 와 함께)만
+//    그 날짜(KST)부터 오늘 할 일(NEXT_CONTACT)로 띄운다. 상담 파이프라인의 연락 판정은 Case 목록 그대로다.
 
 import {
   getStudioRegistrationStatusLabel,
@@ -46,13 +46,15 @@ export type StudioDashboardActionKind =
   | "REVIEW_NEW"
   | "NEEDS_REGISTRATION"
   | "CONFIRM_SCHEDULE"
+  | "NEXT_CONTACT"
 
 const ACTION_LABELS: Record<StudioDashboardActionKind, string> = {
   UNASSIGNED: "담당자를 배정해 주세요.",
   NEEDS_COMPLETION: "체험 완료 처리 후 결과를 기록해 주세요.",
   REVIEW_NEW: "체험 일정을 확정해 주세요.",
   NEEDS_REGISTRATION: "체험 결과와 등록 여부를 기록해 주세요.",
-  CONFIRM_SCHEDULE: "체험 일정을 확정해 주세요."
+  CONFIRM_SCHEDULE: "체험 일정을 확정해 주세요.",
+  NEXT_CONTACT: "다시 연락할 날이에요."
 }
 
 /** 신규·확인 중 신청이 후속 등록 업무에 밀려 5건 미리보기에서 빠지지 않도록 한다. */
@@ -62,7 +64,8 @@ const ACTION_SECTIONS: Record<StudioDashboardActionKind, string | null> = {
   NEEDS_COMPLETION: null,
   REVIEW_NEW: "confirm-schedule",
   NEEDS_REGISTRATION: null,
-  CONFIRM_SCHEDULE: "confirm-schedule"
+  CONFIRM_SCHEDULE: "confirm-schedule",
+  NEXT_CONTACT: null
 }
 
 const ACTION_ORDER: StudioDashboardActionKind[] = [
@@ -70,6 +73,7 @@ const ACTION_ORDER: StudioDashboardActionKind[] = [
   "NEEDS_COMPLETION",
   "REVIEW_NEW",
   "CONFIRM_SCHEDULE",
+  "NEXT_CONTACT",
   "NEEDS_REGISTRATION"
 ]
 
@@ -93,6 +97,8 @@ export type StudioDashboardActionItem = {
   /** 일정 확정에 쓸 일정(수업 일정 또는 예약 블록)이 있는가. 상세 확정 버튼의 막힘 조건과 같다. */
   hasSchedule: boolean
   classSubjectCategory: string | null
+  /** NEXT_CONTACT 만: 학생 상세에서 적은 메모 · 그 날짜(KST). */
+  nextContact?: { note: string; dateKey: string } | null
 }
 
 export type StudioDashboardScheduleItem = {
@@ -218,13 +224,25 @@ const resolveActionKind = (
   return item.status === "confirmed" ? "NEEDS_COMPLETION" : "NEEDS_REGISTRATION"
 }
 
+/** 학생 상세 "다음 연락"이 오늘(KST) 이전이거나 오늘인가. 지울 때까지 남는다. */
+const resolveDueNextContact = (item: StudioApplicationSummary, todayKey: string) => {
+  const note = item.followUpNote?.trim()
+  const dateKey = item.nextContactAt ? toSeoulDateKey(item.nextContactAt) : null
+  return !item.personalDataErased && note && dateKey && dateKey <= todayKey ? { note, dateKey } : null
+}
+
 const buildActionItems = (applications: StudioApplicationSummary[], now: Date) => {
   const matched: Array<{ item: StudioApplicationSummary; kind: StudioDashboardActionKind }> = []
+  const todayKey = getSeoulTodayKey(now)
 
   for (const item of applications) {
     const kind = resolveActionKind(item, now)
     if (kind) {
       matched.push({ item, kind })
+    }
+    // 다음 연락은 신청의 단계와 따로 뜬다(같은 신청이 두 줄일 수 있다).
+    if (resolveDueNextContact(item, todayKey)) {
+      matched.push({ item, kind: "NEXT_CONTACT" })
     }
   }
 
@@ -235,6 +253,9 @@ const buildActionItems = (applications: StudioApplicationSummary[], now: Date) =
     }
 
     // 시간 약속이 있는 그룹만 시각 순(오래 지난 것 먼저)이다.
+    if (left.kind === "NEXT_CONTACT") {
+      return (left.item.nextContactAt ?? "").localeCompare(right.item.nextContactAt ?? "")
+    }
     if (left.kind === "NEEDS_COMPLETION") {
       const leftAt = toTimestamp(left.item.confirmedSlotAt ?? left.item.requestedSlotAt) ?? 0
       const rightAt = toTimestamp(right.item.confirmedSlotAt ?? right.item.requestedSlotAt) ?? 0
@@ -246,8 +267,9 @@ const buildActionItems = (applications: StudioApplicationSummary[], now: Date) =
   })
 
   return matched.map<StudioDashboardActionItem>(({ item, kind }) => ({
-    id: item.id,
-    href: toDetailHref(item.id),
+    // 다음 연락은 같은 신청의 다른 할 일과 함께 뜰 수 있어 따로 구분한다(화면 key).
+    id: kind === "NEXT_CONTACT" ? `${item.id}:next-contact` : item.id,
+    href: kind === "NEXT_CONTACT" ? `/studio/students/${item.id}` : toDetailHref(item.id),
     kind,
     studentName: item.childName,
     studentGrade: item.childGrade,
@@ -261,7 +283,8 @@ const buildActionItems = (applications: StudioApplicationSummary[], now: Date) =
     applicationStatus: item.status,
     createdAt: item.createdAt,
     hasSchedule: Boolean(item.classScheduleId || item.requestedScheduleBlockId),
-    classSubjectCategory: item.classSubjectCategory ?? null
+    classSubjectCategory: item.classSubjectCategory ?? null,
+    nextContact: kind === "NEXT_CONTACT" ? resolveDueNextContact(item, todayKey) : null
   }))
 }
 

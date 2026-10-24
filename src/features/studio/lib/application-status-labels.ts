@@ -90,3 +90,29 @@ export const isRegistrationDecisionRecorded = (item: Pick<
   StudioApplicationDetail,
   "registrationStatus"
 >) => item.registrationStatus !== "undecided"
+
+/**
+ * 학생 결과(학생 화면 전용, 2차-3 · Figma 2148:5869). 학생 한 명의 대표 신청에서 정한다(student-grouping 의 resolveStudentResult).
+ *
+ * ⚠️ 신청 · 등록 상태의 tone(미등록 gray · 고민중 blue)과 다르다. 학생 화면은 "다시 연락할 학생"을 눈에 띄게 하려고
+ *    Figma 가 미등록 red · 고민 중 amber 로 칠했다(STUDIO_DESIGN_SYSTEM.md §5.3). 신청 화면의 tone 은 바꾸지 않는다.
+ */
+export type StudioStudentResult = "not_enrolled" | "considering" | "enrolled" | "undecided" | "in_progress" | "canceled"
+
+export const STUDIO_STUDENT_RESULT_LABELS: Record<StudioStudentResult, string> = {
+  not_enrolled: "미등록",
+  considering: "고민 중",
+  enrolled: "등록",
+  undecided: "결정 전",
+  in_progress: "진행 중",
+  canceled: "취소·불참"
+}
+
+export const STUDIO_STUDENT_RESULT_TONES: Record<StudioStudentResult, StudioStatusTone> = {
+  not_enrolled: "red",
+  considering: "amber",
+  enrolled: "green",
+  undecided: "blue",
+  in_progress: "blue",
+  canceled: "gray"
+}

@@ -82,6 +82,16 @@ export const getPartnerInquiryMailEnv = (): PartnerInquiryMailEnv | null => {
  * 로컬 개발 서버가 운영 DB 를 보고 있으면 결제 · 문자 실행을 막는다.
  * BILLING_LOCAL_ALLOW=1 일 때만 연다. production · preview 에서는 항상 allowed 다.
  */
+/**
+ * 광고 문자 끝 줄 "무료수신거부 080-…"의 번호(2차-3, 학원 안내 보내기).
+ * 080 번호는 첫수업 하나를 모든 학원이 같이 쓴다. 없거나 형식이 틀리면 null — 보내기를 잠근다(추정하지 않는다).
+ * NCP 콘솔에 광고(AD) 발송용으로 등록된 번호여야 한다.
+ */
+export const getRecontactOptOutNumber = (): string | null => {
+  const value = process.env.RECONTACT_OPT_OUT_NUMBER?.trim()
+  return value && /^080-?\d{3,4}-?\d{4}$/.test(value) ? value : null
+}
+
 export const getLocalMutationGuard = (): LocalMutationGuard =>
   resolveLocalMutationGuard({
     deployment: normalizeDeploymentEnvironment(process.env.VERCEL_ENV),

@@ -819,6 +819,95 @@ export type StudioApplicationSummary = TrialApplicationSummary & {
   registrationReasonIds?: string[]
   /** 상담에서 기록한 정규수업 희망 일정(raw jsonb). parseRegularSchedulePreference 로 읽는다. */
   regularSchedulePreference?: unknown
+  /*
+   * 학생 화면(2차-3)이 읽는 신청 당시 값. 학원은 children 을 읽지 못하므로 신청에 저장된 값만 쓴다.
+   * 목록 조회(listStudioApplications)만 채우고, 다른 summary 호출자는 생략할 수 있다.
+   */
+  childId?: string | null
+  childSchool?: string | null
+  /** 신청 때 학부모가 적은 관심 과목(자유 입력). */
+  interestSubjects?: string | null
+  currentLevel?: string | null
+  preferredRegularSchedule?: string | null
+  registrationNote?: string | null
+  /** 다음 연락(set_studio_next_contact). 그날 09:00 KST 로 저장된다. */
+  nextContactAt?: string | null
+  /** 다음 연락 메모. */
+  followUpNote?: string | null
+  /** 엑셀로 가져온 신청이면 그 묶음 id(학부모 계정이 없다). */
+  importBatchId?: string | null
+}
+
+// ── 학생 · 안내 보내기 (2차-3) ─────────────────────────────────────
+
+export type RecontactTemplateKind = "new_class" | "special" | "schedule_change" | "custom"
+export type RecontactRecipientStatus = "queued" | "sent" | "failed" | "dry_run"
+
+/** 학생 상세 "연락 기록"과 목록 "마지막 연락"이 읽는 사실. 판정은 화면 lib 가 한다. */
+export type StudioStudentContactEvent =
+  | {
+      kind: "consultation"
+      applicationId: string
+      at: string
+      channel: ConsultationLogChannel
+      /** includeNotes 일 때만 채운다(목록 payload 에 메모를 싣지 않는다). */
+      note: string | null
+      authorName: string | null
+    }
+  | { kind: "report"; applicationId: string; at: string }
+  | { kind: "recontact"; applicationId: string; at: string; status: RecontactRecipientStatus; templateKind: RecontactTemplateKind | null }
+
+export type StudioStudentActivity = {
+  events: StudioStudentContactEvent[]
+  /** 체험 기록의 "선생님 이야기"(trial_results.public_summary). includeTrialSummaries 일 때만. */
+  trialSummaries: Array<{ applicationId: string; publicSummary: string }>
+}
+
+export type StudioStudentActivityOptions = { includeNotes?: boolean; includeTrialSummaries?: boolean }
+
+/** 학원이 보는 수신 동의. 출처 · 문구 버전은 학원에 보이지 않는다. */
+export type StudioMarketingConsent = {
+  parentId: string
+  consented: boolean
+  consentedAt: string | null
+  withdrawnAt: string | null
+}
+
+export type RecontactUsage = { used: number; limit: number }
+
+/** 문자 첫 줄 "(광고) [학원명] 학원대표번호". 대표번호는 academy_phone, 없으면 contact_phone. */
+export type StudioRecontactSender = { academyName: string; academyPhone: string | null }
+
+export type ReserveRecontactBatchInput = {
+  batchId: string
+  applicationIds: string[]
+  templateKind: RecontactTemplateKind
+  classId: string | null
+  /** 치환 전 템플릿({학생} · {체험수업} · {체험월}). 학생 이름이 들어간 문장은 저장하지 않는다. */
+  bodyTemplate: string
+  linkUrl: string | null
+  optOutNumber: string
+  senderPhone: string
+}
+
+export type ReserveRecontactBatchResult =
+  | {
+      mode: "reserved"
+      reserved: number
+      skipped: number
+      used: number
+      limit: number
+      recipients: Array<{ recipientId: string; applicationId: string }>
+    }
+  | { mode: "duplicate" }
+  | { mode: "limit_exceeded"; used: number; limit: number; requested: number }
+
+export type RecontactDeliveryResult = {
+  recipientId: string
+  status: Exclude<RecontactRecipientStatus, "queued">
+  providerMessageId: string | null
+  errorCode: string | null
+  sentAt: string | null
 }
 
 export type StudioApplicationListOptions = {
@@ -1462,6 +1551,24 @@ export interface DataAdapter {
     options?: StudioUnregisteredListOptions
   ): Promise<StudioUnregisteredApplicationItem[]>
   getStudioUnregisteredActionRequiredCount(organizationId: string): Promise<number>
+  // ── 학생 · 안내 보내기 (2차-3) ──
+  listStudioStudentActivity(
+    organizationId: string,
+    applicationIds: string[],
+    options?: StudioStudentActivityOptions
+  ): Promise<StudioStudentActivity>
+  listStudioMarketingConsents(organizationId: string, parentIds: string[]): Promise<StudioMarketingConsent[]>
+  getStudioRecontactUsage(organizationId: string): Promise<RecontactUsage>
+  getStudioRecontactSender(organizationId: string): Promise<StudioRecontactSender>
+  /** 날짜(YYYY-MM-DD)와 메모는 함께 저장하거나 함께 지운다(RPC set_studio_next_contact). */
+  setStudioNextContact(
+    organizationId: string,
+    applicationId: string,
+    input: { date: string | null; note: string | null }
+  ): Promise<void>
+  reserveRecontactBatch(organizationId: string, input: ReserveRecontactBatchInput): Promise<ReserveRecontactBatchResult>
+  /** 발송 결과 기록. 학원 계정에는 쓰기 권한이 없어 서버(service role)가 쓴다. */
+  finishRecontactBatch(organizationId: string, batchId: string, results: RecontactDeliveryResult[]): Promise<void>
   listStudioConsultationPipelineApplications(
     organizationId: string
   ): Promise<StudioConsultationPipelineApplicationItem[]>

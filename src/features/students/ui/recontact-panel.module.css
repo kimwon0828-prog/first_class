@@ -1,0 +1,223 @@
+/*
+ * 안내 보내기 패널 (Figma 2148:5922). STUDIO_DESIGN_SYSTEM.md §5.27.
+ * 흰 바탕 + line/default · 모서리 16 · 안쪽 24 · 간격 16 · 폭 360(목록 화면이 정한다).
+ */
+.panel,
+.embedded {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sv2-space-16);
+  min-width: 0;
+  color: var(--sv2-ink-900);
+}
+
+.panel {
+  padding: var(--sv2-space-24);
+  border: 1px solid var(--sv2-line-default);
+  border-radius: var(--sv2-radius-card);
+  background: var(--sv2-surface-white);
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  gap: var(--sv2-space-8);
+}
+
+.title {
+  margin: 0;
+  font-size: 19px;
+  line-height: 1.45;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+}
+
+.spacer {
+  flex: 1 1 auto;
+}
+
+.templates {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+/* 직접 쓰기: §5.17 선생님 이야기 칸과 같은 모양 */
+.custom {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sv2-space-8);
+}
+
+.customHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--sv2-space-8);
+}
+
+.customLabel {
+  font-size: 15px;
+  line-height: 1.45;
+  font-weight: 700;
+}
+
+.customCount {
+  color: var(--sv2-ink-500);
+  font-size: 13px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+.custom textarea {
+  min-height: 120px;
+  padding: var(--sv2-space-16);
+  border: 1px solid var(--sv2-line-default);
+  border-radius: var(--sv2-radius-control);
+  color: var(--sv2-ink-900);
+  font: inherit;
+  font-size: 15px;
+  line-height: 1.45;
+  resize: vertical;
+}
+
+.custom textarea:focus-visible {
+  border-color: var(--sv2-brand-700);
+  outline: none;
+}
+
+.custom textarea::placeholder {
+  color: var(--sv2-ink-400);
+}
+
+.previewCaption {
+  margin: 0;
+  color: var(--sv2-ink-500);
+  font-size: 13px;
+  line-height: 1.45;
+  font-weight: 500;
+  letter-spacing: -0.2px;
+}
+
+/* 문자 상자: surface/fill · 모서리 16 · 안쪽 16 · 간격 8 */
+.message {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sv2-space-8);
+  padding: var(--sv2-space-16);
+  border-radius: var(--sv2-radius-card);
+  background: var(--sv2-surface-fill);
+}
+
+.message p {
+  margin: 0;
+  line-height: 1.45;
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+
+.messageBody {
+  font-size: 13px;
+  letter-spacing: -0.2px;
+  white-space: pre-wrap;
+}
+
+.messageLink {
+  color: var(--sv2-brand-700);
+  font-size: 13px;
+  letter-spacing: -0.2px;
+}
+
+.messageOptOut {
+  color: var(--sv2-ink-400);
+  font-size: 11px;
+}
+
+/* 정보 줄: 간격 8, [13 ink/500 | 13 ink/900] */
+.facts {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sv2-space-8);
+  margin: 0;
+}
+
+.facts div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sv2-space-12);
+  font-size: 13px;
+  line-height: 1.45;
+  font-weight: 500;
+  letter-spacing: -0.2px;
+}
+
+.facts dt {
+  color: var(--sv2-ink-500);
+}
+
+.facts dd {
+  margin: 0;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 막힌 이유: §5.17 경고와 같은 모양(state/warn-bg · 모서리 12 · 12/14 · 13 Medium warn-fg) */
+.notice,
+.resultWarn,
+.resultOk {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  padding: var(--sv2-space-12) 14px;
+  border-radius: var(--sv2-radius-control);
+  font-weight: 500;
+  line-height: 1.45;
+  letter-spacing: -0.2px;
+}
+
+.notice,
+.resultWarn {
+  background: var(--sv2-state-warn-bg);
+  color: var(--sv2-state-warn-fg);
+  font-size: 13px;
+}
+
+/* 보낸 결과: brand/50 · 14 Medium brand/800 (§5.23 안내 상자와 같은 모양) */
+.resultOk {
+  background: var(--sv2-brand-50);
+  color: var(--sv2-brand-800);
+  font-size: 14px;
+}
+
+.notice p,
+.resultWarn p,
+.resultOk p {
+  margin: 0;
+}
+
+.noticeLink {
+  color: var(--sv2-brand-700);
+  font-size: 13px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.noticeLink:focus-visible {
+  outline: 2px solid var(--sv2-brand-700);
+  outline-offset: 2px;
+}
+
+.sendButton {
+  width: 100%;
+}
+
+.footnote {
+  margin: 0;
+  color: var(--sv2-ink-400);
+  font-size: 12px;
+  line-height: 1.45;
+  font-weight: 500;
+  letter-spacing: -0.2px;
+}

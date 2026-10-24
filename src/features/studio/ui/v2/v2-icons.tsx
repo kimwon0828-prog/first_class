@@ -80,6 +80,17 @@ export const V2HelpIcon = (props: IconProps) => (
   </Svg>
 )
 
+/* nav/학생 아이콘 (Figma 2148:5869 사이드바 "학생"). */
+export const V2StudentsIcon = (props: IconProps) => (
+  <Svg viewBox={20} {...props}>
+    <path d="M10.4167 6.66667C10.4167 8.2775 9.11083 9.58333 7.5 9.58333C5.88917 9.58333 4.58333 8.2775 4.58333 6.66667C4.58333 5.05584 5.88917 3.75 7.5 3.75C9.11083 3.75 10.4167 5.05584 10.4167 6.66667Z" />
+    <path
+      d="M2.08333 16.6667C2.08333 15.2301 2.65402 13.8523 3.66984 12.8365C4.68566 11.8207 6.06341 11.25 7.5 11.25C8.93659 11.25 10.3143 11.8207 11.3302 12.8365C12.346 13.8523 12.9167 15.2301 12.9167 16.6667M13.3333 3.75C14.1069 3.75 14.8487 4.05729 15.3957 4.60427C15.9427 5.15125 16.25 5.89312 16.25 6.66667C16.25 7.44021 15.9427 8.18208 15.3957 8.72906C14.8487 9.27604 14.1069 9.58333 13.3333 9.58333M15 12.0833C15.8467 12.5228 16.5623 13.1781 17.0745 13.9829C17.5866 14.7877 17.8772 15.7135 17.9167 16.6667"
+      strokeLinecap="round"
+    />
+  </Svg>
+)
+
 export const V2GearIcon = (props: IconProps) => (
   <Svg viewBox={20} {...props}>
     <path d="M12.5 10C12.5 11.3807 11.3807 12.5 10 12.5C8.61929 12.5 7.5 11.3807 7.5 10C7.5 8.61929 8.61929 7.5 10 7.5C11.3807 7.5 12.5 8.61929 12.5 10Z" />
@@ -107,6 +118,13 @@ export const V2ChevronRightIcon = (props: IconProps) => (
 export const V2XIcon = (props: IconProps) => (
   <Svg viewBox={24} {...props}>
     <path d="M6 6L12 12M12 12L18 18M12 12L18 6M12 12L6 18" strokeLinecap="round" strokeLinejoin="round" />
+  </Svg>
+)
+
+/* Icon/x 14 — 조건 칩 지우기(Figma 2148:5889). */
+export const V2SmallXIcon = (props: IconProps) => (
+  <Svg viewBox={14} {...props}>
+    <path d="M3.5 3.5L7 7M7 7L10.5 10.5M7 7L10.5 3.5M7 7L3.5 10.5" strokeLinecap="round" />
   </Svg>
 )
 

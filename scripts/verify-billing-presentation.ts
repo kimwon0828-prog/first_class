@@ -363,7 +363,7 @@ console.log("\n[10] 기능 비교표")
   const freePlan = getPlanEntitlements("free")
   const standardPlan = getPlanEntitlements("standard")
 
-  check(rows.length === 9, `비교 항목 수가 다르다: ${rows.length}`)
+  check(rows.length === 10, `비교 항목 수가 다르다: ${rows.length}`)
   check(rows.every((row) => row.standard), "스탠다드에서 안 되는 항목이 비교표에 있다")
 
   // 무료에서 실제로 되는 기능을 유료 전용처럼 적으면 안 된다.
@@ -389,7 +389,8 @@ console.log("\n[10] 기능 비교표")
       JSON.stringify([
         "등록 전환 분석",
         "미등록 사유 분석",
-        "등록 전환 인포그래픽"
+        "등록 전환 인포그래픽",
+        "학생에게 안내 문자 보내기 (월 200건)"
       ]),
     `유료 전용 항목이 다르다: ${paidOnlyRows.join(", ")}`
   )

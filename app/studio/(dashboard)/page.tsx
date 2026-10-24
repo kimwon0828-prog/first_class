@@ -85,6 +85,14 @@ export default async function StudioIndexPage() {
   /* ── 가장 먼저: 오늘 할 일 미리보기(최대 5건)를 사람 중심 문장으로 ─────── */
   const toFirstTask = (item: StudioDashboardActionItem): StudioHomeFirstTaskItem => {
     const name = item.studentName
+    // 학생 상세에서 정한 다음 연락(2차-3). 학생 상세로 이동만 한다.
+    if (item.kind === "NEXT_CONTACT" && item.nextContact) {
+      const due = item.nextContact.dateKey < todayKey ? ` · ${Number(item.nextContact.dateKey.slice(5, 7))}월 ${Number(item.nextContact.dateKey.slice(8, 10))}일에 정한 연락` : ""
+      return {
+        id: item.id, href: item.href, titleName: name, titleRest: " 다시 연락할 날이에요", meta: `${item.nextContact.note}${due}`,
+        subjectCategory: item.classSubjectCategory, primary: { type: "link", label: "학생 보기", section: null }, secondary: null, hint: null
+      }
+    }
     const isConfirmKind = item.kind === "CONFIRM_SCHEDULE" || item.kind === "REVIEW_NEW"
     // 체험 완료 뒤 할 일(기록 · 리포트 · 등록 결과)은 신청 목록과 같은 판정(deriveCasesWorkflow)으로 나눈다.
     const completedAction = item.kind === "NEEDS_REGISTRATION" ? stageBoard.data.completedActionById[item.id] ?? "registration" : null
@@ -288,7 +296,7 @@ export default async function StudioIndexPage() {
         <section className={styles.recontact} aria-labelledby="recontact-title">
           <div className={styles.cardHead}>
             <h2 id="recontact-title">다시 연락할 학생</h2>
-            <Link href={`${studioPath("/studio/cases")}?view=closed&filter=pending`} className={styles.moreLink}>학생 ›</Link>
+            <Link href={studioPath("/studio/students")} className={styles.moreLink}>학생 ›</Link>
           </div>
           {pending.length ? <>
             <div className={styles.bigValue}><strong>{pending.length}명</strong><span className={styles.mutedValue}>고민 중</span></div>

@@ -14,6 +14,8 @@ export type NcloudSmsProviderConfig = {
 type SendNcloudSmsInput = {
   config: NcloudSmsProviderConfig
   to: string
+  /** 일반(COMM) · 광고(AD). 광고는 NCP 콘솔에 080 수신거부 번호가 등록돼 있어야 한다. */
+  contentType?: "COMM" | "AD"
   preparedContent: SmsPreparedContent
   recipientPhoneMasked: string
 }
@@ -66,6 +68,7 @@ const resolveErrorMessage = (status: number, body: unknown) => {
 export const sendNcloudSms = async ({
   config,
   to,
+  contentType = "COMM",
   preparedContent,
   recipientPhoneMasked
 }: SendNcloudSmsInput): Promise<SmsSendResult> => {
@@ -89,7 +92,7 @@ export const sendNcloudSms = async ({
     },
     body: JSON.stringify({
       type: preparedContent.messageType,
-      contentType: "COMM",
+      contentType,
       countryCode: "82",
       from: config.fromNumber,
       subject: preparedContent.subject ?? undefined,

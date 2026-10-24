@@ -351,7 +351,7 @@ export type PricingCard = {
 // 카드 혜택 문구.
 //
 // ⚠️ 순서가 곧 우선순위다. 리포트 보내기는 2차-1부터 무료다(Figma 2148:7069 "체험 기록 · 리포트 보내기").
-//    스탠다드는 "무료에서 쌓은 기록을 분석하려고 사는 플랜" 이다.
+//    스탠다드는 "무료에서 쌓은 기록을 분석하고, 등록하지 않은 학생에게 다시 연락하려고 사는 플랜" 이다(2차-3).
 //    인원 제한은 어느 플랜에도 없다 — "선생님 N명까지" 같은 문구를 적지 않는다.
 const FREE_BENEFITS = [
   "학원·수업 등록",
@@ -366,7 +366,9 @@ const STANDARD_BENEFITS = [
   "무료 플랜의 모든 기능",
   "등록 전환 분석",
   "미등록 사유 분석",
-  "등록 전환 인포그래픽"
+  "등록 전환 인포그래픽",
+  // Figma 2148:7024 스탠다드 카드 문구 그대로(2차-3에서 구현).
+  "미등록 학생 다시 연락 · 안내 문자 월 200건"
 ]
 
 /**
@@ -476,7 +478,8 @@ const COMPARISON_SOURCES: ComparisonSource[] = [
   { label: "학부모 리포트 발행", entitlementKey: "canPublishParentReport" },
   { label: "등록 전환 분석", entitlementKey: "canUseConversionAnalytics" },
   { label: "미등록 사유 분석", entitlementKey: "canUseConversionAnalytics" },
-  { label: "등록 전환 인포그래픽", entitlementKey: "canUseConversionAnalytics" }
+  { label: "등록 전환 인포그래픽", entitlementKey: "canUseConversionAnalytics" },
+  { label: "학생에게 안내 문자 보내기 (월 200건)", entitlementKey: "canSendRecontactMessages" }
 ]
 
 export const buildFeatureComparison = (): FeatureComparisonRow[] => {
