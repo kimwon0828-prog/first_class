@@ -33,11 +33,12 @@ insert into public.profiles(id, role, name, organization_id) values
   ('d2000000-0000-4000-8000-000000000001', 'academy', '원장A', 'd1000000-0000-4000-8000-000000000001'),
   ('d2000000-0000-4000-8000-000000000005', 'academy', '원장B', 'd1000000-0000-4000-8000-000000000002')
 on conflict (id) do update set role = excluded.role, organization_id = excluded.organization_id;
-insert into public.profiles(id, role, name) values
-  ('d2000000-0000-4000-8000-000000000002', 'parent', '학부모1'),
-  ('d2000000-0000-4000-8000-000000000003', 'parent', '학부모2'),
-  ('d2000000-0000-4000-8000-000000000004', 'parent', '학부모3')
-on conflict (id) do update set role = 'parent';
+-- 학부모 계정 번호는 신청서 번호와 같게 둔다(20261025120000 부터 안내 문자는 계정 번호로 간다).
+insert into public.profiles(id, role, name, phone) values
+  ('d2000000-0000-4000-8000-000000000002', 'parent', '학부모1', '010-1111-2222'),
+  ('d2000000-0000-4000-8000-000000000003', 'parent', '학부모2', '010-3333-4444'),
+  ('d2000000-0000-4000-8000-000000000004', 'parent', '학부모3', '010-7777-8888')
+on conflict (id) do update set role = 'parent', phone = excluded.phone;
 insert into public.classes(id, organization_id, title, program_type, subject, target_age, description) values
   ('d3000000-0000-4000-8000-000000000001', 'd1000000-0000-4000-8000-000000000001', '로봇 코딩 체험', 'trial_class', 'coding', '초등', '검증'),
   ('d3000000-0000-4000-8000-000000000002', 'd1000000-0000-4000-8000-000000000002', '다른 학원 수업', 'trial_class', 'coding', '초등', '검증');
