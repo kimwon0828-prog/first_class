@@ -40,7 +40,7 @@
 10. 학부모에게 공개되는 학원·수업은 현재 서울 노원구만이다(`src/features/location/lib/parent-launch-region.ts`). 학원가(academy_area) 개념은 삭제됐다.
 
 ## 요금제 정책 (Free / Standard)
-경계는 한 문장이다. **Free는 기록하고 운영하고 학부모와 공유한다. Standard는 기록을 분석한다.**
+경계는 한 문장이다. **Free는 기록하고 운영하고 학부모와 공유한다. Standard는 기록을 분석하고, 등록하지 않은 학생에게 다시 연락한다.**
 
 Free에서 가능:
 - 체험 결과 작성
@@ -50,11 +50,13 @@ Free에서 가능:
 - 학부모 리포트 보내기(신규 발행) — 2차-1(2026-10)부터 무료다. 학부모가 리포트를 보고 등록을 결정하기 때문이다.
 - Excel 예약 가져오기
 - 선생님 등록 — 인원 제한 없음(Free · Standard 모두)
+- 학생 목록 · 학생 상세 · 다음 연락(메모 + 날짜) 저장, 학생 상세의 [전화]
 
 Standard 전용:
 - 등록 전환 분석
 - 미등록 사유 분석
 - 등록 전환 인포그래픽
+- 학생에게 안내 보내기(다시 연락 문자, 월 200건) — `canSendRecontactMessages`. 전환 분석 flag와 따로 둔다(아래 "학생 · 안내 문자").
 - 학부모 리포트 새 버전 재발행 — ⚠️ 현재 불가. DB 트리거 `report_send_once`가 신청당 1회 발행만 허용하고(superseded 전환도 막음) 화면도 "보낸 뒤 읽기 전용"이다.
 
 가격 · 체험:
@@ -80,6 +82,31 @@ Standard 전용:
 - Marketplace 입점은 Free / Standard 공통이다. **요금제에 따른 우선 노출은 없다.**
   학부모가 보는 순서는 학원이 돈을 냈는지와 무관하다 — 공개 수업 목록의 정렬에
   결제 사실을 넣지 않는다. 유료 기능은 학원이 자기 데이터로 하는 일에만 붙인다.
+
+## 학생 · 안내 문자(광고) 정책 (2차-3, 2026-10)
+학생 메뉴는 체험 온 학생을 등록하지 않아도 남겨 두고, 새 반 · 특강 · 시간표 변경이 생기면 맞는 학생에게 다시 연락하는 곳이다.
+
+학생:
+- 학생은 따로 저장하지 않는다. 신청을 자동으로 묶는다 — 앱 · 웹 신청은 `child_id`, 없으면 학부모 계정 + 학생 이름, 엑셀 신청은 보호자 번호(숫자만) + 학생 이름. 합치기 기능은 없다.
+- 학원은 `children`을 읽지 못한다. 학생 화면의 값은 모두 신청 당시 저장된 값(`trial_applications`)이다.
+- 탭: 다시 연락할 학생(미등록 + 고민 중) / 등록 학생 / 진행 중 / 전체. 조건: 관심 과목(체험한 수업의 과목 대분류) · 학년 · 결과.
+- 다음 연락은 학생의 가장 최근 신청의 `next_contact_at`(그날 09:00 KST) + `follow_up_note`에 저장한다(RPC `set_studio_next_contact`). 그 날짜부터 홈 "오늘 할 일"에 뜬다. 학원에 문자를 보내지 않는다.
+
+수신 동의:
+- 광고성 문자는 보호자의 **학원별** 사전 동의가 있어야 보낸다(정보통신망법 제50조). 동의는 학부모 × 학원 한 행(`parent_marketing_consents`, 동의 시각 · 철회 시각 · 출처 · 문구 버전)과 이력(`parent_marketing_consent_events`)으로 남긴다.
+- 동의 · 철회는 학부모 본인만 한다(RPC `set_my_academy_marketing_consent`, 웹 action · `/api/native/me/marketing-consents`). 학원은 자기 학원에 대한 동의 여부와 시각만 읽는다.
+- 엑셀로 가져온 학생(학부모 계정 없음)과 동의하지 않은 보호자는 고를 수 없다.
+- 080 무료수신거부 번호는 첫수업 하나를 모든 학원이 같이 써서, 거부한 번호는 **모든 학원** 안내에서 뺀다(`marketing_opt_out_phones`, 번호 해시만).
+- 2년마다 수신 동의 사실을 다시 알리는 일은 이번 범위가 아니다(동의 시각만 기록한다).
+
+보내기(`src/features/students/actions/send-recontact.ts`):
+- 스탠다드만. 서버 액션의 `requireStudioEntitlement` + DB RPC `reserve_recontact_batch` 안의 같은 판정(`organization_has_paid_access` · 내부 전체 권한) 이중 확인.
+- 문자 첫 줄 `(광고) [학원명] 학원대표번호`(전송자 명칭 · 연락처), 끝 줄 `무료수신거부 080-…`. 대표번호는 `organizations.academy_phone`, 없으면 `contact_phone`. 둘 다 없거나 080 번호(`RECONTACT_OPT_OUT_NUMBER`)가 없으면 보내기를 잠근다.
+- 21:00~08:00(KST)에는 보내지 않는다. 한 번에 50명, 학원마다 한 달(KST 달력) 200건. 보내지 못한 건 · dry_run은 한도에서 빠진다.
+- 받는 사람은 서버가 다시 고른다(동의 · 080 · 파기 · 같은 번호 한 통). 화면이 만든 발송 id로 중복 클릭을 막는다.
+- 보낸 기록(`recontact_batches` 템플릿 · `recontact_recipients` 마스킹 번호 · 상태)은 학생 상세 "연락 기록"에 남는다. 학생 이름이 들어간 완성 문장은 저장하지 않는다.
+- `recontact_recipients`는 개인정보 파기(20261022120000) 대상에 들어 있다. `trial_applications`를 참조하는 표를 새로 만들면 같은 migration에서 파기 허용 목록과 파기 함수에 넣는다 — 그렇지 않으면 학부모 탈퇴와 보관 파기가 멈춘다.
+- 문자 차단 스위치(`SMS_SEND_ENABLED`)가 꺼져 있으면 dry_run이다. 개발 환경이 운영 DB를 보면 결제와 같은 로컬 가드(`getLocalMutationGuard`, `BILLING_LOCAL_ALLOW=1`)로 막는다.
 
 ## 개발 원칙
 - 항상 먼저 계획을 짧게 제시한 뒤 구현한다.
