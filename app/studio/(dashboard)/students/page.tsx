@@ -1,8 +1,9 @@
 import { requireTeacherStudioAccess } from "@/features/studio/lib/require-teacher-studio-access"
 import { StudioQueryRetry } from "@/features/studio/ui/studio-query-retry"
 import { STUDENT_TABS, type StudentTab } from "@/features/students/lib/student-grouping"
+import { getRecontactPanelContext } from "@/features/students/queries/get-recontact-panel-context"
 import { getStudioStudentsList } from "@/features/students/queries/get-studio-students"
-import { StudentsBoard } from "@/features/students/ui/students-board"
+import { StudentsScreen } from "@/features/students/ui/students-screen"
 
 import styles from "./page.module.css"
 
@@ -20,7 +21,10 @@ const parseTab = (value: string | undefined): StudentTab =>
 export default async function StudioStudentsPage({ searchParams }: StudioStudentsPageProps) {
   const teacher = await requireTeacherStudioAccess()
   const params = searchParams ? await searchParams : undefined
-  const { data, error } = await getStudioStudentsList(teacher.organizationId, new Date())
+  const [{ data, error }, panel] = await Promise.all([
+    getStudioStudentsList(teacher.organizationId, new Date()),
+    getRecontactPanelContext(teacher.organizationId)
+  ])
 
   return (
     <div className={styles.page}>
@@ -30,7 +34,7 @@ export default async function StudioStudentsPage({ searchParams }: StudioStudent
           <StudioQueryRetry />
         </section>
       ) : null}
-      <StudentsBoard rows={data.rows} initialTab={parseTab(params?.tab)} />
+      <StudentsScreen rows={data.rows} initialTab={parseTab(params?.tab)} panel={panel} />
     </div>
   )
 }

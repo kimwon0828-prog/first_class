@@ -65,3 +65,20 @@ export const resolveRecontactBlock = (input: RecontactGateInput): RecontactBlock
   if (input.selectedCount > input.remaining) return "limit"
   return null
 }
+
+/** 보내기 패널이 받는 서버 값(§5.27). 080 번호는 모든 문자 끝에 찍히는 공개 번호라 화면에 넘겨도 된다. */
+export type RecontactPanelContext = {
+  entitled: boolean
+  localGuardAllowed: boolean
+  academyName: string
+  academyPhone: string | null
+  optOutNumber: string | null
+  /** 조회 실패면 null(버튼은 열어 두고 DB 가 한도를 다시 센다). */
+  usage: { used: number; limit: number } | null
+  /** 함께 보낼 수업: 이 학원의 공개 수업. */
+  classes: Array<{ id: string; title: string }>
+  /** 수업 링크 앞부분 "https://firstsuup.com/classes/". */
+  classLinkBase: string
+  /** 서버가 값을 읽은 시각. 화면은 이 시각으로 시작해 1분마다 시간 제한을 다시 본다(서버 · 브라우저 렌더가 같게). */
+  checkedAt: string
+}

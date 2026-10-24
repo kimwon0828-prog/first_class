@@ -10,12 +10,14 @@ import { getSeoulTodayKey } from "@/features/studio/lib/studio-schedule-month"
 import { StudioQueryRetry } from "@/features/studio/ui/studio-query-retry"
 import { v2ButtonClassName } from "@/features/studio/ui/v2/v2-button"
 import { V2Avatar } from "@/features/studio/ui/v2/v2-avatar"
-import { V2BackIcon, V2PhoneIcon } from "@/features/studio/ui/v2/v2-icons"
+import { V2BackIcon, V2MessageIcon, V2PhoneIcon, V2SendIcon } from "@/features/studio/ui/v2/v2-icons"
 import { V2StatusBadge } from "@/features/studio/ui/v2/v2-status-badge"
 import { V2SubjectIcon3D } from "@/features/studio/ui/v2/v2-subject-icon-3d"
 import { formatStudentDateWithWeekday } from "@/features/students/lib/student-grouping"
+import { getRecontactPanelContext } from "@/features/students/queries/get-recontact-panel-context"
 import { getStudioStudentDetail, type StudioStudentDetail } from "@/features/students/queries/get-studio-students"
 import { NextContactCard } from "@/features/students/ui/next-contact-card"
+import { StudentSendLauncher } from "@/features/students/ui/student-send-launcher"
 import styles from "@/features/students/ui/student-detail.module.css"
 import { getStudioNavigationPathResolver } from "@/shared/lib/studio-navigation-server"
 
@@ -44,7 +46,10 @@ export default async function StudioStudentDetailPage({ params }: StudioStudentD
   const { applicationId } = await params
   const studioPath = await getStudioNavigationPathResolver()
   const now = new Date()
-  const { data: detail, error } = await getStudioStudentDetail(teacher.organizationId, applicationId, now)
+  const [{ data: detail, error }, panel] = await Promise.all([
+    getStudioStudentDetail(teacher.organizationId, applicationId, now),
+    getRecontactPanelContext(teacher.organizationId)
+  ])
 
   if (!detail && !error) {
     notFound()
@@ -69,6 +74,11 @@ export default async function StudioStudentDetailPage({ params }: StudioStudentD
   }
 
   const phoneDigits = detail.parentPhone?.replace(/\D/g, "") ?? ""
+  const recipient = { applicationId: detail.applicationId, name: detail.name, trialLabel: detail.trialLabel }
+  const sendLock = detail.lock === "no_account" ? "엑셀로 가져온 학생은 안내를 보낼 수 없어요"
+    : detail.lock === "no_phone" ? "보호자 번호가 없어 보낼 수 없어요"
+    : detail.lock === "no_consent" ? "광고성 정보 수신에 동의한 보호자에게만 보낼 수 있어요"
+    : null
   const info: Array<[string, string]> = [
     ["관심 과목", detail.info.interestSubjects ?? "—"],
     ["학습 수준", detail.info.currentLevel ?? "—"],
@@ -100,6 +110,8 @@ export default async function StudioStudentDetailPage({ params }: StudioStudentD
               <V2PhoneIcon size={16} />전화
             </a>
           ) : null}
+          <StudentSendLauncher context={panel} recipient={recipient} template="custom" variant="outline" size="sm" icon={<V2MessageIcon size={16} />} label="문자" disabledReason={sendLock} />
+          <StudentSendLauncher context={panel} recipient={recipient} template="new_class" variant="tonal" size="sm" icon={<V2SendIcon size={16} />} label="안내 보내기" disabledReason={sendLock} />
         </div>
       </header>
 
@@ -150,7 +162,14 @@ export default async function StudioStudentDetailPage({ params }: StudioStudentD
         </div>
 
         <aside className={styles.side}>
-          <NextContactCard applicationId={detail.applicationId} nextContact={detail.nextContact} todayKey={getSeoulTodayKey(now)} />
+          <NextContactCard
+            applicationId={detail.applicationId}
+            nextContact={detail.nextContact}
+            todayKey={getSeoulTodayKey(now)}
+            sendButton={sendLock ? null : (
+              <StudentSendLauncher context={panel} recipient={recipient} template="new_class" variant="primary" size="md" icon={<V2SendIcon size={18} />} label="안내 보내기" fullWidth />
+            )}
+          />
           <section className={styles.info} aria-labelledby="student-info-title">
             <h2 id="student-info-title" className={styles.infoTitle}>학생 정보</h2>
             {info.map(([label, value]) => (

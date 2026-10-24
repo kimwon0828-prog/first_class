@@ -78,6 +78,13 @@ export type SmsSendInput = {
   phone: string | null
   smsEnabled?: boolean
   messagePreview: string
+  /**
+   * 일반(COMM) · 광고(AD). 기본 COMM. 광고는 학원 안내 보내기(2차-3)만 쓴다 —
+   * NCP 가 080 수신거부 번호 등록을 확인한다. 본문의 "(광고)" 표기는 호출자가 넣는다.
+   */
+  contentType?: "COMM" | "AD"
+  /** LMS 제목. 없으면 기본 "[첫수업] 알림". */
+  subject?: string
 }
 
 export type SmsPreparedContent = {

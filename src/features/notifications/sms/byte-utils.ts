@@ -47,7 +47,7 @@ export const sanitizeSmsContent = (value: string) => {
 
 export const getEucKrByteLength = (value: string) => iconv.encode(value, "euc-kr").length
 
-export const prepareSmsContent = (value: string): SmsPreparedContent => {
+export const prepareSmsContent = (value: string, options: { subject?: string } = {}): SmsPreparedContent => {
   const normalized = value.replace(/\r\n?/g, "\n").trim()
   const content = sanitizeSmsContent(normalized)
   const byteLength = getEucKrByteLength(content)
@@ -57,7 +57,7 @@ export const prepareSmsContent = (value: string): SmsPreparedContent => {
     content,
     byteLength,
     messageType,
-    subject: messageType === "LMS" ? LMS_SUBJECT : null,
+    subject: messageType === "LMS" ? (options.subject ? sanitizeSmsSingleLine(options.subject, 40) || LMS_SUBJECT : LMS_SUBJECT) : null,
     hadUnsupportedCharacters: content !== normalized
   }
 }

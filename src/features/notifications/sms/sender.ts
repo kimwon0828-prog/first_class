@@ -59,9 +59,11 @@ export const sendSms = async ({
   recipientType,
   phone,
   smsEnabled,
-  messagePreview
+  messagePreview,
+  contentType = "COMM",
+  subject
 }: SmsSendInput): Promise<SmsSendResult> => {
-  const preparedContent = prepareSmsContent(messagePreview)
+  const preparedContent = prepareSmsContent(messagePreview, { subject })
   const normalizedPhone = normalizePhoneNumber(phone)
   const recipientPhoneMasked = maskPhoneNumber(normalizedPhone)
 
@@ -122,6 +124,7 @@ export const sendSms = async ({
     return await sendNcloudSms({
       config: ncloudConfig,
       to: normalizedPhone,
+      contentType,
       preparedContent,
       recipientPhoneMasked: recipientPhoneMasked ?? normalizedPhone
     })

@@ -8,7 +8,7 @@
 //
 // 경계는 한 문장이다(AGENTS.md 요금제 정책).
 //   FREE      기록하고 운영하고 학부모와 공유한다.
-//   STANDARD  기록을 분석한다.
+//   STANDARD  기록을 분석하고, 등록하지 않은 학생에게 다시 연락한다.
 //
 // 그래서 작성(체험 결과 · 상담 · 등록 결과)과 학부모 리포트 보내기는 무료다(2차-1, 2026-10).
 // 학부모가 리포트를 보고 등록을 결정하기 때문이다. 유료는 전환 분석에만 붙는다.
@@ -64,6 +64,14 @@ export type StudioEntitlements = {
 
   // ── STANDARD: 전환 분석 ─────────────────────────────────────
   canUseConversionAnalytics: boolean
+  /**
+   * 학생에게 안내 보내기(다시 연락 문자, 월 200건 · 2차-3).
+   *
+   * ⚠️ canUseConversionAnalytics 와 묶지 않는다. 분석은 학원 안 집계이고 이것은 학부모에게 나가는
+   *    광고 문자라 정책(동의 · 한도 · 시간)이 따로 바뀐다. 학생 목록 · 다음 연락은 무료라 이 flag 를 보지 않는다.
+   *    DB(reserve_recontact_batch)도 같은 판정으로 한 번 더 막는다.
+   */
+  canSendRecontactMessages: boolean
 
   // ⚠️ 여기에 "공개 목록 우선 노출" 류의 flag 를 다시 만들지 않는다.
   //    학부모가 보는 순서는 학원이 돈을 냈는지와 무관하다(AGENTS.md 요금제 정책).
@@ -91,6 +99,7 @@ const FREE_ENTITLEMENTS: StudioEntitlements = {
 
   canPublishParentReport: true,
   canUseConversionAnalytics: false,
+  canSendRecontactMessages: false,
 
   canUseAdvancedAnalytics: false,
   canImportConsultations: false,
@@ -99,7 +108,8 @@ const FREE_ENTITLEMENTS: StudioEntitlements = {
 
 const STANDARD_ENTITLEMENTS: StudioEntitlements = {
   ...FREE_ENTITLEMENTS,
-  canUseConversionAnalytics: true
+  canUseConversionAnalytics: true,
+  canSendRecontactMessages: true
 }
 
 const PRO_ENTITLEMENTS: StudioEntitlements = {
