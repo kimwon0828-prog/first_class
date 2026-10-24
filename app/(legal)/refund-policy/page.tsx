@@ -21,6 +21,12 @@ import { COMPANY_INFO } from "@/shared/config/company-info"
 // 그대로 서술한다(90일 · 종료 30일 전부터 카드 등록 · 마지막 체험일 첫 결제 · 3일 유예).
 // 일수는 같은 상수에서 읽는다. 동작이 바뀌면 이 조항도 같이 바꾼다.
 
+/**
+ * 최종 수정일. 배포하는 날로 바꾼다 — 이 상수 한 곳만 고치면 된다.
+ * (2차-1: 제3조 Standard 무료 체험 추가 · 조항 번호 조정)
+ */
+const REFUND_POLICY_LAST_UPDATED = "2026년 10월 24일"
+
 const STANDARD = BILLING_PLANS.standard
 
 const standardPriceText = `월 ${STANDARD.amount.toLocaleString("ko-KR")}원`
@@ -38,7 +44,7 @@ export default function RefundPolicyPage() {
       title="환불 및 해지 정책"
       description="첫수업 Standard 플랜의 무료 체험, 정기결제, 이용기간, 해지 및 환불 기준을 안내합니다."
       effectiveDate="2026년 9월 9일"
-      lastUpdatedDate={null}
+      lastUpdatedDate={REFUND_POLICY_LAST_UPDATED}
       sections={[
         {
           title: "제1조 (적용 대상)",

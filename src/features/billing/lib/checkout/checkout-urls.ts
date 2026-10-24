@@ -26,7 +26,14 @@ const resolveOrigin = async (): Promise<string> => {
   return `${protocol}://${host}`
 }
 
-export const buildCheckoutReturnUrls = async (): Promise<{ successUrl: string; failUrl: string }> => {
+/**
+ * purpose = register_card(체험 중 카드 등록)면 실패 query 가 card_failed 다 — 결제가 아니라
+ * 카드 등록이 안 된 것이라 문구가 다르다("카드를 등록하지 못했어요"). 스탠다드 시작은 기존 계약
+ * 그대로 billing=failed 다.
+ */
+export const buildCheckoutReturnUrls = async (
+  purpose: "subscribe" | "register_card" = "subscribe"
+): Promise<{ successUrl: string; failUrl: string }> => {
   const origin = await resolveOrigin()
   const hostname = await getRequestHostname()
   const toCallbackUrl = (internalPath: string) =>
@@ -35,6 +42,6 @@ export const buildCheckoutReturnUrls = async (): Promise<{ successUrl: string; f
   return {
     successUrl: toCallbackUrl(CALLBACK_PATH),
     /* 실패 query 이름·값은 결제사와의 기존 계약이다. 그대로 둔다. */
-    failUrl: `${toCallbackUrl(FAIL_PATH)}?billing=failed`
+    failUrl: `${toCallbackUrl(FAIL_PATH)}?billing=${purpose === "register_card" ? "card_failed" : "failed"}`
   }
 }

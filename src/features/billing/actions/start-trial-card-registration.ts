@@ -88,7 +88,7 @@ export const startTrialCardRegistration = async (input: {
     return { ok: false, message: "카드 등록을 시작하지 못했어요. 잠시 후 다시 시도해 주세요." }
   }
 
-  const { successUrl, failUrl } = await buildCheckoutReturnUrls()
+  const { successUrl, failUrl } = await buildCheckoutReturnUrls("register_card")
 
   return {
     ok: true,

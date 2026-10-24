@@ -42,7 +42,8 @@ export type CheckoutCompletion =
   | { status: "card_registered" }
   /** 결제 결과를 아직 모른다. 대사가 마무리한다. */
   | { status: "pending"; message: string }
-  | { status: "rejected"; message: string }
+  /** purpose 가 register_card 면 화면 문구가 "카드를 등록하지 못했어요" 다. */
+  | { status: "rejected"; message: string; purpose?: "register_card" }
 
 const GENERIC_FAILURE = "결제를 완료하지 못했습니다. 카드사 정보를 확인한 뒤 다시 시도해 주세요."
 const PENDING_MESSAGE = "결제 결과를 확인하고 있습니다. 잠시 후 결제 상태가 반영됩니다."
@@ -193,7 +194,7 @@ const completeTrialCardRegistration = async (
     subscription = (await dataAdapter.getOrganizationBillingSnapshot(session.organizationId)).subscription
   } catch {
     await releaseCheckoutSession(session.id, claimed)
-    return { status: "rejected", message: CARD_REGISTRATION_FAILURE }
+    return { status: "rejected", message: CARD_REGISTRATION_FAILURE, purpose: "register_card" }
   }
 
   const trialCheck = checkTrialCardRegistration(subscription, {
@@ -204,7 +205,7 @@ const completeTrialCardRegistration = async (
   })
   if (!trialCheck.ok) {
     await markCheckoutSessionFailed(session.id, `trial_${trialCheck.code}`, claimed)
-    return { status: "rejected", message: trialCheck.message }
+    return { status: "rejected", message: trialCheck.message, purpose: "register_card" }
   }
 
   const existing = await findActiveBillingCustomer(session.organizationId)
@@ -226,7 +227,7 @@ const completeTrialCardRegistration = async (
         issued.outcome === "succeeded" ? "billing_key_missing" : issued.code,
         claimed
       )
-      return { status: "rejected", message: CARD_REGISTRATION_FAILURE }
+      return { status: "rejected", message: CARD_REGISTRATION_FAILURE, purpose: "register_card" }
     }
 
     await upsertBillingCustomer({

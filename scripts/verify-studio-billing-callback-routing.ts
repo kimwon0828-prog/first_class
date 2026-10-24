@@ -80,7 +80,7 @@ const url = (internalPath: string, hostname: string, origin: string) =>
 
 console.log("[A] 내부 route 는 그대로다")
 
-check("A) 스탠다드 시작 · 카드 등록이 같은 결제창 주소를 쓴다", checkout.includes("buildCheckoutReturnUrls()") && codeOf(TRIAL_CARD).includes("buildCheckoutReturnUrls()"))
+check("A) 스탠다드 시작 · 카드 등록이 같은 결제창 주소를 쓴다", checkout.includes("buildCheckoutReturnUrls()") && codeOf(TRIAL_CARD).includes("buildCheckoutReturnUrls("))
 check("A) CALLBACK_PATH 상수가 그대로다", checkoutUrls.includes(`const CALLBACK_PATH = "${CALLBACK_PATH}"`))
 check("A) FAIL_PATH 상수가 그대로다", checkoutUrls.includes(`const FAIL_PATH = "${FAIL_PATH}"`))
 check("A) 내부 callback route 파일이 그대로 있다", exists(CALLBACK_PAGE))
@@ -100,7 +100,9 @@ equals(
 for (const hostname of [STUDIO_HOST.toUpperCase(), `${STUDIO_HOST}:443`, `${STUDIO_HOST}.`]) {
   equals(`B) ${hostname} successUrl`, url(CALLBACK_PATH, hostname, STUDIO_ORIGIN), `${STUDIO_ORIGIN}/billing/callback`)
 }
-check("C) 실패 query 이름·값을 바꾸지 않았다", checkoutUrls.includes("?billing=failed"))
+check("C) 실패 query 이름·값을 바꾸지 않았다", checkoutUrls.includes('"card_failed" : "failed"') && checkoutUrls.includes("?billing=${"))
+check("C) 카드 등록만 card_failed 를 쓴다", codeOf(TRIAL_CARD).includes('buildCheckoutReturnUrls("register_card")') && checkout.includes("buildCheckoutReturnUrls()"))
+check("C) 카드 등록 실패는 callback 에서도 card_failed 다", codeOf(CALLBACK_PAGE).includes('result.purpose === "register_card"') && codeOf(CALLBACK_PAGE).includes('"card_failed"'))
 check("C) failUrl 은 여전히 billing 화면으로 간다", url(FAIL_PATH, STUDIO_HOST, STUDIO_ORIGIN).endsWith("/billing"))
 
 console.log("\n[D] /studio prefix 가 붙은 주소를 새로 만들지 않는다")
