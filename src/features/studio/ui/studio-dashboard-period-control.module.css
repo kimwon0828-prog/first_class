@@ -1,14 +1,14 @@
 .control {
   display: flex;
   align-items: center;
-  gap: var(--s2);
+  gap: var(--sv2-space-8);
   position: relative;
 }
 
 .quickList {
   display: flex;
   align-items: center;
-  gap: var(--s2);
+  gap: var(--sv2-space-8);
 }
 
 /* 기간 칩: v2 Chip 모양(STUDIO_DESIGN_SYSTEM.md §5.2). 직접 설정 팝오버는 기존 모양이다. */
@@ -54,11 +54,12 @@
   position: relative;
 }
 
+/* 칩 왼쪽 끝에서 오른쪽으로 연다 — 기간 칩이 화면 왼쪽(분석 머리 아래)에 있다. */
 .popover {
   position: absolute;
   z-index: 30;
   top: calc(100% + 8px);
-  right: 0;
+  left: 0;
   width: 360px;
   padding: var(--s5);
   border: 1px solid var(--border);
@@ -160,7 +161,14 @@
     flex-wrap: wrap;
   }
 
+  /* 좁은 화면에서는 팝오버를 칩 줄 전체(.control)의 왼쪽에 붙인다 — 오른쪽 칩 기준이면 화면 밖으로 나간다. */
+  .custom {
+    position: static;
+  }
+
   .popover {
+    right: auto;
+    left: 0;
     width: min(360px, calc(100vw - 32px));
   }
 

@@ -322,6 +322,7 @@ type TrialApplicationRow = {
   next_contact_at?: string | null
   last_activity_at?: string | null
   regular_schedule_preference?: unknown
+  registration_reason_ids?: string[] | null
   regular_schedule_preference_note?: string | null
   regular_schedule_preference_updated_at?: string | null
   memo?: string | null
@@ -1056,7 +1057,10 @@ const mapStudioApplication = (
     registrationStatus: row.registration_status ?? "undecided",
     unregisteredReason: isApplicationUnregisteredReason(row.unregistered_reason)
       ? row.unregistered_reason
-      : null
+      : null,
+    // 분석 화면용(목록 조회만 select 한다). 없으면 빈 목록 · null.
+    registrationReasonIds: Array.isArray(row.registration_reason_ids) ? row.registration_reason_ids : [],
+    regularSchedulePreference: row.regular_schedule_preference ?? null
   }
 }
 
@@ -4680,7 +4684,7 @@ export const supabaseDataAdapter: DataAdapter = {
       let query = supabase
         .from("studio_trial_applications")
         .select(
-          "id, class_id, parent_id, child_name, child_grade, parent_name, parent_phone, class_schedule_id, requested_schedule_block_id, selected_schedule_label, requested_slot_at, confirmed_slot_at, assigned_teacher_id, contacted_at, scheduled_at, completed_at, enrolled_at, lost_at, canceled_at, no_show_at, goal_type, registration_status, unregistered_reason, status, created_at, updated_at, classes!inner(title, subject, organization_id, program_type, organizations(sido, sigungu, bname), report_category:subject_categories(code), report_subject:subjects(code, subject_categories(code))), class_schedules(start_time, end_time), confirmed_block:schedule_blocks!trial_applications_confirmed_schedule_block_id_fkey(start_at, end_at)".replace("_fkey(start_at", blockOnly ? "_fkey!inner(start_at" : "_fkey(start_at"),
+          "id, class_id, parent_id, child_name, child_grade, parent_name, parent_phone, class_schedule_id, requested_schedule_block_id, selected_schedule_label, requested_slot_at, confirmed_slot_at, assigned_teacher_id, contacted_at, scheduled_at, completed_at, enrolled_at, lost_at, canceled_at, no_show_at, goal_type, registration_status, registration_reason_ids, regular_schedule_preference, unregistered_reason, status, created_at, updated_at, classes!inner(title, subject, organization_id, program_type, organizations(sido, sigungu, bname), report_category:subject_categories(code), report_subject:subjects(code, subject_categories(code))), class_schedules(start_time, end_time), confirmed_block:schedule_blocks!trial_applications_confirmed_schedule_block_id_fkey(start_at, end_at)".replace("_fkey(start_at", blockOnly ? "_fkey!inner(start_at" : "_fkey(start_at"),
           // 총 개수를 알아야 서버가 page 를 잘라도 끝을 정확히 안다.
           // 같은 request 에 실려 오므로 query 가 늘지 않는다(getStudioCases 와 같은 방식).
           { count: "exact" }

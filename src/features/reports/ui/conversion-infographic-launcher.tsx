@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react"
 
 import {
   CONVERSION_INFOGRAPHIC_HEIGHT,
@@ -19,11 +19,17 @@ import styles from "./conversion-infographic-launcher.module.css"
 type ConversionInfographicLauncherProps = {
   model: ConversionInfographicModel
   fileName: string
+  /** 여는 버튼 문구. 기본 "인포그래픽 보기". */
+  label?: string
+  /** 버튼 앞 아이콘(16). */
+  icon?: ReactNode
 }
 
 export const ConversionInfographicLauncher = ({
   model,
-  fileName
+  fileName,
+  label = "인포그래픽 보기",
+  icon = null
 }: ConversionInfographicLauncherProps) => {
   const [isOpen, setIsOpen] = useState(false)
   const [scale, setScale] = useState(1)
@@ -97,7 +103,8 @@ export const ConversionInfographicLauncher = ({
   return (
     <>
       <button type="button" className={styles.trigger} onClick={() => setIsOpen(true)}>
-        인포그래픽 보기
+        {icon}
+        {label}
       </button>
 
       {isOpen ? (

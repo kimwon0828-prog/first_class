@@ -9,12 +9,10 @@
 // summary 만으로 알 수 없어 신청 수에만 포함한다.
 
 import { isTrialStarted } from "./trial-completion"
+import { resolveNotEnrolledReasonIds, type NotEnrolledReasonId } from "@/features/registration/lib/registration-input"
 import { getCaseStage, type CaseStage } from "@/features/studio/lib/case-view-model"
 import type { StudioResolvedDateRange } from "@/features/studio/lib/studio-date-range"
-import type {
-  ApplicationUnregisteredReason,
-  StudioApplicationSummary
-} from "@/shared/lib/db/adapter"
+import type { StudioApplicationSummary } from "@/shared/lib/db/adapter"
 
 export type StudioDashboardMetricKey =
   | "application"
@@ -35,24 +33,47 @@ export type StudioDashboardMetricStep = {
  *
  * 같은 cohort(선택 기간의 created_at) 안에서만 센다. 상담 이력의 과거 스냅샷이 아니라
  * Case 의 현재 결과만 본다 — Dashboard 의 다른 지표와 같은 기준이다.
- * reason 이 null 인 Case 도 버리지 않는다. 합계가 미등록 수와 어긋나면 안 되기 때문이다.
+ *
+ * 사유는 새 목록(registration-input.ts 의 NOT_ENROLLED_REASONS) 기준이다. 저장은
+ * registration_reason_ids(복수 선택)이고, 옛 단일 값(unregistered_reason)은 새 분류로 옮겨 센다
+ * (resolveNotEnrolledReasonIds). 한 학생이 사유를 여러 개 골랐으면 사유마다 1명으로 센다 —
+ * 그래서 합계는 미등록 수 이상이다. 사유가 없는 학생은 reason null 로 한 번 센다(버리지 않는다).
  *
  * 라벨·상위 N·기타 묶기는 여기서 하지 않는다(표시 계층의 몫).
  */
 export type StudioDashboardUnregisteredReasonCount = {
-  reason: ApplicationUnregisteredReason | null
+  reason: NotEnrolledReasonId | null
   count: number
 }
+
+/**
+ * 등록 전환율의 유일한 정의: 등록 ÷ 체험 완료(대표 결정, 2026-10).
+ *
+ * 분석 화면 · 홈 "이번 달 등록 전환" · 6개월 막대 · 성과 리포트가 모두 이 함수를 쓴다.
+ * 결과가 아직 없는 학생(결과 대기)도 분모에 들어간다. 체험 완료가 0 이면 null.
+ * 소수 첫째 자리까지 돌려준다. 화면은 formatEnrollmentRate 로 정수 % 를 적는다.
+ */
+export const computeTrialEnrollmentRate = (enrolledCount: number, trialCompletedCount: number): number | null =>
+  trialCompletedCount > 0 ? Math.round((enrolledCount / trialCompletedCount) * 1000) / 10 : null
+
+/** "39%" — 전환율 화면 표기(정수 반올림). 값이 없으면 "—". */
+export const formatEnrollmentRate = (rate: number | null): string => (rate == null ? "—" : `${Math.round(rate)}%`)
 
 export type StudioDashboardMetrics = {
   periodLabel: string
   /** 같은 신청일 cohort의 현재 저장 상태 분포. */
   trialOutcomes: { completed: number; noShow: number; canceled: number; pending: number }
   steps: StudioDashboardMetricStep[]
+  /** 일정 확정 단계에 도달한 수(불참 · 취소는 포함하지 않는다). */
+  confirmedCount: number
+  /** 체험을 마친 학생 수(= 전환율의 분모). */
+  completedCount: number
   enrolledCount: number
   notEnrolledCount: number
   decidedCount: number
+  /** 결과 대기: 체험을 마쳤지만 등록 · 미등록 결과가 아직 없다. */
   pendingDecisionCount: number
+  /** 등록 ÷ 체험 완료(computeTrialEnrollmentRate). */
   registrationConversionRate: number | null
   unregisteredReasonCounts: StudioDashboardUnregisteredReasonCount[]
 }
@@ -77,7 +98,7 @@ const toTimestamp = (value: string | null | undefined) => {
   return Number.isNaN(timestamp) ? null : timestamp
 }
 
-const isCreatedWithinRange = (
+export const isCreatedWithinRange = (
   item: StudioApplicationSummary,
   range: Pick<StudioResolvedDateRange, "createdAtFrom" | "createdAtTo">
 ) => {
@@ -133,14 +154,16 @@ export const buildStudioDashboardMetrics = (
   const decidedCount = enrolledCount + notEnrolledCount
 
   // 미등록으로 종결한 Case 만 센다. 다른 상태에 사유 값이 남아 있어도 집계하지 않는다.
-  const reasonCountMap = new Map<ApplicationUnregisteredReason | null, number>()
+  const reasonCountMap = new Map<NotEnrolledReasonId | null, number>()
   cohort.forEach((item, index) => {
     if (stages[index] !== "not_enrolled") {
       return
     }
 
-    const reason = item.unregisteredReason ?? null
-    reasonCountMap.set(reason, (reasonCountMap.get(reason) ?? 0) + 1)
+    const reasons = resolveNotEnrolledReasonIds(item)
+    for (const reason of reasons.length > 0 ? reasons : [null]) {
+      reasonCountMap.set(reason, (reasonCountMap.get(reason) ?? 0) + 1)
+    }
   })
 
   return {
@@ -158,11 +181,13 @@ export const buildStudioDashboardMetrics = (
       conversionFromPrevious:
         index === 0 ? null : roundPercentage(count, counts[index - 1])
     })),
+    confirmedCount: counts[1],
+    completedCount: counts[3],
     enrolledCount,
     notEnrolledCount,
     decidedCount,
     pendingDecisionCount: Math.max(0, counts[3] - decidedCount),
-    registrationConversionRate: roundPercentage(enrolledCount, decidedCount),
+    registrationConversionRate: computeTrialEnrollmentRate(enrolledCount, counts[3]),
     unregisteredReasonCounts: Array.from(reasonCountMap.entries()).map(([reason, count]) => ({
       reason,
       count

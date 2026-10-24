@@ -1,11 +1,12 @@
 /*
- * 분석 (홈의 성과 분석을 옮긴 화면). STUDIO_DESIGN_SYSTEM.md §2 틀 + §5.20 성과 분석 모양.
- * 위 36 · 좌우 48 · 아래 56 · 세로 24.
+ * 분석 (Figma 2148:6580). STUDIO_DESIGN_SYSTEM.md §5.21.
+ * 위 36 · 좌우 48 · 아래 56 · 세로 28.
+ * 머리 → 기간 칩 → 숫자 카드 4(간격 16) → [흐름 | 이유 380](간격 40) → 수업별 전환 표.
  */
 .page {
   display: flex;
   flex-direction: column;
-  gap: var(--sv2-space-24);
+  gap: 28px;
   min-height: 100dvh;
   padding: 36px var(--sv2-main-px) 56px;
   color: var(--sv2-ink-900);
@@ -16,7 +17,7 @@
   display: flex;
   flex-wrap: wrap;
   align-items: flex-end;
-  gap: var(--sv2-space-16);
+  gap: var(--sv2-space-12);
 }
 
 .headerText {
@@ -35,383 +36,361 @@
   letter-spacing: -0.7px;
 }
 
+/* 설명 15 Regular ink/500 */
 .description {
   margin: 0;
   color: var(--sv2-ink-500);
-  font-size: 14px;
+  font-size: 15px;
   line-height: 1.45;
-  font-weight: 500;
+  font-weight: 400;
   letter-spacing: -0.2px;
 }
 
-.tools {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--sv2-space-12);
+.spacer {
+  flex: 1 1 auto;
 }
 
-.loadingBlock {
-  height: 240px;
-  border-radius: var(--sv2-radius-card);
-  background: var(--sv2-surface-fill);
-}
-
-.chartRow {
+/* ── 숫자 카드: surface/fill · 모서리 16 · 안쪽 20 · 간격 6. 등록 카드만 brand/50 + brand/700 ── */
+.cards {
   display: grid;
-  grid-template-columns: 1.2fr 1fr 1fr;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: var(--sv2-space-16);
 }
 
-.chartCard {
+.card {
   display: flex;
   flex-direction: column;
-  gap: var(--sv2-space-16);
+  gap: 6px;
   min-width: 0;
-  padding: var(--sv2-space-24);
-  border: 1px solid var(--sv2-line-default);
+  padding: var(--sv2-space-20);
   border-radius: var(--sv2-radius-card);
-}
-
-.flowCard {
-  border-color: transparent;
   background: var(--sv2-surface-fill);
 }
 
-.chartTitle {
+.cardBrand {
+  background: var(--sv2-brand-50);
+  color: var(--sv2-brand-700);
+}
+
+.cardLabel {
   margin: 0;
-  font-size: 16px;
+  color: var(--sv2-ink-700);
+  font-size: 15px;
   line-height: 1.45;
-  font-weight: 700;
-  letter-spacing: -0.2px;
+  font-weight: 500;
 }
 
-.flow {
-  display: grid;
-  flex: 1;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  align-items: center;
+.cardValue {
   margin: 0;
-  padding: var(--sv2-space-12) 0;
-  list-style: none;
-}
-
-.flow li {
-  position: relative;
-  display: grid;
-  gap: var(--sv2-space-4);
-  text-align: center;
-}
-
-.flow li + li::before {
-  content: "›";
-  position: absolute;
-  top: 12px;
-  left: -4px;
-  color: var(--sv2-ink-400);
-  font-size: 20px;
-}
-
-.flowValue {
-  font-size: 28px;
+  font-size: 30px;
   line-height: 1.32;
   font-weight: 700;
-  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.7px;
 }
 
-.flowLabel {
+.cardCaption {
+  margin: 0;
   color: var(--sv2-ink-500);
-  font-size: 12px;
+  font-size: 13px;
   line-height: 1.45;
-  white-space: nowrap;
-}
-
-.flowRate,
-.flowBase {
-  margin-top: var(--sv2-space-8);
-  color: var(--sv2-brand-700);
-  font-size: 12px;
-  line-height: 1.45;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-}
-
-.flowBase {
-  color: var(--sv2-ink-400);
   font-weight: 500;
+  letter-spacing: -0.2px;
 }
 
-.chartNote {
-  margin: auto 0 0;
-  color: var(--sv2-ink-400);
+.cardBrand .cardLabel,
+.cardBrand .cardCaption {
+  color: var(--sv2-brand-700);
+}
+
+/* "결과 대기 N명" — 캡션 줄 끝에 작게(ink/500) */
+.cardSub {
+  color: var(--sv2-ink-500);
   font-size: 12px;
-  line-height: 1.45;
 }
 
-.donutLayout {
+/* ── 흐름 | 이유 ── */
+.split {
   display: flex;
-  flex: 1;
-  align-items: center;
-  gap: var(--sv2-space-12);
+  align-items: flex-start;
+  gap: 40px;
 }
 
-.donutWrap {
-  position: relative;
-  flex: 0 0 112px;
-  width: 112px;
+.sectionTitle {
+  margin: 0;
+  font-size: 20px;
+  line-height: 1.45;
+  font-weight: 700;
+  letter-spacing: -0.5px;
 }
 
-.donut {
-  display: block;
-  width: 100%;
-  height: auto;
-  aspect-ratio: 1;
+.flowSection {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
 }
 
-.donutTrack {
-  fill: none;
-  stroke: var(--sv2-line-default);
-}
-
-.donut .donutSegment {
-  fill: currentColor;
-  stroke: none;
-}
-
-.donutCenter {
-  position: absolute;
-  inset: 0;
+.flowList {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 2px;
-  pointer-events: none;
-}
-
-.donutCenter strong {
-  font-size: 24px;
-  line-height: 1.2;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-}
-
-.donutCenter span {
-  color: var(--sv2-ink-500);
-  font-size: 11px;
-}
-
-.completed,
-.enrolled {
-  color: var(--sv2-brand-500);
-  stroke: var(--sv2-brand-500);
-  background: var(--sv2-brand-500);
-}
-
-.noShow {
-  color: var(--sv2-state-danger-fg);
-  stroke: var(--sv2-state-danger-fg);
-  background: var(--sv2-state-danger-fg);
-}
-
-.not_enrolled,
-.canceled {
-  color: var(--sv2-ink-400);
-  stroke: var(--sv2-ink-400);
-  background: var(--sv2-ink-400);
-}
-
-.pending {
-  color: var(--sv2-line-default);
-  stroke: var(--sv2-line-default);
-  background: var(--sv2-line-default);
-}
-
-.legend {
-  display: grid;
-  flex: 1;
-  gap: var(--sv2-space-8);
-  min-width: 0;
+  gap: 14px;
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
-.legend li {
-  display: grid;
-  grid-template-columns: 8px minmax(0, 1fr) auto 42px;
-  align-items: center;
+.flowRow {
+  display: flex;
+  flex-direction: column;
   gap: 6px;
-  color: var(--sv2-ink-500);
-  font-size: 12px;
-  line-height: 1.45;
 }
 
-.legend strong {
-  color: var(--sv2-ink-900);
-  font-variant-numeric: tabular-nums;
-}
-
-.legendDot {
-  width: 8px;
-  height: 8px;
-  border-radius: var(--sv2-radius-pill);
-}
-
-.legendRate {
-  text-align: right;
-  font-variant-numeric: tabular-nums;
-}
-
-.bottom {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  align-items: start;
-  gap: var(--sv2-space-16);
-}
-
-.reasons {
-  padding: var(--sv2-space-16) var(--sv2-space-20);
-  border-radius: var(--sv2-radius-card);
-  background: var(--sv2-surface-fill);
-  color: var(--sv2-ink-700);
-  font-size: 14px;
-  line-height: 1.45;
-}
-
-.reasons summary {
-  font-weight: 700;
-  cursor: pointer;
-}
-
-.reasons ul {
-  margin: var(--sv2-space-12) 0 0;
-  padding: 0;
-  list-style: none;
-}
-
-.reasons li {
-  display: flex;
-  justify-content: space-between;
-  gap: var(--sv2-space-16);
-  padding: var(--sv2-space-8) 0;
-  border-bottom: 1px solid var(--sv2-line-default);
-}
-
-.reasons p {
-  margin: var(--sv2-space-12) 0 0;
-  color: var(--sv2-ink-500);
-}
-
-.recentCard {
-  display: flex;
-  flex-direction: column;
-  gap: var(--sv2-space-4);
-  padding: var(--sv2-space-20) var(--sv2-space-24) var(--sv2-space-12);
-  border: 1px solid var(--sv2-line-default);
-  border-radius: var(--sv2-radius-card);
-}
-
-.bottom > .recentCard:only-child {
-  grid-column: 1 / -1;
-}
-
-.recentHead {
+.flowHead {
   display: flex;
   align-items: center;
+  gap: var(--sv2-space-8);
 }
 
-.recentHead h2 {
-  margin: 0;
-  font-size: 16px;
-  line-height: 1.45;
-  font-weight: 700;
-}
-
-.recentList li + li .recentRow {
-  border-top: 1px solid var(--sv2-line-subtle);
-}
-
-.recentDate {
-  color: var(--sv2-ink-500);
-  font-size: 12px;
-  white-space: nowrap;
-}
-
-
-.recentText {
-  display: flex;
-  flex: 1 1 auto;
-  flex-direction: column;
-  min-width: 0;
-}
-
-.recentText strong {
+.flowLabel,
+.flowCount {
   font-size: 15px;
   line-height: 1.45;
   font-weight: 700;
+  white-space: nowrap;
 }
 
-.recentText small {
-  color: var(--sv2-ink-500);
-  font-size: 13px;
-  font-weight: 500;
-}
-
-.recentText > span {
-  overflow: hidden;
+.flowRate {
   color: var(--sv2-ink-500);
   font-size: 13px;
   line-height: 1.45;
   font-weight: 500;
-  text-overflow: ellipsis;
+  letter-spacing: -0.2px;
   white-space: nowrap;
 }
 
-.recentList {
+/* 가장 크게 줄어든 단계 (Figma 2148:6641 state/warn-fg) */
+.flowRateDrop {
+  color: var(--sv2-state-warn-fg);
+}
+
+/* 막대: surface/fill 28 · 모서리 8, 채움 ink/300 · 등록만 brand/500 */
+.flowTrack {
+  display: flex;
+  overflow: hidden;
+  height: 28px;
+  border-radius: 8px;
+  background: var(--sv2-surface-fill);
+}
+
+.flowFill {
+  width: var(--bar, 0%);
+  height: 28px;
+  border-radius: 8px;
+  background: var(--sv2-ink-300);
+}
+
+.flowFillBrand {
+  background: var(--sv2-brand-500);
+}
+
+/* 안내: state/warn-bg · 모서리 12 · 12/14 · info 18 + 14 Medium warn-fg + 학생 보기 13 Bold brand/700 */
+.insight {
+  display: flex;
+  align-items: center;
+  gap: var(--sv2-space-8);
+  padding: var(--sv2-space-12) 14px;
+  border-radius: var(--sv2-radius-control);
+  background: var(--sv2-state-warn-bg);
+  color: var(--sv2-state-warn-fg);
+}
+
+.insightIcon {
+  flex: 0 0 auto;
+}
+
+.insight p {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.45;
+  font-weight: 500;
+  letter-spacing: -0.2px;
+}
+
+.insightLink {
+  flex: 0 0 auto;
+  text-decoration: none;
+  color: var(--sv2-brand-700);
+  font-size: 13px;
+  line-height: 1.45;
+  font-weight: 700;
+  letter-spacing: -0.2px;
+  white-space: nowrap;
+}
+
+.reasonSection {
+  display: flex;
+  flex: 0 0 380px;
+  flex-direction: column;
+  gap: var(--sv2-space-12);
+  min-width: 0;
+}
+
+.reasonList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sv2-space-12);
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
-.recentRow {
+.reasonRow {
   display: flex;
-  align-items: center;
-  gap: var(--sv2-space-12);
-  padding: 10px 0;
-  color: inherit;
-  text-decoration: none;
+  flex-direction: column;
+  gap: var(--sv2-space-4);
 }
 
-.recentRow:hover strong {
-  text-decoration: underline;
+.reasonHead {
+  display: flex;
+  align-items: flex-start;
+  font-size: 14px;
+  line-height: 1.45;
+  font-weight: 500;
+  letter-spacing: -0.2px;
 }
 
-.recentRow:focus-visible,
-.moreLink:focus-visible,
-.reasons summary:focus-visible {
-  outline: 2px solid var(--sv2-brand-700);
-  outline-offset: 2px;
+.reasonHead strong {
+  font-weight: 700;
 }
 
-.chevron {
-  flex: 0 0 auto;
-  color: var(--sv2-ink-400);
+/* 막대: surface/fill 8 · 모서리 4, 채움 ink/300 · 1위 state/warn-fg */
+.reasonTrack {
+  display: flex;
+  overflow: hidden;
+  height: 8px;
+  border-radius: 4px;
+  background: var(--sv2-surface-fill);
 }
 
-.moreLink {
-  margin-left: auto;
+.reasonFill {
+  width: var(--bar, 0%);
+  height: 8px;
+  border-radius: 4px;
+  background: var(--sv2-ink-300);
+}
+
+.reasonFillTop {
+  background: var(--sv2-state-warn-fg);
+}
+
+.reasonNote {
+  margin: 0;
   color: var(--sv2-ink-500);
   font-size: 13px;
   line-height: 1.45;
   font-weight: 500;
-  text-decoration: none;
+  letter-spacing: -0.2px;
+}
+
+/* ── 수업별 전환: 머리 아래 line/default, 행 아래 line/subtle(§5.15) ── */
+.classSection {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
+/* 좁은 화면에서는 표만 가로로 넘긴다. absolute 자식이 빠져나가지 않게 relative. */
+.tableScroll {
+  position: relative;
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  min-width: 640px;
+  border-collapse: collapse;
+}
+
+.table th,
+.table td {
+  padding: var(--sv2-space-12) var(--sv2-space-8);
+  border-bottom: 1px solid var(--sv2-line-subtle);
+  text-align: left;
+  font-size: 14px;
+  line-height: 1.45;
+  font-weight: 500;
+  letter-spacing: -0.2px;
   white-space: nowrap;
+}
+
+.table thead th {
+  padding: var(--sv2-space-8);
+  border-bottom-color: var(--sv2-line-default);
+  color: var(--sv2-ink-500);
+  font-size: 13px;
+}
+
+.table tbody th {
+  width: 100%;
+  font-weight: 500;
+}
+
+.numCol {
+  width: 80px;
+  min-width: 80px;
+}
+
+.rateCol {
+  width: 240px;
+  min-width: 240px;
+}
+
+.classCell {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.classTitle {
+  overflow: hidden;
+  font-size: 15px;
+  text-overflow: ellipsis;
+}
+
+.rateCell {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.rateCell strong {
+  font-weight: 700;
+}
+
+.rateTrack {
+  display: flex;
+  flex: 0 0 160px;
+  overflow: hidden;
+  height: 8px;
+  border-radius: 4px;
+  background: var(--sv2-surface-fill);
+}
+
+.rateFill {
+  width: var(--bar, 0%);
+  height: 8px;
+  border-radius: 4px;
+  background: var(--sv2-brand-500);
 }
 
 .empty {
   margin: 0;
-  padding: var(--sv2-space-12) 0;
+  padding: var(--sv2-space-16) 0;
   color: var(--sv2-ink-500);
   font-size: 14px;
   line-height: 1.45;
@@ -456,19 +435,16 @@
   font-size: 13px;
 }
 
-@media (max-width: 1320px) {
-  .chartRow {
-    grid-template-columns: 1fr 1fr;
-  }
-
-  .flowCard {
-    grid-column: 1 / -1;
-  }
-}
-
 @media (max-width: 1100px) {
-  .bottom {
-    grid-template-columns: minmax(0, 1fr);
+  .split {
+    flex-direction: column;
+    gap: 28px;
+  }
+
+  .flowSection,
+  .reasonSection {
+    flex: 1 1 auto;
+    width: 100%;
   }
 }
 
@@ -477,15 +453,25 @@
     padding-inline: var(--sv2-space-16);
   }
 
-  .chartRow {
-    grid-template-columns: minmax(0, 1fr);
+  .cards {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--sv2-space-12);
   }
 
-  .donutLayout {
+  .card {
+    padding: var(--sv2-space-16);
+  }
+
+  .cardValue {
+    font-size: 24px;
+  }
+
+  .insight {
+    flex-wrap: wrap;
+  }
+
+  .locked {
     flex-direction: column;
-  }
-
-  .legend {
-    width: 100%;
+    align-items: flex-start;
   }
 }

@@ -10,6 +10,7 @@ import { requireTeacherStudioAccess } from "@/features/studio/lib/require-teache
 import { buildStudioDashboardView, buildStudioRecontact, getStudioRecontactCandidateIds, type StudioDashboardActionItem } from "@/features/studio/lib/studio-dashboard-view"
 import { listStudioCurrentParentDecisions } from "@/features/decisions/queries/list-studio-current-parent-decisions"
 import { buildStudioMonthlyConversion } from "@/features/studio/lib/studio-dashboard-monthly"
+import { formatEnrollmentRate } from "@/features/studio/lib/studio-dashboard-metrics"
 import { formatCasesDate, getCasesScheduleLabel } from "@/features/studio/lib/cases-workflow"
 import { getSeoulTodayKey, toSeoulDateKey } from "@/features/studio/lib/studio-schedule-month"
 import { getStudioApplicationsForDashboard } from "@/features/studio/queries/get-studio-applications"
@@ -68,7 +69,8 @@ export default async function StudioIndexPage() {
   const monthly = entitlements.canUseConversionAnalytics ? buildStudioMonthlyConversion(applications, now) : null
   const thisMonth = monthly?.at(-1) ?? null
   const lastMonth = monthly?.at(-2) ?? null
-  const monthDelta = thisMonth?.rate != null && lastMonth?.rate != null ? Math.round((thisMonth.rate - lastMonth.rate) * 10) / 10 : null
+  // 전환율은 정수 % 로 적는다(formatEnrollmentRate). 차이도 같은 반올림 값끼리 뺀다.
+  const monthDelta = thisMonth?.rate != null && lastMonth?.rate != null ? Math.round(thisMonth.rate) - Math.round(lastMonth.rate) : null
   const maxRate = Math.max(1, ...(monthly ?? []).map(item => item.rate ?? 0))
   const currentMonth = Number(todayKey.slice(5, 7))
 
@@ -248,14 +250,17 @@ export default async function StudioIndexPage() {
           </div>
           {monthly && thisMonth ? <>
             <div className={styles.bigValue}>
-              <strong>{thisMonth.rate == null ? "-" : `${thisMonth.rate}%`}</strong>
+              <strong>{formatEnrollmentRate(thisMonth.rate)}</strong>
               {monthDelta != null && lastMonth ? <span className={styles.delta}>{lastMonth.month}월보다 {monthDelta >= 0 ? "+" : ""}{monthDelta}%p</span> : null}
             </div>
-            <p className={styles.cardCaption}>{thisMonth.decidedCount ? `체험 ${thisMonth.decidedCount}명 중 ${thisMonth.enrolledCount}명이 등록했어요` : "이번 달은 아직 등록 결과가 나온 학생이 없어요"}</p>
+            {/* 등록 ÷ 체험 완료(computeTrialEnrollmentRate). 분석 화면과 같은 정의 · 같은 문장이다. */}
+            <p className={styles.cardCaption}>{thisMonth.completedCount
+              ? <>체험한 학생 {thisMonth.completedCount}명 중 {thisMonth.enrolledCount}명이 등록했어요{thisMonth.pendingDecisionCount > 0 ? <span className={styles.captionMuted}> · 결과 대기 {thisMonth.pendingDecisionCount}명</span> : null}</>
+              : "이번 달은 아직 체험을 마친 학생이 없어요"}</p>
             <ol className={styles.trend} aria-label="최근 6개월 등록 전환율">
               {monthly.map(item => <li key={item.month} data-current={item.current ? "" : undefined}>
                 <span className={styles.trendBar} style={{ height: `${item.rate == null ? 0 : Math.max(4, Math.round(62 * item.rate / maxRate))}px` }} />
-                <span className={styles.trendLabel}>{item.month}월<span className={styles.srOnly}> {item.rate == null ? "-" : `${item.rate}%`}</span></span>
+                <span className={styles.trendLabel}>{item.month}월<span className={styles.srOnly}> {formatEnrollmentRate(item.rate)}</span></span>
               </li>)}
             </ol>
           </> : <>

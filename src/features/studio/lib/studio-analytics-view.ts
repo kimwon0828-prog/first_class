@@ -1,0 +1,342 @@
+// 분석 화면(Figma 2148:6580)의 표시 모델.
+//
+// 새 계산식을 만들지 않는다. 숫자는 buildStudioDashboardMetrics(신청일 cohort)에서 오고,
+// 전환율은 computeTrialEnrollmentRate(등록 ÷ 체험 완료) 하나만 쓴다.
+// 이미 읽어 둔 신청 목록 위의 계산이라 조회가 늘지 않는다(직전 기간 비교도 같은 목록).
+//
+//   카드 4개   신청 · 체험 완료(신청의 N%) · 등록(체험한 학생의 N% · 결과 대기) · 불참(확정의 N%)
+//   흐름 4단   신청 · 일정 확정 · 체험 완료 · 등록 — "이전 단계의 N%", 가장 크게 줄어든 단계 문장
+//   이유       미등록 사유(새 목록, 옛 값은 매핑) · "시간" 사유의 희망 요일 문장
+//   수업별     신청 · 체험 · 등록 · 전환율, 신청 많은 순
+
+import {
+  getNotEnrolledReasonLabel,
+  NOT_ENROLLED_REASONS,
+  NOT_ENROLLED_REASON_ORDER,
+  resolveNotEnrolledReasonIds
+} from "@/features/registration/lib/registration-input"
+import { getCaseStage } from "@/features/studio/lib/case-view-model"
+import { parseRegularSchedulePreference, type IsoWeekday } from "@/features/studio/lib/regular-schedule-preference"
+import {
+  buildStudioDashboardMetrics,
+  computeTrialEnrollmentRate,
+  formatEnrollmentRate,
+  isCreatedWithinRange,
+  type StudioDashboardMetrics
+} from "@/features/studio/lib/studio-dashboard-metrics"
+import {
+  getStudioDateRangeEndIso,
+  getStudioDateRangeStartIso,
+  type StudioResolvedDateRange
+} from "@/features/studio/lib/studio-date-range"
+import type { StudioApplicationSummary } from "@/shared/lib/db/adapter"
+
+const DAY_MS = 24 * 60 * 60 * 1000
+const KST_OFFSET_MS = 9 * 60 * 60 * 1000
+const WEEKDAY_LABEL: Record<IsoWeekday, string> = { 1: "월", 2: "화", 3: "수", 4: "목", 5: "금", 6: "토", 7: "일" }
+
+/** 정수 % (분모 0 이면 null) — 화면의 모든 비율 표기 */
+const percent = (numerator: number, denominator: number): number | null =>
+  denominator > 0 ? Math.round((numerator / denominator) * 100) : null
+
+const percentText = (value: number | null) => (value == null ? "—" : `${value}%`)
+
+// ─────────────────────────────────────────────────────────────
+// 직전 같은 길이 기간
+// ─────────────────────────────────────────────────────────────
+
+const ymd = (ms: number) => new Date(ms).toISOString().slice(0, 10)
+
+/**
+ * 선택 기간 바로 앞의 같은 길이 기간(KST 날짜). 전체 기간이면 null.
+ * 예: 10월 1일~24일(24일) → 9월 7일~30일.
+ */
+export const resolvePreviousStudioDateRange = (range: StudioResolvedDateRange): StudioResolvedDateRange | null => {
+  if (!range.startDate || !range.endDate) return null
+  const start = Date.parse(`${range.startDate}T00:00:00Z`)
+  const end = Date.parse(`${range.endDate}T00:00:00Z`)
+  if (Number.isNaN(start) || Number.isNaN(end) || end < start) return null
+  const lengthDays = Math.round((end - start) / DAY_MS) + 1
+  const previousEnd = ymd(start - DAY_MS)
+  const previousStart = ymd(start - lengthDays * DAY_MS)
+  return {
+    preset: "custom",
+    startDate: previousStart,
+    endDate: previousEnd,
+    createdAtFrom: getStudioDateRangeStartIso(previousStart),
+    createdAtTo: getStudioDateRangeEndIso(previousEnd),
+    label: `${previousStart} ~ ${previousEnd}`
+  }
+}
+
+/** "9월보다" / "직전 같은 기간보다" — 이번 달 · 지난달이면 직전 기간이 끝나는 달 이름을 쓴다. */
+const previousLabel = (range: StudioResolvedDateRange, previous: StudioResolvedDateRange) => {
+  if ((range.preset === "thisMonth" || range.preset === "lastMonth") && previous.endDate) {
+    const month = Number(previous.endDate.slice(5, 7))
+    return { than: `${month}월보다`, same: `${month}월과` }
+  }
+  return { than: "직전 같은 기간보다", same: "직전 같은 기간과" }
+}
+
+// ─────────────────────────────────────────────────────────────
+// 모델
+// ─────────────────────────────────────────────────────────────
+
+export type StudioAnalyticsCard = {
+  key: "application" | "completed" | "enrolled" | "no_show"
+  label: string
+  value: string
+  caption: string | null
+  /** 등록 카드의 "결과 대기 N명" */
+  sub: string | null
+  tone: "neutral" | "brand"
+}
+
+export type StudioAnalyticsFlowStep = {
+  key: "application" | "confirmed" | "completed" | "enrolled"
+  label: string
+  count: number
+  /** 신청 대비 막대 길이(0~100) */
+  widthPercent: number
+  /** "이전 단계의 N%" — 첫 단계는 null */
+  fromPrevious: string | null
+  /** 가장 크게 줄어든 단계 */
+  biggestDrop: boolean
+  /** 등록 막대만 초록 */
+  tone: "neutral" | "brand"
+}
+
+export type StudioAnalyticsReason = {
+  key: string
+  label: string
+  count: number
+  widthPercent: number
+  top: boolean
+}
+
+export type StudioAnalyticsClassRow = {
+  classId: string
+  title: string
+  categoryCode: string | null
+  applicationCount: number
+  completedCount: number
+  enrolledCount: number
+  /** 등록 ÷ 체험 완료(정수 %) — 체험 완료가 0 이면 null */
+  rate: number | null
+  rateText: string
+}
+
+export type StudioAnalyticsView = {
+  periodLabel: string
+  hasCohort: boolean
+  cards: StudioAnalyticsCard[]
+  flow: StudioAnalyticsFlowStep[]
+  /** 흐름 아래 안내. 신청이 없으면 null. */
+  insight: { text: string; showStudents: boolean } | null
+  reasons: StudioAnalyticsReason[]
+  /** "'희망 시간 불일치' 5명 중 4명이 토요일을 원했어요." — 희망 요일 기록이 없으면 null */
+  reasonDayNote: string | null
+  classRows: StudioAnalyticsClassRow[]
+  metrics: StudioDashboardMetrics
+}
+
+const DROP_SENTENCE: Record<"confirmed" | "completed" | "enrolled", string> = {
+  confirmed: "신청 후 일정 확정까지가 가장 크게 줄어요.",
+  completed: "일정 확정 후 체험 완료까지가 가장 크게 줄어요.",
+  enrolled: "체험 후 등록까지가 가장 크게 줄어요."
+}
+
+const SCHEDULE_REASON = "schedule_mismatch"
+
+export const buildStudioAnalyticsView = (input: {
+  applications: StudioApplicationSummary[]
+  range: StudioResolvedDateRange
+  /** 홈 "다시 연락할 학생"과 같은 기준의 고민 중 인원(buildStudioRecontact) */
+  consideringCount: number
+  now?: Date
+}): StudioAnalyticsView => {
+  const now = input.now ?? new Date()
+  const metrics = buildStudioDashboardMetrics(input.applications, input.range, now)
+  const previous = resolvePreviousStudioDateRange(input.range)
+  const previousMetrics = previous ? buildStudioDashboardMetrics(input.applications, previous, now) : null
+
+  const applicationCount = metrics.steps[0]?.count ?? 0
+  const confirmedCount = metrics.confirmedCount
+  const completedCount = metrics.completedCount
+  const enrolledCount = metrics.enrolledCount
+  const noShowCount = metrics.trialOutcomes.noShow
+
+  // ── 카드 ──────────────────────────────────────────────
+  let applicationCaption: string | null = null
+  if (previous && previousMetrics) {
+    const labels = previousLabel(input.range, previous)
+    const diff = applicationCount - (previousMetrics.steps[0]?.count ?? 0)
+    applicationCaption =
+      diff > 0 ? `${labels.than} ${diff}명 늘었어요` : diff < 0 ? `${labels.than} ${-diff}명 줄었어요` : `${labels.same} 같아요`
+  }
+
+  const cards: StudioAnalyticsCard[] = [
+    { key: "application", label: "신청", value: `${applicationCount}명`, caption: applicationCaption, sub: null, tone: "neutral" },
+    {
+      key: "completed",
+      label: "체험 완료",
+      value: `${completedCount}명`,
+      caption: `신청의 ${percentText(percent(completedCount, applicationCount))}`,
+      sub: null,
+      tone: "neutral"
+    },
+    {
+      key: "enrolled",
+      label: "등록",
+      value: `${enrolledCount}명`,
+      caption: `체험한 학생의 ${formatEnrollmentRate(metrics.registrationConversionRate)}`,
+      sub: metrics.pendingDecisionCount > 0 ? `결과 대기 ${metrics.pendingDecisionCount}명` : null,
+      tone: "brand"
+    },
+    {
+      key: "no_show",
+      label: "불참",
+      value: `${noShowCount}명`,
+      // 불참한 학생도 일정이 확정됐던 학생이다. 확정 단계 수(불참 제외)에 불참을 더한 것이 분모다.
+      caption: `확정의 ${percentText(percent(noShowCount, confirmedCount + noShowCount))}`,
+      sub: null,
+      tone: "neutral"
+    }
+  ]
+
+  // ── 흐름 ──────────────────────────────────────────────
+  const flowInput = [
+    { key: "application" as const, label: "신청", count: applicationCount, previous: null as number | null },
+    { key: "confirmed" as const, label: "일정 확정", count: confirmedCount, previous: applicationCount },
+    { key: "completed" as const, label: "체험 완료", count: completedCount, previous: confirmedCount },
+    // 등록 ÷ 체험 완료 — 등록 카드 · 홈 카드와 같은 정의(computeTrialEnrollmentRate)
+    { key: "enrolled" as const, label: "등록", count: enrolledCount, previous: completedCount }
+  ]
+  const ratios = flowInput.map((step) =>
+    step.key === "enrolled"
+      ? computeTrialEnrollmentRate(step.count, completedCount)
+      : step.previous == null
+        ? null
+        : percent(step.count, step.previous)
+  )
+  // 가장 크게 줄어든 단계: 이전 단계 대비 비율이 가장 낮은 단계(같으면 뒤 단계)
+  let dropIndex = -1
+  ratios.forEach((ratio, index) => {
+    if (index === 0 || ratio == null) return
+    if (dropIndex === -1 || Math.round(ratio) <= Math.round(ratios[dropIndex] as number)) dropIndex = index
+  })
+
+  const flow: StudioAnalyticsFlowStep[] = flowInput.map((step, index) => ({
+    key: step.key,
+    label: step.label,
+    count: step.count,
+    widthPercent: applicationCount > 0 ? Math.round((step.count / applicationCount) * 1000) / 10 : 0,
+    fromPrevious: index === 0 ? null : `이전 단계의 ${ratios[index] == null ? "—" : `${Math.round(ratios[index] as number)}%`}`,
+    biggestDrop: index === dropIndex,
+    tone: step.key === "enrolled" ? "brand" : "neutral"
+  }))
+
+  let insight: StudioAnalyticsView["insight"] = null
+  if (applicationCount > 0) {
+    const dropKey = dropIndex > 0 ? (flowInput[dropIndex].key as keyof typeof DROP_SENTENCE) : null
+    const parts = [dropKey ? DROP_SENTENCE[dropKey] : null, input.consideringCount > 0 ? `고민 중인 ${input.consideringCount}명에게 다시 연락해 보세요.` : null].filter(
+      (part): part is string => Boolean(part)
+    )
+    insight = parts.length ? { text: parts.join(" "), showStudents: input.consideringCount > 0 } : null
+  }
+
+  // ── 등록하지 않은 이유 ──────────────────────────────────
+  const cohort = input.applications.filter((item) => isCreatedWithinRange(item, input.range))
+  const notEnrolled = cohort.filter(
+    (item) => getCaseStage({ status: item.status, noShowAt: item.noShowAt, registrationStatus: item.registrationStatus ?? "undecided" }) === "not_enrolled"
+  )
+  const maxReason = Math.max(0, ...metrics.unregisteredReasonCounts.map((item) => item.count))
+  const reasons: StudioAnalyticsReason[] = metrics.unregisteredReasonCounts
+    .map((item) => ({
+      key: item.reason ?? "unrecorded",
+      label: item.reason ? getNotEnrolledReasonLabel(item.reason) ?? "기타" : "사유 기록 없음",
+      count: item.count,
+      order: item.reason ? NOT_ENROLLED_REASON_ORDER.get(item.reason) ?? NOT_ENROLLED_REASONS.length : Number.MAX_SAFE_INTEGER
+    }))
+    .sort((left, right) => right.count - left.count || left.order - right.order)
+    .map((item, index) => ({
+      key: item.key,
+      label: item.label,
+      count: item.count,
+      widthPercent: maxReason > 0 ? Math.round((item.count / maxReason) * 1000) / 10 : 0,
+      top: index === 0 && item.key !== "unrecorded"
+    }))
+
+  // "희망 시간 불일치" 학생이 상담에서 남긴 정규수업 희망 요일 중 가장 많은 요일(같으면 월→일)
+  let reasonDayNote: string | null = null
+  const scheduleStudents = notEnrolled.filter((item) => resolveNotEnrolledReasonIds(item).includes(SCHEDULE_REASON))
+  if (scheduleStudents.length > 0) {
+    const dayCounts = new Map<IsoWeekday, number>()
+    for (const item of scheduleStudents) {
+      const parsed = parseRegularSchedulePreference(item.regularSchedulePreference ?? null)
+      if (parsed.status !== "valid" || parsed.value.state !== "specified") continue
+      const days = new Set<IsoWeekday>()
+      for (const group of parsed.value.groups) {
+        if (group.dayMode === "selected") group.days.forEach((day) => days.add(day))
+      }
+      days.forEach((day) => dayCounts.set(day, (dayCounts.get(day) ?? 0) + 1))
+    }
+    let top: { day: IsoWeekday; count: number } | null = null
+    for (const day of [1, 2, 3, 4, 5, 6, 7] as IsoWeekday[]) {
+      const count = dayCounts.get(day) ?? 0
+      if (count > 0 && (!top || count > top.count)) top = { day, count }
+    }
+    if (top) {
+      const label = getNotEnrolledReasonLabel(SCHEDULE_REASON)
+      reasonDayNote = `"${label}" ${scheduleStudents.length}명 중 ${top.count}명이 ${WEEKDAY_LABEL[top.day]}요일을 원했어요.`
+    }
+  }
+
+  // ── 수업별 전환 ─────────────────────────────────────────
+  const byClass = new Map<string, StudioAnalyticsClassRow>()
+  for (const item of cohort) {
+    const stage = getCaseStage({ status: item.status, noShowAt: item.noShowAt, registrationStatus: item.registrationStatus ?? "undecided" })
+    const row =
+      byClass.get(item.classId) ??
+      ({
+        classId: item.classId,
+        title: item.classTitle?.trim() || "수업",
+        categoryCode: item.classSubjectCategory ?? null,
+        applicationCount: 0,
+        completedCount: 0,
+        enrolledCount: 0,
+        rate: null,
+        rateText: "—"
+      } satisfies StudioAnalyticsClassRow)
+    row.applicationCount += 1
+    // 체험 완료 = 체험을 마친 학생(등록 · 미등록 · 결과 대기 모두). 흐름의 "체험 완료"와 같은 기준이다.
+    if (stage === "completed" || stage === "enrolled" || stage === "not_enrolled") row.completedCount += 1
+    if (stage === "enrolled") row.enrolledCount += 1
+    byClass.set(item.classId, row)
+  }
+  const classRows = Array.from(byClass.values())
+    .map((row) => {
+      const rate = computeTrialEnrollmentRate(row.enrolledCount, row.completedCount)
+      return { ...row, rate: rate == null ? null : Math.round(rate), rateText: formatEnrollmentRate(rate) }
+    })
+    .sort((left, right) => right.applicationCount - left.applicationCount || left.title.localeCompare(right.title, "ko"))
+
+  return {
+    periodLabel: metrics.periodLabel,
+    hasCohort: applicationCount > 0,
+    cards,
+    flow,
+    insight,
+    reasons,
+    reasonDayNote,
+    classRows,
+    metrics
+  }
+}
+
+/** 기간 칩 이름: 이번 달 → "10월", 지난달 → "9월" (Figma 2148:6588) */
+export const resolveAnalyticsMonthLabels = (now: Date = new Date()) => {
+  const kst = new Date(now.getTime() + KST_OFFSET_MS)
+  const month = kst.getUTCMonth() + 1
+  return { thisMonth: `${month}월`, lastMonth: `${month === 1 ? 12 : month - 1}월` }
+}

@@ -49,6 +49,7 @@ type Fixture = {
   noShowAt?: string | null
   confirmedBlockEndAt?: string | null
   unregisteredReason?: StudioApplicationSummary["unregisteredReason"]
+  registrationReasonIds?: string[]
 }
 
 const application = (fixture: Fixture): StudioApplicationSummary =>
@@ -62,6 +63,7 @@ const application = (fixture: Fixture): StudioApplicationSummary =>
     status: fixture.status,
     registrationStatus: fixture.registrationStatus,
     unregisteredReason: fixture.unregisteredReason ?? null,
+    registrationReasonIds: fixture.registrationReasonIds ?? [],
     noShowAt: fixture.noShowAt ?? null,
     confirmedBlockStartAt: null,
     confirmedBlockEndAt: fixture.confirmedBlockEndAt ?? null,
@@ -126,7 +128,8 @@ console.log("\n[1] canonical fixture — Dashboard = Report")
   check(countOf(model, "enrolled") === 3, `등록이 다르다: ${countOf(model, "enrolled")}`)
   check(decisionOf(model, "not_enrolled") === 2, "미등록이 다르다")
   check(decisionOf(model, "pending") === 1, "결정 대기가 다르다")
-  check(model.conversionRateLabel === "60.0%", `전환율이 다르다: ${model.conversionRateLabel}`)
+  // 전환율 = 등록 ÷ 체험 완료(computeTrialEnrollmentRate) = 3 / 6
+  check(model.conversionRateLabel === "50%", `전환율이 다르다: ${model.conversionRateLabel}`)
 
   // 리포트가 독자 계산하면 여기서 갈린다.
   metrics.steps.forEach((step) => {
@@ -173,8 +176,9 @@ console.log("\n[3] 결정 대기 — undecided / pending")
   check(decisionOf(model, "pending") === 2, `결정 대기가 2가 아니다: ${decisionOf(model, "pending")}`)
   check(decisionOf(model, "enrolled") === 0, "대기가 등록에 섞였다")
   check(decisionOf(model, "not_enrolled") === 0, "대기가 미등록에 섞였다")
-  check(model.conversionRateLabel === "—", "결정 완료 0인데 전환율이 계산됐다")
-  passLine(before, "undecided · pending 모두 결정 대기")
+  // 결과 대기도 분모(체험 완료)에 들어간다 — 등록 0 / 체험 완료 2 = 0%
+  check(model.conversionRateLabel === "0%", `결과 대기만 있는데 전환율이 0% 가 아니다: ${model.conversionRateLabel}`)
+  passLine(before, "undecided · pending 모두 결정 대기 · 전환율 0%")
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -232,7 +236,7 @@ console.log("\n[6] 취소·노쇼는 신청 수에만 포함된다")
   ])
   check(countOf(model, "application") === 3, "신청 수에 취소·노쇼가 빠졌다")
   check(countOf(model, "in_trial") === 1, "취소·노쇼가 이후 단계에 셌다")
-  check(model.applicationFootnote.includes("취소·노쇼"), "각주 문구가 없다")
+  check(model.applicationFootnote.includes("취소·불참"), "각주 문구가 없다")
   passLine(before, "취소·노쇼는 신청 수에만 · 각주로 안내")
 }
 
@@ -279,17 +283,28 @@ console.log("\n[8] 미등록 사유 — 같은 cohort · 합계 불변")
     application({ id: "4", status: "completed", registrationStatus: "not_enrolled", unregisteredReason: "class_level_mismatch" })
   ])
 
+  // 옛 단일 사유(unregistered_reason)는 새 목록(NOT_ENROLLED_REASONS)으로 옮겨 센다.
   const byLabel = new Map(analytics.unregisteredReasons.map((item) => [item.label, item.count]))
-  check(byLabel.get("일정 불일치") === 2, `일정 불일치가 2가 아니다: ${byLabel.get("일정 불일치")}`)
+  check(byLabel.get("희망 시간 불일치") === 2, `희망 시간 불일치가 2가 아니다: ${byLabel.get("희망 시간 불일치")}`)
   check(byLabel.get("비용 부담") === 1, "비용 부담이 1이 아니다")
-  check(byLabel.get("수업/레벨 불일치") === 1, "수업/레벨 불일치가 1이 아니다")
+  check(byLabel.get("원하는 과정·레벨 없음") === 1, "원하는 과정·레벨 없음이 1이 아니다")
   check(metrics.notEnrolledCount === 4, "미등록 수가 4가 아니다")
   check(
     analytics.unregisteredReasons.reduce((sum, item) => sum + item.count, 0) === metrics.notEnrolledCount,
-    "사유 합계가 미등록 수와 다르다"
+    "사유 하나씩일 때 합계가 미등록 수와 다르다"
   )
-  check(analytics.unregisteredReasons[0]?.label === "일정 불일치", "많은 순 정렬이 아니다")
-  passLine(before, "일정 불일치 2 · 비용 부담 1 · 수업/레벨 1 → 합계 = 미등록 4")
+  check(analytics.unregisteredReasons[0]?.label === "희망 시간 불일치", "많은 순 정렬이 아니다")
+
+  // 새 사유(registration_reason_ids, 복수)가 있으면 그걸 세고 옛 값은 보지 않는다.
+  const multi = buildBoth([
+    application({ id: "m1", status: "completed", registrationStatus: "not_enrolled", unregisteredReason: "cost_burden", registrationReasonIds: ["schedule_mismatch", "distance_or_transport"] }),
+    application({ id: "m2", status: "completed", registrationStatus: "not_enrolled", registrationReasonIds: ["schedule_mismatch"] })
+  ]).analytics.unregisteredReasons
+  const multiByKey = new Map(multi.map((item) => [item.key, item.count]))
+  check(multiByKey.get("schedule_mismatch") === 2 && multiByKey.get("distance_or_transport") === 1, "새 사유를 세지 않았다")
+  check(!multiByKey.has("price_burden"), "새 사유가 있는데 옛 사유도 셌다")
+  check(multi.reduce((sum, item) => sum + item.count, 0) === 3, "복수 사유는 사유마다 1명으로 센다(합계 3 > 미등록 2)")
+  passLine(before, "희망 시간 불일치 2 · 비용 부담 1 · 과정·레벨 1 → 합계 = 미등록 4 · 복수 사유는 사유마다")
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -304,7 +319,7 @@ console.log("\n[9] 사유 미기록도 버리지 않는다")
 
   const missing = analytics.unregisteredReasons.find((item) => item.key === "unrecorded")
   check(missing?.count === 2, `사유 미기록이 2가 아니다: ${missing?.count}`)
-  check(missing?.label === "미등록 사유 미기록", `기존 문구와 다르다: ${missing?.label}`)
+  check(missing?.label === "사유 기록 없음", `문구가 다르다: ${missing?.label}`)
   check(
     analytics.unregisteredReasons.reduce((sum, item) => sum + item.count, 0) === metrics.notEnrolledCount,
     "사유 미기록을 빼서 합계가 어긋났다"

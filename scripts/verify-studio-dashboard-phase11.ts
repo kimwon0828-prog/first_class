@@ -34,7 +34,10 @@ const rows: StudioApplicationSummary[] = [
 const metrics = buildStudioDashboardMetrics(rows, range, now)
 assert.deepEqual(metrics.steps.map(step => step.count), [8, 4, 4, 3, 1])
 assert.deepEqual(metrics.trialOutcomes, { completed: 3, noShow: 1, canceled: 1, pending: 3 })
-assert.equal(metrics.registrationConversionRate, 50)
+// 전환율 = 등록 ÷ 체험 완료(computeTrialEnrollmentRate) = 1 / 3 → 33.3, 화면 "33%"
+assert.equal(metrics.registrationConversionRate, 33.3)
+assert.equal(metrics.completedCount, 3)
+assert.equal(metrics.pendingDecisionCount, 1)
 const analytics = buildStudioDashboardAnalytics(metrics)
 assert.equal(analytics.donutTotal, 3)
 assert.deepEqual(analytics.donutSegments.map(segment => segment.count), [1, 1, 1])

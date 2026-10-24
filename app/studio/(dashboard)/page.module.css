@@ -569,6 +569,11 @@
   letter-spacing: -0.2px;
 }
 
+/* 결과 대기 N명 — 캡션 안의 보조 표기(ink/400) */
+.captionMuted {
+  color: var(--sv2-ink-400);
+}
+
 .cardCaption {
   margin: 0;
   color: var(--sv2-ink-500);

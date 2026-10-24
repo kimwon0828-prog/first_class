@@ -812,6 +812,13 @@ export type StudioApplicationSummary = TrialApplicationSummary & {
   registrationStatus: ApplicationRegistrationStatus
   /** 미등록으로 종결한 Case 의 현재 사유. 그 외 상태에서는 의미 없는 값이다. */
   unregisteredReason: ApplicationUnregisteredReason | null
+  /**
+   * 등록 결과의 사유(복수 선택, registration-input.ts 의 목록). 미등록이면 NOT_ENROLLED_REASONS 값이다.
+   * 분석 화면이 읽는다. 목록 조회만 채우고, 다른 summary 호출자는 생략할 수 있다.
+   */
+  registrationReasonIds?: string[]
+  /** 상담에서 기록한 정규수업 희망 일정(raw jsonb). parseRegularSchedulePreference 로 읽는다. */
+  regularSchedulePreference?: unknown
 }
 
 export type StudioApplicationListOptions = {
