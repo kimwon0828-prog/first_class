@@ -13,7 +13,7 @@ import { V2Chip, v2ChipClassName, v2ChipPartClassName } from "@/features/studio/
 import { V2CheckIcon, V2PlusIcon, V2SearchIcon, V2SmallXIcon } from "@/features/studio/ui/v2/v2-icons"
 import { V2StatusBadge } from "@/features/studio/ui/v2/v2-status-badge"
 import { V2SubjectIcon3D } from "@/features/studio/ui/v2/v2-subject-icon-3d"
-import { isStudentInTab, STUDENT_TABS, type StudentListRow, type StudentTab } from "@/features/students/lib/student-grouping"
+import { isStudentInTab, STUDENT_LOCK_LABELS, STUDENT_TABS, type StudentListRow, type StudentTab } from "@/features/students/lib/student-grouping"
 import { RECONTACT_PER_BATCH } from "@/features/students/lib/recontact-message"
 import { LEARNER_GRADES } from "@/shared/constants/education-taxonomy"
 import { getSubjectCategoryLabel } from "@/shared/lib/subject-master"
@@ -273,7 +273,7 @@ export function StudentsBoard({ rows, initialTab, renderPanel }: StudentsBoardPr
                         <StudentCheckbox
                           checked={checked}
                           disabled={Boolean(row.lock)}
-                          label={row.lock ? `${row.name} — 수신 동의가 없어 고를 수 없어요` : `${row.name} 고르기`}
+                          label={row.lock ? `${row.name} — ${STUDENT_LOCK_LABELS[row.lock].long}` : `${row.name} 고르기`}
                           onChange={() => toggle(row.applicationId)}
                         />
                         <span className={styles.subject}><V2SubjectIcon3D categoryCode={row.subjectCategory} size={36} /></span>
@@ -293,7 +293,7 @@ export function StudentsBoard({ rows, initialTab, renderPanel }: StudentsBoardPr
                         </span>
                         <span className={`${styles.colLast} ${styles.lastCell}`}>
                           <span className={styles.lastDate}>{row.lastContact ? formatMonthDay(row.lastContact.at) : "—"}</span>
-                          <span className={styles.lastKind}>{row.lock ? "수신 동의 안 함" : row.lastContact?.kind ?? ""}</span>
+                          <span className={styles.lastKind}>{row.lock ? STUDENT_LOCK_LABELS[row.lock].short : row.lastContact?.kind ?? ""}</span>
                         </span>
                       </li>
                     )

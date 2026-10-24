@@ -54,7 +54,7 @@ const SEND_CONCURRENCY = 5
 
 const RESERVE_ERRORS: Record<string, string> = {
   recontact_plan_required: "안내 보내기는 스탠다드 플랜에서 쓸 수 있어요.",
-  recontact_no_eligible_recipient: "수신 동의한 보호자가 없어 보내지 않았어요. 동의 상태를 다시 확인해 주세요.",
+  recontact_no_eligible_recipient: "보낼 수 있는 보호자가 없어 보내지 않았어요. 수신 동의 · 휴대폰 인증 상태를 다시 확인해 주세요.",
   recontact_recipient_count_invalid: `한 번에 ${RECONTACT_PER_BATCH}명까지 보낼 수 있어요.`,
   recontact_class_forbidden: "함께 보낼 수업을 다시 골라 주세요.",
   recontact_batch_conflict: "화면을 새로 고친 뒤 다시 보내 주세요."
@@ -64,8 +64,9 @@ const RESERVE_ERRORS: Record<string, string> = {
  * 학생에게 안내 보내기(다시 연락 문자, 2차-3). AGENTS.md "학생 · 안내 문자".
  *
  * 확인 순서: 학원 계정 → 스탠다드 → 로컬 가드 → 080 번호 → 학원 대표번호 → 시간(08~21시 KST) → 입력
- * → 자리 잡기 RPC(스탠다드 · 동의 · 080 · 파기 · 같은 번호 · 1회 50명 · 월 200건 · 중복 클릭)
- * → 받는 사람마다 보내기 → 결과 기록. 보내지 못한 건 · dry_run 은 한도에서 빠진다.
+ * → 자리 잡기 RPC(스탠다드 · 동의 · 계정 번호 · 080 · 파기 · 같은 번호 · 1회 50명 · 월 200건 · 중복 클릭)
+ * → 받는 사람마다 학부모 계정 번호로 보내기 → 결과 기록. 보내지 못한 건 · dry_run 은 한도에서 빠진다.
+ * 080 거부로 NCP 가 걸러낸 건은 매일 동기화(/api/cron/marketing-opt-out-sync)가 opted_out 으로 바꾼다.
  */
 export async function sendRecontactAction(input: SendRecontactInput): Promise<SendRecontactResult> {
   const teacher = await requireTeacherStudioAccess()
@@ -160,14 +161,24 @@ export async function sendRecontactAction(input: SendRecontactInput): Promise<Se
     return { status: "error", message: getRecontactBlockNotice("limit", remaining).message, remaining }
   }
 
+  // 받는 번호 = 학부모 계정 번호(DB 가 자리 잡을 때 고른 번호). 신청서 번호로는 보내지 않는다.
+  let phoneByRecipient: Map<string, string | null>
+  try {
+    const phones = await dataAdapter.listRecontactRecipientPhones(organizationId, input.batchId)
+    phoneByRecipient = new Map(phones.map((item) => [item.recipientId, item.phone]))
+  } catch {
+    phoneByRecipient = new Map()
+  }
+
   // 받는 사람마다 보낸다(동시에 5통씩). 문자 차단 스위치가 꺼져 있으면 sendSms 가 dry_run 으로 돌려준다.
   const results: RecontactDeliveryResult[] = []
   const queue = [...reserved.recipients]
   const worker = async () => {
     for (let next = queue.shift(); next; next = queue.shift()) {
       const application = applicationById.get(next.applicationId)
-      if (!application) {
-        results.push({ recipientId: next.recipientId, status: "failed", providerMessageId: null, errorCode: "recipient_unresolved", sentAt: null })
+      const phone = phoneByRecipient.get(next.recipientId) ?? null
+      if (!application || !phone) {
+        results.push({ recipientId: next.recipientId, status: "failed", providerMessageId: null, errorCode: application ? "recipient_phone_unresolved" : "recipient_unresolved", sentAt: null })
         continue
       }
       const message = renderRecontactMessage({
@@ -185,7 +196,7 @@ export async function sendRecontactAction(input: SendRecontactInput): Promise<Se
       }
       const sent = await sendSms({
         recipientType: "parent",
-        phone: application.parentPhone,
+        phone,
         messagePreview: message,
         contentType: "AD",
         subject: `(광고) ${sender.academyName}`
@@ -216,7 +227,7 @@ export async function sendRecontactAction(input: SendRecontactInput): Promise<Se
   const failedIds = results.filter((item) => item.status === "failed").map((item) => recipientById.get(item.recipientId)).filter((id): id is string => Boolean(id))
   const remaining = Math.max(0, reserved.limit - reserved.used + failedIds.length + dryRun)
   const delivered = sent + dryRun
-  const skippedNote = reserved.skipped > 0 ? ` (수신 동의 · 같은 번호로 ${reserved.skipped}명은 뺐어요)` : ""
+  const skippedNote = reserved.skipped > 0 ? ` (수신 동의 · 휴대폰 인증 · 같은 번호로 ${reserved.skipped}명은 뺐어요)` : ""
   const dryRunNote = dryRun > 0 ? " 문자 차단 스위치가 꺼져 있어 실제로는 가지 않았어요(시험 발송)." : ""
 
   if (failedIds.length > 0) {
