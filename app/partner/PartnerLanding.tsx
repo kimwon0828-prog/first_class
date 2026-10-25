@@ -10,12 +10,6 @@ import { STANDARD_TRIAL_DAYS, TRIAL_CARD_WINDOW_DAYS } from "@/features/billing/
 import { COMPANY_ADDRESS, COMPANY_EMAIL_HREF, COMPANY_INFO } from "@/shared/config/company-info"
 import { getStudioCrossProductHrefResolver } from "@/shared/lib/cross-product-navigation-server"
 
-/*
-  학원 소식 보내기(다시 연락 문자)가 열리면 true 로 바꾼다.
-  false 인 동안 기능 섹션(학원 소식)에 "곧 열려요"가 붙는다.
-*/
-const ACADEMY_NEWS_OPEN = false
-
 const IMAGE_DIR = "/images/partner/v2"
 
 // 금액의 주인은 plan-catalog.ts 다. 부가세 포함 총액이라 "부가세 별도"를 붙이지 않는다.
@@ -99,8 +93,7 @@ const features = [
     title: ["등록하지 않은 학생도", "다시 만나요"],
     body: "관심 과목·학년으로 골라 새 반·특강 소식을 한 번에 보내요. 수신에 동의한 보호자에게 첫수업이 대신 보내 드려요.",
     image: "partner-feature-recontact.png",
-    alt: "학생 화면. 조건으로 고른 학생 3명에게 새 반 안내 문자를 보내는 패널",
-    soon: !ACADEMY_NEWS_OPEN
+    alt: "학생 화면. 조건으로 고른 학생 3명에게 새 반 안내 문자를 보내는 패널"
   },
   {
     eyebrow: "분석",
@@ -377,7 +370,6 @@ export default async function PartnerLanding() {
                 <div className={styles.featureText}>
                   <div className={styles.featureEyebrowRow}>
                     <p className={styles.eyebrow}>{feature.eyebrow}</p>
-                    {feature.soon ? <span className={`${styles.badge} ${styles.badgeSoon}`}>곧 열려요</span> : null}
                   </div>
                   <h3 className={styles.featureTitle}>
                     {feature.title[0]}
