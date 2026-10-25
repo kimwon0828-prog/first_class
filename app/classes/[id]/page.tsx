@@ -5,7 +5,6 @@ import { ParentBackLink } from "@/features/classes/ui/parent-back-link"
 import { getPublicClassFeedback } from "@/features/feedback/queries/get-public-feedback"
 import { PublicFeedback } from "@/features/feedback/ui/public-feedback"
 import { formatRegularPrice } from "@/shared/lib/regular-price"
-import { formatDiscoveryPrice } from "@/features/classes/lib/class-discovery-results"
 import Link from "next/link"
 
 import { formatStoredTargetGrades } from "@/shared/constants/grade-options"
@@ -216,9 +215,10 @@ export default async function ClassDetailPage({ params, searchParams }: ClassDet
           classId={classItem.id} classTitle={classItem.title} classTargetAge={classItem.targetAge}
           availableSlots={slots} slotsError={slotsError} childProfiles={children} childProfilesError={childrenError}
           parentName={profile?.name ?? ""} parentPhone={profile?.phone ?? null}
-          academyName={organizationLabel || null} trialPriceLabel={formatDiscoveryPrice(classItem)}
-          hasSession={Boolean(session) && !phoneGate} isParentUser={isParentUser && !phoneGate} signInHref={signInHref}
-          ctaLabel={`${price.free ? "무료 " : ""}${kind} 신청하기`} retryHref={detailHref}
+          placeLabel={[organizationLabel, administrativeRegionLabel].filter(Boolean).join(" · ") || null}
+          priceLabel={appPriceInfo(classItem.programType, classItem.trialPrice, classItem.trialPriceConfirmed, classItem.programType === "level_test" ? "레벨테스트" : "체험수업").label}
+          hasSession={Boolean(session) && !phoneGate} isParentUser={isParentUser && !phoneGate} signInHref={signInHref} now={now}
+          submitLabel={`${price.free ? "무료 " : ""}${kind} 신청하기`} retryHref={detailHref}
           secondaryAction={favorite(ui.squareFavorite, 22)} />
       </ClassDetailBookingProvider>
     </ParentAppShell>

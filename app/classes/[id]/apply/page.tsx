@@ -1,15 +1,14 @@
-import { formatDiscoveryPrice } from "@/features/classes/lib/class-discovery-results"
-import Link from "next/link"
-
-import { formatStoredTargetGrades } from "@/shared/constants/grade-options"
-import { formatClassSubjectDisplayLabel } from "@/shared/lib/subject-master"
 import { getMyProfile } from "@/features/auth/lib/profile-sync"
 import { requireSession } from "@/features/auth/lib/session"
 import { getClassAvailableSlots } from "@/features/applications/queries/get-class-available-slots"
 import { getPublicClassDetail } from "@/features/classes/queries/get-public-class-detail"
 import { getMyChildren } from "@/features/children/queries/get-my-children"
-import { ApplyForm } from "@/features/applications/ui/apply-form"
-import styles from "./page.module.css"
+import { TrialApplicationSteps } from "@/features/applications/ui/trial-application-steps"
+import { appPriceInfo } from "@/features/classes/lib/app-presentation"
+import { formatAdministrativeRegionLabel } from "@/features/location/lib/region-selection"
+import { ParentAppShell } from "@/features/classes/ui/parent-app-shell"
+import { ParentHeader } from "@/features/classes/ui/parent-header"
+import { AppButtonLink, AppNotice, PriceText, appUi as ui } from "@/features/classes/ui/parent-app-ui"
 import { resolveStudioCrossProductHref } from "@/shared/lib/cross-product-navigation-server"
 
 type ApplyPageProps = {
@@ -20,31 +19,10 @@ type ApplyPageProps = {
 }
 
 /** 체험수업 / 레벨테스트. 신청 전에는 "예약" 이라고 부르지 않는다. */
-const resolveProgramTypeLabel = (programType: string | null | undefined) =>
-  programType === "level_test" ? "레벨테스트" : "체험수업"
+const resolveApplyPageTitle = (programType: string | null | undefined) =>
+  programType === "level_test" ? "레벨테스트 신청" : "체험수업 신청"
 
-const resolveApplyPageTitle = (programType: string | null | undefined) => {
-  if (programType === "level_test") {
-    return "레벨테스트 신청"
-  }
-
-  return "체험수업 신청"
-}
-
-const resolveApplyCardSubtitle = (
-  academyName: string | null,
-  assignmentMode: "post_assign" | "preassigned" | null | undefined
-) => {
-  // 선생님은 학원 내부 명부라 학부모 화면에 이름을 노출하지 않는다.
-  if (assignmentMode === "post_assign") {
-    return academyName
-      ? `${academyName} · 담당 선생님은 신청 후 배정됩니다.`
-      : "담당 선생님은 신청 후 배정됩니다."
-  }
-
-  return academyName || "정보 준비 중"
-}
-
+/** 앱 신청 시트와 같은 3단계를 한 페이지로(바로 들어온 주소용). 수업 상세에서는 시트로 연다. */
 export default async function ClassApplyPage({ params, searchParams }: ApplyPageProps) {
   const resolvedParams = await params
   const child = (await searchParams)?.child
@@ -59,121 +37,37 @@ export default async function ClassApplyPage({ params, searchParams }: ApplyPage
         ? getMyChildren()
         : Promise.resolve({ data: [], error: null })
     ])
-  const pageTitle = resolveApplyPageTitle(classItem?.programType)
+  const detailHref = `/classes/${resolvedParams.id}`
   const academyName =
     [classItem?.organization?.name?.trim() || null, classItem?.organization?.branchName?.trim() || null]
       .filter((value): value is string => Boolean(value))
       .join(" ")
       .trim() || null
-  const cardSubtitle = resolveApplyCardSubtitle(academyName, classItem?.assignmentMode)
+  const region = classItem?.organization ? formatAdministrativeRegionLabel(classItem.organization) : null
+  const kind = classItem?.programType === "level_test" ? "레벨테스트" : "체험"
+  const price = classItem ? appPriceInfo(classItem.programType, classItem.trialPrice, classItem.trialPriceConfirmed) : null
 
-  return (
-    <main
-      className={styles.page}
-      style={{ background: "#ffffff", minHeight: "100dvh", width: "100%", overflowX: "hidden" }}
-    >
-      <div
-        className={styles.shell}
-        style={{
-          boxSizing: "border-box",
-          width: "100%",
-          maxWidth: 430,
-          margin: "0 auto",
-          minHeight: "100dvh",
-          background: "#ffffff",
-          padding: "calc(14px + env(safe-area-inset-top)) 24px calc(110px + env(safe-area-inset-bottom))"
-        }}
-      >
-        <header className={styles.topBar}>
-          <Link
-            href={`/classes/${resolvedParams.id}`}
-            className={styles.iconButton}
-            aria-label="뒤로가기"
-          >
-            <svg
-              width="20"
-              height="20"
-              viewBox="0 0 24 24"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-              aria-hidden="true"
-            >
-              <path
-                d="M15 18l-6-6 6-6"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-          </Link>
-          <h1 className={styles.pageTitle}>{pageTitle}</h1>
-        </header>
-
-        <div className={styles.stack}>
-          {error ? (
-            <section className={`${styles.card} ${styles.dangerCard}`}>
-              <p className={styles.dangerText}>{error}</p>
-              <Link href={`/classes/${resolvedParams.id}`} className={styles.link}>
-                수업 상세로 돌아가기
-              </Link>
-            </section>
-          ) : null}
-
-          {!error && !classItem ? (
-            <section className={styles.card}>
-              <p className={styles.summaryMeta}>신청할 수업 정보를 찾을 수 없습니다.</p>
-            </section>
-          ) : null}
-
-          {!error && classItem ? (
-            <>
-              {!profile ? (
-                <section className={`${styles.card} ${styles.dangerCard}`}>
-                  <p className={styles.dangerText}>신청 권한을 확인할 수 없습니다.</p>
-                  <Link href={`/classes/${resolvedParams.id}`} className={styles.link}>
-                    수업 상세로 돌아가기
-                  </Link>
-                </section>
-              ) : profile.role === "academy" || profile.role === "admin" ? (
-                <section className={`${styles.card} ${styles.dangerCard}`}>
-                  <p className={styles.dangerText}>
-                    학원 계정은 체험수업을 신청할 수 없어요. 수업 관리는 스튜디오에서 진행해주세요.
-                  </p>
-                  <Link href={await resolveStudioCrossProductHref("/studio")} className={styles.link}>
-                    스튜디오로 이동
-                  </Link>
-                </section>
-              ) : null}
-
-              <section className={styles.card}>
-                <h2 className={styles.cardTitle}>신청할 수업</h2>
-                <p className={styles.summaryName}>{classItem.title}</p>
-                <p className={styles.summaryMeta}>{cardSubtitle}</p>
-                <p className={styles.summaryMeta}>
-                  {resolveProgramTypeLabel(classItem.programType)} ·{" "}
-                  {formatClassSubjectDisplayLabel(classItem) || "과목 정보 준비 중"}
-                </p>
-                <p className={styles.summaryMeta}>대상 학년: {formatStoredTargetGrades(classItem.targetAge)}</p>
-                <p className={styles.summaryPrice}>{formatDiscoveryPrice(classItem)}</p>
-              </section>
-
-              {profile?.role === "parent" ? (
-                <ApplyForm
-                  classId={classItem.id}
-                  classTargetAge={classItem.targetAge}
-                  availableSlots={slots}
-                  slotsError={slotsError}
-                  childProfiles={children}
-                  childProfilesError={childrenError}
-                  parentName={profile.name}
-                  parentPhone={profile.phone}
-                />
-              ) : null}
-            </>
-          ) : null}
-        </div>
-      </div>
-    </main>
-  )
+  return <ParentAppShell navigation={false} className={ui.page}>
+    <div className={ui.column}>
+      <ParentHeader title={resolveApplyPageTitle(classItem?.programType)} backHref={detailHref} />
+      {error ? <div className={ui.content}><AppNotice message={error} retryHref={returnTo}><AppButtonLink href={detailHref} variant="secondary">수업 상세로 돌아가기</AppButtonLink></AppNotice></div>
+        : !classItem ? <div className={ui.content}><AppNotice message="신청할 수업 정보를 찾을 수 없어요."><AppButtonLink href="/classes" variant="secondary">수업 찾기로 돌아가기</AppButtonLink></AppNotice></div>
+        : !profile ? <div className={ui.content}><AppNotice message="신청 권한을 확인할 수 없어요. 잠시 후 다시 시도해 주세요." retryHref={returnTo} /></div>
+        : profile.role !== "parent" ? <div className={ui.content}><AppNotice message="학원 계정은 체험수업을 신청할 수 없어요. 수업 관리는 스튜디오에서 진행해주세요.">
+          <AppButtonLink href={await resolveStudioCrossProductHref("/studio")} variant="secondary">스튜디오로 이동</AppButtonLink>
+        </AppNotice></div>
+        : <TrialApplicationSteps mode="page"
+          classId={classItem.id} classTargetAge={classItem.targetAge} availableSlots={slots} slotsError={slotsError}
+          childProfiles={children} childProfilesError={childrenError} parentName={profile.name} parentPhone={profile.phone}
+          classTitle={classItem.title} placeLabel={[academyName, region].filter(Boolean).join(" · ") || null}
+          priceLabel={appPriceInfo(classItem.programType, classItem.trialPrice, classItem.trialPriceConfirmed, classItem.programType === "level_test" ? "레벨테스트" : "체험수업").label}
+          submitLabel={`${price?.free ? "무료 " : ""}${kind} 신청하기`}
+          hasSession isParentUser signInHref={`/auth/sign-in?returnTo=${encodeURIComponent(returnTo)}`} now={Date.now()}
+          summary={<div className={ui.softBox}>
+            <p className={ui.subtitle}>{classItem.title}</p>
+            {academyName ? <p className={ui.caption}>{academyName}</p> : null}
+            {price ? <PriceText price={price} /> : null}
+          </div>} />}
+    </div>
+  </ParentAppShell>
 }
