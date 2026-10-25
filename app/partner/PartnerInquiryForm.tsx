@@ -5,7 +5,7 @@ import { useState } from "react"
 
 import { PARTNER_INQUIRY_HONEYPOT_FIELD } from "@/features/partner/lib/partner-inquiry"
 
-import styles from "./partner.module.css"
+import styles from "./partner-v2.module.css"
 
 type SubmitStatus = "idle" | "success" | "error"
 

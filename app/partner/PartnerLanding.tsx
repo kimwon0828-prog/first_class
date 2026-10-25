@@ -1,212 +1,221 @@
 import Image from "next/image"
 import Link from "next/link"
+import type { CSSProperties } from "react"
 
-import PartnerCopyButton from "./PartnerCopyButton"
 import PartnerInquiryForm from "./PartnerInquiryForm"
 import PartnerLossCalculator from "./PartnerLossCalculator"
-import styles from "./partner.module.css"
+import PersonPictogram from "./PersonPictogram"
+import styles from "./partner-v2.module.css"
 import { BILLING_GRACE_PERIOD_DAYS, BILLING_PLANS } from "@/features/billing/lib/plan-catalog"
 import { STANDARD_TRIAL_DAYS, TRIAL_CARD_WINDOW_DAYS } from "@/features/billing/lib/standard-trial"
-import { COMPANY_ADDRESS, COMPANY_INFO } from "@/shared/config/company-info"
+import { COMPANY_ADDRESS, COMPANY_EMAIL_HREF, COMPANY_INFO } from "@/shared/config/company-info"
 import { getStudioCrossProductHrefResolver } from "@/shared/lib/cross-product-navigation-server"
 
-const TALLY_URL = "https://tally.so/r/b5XeNL"
-const PARTNER_LINK = "firstsuup.com/c/은행사거리-○○학원"
+/*
+  학원 소식 보내기(다시 연락 문자)가 열리면 true 로 바꾼다.
+  false 인 동안 기능 섹션과 요금 카드에 "곧 열려요"가 붙는다.
+*/
+const ACADEMY_NEWS_OPEN = false
+
+const IMAGE_DIR = "/images/partner/v2"
+
+// 금액의 주인은 plan-catalog.ts 다. 부가세 포함 총액이라 "부가세 별도"를 붙이지 않는다.
+const STANDARD_AMOUNT_TEXT = `${BILLING_PLANS.standard.amount.toLocaleString("ko-KR")}원`
 
 const navItems = [
-  { href: "#why", label: "왜 필요한가" },
-  { href: "#link", label: "도입 방식" },
-  { href: "#features", label: "핵심 기능" },
-  { href: "#compare", label: "기존 방식과 비교" },
-  { href: "#price", label: "요금" }
-]
-
-const STANDARD_PRICE_TEXT = `월 ${BILLING_PLANS.standard.amount.toLocaleString("ko-KR")}원`
-
-const stripItems = [
-  `입점 승인 후 Standard ${STANDARD_TRIAL_DAYS}일 무료 체험`,
-  "체험 기록과 학부모 리포트는 Free로 시작",
-  `등록 전환 분석은 Standard ${STANDARD_PRICE_TEXT}`
-]
-
-const flowCards = [
-  {
-    number: "01",
-    title: ["문의가 채널마다", "따로 들어옵니다"],
-    description:
-      "전화·카톡·네이버 플레이스에 문의가 흩어져 나중에 다시 찾기 어렵습니다."
-  },
-  {
-    number: "02",
-    title: ["체험은 왔는데", "시간이 안 맞습니다"],
-    description:
-      "아이도 수업을 좋아했지만 원하는 요일이나 시간이 없으면 등록으로 이어지지 않습니다."
-  },
-  {
-    number: "03",
-    title: ["새 반을 열어도", "부를 사람을 모릅니다"],
-    description:
-      "희망 일정이 기록되지 않아 새 반이 생겨도 다시 연락할 학생을 찾기 어렵습니다.",
-    emphasized: true
-  }
+  { href: "#features", label: "기능" },
+  { href: "#price", label: "요금" },
+  { href: "#faq", label: "자주 묻는 질문" }
 ]
 
 const stats = [
-  { value: "95%", description: "최근 3개월 안에 놓친 경험이 있다" },
-  { value: "32%", description: "노쇼·참석 확인이 늦어 대응하지 못했다" },
-  { value: "26%", description: "상담 내용·레벨테스트 결과가 빠졌다" },
-  { value: "66%", description: "등록 여부를 엑셀·수기·카톡으로 확인한다" }
-]
-
-const channels = [
-  { label: "네이버 플레이스", tag: "링크 걸기" },
-  { label: "블로그 · 인스타그램 프로필", tag: "링크 걸기" },
-  { label: "카카오톡 채널 · 학부모 단톡방", tag: "링크 걸기" },
-  { label: "학원 앞 배너 · 전단지", tag: "QR 인쇄" }
-]
-
-const featureCards = [
   {
-    title: ["신청부터 등록까지", "상태가 끊기지 않습니다"],
-    description:
-      "신청·확정·변경·취소·노쇼·완료·등록을 하나의 흐름으로 관리합니다."
+    value: 66,
+    headline: "10명 중 약 7명",
+    description: ["체험 후 등록 여부를", "엑셀·카톡·기억으로 확인해요"],
+    note: "CRM에서 확인한다는 곳은 34%"
   },
   {
-    title: ["미등록 학생도", "다음 기회로 남습니다"],
-    description:
-      "등록하지 않은 이유와 상담 내용을 남겨 방학·학기 초에 다시 연락할 수 있습니다."
+    value: 32,
+    headline: "10명 중 약 3명",
+    description: ["최근 3개월 사이", "노쇼·참석 확인이 늦어졌어요"],
+    note: "상담·레벨테스트 결과 누락도 26%"
   },
   {
-    title: ["새 반을 열 때", "근거가 생깁니다"],
-    description:
-      "희망 요일·시간을 확인해 실제 수요를 보고 반을 구성할 수 있습니다."
+    value: 45,
+    headline: "10명 중 4~5명",
+    description: ["가장 먼저 필요한 기능으로", "\"상담·레벨테스트 기록\"을 골랐어요"],
+    note: "자동 알림·리마인드가 그다음"
   }
 ]
 
-const compareRows = [
+const pillars = [
   {
-    moment: "체험 문의",
-    currentTitle: "채널마다 따로 들어옵니다",
-    currentDescription:
-      "전화·카톡·플레이스에 문의가 흩어집니다.",
-    partnerTitle: "신청 링크 하나로 들어옵니다",
-    partnerDescription:
-      "신청 정보가 한곳에 모여 이후 관리까지 이어집니다."
+    icon: "icon-parent-booking.png",
+    title: "학부모가 먼저 찾아와요",
+    body: "학부모 앱에서 아이 학년에 맞는 체험수업을 보고 직접 예약해요. 전화 상담 없이 방문까지 이어져요.",
+    checks: ["학년·과목별 노출", "남은 자리·시간 표시", "예약 전날 자동 알림"]
   },
   {
-    moment: "체험 당일",
-    currentTitle: "왔는지 안 왔는지 나중에 압니다",
-    currentDescription:
-      "별도로 적지 않으면 참석·노쇼 기록이 남지 않습니다.",
-    partnerTitle: "참석과 노쇼가 기록으로 남습니다",
-    partnerDescription:
-      "체험 결과가 학생 기록과 바로 연결됩니다."
+    icon: "icon-record-report.png",
+    title: "체험이 등록으로 이어져요",
+    body: "체험이 끝나면 기록을 쓰고 리포트를 보내요. 학부모는 리포트를 보고 등록을 결정해요.",
+    checks: ["6단계로 정리되는 신청", "기록 → 학부모 리포트", "등록 결과·이유 기록"]
   },
   {
-    moment: "시간이\n안 맞아 보류",
-    currentTitle: '"시간이 안 맞네요"로 끝납니다',
-    currentDescription:
-      "원했던 요일과 시간이 담당자의 기억에만 남습니다.",
-    partnerTitle: "원하는 요일과 시간이 남습니다",
-    partnerDescription:
-      "상담 내용과 희망 조건을 학생별로 기록합니다."
-  },
-  {
-    moment: "다음 학기\n새 반 개설",
-    currentTitle: "부를 사람을 모릅니다",
-    currentDescription:
-      "다시 연락할 학생을 찾기 어렵습니다.",
-    partnerTitle: "그 시간을 원했던 학생부터 확인합니다",
-    partnerDescription:
-      "새 반이 생기면 조건이 맞는 학생에게 다시 연락할 수 있습니다.",
-    isFinal: true
+    icon: "icon-recontact.png",
+    title: "등록 안 한 학생도 남아요",
+    body: "미등록·고민 중 학생이 학원 DB로 남아요. 특강·새 반이 생기면 골라서 다시 안내해요.",
+    checks: ["관심 과목·학년별 찾기", "새 반·특강 소식 한 번에", "연락 기록 자동 정리"]
   }
 ]
 
-// 공개 요금표의 기능 문구는 features/billing/lib/entitlements.ts 의 실제 권한과
-// 1:1 로 맞춘다. 여기에 구현되지 않은 기능을 적지 않는다.
-const freeFeatures = [
-  "학원 및 체험수업 등록",
-  "첫수업 플랫폼 노출",
-  "체험수업 신청 접수",
-  "예약 및 일정 관리",
-  "담당 교사 관리",
-  "체험수업 운영 및 완료 처리",
-  "체험 결과 기록",
-  "학부모 리포트 발행",
-  "상담 이력 · 등록 전환 기록",
-  "Excel 예약 가져오기",
-  "선생님 인원 제한 없음"
+const flowSteps = [
+  { title: "신청 접수", description: "학부모 앱에서 예약", tag: "자동" },
+  { title: "일정 확정", description: "확정하면 알림 발송", tag: "자동 알림" },
+  { title: "체험", description: "전날 리마인드", tag: "자동 알림" },
+  { title: "기록 작성", description: "고르고 짧게 쓰기" },
+  { title: "리포트 보내기", description: "학부모 앱으로 전송", tag: "푸시" },
+  { title: "등록 결과", description: "등록·고민·미등록" }
 ]
 
-const standardFeatures = [
-  "Free의 모든 기능",
-  "등록 전환 분석",
-  "미등록 사유 분석",
-  "등록 전환 인포그래픽",
-  "미등록 학생 다시 연락 · 안내 문자 월 200건"
+// 모바일은 목업 일부만 잘라 보여 준다(Figma 2061:1243). crop 은 그 자리의 위치와 렌더 폭이다.
+const features = [
+  {
+    eyebrow: "신청 관리",
+    title: ["신청이", "단계별로 정리돼요"],
+    body: "전화·카톡·엑셀에 흩어지던 체험 신청이 한 표에 모여요. 행마다 지금 할 일 버튼 하나만 있어요.",
+    image: "partner-feature-applications.png",
+    alt: "신청 관리 화면. 단계별 탭과 학생마다 지금 할 일 버튼이 있는 신청 표",
+    crop: { x: "-129px", y: "-110px", w: "758px" }
+  },
+  {
+    eyebrow: "기록 · 리포트",
+    title: ["기록하면", "리포트가 완성돼요"],
+    body: "고르고 짧게 쓰면 오른쪽에 학부모가 볼 리포트가 바로 채워져요. 보내기 전에 미리 확인해요.",
+    image: "partner-feature-record-report.png",
+    alt: "체험 기록 화면. 왼쪽에 기록을 쓰면 오른쪽에 학부모가 볼 리포트 미리보기가 채워진다",
+    crop: { x: "-473px", y: "-74px", w: "714px" }
+  },
+  {
+    eyebrow: "학원 소식",
+    title: ["등록하지 않은 학생도", "다시 만나요"],
+    body: "관심 과목·학년으로 골라 새 반·특강 소식을 한 번에 보내요. 수신에 동의한 보호자에게 첫수업이 대신 보내 드려요.",
+    image: "partner-feature-recontact.png",
+    alt: "학생 화면. 조건으로 고른 학생 3명에게 새 반 안내 문자를 보내는 패널",
+    crop: { x: "-493px", y: "-110px", w: "728px" },
+    soon: !ACADEMY_NEWS_OPEN
+  },
+  {
+    eyebrow: "분석",
+    title: ["어디서 줄어드는지", "보여요"],
+    body: "신청 → 체험 → 등록 흐름과 등록하지 않은 이유를 한눈에 봐요.",
+    image: "partner-feature-analytics.png",
+    alt: "분석 화면. 신청에서 등록까지 단계별 인원과 등록하지 않은 이유",
+    crop: { x: "-109px", y: "-30px", w: "758px" }
+  }
 ]
 
-const perks = [
+type PlanItem = { label: string; strong?: boolean; soon?: boolean }
+
+const freePlanItems: PlanItem[] = [
+  { label: "수업 등록·공개 (개수 제한 없음)" },
+  { label: "학부모 앱에서 체험 신청 받기" },
+  { label: "일정 관리 · 수업 전날 자동 알림" },
+  { label: "체험 기록 · 리포트 보내기", strong: true },
+  { label: "등록 결과 기록 · 학생 기록" },
+  { label: "기존 예약 가져오기" },
+  { label: "선생님 등록 제한 없음" }
+]
+
+const standardPlanItems: PlanItem[] = [
+  { label: "무료 플랜의 모든 기능" },
+  { label: "학원 소식 문자 월 200건", strong: true, soon: !ACADEMY_NEWS_OPEN },
+  { label: "전환 분석 · 미등록 이유", strong: true },
+  { label: "분기 성과 리포트 (2027년 1월 첫 발행)" }
+]
+
+const startSteps = [
   {
-    title: "무료로 먼저 시작",
-    description: "체험 모집부터 상담·등록 기록까지 Free로 시작할 수 있습니다."
+    title: "학원 가입",
+    body: `학원 정보와 사업자등록증을 올리면 첫수업 팀이 확인하고 승인해요. 승인되면 스탠다드 ${STANDARD_TRIAL_DAYS}일 무료가 바로 시작돼요.`
   },
   {
-    title: "분석으로 확장",
-    description: "필요할 때 Standard로 전환해 등록 전환을 분석하고, 등록하지 않은 학생에게 다시 안내합니다."
+    title: "첫 수업 만들기",
+    body: "수업 정보와 체험 시간을 정하면 학부모 앱에 바로 보여요."
   },
   {
-    title: "도입 지원",
-    description: "현재 학원 운영 방식에 맞게 첫 설정과 사용 방법을 안내합니다."
+    title: "학부모에게 알리기",
+    body: "수업 링크를 카톡·문자로 보내면 학부모가 바로 체험을 예약해요. 전화로 받은 예약은 기존 예약 가져오기로 옮겨요."
   }
 ]
 
 const faqItems = [
   {
-    question: "지금 쓰는 카카오톡 상담도 계속 쓸 수 있나요?",
+    question: "지금 쓰는 학원관리 프로그램과 같이 써도 되나요?",
+    answer: "네. 첫수업은 출결·수납이 아니라 체험 신청부터 등록 결정까지만 다뤄요. 같이 쓰셔도 겹치지 않아요."
+  },
+  {
+    question: "학부모가 꼭 앱을 깔아야 하나요?",
     answer:
-      "네. 전화·카카오톡·네이버 등 기존 채널은 그대로 사용하시면 됩니다. 첫수업은 신청 이후의 체험·상담·등록 기록을 관리합니다."
+      "아니요. 학부모는 첫수업 앱이나 웹(firstsuup.com)에서 예약하고 리포트를 받아요. 전화로 받은 예약은 \"기존 예약 가져오기\"로 옮길 수 있어요."
   },
   {
-    question: "설치는 얼마나 걸리나요?",
-    answer: "별도 프로그램 설치 없이 브라우저에서 바로 사용할 수 있습니다."
+    question: "체험비는 첫수업에서 결제되나요?",
+    answer: "아니요. 체험비는 지금처럼 학원에서 직접 받으세요. 첫수업에서는 결제하지 않아요."
   },
   {
-    question: "선생님 여러 분이 같이 쓸 수 있나요?",
-    answer: "가능합니다. 담당자가 달라도 학생의 이전 상담 기록을 이어서 확인할 수 있습니다."
+    question: `${STANDARD_TRIAL_DAYS}일 무료가 끝나면 자동으로 결제되나요?`,
+    answer: `카드를 등록한 경우에만 결제돼요. 카드는 체험 종료 ${TRIAL_CARD_WINDOW_DAYS}일 전부터 등록할 수 있고, 등록하지 않으면 무료 플랜으로 바뀌어요.`
   },
   {
-    question: "지금 쓰는 네이버·블로그·SNS 유입도 연결할 수 있나요?",
-    answer:
-      "기존 네이버·블로그·SNS 등에 학원 전용 신청 링크를 연결하면 신청 정보가 첫수업으로 들어옵니다."
-  },
-  {
-    question: "이미 잡아둔 체험 일정도 넣을 수 있나요?",
-    answer: "네. 기존에 받아둔 일정도 등록해서 함께 관리할 수 있습니다."
+    question: "학생·학부모 정보는 안전한가요?",
+    answer: "학원 계정에서만 볼 수 있고, 학부모가 동의한 범위에서만 쓰여요."
   }
 ]
+
+function PlanList({ items }: { items: PlanItem[] }) {
+  return (
+    <ul className={`${styles.planList} ${styles.pcOnly}`}>
+      {items.map((item) => (
+        <li key={item.label}>
+          <span className={styles.planCheck} aria-hidden="true">
+            ✓
+          </span>
+          <span className={item.strong ? styles.planStrong : undefined}>
+            {item.label}
+            {item.soon ? <span className={styles.planSoon}> · 곧 열려요</span> : null}
+          </span>
+        </li>
+      ))}
+    </ul>
+  )
+}
 
 export default async function PartnerLanding() {
   /* Studio 는 다른 origin 이다. 상대 경로로는 그 자리를 가리킬 수 없다. */
   const studioHref = await getStudioCrossProductHrefResolver()
+  const signUpHref = studioHref("/studio/sign-up")
 
   return (
     <main className={styles.page}>
-      <header className={styles.hd}>
-        <div className={styles.hdIn}>
-          <a href="#top" className={styles.logo} aria-label="첫수업 파트너 랜딩 상단으로 이동">
+      <header className={styles.nav}>
+        <div className={`${styles.wrap} ${styles.navIn}`}>
+          <a href="#top" className={styles.brand} aria-label="첫수업 파트너 랜딩 맨 위로">
             <Image
               src="/images/first-class-logo.png"
               alt="첫수업"
-              width={93}
-              height={30}
-              className={styles.logoImage}
+              width={86}
+              height={29}
+              className={styles.logo}
               priority
             />
+            <span className={styles.partnerTag}>파트너</span>
           </a>
 
-          <nav className={styles.nav} aria-label="파트너 랜딩 섹션 이동">
+          <span className={styles.navSpacer} />
+
+          <nav className={styles.navLinks} aria-label="파트너 랜딩 섹션 이동">
             {navItems.map((item) => (
               <a key={item.href} href={item.href}>
                 {item.label}
@@ -214,441 +223,269 @@ export default async function PartnerLanding() {
             ))}
           </nav>
 
-          <div className={styles.hdCta}>
-            <Link href="/" className={`${styles.btn} ${styles.btnO} ${styles.btnSm}`}>
-              학부모 플랫폼
-            </Link>
-            <Link href={studioHref("/studio/sign-in")} className={`${styles.btn} ${styles.btnG} ${styles.btnSm}`}>
-              로그인
-            </Link>
-          </div>
+          <Link href={studioHref("/studio/sign-in")} className={styles.navLogin}>
+            로그인
+          </Link>
+          <Link href={signUpHref} className={`${styles.btn} ${styles.btnPrimary} ${styles.btnSm} ${styles.navStart}`}>
+            무료로 시작하기
+          </Link>
         </div>
       </header>
 
       <section className={styles.hero} id="top">
         <div className={`${styles.wrap} ${styles.heroIn}`}>
-          <div>
-            <p className={styles.heroCat}>체험 신청부터 상담 기록, 등록 여부까지 한곳에서</p>
-            <h1 className={styles.heroTitle}>
-              작년에 체험만 하고
-              <br />
-              사라진 학생, <em>몇 명</em>이었나요
-            </h1>
-            <p className={styles.h1Sub}>
-              대부분의 학원이 체험 후 놓친 학생이 몇 명인지 따로 세어보지 않습니다. 평소 한 달
-              문의와 등록 수만 넣어보세요.
-            </p>
-            <div className={styles.h1Btns}>
-              <a href="#apply" className={`${styles.btn} ${styles.btnG}`}>
-                무료 도입 상담
-              </a>
-            </div>
-            <div className={styles.heroMeta}>
-              <span>설치 없이 브라우저에서</span>
-              <span>기존 채널 그대로 사용</span>
-              <span>Free 플랜으로 시작</span>
+          <p className={styles.heroBadge}>
+            <span aria-hidden="true">🎁</span>
+            <span>
+              <span className={styles.pcOnly}>지금 가입하면 </span>스탠다드 {STANDARD_TRIAL_DAYS}일 무료 · 카드 등록 없음
+            </span>
+          </p>
+          <h1 className={styles.heroTitle}>
+            전화 상담 없이,
+            <br />
+            체험 예약부터 등록까지
+          </h1>
+          <p className={styles.heroSub}>
+            학부모는 첫수업에서 체험을 직접 예약하고,
+            <br className={styles.pcOnly} /> 원장님은 일정·기록·리포트·등록 결과를 한 화면에서 관리해요.
+          </p>
+          <div className={styles.heroActions}>
+            <Link href={signUpHref} className={`${styles.btn} ${styles.btnPrimary}`}>
+              무료로 시작하기
+            </Link>
+            <a href="#apply" className={`${styles.btn} ${styles.btnOutline}`}>
+              도입 상담 신청
+            </a>
+          </div>
+          <div className={styles.heroShot}>
+            <div className={styles.heroShotFrame}>
+              <Image
+                src={`${IMAGE_DIR}/partner-hero-studio-home.png`}
+                alt="첫수업 파트너 홈 화면. 가장 먼저 할 일, 오늘 체험, 체험에서 등록까지 단계별 학생 카드"
+                width={1122}
+                height={642}
+                sizes="(max-width: 1170px) 1122px, 1122px"
+                className={styles.heroShotImage}
+                priority
+              />
             </div>
           </div>
+        </div>
+      </section>
 
+      <section className={`${styles.section} ${styles.bgWhite}`}>
+        <div className={styles.wrap}>
+          <div className={styles.head}>
+            <p className={styles.eyebrow}>학원 관계자 38명에게 물었어요</p>
+            <h2 className={styles.title}>체험은 받는데, 그다음이 흩어져 있어요</h2>
+          </div>
+          <div className={styles.grid3}>
+            {stats.map((stat) => (
+              <div key={stat.value} className={styles.statCard}>
+                <PersonPictogram value={stat.value} />
+                <p className={styles.statValue}>
+                  {stat.headline}
+                  <span className={styles.statPercent}>{stat.value}%</span>
+                </p>
+                <p className={styles.statDesc}>
+                  {stat.description[0]}
+                  <br /> {stat.description[1]}
+                </p>
+                <p className={styles.statNote}>{stat.note}</p>
+              </div>
+            ))}
+          </div>
+          <p className={styles.footnote}>
+            첫수업 자체 설문(깔로 패널) · 학원 원장·상담 담당자 38명, 초등 학부모 42명
+          </p>
+        </div>
+      </section>
+
+      <section className={`${styles.section} ${styles.bgGround}`}>
+        <div className={styles.wrap}>
+          <div className={styles.head}>
+            <p className={styles.eyebrow}>1분 계산</p>
+            <h2 className={styles.title}>우리 학원은 얼마나 놓치고 있을까</h2>
+            <p className={styles.calcSub}>
+              숫자 세 개만 넣으면, 1년 동안 체험만 하고 지나간 학생과 그 원비를 계산해 드려요.
+            </p>
+          </div>
           <PartnerLossCalculator />
+          <p className={styles.calcFootnote}>
+            이 숫자는 이렇게 계산했어요 · (월 문의 − 월 등록) × 12개월 = 1년 동안 등록하지 않은 학생. 그중 다시
+            연락해 등록하는 비율만큼, 월 원비 × 6개월로 계산한 단순 추정이에요. 실제 결과는 학원의 등록률과 수강
+            기간에 따라 달라지며, 성과를 보장하지 않아요.
+          </p>
         </div>
       </section>
 
-      <div className={styles.strip}>
-        <div className={styles.stripIn}>
-          {stripItems.map((item) => (
-            <span key={item}>{item}</span>
-          ))}
-          <a href={TALLY_URL}>도입 상담 신청 →</a>
-        </div>
-      </div>
-
-      <section className={styles.sec} id="why">
+      <section className={`${styles.section} ${styles.bgFill}`}>
         <div className={styles.wrap}>
-          <p className={styles.kick}>체험과 등록 사이</p>
-          <h2 className={styles.sectionHeading}>
-            마음에 안 들어서가 아니라,
-            <br />
-            그때 <em>시간이 안 맞아서</em>입니다
-          </h2>
-          <p className={styles.sub}>
-            체험까지 온 학생은 이미 관심이 있는 학생입니다. 문제는 등록하지 않은 이유와 원하는 조건이
-            기록되지 않는다는 것입니다.
-          </p>
-
-          <div className={styles.flow}>
-            {flowCards.map((card) => (
-              <div
-                key={card.number}
-                className={`${styles.fl} ${card.emphasized ? styles.flDead : ""}`}
-              >
-                <p className={styles.flN}>{card.number}</p>
-                <h4>
-                  {card.title[0]}
-                  <br />
-                  {card.title[1]}
-                </h4>
-                <p>{card.description}</p>
+          <div className={styles.head}>
+            <p className={styles.eyebrow}>첫수업이 하는 일</p>
+            <h2 className={styles.title}>새 학생을 만나고, 등록까지 이어 드려요</h2>
+          </div>
+          <div className={styles.grid3}>
+            {pillars.map((pillar) => (
+              <div key={pillar.title} className={styles.pillar}>
+                {/* 아이콘은 흰 배경 이미지라 흰 카드 위에만 놓는다. */}
+                <Image src={`${IMAGE_DIR}/${pillar.icon}`} alt="" width={96} height={96} className={styles.pillarIcon} />
+                <h3 className={styles.cardTitle}>{pillar.title}</h3>
+                <p className={styles.cardBody}>{pillar.body}</p>
+                <ul className={styles.checks}>
+                  {pillar.checks.map((check) => (
+                    <li key={check}>
+                      <span className={styles.checkMark} aria-hidden="true">
+                        ✓
+                      </span>
+                      {check}
+                    </li>
+                  ))}
+                </ul>
               </div>
             ))}
           </div>
-
-          <p className={styles.strongSub}>
-            희망 요일과 시간이 남습니다. 광고비를 쓰기 전에,
-            <em> 이미 관심을 보인 학부모부터 다시 연결할 수 있습니다.</em>
-          </p>
-
-          <div className={styles.stats}>
-            {stats.map((item) => (
-              <div key={item.value + item.description}>
-                <b className={styles.tnum}>{item.value}</b>
-                <p>{item.description}</p>
-              </div>
-            ))}
-          </div>
-          <p className={styles.note}>2026년 7월 첫수업 자체 설문 (조사 진행: 깔로) · 학원 관계자 38명 응답</p>
         </div>
       </section>
 
-      <section className={styles.quoteSection}>
+      <section className={`${styles.section} ${styles.bgWhite}`}>
         <div className={styles.wrap}>
-          <div className={styles.qb}>
-            <p className={styles.qt}>
-              &quot;상담 내용은 다 제 머리랑 수첩에 있어요.
-              <br />
-              그래서 실장님이 그만두시면
-              <br />
-              그동안 상담한 게 통째로 없어집니다.&quot;
+          <div className={styles.head}>
+            <p className={styles.eyebrow}>신청부터 등록까지</p>
+            <h2 className={styles.title}>한 학생의 흐름이 6단계로 정리돼요</h2>
+            <p className={`${styles.sub} ${styles.pcOnly}`}>
+              단계마다 지금 할 일 버튼 하나만 보여요. 알림은 첫수업이 대신 보내요.
             </p>
-            <p className={styles.qy}>은행사거리 A학원 원장님 · 2026년 7월 방문 인터뷰</p>
           </div>
+          <ol className={styles.flow}>
+            {flowSteps.map((step, index) => {
+              const isLast = index === flowSteps.length - 1
+
+              return (
+                <li key={step.title} className={styles.flowItem}>
+                  <div className={`${styles.flowStep} ${isLast ? styles.flowStepLast : ""}`}>
+                    <span className={styles.flowNum}>{index + 1}</span>
+                    <span className={styles.flowText}>
+                      <span className={styles.flowTitle}>{step.title}</span>
+                      <span className={styles.flowDesc}>{step.description}</span>
+                    </span>
+                    {step.tag ? <span className={styles.badge}>{step.tag}</span> : null}
+                  </div>
+                  {isLast ? null : (
+                    <span className={styles.flowArrow} aria-hidden="true">
+                      ›
+                    </span>
+                  )}
+                </li>
+              )
+            })}
+          </ol>
         </div>
       </section>
 
-      <section className={`${styles.sec} ${styles.alt}`} id="link">
-        <div className={styles.wrap}>
-          <p className={styles.kick}>시작은 링크 하나</p>
-          <h2 className={styles.sectionHeading}>
-            쓰시던 채널 그대로,
-            <br />
-            <em>링크만</em> 걸어두시면 됩니다
-          </h2>
-          <p className={styles.sub}>
-            학원 전용 체험수업 신청 페이지를 만들어드립니다. 기존 네이버·블로그·카카오톡은 그대로
-            사용하시면 됩니다.
-          </p>
+      <section className={styles.features} id="features">
+        <div className={`${styles.wrap} ${styles.mobileOnly}`}>
+          <div className={styles.featuresHead}>
+            <p className={styles.eyebrow}>주요 기능</p>
+            <h2 className={styles.title}>
+              원장님 화면은
+              <br />
+              이렇게 생겼어요
+            </h2>
+          </div>
+        </div>
 
-          <div className={styles.ld}>
-            <div>
-              <div className={styles.chan}>
-                {channels.map((channel) => (
-                  <div key={channel.label}>
-                    {channel.label}
-                    <span>{channel.tag}</span>
-                  </div>
-                ))}
-              </div>
-              <div className={styles.urlbox}>
-                <code>{PARTNER_LINK}</code>
-                <PartnerCopyButton value={PARTNER_LINK} />
-              </div>
-              <p className={`${styles.note} ${styles.linkNote}`}>
-                링크로 들어온 신청은 학원 운영 화면에 바로 쌓입니다.
-              </p>
-            </div>
+        {features.map((feature, index) => {
+          const isAlt = index % 2 === 1
 
-            <div className={styles.panel}>
-              <div className={styles.phone}>
-                <div className={styles.phoneScr}>
-                  <div className={styles.phBar}>○○학원 · 체험수업 신청</div>
-                  <div className={styles.phBody}>
-                    <div className={styles.phCard}>
-                      <span className={styles.phTag}>초1–초3</span>
-                      <div className={styles.phT}>사고력수학 체험수업</div>
-                      <div className={styles.phM}>50분 · 체험비 없음 · 박○○ 선생님</div>
-                    </div>
-                    <div className={styles.phCard}>
-                      <div className={styles.phT}>날짜 고르기</div>
-                      <div className={styles.phM}>3월 14일 (목) 오후 4시 · 2자리 남음</div>
-                    </div>
-                    <div className={styles.phCard}>
-                      <div className={styles.phT}>학생 · 학부모 정보</div>
-                      <div className={styles.phM}>이름 / 학년 / 연락처</div>
-                    </div>
-                    <div className={styles.phBtn}>신청하기</div>
+          return (
+            <div key={feature.eyebrow} className={`${styles.feature} ${isAlt ? styles.bgFill : styles.bgWhite}`}>
+              <div className={`${styles.wrap} ${styles.featureRow} ${isAlt ? styles.featureRowReverse : ""}`}>
+                <div className={styles.featureText}>
+                  <div className={styles.featureEyebrowRow}>
+                    <p className={styles.eyebrow}>{feature.eyebrow}</p>
+                    {feature.soon ? <span className={`${styles.badge} ${styles.badgeSoon}`}>곧 열려요</span> : null}
                   </div>
+                  <h3 className={styles.featureTitle}>
+                    {feature.title[0]}
+                    <br /> {feature.title[1]}
+                  </h3>
+                  <p className={styles.featureBody}>{feature.body}</p>
                 </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section className={styles.sec} id="features">
-        <div className={styles.wrap}>
-          <p className={styles.kick}>기능</p>
-          <h2 className={styles.sectionHeading}>
-            예약받는 도구가 아니라,
-            <br />
-            <em>등록까지 이어지는 흐름</em>을 관리합니다
-          </h2>
-
-          <div className={styles.fhero}>
-            <div>
-              <p className={styles.fLbl}>상담 이력 · 레벨테스트 기록</p>
-              <h3>
-                담당자가 바뀌어도
-                <br />
-                상담 맥락은 그대로 남습니다
-              </h3>
-              <p>
-                체험 반응, 레벨테스트 결과, 상담 내용, 희망 요일·시간을 학생별로 누적합니다. 이전
-                상담 흐름을 한눈에 확인하고 그대로 이어갈 수 있습니다.
-              </p>
-            </div>
-
-            <div className={styles.shotpanel}>
-              <div className={styles.shot}>
-                <div className={styles.shotMedia}>
+                <div
+                  className={styles.featureMedia}
+                  style={
+                    {
+                      "--crop-x": feature.crop.x,
+                      "--crop-y": feature.crop.y,
+                      "--crop-w": feature.crop.w
+                    } as CSSProperties
+                  }
+                >
                   <Image
-                    src="/images/partner/feature-consultation-mockup.png"
-                    alt="첫수업 파트너 센터 상담 기록 추가 화면"
-                    fill
-                    sizes="(max-width: 560px) calc(100vw - 72px), (max-width: 960px) calc(100vw - 124px), 560px"
-                    className={styles.shotImage}
+                    src={`${IMAGE_DIR}/${feature.image}`}
+                    alt={feature.alt}
+                    width={758}
+                    height={502}
+                    sizes="758px"
+                    className={styles.featureImage}
                   />
                 </div>
               </div>
             </div>
-          </div>
-
-          <div className={styles.fg}>
-            {featureCards.map((card) => (
-              <div key={card.title.join(" ")}>
-                <h4>
-                  {card.title[0]}
-                  <br />
-                  {card.title[1]}
-                </h4>
-                <p>{card.description}</p>
-              </div>
-            ))}
-          </div>
-        </div>
+          )
+        })}
       </section>
 
-      <section className={`${styles.sec} ${styles.featureFollowSection}`}>
-        <div className={`${styles.wrap} ${styles.fmid}`}>
-          <div className={styles.shotpanel}>
-            <div className={styles.shot}>
-              <div className={styles.shotMedia}>
-                <Image
-                  src="/images/partner/feature-dashboard-mockup.png"
-                  alt="첫수업 파트너 센터 운영 대시보드 화면"
-                  fill
-                  sizes="(max-width: 560px) calc(100vw - 72px), (max-width: 960px) calc(100vw - 124px), 560px"
-                  className={styles.shotImage}
-                />
-              </div>
-            </div>
-          </div>
-          <div className={styles.featureCopy}>
-            <p className={styles.fLbl}>운영 관리</p>
-            <h3>
-              오늘 처리해야 할 일이
-              <br />
-              먼저 보입니다
-            </h3>
-            <p>
-              새 신청부터 등록 확인이 필요한 학생까지, 지금 확인해야 할 일을 한 화면에서
-              보여드립니다.
-            </p>
-          </div>
-        </div>
-      </section>
-
-      <section className={`${styles.sec} ${styles.featureFollowSection}`}>
-        <div className={`${styles.wrap} ${styles.fmid} ${styles.featureForward}`}>
-          <div className={styles.featureCopy}>
-            <p className={styles.fLbl}>미등록 학생 관리</p>
-            <h3>
-              등록하지 않은 학생도
-              <br />
-              다음 기회로 이어집니다
-            </h3>
-            <p>
-              등록하지 않은 이유와 다음 연락 시점을 남겨두고, 방학·학기 초나 새 반이 생겼을 때
-              다시 연락할 학생을 바로 찾을 수 있습니다.
-            </p>
-          </div>
-          <div className={styles.shotpanel}>
-            <div className={styles.shot}>
-              <div className={styles.shotMedia}>
-                <Image
-                  src="/images/partner/feature-followup-mockup.png"
-                  alt="첫수업 파트너 센터 미등록 학생 후속관리 화면"
-                  fill
-                  sizes="(max-width: 560px) calc(100vw - 72px), (max-width: 960px) calc(100vw - 124px), 560px"
-                  className={styles.shotImage}
-                />
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section className={`${styles.sec} ${styles.featureFollowSection}`}>
-        <div className={`${styles.wrap} ${styles.fmid}`}>
-          <div className={styles.shotpanel}>
-            <div className={styles.shot}>
-              <div className={styles.shotMedia}>
-                <Image
-                  src="/images/partner/feature-reminder-mockup.png"
-                  alt="첫수업 신규 신청 SMS 문자 메시지"
-                  fill
-                  sizes="(max-width: 560px) calc(100vw - 72px), (max-width: 960px) calc(100vw - 124px), 560px"
-                  className={styles.shotImage}
-                />
-              </div>
-            </div>
-          </div>
-          <div className={styles.featureCopy}>
-            <p className={styles.fLbl}>자동 안내 · 리마인드</p>
-            <h3>
-              예약 안내를 매번 직접
-              <br />
-              보내지 않아도 됩니다
-            </h3>
-            <p>
-              신청 접수부터 예약 안내와 리마인드까지 운영 흐름에 맞춰 발송해, 반복 연락을 줄이고
-              체험 일정 누락을 예방합니다.
-            </p>
-          </div>
-        </div>
-      </section>
-
-      <section className={`${styles.sec} ${styles.alt}`} id="compare">
+      <section className={`${styles.section} ${styles.bgWhite}`} id="price">
         <div className={styles.wrap}>
-          <p className={styles.kick}>지금과 뭐가 다른가</p>
-          <h2 className={styles.sectionHeading}>
-            학생 한 명이 지나가는 길을
-            <br />
-            나란히 놓아봤습니다
-          </h2>
-          <p className={styles.sub}>
-            같은 학생이 체험 문의부터 다음 학기까지 어떻게 남는지 비교했습니다.
-          </p>
-
-          <div className={styles.tracks}>
-            <div className={styles.tkHead}>
-              <div className={styles.tkHeadLeft}>지금 · 전화 · 카톡 · 수첩</div>
-              <div className={styles.tkHeadCenter}>시점</div>
-              <div className={styles.tkHeadRight}>첫수업</div>
-            </div>
-
-            {compareRows.map((row) => (
-              <div
-                key={row.moment + row.currentTitle}
-                className={`${styles.tkRow} ${row.isFinal ? styles.tkRowFinal : ""}`}
-              >
-                <div className={styles.tkL}>
-                  <h5>{row.currentTitle}</h5>
-                  <p>{row.currentDescription}</p>
-                  {row.isFinal ? <span className={styles.tkEndMuted}>여기서 끝납니다</span> : null}
-                </div>
-                <div className={styles.tkC}>
-                  <span>{row.moment}</span>
-                </div>
-                <div className={styles.tkR}>
-                  <h5>{row.partnerTitle}</h5>
-                  <p>{row.partnerDescription}</p>
-                  {row.isFinal ? <span className={styles.tkEndGreen}>여기서 다시 시작합니다</span> : null}
-                </div>
-              </div>
-            ))}
+          <div className={styles.head}>
+            <p className={styles.eyebrow}>요금</p>
+            <h2 className={styles.title}>
+              먼저 {STANDARD_TRIAL_DAYS}일,
+              <br className={styles.mobileOnly} /> 모든 기능을 무료로 써 보세요
+            </h2>
+            <p className={styles.sub}>
+              체험이 끝나도 카드를 등록하지 않으면 무료 플랜으로 바뀌어요. 학생·기록·리포트는 그대로 남아요.
+            </p>
           </div>
 
-          <div className={styles.compareCards}>
-            {compareRows.map((row) => (
-              <article
-                key={`mobile-${row.moment}-${row.currentTitle}`}
-                className={`${styles.compareCard} ${row.isFinal ? styles.compareCardFinal : ""}`}
-              >
-                <h3 className={styles.compareCardTitle}>{row.moment}</h3>
-
-                <div className={styles.compareCardBlock}>
-                  <span className={`${styles.compareBadge} ${styles.compareBadgeMuted}`}>지금</span>
-                  <h4>{row.currentTitle}</h4>
-                  <p>{row.currentDescription}</p>
-                  {row.isFinal ? (
-                    <span className={styles.compareCardConclusionMuted}>여기서 끝납니다</span>
-                  ) : null}
-                </div>
-
-                <div className={styles.compareCardDivider} />
-
-                <div className={styles.compareCardBlock}>
-                  <span className={`${styles.compareBadge} ${styles.compareBadgeGreen}`}>첫수업</span>
-                  <h4>{row.partnerTitle}</h4>
-                  <p>{row.partnerDescription}</p>
-                  {row.isFinal ? (
-                    <span className={styles.compareCardConclusionGreen}>여기서 다시 시작합니다</span>
-                  ) : null}
-                </div>
-              </article>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <section className={styles.sec} id="price">
-        <div className={styles.wrap}>
-          <p className={styles.kick}>요금</p>
-          <h2 className={styles.sectionHeading}>
-            기록과 리포트는 무료로,
-            <br />
-            등록 전환 분석은 필요할 때 확장하세요
-          </h2>
-          <p className={styles.sub}>
-            체험·상담·등록 기록과 학부모 리포트는 Free로 쓸 수 있습니다. 쌓인 기록으로
-            등록 전환을 분석하고 등록하지 않은 학생에게 다시 안내할 때 Standard로 확장하세요.
-          </p>
-
-          <div className={styles.price}>
-            <div className={styles.pc}>
-              <p className={styles.pK}>FREE</p>
-              <p className={styles.pN}>입점 · 모객 · 체험 기록 · 학부모 리포트</p>
-              <div className={styles.pA}>
-                <span className={styles.pFree}>0원</span>
-                <span className={styles.pCycle}>별도 결제 없음</span>
+          <div className={styles.plans}>
+            <div className={styles.plan}>
+              <div className={styles.planHead}>
+                <h3 className={styles.planName}>무료</h3>
               </div>
-              <ul className={styles.pList}>
-                {freeFeatures.map((item) => (
-                  <li key={item}>{item}</li>
-                ))}
-              </ul>
-              <Link href={studioHref("/studio/sign-up")} className={`${styles.btn} ${styles.btnO} ${styles.pCta}`}>
+              <div className={styles.planPrice}>
+                <span className={styles.planAmount}>0원</span>
+              </div>
+              <p className={`${styles.planDesc} ${styles.pcOnly}`}>체험 신청을 받고 등록 결과까지 관리하는 기본 기능</p>
+              <p className={`${styles.planSummary} ${styles.mobileOnly}`}>
+                체험 신청·일정·기록·리포트·등록 결과 · 선생님 등록 제한 없음
+              </p>
+              <PlanList items={freePlanItems} />
+              <Link href={signUpHref} className={`${styles.btn} ${styles.btnOutline} ${styles.btnFull} ${styles.pcOnly}`}>
                 무료로 시작하기
               </Link>
             </div>
 
-            <div className={`${styles.pc} ${styles.pcMain}`}>
-              <div className={styles.pHead}>
-                <p className={styles.pK}>STANDARD</p>
-                <span className={styles.pTag}>추천</span>
+            <div className={`${styles.plan} ${styles.planStandard}`}>
+              <div className={styles.planHead}>
+                <h3 className={styles.planName}>{BILLING_PLANS.standard.name}</h3>
+                <span className={styles.badge}>{STANDARD_TRIAL_DAYS}일 무료 체험</span>
               </div>
-              <p className={styles.pN}>등록 전환 분석 · 미등록 학생 다시 연락</p>
-              <div className={styles.pA}>
-                <span className={styles.pFree}>{STANDARD_PRICE_TEXT}</span>
-                <span className={styles.pCycle}>승인 후 {STANDARD_TRIAL_DAYS}일 무료 · 월 단위 정기결제</span>
+              <div className={styles.planPrice}>
+                <span className={`${styles.planAmount} ${styles.tnum}`}>{STANDARD_AMOUNT_TEXT}</span>
+                <span className={styles.planCycle}>/ 월</span>
               </div>
-              <ul className={styles.pList}>
-                {standardFeatures.map((item) => (
-                  <li key={item}>{item}</li>
-                ))}
-              </ul>
-              <Link href={studioHref("/studio/billing")} className={`${styles.btn} ${styles.btnG} ${styles.pCta}`}>
-                Standard 시작하기
+              <p className={`${styles.planDesc} ${styles.pcOnly}`}>등록을 늘리고, 등록하지 않은 학생을 다시 부르는 기능</p>
+              <p className={`${styles.planSummary} ${styles.mobileOnly}`}>
+                학원 소식(문자 월 200건)
+                {ACADEMY_NEWS_OPEN ? null : <span className={styles.planSoon}> 곧 열려요</span>} · 전환 분석 · 분기
+                성과 리포트
+              </p>
+              <PlanList items={standardPlanItems} />
+              <Link href={signUpHref} className={`${styles.btn} ${styles.btnPrimary} ${styles.btnFull} ${styles.pcOnly}`}>
+                {STANDARD_TRIAL_DAYS}일 무료로 시작하기
               </Link>
             </div>
           </div>
@@ -657,138 +494,113 @@ export default async function PartnerLanding() {
             정기결제·해지 조건은 가격과 같은 위계로 보여야 한다.
             작은 회색 각주로 숨기지 않는다(카드사 심사 요건).
           */}
-          <div className={styles.pTerms}>
+          <div className={styles.planTerms}>
             <p>
-              <b>입점 승인 후 {STANDARD_TRIAL_DAYS}일 동안 Standard를 무료로 쓸 수 있습니다.</b> 체험을
-              시작할 때 카드를 등록하지 않으며, 카드는 체험 종료 {TRIAL_CARD_WINDOW_DAYS}일 전부터 등록할 수
-              있습니다. 카드를 등록하고 동의한 경우에만 체험 마지막 날 첫 이용료({STANDARD_PRICE_TEXT})가
-              결제되고, 그 전에 해지하면 결제되지 않습니다. 카드를 등록하지 않으면 체험이 끝날 때 Free
-              플랜으로 자동 전환됩니다. 첫 결제가 되지 않으면 {BILLING_GRACE_PERIOD_DAYS}일 동안 다시
-              시도합니다.
+              <b>입점 승인 후 {STANDARD_TRIAL_DAYS}일 동안 스탠다드를 무료로 써요.</b> 체험을 시작할 때 카드를
+              등록하지 않고, 카드는 체험 종료 {TRIAL_CARD_WINDOW_DAYS}일 전부터 등록할 수 있어요. 카드를 등록하고
+              동의한 경우에만 체험 마지막 날 첫 이용료(월 {STANDARD_AMOUNT_TEXT})가 결제되고, 그 전에 해지하면
+              결제되지 않아요. 카드를 등록하지 않으면 체험이 끝날 때 무료 플랜으로 바뀌어요. 첫 결제가 되지 않으면{" "}
+              {BILLING_GRACE_PERIOD_DAYS}일 동안 다시 시도해요.
             </p>
             <p>
-              <b>Standard는 월 단위 정기결제 상품입니다.</b> 결제일을 기준으로 1개월 동안 이용할 수
-              있으며, 해지하기 전까지 매월 자동 결제됩니다.
+              <b>스탠다드는 월 단위 정기결제예요.</b> 결제일부터 1개월 동안 쓸 수 있고, 해지하기 전까지 매월 자동으로
+              결제돼요.
             </p>
             <p>
-              <b>해지는 언제든 신청할 수 있습니다.</b> 해지 후에도 현재 결제기간 종료일까지 이용할
-              수 있으며, 다음 결제일부터 자동결제가 진행되지 않습니다.
+              <b>해지는 언제든 할 수 있어요.</b> 해지해도 현재 결제 기간이 끝날 때까지 쓸 수 있고, 다음 결제일부터
+              자동 결제되지 않아요.
             </p>
-            <Link href="/refund-policy" className={styles.pTermsLink}>
+            <Link href="/refund-policy" className={styles.planTermsLink}>
               환불 및 해지 정책 보기
             </Link>
           </div>
         </div>
       </section>
 
-      <section className={styles.cta} id="apply">
+      <section className={`${styles.section} ${styles.bgFill}`}>
         <div className={styles.wrap}>
-          <h2>
-            첫수업을 우리 학원에
-            <br />
-            도입해보세요
-          </h2>
-          <p>학원 운영 방식에 맞는 도입 방법과 Free · Standard 활용 방법을 안내해드립니다.</p>
+          <div className={styles.head}>
+            <p className={styles.eyebrow}>시작하기</p>
+            <h2 className={styles.title}>오늘 가입하면, 이번 주부터 체험 신청을 받아요</h2>
+          </div>
+          <ol className={styles.grid3}>
+            {startSteps.map((step, index) => (
+              <li key={step.title} className={styles.startCard}>
+                <span className={styles.startNum}>{index + 1}</span>
+                <h3 className={styles.cardTitle}>{step.title}</h3>
+                <p className={styles.cardBody}>{step.body}</p>
+              </li>
+            ))}
+          </ol>
 
-          <div className={styles.ctaIn}>
-            <div className={styles.perks}>
-              {perks.map((perk) => (
-                <div key={perk.title}>
-                  <b>{perk.title}</b>
-                  <span>{perk.description}</span>
-                </div>
-              ))}
-            </div>
-
-            <div className={styles.formcard}>
-              <h3>우리 학원에도 맞는지 확인해보세요</h3>
-              <p>
-                학원명과 연락처를 남겨주시면 현재 운영 방식에 첫수업을 어떻게 연결할 수 있는지
-                안내드립니다.
+          {/* Figma 에는 폼이 없다. 같은 카드 톤(흰색 · radius 20 · 패딩 40)으로 맞춘다. */}
+          <div className={styles.apply} id="apply">
+            <div className={styles.applyText}>
+              <h2 className={styles.applyTitle}>도입 상담 신청</h2>
+              <p className={styles.applyDesc}>
+                학원명과 연락처를 남겨 주시면 운영 방식에 맞는 도입 방법을 안내해 드려요.
               </p>
-              <PartnerInquiryForm />
             </div>
+            <PartnerInquiryForm />
           </div>
         </div>
       </section>
 
-      <section className={styles.sec} id="faq">
-        <div className={styles.wrap}>
-          <p className={styles.kick}>자주 묻는 질문</p>
-          <h2 className={styles.sectionHeading}>원장님들이 가장 많이 물어보시는 것</h2>
-          <div className={styles.faq}>
-            {faqItems.map((item, index) => (
-              <details key={item.question} className={styles.qa} open={index === 0}>
-                <summary>{item.question}</summary>
-                <p>{item.answer}</p>
-              </details>
+      <section className={`${styles.section} ${styles.bgWhite} ${styles.faq}`} id="faq">
+        <div className={`${styles.wrap} ${styles.faqRow}`}>
+          <div className={styles.faqHead}>
+            <h2 className={styles.faqTitle}>자주 묻는 질문</h2>
+            <p className={styles.faqSub}>
+              더 궁금한 점은 <a href={COMPANY_EMAIL_HREF}>{COMPANY_INFO.customerCenterEmail}</a>으로 물어봐 주세요.
+            </p>
+          </div>
+          <div className={styles.faqList}>
+            {faqItems.map((item) => (
+              <div key={item.question} className={styles.faqItem}>
+                <h3 className={styles.faqQ}>{item.question}</h3>
+                <p className={styles.faqA}>{item.answer}</p>
+              </div>
             ))}
           </div>
         </div>
       </section>
 
-      <footer className={styles.ft}>
-        <div className={styles.wrap}>
-          <div className={styles.ftTop}>
-            <div>
-              <Image
-                src="/images/first-class-logo.png"
-                alt="첫수업"
-                width={93}
-                height={30}
-                className={styles.ftLogoImage}
-              />
-              <p className={styles.ftIntro}>
-                체험수업 신청부터 상담 기록과 등록까지, 학원 운영을 한곳에서.
-                <br />
-                Try First, Choose Right.
-              </p>
-            </div>
-            <div>
-              <h5>바로가기</h5>
-              <p>
-                <a href="#why">왜 필요한가</a>
-                <br />
-                <a href="#link">도입 방식</a>
-                <br />
-                <a href="#compare">기존 방식과 비교</a>
-                <br />
-                <a href="#price">요금</a>
-                <br />
-                <a href={TALLY_URL}>도입 상담</a>
-              </p>
-            </div>
-            <div>
-              <h5>정책</h5>
-              <p>
-                <Link href="/terms">이용약관</Link>
-                <br />
-                <Link href="/privacy">개인정보처리방침</Link>
-                <br />
-                <Link href="/refund-policy">환불 및 해지 정책</Link>
-              </p>
-            </div>
-            <div>
-              <h5>고객센터</h5>
-              <p className={styles.tnum}>
-                {COMPANY_INFO.customerCenterPhone}
-                <br />
-                {COMPANY_INFO.customerCenterEmail}
-                <br />
-                {COMPANY_INFO.customerCenterHours}
-                <br />
-                ({COMPANY_INFO.customerCenterClosed})
-              </p>
-            </div>
+      <section className={styles.cta}>
+        <div className={`${styles.wrap} ${styles.ctaIn}`}>
+          <h2 className={styles.ctaTitle}>
+            문의는 광고가 만들고,
+            <br className={styles.mobileOnly} /> 등록은 첫수업이 만들어요
+          </h2>
+          <p className={styles.ctaSub}>지금 가입하면 스탠다드 {STANDARD_TRIAL_DAYS}일 무료 · 카드 등록 없음</p>
+          <div className={styles.ctaActions}>
+            <Link href={signUpHref} className={`${styles.btn} ${styles.btnOutline}`}>
+              무료로 시작하기
+            </Link>
+            <a href="#apply" className={`${styles.btn} ${styles.btnTint}`}>
+              도입 상담 신청
+            </a>
           </div>
-          <div className={styles.ftBot}>
-            {COMPANY_INFO.name} · 대표 {COMPANY_INFO.representative} · 사업자등록번호{" "}
-            {COMPANY_INFO.businessRegistrationNumber}
-            <br />
-            {COMPANY_ADDRESS}
-            <br />
-            <br />© 2026 첫수업. All Rights Reserved.
+        </div>
+      </section>
+
+      <footer className={styles.footer}>
+        <div className={`${styles.wrap} ${styles.footerIn}`}>
+          <div className={styles.footerInfo}>
+            <Image src="/images/first-class-logo.png" alt="첫수업" width={66} height={22} className={styles.footerLogo} />
+            <p className={styles.footerText}>
+              {COMPANY_INFO.name} · 대표 {COMPANY_INFO.representative} · 사업자등록번호{" "}
+              <span className={styles.tnum}>{COMPANY_INFO.businessRegistrationNumber}</span> · 문의{" "}
+              {COMPANY_INFO.customerCenterEmail}
+              <br />
+              주소 {COMPANY_ADDRESS}
+            </p>
           </div>
+          <nav className={styles.footerLinks} aria-label="정책 및 바로가기">
+            <Link href="/terms">이용약관</Link>
+            <Link href="/privacy">개인정보처리방침</Link>
+            <Link href="/refund-policy">환불 및 해지 정책</Link>
+            <Link href="/">학부모 앱</Link>
+          </nav>
         </div>
       </footer>
     </main>
