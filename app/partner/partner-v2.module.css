@@ -1455,7 +1455,8 @@
 
   .hero {
     padding-top: 32px;
-    background: linear-gradient(180deg, var(--surface-white) 0, var(--surface-white) calc(100% - 326px), var(--surface-ground-green) calc(100% - 326px));
+    padding-bottom: 32px;
+    background: linear-gradient(180deg, var(--surface-white) 0, var(--surface-white) calc(100% - 150px), var(--surface-ground-green) calc(100% - 150px));
   }
 
   .heroIn {
@@ -1489,30 +1490,23 @@
     width: 100%;
   }
 
-  /* 모바일은 목업 오른쪽이 화면 밖으로 나가게 잘라 보여 준다. */
+  /* 모바일도 홈 목업 전체를 보여 준다(잘라 내지 않는다). */
   .heroShot {
-    width: calc(100% + 24px);
+    width: 100%;
     max-width: none;
-    margin-top: -16px;
-    margin-right: -48px;
-    padding-top: 24px;
+    padding-top: 8px;
   }
 
   .heroShotFrame {
-    height: 302px;
+    overflow: hidden;
     border: 1px solid var(--line-default);
-    border-right: 0;
-    border-bottom: 0;
-    border-radius: 16px 0 0 0;
+    border-radius: 12px;
     background: var(--surface-white);
   }
 
   .heroShotImage {
-    position: absolute;
-    top: -87px;
-    left: -150px;
-    width: 898px;
-    max-width: none;
+    width: 100%;
+    height: auto;
   }
 
   .statCard {
