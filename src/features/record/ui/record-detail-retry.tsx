@@ -1,8 +1,9 @@
 "use client"
 import { useRouter } from "next/navigation"
 import { useTransition } from "react"
+import { AppButton } from "@/features/classes/ui/parent-app-ui"
 export function RecordDetailRetry() {
   const router = useRouter()
   const [pending, startTransition] = useTransition()
-  return <button type="button" disabled={pending} onClick={() => startTransition(() => router.refresh())} style={{ minHeight: 44, color: "var(--brand-700)", background: "transparent", border: 0, cursor: "pointer" }}>{pending ? "불러오는 중…" : "다시 시도"}</button>
+  return <AppButton variant="secondary" disabled={pending} onClick={() => startTransition(() => router.refresh())}>{pending ? "불러오는 중…" : "다시 시도"}</AppButton>
 }

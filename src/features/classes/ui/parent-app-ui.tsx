@@ -109,3 +109,29 @@ export function AppEmpty({ children }: { children: ReactNode }) {
 }
 
 export { ui as appUi }
+
+/** 탭 화면 머리(일정 · 기록 · 마이). */
+export function TabHeader({ title, children }: { title: string; children?: ReactNode }) {
+  return <header className={ui.tabHeader}><h1>{title}</h1>{children}</header>
+}
+
+/** 빈 화면(일정 · 기록 탭 공통): 원 64 아이콘 + 제목 + 설명 + 행동. */
+export function EmptyState({ icon, title, body, action }: { icon: AppIconName; title: string; body: string; action?: ReactNode }) {
+  return <section className={ui.emptyState}>
+    <span className={ui.emptyIcon} aria-hidden="true"><AppIcon name={icon} size={26} /></span>
+    <h2 className={ui.subtitle}>{title}</h2>
+    <p className={ui.bodyMuted} style={{ whiteSpace: "pre-line" }}>{body}</p>
+    {action}
+  </section>
+}
+
+/** 진행 상황: 단계마다 완료 여부와 보조 문구. 다음 단계가 완료면 잇는 선도 채운다. */
+export function Timeline({ steps }: { steps: [title: string, sub: string | null, done: boolean][] }) {
+  return <ol className={ui.timeline}>{steps.map(([title, sub, done], index) => <li key={title} className={ui.timelineItem}>
+    <span className={ui.timelineRail} aria-hidden="true">
+      <span className={ui.timelineDot} data-done={done || undefined}>{done ? <AppIcon name="check" size={12} /> : null}</span>
+      {index < steps.length - 1 ? <span className={ui.timelineLine} data-done={steps[index + 1][2] || undefined} /> : null}
+    </span>
+    <span className={ui.timelineText} data-done={done || undefined}><span>{title}{done ? <span className={ui.srOnly}> 완료</span> : null}</span>{sub ? <span className={ui.caption}>{sub}</span> : null}</span>
+  </li>)}</ol>
+}

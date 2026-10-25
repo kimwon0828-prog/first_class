@@ -1,5 +1,4 @@
 import { parentEntryHref } from "@/features/classes/lib/parent-navigation"
-import { ParentDetailLink } from "@/features/classes/ui/parent-detail-link"
 import { ParentAppShell } from "@/features/classes/ui/parent-app-shell"
 import { ParentHeader } from "@/features/classes/ui/parent-header"
 import { withRecordChild } from "@/features/record/lib/record-href"
@@ -8,57 +7,36 @@ import { notFound } from "next/navigation"
 import { unstable_noStore as noStore } from "next/cache"
 
 import { requireParentAccess } from "@/features/my/lib/require-parent-access"
-import {
-  getExperienceStageLabel,
-  getExperienceTypeLabel,
-  resolveExperienceStage,
-  resolveParentExperienceDate
-} from "@/features/record/lib/experience-view"
 import { getMyExperienceDetailResult } from "@/features/record/queries/get-my-experience-detail"
 import { getMyExperienceReport } from "@/features/record/queries/get-my-experience-report"
 import { ExperienceCancelButton } from "@/features/record/ui/experience-cancel-button"
-import { getSeoulDateTimeParts } from "@/shared/lib/seoul-datetime"
-
-import { getMyChildren } from "@/features/children/queries/get-my-children"
 import { getExperienceReportSummary } from "@/features/reports/lib/experience-report-snapshot"
-
 import { RecordDetailRetry } from "@/features/record/ui/record-detail-retry"
+import { getPublicClassDetail } from "@/features/classes/queries/get-public-class-detail"
+import { getPublicAcademyPageByHandle } from "@/features/academies/queries/get-public-academy-page"
+import { appDateLabel, appTimeLabel } from "@/features/classes/lib/app-presentation"
+import { AppIcon } from "@/features/classes/ui/app-icon"
+import { AppButtonLink, Band, IconRow, StatusBadge, Timeline, appUi as ui } from "@/features/classes/ui/parent-app-ui"
+import { AcademyInquiryButton } from "@/features/classes/ui/parent-app-ui-client"
+import { applicationAddress, applicationBadge, isPendingApplication, slotAt } from "@/features/schedule/lib/app-schedule"
+import { getSeoulDateTimeParts } from "@/shared/lib/seoul-datetime"
 
 import styles from "./page.module.css"
 
 /*
- * 한 번의 교육 경험 상세.
+ * 한 번의 신청 · 교육 경험 상세(앱 applications/[id]).
  *
  * Experience id 는 trial_application.id 를 그대로 쓴다. 별도 Experience table 은 없다.
  * getMyExperienceDetail 이 학부모 본인의 목록에서만 찾으므로 남의 id 는 notFound 다.
- *
- * /record 목록은 completed 만 보여 주지만 Phase 6.2 의 /my/applications 카드도 이
- * route 를 쓴다. 그래서 완료 경험과 진행 중 신청의 돌아갈 곳과 정보 언어를 분리한다.
  * 도메인 status 를 새로 만들거나 서로 변환하지 않는다.
  */
 
 export const dynamic = "force-dynamic"
 export const revalidate = 0
 
-const SEOUL_WEEKDAY_SHORT = ["일", "월", "화", "수", "목", "금", "토"]
-
-const formatFullDate = (value: string) => {
-  const parts = getSeoulDateTimeParts(value)
-  if (!parts) {
-    return null
-  }
-
-  return `${parts.year}년 ${parts.month}월 ${parts.day}일 (${SEOUL_WEEKDAY_SHORT[parts.weekday]})`
-}
-
-const formatTime = (value: string) => {
-  const parts = getSeoulDateTimeParts(value)
-  if (!parts) {
-    return null
-  }
-
-  const minutes = `${parts.minute}`.padStart(2, "0")
-  return `${parts.hour < 12 ? "오전" : "오후"} ${parts.hour % 12 || 12}:${minutes}`
+const shortTime = (value?: string | null) => {
+  const parts = value ? getSeoulDateTimeParts(value) : null
+  return parts ? `${parts.month}월 ${parts.day}일 ${appTimeLabel(value!)}` : null
 }
 
 export default async function ExperienceDetailPage({
@@ -80,90 +58,74 @@ export default async function ExperienceDetailPage({
     notFound()
   }
 
-  const isCompletedExperience = experience.status === "completed"
+  const completed = experience.status === "completed"
+  const canceled = experience.status === "canceled" || Boolean(experience.canceledAt)
   // Ownership above remains the gate; these reads are independent afterwards.
-  const [selectedChildId, reportResult, childrenResult] = await Promise.all([
+  // 학원 문의·학원 보기는 신청 요약에 학원 정보가 없어 공개 수업 상세 → 공개 학원 페이지(기존 조회)로 찾는다.
+  const [selectedChildId, reportResult, publicClass] = await Promise.all([
     getRecordChildContext(navigationParams?.child),
-    isCompletedExperience ? getMyExperienceReport(experienceId) : Promise.resolve(null),
-    isCompletedExperience && experience.childId ? getMyChildren() : Promise.resolve(null)
+    completed ? getMyExperienceReport(experienceId) : Promise.resolve(null),
+    experience.classId ? getPublicClassDetail(experience.classId) : Promise.resolve(null)
   ])
-  const backHref = withRecordChild(isCompletedExperience ? "/record" : "/my/applications", selectedChildId)
+  const organizationId = publicClass?.data?.organization?.id ?? null
+  const academy = organizationId ? await getPublicAcademyPageByHandle(organizationId).catch(() => null) : null
+  const academyHref = organizationId ? `/academy/${academy?.slug ?? organizationId}` : null
+  const backHref = withRecordChild(completed ? "/record" : "/my/schedule", selectedChildId)
 
-  // 완료 경험의 관찰 미리보기는 발행 snapshot만 읽는다. 입력은 리포트 상세에 둔다.
   const hasPublishedReport = reportResult?.status === "ok"
   const reportLoadFailed = reportResult?.status === "error"
-  const profileChildId = !childrenResult?.error && childrenResult?.data.some(child => child.id === experience.childId)
-    ? experience.childId : null
   const snapshot = reportResult?.status === "ok" ? reportResult.report.content : null
   const summary = snapshot ? getExperienceReportSummary(snapshot) : null
 
-  const typeLabel = getExperienceTypeLabel(experience.classProgramType)
-  const primaryDate = resolveParentExperienceDate(experience)
-  const dateLabel = formatFullDate(primaryDate)
-  const timeLabel = formatTime(primaryDate)
-  const address = [experience.organizationAddress, experience.organizationAddressDetail]
-    .map((part) => part?.trim())
-    .filter(Boolean)
-    .join(" ")
-  const childLabel = experience.childGrade
-    ? `${experience.childName} · ${experience.childGrade}`
-    : experience.childName
-  const stageLabel = !isCompletedExperience
-    ? getExperienceStageLabel(resolveExperienceStage(experience), experience.classProgramType)
-    : null
+  const at = slotAt(experience)
+  const badge = applicationBadge(experience)
+  const address = applicationAddress(experience)
+  const pending = isPendingApplication(experience)
+  const showMap = experience.status === "confirmed" && Boolean(address)
+  const childLabel = [experience.childName, experience.childGrade].filter(Boolean).join(" · ")
+  const title = completed ? "체험 기록" : "예약 상세"
 
   return (
-    <ParentAppShell className={styles.page}>
-      <div className={styles.shell}>
-        <ParentHeader title={isCompletedExperience ? "체험 기록" : "신청 정보"} backHref={backHref} sticky />
-        <div className={styles.content}>
-          <section className={styles.section} aria-label={isCompletedExperience ? "경험 정보" : "신청 정보"}>
-            <p className={styles.child}>{childLabel}</p>
-            <div className={styles.badges}>
-              <span className={styles.typeBadge}>{typeLabel}</span>
-              {stageLabel ? <span className={styles.statusBadge}>{stageLabel}</span> : null}
-            </div>
-            <h2 className={styles.title}>{experience.classTitle ?? "수업 정보 준비 중"}</h2>
-            {experience.academyName ? <p className={styles.academy}>{experience.academyName}</p> : null}
-            <dl className={styles.factList}>
-              {dateLabel ? <div className={styles.factRow}>
-                <dt>{isCompletedExperience ? "다녀온 날" : "일정"}</dt>
-                <dd><time dateTime={primaryDate}>{dateLabel}{timeLabel ? ` ${timeLabel}` : ""}</time></dd>
-              </div> : null}
-              {address ? <div className={styles.factRow}><dt>장소</dt><dd>{address}</dd></div> : null}
-            </dl>
+    <ParentAppShell navigation={false} className={ui.page}>
+      <div className={ui.column}>
+        <ParentHeader title={title} backHref={backHref} sticky />
+        <div className={ui.content}>
+          <section className={styles.summary} aria-label={title}>
+            {badge ? <StatusBadge label={badge.label} tone={badge.tone} /> : null}
+            <h2 className={ui.display}>{experience.classTitle ?? "수업 정보 준비 중"}</h2>
+            <IconRow icon="calendar"><time dateTime={at}>{at ? `${appDateLabel(at)} ${appTimeLabel(at)}` : "일정 확인 중"}</time></IconRow>
+            {childLabel ? <IconRow icon="user">{childLabel}</IconRow> : null}
+            {[experience.academyName, address].some(Boolean) ? <IconRow icon="map-pin">{[experience.academyName, address].filter(Boolean).join(" · ")}</IconRow> : null}
+            {pending ? <p className={`${ui.pendingNote} ${styles.gap}`}><AppIcon name="clock" size={14} /><span>학원이 확인하면 확정 알림을 보내드려요</span></p> : null}
+            {academyHref || showMap ? <div className={`${ui.buttonRow} ${styles.gap}`}>
+              {academyHref ? <AcademyInquiryButton phone={academy?.phone ?? null} academyHref={academyHref} /> : null}
+              {showMap ? <a href={`https://map.naver.com/p/search/${encodeURIComponent(address!)}`} target="_blank" rel="noreferrer" className={ui.button} data-variant="primary" aria-label="길찾기 (새 창)">길찾기</a> : null}
+            </div> : null}
           </section>
 
-          {isCompletedExperience ? <>
-            <section className={styles.section} aria-labelledby="report-title">
-              <h2 id="report-title" className={styles.sectionTitle}>선생님이 남긴 관찰</h2>
-              {hasPublishedReport ? (
-                <>
-                  {snapshot?.observations.slice(0, 2).map((observation, index) => <p className={styles.body} key={`${observation.code}-${index}`}>{observation.label}</p>)}
-                  {summary ? <p className={styles.body}>{summary}</p> : null}
-                  <ParentDetailLink href={withRecordChild(`/record/${experience.id}/report`, selectedChildId)} className={styles.reportLink}>
-                    리포트 전체 보기 <span aria-hidden="true">→</span>
-                  </ParentDetailLink>
-                </>
-              ) : reportLoadFailed ? <p className={styles.muted} role="status">리포트 정보를 불러오지 못했어요. <RecordDetailRetry /></p>
-                : <p className={styles.muted}>아직 등록된 리포트가 없어요.</p>}
-            </section>
+          <Band />
+          {canceled ? <p className={`${ui.body} ${styles.block}`} style={{ color: "var(--ink-700)" }}>취소된 신청이에요.</p>
+            : <section className={styles.block} aria-label="진행 상황"><h2 className={ui.subtitle}>진행 상황</h2>
+              <Timeline steps={[
+                ["신청 완료", shortTime(experience.createdAt), true],
+                ["학원 확정", null, experience.status === "confirmed" || completed],
+                ["일정 확인", "체험 전 확정 일정을 확인해 주세요", completed],
+                ["체험 당일", shortTime(at), completed]
+              ]} />
+            </section>}
 
-            {profileChildId ? <ParentDetailLink href={withRecordChild("/record/profile", profileChildId)} className={styles.profile}>
-              <div><h2 className={styles.sectionTitle}>교육 프로필</h2><p className={styles.muted}>아이의 다른 교육 경험도 함께 살펴보세요.</p></div>
-              <span aria-hidden="true">›</span>
-            </ParentDetailLink> : null}
-          </> : <aside className={styles.notice}>
-            <p>{experience.status === "canceled" ? "취소된 신청이에요." : "아직 완료된 교육 경험이 아니에요."}</p>
-            <p className={styles.muted}>완료된 경험은 교육 기록으로 남으며, 발행된 리포트가 있으면 함께 확인할 수 있어요.</p>
-          </aside>}
+          {completed ? <><Band /><section className={styles.block} aria-labelledby="report-title">
+            <h2 id="report-title" className={ui.subtitle}>선생님이 남긴 관찰</h2>
+            {hasPublishedReport ? <>
+              {snapshot?.observations.slice(0, 2).map((observation, index) => <p className={ui.body} key={`${observation.code}-${index}`}>{observation.label}</p>)}
+              {summary ? <p className={ui.body} style={{ color: "var(--ink-700)" }}>{summary}</p> : null}
+              <AppButtonLink href={withRecordChild(`/record/${experience.id}/report`, selectedChildId)} variant="tonal">리포트 전체 보기</AppButtonLink>
+            </> : reportLoadFailed ? <div className={ui.notice} role="status"><p className={ui.body}>리포트 정보를 불러오지 못했어요.</p><RecordDetailRetry /></div>
+              : <p className={ui.bodyMuted}>아직 등록된 리포트가 없어요.</p>}
+          </section></> : null}
 
-          <section className={styles.related} aria-label="관련 정보">
-            {experience.classId ? <ParentDetailLink href={withRecordChild(`/classes/${experience.classId}`, selectedChildId)} className={styles.primaryLink}>
-              수업 다시 보기 <span aria-hidden="true">→</span>
-            </ParentDetailLink> : null}
-            {experience.canCancel ? <ExperienceCancelButton experienceId={experience.id} confirmDescription={`${experience.classTitle ?? "이 수업"} 신청을 취소할까요?`} /> : null}
-          </section>
+          {experience.canCancel ? <><Band /><ExperienceCancelButton experienceId={experience.id} label="예약 취소" className={ui.dangerRow}
+            trailing={<AppIcon name="chevron-right" size={18} />} confirmDescription={`${experience.classTitle ?? "이 수업"} 신청을 취소할까요?`} /></> : null}
         </div>
       </div>
     </ParentAppShell>

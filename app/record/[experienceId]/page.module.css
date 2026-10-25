@@ -1,34 +1,5 @@
-.page { min-height: 100dvh; background: var(--bg); }
-.shell { width: 100%; max-width: var(--col); min-height: 100dvh; margin-inline: auto; padding-bottom: calc(var(--s10) + env(safe-area-inset-bottom)); background: var(--surface); }
-.shell * { box-sizing: border-box; }
-.header { position: sticky; top: 0; z-index: 20; display: flex; align-items: center; gap: var(--s2); padding: var(--s2) var(--gutter); padding-top: calc(var(--s2) + env(safe-area-inset-top)); background: var(--surface); border-bottom: 1px solid var(--border); }
-.back { display: grid; place-items: center; min-width: 44px; min-height: 44px; color: var(--text-1); text-decoration: none; font-size: var(--font-h2); }
-.headerTitle { margin: 0; font-size: var(--font-h3); font-weight: 700; }
-.content { display: grid; gap: var(--s4); padding: var(--s5) var(--gutter); }
-.section { min-width: 0; padding: var(--s5); border: 1px solid var(--border); border-radius: var(--r-lg); background: var(--surface); overflow-wrap: anywhere; }
-.child { margin: 0 0 var(--s4); font-size: var(--font-b2); font-weight: 600; color: var(--text-2); }
-.badges { display: flex; flex-wrap: wrap; gap: var(--s2); margin-bottom: var(--s2); }
-.typeBadge, .statusBadge { display: inline-flex; padding: var(--s1) var(--s2); border-radius: var(--r-full); font-size: var(--font-c1); font-weight: 600; background: var(--surface-sub); color: var(--text-2); }
-.statusBadge { background: var(--brand-50); color: var(--brand-700); }
-.title { margin: 0; font-size: var(--font-h2); font-weight: 700; }
-.academy { margin: var(--s2) 0 0; color: var(--text-2); font-size: var(--font-b2); }
-.factList { display: grid; gap: var(--s3); margin: var(--s5) 0 0; padding-top: var(--s4); border-top: 1px solid var(--border); }
-.factRow { display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: var(--s2); font-size: var(--font-c1); }
-.factRow dt { color: var(--text-2); }
-.factRow dd { margin: 0; }
-.sectionTitle { margin: 0; font-size: var(--font-h4); font-weight: 700; }
-.body { margin: var(--s3) 0 0; font-size: var(--font-b2); white-space: pre-wrap; overflow-wrap: anywhere; }
-.muted { margin: var(--s2) 0 0; font-size: var(--font-b2); color: var(--text-2); overflow-wrap: anywhere; }
-.caption { margin: 0 0 var(--s2); color: var(--text-2); font-size: var(--font-c1); }
-.reportLink, .primaryLink { display: flex; align-items: center; justify-content: space-between; gap: var(--s2); min-height: 48px; padding: var(--s3) var(--s4); border-radius: var(--r-md); text-decoration: none; font-size: var(--font-b2); font-weight: 600; }
-.reportLink { margin-top: var(--s4); color: var(--brand-700); background: var(--brand-50); }
-.primaryLink { color: var(--surface); background: var(--brand-action); }
-.primaryLink:hover { background: var(--brand-action-hover); }
-.feedbackContent { margin-top: var(--s4); }
-.profile { display: flex; align-items: center; justify-content: space-between; gap: var(--s4); padding: var(--s5); border-radius: var(--r-lg); background: var(--brand-50); color: var(--text-1); text-decoration: none; }
-.profile .sectionTitle { color: var(--brand-700); }
-.notice { padding: var(--s4); border-radius: var(--r-lg); background: var(--surface-sub); font-size: var(--font-b2); }
-.notice > p:first-child { margin: 0; }
-.related { display: grid; gap: var(--s3); }
-.skeleton { min-height: 160px; background: var(--surface-sub); border-radius: var(--r-lg); }
-@media (min-width: 481px) { .page { background: var(--neutral-50); } }
+/* 예약 상세 · 체험 기록 배치(앱 applications/[id]). 색·글자·부품은 parent-app-ui. */
+.summary { display: grid; gap: 8px; padding: 8px 0 24px; }
+.gap { margin-top: 8px; }
+.block { display: grid; gap: 12px; padding: 24px 0; margin: 0; }
+.state { display: grid; gap: 20px; padding: 24px 0; }

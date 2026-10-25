@@ -1,86 +1,48 @@
-import { ReportPhotos } from "@/features/reports/ui/report-photos"
+import { ReportPhotoStrip } from "@/features/reports/ui/report-photos"
 import { getReportAttachments } from "@/features/reports/lib/experience-report-snapshot"
-import { ReportObservations } from "@/features/reports/ui/report-observations"
-import { ParentExperienceThumbnail } from "@/features/classes/ui/parent-experience-thumbnail"
 import { parentEntryHref } from "@/features/classes/lib/parent-navigation"
 import { getParentExperienceFeedback } from "@/features/feedback/queries/get-experience-feedback"
-import { ParentReportFeedback } from "@/features/feedback/ui/parent-report-feedback"
+import { ParentFeedbackForm } from "@/features/feedback/ui/parent-feedback-form"
 import { getMyCurrentParentDecision } from "@/features/decisions/queries/get-my-current-parent-decision"
 import { ReportViewTracker } from "@/features/reports/ui/report-view-tracker"
 import { withRecordChild } from "@/features/record/lib/record-href"
 import { getRecordChildContext } from "@/features/record/queries/get-record-child-context"
-import Link from "next/link"
 import { notFound } from "next/navigation"
 import { unstable_noStore as noStore } from "next/cache"
 
 import { requireParentAccess } from "@/features/my/lib/require-parent-access"
 import { getMyExperienceReport } from "@/features/record/queries/get-my-experience-report"
 import { getExperienceReportSummary } from "@/features/reports/lib/experience-report-snapshot"
-import { getSeoulDateTimeParts } from "@/shared/lib/seoul-datetime"
-
-import { getExperienceTypeLabel } from "@/features/record/lib/experience-view"
+import { getPublicClassDetail } from "@/features/classes/queries/get-public-class-detail"
+import { getPublicAcademyPageByHandle } from "@/features/academies/queries/get-public-academy-page"
+import { appDateLabel } from "@/features/classes/lib/app-presentation"
+import { AppIcon, type AppIconName } from "@/features/classes/ui/app-icon"
+import { AcademyLogo, AppButtonLink, AppNotice, Band, appUi as ui } from "@/features/classes/ui/parent-app-ui"
 import { RecordDetailRetry } from "@/features/record/ui/record-detail-retry"
+import { getSeoulDateTimeParts } from "@/shared/lib/seoul-datetime"
 import { ReportFrame } from "./report-frame"
 
 import styles from "./page.module.css"
 
-// 학원이 발행한 체험 리포트를 학부모가 보는 화면.
+// 학원이 발행한 체험 리포트를 학부모가 보는 화면(앱 applications/[id]/report).
 //
 // ⚠️ 리포트 본문은 experience_reports.content 만 본다.
 //    trial_results 를 다시 읽어 조립하지 않는다 — 그러면 학원이 평가를 고치는 순간
 //    학부모가 이미 본 리포트가 같이 바뀐다. 발행본은 발행 시점에 얼어붙은 것이다.
-//
-// Experience Detail 과 역할이 다르다.
-//   Detail  — 무슨 일이 있었는가
-//   Report  — 그 경험을 어떻게 이해할 수 있는가
 
 export const dynamic = "force-dynamic"
 export const revalidate = 0
 
-/*
- * 날짜는 서버가 어디서 도는지와 무관하게 한국 시간으로 읽는다.
- *
- * getFullYear() 류는 실행 환경의 timezone 을 따른다. Vercel 은 UTC 라서,
- * 한국 시간 자정 직후에 있었던 체험이 학부모 화면에서 하루 전으로 보인다.
- * "9월 15일 오전에 다녀온 체험" 이 "9월 14일" 로 적히면 그건 다른 기록이다.
- *
- * 기존 helper 를 그대로 쓴다. timezone 계산을 또 만들지 않는다.
- */
-const SEOUL_WEEKDAY_SHORT = ["일", "월", "화", "수", "목", "금", "토"]
+// 관찰 그룹 이름으로 아이콘을 고른다(앱과 같다). 맞는 것이 없으면 기본 아이콘.
+const groupIcons: [RegExp, AppIconName][] = [[/참여|관심|흥미/, "heart"], [/이해|개념|내용/, "book-open"], [/반응|태도|소통|질문/, "message-square"], [/집중/, "clock"], [/표현|창의|생각/, "edit"], [/문제|해결|사고/, "navigation"]]
+const groupIcon = (label?: string | null) => groupIcons.find(([pattern]) => label && pattern.test(label))?.[1] ?? "check"
+const dateOnly = (value: string) => { const parts = getSeoulDateTimeParts(value); return parts ? `${parts.month}월 ${parts.day}일` : "" }
 
-const formatReportDate = (value: string | null) => {
-  if (!value) {
-    return null
-  }
-
-  const parts = getSeoulDateTimeParts(value)
-  if (!parts) {
-    return null
-  }
-
-  return `${parts.year}년 ${parts.month}월 ${parts.day}일 (${SEOUL_WEEKDAY_SHORT[parts.weekday]})`
-}
-
-const formatPublishedDate = (value: string) => {
-  const parts = getSeoulDateTimeParts(value)
-  if (!parts) {
-    return null
-  }
-
-  const month = `${parts.month}`.padStart(2, "0")
-  const day = `${parts.day}`.padStart(2, "0")
-  return `${parts.year}.${month}.${day}`
-}
-
-function SectionIcon({ kind }: { kind: "observation" | "summary" | "course" | "schedule" | "feedback" }) {
-  const paths = {
-    observation: "M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12Zm10-3a3 3 0 1 0 0 6 3 3 0 0 0 0-6",
-    summary: "M6 3h9l3 3v15H6V3Zm3 6h6M9 13h6M9 17h4",
-    course: "m3 6 9-3 9 3v14l-9-3-9 3V6Zm9-3v14",
-    schedule: "M4 5h16v16H4V5Zm4-2v4m8-4v4M4 10h16",
-    feedback: "M5 4h14v12H9l-4 4V4Zm4 4h6m-6 4h4"
-  }
-  return <svg className={styles.sectionIcon} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={paths[kind]} /></svg>
+function Section({ title, right, children }: { title: string; right?: string; children: React.ReactNode }) {
+  return <section className={styles.section} aria-label={title}>
+    <div className={ui.sectionHead}><h2 className={ui.subtitle}>{title}</h2>{right ? <span className={ui.caption}>{right}</span> : null}</div>
+    {children}
+  </section>
 }
 
 export default async function ExperienceReportPage({ params, searchParams }: {
@@ -104,76 +66,68 @@ export default async function ExperienceReportPage({ params, searchParams }: {
   if (result.status !== "ok") {
     const isError = result.status === "error"
     return <ReportFrame backHref={backHref}>
-      <section className={styles.emptyState} aria-live="polite">
-        <h2 className={styles.blockTitle}>{isError ? "리포트를 불러오지 못했어요." : "현재 확인할 수 있는 리포트가 없어요."}</h2>
-        {isError ? <><p className={styles.muted}>잠시 후 다시 시도해 주세요.</p><RecordDetailRetry /></> : null}
-        <Link href={backHref} className={styles.primaryAction}>체험 기록으로 돌아가기</Link>
-      </section>
+      <AppNotice message={isError ? "리포트를 불러오지 못했어요. 잠시 후 다시 시도해 주세요." : "현재 확인할 수 있는 리포트가 없어요."}>
+        {isError ? <RecordDetailRetry /> : null}
+        <AppButtonLink href={backHref} variant="secondary">체험 기록으로 돌아가기</AppButtonLink>
+      </AppNotice>
     </ReportFrame>
   }
 
   const { report, experience } = result
-  const [feedbackResult, decisionResult] = await Promise.all([
+  // 학원 로고 · "학원 보기"는 신청 요약에 학원 정보가 없어 공개 수업 상세 → 공개 학원 페이지(기존 조회)로 찾는다.
+  const [feedbackResult, decisionResult, publicClass] = await Promise.all([
     getParentExperienceFeedback(experienceId, parent.id),
-    getMyCurrentParentDecision(experienceId)
+    getMyCurrentParentDecision(experienceId),
+    experience.classId ? getPublicClassDetail(experience.classId) : Promise.resolve(null)
   ])
+  const organizationId = publicClass?.data?.organization?.id ?? null
+  const academy = organizationId ? await getPublicAcademyPageByHandle(organizationId).catch(() => null) : null
+  const academyHref = organizationId ? `/academy/${academy?.slug ?? organizationId}` : null
   const snapshot = report.content
   const summary = getExperienceReportSummary(snapshot)
-  const experienceDate = formatReportDate(snapshot.experience.date)
-  const publishedDate = formatPublishedDate(report.publishedAt)
-  const type = snapshot.experience.type
-  const typeLabel = type === "trial_class" || type === "level_test" ? getExperienceTypeLabel(type) : null
-  const recommendations = [
-    { label: "과정", value: snapshot.recommendation.course },
-    { label: "레벨", value: snapshot.recommendation.level },
-    { label: "일정", value: snapshot.recommendation.schedule }
-  ].filter((item): item is { label: string; value: string } => Boolean(item.value))
+  const attachments = getReportAttachments(snapshot)
+  const academyName = snapshot.experience.academy.name
+  const recommendations = [["과정", snapshot.recommendation.course], ["레벨", snapshot.recommendation.level], ["일정", snapshot.recommendation.schedule]]
+    .filter((item): item is [string, string] => Boolean(item[1]))
 
-  return <ReportFrame backHref={backHref}>
+  return <ReportFrame backHref={backHref} footer={academyHref ? <AppButtonLink href={academyHref} variant="secondary">학원 보기</AppButtonLink> : null}>
     <ReportViewTracker reportId={report.id} />
-    <section className={styles.summary} aria-label="오늘의 수업">
-      <ParentExperienceThumbnail src={experience.classCoverImageUrl} size="report" />
-      <div className={styles.summaryText}>
-      <p className={styles.caption}>오늘의 수업</p>
-      {snapshot.experience.child.displayName ? <p className={styles.childName}>
-        {snapshot.experience.child.displayName}
-        {snapshot.experience.child.grade ? <span className={styles.grade}> · {snapshot.experience.child.grade}</span> : null}
-      </p> : null}
-      {typeLabel ? <span className={styles.typeBadge}>{typeLabel}</span> : null}
-      {snapshot.experience.class.title ? <h2 className={styles.classTitle}>{snapshot.experience.class.title}</h2> : null}
-      {snapshot.experience.academy.name ? <p className={styles.muted}>{snapshot.experience.academy.name}</p> : null}
-      {experienceDate ? <p className={styles.experienceDate}><time dateTime={snapshot.experience.date}>{experienceDate}</time></p> : null}
+    <div className={styles.academy}>
+      <AcademyLogo size={44} src={academy?.logoImageUrl} subjectCode="other" />
+      <p className={`${ui.label} ${ui.oneLine}`}>{academyName}</p>
+    </div>
+    <div className={styles.title}>
+      <h1 className={ui.display}>{snapshot.experience.child.displayName}의 체험 리포트</h1>
+      <p className={ui.bodyMuted}>{[snapshot.experience.class.title, snapshot.experience.date ? appDateLabel(snapshot.experience.date) : null].filter(Boolean).join(" · ")}</p>
+    </div>
+
+    {summary ? <Section title="선생님 이야기"><p className={`${ui.body} ${styles.story}`}>{summary}</p></Section> : null}
+
+    {attachments.length ? <Section title="수업 사진" right={`${attachments.length}장`}>
+      <ReportPhotoStrip attachments={attachments} className={styles.photos} itemClassName={styles.photo} />
+    </Section> : null}
+
+    {snapshot.observations.length ? <Section title="수업에서 보인 모습">
+      <ul className={styles.observations}>{snapshot.observations.map((observation, index) => <li key={`${observation.code}-${index}`}>
+        <span className={styles.observationIcon} aria-hidden="true"><AppIcon name={groupIcon(observation.group?.label)} size={16} /></span>
+        <span className={ui.rowText}>{observation.group?.label ? <span className={ui.caption}>{observation.group.label}</span> : null}<span className={ui.subtitle}>{observation.label}</span></span>
+      </li>)}</ul>
+    </Section> : null}
+
+    {recommendations.length ? <Section title="추천 정보">
+      <dl className={styles.recommendations}>{recommendations.map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}</dl>
+    </Section> : null}
+
+    <div className={styles.spacer} />
+    <Band />
+    <section id="experience-feedback" tabIndex={-1} className={styles.feedback} aria-labelledby="experience-feedback-title">
+      <div className={styles.feedbackHead}>
+        <h2 id="experience-feedback-title" className={ui.subtitle}>선생님께 한마디<span className={styles.optional}>선택</span></h2>
+        <p className={ui.caption}>남긴 의견은 학원에만 전달돼요</p>
       </div>
+      <ParentFeedbackForm applicationId={experienceId} result={feedbackResult} decisionResult={decisionResult}
+        showDecision={experience.status === "completed" && experience.canCollectParentDecision} showTitle={false} />
     </section>
-
-    {snapshot.observations.length > 0 ? <section className={styles.block} aria-labelledby="observations-title">
-      <h2 id="observations-title" className={styles.blockTitle}><SectionIcon kind="observation" />수업에서 보인 모습</h2>
-      <ReportObservations observations={snapshot.observations} listClassName={styles.observationList} itemClassName={styles.prose} heading="h3" />
-    </section> : null}
-
-    {summary ? <section className={styles.block} aria-labelledby="report-summary-title">
-      <h2 id="report-summary-title" className={styles.blockTitle}><SectionIcon kind="summary" />선생님 이야기</h2>
-      <p className={styles.prose}>{summary}</p>
-    </section> : null}
-
-    <ReportPhotos attachments={getReportAttachments(snapshot)} />
-
-    {recommendations.length > 0 ? <section className={styles.block} aria-labelledby="recommendation-title">
-      <h2 id="recommendation-title" className={styles.blockTitle}><SectionIcon kind="course" />추천 정보</h2>
-      <dl className={styles.recommendationList}>
-        {recommendations.map(item => <div key={item.label} className={styles.recommendationRow}>
-          <dt>{item.label}</dt><dd className={styles.prose}>{item.value}</dd>
-        </div>)}
-      </dl>
-    </section> : null}
-
-
-
-    <footer className={styles.footer}>
-      {publishedDate ? <p className={styles.caption}><time dateTime={report.publishedAt}>{publishedDate}</time> 발행</p> : null}
-      <p className={styles.caption}>이 리포트는 체험 당시 학원에서 기록하고 발행한 내용을 바탕으로 보여드려요.</p>
-    </footer>
-    <ParentReportFeedback applicationId={experienceId} result={feedbackResult} decisionResult={decisionResult}
-      showDecision={experience.status === "completed" && experience.canCollectParentDecision} />
+    <p className={styles.published}>{dateOnly(report.publishedAt)} 발행 · 체험 당시 학원이 기록한 내용이에요</p>
   </ReportFrame>
 }

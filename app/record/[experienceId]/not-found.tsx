@@ -1,12 +1,8 @@
 import { ParentAppShell } from "@/features/classes/ui/parent-app-shell"
 import { ParentHeader } from "@/features/classes/ui/parent-header"
-import Link from "next/link"
-import styles from "./page.module.css"
+import { AppButtonLink, AppNotice, appUi as ui } from "@/features/classes/ui/parent-app-ui"
 export default function NotFound() {
-  return <ParentAppShell className={styles.page} data-parent-design="v1"><div className={styles.shell}><ParentHeader title="체험 기록" backHref="/record" /><div className={styles.content}>
-    <section className={styles.section}><h1 className={styles.sectionTitle}>기록을 찾을 수 없어요.</h1>
-      <p className={styles.muted}>확인할 수 있는 기록이 없어요. 기록 목록에서 다시 확인해 주세요.</p>
-      <Link href="/record" className={styles.reportLink}>기록 목록으로</Link>
-    </section>
+  return <ParentAppShell navigation={false} className={ui.page}><div className={ui.column}><ParentHeader title="예약 상세" backHref="/record" /><div className={ui.content}>
+    <AppNotice message="신청을 찾을 수 없어요. 기록 목록에서 다시 확인해 주세요."><AppButtonLink href="/record" variant="secondary">기록 목록으로</AppButtonLink></AppNotice>
   </div></div></ParentAppShell>
 }

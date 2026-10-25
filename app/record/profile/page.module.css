@@ -1,58 +1,9 @@
-.page { min-height: 100dvh; width: 100%; background: var(--bg); }
-.shell { width: 100%; max-width: var(--col); min-height: 100dvh; margin-inline: auto; background: var(--surface); padding-bottom: calc(var(--s10) + env(safe-area-inset-bottom)); }
-.header { position: sticky; top: 0; z-index: 5; display: flex; align-items: center; gap: var(--s2); min-height: 64px; padding: calc(var(--s2) + env(safe-area-inset-top)) var(--gutter) var(--s2); background: var(--surface); border-bottom: 1px solid var(--border); }
-.back { flex: 0 0 44px; width: 44px; height: 44px; display: inline-flex; align-items: center; justify-content: center; color: var(--text-1); border-radius: var(--r-md); text-decoration: none; }
-.headerTitle { margin: 0; font-size: var(--font-h3); font-weight: 600; }
-.content { padding: var(--s6) var(--gutter) 0; }
-.childHeader { display: flex; align-items: center; gap: var(--s4); }
-.childHeader > div { min-width: 0; }
-.avatar { display: grid; place-items: center; flex: 0 0 var(--s16); height: var(--s16); color: var(--brand-700); background: var(--brand-50); border-radius: var(--r-full); }
-.childName { margin: 0; font-size: var(--font-h3); font-weight: 600; overflow-wrap: anywhere; }
-.childNote { margin: var(--s2) 0 0; color: var(--text-2); font-size: var(--font-b2); word-break: keep-all; overflow-wrap: anywhere; }
-.summary { display: flex; align-items: center; gap: var(--s3); margin: var(--s6) 0 var(--s8); padding: var(--s4); border-radius: var(--r-lg); background: var(--neutral-50); }
-.summary > div { min-width: 0; }
-.summaryIcon { display: grid; place-items: center; flex: 0 0 var(--s10); height: var(--s10); border-radius: var(--r-full); background: var(--surface); color: var(--text-2); }
-.count { margin: 0; font-size: var(--font-b2); font-weight: 600; }
-.summaryNote { margin: var(--s1) 0 0; font-size: var(--font-c1); color: var(--text-2); word-break: keep-all; overflow-wrap: anywhere; }
-.groups { display: grid; gap: var(--s8); }
-.month { margin: 0 0 var(--s4); font-size: var(--font-h4); font-weight: 700; }
-.timeline { list-style: none; margin: 0; padding: 0 0 0 var(--s2); }
-.entry { position: relative; border-left: 1px solid var(--border); padding: 0 0 var(--s6) var(--s4); min-width: 0; }
-.entry:last-child { padding-bottom: 0; }
-.entry::before { content: ""; position: absolute; top: var(--s2); left: calc(var(--s1) * -1); width: var(--s2); height: var(--s2); border-radius: var(--r-full); background: var(--brand-700); }
-.date { display: block; margin: 0 0 var(--s3); color: var(--text-2); font-size: var(--font-c1); font-weight: 500; }
-.card { min-width: 0; padding: var(--s4); border: 1px solid var(--border); border-radius: var(--r-lg); background: var(--surface); overflow-wrap: anywhere; }
-.type { margin: 0 0 var(--s1); color: var(--text-2); font-size: var(--font-c1); }
-.classTitle { margin: 0; font-size: var(--font-h4); font-weight: 700; }
-.academy { margin: var(--s1) 0 0; font-size: var(--font-b2); color: var(--text-2); }
-.observations { margin-top: var(--s4); padding: var(--s3); border-radius: var(--r-sm); background: var(--neutral-50); }
-.observationTitle { display: flex; align-items: center; gap: var(--s2); margin: 0 0 var(--s3); font-size: var(--font-c1); color: var(--brand-700); font-weight: 600; }
-.observationTitle svg { flex-shrink: 0; }
-.observationList { margin: 0; padding-left: var(--s4); display: grid; gap: var(--s3); font-size: var(--font-b2); }
-.observationList li { white-space: pre-wrap; }
-.observationList li::marker { color: var(--text-3); }
-.noObservations { color: var(--text-2); font-size: var(--font-b2); }
-.noObservations p { margin: 0; }
-.noObservations p + p { margin-top: var(--s2); }
-.reportLink { display: flex; align-items: center; gap: var(--s2); min-height: 44px; margin-top: var(--s3); padding-top: var(--s2); border-top: 1px solid var(--border); color: var(--brand-700); font-size: var(--font-b2); font-weight: 500; text-decoration: none; }
-.empty { padding: var(--s8) var(--s4); border: 1px solid var(--border); border-radius: var(--r-lg); text-align: center; }
-.empty h2 { margin: 0; font-size: var(--font-h4); font-weight: 700; }
-.empty p { margin: var(--s3) 0 0; font-size: var(--font-b2); color: var(--text-2); }
-.retry { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: var(--s2) var(--s5); margin-top: var(--s5); background: var(--brand-action); color: var(--neutral-0); border: 0; border-radius: var(--r-md); font: inherit; font-size: var(--font-b2); cursor: pointer; }
-.retry:disabled { opacity: .6; cursor: wait; }
-.loading { display: grid; gap: var(--s8); }
-.skeletonContext, .skeletonHeading, .skeletonCard { background: var(--neutral-50); border-radius: var(--r-lg); }
-.skeletonContext { height: 96px; }
-.skeletonHeading { width: 40%; height: 24px; margin-bottom: var(--s4); }
-.skeletonCard { height: 240px; border: 1px solid var(--border); }
-
-.reportLink svg { flex-shrink: 0; }
-.chevron { margin-left: auto; }
-
-.experienceHeader { display: flex; align-items: flex-start; gap: var(--s3); }
-.experienceInfo { min-width: 0; }
-.thumbnail { position: relative; display: block; flex: 0 0 var(--s16); width: var(--s16); height: var(--s16); overflow: hidden; border-radius: var(--r-md); background: var(--neutral-50); }
-
-/* Parent primary action states; retain disabled and layout contracts. */
-.retry:hover:not(:disabled) { background: var(--brand-action-hover); }
-.retry:active:not(:disabled) { background: var(--brand-action-pressed); }
+/* 교육 프로필(웹에만 있는 화면). 앱 리포트 화면과 같은 부품·토큰으로 배치한다. */
+.childHeader { display: flex; align-items: center; gap: 12px; padding: 8px 0 16px; }
+.avatar { display: grid; place-items: center; flex: 0 0 52px; height: 52px; border-radius: 999px; background: var(--surface-sub); font-size: 20px; line-height: 28px; font-weight: 700; color: var(--ink-700); }
+.groups { padding-top: 24px; }
+.experienceHeader { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.experienceHeader h3, .experienceHeader p { margin: 0; }
+.observations { margin: 0; padding: 0 16px; list-style: none; border: 1px solid var(--border); border-radius: var(--r-control); }
+.observations > li { padding: 12px 0; border-top: 1px solid var(--line-subtle); font-size: 15px; line-height: 22px; color: var(--text-1); }
+.observations > li:first-child { border-top: 0; }

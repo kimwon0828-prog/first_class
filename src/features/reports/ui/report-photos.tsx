@@ -47,3 +47,20 @@ export function ReportPhotos({ attachments }: { attachments: readonly ReportAtta
     {opened?<PhotoViewer photo={opened} src={attachmentUrl(opened.id)} onClose={()=>setOpened(null)}/>:null}
   </section>
 }
+
+/** 학부모 리포트 "수업 사진"(앱 ReportPhotoStrip): 가로 스크롤 240×180, 누르면 그 사진을 크게 본다. */
+export function ReportPhotoStrip({ attachments, className, itemClassName }: { attachments: readonly ReportAttachment[]; className?: string; itemClassName?: string }) {
+  const [opened,setOpened]=useState<ReportAttachment|null>(null)
+  const [failed,setFailed]=useState<string[]>([])
+  if (!attachments.length) return null
+  return <>
+    <div className={className}>{attachments.map((photo,index)=><button key={photo.id} type="button" className={itemClassName} aria-label={`사진 ${index+1} 크게 보기`} onClick={()=>setOpened(photo)}>
+      {failed.includes(photo.id)?<span aria-hidden="true">!</span>:<>
+        {/* Private authenticated route: do not proxy via the public Next image cache. */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={attachmentUrl(photo.id)} alt={photo.caption||`수업 사진 ${index+1}`} width={240} height={180} onError={()=>setFailed(ids=>[...ids,photo.id])}/>
+      </>}
+    </button>)}</div>
+    {opened?<PhotoViewer photo={opened} src={attachmentUrl(opened.id)} onClose={()=>setOpened(null)}/>:null}
+  </>
+}

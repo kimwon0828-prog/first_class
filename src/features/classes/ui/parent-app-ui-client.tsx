@@ -41,8 +41,8 @@ export function ShareButton({ message, path, className }: { message: string; pat
   </button>
 }
 
-/** "학원에 문의하기": 전화번호가 있으면 전화하기/문자 보내기 시트, 없으면 학원 소개로. */
-export function AcademyInquiry({ phone, academyHref }: { phone: string | null; academyHref: string | null }) {
+/** "학원에 문의하기": 전화번호가 있으면 전화하기/문자 보내기 시트, 없으면 학원 소개로. look: 앱 문의 행 · "학원 문의" 보조 버튼. */
+function Inquiry({ phone, academyHref, look }: { phone: string | null; academyHref: string | null; look: "row" | "button" }) {
   const [open, setOpen] = useState(false)
   const digits = phone?.replace(/[^0-9+]/g, "") || null
   const cancelRef = useRef<HTMLButtonElement>(null)
@@ -53,10 +53,12 @@ export function AcademyInquiry({ phone, academyHref }: { phone: string | null; a
     window.addEventListener("keydown", onKey)
     return () => window.removeEventListener("keydown", onKey)
   }, [open])
-  const row = <><AppIcon name="message-square" size={18} /><span>궁금한 점이 있으면 학원에 문의하기</span><AppIcon name="chevron-right" size={18} /></>
-  if (!digits) return academyHref ? <Link href={academyHref} className={ui.inquiry}>{row}</Link> : null
+  const content = look === "row" ? <><AppIcon name="message-square" size={18} /><span>궁금한 점이 있으면 학원에 문의하기</span><AppIcon name="chevron-right" size={18} /></> : "학원 문의"
+  const className = look === "row" ? ui.inquiry : ui.button
+  const variant = look === "button" ? "secondary" : undefined
+  if (!digits) return academyHref ? <Link href={academyHref} className={className} data-variant={variant}>{content}</Link> : null
   return <>
-    <button type="button" className={ui.inquiry} aria-haspopup="dialog" onClick={() => setOpen(true)}>{row}</button>
+    <button type="button" className={className} data-variant={variant} aria-haspopup="dialog" onClick={() => setOpen(true)}>{content}</button>
     {open ? <div className={ui.scrim} onClick={() => setOpen(false)}>
       <div className={ui.actionSheet} role="dialog" aria-modal="true" aria-label="학원에 문의하기" onClick={event => event.stopPropagation()}>
         <div className={ui.actionGroup}>
@@ -69,6 +71,8 @@ export function AcademyInquiry({ phone, academyHref }: { phone: string | null; a
     </div> : null}
   </>
 }
+export const AcademyInquiry = (props: { phone: string | null; academyHref: string | null }) => <Inquiry {...props} look="row" />
+export const AcademyInquiryButton = (props: { phone: string | null; academyHref: string | null }) => <Inquiry {...props} look="button" />
 
 /** 학원 상세 탭 줄: 누르면 그 위치로, 스크롤하면 지나간 마지막 구역이 선택된다. */
 export function AnchorTabs({ tabs }: { tabs: [id: string, label: string][] }) {
