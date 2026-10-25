@@ -19,9 +19,10 @@ export type MarketingConsentNoticeResult = {
 /** SQL app.recontact_phone_hash 와 같다(숫자만 sha256). */
 export const hashRecontactPhone = (phone: string) => createHash("sha256").update(phone.replace(/\D/g, "")).digest("hex")
 
+// organization_id 는 옛 학원별 동의 알림의 열이다. 동의가 첫수업 하나가 된 뒤(20261026120000) 새 알림은 늘 null 이다.
 type NoticeRow = {
   parent_id: string
-  organization_id: string | null
+  organization_id: null
   action: "consent" | "withdraw"
   source: "parent_app" | "parent_web" | "opt_out_080"
   phone_hash: string | null
@@ -37,29 +38,24 @@ const finishRow = (result: MarketingConsentNoticeResult, sent: { providerMessage
   updated_at: new Date().toISOString()
 })
 
-/** 학부모 계정 번호 · 학원 이름을 읽어 문자를 보낸다. 기록은 부르는 쪽이 한다. */
-const deliver = async (input: { parentId: string; organizationId: string | null; action: "consent" | "withdraw"; at: Date; phoneOverride?: string }) => {
+/** 학부모 계정 번호를 읽어 문자를 보낸다. 기록은 부르는 쪽이 한다. */
+const deliver = async (input: { parentId: string; action: "consent" | "withdraw"; at: Date; phoneOverride?: string }) => {
   const db = getSupabaseServiceRoleClient()
-  const [profile, organization, user] = await Promise.all([
+  const [profile, user] = await Promise.all([
     db.from("profiles").select("role, phone").eq("id", input.parentId).maybeSingle(),
-    input.organizationId
-      ? db.from("organizations").select("name").eq("id", input.organizationId).maybeSingle()
-      : Promise.resolve({ data: null, error: null }),
     db.auth.admin.getUserById(input.parentId)
   ])
-  if (profile.error || organization.error || user.error) {
+  if (profile.error || user.error) {
     return { result: { status: "failed", reason: "recipient_unavailable" } as MarketingConsentNoticeResult, sent: null, masked: null }
   }
   const skip = (reason: string) => ({ result: { status: "skipped", reason } as MarketingConsentNoticeResult, sent: null, masked: null })
   if (!profile.data || profile.data.role !== "parent") return skip("not_parent")
   if (user.data.user?.app_metadata?.app_store_review === true) return skip("app_store_review")
-  const academyName = input.organizationId ? (organization.data as { name?: string | null } | null)?.name?.trim() : null
-  if (input.organizationId && !academyName) return skip("organization_missing")
   // 080 알림은 거부한 그 번호로 보낸다(그 번호가 계정 번호인 학부모를 찾은 뒤다).
   const phone = toAccountPhone(input.phoneOverride ?? profile.data.phone ?? null)
   if (!phone) return skip("parent_phone_missing")
 
-  const message = buildMarketingConsentNotice({ action: input.action, academyName: academyName ?? null, at: input.at })
+  const message = buildMarketingConsentNotice({ action: input.action, at: input.at })
   const sent = await sendSms({ recipientType: "parent", phone, messagePreview: message, contentType: "COMM" })
   const result: MarketingConsentNoticeResult = sent.status === "sent" || sent.status === "dry_run"
     ? { status: sent.status, reason: null }
@@ -68,9 +64,9 @@ const deliver = async (input: { parentId: string; organizationId: string | null;
 }
 
 /**
- * 수신 동의 · 철회 처리 결과 알림(서비스 문자, COMM). 학부모 앱 · 웹 공용.
+ * 학원 소식 수신 동의 · 철회 처리 결과 알림(서비스 문자, COMM). 학부모 앱 · 웹 공용.
  *
- * 받는 번호는 학부모 계정 번호다(안내 문자와 같다). 결과는 marketing_consent_notices 에 남긴다.
+ * 받는 번호는 학부모 계정 번호다(학원 소식 문자와 같다). 결과는 marketing_consent_notices 에 남긴다.
  * 로컬 가드(개발 환경 + 운영 DB)면 보내지도 기록하지도 않는다. SMS_SEND_ENABLED 가 꺼져 있으면 dry_run 으로 남는다.
  * 앱 심사용 학부모 계정에는 보내지 않는다(skipped 로 남긴다).
  */
@@ -78,7 +74,7 @@ export const sendMarketingConsentNotice = async (input: MarketingConsentNoticeIn
   if (!getLocalMutationGuard().allowed) return { status: "skipped", reason: "local_guard" }
   const row: NoticeRow = {
     parent_id: input.parentId,
-    organization_id: input.organizationId,
+    organization_id: null,
     action: input.action,
     source: input.source,
     phone_hash: null,
@@ -118,7 +114,7 @@ export const sendOptOutNotice = async (input: { parentId: string; phone: string;
 
   let outcome: Awaited<ReturnType<typeof deliver>>
   try {
-    outcome = await deliver({ parentId: input.parentId, organizationId: null, action: "withdraw", at: input.at, phoneOverride: phone })
+    outcome = await deliver({ parentId: input.parentId, action: "withdraw", at: input.at, phoneOverride: phone })
   } catch {
     outcome = { result: { status: "failed", reason: "notice_exception" }, sent: null, masked: null }
   }

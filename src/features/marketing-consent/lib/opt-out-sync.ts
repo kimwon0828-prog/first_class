@@ -3,10 +3,11 @@
 // 순서
 //   1. 오래 남은 080 알림 자리(claimed 1시간 넘음)를 failed 로 내린다(작업 중 끊긴 것 — 다음에 다시 보낸다).
 //   2. NCP 수신 거부 목록(최근 7일 등록분)을 받아 marketing_opt_out_phones 에 넣는다(이미 있는 번호는 그대로).
-//      → 모든 학원 안내에서 빠진다. 080 번호를 아직 신청하지 않았거나 목록이 비어 있으면 그냥 지나간다.
-//   3. 그 번호가 계정 번호인 학부모를 찾으면 080 처리 결과 알림을 번호마다 한 번 보낸다(claimed 자리 잡기).
+//      → 모든 학원 소식에서 빠진다. 080 번호를 아직 신청하지 않았거나 목록이 비어 있으면 그냥 지나간다.
+//   3. 그 번호가 계정 번호인 학부모를 찾으면 학원 소식 수신 동의를 철회로 바꾸고(source opt_out_080, 모두),
+//      080 처리 결과 알림을 번호마다 한 번 보낸다(claimed 자리 잡기).
 //      7일 창 안에서는 매일 다시 보므로 실패 · dry_run 은 다음 날 다시 시도된다.
-//   4. 안내 문자 결과 확인: 보낸 지 10분 ~ 7일 된 sent 를 NCP 메시지 결과로 확인한다.
+//   4. 학원 소식 문자 결과 확인: 보낸 지 10분 ~ 7일 된 sent 를 NCP 메시지 결과로 확인한다.
 //      실패 + 080 거부 번호 → opted_out("수신거부로 발송 안 됨"), 그 밖의 실패 → failed, 성공 → 확인 시각만.
 //      둘 다 한도에서 빠진다. 아직 처리 중(READY · PROCESSING)이면 다음 실행에 다시 본다.
 //
@@ -32,6 +33,8 @@ export type OptOutSyncDeps = {
   listUnsubscribes: ((window: { startTime: number; endTime: number }) => Promise<OptOutEntry[]>) | null
   insertOptOuts: (rows: Array<{ phoneHash: string; optedOutAt: string; source: "opt_out_080" | "admin" }>) => Promise<void>
   findParents: (hashes: string[]) => Promise<Array<{ phoneHash: string; parentId: string }>>
+  /** 학원 소식 수신 동의 철회(RPC withdraw_academy_news_consent_by_opt_out). changed = 동의 중이던 것을 바꿨다. */
+  withdrawConsent: (input: { parentId: string; at: Date }) => Promise<{ changed: boolean }>
   sendNotice: (input: { parentId: string; phone: string; at: Date }) => Promise<{ status: string; reason: string | null; claimed: boolean }>
   listPendingResults: (window: { from: string; to: string }) => Promise<PendingRecipient[]>
   getMessageResult: ((requestId: string) => Promise<MessageResult | null>) | null
@@ -44,6 +47,9 @@ export type OptOutSyncSummary = {
   ncloud: "ok" | "not_configured"
   unsubscribes: number
   noticeTargets: number
+  /** 동의 중이다가 080 으로 철회된 학부모 수 · 철회에 실패한 수(다음 동기화에서 다시 본다). */
+  consentsWithdrawn: number
+  consentWithdrawErrors: number
   notices: { sent: number; dryRun: number; skipped: number; failed: number; alreadyNotified: number }
   results: { checked: number; delivered: number; optedOut: number; failed: number; pending: number; errors: number }
 }
@@ -75,6 +81,8 @@ export const runOptOutSync = async (deps: OptOutSyncDeps): Promise<OptOutSyncSum
     ncloud: deps.listUnsubscribes && deps.getMessageResult ? "ok" : "not_configured",
     unsubscribes: 0,
     noticeTargets: 0,
+    consentsWithdrawn: 0,
+    consentWithdrawErrors: 0,
     notices: { sent: 0, dryRun: 0, skipped: 0, failed: 0, alreadyNotified: 0 },
     results: { checked: 0, delivered: 0, optedOut: 0, failed: 0, pending: 0, errors: 0 }
   }
@@ -95,10 +103,17 @@ export const runOptOutSync = async (deps: OptOutSyncDeps): Promise<OptOutSyncSum
         optedOutAt: parseRegisterTime(entry.registerTime, deps.now).toISOString(),
         source: entry.registerType === "M" ? "admin" as const : "opt_out_080" as const
       })))
-      // 같은 번호를 계정 번호로 쓰는 학부모가 여럿이면 한 명에게만(알림은 번호마다 한 통).
+      // 동의 철회는 그 번호를 계정 번호로 쓰는 학부모 모두. 알림은 번호마다 한 통(여럿이면 한 명에게만).
+      const parents = await deps.findParents(Array.from(byHash.keys()))
       const parentByHash = new Map<string, string>()
-      for (const row of await deps.findParents(Array.from(byHash.keys()))) {
+      for (const row of parents) {
         if (!parentByHash.has(row.phoneHash)) parentByHash.set(row.phoneHash, row.parentId)
+        try {
+          const withdrawn = await deps.withdrawConsent({ parentId: row.parentId, at: parseRegisterTime((byHash.get(row.phoneHash) as OptOutEntry).registerTime, deps.now) })
+          if (withdrawn.changed) summary.consentsWithdrawn += 1
+        } catch {
+          summary.consentWithdrawErrors += 1
+        }
       }
       summary.noticeTargets = parentByHash.size
       for (const [phoneHash, parentId] of parentByHash) {
@@ -113,7 +128,7 @@ export const runOptOutSync = async (deps: OptOutSyncDeps): Promise<OptOutSyncSum
     }
   }
 
-  // ── 4. 안내 문자 결과 확인 ──
+  // ── 4. 학원 소식 문자 결과 확인 ──
   const getMessageResult = deps.getMessageResult
   if (getMessageResult) {
     const pending = await deps.listPendingResults({

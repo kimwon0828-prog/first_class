@@ -7,7 +7,7 @@ import { getPublicEnv } from "@/shared/config/env"
 
 export const dynamic = "force-dynamic"
 
-// 학부모 앱 수신 동의(2차-3). 계약: docs/academy-marketing-consent-api.md.
+// 학부모 앱 학원 소식 수신 동의(첫수업 하나). 계약: docs/academy-marketing-consent-api.md.
 const handle = createNativeMarketingConsentHandler({
   client: (token) => {
     const { supabaseUrl, supabasePublishableKey } = getPublicEnv()

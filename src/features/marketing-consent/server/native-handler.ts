@@ -4,7 +4,7 @@ import {
   MARKETING_CONSENT_ERROR_STATUS,
   parseMarketingConsentInput
 } from "@/features/marketing-consent/lib/marketing-consent"
-import { listAcademyMarketingConsents, setAcademyMarketingConsent } from "@/features/marketing-consent/server/marketing-consent-db"
+import { getAcademyNewsConsent, setAcademyNewsConsent } from "@/features/marketing-consent/server/marketing-consent-db"
 import { toMarketingConsentChange, type MarketingConsentChange } from "@/features/marketing-consent/lib/consent-notice"
 
 const reply = (body: unknown, status = 200) => Response.json(body, {
@@ -12,7 +12,8 @@ const reply = (body: unknown, status = 200) => Response.json(body, {
 })
 
 /**
- * GET · POST /api/native/me/marketing-consents (학부모 앱, 2차-3 명세 그대로).
+ * GET · POST /api/native/me/marketing-consent (학부모 앱). 첫수업 하나에 대한 학원 소식 수신 동의.
+ * 응답은 GET · POST 모두 { consented, consentedAt, withdrawnAt }.
  *
  * 입구 확인은 push-device 와 같다: Bearer 토큰 → 학부모 계정 → 탈퇴 진행 중 아님 → 휴대폰 확인.
  * 동의 · 철회 자체의 권한(본인만)은 RPC 가 auth.uid() 로 다시 본다.
@@ -48,8 +49,8 @@ export function createNativeMarketingConsentHandler(deps: {
       }
 
       if (request.method === "GET") {
-        const result = await listAcademyMarketingConsents(db)
-        return result.ok ? reply({ items: result.items }) : reply({ error: result.error }, MARKETING_CONSENT_ERROR_STATUS[result.error])
+        const result = await getAcademyNewsConsent(db, user.id)
+        return result.ok ? reply(result.state) : reply({ error: result.error }, MARKETING_CONSENT_ERROR_STATUS[result.error])
       }
       if (request.method !== "POST") return reply({ error: "not_found" }, 404)
       if (!request.headers.get("content-type")?.startsWith("application/json")) return reply({ error: "invalid_consent_input" }, 400)
@@ -59,12 +60,12 @@ export function createNativeMarketingConsentHandler(deps: {
       try { body = JSON.parse(raw) } catch { return reply({ error: "invalid_consent_input" }, 400) }
       const input = parseMarketingConsentInput(body, "parent_app")
       if (!input.ok) return reply({ error: input.error }, MARKETING_CONSENT_ERROR_STATUS[input.error])
-      const result = await setAcademyMarketingConsent(db, input.value)
+      const result = await setAcademyNewsConsent(db, input.value)
       if (!result.ok) return reply({ error: result.error }, MARKETING_CONSENT_ERROR_STATUS[result.error])
       if (result.changed === true) {
-        try { deps.onChanged?.(toMarketingConsentChange(user.id, "parent_app", result.item)) } catch { /* 알림 실패가 저장 응답을 바꾸지 않는다 */ }
+        try { deps.onChanged?.(toMarketingConsentChange(user.id, "parent_app", result.state)) } catch { /* 알림 실패가 저장 응답을 바꾸지 않는다 */ }
       }
-      return reply(result.item)
+      return reply(result.state)
     } catch {
       return reply({ error: "temporarily_unavailable" }, 503)
     }
