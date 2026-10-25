@@ -1,9 +1,10 @@
-// 080 무료수신거부 매일 동기화 + 안내 문자 결과 확인 검증 — 가짜 NCP · DB · 문자, 네트워크 · DB 없음.
+// 080 무료수신거부 매일 동기화 + 학원 소식 문자 결과 확인 검증 — 가짜 NCP · DB · 문자, 네트워크 · DB 없음.
 //
 //   npx tsx scripts/verify-marketing-opt-out-sync.ts
 //
 //   1. NCP 설정 없음 · 목록 빈 값 → 오류 없이 지나간다
-//   2. 수신 거부 목록 → 080 번호 표(같은 번호 하나 · M = admin) → 계정 번호 학부모에게 알림 번호마다 한 번
+//   2. 수신 거부 목록 → 080 번호 표(같은 번호 하나 · M = admin) → 계정 번호 학부모 모두 학원 소식 동의 철회
+//      → 알림 번호마다 한 번
 //      (이미 보낸 번호는 다시 안 보냄 · 실패는 다음 실행에 다시)
 //   3. 결과 확인: 실패 + 080 → opted_out · 그 밖의 실패 → failed · 성공 → 확인만 · 처리 중 → 다음에 · 오류는 그 건만
 //   4. 기간: 080 목록 최근 7일 · 결과 확인 10분 ~ 7일
@@ -35,10 +36,16 @@ type World = {
   noticeOutcome: "sent" | "failed" | "dry_run"
   sentTo: string[]
   updates: Array<{ id: string; patch: RecipientResultPatch }>
+  /** 학원 소식 동의 중인 학부모. 080 으로 철회되면 빠진다. */
+  consented: Set<string>
+  withdrawals: Array<{ parentId: string; at: string }>
   windows: Array<{ kind: string; from: number | string; to: number | string }>
 }
 
-const world = (): World => ({ optOuts: new Map(), notices: new Map(), noticeOutcome: "sent", sentTo: [], updates: [], windows: [] })
+const world = (): World => ({
+  optOuts: new Map(), notices: new Map(), noticeOutcome: "sent", sentTo: [], updates: [],
+  consented: new Set(["parent-a", "parent-a2"]), withdrawals: [], windows: []
+})
 
 const deps = (w: World, overrides: Partial<OptOutSyncDeps> = {}): OptOutSyncDeps => ({
   now: NOW,
@@ -62,6 +69,10 @@ const deps = (w: World, overrides: Partial<OptOutSyncDeps> = {}): OptOutSyncDeps
     { phoneHash: hash("01011112222"), parentId: "parent-a2" },
     { phoneHash: hash("01033334444"), parentId: "parent-b" }
   ].filter((row) => hashes.includes(row.phoneHash)),
+  withdrawConsent: async ({ parentId, at }) => {
+    w.withdrawals.push({ parentId, at: at.toISOString() })
+    return { changed: w.consented.delete(parentId) }
+  },
   sendNotice: async ({ phone }) => {
     const key = hash(phone)
     const held = w.notices.get(key)
@@ -118,6 +129,17 @@ void (async () => {
     check("거부 시각은 NCP 등록 시각(KST)", w.optOuts.get(hash("01011112222"))?.optedOutAt === "2026-10-24T11:15:00.000Z", w.optOuts.get(hash("01011112222"))?.optedOutAt)
     check("계정 번호 학부모가 있는 번호에만 알림(2통, 학부모 없는 번호는 안 보냄)",
       first.noticeTargets === 2 && first.notices.sent === 2 && w.sentTo.sort().join() === "01011112222,01033334444", w.sentTo.join())
+    check("계정 번호 학부모 모두 학원 소식 동의 철회를 부른다(같은 번호 둘 · 다른 번호 하나)",
+      w.withdrawals.map((item) => item.parentId).sort().join() === "parent-a,parent-a2,parent-b", w.withdrawals.map((item) => item.parentId).join())
+    check("동의 중이던 학부모만 철회로 센다(parent-b 는 동의 기록 없음)", first.consentsWithdrawn === 2 && w.consented.size === 0, String(first.consentsWithdrawn))
+    check("철회 시각은 080 등록 시각(KST)", w.withdrawals.find((item) => item.parentId === "parent-a")?.at === "2026-10-24T11:15:00.000Z")
+    const again = world()
+    again.consented.clear()
+    const rerun = await runOptOutSync(deps(again))
+    check("이미 철회된 학부모는 다시 세지 않는다(멱등)", rerun.consentsWithdrawn === 0 && again.withdrawals.length === 3)
+    const failing = world()
+    const broken = await runOptOutSync(deps(failing, { withdrawConsent: async () => { throw new Error("db down") } }))
+    check("철회 실패는 세고 알림 · 결과 확인은 그대로 간다", broken.consentWithdrawErrors === 3 && broken.notices.sent === 2 && broken.results.checked > 0)
     check("한 번호에 학부모가 여럿이어도 알림은 한 통", w.sentTo.filter((phone) => phone === "01011112222").length === 1)
 
     const second = await runOptOutSync(deps(w))

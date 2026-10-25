@@ -130,7 +130,7 @@ export type StudioStudentDetail = {
   info: { interestSubjects: string | null; currentLevel: string | null; regularSchedule: string | null }
 }
 
-/** 연락 기록의 안내 문자 상태. opted_out 은 080 거부로 NCP 가 걸러낸 것(매일 결과 확인 뒤 바뀐다). */
+/** 연락 기록의 학원 소식 문자 상태. opted_out 은 080 거부로 NCP 가 걸러낸 것(매일 결과 확인 뒤 바뀐다). */
 const RECONTACT_STATUS_TEXT: Record<RecontactRecipientStatus, string> = {
   queued: "보내는 중",
   sent: "보냄",
@@ -218,7 +218,7 @@ export const getStudioStudentDetail = async (
       }
     })
 
-    const templateLabel = (kind: string | null) => RECONTACT_TEMPLATES.find((template) => template.kind === kind)?.label ?? "안내"
+    const templateLabel = (kind: string | null) => RECONTACT_TEMPLATES.find((template) => template.kind === kind)?.label ?? "학원 소식"
     const timeline: StudentTimelineItem[] = [
       ...activity.events.map<StudentTimelineItem>((event, index) => {
         const at = formatStudentDateTime(event.at)
@@ -227,7 +227,7 @@ export const getStudioStudentDetail = async (
         }
         if (event.kind === "recontact") {
           const state = RECONTACT_STATUS_TEXT[event.status]
-          return { key: `m${index}`, at: event.at, title: `안내 문자 · ${templateLabel(event.templateKind)}`, detail: `${state} · ${at}` }
+          return { key: `m${index}`, at: event.at, title: `학원 소식 · ${templateLabel(event.templateKind)}`, detail: `${state} · ${at}` }
         }
         return {
           key: `c${index}`,
@@ -273,7 +273,7 @@ export const getStudioStudentDetail = async (
   }
 }
 
-/** 다음 연락 저장 · 안내 보내기가 쓰는 서버 확인: 이 신청이 이 학원 학생의 것인가, 그 학생의 신청들은 무엇인가. */
+/** 다음 연락 저장 · 학원 소식 보내기가 쓰는 서버 확인: 이 신청이 이 학원 학생의 것인가, 그 학생의 신청들은 무엇인가. */
 export const resolveStudioStudentGroup = async (organizationId: string, applicationId: string) => {
   const { groups } = await loadStudentGroups(organizationId)
   return findStudentGroup(groups, applicationId)

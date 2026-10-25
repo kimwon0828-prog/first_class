@@ -1,7 +1,8 @@
-// 안내 보내기(다시 연락 문자) 문장 규칙. 화면 미리보기와 서버 발송이 같은 함수를 쓴다.
+// 학원 소식 보내기(다시 연락 문자) 문장 규칙. 화면 미리보기와 서버 발송이 같은 함수를 쓴다.
+// 보내는 주체는 첫수업이다(학원 소식 동의도 첫수업 하나, 20261026120000).
 //
-//   (광고) [학원명] 학원대표번호            ← 정보통신망법 전송자 명칭 · 연락처
-//   {학생} 보호자님, 지난 {체험}에 와 주셔서 감사했어요.
+//   (광고) [첫수업] 010-8384-0825           ← 정보통신망법 전송자 명칭 · 연락처(첫수업 고객센터, COMPANY_INFO)
+//   [학원명] {학생} 보호자님, 지난 {체험}에 와 주셔서 감사했어요.
 //
 //   본문(템플릿 · 직접 쓰기)
 //
@@ -9,9 +10,17 @@
 //   무료수신거부 080-…
 //
 // 저장은 치환 전 템플릿({학생} · {체험} 자리 표시)만 한다 — 학생 이름이 들어간 문장은 남기지 않는다.
+// 학원명 머리([학원명])는 보낼 때 붙인다(템플릿에 넣지 않는다).
 // 이 파일은 클라이언트에서도 읽는다. 서버 전용 값(080 번호 등)은 인자로만 받는다.
 
+import { COMPANY_INFO } from "@/shared/config/company-info"
 import type { RecontactTemplateKind } from "@/shared/lib/db/adapter"
+
+/** 첫 줄 전송자 연락처 = 첫수업 고객센터 번호. recontact_batches.sender_phone 에도 이 값이 남는다. */
+export const RECONTACT_SENDER_PHONE = COMPANY_INFO.customerCenterPhone
+
+/** 보내기 패널 · 학생 상세 팝업 설명(§5.27). */
+export const RECONTACT_PANEL_DESCRIPTION = "첫수업 이름으로 보내져요 · 학원 소식 수신에 동의한 학부모에게만 가요"
 
 export const RECONTACT_MONTH_LIMIT = 200
 export const RECONTACT_PER_BATCH = 50
@@ -74,22 +83,27 @@ export const toFriendlyStudentName = (name: string) => {
   return hasFinalConsonant(given.at(-1) as string) ? `${given}이` : given
 }
 
-export const formatRecontactHeader = (academyName: string, academyPhone: string) => `(광고) [${academyName}] ${academyPhone}`
+export const formatRecontactHeader = () => `(광고) [${COMPANY_INFO.name}] ${RECONTACT_SENDER_PHONE}`
 
 export const formatRecontactLinkLine = (linkUrl: string) => `수업 보기·체험 신청 ▶ ${linkUrl}`
 
 export const formatRecontactOptOutLine = (optOutNumber: string) => `무료수신거부 ${optOutNumber}`
 
-/** 받는 사람 한 명의 본문(머리 · 꼬리 제외). */
-export const renderRecontactBody = (bodyTemplate: string, recipient: { studentName: string; trialLabel: string }) =>
-  bodyTemplate
+/** 받는 사람 한 명의 본문(첫 줄 · 꼬리 제외). 둘째 줄은 "[학원명] 하람이 보호자님, …"으로 시작한다. */
+export const renderRecontactBody = (
+  bodyTemplate: string,
+  recipient: { academyName: string; studentName: string; trialLabel: string }
+) => {
+  const body = bodyTemplate
     .replaceAll("{학생}", toFriendlyStudentName(recipient.studentName))
     .replaceAll("{체험}", recipient.trialLabel)
+  const academy = recipient.academyName.trim()
+  return academy ? `[${academy}] ${body}` : body
+}
 
 /** 실제로 나가는 문자 전체. */
 export const renderRecontactMessage = (input: {
   academyName: string
-  academyPhone: string
   bodyTemplate: string
   studentName: string
   trialLabel: string
@@ -97,7 +111,7 @@ export const renderRecontactMessage = (input: {
   optOutNumber: string
 }) =>
   [
-    formatRecontactHeader(input.academyName, input.academyPhone),
+    formatRecontactHeader(),
     renderRecontactBody(input.bodyTemplate, input),
     "",
     ...(input.linkUrl ? [formatRecontactLinkLine(input.linkUrl)] : []),

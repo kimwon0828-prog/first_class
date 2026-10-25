@@ -244,7 +244,7 @@ export const resolveLastContact = (
 export type StudentLockReason = "no_account" | "no_consent" | "no_phone"
 
 /**
- * 안내를 보낼 수 있는가. 받는 번호는 학부모 계정 번호다(신청서 번호가 아니다).
+ * 학원 소식을 보낼 수 있는가. 받는 번호는 학부모 계정 번호다(신청서 번호가 아니다). 동의는 첫수업 하나(학원별이 아니다).
  * 엑셀(계정 없음) → 수신 동의 안 함 → 계정 번호 없음("보호자 휴대폰 번호가 필요해요") 순서로 본다.
  * 080 수신거부는 번호 해시가 서버에만 있어 보낼 때 서버가 다시 뺀다.
  */
@@ -260,9 +260,9 @@ export const resolveStudentLock = (
 
 /** 잠긴 학생의 한 줄 이유(목록 · 상세 같은 문구). */
 export const STUDENT_LOCK_LABELS: Record<StudentLockReason, { short: string; long: string }> = {
-  no_account: { short: "엑셀 학생", long: "엑셀로 가져온 학생은 안내를 보낼 수 없어요" },
-  no_consent: { short: "수신 동의 안 함", long: "광고성 정보 수신에 동의한 보호자에게만 보낼 수 있어요" },
-  no_phone: { short: "보호자 휴대폰 번호가 필요해요", long: "보호자가 마이에서 휴대폰 번호를 등록해야 안내를 보낼 수 있어요" }
+  no_account: { short: "엑셀 학생", long: "엑셀로 가져온 학생은 학원 소식을 보낼 수 없어요" },
+  no_consent: { short: "수신 동의 안 함", long: "학원 소식 수신에 동의한 보호자에게만 보낼 수 있어요" },
+  no_phone: { short: "보호자 휴대폰 번호가 필요해요", long: "보호자가 마이에서 휴대폰 번호를 등록해야 학원 소식을 보낼 수 있어요" }
 }
 
 export const gradeOrder = (grade: string | null | undefined) => {

@@ -14,7 +14,7 @@ const chunk = <T>(items: T[], size: number) =>
   Array.from({ length: Math.ceil(items.length / size) }, (_, index) => items.slice(index * size, index * size + size))
 
 /**
- * 080 무료수신거부 매일 동기화 + 안내 문자 결과 확인(vercel.json 0 0 * * * = KST 09:00).
+ * 080 무료수신거부 매일 동기화(학원 소식 동의 철회 · 처리 결과 알림) + 학원 소식 문자 결과 확인(vercel.json 0 0 * * * = KST 09:00).
  * 규칙은 lib/opt-out-sync.ts. 여기서는 NCP · DB(service role) · 문자를 잇는다.
  *
  * 로컬 개발 서버가 운영 DB 를 보면 아무것도 하지 않는다(getLocalMutationGuard).
@@ -70,6 +70,14 @@ export async function runMarketingOptOutSync(now = new Date()): Promise<OptOutSy
         }
       }
       return rows
+    },
+    withdrawConsent: async (input) => {
+      const { data, error } = await db.rpc("withdraw_academy_news_consent_by_opt_out", {
+        p_parent_id: input.parentId,
+        p_occurred_at: input.at.toISOString()
+      })
+      if (error) throw new Error("failed_to_withdraw_academy_news_consent")
+      return { changed: (data as { changed?: unknown } | null)?.changed === true }
     },
     sendNotice: async (input) => {
       try {

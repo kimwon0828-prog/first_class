@@ -16,6 +16,7 @@ import {
   formatRecontactLinkLine,
   formatRecontactOptOutLine,
   RECONTACT_CUSTOM_MAX,
+  RECONTACT_PANEL_DESCRIPTION,
   RECONTACT_TEMPLATES,
   renderRecontactBody
 } from "@/features/students/lib/recontact-message"
@@ -44,7 +45,7 @@ type RecontactPanelProps = {
 const newBatchId = () => crypto.randomUUID()
 
 /**
- * 안내 보내기 패널 (Figma 2148:5922). STUDIO_DESIGN_SYSTEM.md §5.27.
+ * 학원 소식 보내기 패널 (Figma 2148:5922). STUDIO_DESIGN_SYSTEM.md §5.27. 보내는 주체는 첫수업이다.
  * 막는 이유는 recontact-gate 가 정하고, 서버 액션이 같은 순서로 다시 본다.
  */
 export function RecontactPanel({ context, recipients, initialTemplate = "new_class", onSent, embedded = false }: RecontactPanelProps) {
@@ -76,8 +77,8 @@ export function RecontactPanel({ context, recipients, initialTemplate = "new_cla
     () => buildRecontactBodyTemplate({ kind: template, classTitle: selectedClass?.title ?? null, customText }),
     [template, selectedClass, customText]
   )
-  const header = formatRecontactHeader(context.academyName, context.academyPhone ?? "학원 대표번호")
-  const body = renderRecontactBody(bodyTemplate, { studentName: previewRecipient.name, trialLabel: previewRecipient.trialLabel })
+  const header = formatRecontactHeader()
+  const body = renderRecontactBody(bodyTemplate, { academyName: context.academyName, studentName: previewRecipient.name, trialLabel: previewRecipient.trialLabel })
   const optOutLine = formatRecontactOptOutLine(context.optOutNumber ?? "080-…")
   const fullText = [header, body, "", ...(linkUrl ? [formatRecontactLinkLine(linkUrl)] : []), optOutLine].join("\n")
 
@@ -85,7 +86,6 @@ export function RecontactPanel({ context, recipients, initialTemplate = "new_cla
     entitled: context.entitled,
     localGuardAllowed: context.localGuardAllowed,
     optOutNumber: context.optOutNumber,
-    senderPhone: context.academyPhone,
     now,
     selectedCount: recipients.length,
     remaining
@@ -118,18 +118,21 @@ export function RecontactPanel({ context, recipients, initialTemplate = "new_cla
     <section
       className={embedded ? styles.embedded : styles.panel}
       aria-labelledby={embedded ? undefined : "recontact-panel-title"}
-      aria-label={embedded ? "안내 보내기" : undefined}
+      aria-label={embedded ? "학원 소식 보내기" : undefined}
     >
       {/* 팝업 안에서는 제목 · 요금제 표시를 팝업 머리가 맡는다. */}
       {embedded ? null : (
-        <div className={styles.head}>
-          <h2 id="recontact-panel-title" className={styles.title}>{count > 0 ? `${count}명에게 안내 보내기` : "안내 보내기"}</h2>
-          <span className={styles.spacer} />
-          <V2StatusBadge tone="green">스탠다드</V2StatusBadge>
+        <div className={styles.headGroup}>
+          <div className={styles.head}>
+            <h2 id="recontact-panel-title" className={styles.title}>{count > 0 ? `${count}명에게 학원 소식 보내기` : "학원 소식 보내기"}</h2>
+            <span className={styles.spacer} />
+            <V2StatusBadge tone="green">스탠다드</V2StatusBadge>
+          </div>
+          <p className={styles.description}>{RECONTACT_PANEL_DESCRIPTION}</p>
         </div>
       )}
 
-      <div className={styles.templates} role="group" aria-label="안내 종류">
+      <div className={styles.templates} role="group" aria-label="학원 소식 종류">
         {RECONTACT_TEMPLATES.map((item) => (
           <V2Chip key={item.kind} label={item.label} selected={template === item.kind} onClick={() => setTemplate(item.kind)} />
         ))}
@@ -171,7 +174,7 @@ export function RecontactPanel({ context, recipients, initialTemplate = "new_cla
         </div>
         <div>
           <dt>받는 사람</dt>
-          <dd>{count > 0 ? `${count}명 · 모두 수신 동의` : "고른 학생 없음"}</dd>
+          <dd>{count > 0 ? `${count}명 · 모두 학원 소식 수신 동의` : "고른 학생 없음"}</dd>
         </div>
         <div>
           <dt>이번 달 남은 발송</dt>
@@ -210,7 +213,7 @@ export function RecontactPanel({ context, recipients, initialTemplate = "new_cla
         onClick={() => send(recipients.map((item) => item.applicationId))}
       >
         <V2SendIcon size={18} />
-        {pending ? "보내는 중…" : count > 0 ? `${count}명에게 보내기` : "안내 보내기"}
+        {pending ? "보내는 중…" : count > 0 ? `${count}명에게 보내기` : "학원 소식 보내기"}
       </button>
       <p className={styles.footnote}>학생 이름과 체험 수업이 자동으로 들어가요. 보낸 내용은 학생 기록에 남아요.</p>
     </section>

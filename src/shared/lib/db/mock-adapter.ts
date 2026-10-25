@@ -794,10 +794,11 @@ const getProfileDisplayNameById = (profileId: string | null | undefined) => {
 const experienceReports: ExperienceReportSummary[] = []
 
 /*
- * 학생 · 안내 보내기(2차-3) mock 저장소. supabase 의 parent_marketing_consents · recontact_* 와 같은 규칙만 흉내 낸다
+ * 학생 · 학원 소식 보내기 mock 저장소. supabase 의 parent_academy_news_consents · recontact_* 와 같은 규칙만 흉내 낸다
  * (동의 · 같은 번호 한 통 · 1회 50명 · 월 200건 · 중복 클릭). 080 수신거부는 mock 에 없다.
  */
-type MockMarketingConsent = { parentId: string; organizationId: string; consented: boolean; consentedAt: string | null; withdrawnAt: string | null }
+// 학원 소식 동의는 첫수업 하나(학부모 1행). 학원은 자기 학원에 신청한 적 있는 학부모만 본다.
+type MockMarketingConsent = { parentId: string; consented: boolean; consentedAt: string | null; withdrawnAt: string | null }
 type MockRecontactRecipient = {
   id: string
   batchId: string
@@ -819,7 +820,7 @@ const marketingConsents = recontactStore.__firstClassMockMarketingConsents__ ?? 
 const recontactBatchIds = recontactStore.__firstClassMockRecontactBatchIds__ ?? (recontactStore.__firstClassMockRecontactBatchIds__ = new Set())
 const recontactRecipients = recontactStore.__firstClassMockRecontactRecipients__ ?? (recontactStore.__firstClassMockRecontactRecipients__ = [])
 const recontactSender = recontactStore.__firstClassMockRecontactSender__ ??
-  (recontactStore.__firstClassMockRecontactSender__ = { academyName: [mockOrganizationLocation.name, mockOrganizationLocation.branchName].filter(Boolean).join(" "), academyPhone: "02-123-4567" })
+  (recontactStore.__firstClassMockRecontactSender__ = { academyName: [mockOrganizationLocation.name, mockOrganizationLocation.branchName].filter(Boolean).join(" ") })
 const RECONTACT_MONTH_LIMIT = 200
 const RECONTACT_PER_BATCH = 50
 const seoulMonthStartIso = () => {
@@ -2142,8 +2143,9 @@ export const mockDataAdapter: DataAdapter = {
   },
   async listStudioMarketingConsents(organizationId, parentIds) {
     const ids = new Set(parentIds)
+    const applied = new Set(organizationId === mockOrganizationId ? applications.map((row) => row.parentId) : [])
     return marketingConsents
-      .filter((row) => row.organizationId === organizationId && ids.has(row.parentId))
+      .filter((row) => ids.has(row.parentId) && applied.has(row.parentId))
       .map(({ parentId, consented, consentedAt, withdrawnAt }) => ({ parentId, consented, consentedAt, withdrawnAt, phoneReady: mockAccountPhone(parentId) !== null }))
   },
   async getStudioRecontactUsage() {
@@ -2186,7 +2188,7 @@ export const mockDataAdapter: DataAdapter = {
     }
 
     const consentedParents = new Set(
-      marketingConsents.filter((row) => row.organizationId === organizationId && row.consented).map((row) => row.parentId)
+      marketingConsents.filter((row) => row.consented).map((row) => row.parentId)
     )
     const picked = new Map<string, MockApplicationRecord>()
     for (const item of applications

@@ -13,6 +13,7 @@ import {
   RECONTACT_CUSTOM_MAX,
   RECONTACT_LMS_MAX_BYTES,
   RECONTACT_PER_BATCH,
+  RECONTACT_SENDER_PHONE,
   renderRecontactMessage
 } from "@/features/students/lib/recontact-message"
 import { buildTrialLabel } from "@/features/students/lib/student-grouping"
@@ -35,7 +36,7 @@ export type SendRecontactInput = {
 export type SendRecontactResult = {
   status: "success" | "partial" | "error"
   message: string
-  /** 다음에 할 일(학원 정보 · 플랜·결제 등). */
+  /** 다음에 할 일(플랜·결제 등). */
   action?: { label: string; href: string } | null
   sent?: number
   failed?: number
@@ -53,18 +54,19 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 const SEND_CONCURRENCY = 5
 
 const RESERVE_ERRORS: Record<string, string> = {
-  recontact_plan_required: "안내 보내기는 스탠다드 플랜에서 쓸 수 있어요.",
-  recontact_no_eligible_recipient: "보낼 수 있는 보호자가 없어 보내지 않았어요. 수신 동의 · 휴대폰 인증 상태를 다시 확인해 주세요.",
+  recontact_plan_required: "학원 소식 보내기는 스탠다드 플랜에서 쓸 수 있어요.",
+  recontact_no_eligible_recipient: "보낼 수 있는 보호자가 없어 보내지 않았어요. 학원 소식 수신 동의 · 휴대폰 인증 상태를 다시 확인해 주세요.",
   recontact_recipient_count_invalid: `한 번에 ${RECONTACT_PER_BATCH}명까지 보낼 수 있어요.`,
   recontact_class_forbidden: "함께 보낼 수업을 다시 골라 주세요.",
   recontact_batch_conflict: "화면을 새로 고친 뒤 다시 보내 주세요."
 }
 
 /**
- * 학생에게 안내 보내기(다시 연락 문자, 2차-3). AGENTS.md "학생 · 안내 문자".
+ * 학생에게 학원 소식 보내기(다시 연락 문자). AGENTS.md "학생 · 학원 소식 문자".
+ * 보내는 주체는 첫수업이다: 첫 줄 "(광고) [첫수업] 고객센터 번호", 둘째 줄부터 "[학원명] …".
  *
- * 확인 순서: 학원 계정 → 스탠다드 → 로컬 가드 → 080 번호 → 학원 대표번호 → 시간(08~21시 KST) → 입력
- * → 자리 잡기 RPC(스탠다드 · 동의 · 계정 번호 · 080 · 파기 · 같은 번호 · 1회 50명 · 월 200건 · 중복 클릭)
+ * 확인 순서: 학원 계정 → 스탠다드 → 로컬 가드 → 080 번호 → 시간(08~21시 KST) → 입력
+ * → 자리 잡기 RPC(스탠다드 · 첫수업 학원 소식 동의 · 계정 번호 · 080 · 파기 · 같은 번호 · 1회 50명 · 월 200건 · 중복 클릭)
  * → 받는 사람마다 학부모 계정 번호로 보내기 → 결과 기록. 보내지 못한 건 · dry_run 은 한도에서 빠진다.
  * 080 거부로 NCP 가 걸러낸 건은 매일 동기화(/api/cron/marketing-opt-out-sync)가 opted_out 으로 바꾼다.
  */
@@ -87,7 +89,6 @@ export async function sendRecontactAction(input: SendRecontactInput): Promise<Se
     entitled: gate.allowed,
     localGuardAllowed: getLocalMutationGuard().allowed,
     optOutNumber,
-    senderPhone: sender.academyPhone,
     now,
     selectedCount: ids.length,
     // 한도는 DB 가 transaction 안에서 다시 센다. 여기서는 막지 않는다.
@@ -146,15 +147,15 @@ export async function sendRecontactAction(input: SendRecontactInput): Promise<Se
       bodyTemplate,
       linkUrl,
       optOutNumber: optOutNumber as string,
-      senderPhone: sender.academyPhone as string
+      senderPhone: RECONTACT_SENDER_PHONE
     })
   } catch (error) {
     const code = error instanceof Error ? error.message : ""
-    return { status: "error", message: RESERVE_ERRORS[code] ?? "안내를 보내지 못했어요. 잠시 후 다시 시도해 주세요." }
+    return { status: "error", message: RESERVE_ERRORS[code] ?? "학원 소식을 보내지 못했어요. 잠시 후 다시 시도해 주세요." }
   }
 
   if (reserved.mode === "duplicate") {
-    return { status: "success", message: "이미 보낸 안내예요. 학생 상세의 연락 기록에서 확인할 수 있어요." }
+    return { status: "success", message: "이미 보낸 학원 소식이에요. 학생 상세의 연락 기록에서 확인할 수 있어요." }
   }
   if (reserved.mode === "limit_exceeded") {
     const remaining = Math.max(0, reserved.limit - reserved.used)
@@ -183,7 +184,6 @@ export async function sendRecontactAction(input: SendRecontactInput): Promise<Se
       }
       const message = renderRecontactMessage({
         academyName: sender.academyName,
-        academyPhone: sender.academyPhone as string,
         bodyTemplate,
         studentName: application.childName,
         trialLabel: buildTrialLabel(application),
@@ -199,7 +199,7 @@ export async function sendRecontactAction(input: SendRecontactInput): Promise<Se
         phone,
         messagePreview: message,
         contentType: "AD",
-        subject: `(광고) ${sender.academyName}`
+        subject: "(광고) [첫수업] 학원 소식"
       })
       results.push({
         recipientId: next.recipientId,
@@ -227,7 +227,7 @@ export async function sendRecontactAction(input: SendRecontactInput): Promise<Se
   const failedIds = results.filter((item) => item.status === "failed").map((item) => recipientById.get(item.recipientId)).filter((id): id is string => Boolean(id))
   const remaining = Math.max(0, reserved.limit - reserved.used + failedIds.length + dryRun)
   const delivered = sent + dryRun
-  const skippedNote = reserved.skipped > 0 ? ` (수신 동의 · 휴대폰 인증 · 같은 번호로 ${reserved.skipped}명은 뺐어요)` : ""
+  const skippedNote = reserved.skipped > 0 ? ` (학원 소식 수신 동의 · 휴대폰 인증 · 같은 번호로 ${reserved.skipped}명은 뺐어요)` : ""
   const dryRunNote = dryRun > 0 ? " 문자 차단 스위치가 꺼져 있어 실제로는 가지 않았어요(시험 발송)." : ""
 
   if (failedIds.length > 0) {
