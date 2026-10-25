@@ -1,174 +1,26 @@
-.page {
-  width: 100%;
-  min-height: 100dvh;
-  background: var(--bg);
-  overflow-x: hidden;
-}
-
-.page * {
-  box-sizing: border-box;
-}
-
-.shell {
-  margin: 0 auto;
-  width: 100%;
-  max-width: var(--col);
-  min-height: 100dvh;
-  background: var(--surface);
-  padding: calc(14px + env(safe-area-inset-top)) var(--gutter) calc(24px + env(safe-area-inset-bottom));
-  display: flex;
-  flex-direction: column;
-}
-
-.topBar {
-  min-height: 40px;
-  display: flex;
-  align-items: center;
-  flex: 0 0 auto;
-}
-
-.backButton {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  /* 손가락으로 누르는 버튼이다. 44px 아래로 내리지 않는다. */
-  width: 44px;
-  height: 44px;
-  margin-left: -10px;
-  border-radius: 999px;
-  color: #111111;
-  text-decoration: none;
-  background: transparent;
-}
-
-.hero {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  min-height: 0;
-  gap: 32px;
-}
-
-.visualBlock {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  flex: 1 1 auto;
-  min-height: 0;
-}
-
-.logo {
-  display: block;
-  width: 93px;
-  height: 30px;
-}
-
-.brand {
-  display: flex;
-  justify-content: center;
-}
-
-.copyGroup {
-  margin-top: 36px;
-  text-align: center;
-}
-
-.title {
-  margin: 0;
-  color: #111111;
-  font-size: 24px;
-  line-height: 1.4;
-  letter-spacing: -0.03em;
-  font-weight: 700;
-  display: grid;
-  gap: 6px;
-}
-
-.ctaBlock {
-  flex: 0 0 auto;
-  display: grid;
-  gap: 14px;
-  padding-top: 12px;
-}
-
-.kakaoButton {
-  display: inline-flex;
-  width: 100%;
-  min-height: 52px;
-  border-radius: 12px;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  text-decoration: none;
-  font-size: 16px;
-  line-height: 22px;
-  font-weight: 600;
-}
-
-.buttonIcon {
-  flex: 0 0 auto;
-}
-
-.kakaoButton {
-  border: 0;
-  background: #fee500;
-  color: #191919;
-}
-
-.kakaoButton:disabled {
-  opacity: 0.75;
-}
-
-.legalNotice {
-  margin: 0;
-  text-align: center;
-  color: #8d8d8d;
-  font-size: 12px;
-  line-height: 1.55;
-  word-break: keep-all;
-}
-
-.legalLink {
-  color: #636363;
-  text-decoration: none;
-  font-weight: 600;
-}
-
-@media (max-width: 420px) {
-  .copyGroup {
-    margin-top: 32px;
-  }
-
-  .title {
-    font-size: 23px;
-  }
-}
-
-@media (min-width: 520px) {
-  .shell {
-    border-left: 1px solid var(--border);
-    border-right: 1px solid var(--border);
-  }
-}
-
-@media (min-width: 768px) {
-  .shell {
-    padding-bottom: 36px;
-  }
-
-  .hero {
-    gap: 40px;
-  }
-
-  .copyGroup {
-    margin-top: 40px;
-  }
-}
-
-.appleButton { display: flex; align-items: center; justify-content: center; width: 100%; min-height: 52px; padding: 0; border: 0; border-radius: 12px; background: #000; color: #fff; cursor: pointer; }
-.appleButton:disabled { cursor: wait; }
-.appleButton:focus-visible { outline: 3px solid var(--brand-action); outline-offset: 3px; }
-.authError, .ctaBlock [role="alert"] { margin: 0; font-size: 14px; color: #b42318; word-break: keep-all; }
-.ctaBlock [role="status"] { margin: 8px 0 0; font-size: 14px; }
+/* 로그인(앱 auth/sign-in.tsx). 카카오 노랑 · Apple 검정은 외부 브랜드 색(로그인 가이드). 그 밖의 값은 ParentAppShell 토큰. */
+.page { width: 100%; min-height: 100dvh; background: var(--fill-soft); overflow-x: hidden; }
+.page * { box-sizing: border-box; }
+.shell { display: flex; flex-direction: column; width: 100%; max-width: var(--col); min-height: 100dvh; margin: 0 auto; padding: calc(10px + env(safe-area-inset-top)) 16px calc(24px + env(safe-area-inset-bottom)); background: var(--surface); }
+.topBar { display: flex; align-items: center; min-height: 44px; }
+/* 웹은 뒤로 스와이프가 없어 뒤로가기만 둔다(앱 화면에는 없음). 44px 아래로 내리지 않는다. */
+.backButton { display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; margin-left: -10px; color: var(--text-1); text-decoration: none; }
+.hero { display: flex; flex: 1; flex-direction: column; min-height: 0; }
+.visualBlock { display: flex; flex: 1 1 auto; flex-direction: column; align-items: center; justify-content: center; padding: 48px 0; }
+.brand { display: flex; justify-content: center; }
+.logo { display: block; width: 93px; height: 30px; object-fit: contain; }
+.copyGroup { margin-top: 32px; text-align: center; }
+.title { display: grid; gap: 6px; margin: 0; font-size: 23px; line-height: 32.2px; letter-spacing: -0.69px; font-weight: 700; color: var(--text-1); word-break: keep-all; }
+@media (min-width: 421px) { .title { font-size: 24px; line-height: 33.6px; letter-spacing: -0.72px; } }
+.ctaBlock { display: grid; gap: 14px; padding-top: 12px; }
+.kakaoButton, .appleButton { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; min-height: 52px; padding: 14px 16px; border: 0; border-radius: var(--r-control); font: inherit; font-size: 16px; line-height: 22px; font-weight: 600; cursor: pointer; }
+.kakaoButton { background: #fee500; color: #191919; }
+.appleButton { padding: 0; background: #000; color: #fff; }
+.kakaoButton:active:not(:disabled), .appleButton:active:not(:disabled) { opacity: .8; }
+.kakaoButton:disabled, .appleButton:disabled { opacity: .6; cursor: wait; }
+.kakaoButton:focus-visible, .appleButton:focus-visible, .legalLink:focus-visible, .backButton:focus-visible { outline: 2px solid var(--brand-700); outline-offset: 2px; }
+.buttonIcon { flex-shrink: 0; }
+.legalNotice { margin: 0; font-size: 12px; line-height: 18.6px; color: var(--text-3); text-align: center; word-break: keep-all; }
+.legalLink { color: var(--text-2); font-weight: 600; text-decoration: none; }
+.authError, .ctaBlock [role="alert"] { margin: 0; font-size: 15px; line-height: 23px; color: var(--danger); word-break: keep-all; }
+.ctaBlock [role="status"] { margin: 0; text-align: center; font-size: 14px; color: var(--text-2); }
