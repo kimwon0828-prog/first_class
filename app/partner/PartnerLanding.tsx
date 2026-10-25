@@ -1,6 +1,5 @@
 import Image from "next/image"
 import Link from "next/link"
-import type { CSSProperties } from "react"
 
 import PartnerInquiryForm from "./PartnerInquiryForm"
 import PartnerLossCalculator from "./PartnerLossCalculator"
@@ -13,7 +12,7 @@ import { getStudioCrossProductHrefResolver } from "@/shared/lib/cross-product-na
 
 /*
   학원 소식 보내기(다시 연락 문자)가 열리면 true 로 바꾼다.
-  false 인 동안 기능 섹션과 요금 카드에 "곧 열려요"가 붙는다.
+  false 인 동안 기능 섹션(학원 소식)에 "곧 열려요"가 붙는다.
 */
 const ACADEMY_NEWS_OPEN = false
 
@@ -79,23 +78,21 @@ const flowSteps = [
   { title: "등록 결과", description: "등록·고민·미등록" }
 ]
 
-// 모바일은 목업 일부만 잘라 보여 준다(Figma 2061:1243). crop 은 그 자리의 위치와 렌더 폭이다.
+// 목업은 모든 폭에서 잘라 내지 않고 전체를 보여 준다(모바일에서 일부만 잘리면 무슨 화면인지 알기 어렵다).
 const features = [
   {
     eyebrow: "신청 관리",
     title: ["신청이", "단계별로 정리돼요"],
     body: "전화·카톡·엑셀에 흩어지던 체험 신청이 한 표에 모여요. 행마다 지금 할 일 버튼 하나만 있어요.",
     image: "partner-feature-applications.png",
-    alt: "신청 관리 화면. 단계별 탭과 학생마다 지금 할 일 버튼이 있는 신청 표",
-    crop: { x: "-129px", y: "-110px", w: "758px" }
+    alt: "신청 관리 화면. 단계별 탭과 학생마다 지금 할 일 버튼이 있는 신청 표"
   },
   {
     eyebrow: "기록 · 리포트",
     title: ["기록하면", "리포트가 완성돼요"],
     body: "고르고 짧게 쓰면 오른쪽에 학부모가 볼 리포트가 바로 채워져요. 보내기 전에 미리 확인해요.",
     image: "partner-feature-record-report.png",
-    alt: "체험 기록 화면. 왼쪽에 기록을 쓰면 오른쪽에 학부모가 볼 리포트 미리보기가 채워진다",
-    crop: { x: "-473px", y: "-74px", w: "714px" }
+    alt: "체험 기록 화면. 왼쪽에 기록을 쓰면 오른쪽에 학부모가 볼 리포트 미리보기가 채워진다"
   },
   {
     eyebrow: "학원 소식",
@@ -103,7 +100,6 @@ const features = [
     body: "관심 과목·학년으로 골라 새 반·특강 소식을 한 번에 보내요. 수신에 동의한 보호자에게 첫수업이 대신 보내 드려요.",
     image: "partner-feature-recontact.png",
     alt: "학생 화면. 조건으로 고른 학생 3명에게 새 반 안내 문자를 보내는 패널",
-    crop: { x: "-493px", y: "-110px", w: "728px" },
     soon: !ACADEMY_NEWS_OPEN
   },
   {
@@ -111,12 +107,11 @@ const features = [
     title: ["어디서 줄어드는지", "보여요"],
     body: "신청 → 체험 → 등록 흐름과 등록하지 않은 이유를 한눈에 봐요.",
     image: "partner-feature-analytics.png",
-    alt: "분석 화면. 신청에서 등록까지 단계별 인원과 등록하지 않은 이유",
-    crop: { x: "-109px", y: "-30px", w: "758px" }
+    alt: "분석 화면. 신청에서 등록까지 단계별 인원과 등록하지 않은 이유"
   }
 ]
 
-type PlanItem = { label: string; strong?: boolean; soon?: boolean }
+type PlanItem = { label: string; strong?: boolean }
 
 const freePlanItems: PlanItem[] = [
   { label: "수업 등록·공개 (개수 제한 없음)" },
@@ -130,9 +125,9 @@ const freePlanItems: PlanItem[] = [
 
 const standardPlanItems: PlanItem[] = [
   { label: "무료 플랜의 모든 기능" },
-  { label: "학원 소식 문자 월 200건", strong: true, soon: !ACADEMY_NEWS_OPEN },
+  { label: "학원 소식 문자 월 200건", strong: true },
   { label: "전환 분석 · 미등록 이유", strong: true },
-  { label: "분기 성과 리포트 (2027년 1월 첫 발행)" }
+  { label: "분기 성과 리포트" }
 ]
 
 const startSteps = [
@@ -176,16 +171,13 @@ const faqItems = [
 
 function PlanList({ items }: { items: PlanItem[] }) {
   return (
-    <ul className={`${styles.planList} ${styles.pcOnly}`}>
+    <ul className={styles.planList}>
       {items.map((item) => (
         <li key={item.label}>
           <span className={styles.planCheck} aria-hidden="true">
             ✓
           </span>
-          <span className={item.strong ? styles.planStrong : undefined}>
-            {item.label}
-            {item.soon ? <span className={styles.planSoon}> · 곧 열려요</span> : null}
-          </span>
+          <span className={item.strong ? styles.planStrong : undefined}>{item.label}</span>
         </li>
       ))}
     </ul>
@@ -201,7 +193,7 @@ export default async function PartnerLanding() {
     <main className={styles.page}>
       <header className={styles.nav}>
         <div className={`${styles.wrap} ${styles.navIn}`}>
-          <a href="#top" className={styles.brand} aria-label="첫수업 파트너 랜딩 맨 위로">
+          <a href="#top" className={styles.brand} aria-label="맨 위로">
             <Image
               src="/images/first-class-logo.png"
               alt="첫수업"
@@ -210,7 +202,6 @@ export default async function PartnerLanding() {
               className={styles.logo}
               priority
             />
-            <span className={styles.partnerTag}>파트너</span>
           </a>
 
           <span className={styles.navSpacer} />
@@ -297,24 +288,6 @@ export default async function PartnerLanding() {
           </div>
           <p className={styles.footnote}>
             첫수업 자체 설문(깔로 패널) · 학원 원장·상담 담당자 38명, 초등 학부모 42명
-          </p>
-        </div>
-      </section>
-
-      <section className={`${styles.section} ${styles.bgGround}`}>
-        <div className={styles.wrap}>
-          <div className={styles.head}>
-            <p className={styles.eyebrow}>1분 계산</p>
-            <h2 className={styles.title}>우리 학원은 얼마나 놓치고 있을까</h2>
-            <p className={styles.calcSub}>
-              숫자 세 개만 넣으면, 1년 동안 체험만 하고 지나간 학생과 그 원비를 계산해 드려요.
-            </p>
-          </div>
-          <PartnerLossCalculator />
-          <p className={styles.calcFootnote}>
-            이 숫자는 이렇게 계산했어요 · (월 문의 − 월 등록) × 12개월 = 1년 동안 등록하지 않은 학생. 그중 다시
-            연락해 등록하는 비율만큼, 월 원비 × 6개월로 계산한 단순 추정이에요. 실제 결과는 학원의 등록률과 수강
-            기간에 따라 달라지며, 성과를 보장하지 않아요.
           </p>
         </div>
       </section>
@@ -412,22 +385,13 @@ export default async function PartnerLanding() {
                   </h3>
                   <p className={styles.featureBody}>{feature.body}</p>
                 </div>
-                <div
-                  className={styles.featureMedia}
-                  style={
-                    {
-                      "--crop-x": feature.crop.x,
-                      "--crop-y": feature.crop.y,
-                      "--crop-w": feature.crop.w
-                    } as CSSProperties
-                  }
-                >
+                <div className={styles.featureMedia}>
                   <Image
                     src={`${IMAGE_DIR}/${feature.image}`}
                     alt={feature.alt}
                     width={758}
                     height={502}
-                    sizes="758px"
+                    sizes="(max-width: 1100px) 100vw, 758px"
                     className={styles.featureImage}
                   />
                 </div>
@@ -435,6 +399,25 @@ export default async function PartnerLanding() {
             </div>
           )
         })}
+      </section>
+
+      {/* 계산기는 무슨 서비스인지 본 다음, 요금 바로 앞에 둔다. */}
+      <section className={`${styles.section} ${styles.bgGround}`} id="calculator">
+        <div className={styles.wrap}>
+          <div className={styles.head}>
+            <p className={styles.eyebrow}>1분 계산</p>
+            <h2 className={styles.title}>우리 학원은 얼마나 놓치고 있을까</h2>
+            <p className={styles.calcSub}>
+              숫자 세 개만 넣으면, 1년 동안 체험만 하고 지나간 학생과 그 원비를 계산해 드려요.
+            </p>
+          </div>
+          <PartnerLossCalculator />
+          <p className={styles.calcFootnote}>
+            이 숫자는 이렇게 계산했어요 · (월 문의 − 월 등록) × 12개월 = 1년 동안 등록하지 않은 학생. 그중 다시
+            연락해 등록하는 비율만큼, 월 원비 × 6개월로 계산한 단순 추정이에요. 실제 결과는 학원의 등록률과 수강
+            기간에 따라 달라지며, 성과를 보장하지 않아요.
+          </p>
+        </div>
       </section>
 
       <section className={`${styles.section} ${styles.bgWhite}`} id="price">
@@ -458,12 +441,9 @@ export default async function PartnerLanding() {
               <div className={styles.planPrice}>
                 <span className={styles.planAmount}>0원</span>
               </div>
-              <p className={`${styles.planDesc} ${styles.pcOnly}`}>체험 신청을 받고 등록 결과까지 관리하는 기본 기능</p>
-              <p className={`${styles.planSummary} ${styles.mobileOnly}`}>
-                체험 신청·일정·기록·리포트·등록 결과 · 선생님 등록 제한 없음
-              </p>
+              <p className={styles.planDesc}>체험 신청을 받고 등록 결과까지 관리하는 기본 기능</p>
               <PlanList items={freePlanItems} />
-              <Link href={signUpHref} className={`${styles.btn} ${styles.btnOutline} ${styles.btnFull} ${styles.pcOnly}`}>
+              <Link href={signUpHref} className={`${styles.btn} ${styles.btnOutline} ${styles.btnFull} ${styles.planCta}`}>
                 무료로 시작하기
               </Link>
             </div>
@@ -477,14 +457,9 @@ export default async function PartnerLanding() {
                 <span className={`${styles.planAmount} ${styles.tnum}`}>{STANDARD_AMOUNT_TEXT}</span>
                 <span className={styles.planCycle}>/ 월</span>
               </div>
-              <p className={`${styles.planDesc} ${styles.pcOnly}`}>등록을 늘리고, 등록하지 않은 학생을 다시 부르는 기능</p>
-              <p className={`${styles.planSummary} ${styles.mobileOnly}`}>
-                학원 소식(문자 월 200건)
-                {ACADEMY_NEWS_OPEN ? null : <span className={styles.planSoon}> 곧 열려요</span>} · 전환 분석 · 분기
-                성과 리포트
-              </p>
+              <p className={styles.planDesc}>등록을 늘리고, 등록하지 않은 학생을 다시 부르는 기능</p>
               <PlanList items={standardPlanItems} />
-              <Link href={signUpHref} className={`${styles.btn} ${styles.btnPrimary} ${styles.btnFull} ${styles.pcOnly}`}>
+              <Link href={signUpHref} className={`${styles.btn} ${styles.btnPrimary} ${styles.btnFull} ${styles.planCta}`}>
                 {STANDARD_TRIAL_DAYS}일 무료로 시작하기
               </Link>
             </div>

@@ -199,16 +199,6 @@
   height: auto;
 }
 
-.partnerTag {
-  padding: 3px 8px;
-  border-radius: var(--r-badge);
-  background: var(--surface-fill);
-  color: var(--ink-700);
-  font-size: 12px;
-  font-weight: 700;
-  line-height: 1.5;
-}
-
 .navSpacer {
   flex: 1;
 }
@@ -870,7 +860,7 @@
 .plans {
   display: flex;
   justify-content: center;
-  align-items: flex-start;
+  align-items: stretch;
   gap: 20px;
 }
 
@@ -966,18 +956,9 @@
   font-weight: 700;
 }
 
-.planSoon {
-  color: var(--warn-fg);
-  font-size: 13px;
-  font-weight: 500;
-}
-
-.planSummary {
-  color: var(--ink-700);
-  font-size: 14px;
-  font-weight: 500;
-  line-height: 1.6;
-  letter-spacing: -0.2px;
+/* 두 카드 높이를 맞추고 버튼은 카드 바닥에 붙인다. */
+.planCta {
+  margin-top: auto;
 }
 
 /*
@@ -1362,12 +1343,22 @@
     display: none;
   }
 
-  .featureRow {
-    gap: 40px;
+  /* 태블릿부터는 글 위 · 목업 아래로 쌓는다(나란히 두면 목업이 너무 작아진다). */
+  .featureRow,
+  .featureRowReverse {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 32px;
   }
 
   .featureText {
-    flex-basis: 320px;
+    flex-basis: auto;
+    max-width: 560px;
+  }
+
+  .featureMedia {
+    flex: none;
+    width: 100%;
   }
 
   .featureTitle {
@@ -1403,7 +1394,7 @@
   }
 
   .navIn {
-    gap: 6px;
+    gap: 14px;
     padding: 0 20px;
   }
 
@@ -1415,18 +1406,18 @@
     width: 72px;
   }
 
-  .partnerTag {
-    padding: 2px 6px;
-    font-size: 11px;
-  }
-
-  .navLinks,
-  .navStart {
+  .navLinks {
     display: none;
   }
 
   .navLogin {
     font-size: 14px;
+  }
+
+  .navStart {
+    height: 36px;
+    padding: 0 12px;
+    font-size: 13px;
   }
 
   .section {
@@ -1731,20 +1722,10 @@
   }
 
   .featureMedia {
-    flex: none;
-    height: 242px;
     overflow: hidden;
     border: 1px solid var(--line-default);
     border-radius: var(--r-card);
     background: var(--surface-white);
-  }
-
-  .featureImage {
-    position: absolute;
-    top: var(--crop-y);
-    left: var(--crop-x);
-    width: var(--crop-w);
-    max-width: none;
   }
 
   .plans {
@@ -1774,6 +1755,11 @@
 
   .planCycle {
     font-size: 12px;
+  }
+
+  .planList li,
+  .planDesc {
+    font-size: 14px;
   }
 
   .planTerms {
