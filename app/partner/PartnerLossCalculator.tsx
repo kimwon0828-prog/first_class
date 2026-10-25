@@ -1,8 +1,9 @@
 "use client"
 
 import { useEffect, useMemo, useRef, useState } from "react"
+import type { CSSProperties } from "react"
 
-import styles from "./partner.module.css"
+import styles from "./partner-v2.module.css"
 
 const MONTHS = 6
 
@@ -120,62 +121,72 @@ export default function PartnerLossCalculator() {
     }
   }, [result.expectedAmount])
 
+  const rangeFill = `${((result.rate - 5) / (25 - 5)) * 100}%`
+
   return (
     <div className={styles.calc}>
-      <div className={styles.calcHd}>
-        <b>우리 학원은 얼마나 놓치고 있을까</b>
-      </div>
-
-      <div className={styles.calcBody}>
+      <div className={styles.calcInputs}>
         <div className={styles.field}>
-          <label htmlFor="partner-inquiries">한 달에 받는 체험·상담 문의</label>
-          <div className={styles.inp}>
+          <label htmlFor="partner-inquiries" className={styles.fieldLabel}>
+            한 달에 받는 체험·상담 문의
+          </label>
+          <div className={styles.inputBox}>
             <input
               id="partner-inquiries"
               type="number"
+              inputMode="numeric"
               min={1}
               max={300}
               value={monthlyInquiries}
               onChange={(event) => setMonthlyInquiries(event.target.value)}
+              className={styles.tnum}
             />
-            <span className={styles.unit}>명</span>
+            <span className={styles.inputUnit}>명</span>
           </div>
         </div>
 
         <div className={styles.field}>
-          <label htmlFor="partner-registrations">그중 실제로 등록하는 학생</label>
-          <div className={styles.inp}>
+          <label htmlFor="partner-registrations" className={styles.fieldLabel}>
+            그중 실제로 등록하는 학생
+          </label>
+          <div className={styles.inputBox}>
             <input
               id="partner-registrations"
               type="number"
+              inputMode="numeric"
               min={0}
               max={300}
               value={monthlyRegistrations}
               onChange={(event) => setMonthlyRegistrations(event.target.value)}
+              className={styles.tnum}
             />
-            <span className={styles.unit}>명</span>
+            <span className={styles.inputUnit}>명</span>
           </div>
         </div>
 
-        <div className={styles.fieldNoMargin}>
-          <label htmlFor="partner-fee">월 원비</label>
-          <div className={styles.inp}>
+        <div className={styles.field}>
+          <label htmlFor="partner-fee" className={styles.fieldLabel}>
+            월 원비
+          </label>
+          <div className={styles.inputBox}>
             <input
               id="partner-fee"
               type="number"
+              inputMode="numeric"
               min={1}
               max={500}
               value={monthlyFee}
               onChange={(event) => setMonthlyFee(event.target.value)}
+              className={styles.tnum}
             />
-            <span className={styles.unit}>만원</span>
+            <span className={styles.inputUnit}>만원</span>
           </div>
         </div>
 
-        <div className={styles.srow}>
-          <div className={styles.stop}>
+        <div className={styles.slider}>
+          <div className={styles.sliderLabel}>
             <label htmlFor="partner-rate">나중에 다시 연락했을 때 등록으로 이어지는 비율</label>
-            <b className={styles.tnum}>{result.rate}%</b>
+            <b className={`${styles.sliderValue} ${styles.tnum}`}>{result.rate}%</b>
           </div>
           <input
             id="partner-rate"
@@ -185,38 +196,39 @@ export default function PartnerLossCalculator() {
             step={1}
             value={recontactRate}
             onChange={(event) => setRecontactRate(event.target.value)}
+            className={styles.range}
+            style={{ "--fill": rangeFill } as CSSProperties}
           />
-          <div className={styles.slb}>
+          <div className={styles.sliderEnds}>
             <span>5%</span>
             <span>25%</span>
           </div>
         </div>
       </div>
 
-      <div className={styles.calcOut}>
-        <div className={styles.o1}>
-          <span>1년 동안 체험만 하고 등록하지 않은 학생</span>
-          <b className={styles.tnum}>{result.lostYearlyStudents.toLocaleString()}명</b>
+      <div className={styles.calcResult} aria-live="polite">
+        <div className={styles.out}>
+          <span className={styles.outLabel}>1년 동안 체험만 하고 등록하지 않은 학생</span>
+          <b className={`${styles.outValue} ${styles.tnum}`}>{result.lostYearlyStudents.toLocaleString()}명</b>
         </div>
 
-        <div className={styles.o2}>
-          <span>이 중 {result.returningStudents}명이 다시 등록하면</span>
-          <div className={`${styles.oamt} ${styles.tnum}`}>
-            {formatAmount(animatedAmount)}
-            <small>만원</small>
-          </div>
-          <p className={styles.osub}>한 명이 6개월 다닌다고 봤을 때의 원비 합계입니다</p>
+        <div className={styles.outDivider} />
+
+        <div className={styles.out}>
+          <span className={styles.outLabel}>이 중 {result.returningStudents}명이 다시 등록하면</span>
+          <b className={`${styles.outValue} ${styles.outValueBrand} ${styles.tnum}`}>
+            {formatAmount(animatedAmount)}만원
+          </b>
+          <p className={styles.outNote}>한 명이 6개월 다닌다고 봤을 때의 원비 합계예요</p>
+        </div>
+
+        <div className={styles.calcCta}>
+          <a href="#apply" className={`${styles.btn} ${styles.btnPrimary} ${styles.btnFull}`}>
+            도입 상담 신청하기
+          </a>
+          <p className={styles.calcCtaNote}>체험·상담·등록 기록은 무료로 시작해요</p>
         </div>
       </div>
-
-      <details className={styles.how}>
-        <summary>이 숫자는 이렇게 계산했습니다</summary>
-        <p>
-          (한 달 문의 − 한 달 등록) × 12개월로 1년 동안 등록하지 않은 학생 수를 구했습니다.
-          여기에 선택한 재접촉 전환 비율과 월 원비 × 6개월을 적용한 단순 시뮬레이션입니다. 실제
-          등록률과 재원 기간에 따라 결과는 달라질 수 있으며, 성과를 보장하는 수치는 아닙니다.
-        </p>
-      </details>
     </div>
   )
 }
