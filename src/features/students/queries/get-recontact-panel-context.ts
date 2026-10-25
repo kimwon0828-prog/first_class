@@ -19,7 +19,6 @@ export const getRecontactPanelContext = async (organizationId: string): Promise<
     entitled: entitlements.canSendRecontactMessages,
     localGuardAllowed: getLocalMutationGuard().allowed,
     academyName: sender?.academyName || "학원",
-    academyPhone: sender?.academyPhone ?? null,
     optOutNumber: getRecontactOptOutNumber(),
     usage,
     classes: classes

@@ -1,5 +1,5 @@
 /*
- * 안내 보내기 패널 (Figma 2148:5922). STUDIO_DESIGN_SYSTEM.md §5.27.
+ * 학원 소식 보내기 패널 (Figma 2148:5922). STUDIO_DESIGN_SYSTEM.md §5.27.
  * 흰 바탕 + line/default · 모서리 16 · 안쪽 24 · 간격 16 · 폭 360(목록 화면이 정한다).
  */
 .panel,
@@ -30,6 +30,21 @@
   line-height: 1.45;
   font-weight: 700;
   letter-spacing: -0.5px;
+}
+
+.headGroup {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sv2-space-4);
+}
+
+/* 머리 아래 설명: 13 Medium ink/500 (§5.27) */
+.description {
+  margin: 0;
+  color: var(--sv2-ink-500);
+  font-size: 13px;
+  line-height: 1.45;
+  font-weight: 500;
 }
 
 .spacer {

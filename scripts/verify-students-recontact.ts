@@ -1,4 +1,4 @@
-// 학생 · 안내 보내기(2차-3) 규칙 검증(순수 함수 · DB 없음).
+// 학생 · 학원 소식 보내기 규칙 검증(순수 함수 · DB 없음).
 //
 //   npx tsx scripts/verify-students-recontact.ts
 //
@@ -7,7 +7,7 @@
 //      홈 "다시 연락할 학생" 카드 = 학생 탭과 같은 함수(건수 · 아바타 · 요일 문장)
 //      원하는 요일: 학부모 희망 요일 먼저, 없으면 상담 기록(홈 · 분석 · 학생 상세 같은 함수)
 //   3. 고를 수 없는 학생(엑셀 · 동의 안 함 · 번호 없음) · 마지막 연락
-//   4. 문자: 첫 줄 "(광고) [학원명] 대표번호" · 인사 치환 · 링크 · 080 · 바이트
+//   4. 문자: 첫 줄 "(광고) [첫수업] 고객센터 번호" · 둘째 줄 "[학원명] 하람이 보호자님" · 링크 · 080 · 바이트
 //   5. 막는 이유 순서: 요금제 → 로컬 가드 → 080 → 대표번호 → 시간(21~8시) → 고른 학생 → 50명 → 한도
 
 import {
@@ -26,6 +26,7 @@ import {
   buildRecontactBodyTemplate,
   estimateSmsBytes,
   isValidOptOutNumber,
+  RECONTACT_SENDER_PHONE,
   isWithinRecontactHours,
   renderRecontactMessage,
   toFriendlyStudentName
@@ -33,6 +34,7 @@ import {
 import { resolveRecontactBlock } from "@/features/students/lib/recontact-gate"
 import { countTopPreferredDay, formatPreferredDays, resolvePreferredDays } from "@/features/students/lib/preferred-days"
 import { STUDIO_STUDENT_RESULT_LABELS, STUDIO_STUDENT_RESULT_TONES } from "@/features/studio/lib/application-status-labels"
+import { COMPANY_INFO } from "@/shared/config/company-info"
 import type { StudioApplicationSummary } from "@/shared/lib/db/adapter"
 
 let failures = 0
@@ -259,7 +261,6 @@ const app = (id: string, patch: Partial<StudioApplicationSummary> = {}): StudioA
   check("저장하는 템플릿에 학생 이름이 없다", template.includes("{학생}") && template.includes("{체험}") && !template.includes("하람"))
   const message = renderRecontactMessage({
     academyName: "중계 코딩랩",
-    academyPhone: "02-930-1234",
     bodyTemplate: template,
     studentName: "정하람",
     trialLabel: "9월 로봇 코딩 체험",
@@ -267,8 +268,10 @@ const app = (id: string, patch: Partial<StudioApplicationSummary> = {}): StudioA
     optOutNumber: "080-000-0000"
   })
   const lines = message.split("\n")
-  check("첫 줄 (광고) [학원명] 학원대표번호", lines[0] === "(광고) [중계 코딩랩] 02-930-1234", lines[0])
-  check("인사 치환", lines[1] === "하람이 보호자님, 지난 9월 로봇 코딩 체험에 와 주셔서 감사했어요.", lines[1])
+  check("첫 줄 (광고) [첫수업] 고객센터 번호", lines[0] === "(광고) [첫수업] 010-8384-0825", lines[0])
+  check("고객센터 번호는 company-info 한 곳", RECONTACT_SENDER_PHONE === COMPANY_INFO.customerCenterPhone)
+  check("둘째 줄 [학원명] + 인사 치환", lines[1] === "[중계 코딩랩] 하람이 보호자님, 지난 9월 로봇 코딩 체험에 와 주셔서 감사했어요.", lines[1])
+  check("저장하는 템플릿에 학원명 머리가 없다(보낼 때 붙인다)", !template.includes("중계 코딩랩"))
   check("수업 링크 줄", lines.includes("수업 보기·체험 신청 ▶ https://firstsuup.com/classes/class-1"))
   check("끝 줄 무료수신거부", lines.at(-1) === "무료수신거부 080-000-0000")
   check("LMS 한도 안(2,000바이트)", estimateSmsBytes(message) < 2000, String(estimateSmsBytes(message)))
@@ -282,12 +285,12 @@ const app = (id: string, patch: Partial<StudioApplicationSummary> = {}): StudioA
   const at = (hourKst: number, minute = 0) => new Date(Date.UTC(2026, 9, 24, hourKst - 9, minute))
   check("08:00 KST 부터 보낸다", isWithinRecontactHours(at(8)) && !isWithinRecontactHours(at(7, 59)))
   check("21:00 KST 부터 못 보낸다", isWithinRecontactHours(at(20, 59)) && !isWithinRecontactHours(at(21)))
-  const ok = { entitled: true, localGuardAllowed: true, optOutNumber: "080-000-0000", senderPhone: "02-930-1234", now: at(12), selectedCount: 3, remaining: 182 }
+  const ok = { entitled: true, localGuardAllowed: true, optOutNumber: "080-000-0000", now: at(12), selectedCount: 3, remaining: 182 }
   check("모두 갖추면 보낸다", resolveRecontactBlock(ok) === null)
-  check("무료 플랜이 먼저", resolveRecontactBlock({ ...ok, entitled: false, senderPhone: null, now: at(22) }) === "plan")
+  check("무료 플랜이 먼저", resolveRecontactBlock({ ...ok, entitled: false, optOutNumber: null, now: at(22) }) === "plan")
   check("개발 환경 로컬 가드", resolveRecontactBlock({ ...ok, localGuardAllowed: false }) === "local_guard")
   check("080 번호 없음", resolveRecontactBlock({ ...ok, optOutNumber: null }) === "opt_out_number")
-  check("학원 대표번호 없음", resolveRecontactBlock({ ...ok, senderPhone: " " }) === "sender_phone")
+  check("학원 대표번호는 막지 않는다(보내는 주체 = 첫수업)", resolveRecontactBlock({ ...ok, senderPhone: null } as typeof ok) === null)
   check("밤 9시~아침 8시", resolveRecontactBlock({ ...ok, now: at(21, 30) }) === "quiet_hours")
   check("고른 학생 없음", resolveRecontactBlock({ ...ok, selectedCount: 0 }) === "no_recipient")
   check("한 번에 50명", resolveRecontactBlock({ ...ok, selectedCount: 51, remaining: 200 }) === "too_many")

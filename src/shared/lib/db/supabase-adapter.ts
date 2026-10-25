@@ -4973,14 +4973,14 @@ export const supabaseDataAdapter: DataAdapter = {
       return []
     }
 
-    // 학원은 자기 학원 행의 동의 여부 · 시각 열만 읽는다(column grant + RLS).
+    // 학원 소식 동의는 첫수업 하나다(20261026120000). 학원은 자기 학원에 신청한 적 있는 학부모의
+    // 동의 여부 · 시각 열만 읽는다(column grant + RLS). 조직 범위는 RLS 가 신청 이력으로 본다.
     const supabase = await getSupabaseServerClient()
     const rows: Array<{ parent_id: string; consented: boolean; consented_at: string | null; withdrawn_at: string | null }> = []
     for (const chunk of chunkArray(ids, 100)) {
       const { data, error } = await supabase
-        .from("parent_marketing_consents")
+        .from("parent_academy_news_consents")
         .select("parent_id, consented, consented_at, withdrawn_at")
-        .eq("organization_id", organizationId)
         .in("parent_id", chunk)
 
       if (error) {
@@ -4990,7 +4990,7 @@ export const supabaseDataAdapter: DataAdapter = {
       rows.push(...((data ?? []) as typeof rows))
     }
 
-    // 안내 문자는 학부모 계정 번호로만 간다. 번호 자체는 받지 않고 "준비됨" 여부만 묻는다(20261025120000).
+    // 학원 소식 문자는 학부모 계정 번호로만 간다. 번호 자체는 받지 않고 "준비됨" 여부만 묻는다(20261025120000).
     // 조회가 실패하면 준비 안 됨으로 둔다(보내기 전에 DB 가 다시 고른다).
     const ready = new Set<string>()
     const consentedIds = rows.filter((row) => row.consented).map((row) => row.parent_id)
@@ -5025,7 +5025,7 @@ export const supabaseDataAdapter: DataAdapter = {
     // 학원 설정 화면(getStudioSettingsOrganization)과 같이 서버가 확인한 조직 id 하나만 읽는다.
     const { data, error } = await getSupabaseServiceRoleClient()
       .from("organizations")
-      .select("name, branch_name, academy_phone, contact_phone")
+      .select("name, branch_name")
       .eq("id", organizationId)
       .maybeSingle()
 
@@ -5033,11 +5033,8 @@ export const supabaseDataAdapter: DataAdapter = {
       throw new Error("failed_to_fetch_recontact_sender")
     }
 
-    const row = data as { name: string; branch_name: string | null; academy_phone: string | null; contact_phone: string | null }
-    return {
-      academyName: [row.name, row.branch_name].map((value) => value?.trim()).filter(Boolean).join(" "),
-      academyPhone: row.academy_phone?.trim() || row.contact_phone?.trim() || null
-    }
+    const row = data as { name: string; branch_name: string | null }
+    return { academyName: [row.name, row.branch_name].map((value) => value?.trim()).filter(Boolean).join(" ") }
   },
   async setStudioNextContact(_organizationId, applicationId, input) {
     // 조직 확인은 RPC 가 한다(신청 → 수업 → 조직 = 내 프로필의 조직).

@@ -138,7 +138,7 @@ export function StudentsBoard({ rows, initialTab, renderPanel }: StudentsBoardPr
       <header className={styles.header}>
         <div className={styles.headerText}>
           <h1 className={styles.title}>학생</h1>
-          <p className={styles.description}>체험 온 학생은 등록하지 않아도 여기 남아요. 특강·새 반이 생기면 맞는 학생을 골라 안내해요.</p>
+          <p className={styles.description}>체험 온 학생은 등록하지 않아도 여기 남아요. 특강·새 반이 생기면 맞는 학생을 골라 학원 소식을 보내요.</p>
         </div>
         <label className={styles.search}>
           <V2SearchIcon size={18} />
@@ -302,7 +302,7 @@ export function StudentsBoard({ rows, initialTab, renderPanel }: StudentsBoardPr
               )}
             </div>
           </div>
-          <p className={styles.footnote}>광고성 정보 수신에 동의하지 않은 보호자는 고를 수 없어요.</p>
+          <p className={styles.footnote}>학원 소식 수신에 동의하지 않은 보호자는 고를 수 없어요.</p>
         </section>
         {panel}
       </div>

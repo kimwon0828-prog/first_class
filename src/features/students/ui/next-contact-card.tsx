@@ -15,7 +15,7 @@ type NextContactCardProps = {
   applicationId: string
   nextContact: { dateKey: string; dateLabel: string; note: string } | null
   todayKey: string
-  /** 카드 안 주 버튼 [안내 보내기](§5.28). 보내기 패널을 여는 쪽이 넘긴다. */
+  /** 카드 안 주 버튼 [학원 소식 보내기](§5.28). 보내기 패널을 여는 쪽이 넘긴다. */
   sendButton?: ReactNode
 }
 

@@ -27,7 +27,7 @@ type StudioStudentDetailPageProps = {
 
 const consentLine = (detail: StudioStudentDetail) => {
   if (detail.lock === "no_account") return "엑셀로 가져온 학생이라 수신 동의를 받을 수 없어요"
-  return detail.consent?.consented ? "광고성 정보 수신 동의함" : "광고성 정보 수신 동의 안 함"
+  return detail.consent?.consented ? "학원 소식 수신 동의함" : "학원 소식 수신 동의 안 함"
 }
 
 const consentInfo = (detail: StudioStudentDetail) => {
@@ -42,7 +42,7 @@ const consentInfo = (detail: StudioStudentDetail) => {
 
 /**
  * 학생 상세 (Figma 2148:5959). STUDIO_DESIGN_SYSTEM.md §5.28.
- * 주소의 신청 id 가 속한 학생(신청 묶음)을 보인다. 다음 연락 저장은 무료, 안내 보내기는 스탠다드다.
+ * 주소의 신청 id 가 속한 학생(신청 묶음)을 보인다. 다음 연락 저장은 무료, 학원 소식 보내기는 스탠다드다.
  */
 export default async function StudioStudentDetailPage({ params }: StudioStudentDetailPageProps) {
   const teacher = await requireTeacherStudioAccess()
@@ -111,7 +111,7 @@ export default async function StudioStudentDetailPage({ params }: StudioStudentD
             </a>
           ) : null}
           <StudentSendLauncher context={panel} recipient={recipient} template="custom" variant="outline" size="sm" icon={<V2MessageIcon size={16} />} label="문자" disabledReason={sendLock} />
-          <StudentSendLauncher context={panel} recipient={recipient} template="new_class" variant="tonal" size="sm" icon={<V2SendIcon size={16} />} label="안내 보내기" disabledReason={sendLock} />
+          <StudentSendLauncher context={panel} recipient={recipient} template="new_class" variant="tonal" size="sm" icon={<V2SendIcon size={16} />} label="학원 소식 보내기" disabledReason={sendLock} />
         </div>
       </header>
 
@@ -167,7 +167,7 @@ export default async function StudioStudentDetailPage({ params }: StudioStudentD
             nextContact={detail.nextContact}
             todayKey={getSeoulTodayKey(now)}
             sendButton={sendLock ? null : (
-              <StudentSendLauncher context={panel} recipient={recipient} template="new_class" variant="primary" size="md" icon={<V2SendIcon size={18} />} label="안내 보내기" fullWidth />
+              <StudentSendLauncher context={panel} recipient={recipient} template="new_class" variant="primary" size="md" icon={<V2SendIcon size={18} />} label="학원 소식 보내기" fullWidth />
             )}
           />
           <section className={styles.info} aria-labelledby="student-info-title">

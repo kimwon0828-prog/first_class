@@ -866,20 +866,23 @@ export type StudioStudentActivity = {
 
 export type StudioStudentActivityOptions = { includeNotes?: boolean; includeTrialSummaries?: boolean }
 
-/** 학원이 보는 수신 동의. 출처 · 문구 버전은 학원에 보이지 않는다. */
+/**
+ * 학원이 보는 학원 소식 수신 동의(첫수업 하나, 학원별이 아니다). 자기 학원에 신청한 적 있는 학부모만 보인다.
+ * 출처 · 문구 버전은 학원에 보이지 않는다.
+ */
 export type StudioMarketingConsent = {
   parentId: string
   consented: boolean
   consentedAt: string | null
   withdrawnAt: string | null
-  /** 학부모 계정 번호(010 휴대폰)가 있는가. 안내 문자는 이 번호로만 간다 — 없으면 "보호자 휴대폰 번호가 필요해요"로 잠긴다. */
+  /** 학부모 계정 번호(010 휴대폰)가 있는가. 학원 소식 문자는 이 번호로만 간다 — 없으면 "보호자 휴대폰 번호가 필요해요"로 잠긴다. */
   phoneReady: boolean
 }
 
 export type RecontactUsage = { used: number; limit: number }
 
-/** 문자 첫 줄 "(광고) [학원명] 학원대표번호". 대표번호는 academy_phone, 없으면 contact_phone. */
-export type StudioRecontactSender = { academyName: string; academyPhone: string | null }
+/** 문자 둘째 줄 "[학원명]". 첫 줄(전송자)은 첫수업 고객센터 번호라 학원 번호는 읽지 않는다. */
+export type StudioRecontactSender = { academyName: string }
 
 export type ReserveRecontactBatchInput = {
   batchId: string
