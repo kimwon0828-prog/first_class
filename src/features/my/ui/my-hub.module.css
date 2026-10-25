@@ -1,33 +1,31 @@
-.stack { display: grid; gap: var(--s6); padding: 0 var(--gutter); }
-.profileHero { padding: var(--s6) 0 var(--s3); text-align: center; }
-.profileIdentity { display: flex; flex-direction: column; align-items: center; gap: var(--s4); color: var(--text-1); }
-.avatar { display: grid; place-items: center; width: 80px; height: 80px; flex-shrink: 0; border-radius: var(--r-full); background: var(--surface-sub); color: var(--text-2); }
-.identityText { min-width: 0; max-width: 100%; overflow-wrap: anywhere; }
-.profileName { margin: 0; font-size: var(--font-h2); font-weight: 600; }
-.profileSubcopy { margin: var(--s2) 0 0; font-size: var(--font-b2); color: var(--text-2); word-break: keep-all; }
-.editLink { width: 100%; font-family: inherit; cursor: pointer; display: flex; align-items: center; justify-content: center; min-height: 44px; margin-top: var(--s5); padding: var(--s2) var(--s4); border: 1px solid var(--brand-200); border-radius: var(--r-md); font-size: var(--font-b2); font-weight: 600; color: var(--brand-700); background: var(--surface); text-decoration: none; }
-.sectionTitle { margin: 0 0 var(--s3); font-size: var(--font-h4); font-weight: 700; }
-.menuGroup { border: 1px solid var(--border); border-radius: var(--r-lg); background: var(--surface); }
-.menuItem { display: flex; align-items: center; gap: var(--s3); min-height: 64px; padding: var(--s2) var(--s4); color: var(--text-1); text-decoration: none; }
-.menuGroup > * + * { border-top: 1px solid var(--border); }
-.menuGroup > :first-child { border-radius: var(--r-lg) var(--r-lg) 0 0; }
-.menuGroup > :last-child { border-radius: 0 0 var(--r-lg) var(--r-lg); }
-.menuGroup > :only-child { border-radius: var(--r-lg); }
-.menuLabel { flex: 1; min-width: 0; font-size: var(--font-b2); font-weight: 600; overflow-wrap: anywhere; }
-.menuValue { color: var(--text-2); font-size: var(--font-c1); }
-.menuIcon { width: 24px; height: 24px; flex: 0 0 24px; color: var(--text-2); }
-.chevron { width: 20px; height: 20px; flex: 0 0 20px; color: var(--text-3); }
-.menuBody { display: grid; flex: 1; min-width: 0; gap: var(--s1); }
-.description { color: var(--text-2); font-size: var(--font-c1); overflow-wrap: anywhere; }
-.menuButton { display: flex; align-items: center; gap: var(--s3); width: 100%; min-height: 64px; padding: var(--s2) var(--s4); border: 0; border-radius: inherit; background: transparent; color: var(--text-1); font: inherit; font-size: var(--font-b2); text-align: left; cursor: pointer; }
-.menuItem:hover, .menuButton:hover { background: var(--surface-sub); }
-.partialError { padding: var(--s3) var(--s4); color: var(--text-2); font-size: var(--font-c1); }
-.partialError p { margin: 0; }
-.retry { min-height: 44px; padding: var(--s2) 0; border: 0; background: transparent; color: var(--brand-700); font: inherit; font-size: var(--font-b2); cursor: pointer; }
-.retry:disabled { opacity: .4; cursor: wait; }
-.withdrawal { color: var(--text-2); border-top: 1px solid var(--border); }
-.withdrawal .menuLabel { font-weight: 500; }
-.withdrawalNotice { padding: var(--s5); color: var(--text-2); font-size: var(--font-b2); }
-.withdrawalNotice p { margin: 0 0 var(--s4); }
-
-.profileEdit { display: inline-flex; width: auto; max-width: 100%; margin-top: var(--s5); padding-inline: var(--s5); }
+/* 마이 탭 배치(앱 (tabs)/my). 색·글자·부품은 parent-app-ui. */
+.profile { display: flex; align-items: center; gap: 16px; padding-top: 8px; }
+.avatar { display: grid; place-items: center; flex: 0 0 56px; height: 56px; border-radius: 999px; background: var(--fill-soft); color: var(--ink-700); }
+.identity { display: grid; gap: 4px; flex: 1; min-width: 0; }
+.profile > button { width: auto; }
+.badge { display: inline-flex; align-items: center; gap: 4px; font-size: 13px; line-height: 18px; font-weight: 500; color: var(--text-2); }
+.kakao, .apple { display: grid; place-items: center; width: 16px; height: 16px; border-radius: 999px; }
+.kakao { background: #fee500; }
+.apple { background: #000; }
+.kids { display: grid; gap: 12px; padding: 24px 0; }
+.manage { display: inline-flex; align-items: center; min-height: 44px; font-size: 13px; line-height: 18px; font-weight: 500; color: var(--text-2); text-decoration: none; }
+.kidRail { display: flex; gap: 8px; overflow-x: auto; margin-inline: calc(-1 * var(--gutter)); padding-inline: var(--gutter); scrollbar-width: none; }
+.kidRail::-webkit-scrollbar { display: none; }
+.kid { display: grid; align-content: start; gap: 8px; flex: 0 0 120px; padding: 16px; border: 1px solid var(--border); border-radius: var(--r-card); color: inherit; text-decoration: none; }
+.kid:active { opacity: .8; }
+.kidInitial { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 999px; background: var(--fill-soft); font-size: 14px; line-height: 20px; font-weight: 700; color: var(--ink-700); }
+.kidText { display: grid; min-width: 0; }
+.addKid { display: grid; place-items: center; align-content: center; gap: 4px; flex: 0 0 72px; min-height: 120px; border: 1px dashed var(--ink-300); border-radius: var(--r-card); color: var(--ink-700); font-size: 13px; line-height: 18px; font-weight: 500; text-decoration: none; }
+.addKid[data-wide] { flex-basis: 120px; }
+.group { padding: 16px 0; }
+.group > h2 { margin-bottom: 4px; }
+.row { display: flex; align-items: center; gap: 12px; width: 100%; height: 52px; padding: 0; border: 0; background: transparent; color: var(--text-1); font: inherit; text-align: left; text-decoration: none; cursor: pointer; }
+.row:active { opacity: .7; }
+.row > svg:first-child { flex-shrink: 0; color: var(--ink-700); }
+.row > svg:last-child { flex-shrink: 0; color: var(--text-3); }
+.rowLabel { flex: 1; min-width: 0; font-size: 15px; line-height: 22px; }
+.rowValue { max-width: 45%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; line-height: 18px; font-weight: 500; color: var(--text-2); }
+.footer { display: flex; align-items: center; gap: 12px; padding: 16px 0; }
+.footer form { margin: 0; }
+.footerLink { min-height: 44px; padding: 0; border: 0; background: transparent; color: var(--text-2); font: inherit; font-size: 13px; line-height: 18px; font-weight: 500; cursor: pointer; }
+.divider { width: 1px; height: 12px; background: var(--border); }

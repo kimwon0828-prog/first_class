@@ -1,28 +1,17 @@
-.page { width: 100%; min-height: 100dvh; background: var(--bg); }
-.shell { width: 100%; max-width: var(--col); min-height: 100dvh; margin-inline: auto; background: var(--surface); padding-bottom: calc(var(--parent-nav-space) + var(--s6)); }
-.header { display: flex; align-items: center; gap: var(--s2); min-height: 64px; padding: calc(var(--s2) + env(safe-area-inset-top)) var(--gutter) var(--s2); }
-.back { display: grid; place-items: center; width: 44px; height: 44px; color: var(--text-1); border-radius: var(--r-md); }
-.header h1 { margin: 0; font-size: var(--font-h3); font-weight: 600; }
-.content { padding: var(--s5) var(--gutter) 0; }
-.intro { margin: 0 0 var(--s8); font-size: var(--font-b2); color: var(--text-2); font-weight: 600; }
+/* 관심수업 배치(앱 favorites.tsx). 색·글자·부품은 parent-app-ui. */
+.intro { margin: 0 0 32px; font-size: 14px; line-height: 21px; font-weight: 600; color: var(--text-2); }
 .intro span { font-weight: 500; }
-.count { margin: 0 0 var(--s4); font-size: var(--font-h4); }
+.count { margin: 0 0 16px; font-size: 16px; line-height: 24px; font-weight: 600; color: var(--text-1); }
 .count span { color: var(--brand-700); }
-.list { display: grid; gap: var(--s4); list-style: none; padding: 0; margin: 0; }
-.list li { min-width: 0; }
-.cardTitle { padding-right: var(--s4); }
-.chevron { position: absolute; right: var(--s3); top: 50%; color: var(--text-2); }
-.state { padding: var(--s8) var(--s4); border: 1px solid var(--border); border-radius: var(--r-lg); text-align: center; }
-.state > svg { color: var(--text-3); margin-bottom: var(--s5); }
-.state h2 { margin: 0; font-size: var(--font-h4); font-weight: 600; }
-.state p, .notice { font-size: var(--font-b2); color: var(--text-2); }
-.action { display: flex; align-items: center; justify-content: center; min-height: 48px; width: 100%; margin-top: var(--s6); border: 0; border-radius: var(--r-md); background: var(--brand-action); color: var(--neutral-0); font: inherit; font-size: var(--font-b2); text-decoration: none; cursor: pointer; }
-.action:disabled { opacity: .6; }
-.skeleton { display: flex; gap: var(--s3); border: 1px solid var(--border); padding: var(--s3); border-radius: var(--r-lg); }
-.skeleton > span { width: 112px; height: 112px; flex-shrink: 0; }
-.skeleton span { display: block; background: var(--neutral-50); border-radius: var(--r-sm); }
-.skeleton > div { flex: 1; display: grid; gap: var(--s3); padding-block: var(--s2); }
-
-/* Parent primary action states; retain disabled and layout contracts. */
-.action:hover:not(:disabled) { background: var(--brand-action-hover); }
-.action:active:not(:disabled) { background: var(--brand-action-pressed); }
+.list { display: grid; gap: 16px; margin: 0; padding: 0; list-style: none; }
+.card { position: relative; overflow: hidden; border: 1px solid var(--border); border-radius: var(--r-card); }
+.link { display: flex; align-items: flex-start; gap: 12px; padding: 12px; color: inherit; text-decoration: none; }
+.link:active { opacity: .7; }
+.link > svg { position: absolute; right: 12px; top: 50%; color: var(--text-2); }
+.thumbnail { position: relative; display: grid; place-items: center; flex: 0 0 112px; height: 112px; overflow: hidden; border-radius: 8px; background: var(--fill-soft); color: var(--ink-300); }
+.body { display: grid; align-content: start; gap: 4px; flex: 1; min-width: 0; }
+.meta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; min-height: 32px; padding-right: 36px; }
+.title { display: -webkit-box; padding-right: 16px; overflow: hidden; -webkit-line-clamp: 2; -webkit-box-orient: vertical; font-size: 16px; line-height: 24px; font-weight: 600; color: var(--text-1); }
+.heart { position: absolute; top: 4px; right: 4px; display: grid; place-items: center; width: 44px; height: 44px; padding: 0; border: 1px solid var(--border); border-radius: 999px; background: var(--surface); color: var(--text-1); cursor: pointer; }
+.empty { display: grid; justify-items: center; gap: 16px; padding: 32px 16px; border: 1px solid var(--border); border-radius: var(--r-card); color: var(--text-2); text-align: center; }
+.empty > a { width: auto; }

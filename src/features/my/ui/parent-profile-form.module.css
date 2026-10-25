@@ -1,24 +1,21 @@
-.form { display: grid; gap: var(--s4); padding: var(--s5) var(--gutter); }
-.field { display: grid; gap: var(--s2); min-width: 0; }
-.label { display: flex; align-items: center; gap: var(--s2); font-size: var(--font-b2); font-weight: 600; color: var(--text-1); }
-.optional, .required { font-size: var(--font-c1); font-weight: 400; color: var(--text-3); }
-.input { width: 100%; min-width: 0; height: 52px; border: 1px solid var(--border); border-radius: var(--r-md); padding: 0 var(--s4); background: var(--surface); font: inherit; font-size: var(--font-b1); color: var(--text-1); }
+/* 내 정보 수정(앱 profile-editor · account-form). 값은 ParentAppShell 토큰. */
+.form { display: grid; gap: 20px; padding: 0 20px 24px; }
+.field { display: grid; gap: 8px; min-width: 0; }
+.label { display: flex; align-items: center; gap: 8px; font-size: 14px; line-height: 21px; font-weight: 600; color: var(--text-1); }
+.optional, .required { font-size: 12px; font-weight: 400; color: var(--text-3); }
+.input { width: 100%; min-width: 0; min-height: 48px; border: 1px solid var(--border); border-radius: var(--r-control); padding: 12px 14px; background: var(--surface); font: inherit; font-size: 16px; line-height: 21px; color: var(--text-1); }
 .input::placeholder { color: var(--text-3); }
-.input:focus { border-color: var(--brand-700); }
-.input:disabled { background: var(--neutral-50); color: var(--text-2); }
-.note { margin: calc(var(--s3) * -1) 0 0; font-size: var(--font-c1); color: var(--text-2); word-break: keep-all; }
-.errorMessage, .infoMessage { margin: 0; padding: var(--s3) var(--s4); border-radius: var(--r-md); font-size: var(--font-b2); }
-.errorMessage { color: var(--red-fg); background: var(--red-bg); }
-.infoMessage { color: var(--brand-700); background: var(--brand-50); }
-.submitButton { width: 100%; min-height: 48px; padding: var(--s3) var(--s4); border: 0; border-radius: var(--r-md); background: var(--brand-action); color: var(--neutral-0); font: inherit; font-size: var(--font-b2); font-weight: 600; cursor: pointer; }
-.submitButton:disabled { opacity: .6; cursor: wait; }
-
-.actions { display: flex; gap: var(--s3); position: sticky; bottom: -1px; padding-block: var(--s3); background: var(--surface); }
+.input:focus { outline: 0; border-color: var(--text-1); }
+.input:disabled { background: var(--fill-soft); color: var(--text-2); }
+.note { margin: -12px 0 0; font-size: 12px; line-height: 18px; color: var(--text-2); word-break: keep-all; }
+.errorMessage, .infoMessage { margin: 0; font-size: 14px; line-height: 21px; }
+.errorMessage { color: var(--danger); }
+.infoMessage { color: var(--brand-700); }
+.actions { display: flex; gap: 8px; position: sticky; bottom: -1px; padding-block: 12px; background: var(--surface); }
 .actions > button { flex: 1; }
-.cancelButton { min-height: 48px; padding: var(--s3) var(--s4); border: 1px solid var(--border); border-radius: var(--r-md); background: var(--surface); color: var(--text-1); font: inherit; font-size: var(--font-b2); font-weight: 600; cursor: pointer; }
-.cancelButton:disabled { opacity: .6; cursor: wait; }
-.readOnly { margin: 0; color: var(--text-2); font-size: var(--font-b2); overflow-wrap: anywhere; }
-
-/* Parent primary action states; retain disabled and layout contracts. */
-.submitButton:hover:not(:disabled) { background: var(--brand-action-hover); }
-.submitButton:active:not(:disabled) { background: var(--brand-action-pressed); }
+.submitButton, .cancelButton { height: 52px; padding: 0 20px; border-radius: var(--r-control); font: inherit; font-size: 16px; font-weight: 700; cursor: pointer; }
+.submitButton { border: 0; background: var(--brand-700); color: #fff; }
+.submitButton:active:not(:disabled) { background: var(--brand-800); }
+.cancelButton { border: 1px solid var(--border); background: var(--surface); color: var(--text-1); }
+.submitButton:disabled, .cancelButton:disabled { border: 0; background: var(--surface-sub); color: var(--text-3); cursor: default; }
+.readOnly { margin: 0; color: var(--text-2); font-size: 14px; overflow-wrap: anywhere; }

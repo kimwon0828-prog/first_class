@@ -10,7 +10,7 @@ import { AppIcon, type AppIconName } from "@/features/classes/ui/app-icon"
 import { AppButton, AppButtonLink } from "@/features/classes/ui/parent-app-ui"
 import ui from "@/features/classes/ui/parent-app-ui.module.css"
 import { getMyAcademyNewsConsentAction, setAcademyNewsConsentAction } from "@/features/marketing-consent/actions/set-academy-news-consent"
-import { MARKETING_CONSENT_TEXT_VERSION, type MarketingConsentState } from "@/features/marketing-consent/lib/marketing-consent"
+import { MARKETING_CONSENT_HELP, MARKETING_CONSENT_LABEL, MARKETING_CONSENT_TEXT_VERSION, type MarketingConsentState } from "@/features/marketing-consent/lib/marketing-consent"
 import { isChildEligibleForClass } from "@/shared/constants/grade-options"
 import { LEARNER_GRADES, getChildGradeLabel } from "@/shared/constants/education-taxonomy"
 
@@ -20,8 +20,6 @@ import styles from "./trial-application-steps.module.css"
 
 // 앱 application-sheet.tsx(feat/marketing-consent 2b7854e)의 3단계. 신청 로직 · 검증 · 저장은 기존 useTrialApplicationForm 그대로다.
 
-const MARKETING_CONSENT_LABEL = "첫수업 학원 소식 받기 (광고)"
-const MARKETING_CONSENT_HELP = "체험한 학원에 새 반·특강이 열리면 첫수업이 문자로 알려드려요. 마이 › 학원 소식에서 언제든 끌 수 있어요."
 const agreements = [
   "(필수) 체험수업 신청에 필요한 개인정보 수집·이용에 동의합니다.",
   "(필수) 신청 정보가 해당 학원 및 담당 선생님에게 제공되는 것에 동의합니다.",

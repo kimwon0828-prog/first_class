@@ -1,43 +1,13 @@
-.page { min-height: 100dvh; background: var(--bg); }
-.shell { width: 100%; max-width: var(--col); min-height: 100dvh; margin-inline: auto; background: var(--surface); }
-.header { display: flex; align-items: center; gap: var(--s2); padding: var(--s2) var(--gutter); padding-top: calc(var(--s2) + env(safe-area-inset-top)); }
-.header h1 { margin: 0; font-size: var(--font-h3); font-weight: 600; }
-.backButton { display: grid; place-items: center; width: 44px; height: 44px; flex-shrink: 0; color: var(--text-1); border-radius: var(--r-md); }
-.content { display: grid; gap: var(--s8); padding: var(--s4) var(--gutter) calc(var(--s8) + env(safe-area-inset-bottom)); }
-.group h2 { margin: 0 0 var(--s4); font-size: var(--font-b2); font-weight: 600; color: var(--text-2); }
+/* 알림 배치(앱 notifications.tsx). 색·글자·부품은 parent-app-ui. */
+.group { padding-top: 20px; }
+.group:first-child { padding-top: 0; }
+.group h2 { margin-bottom: 4px; }
 .group ul { margin: 0; padding: 0; list-style: none; }
-.item { display: flex; align-items: flex-start; gap: 12px; padding: 20px 0; min-height: 44px; border-bottom: 1px solid var(--border); text-decoration: none; color: var(--text-1); }
-.item:hover { background: var(--surface-sub); }
-.icon { display: grid; place-items: center; width: 36px; height: 36px; flex: 0 0 36px; border-radius: 12px; color: var(--text-2); background: var(--surface-sub); }
-.itemBody { display: grid; gap: 6px; min-width: 0; flex: 1; word-break: keep-all; overflow-wrap: break-word; }
-.itemTitle { font-size: var(--font-b2); font-weight: 600; }
-.itemMeta { font-size: var(--font-c1); color: var(--text-2); }
-.time { margin-top: var(--s2); font-size: var(--font-c1); color: var(--text-2); }
-.chevron { flex-shrink: 0; align-self: center; color: var(--text-2); }
-.state { display: grid; justify-items: center; gap: var(--s3); padding-block: var(--s16); text-align: center; }
-.state h2 { margin: 0; font-size: var(--font-h3); font-weight: 600; }
-.state p { margin: 0; color: var(--text-2); font-size: var(--font-b2); line-height: 1.7; }
-.state button { margin-top: var(--s4); min-height: 48px; width: 100%; border: 1px solid var(--brand-action); border-radius: var(--r-md); background: var(--brand-action); color: var(--surface); padding: var(--s3); font: inherit; cursor: pointer; }
-.state button:disabled { opacity: .4; }
-.page a:focus-visible, .page button:focus-visible { outline: 2px solid var(--brand-700); outline-offset: 2px; }
-.skeletons { display: grid; gap: var(--s3); }
-.skeletonHeading { width: 120px; height: 20px; margin-bottom: var(--s1); background: var(--surface-sub); border-radius: var(--r-sm); }
-.skeletonRow { display: flex; gap: var(--s3); padding: var(--s4); border: 1px solid var(--border); border-radius: var(--r-lg); height: 144px; }
-.skeletonRow span { width: 40px; height: 40px; border-radius: var(--r-full); background: var(--surface-sub); }
-.skeletonRow div { flex: 1; border-radius: var(--r-sm); background: var(--surface-sub); }
-.reportCard { display: grid; gap: var(--s3); padding: var(--s4); border: 1px solid var(--brand-200); border-radius: var(--r-lg); background: var(--brand-50); overflow-wrap: anywhere; }
-.reportHeader { display: flex; align-items: flex-start; gap: var(--s3); }
-.reportHeader h3, .reportHeader p { margin: 0; }
-.reportCard .icon { background: var(--brand-100); }
-.reportDescription { margin: 0; color: var(--text-2); font-size: var(--font-b2); line-height: 1.6; }
-.reportButton { display: flex; justify-content: center; align-items: center; min-height: 44px; padding: var(--s2) var(--s3); border-radius: var(--r-md); background: var(--brand-action); color: var(--surface); text-decoration: none; font-size: var(--font-b2); font-weight: 600; }
-.reportButton:hover { background: var(--brand-action-hover); }
-
-.read { background: var(--surface); }
-.itemTitle { font-weight: 500; }
-.unread .itemTitle { font-weight: 600; }
-.item.unread { background: var(--surface); }
-.unreadDot { display: inline-block; width: 6px; height: 6px; margin-left: var(--s2); vertical-align: middle; border-radius: var(--r-full); background: var(--parent-brand-green); }
-
-.state button:hover:not(:disabled) { background: var(--brand-action-hover); }
-.state button:active:not(:disabled), .reportButton:active { background: var(--brand-action-pressed); }
+.item { display: flex; align-items: flex-start; gap: 12px; padding: 12px 0; color: var(--text-1); text-decoration: none; }
+.item:active { opacity: .7; }
+.icon { display: grid; place-items: center; flex: 0 0 40px; height: 40px; border-radius: 999px; background: var(--surface-sub); color: var(--ink-700); }
+.itemBody { display: grid; gap: 2px; flex: 1; min-width: 0; word-break: keep-all; overflow-wrap: break-word; }
+.itemTitle { font-size: 14px; line-height: 20px; font-weight: 700; color: var(--text-1); }
+.itemMeta { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; line-height: 18px; font-weight: 500; color: var(--text-2); }
+.time { font-size: 13px; line-height: 18px; font-weight: 500; color: var(--text-3); }
+.unreadDot { flex: 0 0 8px; height: 8px; margin-top: 6px; border-radius: 999px; background: var(--brand-500); }

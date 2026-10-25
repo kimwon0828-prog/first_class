@@ -1,23 +1,4 @@
-.page { min-height: 100dvh; background: var(--bg); }
-.shell { width: 100%; max-width: var(--col); margin-inline: auto; min-height: 100dvh; padding-bottom: var(--parent-nav-space); background: var(--surface); }
-.header { display: flex; align-items: center; justify-content: space-between; gap: var(--s4); padding: var(--s2) var(--gutter); padding-top: calc(var(--s2) + env(safe-area-inset-top)); }
-.title { margin: 0; font-size: var(--font-h3); font-weight: 600; }
-.notification { display: grid; place-items: center; width: 44px; height: 44px; color: var(--text-1); border-radius: var(--r-full); }
-.notification:hover { background: var(--surface-sub); }
-.content { padding-top: var(--s4); padding-bottom: var(--s8); }
-.state { margin: 0 var(--gutter); padding: var(--s5); border: 1px solid var(--border); border-radius: var(--r-lg); }
-.stateTitle { margin: 0; font-size: var(--font-h4); }
-.stateText { margin: var(--s2) 0 var(--s4); color: var(--text-2); font-size: var(--font-b2); }
-.skeletons { display: grid; gap: var(--s6); padding: 0 var(--gutter); }
-.skeleton { height: 120px; border-radius: var(--r-lg); background: var(--surface-sub); }
-
-.skeletonProfile { display: flex; align-items: center; gap: var(--s4); }
-.skeletonProfile > span { width: 64px; height: 64px; border-radius: 50%; background: var(--neutral-100); }
-.skeletonProfile > div { display: grid; flex: 1; gap: var(--s3); }
-.skeletonProfile i, .skeletonGroup i, .skeletonGroup span { display: block; height: 16px; border-radius: var(--r-sm); background: var(--neutral-100); }
-.skeletonProfile i:first-child { width: 55%; }
-.skeletonGroup { display: grid; gap: var(--s4); }
-.skeletonGroup > i { width: 30%; }
-.skeletonGroup > div { display: flex; align-items: center; gap: var(--s4); min-height: 52px; }
-.skeletonGroup span { width: 24px; height: 24px; }
-.skeletonGroup div i { width: 55%; }
+/* 마이 틀(앱 (tabs)/my). 색·글자·부품은 parent-app-ui. */
+.notification { display: grid; place-items: center; width: 44px; height: 44px; margin-right: -12px; color: var(--text-1); }
+.state { display: grid; gap: 20px; padding: 24px 0; }
+.stateLink { color: var(--brand-700); font-size: 14px; font-weight: 700; }

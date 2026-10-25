@@ -1,0 +1,11 @@
+/* 학원 소식 스위치 줄(앱 my/academy-news.tsx). 값은 ParentAppShell 토큰. */
+.row { display: flex; align-items: center; gap: 12px; margin-top: 16px; padding: 16px 0; border-top: 1px solid var(--line-subtle); border-bottom: 1px solid var(--line-subtle); }
+.text { display: grid; gap: 2px; flex: 1; min-width: 0; }
+.switch { position: relative; flex: 0 0 51px; height: 31px; padding: 0; border: 0; border-radius: 999px; background: var(--border); cursor: pointer; transition: background 160ms ease-out; }
+.switch[aria-checked="true"] { background: var(--brand-700); }
+.switch:disabled { opacity: .6; cursor: default; }
+.knob { position: absolute; top: 2px; left: 2px; width: 27px; height: 27px; border-radius: 999px; background: #fff; box-shadow: 0 2px 4px rgba(17, 19, 18, .2); transition: transform 160ms ease-out; }
+.switch[aria-checked="true"] .knob { transform: translateX(20px); }
+.switch:focus-visible { outline: 2px solid var(--brand-700); outline-offset: 2px; }
+.error { margin-top: 12px; }
+@media (prefers-reduced-motion: reduce) { .switch, .knob { transition: none; } }

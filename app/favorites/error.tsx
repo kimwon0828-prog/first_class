@@ -1,4 +1,4 @@
 "use client"
+import { AppButton, appUi as ui } from "@/features/classes/ui/parent-app-ui"
 import { FavoritesFrame } from "./favorites-frame"
-import styles from "./favorites.module.css"
-export default function ErrorPage() { return <FavoritesFrame><section className={styles.state} role="alert"><h2>관심수업을 불러오지 못했어요.</h2><p>잠시 후 다시 시도해주세요.</p><button className={styles.action} onClick={() => window.location.reload()}>다시 시도하기</button></section></FavoritesFrame> }
+export default function ErrorPage() { return <FavoritesFrame><div className={ui.notice} role="alert"><p className={ui.body}>관심수업을 불러오지 못했어요. 잠시 후 다시 시도해 주세요.</p><AppButton variant="secondary" onClick={() => window.location.reload()}>다시 시도</AppButton></div></FavoritesFrame> }

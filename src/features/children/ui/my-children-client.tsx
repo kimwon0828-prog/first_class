@@ -1,6 +1,5 @@
 "use client"
 
-import Link from "next/link"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import type { User } from "@supabase/supabase-js"
 
@@ -9,7 +8,7 @@ import { ChildrenFrame, ChildrenSkeleton } from "./children-frame"
 import { createSupabaseBrowserClient } from "@/integrations/supabase/client"
 import { getPublicEnv } from "@/shared/config/env"
 import type { ChildProfile } from "@/shared/lib/db/adapter"
-import styles from "../../../../app/my/children/page.module.css"
+import { AppButton, AppButtonLink, appUi as ui } from "@/features/classes/ui/parent-app-ui"
 
 type LoadState = "loading" | "ready" | "auth_required" | "forbidden" | "error"
 
@@ -266,35 +265,30 @@ export const MyChildrenClient = () => {
           {status === "loading" ? <ChildrenSkeleton /> : null}
 
           {status === "auth_required" ? (
-            <section className={styles.card}>
-              <p className={styles.dangerText}>{message}</p>
+            <div className={ui.notice} role="alert">
+              <p className={ui.body}>{message}</p>
               {shouldShowAuthDebug ? (
-                <pre className={styles.dangerText} style={{ whiteSpace: "pre-wrap" }}>
+                <pre className={ui.caption} style={{ whiteSpace: "pre-wrap" }}>
                   {authDebugLines}
                 </pre>
               ) : null}
-              <Link href="/auth/sign-in?returnTo=%2Fmy%2Fchildren" className={styles.link}>
-                다시 로그인하기
-              </Link>
-            </section>
+              <AppButtonLink href="/auth/sign-in?returnTo=%2Fmy%2Fchildren" variant="secondary">다시 로그인하기</AppButtonLink>
+            </div>
           ) : null}
 
           {status === "forbidden" ? (
-            <section className={styles.card}>
-              <p className={styles.dangerText}>{message}</p>
-              <Link href="/classes" className={styles.link}>
-                수업 목록으로 이동
-              </Link>
-            </section>
+            <div className={ui.notice} role="alert">
+              <p className={ui.body}>{message}</p>
+              <AppButtonLink href="/classes" variant="secondary">수업 목록으로 이동</AppButtonLink>
+            </div>
           ) : null}
 
           {status === "error" ? (
-            <section className={styles.errorState} role="alert">
-              <h2 className={styles.stateTitle}>자녀 정보를 불러오지 못했어요.</h2>
-              <p className={styles.noticeText}>잠시 후 다시 시도해 주세요.</p>
-              <button type="button" className={styles.retryButton} onClick={() => void loadChildren()}>다시 시도하기</button>
-              <Link href="/my" className={styles.returnLink}>마이페이지로 돌아가기</Link>
-            </section>
+            <div className={ui.notice} role="alert">
+              <p className={ui.body}>자녀 정보를 불러오지 못했어요. 잠시 후 다시 시도해 주세요.</p>
+              <AppButton variant="secondary" onClick={() => void loadChildren()}>다시 시도</AppButton>
+              <AppButtonLink href="/my" variant="secondary">마이로 돌아가기</AppButtonLink>
+            </div>
           ) : null}
 
           {status === "ready" ? <MyChildrenManager items={items} onSaved={loadChildren} /> : null}

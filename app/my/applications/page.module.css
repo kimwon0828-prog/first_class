@@ -1,48 +1,19 @@
-.page { width: 100%; min-height: 100dvh; background: var(--bg); }
-.shell { width: 100%; max-width: var(--col); min-height: 100dvh; margin-inline: auto; background: var(--surface); padding-bottom: calc(var(--parent-nav-space) + var(--s6)); }
-.header { position: sticky; top: 0; z-index: 5; display: flex; align-items: center; gap: var(--s2); min-height: 64px; padding: calc(var(--s2) + env(safe-area-inset-top)) var(--gutter) var(--s2); background: var(--surface); }
-.back { display: grid; place-items: center; width: 44px; height: 44px; color: var(--text-1); border-radius: var(--r-md); }
-.header h1 { margin: 0; font-size: var(--font-h3); font-weight: 600; }
-.content { padding: var(--s4) var(--gutter) 0; }
-.intro { margin: 0 0 var(--s6); color: var(--text-2); font-size: var(--font-b2); word-break: keep-all; }
-.tabs { display: flex; padding: var(--s1); gap: var(--s1); background: var(--neutral-50); border-radius: var(--r-lg); margin-bottom: var(--s5); }
-.tabs button { flex: 1; min-width: 0; min-height: 44px; padding: var(--s2); border: 1px solid transparent; border-radius: var(--r-md); background: transparent; color: var(--text-2); font: inherit; font-size: var(--font-b1); cursor: pointer; }
-.tabs button[aria-selected="true"] { color: var(--brand-700); background: var(--brand-50); border-color: var(--brand-100); font-weight: 600; }
-.tabs span { margin-left: var(--s1); }
-.list { display: grid; gap: var(--s4); margin: 0; padding: 0; list-style: none; }
-.card { display: block; padding: var(--s4); border: 1px solid var(--border); border-radius: var(--r-lg); background: var(--surface); color: var(--text-1); text-decoration: none; overflow-wrap: anywhere; }
-.cardTop { display: flex; align-items: flex-start; gap: var(--s3); }
-.thumbnail { position: relative; display: block; flex: 0 0 var(--s16); height: var(--s16); overflow: hidden; background: var(--neutral-50); border-radius: var(--r-md); }
-.cardInfo { min-width: 0; }
-.badges { display: flex; flex-wrap: wrap; gap: var(--s1); margin-bottom: var(--s2); }
-.typeBadge, .statusBadge { padding: var(--s1) var(--s2); border-radius: var(--r-sm); font-size: var(--font-c1); font-weight: 500; }
-.typeBadge, .confirmed { background: var(--brand-50); color: var(--brand-700); }
-.pending { background: var(--amber-bg); color: var(--amber-fg); }
-.canceled { background: var(--neutral-50); color: var(--text-2); }
-.card h2 { margin: 0; font-size: var(--font-h4); font-weight: 600; }
-.academy { margin: var(--s1) 0 0; color: var(--text-2); font-size: var(--font-b2); }
-.cardDetails { display: flex; align-items: center; gap: var(--s2); border-top: 1px solid var(--border); padding-top: var(--s3); margin-top: var(--s4); }
-.detailRows { flex: 1; min-width: 0; display: grid; gap: var(--s2); }
-.detailRow { display: flex; align-items: flex-start; gap: var(--s2); margin: 0; font-size: var(--font-b2); }
-.detailRow svg, .cardDetails > svg { flex-shrink: 0; color: var(--text-2); }
-.scheduleLabel { margin: var(--s1) 0 0; color: var(--text-2); font-size: var(--font-c1); }
-.state { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 360px; padding: var(--s8) 0; text-align: center; }
-.state h2 { margin: var(--s5) 0 0; font-size: var(--font-h3); font-weight: 600; }
-.state p { margin: var(--s3) 0 0; color: var(--text-2); font-size: var(--font-b2); }
-.emptyIcon { display: grid; place-items: center; width: var(--s16); height: var(--s16); background: var(--neutral-50); color: var(--text-3); border-radius: var(--r-full); }
-.emptyIcon svg { width: var(--s8); height: var(--s8); }
-.primary { display: flex; align-items: center; justify-content: center; gap: var(--s2); width: 100%; min-height: 48px; margin-top: var(--s6); padding: var(--s3) var(--s4); background: var(--brand-action); color: var(--neutral-0); border: 0; border-radius: var(--r-md); font: inherit; font-size: var(--font-b2); font-weight: 600; text-decoration: none; cursor: pointer; }
-.primary:disabled { opacity: .6; cursor: wait; }
-.skeleton { display: grid; gap: var(--s4); }
-.skeletonTabs { height: 52px; background: var(--neutral-50); border-radius: var(--r-lg); }
-.skeletonCard { padding: var(--s4); border: 1px solid var(--border); border-radius: var(--r-lg); }
-.skeletonTop { display: flex; gap: var(--s3); }
-.skeletonTop > span { width: var(--s16); height: var(--s16); background: var(--neutral-50); border-radius: var(--r-md); }
-.skeletonTop > div { flex: 1; }
-.skeleton i { display: block; height: var(--s4); background: var(--neutral-50); border-radius: var(--r-sm); margin-bottom: var(--s2); }
-.skeletonLines { margin-top: var(--s4); padding-top: var(--s3); border-top: 1px solid var(--border); }
-.skeletonLines i { width: 80%; }
-
-/* Parent primary action states; retain disabled and layout contracts. */
-.primary:hover:not(:disabled) { background: var(--brand-action-hover); }
-.primary:active:not(:disabled) { background: var(--brand-action-pressed); }
+/* 신청 현황 배치(앱 my/applications). 색·글자·부품은 parent-app-ui. */
+.intro { margin-bottom: 16px; font-size: 14px; line-height: 22px; }
+.tabs { margin: 0 calc(-1 * var(--gutter)) 16px; }
+.list { display: grid; gap: 16px; margin: 0; padding: 0; list-style: none; }
+.card { color: inherit; text-decoration: none; }
+.card:active { opacity: .65; }
+.cardTop { display: flex; align-items: flex-start; gap: 12px; }
+.thumbnail { position: relative; display: grid; place-items: center; flex: 0 0 64px; height: 64px; overflow: hidden; border-radius: var(--r-control); background: var(--fill-soft); color: var(--ink-300); }
+.cardInfo { display: grid; gap: 4px; flex: 1; min-width: 0; }
+.cardInfo h2, .cardInfo p { margin: 0; }
+.cardInfo h2 { margin-top: 4px; }
+.cardDetails { display: flex; align-items: center; gap: 8px; margin-top: 4px; padding-top: 12px; border-top: 1px solid var(--border); }
+.cardDetails > svg { flex-shrink: 0; color: var(--text-2); }
+.detailRows { display: grid; gap: 8px; flex: 1; min-width: 0; }
+.detailRow { display: flex; align-items: flex-start; gap: 8px; margin: 0; font-size: 14px; line-height: 21px; color: var(--text-1); }
+.detailRow > svg { flex-shrink: 0; color: var(--text-2); }
+.detailRow p { margin: 4px 0 0; }
+.empty { display: grid; justify-items: center; align-content: center; gap: 12px; min-height: 360px; color: var(--text-3); text-align: center; }
+.empty > a { width: auto; }

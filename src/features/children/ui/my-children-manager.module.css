@@ -1,34 +1,32 @@
-.stack { display: grid; gap: var(--s4); }
+/* 자녀 관리(앱 my/children.tsx). 값은 ParentAppShell 토큰. */
+.stack { display: grid; gap: 16px; }
 .announcement:empty { display: none; }
-.announcement { margin: 0; color: var(--brand-700); font-size: var(--font-b2); }
-.noticeCard { display: flex; align-items: center; gap: var(--s3); padding: var(--s4); margin-bottom: var(--s4); border-radius: var(--r-lg); background: var(--brand-50); }
-.noticeCard p { margin: 0; font-size: var(--font-b2); color: var(--text-2); }
-.noticeCard .avatar { flex-basis: 40px; height: 40px; background: transparent; }
-.avatar { display: grid; place-items: center; flex: 0 0 56px; height: 56px; border-radius: var(--r-full); background: var(--brand-50); color: var(--brand-700); }
-.listSection, .childList { display: grid; gap: var(--s4); }
-.sectionTitle { margin: 0; font-size: var(--font-h4); font-weight: 700; }
-.childCard { padding: var(--s4); border: 1px solid var(--border); border-radius: var(--r-lg); background: var(--surface); }
+.announcement { margin: 0; color: var(--brand-700); font-size: 13px; line-height: 18px; font-weight: 500; }
+.noticeCard { display: flex; align-items: center; gap: 8px; padding: 16px; margin-bottom: 8px; border-radius: var(--r-card); background: var(--brand-50); }
+.noticeCard p { margin: 0; flex: 1; font-size: 14px; line-height: 21px; color: var(--text-1); }
+.noticeCard .avatar { flex-basis: 24px; height: 24px; background: transparent; }
+.noticeCard .avatar svg { width: 24px; height: 24px; }
+.avatar { display: grid; place-items: center; flex: 0 0 56px; height: 56px; border-radius: 999px; background: var(--brand-50); color: var(--brand-700); }
+.avatar svg { width: 24px; height: 24px; }
+.listSection, .childList { display: grid; gap: 16px; }
+.sectionTitle { margin: 0; font-size: 16px; line-height: 24px; font-weight: 600; color: var(--text-1); }
+.childCard { padding: 20px; border: 1px solid var(--border); border-radius: var(--r-card); background: var(--surface); }
 .childCardActive { background: var(--surface); }
-.childTop { display: flex; align-items: center; gap: var(--s3); }
-.childBody { flex: 1; min-width: 0; overflow-wrap: anywhere; }
-.childName { margin: 0 0 var(--s1); font-size: var(--font-h4); font-weight: 700; }
-.childMeta { margin: 0; font-size: var(--font-c1); color: var(--text-2); }
-.editButton { flex: 0 0 auto; min-width: 56px; min-height: 44px; padding: var(--s2) var(--s3); border: 1px solid var(--brand-200); border-radius: var(--r-md); background: var(--surface); color: var(--brand-700); font: inherit; font-size: var(--font-b2); cursor: pointer; }
+.childTop { display: flex; align-items: center; gap: 12px; }
+.childBody { display: grid; gap: 4px; flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.childName { margin: 0; font-size: 16px; line-height: 24px; font-weight: 600; color: var(--text-1); }
+.childMeta { margin: 0; font-size: 12px; line-height: 18px; color: var(--text-2); }
+.editButton { flex: 0 0 auto; height: 52px; padding: 0 20px; border: 1px solid var(--border); border-radius: var(--r-control); background: var(--surface); color: var(--text-1); font: inherit; font-size: 16px; font-weight: 700; cursor: pointer; }
 .editButton:disabled { cursor: default; }
 .editButton:disabled:not([aria-expanded="true"]) { opacity: .4; }
-.editButton[aria-expanded="true"] { background: transparent; border-color: transparent; color: var(--text-2); }
-.addButton, .primaryButton { display: flex; align-items: center; justify-content: center; gap: var(--s2); width: 100%; min-height: 52px; padding: var(--s3); border: 1px solid var(--brand-200); border-radius: var(--r-md); color: var(--brand-700); background: var(--surface); font: inherit; font-size: var(--font-b2); font-weight: 600; cursor: pointer; }
-.primaryButton { border-color: var(--brand-action); background: var(--brand-action); color: var(--surface); }
-.primaryButton:hover { background: var(--brand-action-hover); }
-.addButton:hover, .editButton:not(:disabled):hover { background: var(--brand-50); }
-.empty { display: grid; justify-items: center; gap: var(--s4); padding-block: var(--s16); text-align: center; }
-.empty .avatar { width: 80px; height: 80px; margin-bottom: var(--s3); }
-.emptyTitle { margin: 0; font-size: var(--font-h3); font-weight: 600; }
-.emptyDesc { margin: 0 0 var(--s4); color: var(--text-2); font-size: var(--font-b2); }
-.formPanel { padding: var(--s4); border: 1px solid var(--border); border-radius: var(--r-lg); background: var(--surface); }
-.childCard .formPanel { margin-top: var(--s4); padding: var(--s5) 0 0; border: 0; border-top: 1px solid var(--border); border-radius: 0; }
-.formTitle { margin: 0 0 var(--s6); font-size: var(--font-h4); font-weight: 700; scroll-margin-top: 88px; }
-
-/* Parent primary action states; retain disabled and layout contracts. */
-.primaryButton:hover:not(:disabled) { background: var(--brand-action-hover); }
-.primaryButton:active:not(:disabled) { background: var(--brand-action-pressed); }
+.editButton[aria-expanded="true"] { border-color: transparent; color: var(--text-2); }
+.addButton, .primaryButton { display: flex; align-items: center; justify-content: center; width: 100%; height: 52px; padding: 0 20px; border: 1px solid var(--border); border-radius: var(--r-control); background: var(--surface); color: var(--text-1); font: inherit; font-size: 16px; font-weight: 700; cursor: pointer; }
+.primaryButton { border: 0; background: var(--brand-700); color: #fff; }
+.primaryButton:active { background: var(--brand-800); }
+.empty { display: grid; gap: 8px; padding: 24px 0; }
+.empty .avatar { display: none; }
+.emptyTitle { margin: 0; font-size: 16px; line-height: 24px; font-weight: 600; color: var(--text-1); }
+.emptyDesc { margin: 0 0 16px; font-size: 14px; line-height: 21px; color: var(--text-2); }
+.formPanel { padding: 20px; border: 1px solid var(--border); border-radius: var(--r-card); background: var(--surface); }
+.childCard .formPanel { margin-top: 16px; padding: 20px 0 0; border: 0; border-top: 1px solid var(--line-subtle); border-radius: 0; }
+.formTitle { margin: 0 0 20px; font-size: 20px; line-height: 30px; font-weight: 700; color: var(--text-1); scroll-margin-top: 88px; }
