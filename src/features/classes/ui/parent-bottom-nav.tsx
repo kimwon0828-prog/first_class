@@ -2,7 +2,7 @@
 
 import Link, { useLinkStatus } from "next/link"
 import { usePathname, useSearchParams } from "next/navigation"
-import { Suspense, type ReactNode } from "react"
+import { Suspense, type CSSProperties, type ReactNode } from "react"
 
 import { resolveParentNavTab } from "@/features/classes/lib/parent-nav"
 
@@ -53,14 +53,8 @@ const ScheduleIcon = () => (
 )
 
 const RecordIcon = () => (
-  <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-    <path
-      d="M16.5 3.5a2.12 2.12 0 0 1 3 3L8 18l-4 1 1-4 11.5-11.5Z"
-      stroke="currentColor"
-      strokeWidth="1.9"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
+  <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+    <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2V3Zm20 0h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7V3Z" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" />
   </svg>
 )
 
@@ -99,12 +93,13 @@ const BottomNav = ({
     { tab: "home", href: withParentChild("/", child), label: "홈", icon: <HomeIcon /> },
     { tab: "schedule", href: withParentChild(scheduleHref, child), label: "일정", icon: <ScheduleIcon /> },
     { tab: "record", href: withParentChild(recordHref, child), label: "기록", icon: <RecordIcon /> },
-    { tab: "my", href: withParentChild(myPageHref, child), label: "마이페이지", icon: <MyIcon /> }
+    { tab: "my", href: withParentChild(myPageHref, child), label: "마이", icon: <MyIcon /> }
   ] as const
 
   return (
     <nav className={`${styles.bottomNav} ${designVersion === "v1" ? styles.v1 : ""}`} aria-label="하단 탭"
       data-hidden={hidden || undefined} data-keyboard={keyboard || undefined} aria-hidden={hidden || undefined} inert={hidden}>
+      <span className={styles.selection} aria-hidden="true" style={{ "--tab-index": Math.max(0, navItems.findIndex(item => item.tab === activeTab)) } as CSSProperties} hidden={!navItems.some(item => item.tab === activeTab)} />
       {navItems.map((item) => {
         const isActive = activeTab === item.tab
         return (

@@ -1,2 +1,28 @@
-/* A minimum, not an extra spacer: frames with an existing larger CTA reserve keep it. */
+/* Native app design tokens, confined to parent screens. */
+.app[data-parent-app-shell] {
+  --brand-50: #eef7ef;
+  --brand-700: #1b7a26;
+  --text-1: #111312;
+  --text-2: #626966;
+  --text-3: #8a908d;
+  --border: #e6e9e7;
+  --surface-sub: #f3f4f3;
+  --parent-primary-action: #1b7a26;
+  --parent-primary-action-hover: #145c1d;
+  --parent-primary-action-pressed: #145c1d;
+  --parent-nav-h: 66px;
+  --parent-nav-inset: 8px;
+  --parent-bottom-nav-offset: calc(8px + env(safe-area-inset-bottom, 0px));
+  --parent-nav-space: calc(90px + env(safe-area-inset-bottom, 0px));
+  --font-h1: 25px;
+  --font-h2: 20px;
+  --font-h3: 20px;
+  --font-h4: 16px;
+  --font-h5: 14px;
+  --font-b1: 15px;
+  --font-b2: 13px;
+  --font-c1: 11px;
+  font-weight: 400;
+}
+/* Keep larger CTA clearances where a screen has its own floating action. */
 .withNavigation > div:first-of-type { padding-bottom: max(var(--parent-nav-space), var(--parent-content-bottom, 0px)); }

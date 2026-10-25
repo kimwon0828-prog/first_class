@@ -1,98 +1,22 @@
-/*
- * 학부모 공통 floating navigation.
- *
- * 화면 바닥에 붙이지 않고 좌우 · 아래로 띄운다. 본문이 가려지지 않도록
- * 각 화면은 --parent-nav-space 만큼 아래를 비워 둔다(globals.css).
- */
-.bottomNav {
-  position: fixed;
-  left: 50%;
-  bottom: var(--parent-bottom-nav-offset);
-  transform: translateX(-50%);
-  z-index: 60;
-  display: flex;
-  align-items: stretch;
-  gap: 4px;
-  width: calc(100% - var(--parent-nav-inset) * 2);
-  max-width: calc(var(--col) - var(--parent-nav-inset) * 2);
-  height: var(--parent-nav-h);
-  padding: 6px;
-  border-radius: 22px;
-  border: 1px solid rgba(15, 23, 42, 0.07);
-  background: rgba(255, 255, 255, 0.86);
-  /* glass. 지원하지 않는 브라우저에서는 위 배경색만 남는다. */
-  -webkit-backdrop-filter: blur(18px) saturate(180%);
-  backdrop-filter: blur(18px) saturate(180%);
-  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.07);
-}
-
-.navItem {
-  flex: 1;
-  /* 손가락으로 누르는 자리다. 44px 아래로 내리지 않는다. */
-  min-width: 44px;
-  min-height: 44px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 3px;
-  border-radius: 16px;
-  color: var(--text-2);
-  text-decoration: none;
-  -webkit-tap-highlight-color: transparent;
-}
-
-.navItem svg {
-  width: 22px;
-  height: 22px;
-}
-
-.navLabel {
-  font-size: 11px;
-  line-height: 1.2;
-  font-weight: 600;
-  letter-spacing: -0.02em;
-  white-space: nowrap;
-}
-
-/* 지금 보고 있는 탭. soft pill 하나로만 표시한다. */
-.navItemActive {
-  background: var(--brand-50);
-  color: var(--brand-700);
-}
-
-.navItemActive .navLabel {
-  font-weight: 700;
-}
-
-/* Home opt-in: keep the shared IA and other pages' appearance. */
-.v1 {
-  width: calc(100% - var(--gutter) * 2);
-  max-width: calc(var(--col) - var(--gutter) * 2);
-  padding: var(--s1);
-  gap: var(--s1);
-  border-radius: var(--r-sheet);
-  border: 1px solid rgba(255, 255, 255, 0.7);
-  background: rgba(255, 255, 255, 0.96);
-  box-shadow: 0 6px 28px rgba(32, 35, 33, 0.07);
+.bottomNav, .v1 {
+  position: fixed; left: 50%; bottom: var(--parent-bottom-nav-offset); transform: translateX(-50%); z-index: 60;
+  display: flex; align-items: stretch; width: min(324px, calc(100% - 16px)); height: 66px; padding: 6px;
+  border-radius: 33px; border: 0; background: rgba(255,255,255,.88);
+  -webkit-backdrop-filter: blur(20px) saturate(160%); backdrop-filter: blur(20px) saturate(160%);
+  box-shadow: 0 8px 24px rgba(17,19,18,.12), inset 0 1px 0 rgba(255,255,255,.8);
   transition: transform 180ms ease-out, opacity 180ms ease-out;
 }
-.v1 .navItem { position: relative; z-index: 1; color: var(--text-2); gap: var(--s1); }
-.v1 .navItem svg { width: 24px; height: 24px; }
-.v1 .navLabel { font-size: var(--font-c1); font-weight: 500; line-height: 1.5; letter-spacing: 0; }
-.v1 .navItemActive { color: var(--parent-primary-action); background: transparent; }
-
-@supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-  .v1 { background: var(--parent-glass); -webkit-backdrop-filter: blur(var(--parent-blur)) saturate(160%); backdrop-filter: blur(var(--parent-blur)) saturate(160%); }
-}
+.selection { position: absolute; top: 6px; left: 6px; width: calc((100% - 12px) / 4); height: 54px; border-radius: 27px; background: #f3f4f3; transform: translateX(calc(var(--tab-index) * 100%)); transition: transform 200ms ease-out; pointer-events: none; }
+.navItem { flex: 1; position: relative; z-index: 1; min-width: 44px; height: 54px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; border-radius: 27px; color: #626966; text-decoration: none; -webkit-tap-highlight-color: transparent; }
+.navItem svg { width: 24px; height: 24px; }
+.navLabel { font-size: 11px; line-height: 14px; font-weight: 500; white-space: nowrap; }
+.navItemActive { color: #111312; }
+.navItemActive .navLabel { font-weight: 700; }
+.navItem:active { opacity: .6; }
+.navItem:focus-visible { outline: 2px solid #1b7a26; outline-offset: 1px; }
 .bottomNav[data-hidden="true"] { transform: translate(-50%, calc(100% + var(--parent-bottom-nav-offset) + 24px)); opacity: 0; pointer-events: none; }
 .icon { display: grid; place-items: center; width: 24px; height: 24px; }
 .spinner { width: 18px; height: 18px; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: nav-spin 700ms linear infinite; }
 @keyframes nav-spin { to { transform: rotate(360deg); } }
-@media (prefers-reduced-motion: reduce) { .bottomNav { transition: none; } .spinner { animation: none; } }
-
-/* A fine top reflection; no opaque inner panel or selected pill. */
-.v1::before { content: ""; position: absolute; inset: 0; border-radius: inherit; border-top: 1px solid rgba(255, 255, 255, 0.82); background: linear-gradient(180deg, rgba(255, 255, 255, 0.06), transparent 45%); pointer-events: none; }
-
-/* Decorative icon uses key Green; its text label keeps accessible contrast. */
-.v1 .navItemActive svg { color: var(--parent-brand-green); }
+@media (prefers-reduced-motion: reduce) { .bottomNav, .selection { transition: none; } .spinner { animation: none; } }
+@media (prefers-reduced-transparency: reduce) { .bottomNav { background: #fff; backdrop-filter: none; -webkit-backdrop-filter: none; } }

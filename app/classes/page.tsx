@@ -25,7 +25,7 @@ import styles from "./page.module.css"
 import homeStyles from "../page.module.css"
 import ClassesLoading from "./loading"
 import { HomeErrorBoundary } from "@/features/classes/ui/home-error-boundary"
-import { SubjectIcon } from "@/features/classes/ui/home-subject-icon"
+import { AppSubjectArt } from "@/features/classes/ui/app-subject-art"
 import { ClassesSubjectFilter } from "@/features/classes/ui/classes-subject-filter"
 import { HomeChildSelector } from "@/features/children/ui/home-child-selector"
 import { getMyChildren } from "@/features/children/queries/get-my-children"
@@ -220,7 +220,7 @@ async function ClassesSearchContent({ searchParams }: ClassesPageProps) {
                   href={buildSearchHref({ subjectCategory: category.code, subject: null })}
                   className={`${homeStyles.subjectChip} ${isActive ? styles.subjectSelected : ""}`}
                   aria-current={isActive ? "page" : undefined}>
-                  <span className={homeStyles.subjectCircle}><SubjectIcon code={category.code} colored /></span>
+                  <span className={homeStyles.subjectCircle}><AppSubjectArt code={category.code} /></span>
                   <span>{category.name}</span>
                 </Link>
               })}

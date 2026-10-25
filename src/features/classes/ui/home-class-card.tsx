@@ -3,6 +3,9 @@ import { ParentDetailLink } from "@/features/classes/ui/parent-detail-link"
 import { ImageFallback } from "@/shared/ui/image-fallback"
 import Image from "next/image"
 
+import type { CardSlot } from "@/features/native/server/academy-cards"
+import { isCardBookable } from "@/features/native/server/academy-cards"
+
 import { BookmarkButton } from "@/features/favorites/ui/bookmark-button"
 import styles from "./home-class-card.module.css"
 
@@ -27,6 +30,8 @@ export type HomeClassCardProps = {
   distanceLabel?: string | null
   classId: string
   priority?: boolean
+  slots?: CardSlot[]
+  now?: number
 }
 
 export function HomeClassCard({
@@ -40,8 +45,15 @@ export function HomeClassCard({
   locationLabel,
   distanceLabel,
   classId,
+  slots = [],
+  now = Date.now(),
   priority = false
 }: HomeClassCardProps) {
+  const soon = slots.filter(slot => isCardBookable(slot, now) && Date.parse(slot.startAt) < now + 7 * 86400000)
+  const formatSlot = (at: string) => {
+    const parts = Object.fromEntries(new Intl.DateTimeFormat("ko-KR", { timeZone: "Asia/Seoul", weekday: "short", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).formatToParts(new Date(at)).map(part => [part.type, part.value]))
+    return `${parts.weekday} ${parts.hour}:${parts.minute}`
+  }
   return (
     <article className={styles.card}>
       <ParentDetailLink href={href} className={styles.cardLink}>
@@ -51,7 +63,7 @@ export function HomeClassCard({
             src={thumbnailUrl}
             alt={thumbnailAlt}
             fill
-            sizes="(max-width: 480px) 56.5vw, 260px"
+            sizes="240px"
             style={{ objectFit: "cover" }}
             priority={priority}
             unoptimized={!canOptimizeParentImage(thumbnailUrl)}
@@ -63,14 +75,18 @@ export function HomeClassCard({
 
       <span className={styles.body}>
         <span className={styles.title}>{title}</span>
-        <span className={styles.price}>{priceLabel}</span>
-        <span className={styles.academy}>{[academyName, locationLabel].filter(Boolean).join(" · ")}</span>
+        <span className={styles.academy}>{[academyName, soon[0] ? formatSlot(soon[0].startAt) : locationLabel].filter(Boolean).join(" · ")}</span>
+        <span className={styles.price} data-free={priceLabel === "무료 체험" || undefined} data-unknown={priceLabel.includes("확인") || priceLabel.includes("문의") || undefined}>{priceLabel}</span>
         <span className={styles.metaRow}>
           {subjectLabel ? <span className={styles.subject}>{subjectLabel}</span> : null}
           {distanceLabel ? <span className={styles.distance}>{distanceLabel}</span> : null}
         </span>
       </span>
       </ParentDetailLink>
+      {soon.length ? <div className={styles.timeChips} aria-label="이번 주 체험 시간">
+        {soon.slice(0, 2).map(slot => <ParentDetailLink key={slot.optionId} href={href} className={styles.timeChip} aria-label={`${formatSlot(slot.startAt)} 일정 확인`}>{formatSlot(slot.startAt)}</ParentDetailLink>)}
+        {soon.length > 2 ? <ParentDetailLink href={href} className={styles.timeChip} aria-label={`일정 ${soon.length - 2}개 더 보기`}>+{soon.length - 2}</ParentDetailLink> : null}
+      </div> : null}
         <BookmarkButton
           classId={classId}
           className={styles.bookmark}
