@@ -20,6 +20,10 @@ import {
   isHiddenPublicSlot
 } from "@/features/applications/lib/public-class-slots"
 import type { AvailableScheduleSlot } from "@/shared/lib/db/adapter"
+import { appDateLabel, appTimeLabel } from "@/features/classes/lib/app-presentation"
+import { AppButton, AppButtonLink } from "@/features/classes/ui/parent-app-ui"
+import ui from "@/features/classes/ui/parent-app-ui.module.css"
+import { useDetailChosenSlot } from "./class-detail-booking"
 import { useTrialApplicationForm, type TrialApplicationFormProps } from "./use-trial-application-form"
 import styles from "./class-detail-application-sheet.module.css"
 
@@ -31,8 +35,9 @@ type ClassDetailApplicationSheetProps = TrialApplicationFormProps & {
   isParentUser: boolean
   signInHref: string
   secondaryAction?: ReactNode
-  fixedCtaClassName: string
-  ctaButtonClassName: string
+  /** 예: "무료 체험 신청하기" */
+  ctaLabel: string
+  retryHref: string
 }
 
 type Step = 1 | 2 | 3
@@ -157,9 +162,10 @@ export function ClassDetailApplicationSheet({
   isParentUser,
   signInHref,
   secondaryAction,
-  fixedCtaClassName,
-  ctaButtonClassName
+  ctaLabel,
+  retryHref
 }: ClassDetailApplicationSheetProps) {
+  const { chosen, available } = useDetailChosenSlot()
   const dialogId = useId()
   const dialogRef = useRef<HTMLDivElement>(null)
   const ctaRef = useRef<HTMLButtonElement>(null)
@@ -356,6 +362,13 @@ export function ClassDetailApplicationSheet({
     setIsOpen(true)
     setStep(1)
     setIsCalendarView(false)
+    if (chosen) {
+      setSelectedOptionId(chosen.optionId)
+      const key = toDateKey(new Date(chosen.startAt))
+      setSelectedDateKey(key)
+      setCurrentMonthKey(getDateMonthValue(key))
+      return
+    }
 
     if (selectedSlotDateKey) {
       setSelectedDateKey(selectedSlotDateKey)
@@ -393,12 +406,16 @@ export function ClassDetailApplicationSheet({
 
   return (
     <>
-      <div className={fixedCtaClassName} data-parent-action-dock role="group" aria-label="수업 신청 및 관심수업">
-        {secondaryAction}
-        <button ref={ctaRef} type="button" className={ctaButtonClassName} onClick={openSheet}
-          aria-haspopup="dialog" aria-expanded={isOpen} aria-controls={dialogId}>
-          체험수업 신청하기
-        </button>
+      <div className={ui.footer} data-parent-action-dock role="group" aria-label="수업 신청 및 관심수업">
+        <div className={ui.footerRow}>
+          {secondaryAction}
+          {slotsError ? <AppButtonLink href={retryHref}>일정 다시 불러오기</AppButtonLink>
+            : <AppButton ref={ctaRef} onClick={openSheet} disabled={!available.length}
+              aria-haspopup="dialog" aria-expanded={isOpen} aria-controls={dialogId}
+              caption={chosen ? `${appDateLabel(chosen.startAt)} ${appTimeLabel(chosen.startAt)}` : null}>
+              {available.length ? ctaLabel : "예약 가능한 일정이 없어요"}
+            </AppButton>}
+        </div>
       </div>
 
       {isOpen ? (
