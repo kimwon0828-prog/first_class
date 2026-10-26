@@ -3,7 +3,7 @@ import Link from "next/link"
 import styles from "./admin-approval-nav.module.css"
 
 type AdminApprovalNavProps = {
-  currentPath: "/admin/academy-approvals" | "/admin/academy-update-requests"
+  currentPath: "/admin/academy-approvals" | "/admin/academy-update-requests" | "/admin/sales-map"
 }
 
 const tabs = [
@@ -14,12 +14,16 @@ const tabs = [
   {
     href: "/admin/academy-update-requests" as const,
     label: "정보수정 요청"
+  },
+  {
+    href: "/admin/sales-map" as const,
+    label: "영업 지도"
   }
 ]
 
 export function AdminApprovalNav({ currentPath }: AdminApprovalNavProps) {
   return (
-    <nav className={styles.nav} aria-label="관리자 승인 메뉴">
+    <nav className={styles.nav} aria-label="관리자 메뉴">
       <div className={styles.tabList}>
         {tabs.map((tab) => {
           const isActive = tab.href === currentPath

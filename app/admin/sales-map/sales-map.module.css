@@ -1,0 +1,709 @@
+.page {
+  min-height: 100dvh;
+  background: #f7f7f7;
+}
+
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 32px 24px 56px;
+  display: grid;
+  gap: 28px;
+}
+
+.hero {
+  background: linear-gradient(135deg, #ffffff 0%, #f3fbf4 100%);
+  border: 1px solid #eaf8ec;
+  border-radius: 22px;
+  padding: 24px;
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.heroContent {
+  display: grid;
+  gap: 10px;
+  flex: 1 1 560px;
+}
+
+.heroActions {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+
+.adminBadge {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
+  border: 1px solid #d9f3dc;
+  background: #ffffff;
+  color: #2aad38;
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 800;
+}
+
+.pageTitle {
+  margin: 0;
+  font-size: 30px;
+  line-height: 36px;
+  letter-spacing: -0.04em;
+  font-weight: 800;
+  color: #111111;
+}
+
+.pageDescription {
+  margin: 0;
+  max-width: 640px;
+  font-size: 14px;
+  line-height: 22px;
+  color: #666666;
+}
+
+.buttonSecondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 44px;
+  border-radius: 12px;
+  padding: 0 14px;
+  text-decoration: none;
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 700;
+  white-space: nowrap;
+  background: #ffffff;
+  border: 1px solid #d9d9d9;
+  color: #111111;
+}
+
+.buttonSecondary:hover {
+  background: #fafafa;
+  border-color: #cfcfcf;
+}
+
+.toolbar {
+  background: #ffffff;
+  border: 1px solid #eeeeee;
+  border-radius: 20px;
+  padding: 18px 20px;
+  display: grid;
+  gap: 16px;
+}
+
+.toolbarTop {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.toolbarTitle {
+  margin: 0;
+  font-size: 16px;
+  line-height: 22px;
+  font-weight: 800;
+  color: #111111;
+}
+
+.toolbarDescription {
+  margin: 4px 0 0;
+  font-size: 13px;
+  line-height: 18px;
+  color: #8a8a8a;
+}
+
+.filterRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.filterPill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 38px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid #e5e7eb;
+  background: #ffffff;
+  color: #4a4a4a;
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.filterPillActive {
+  background: #f3fbf4;
+  border-color: #2aad38;
+  color: #2aad38;
+}
+
+.filterCount {
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 800;
+}
+
+.searchRow {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.searchInput {
+  flex: 1 1 320px;
+  height: 46px;
+  border-radius: 12px;
+  border: 1px solid #d9d9d9;
+  background: #ffffff;
+  padding: 0 14px;
+  font-size: 14px;
+  line-height: 20px;
+  color: #111111;
+}
+
+.searchInput::placeholder {
+  color: #8a8a8a;
+}
+
+.searchInput:focus {
+  outline: none;
+  border-color: #2aad38;
+  box-shadow: 0 0 0 3px rgba(42, 173, 56, 0.16);
+}
+
+.resultMeta {
+  font-size: 13px;
+  line-height: 18px;
+  color: #8a8a8a;
+}
+
+.alert {
+  border-radius: 16px;
+  padding: 14px 16px;
+  border: 1px solid #fecaca;
+  background: #fef2f2;
+}
+
+.alertTitle {
+  margin: 0;
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 800;
+  color: #991b1b;
+}
+
+.alertDescription {
+  margin: 6px 0 0;
+  font-size: 13px;
+  line-height: 18px;
+  color: #b91c1c;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.mutedText {
+  color: #8a8a8a;
+}
+
+.statusBadge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 6px 10px;
+  font-size: 12px;
+  line-height: 14px;
+  font-weight: 800;
+}
+
+.status_pending {
+  background: #fff7e6;
+  color: #b7791f;
+  border: 1px solid #fde7b1;
+}
+
+.status_approved {
+  background: #eaf8ec;
+  color: #2aad38;
+  border: 1px solid #d9f3dc;
+}
+
+.status_rejected {
+  background: #fef2f2;
+  color: #dc2626;
+  border: 1px solid #fecaca;
+}
+
+.emptyState {
+  background: #ffffff;
+  border: 1px dashed #d9f3dc;
+  border-radius: 22px;
+  padding: 56px 24px;
+  text-align: center;
+  display: grid;
+  gap: 10px;
+  justify-items: center;
+}
+
+.emptyIcon {
+  width: 42px;
+  height: 42px;
+  border-radius: 14px;
+  background: #f3fbf4;
+  border: 1px solid #d9f3dc;
+  position: relative;
+}
+
+.emptyIcon::before,
+.emptyIcon::after {
+  content: "";
+  position: absolute;
+  background: #2aad38;
+  border-radius: 999px;
+}
+
+.emptyIcon::before {
+  width: 16px;
+  height: 2px;
+  top: 20px;
+  left: 13px;
+}
+
+.emptyIcon::after {
+  width: 2px;
+  height: 16px;
+  top: 13px;
+  left: 20px;
+}
+
+.emptyTitle {
+  margin: 0;
+  font-size: 18px;
+  line-height: 24px;
+  color: #111111;
+  font-weight: 800;
+}
+
+.emptyDescription {
+  margin: 0;
+  max-width: 440px;
+  font-size: 14px;
+  line-height: 22px;
+  color: #8a8a8a;
+}
+/* 영업 지도 전용 */
+
+.metricGrid {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.metricCard {
+  background: #ffffff;
+  border: 1px solid #eeeeee;
+  border-radius: 16px;
+  padding: 12px 8px;
+  display: grid;
+  gap: 4px;
+  text-align: center;
+}
+
+.metricLabel {
+  margin: 0;
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 700;
+  color: #666666;
+  white-space: nowrap;
+}
+
+.metricValue {
+  margin: 0;
+  font-size: 24px;
+  line-height: 28px;
+  letter-spacing: -0.03em;
+  font-weight: 800;
+  color: #111111;
+}
+
+.gaugeList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(1, minmax(0, 1fr));
+}
+
+.gaugeItem {
+  display: grid;
+  gap: 6px;
+}
+
+.gaugeTop {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.gaugeName {
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 800;
+  color: #111111;
+}
+
+.gaugeTrack {
+  height: 8px;
+  border-radius: 999px;
+  background: #f0f2f4;
+  overflow: hidden;
+}
+
+.gaugeFill {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: #2aad38;
+}
+
+.gaugeMeta {
+  margin: 0;
+  font-size: 12px;
+  line-height: 16px;
+  color: #8a8a8a;
+}
+
+.subjectList {
+  display: grid;
+  gap: 12px;
+}
+
+.subjectCard {
+  background: #ffffff;
+  border: 1px solid #eeeeee;
+  border-radius: 20px;
+  overflow: hidden;
+}
+
+.subjectHeader {
+  width: 100%;
+  min-height: 56px;
+  padding: 14px 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  color: #111111;
+}
+
+.subjectHeader:disabled {
+  cursor: default;
+}
+
+.subjectName {
+  font-size: 16px;
+  line-height: 22px;
+  font-weight: 800;
+}
+
+.subjectMeta {
+  flex: 1 1 auto;
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 600;
+  color: #8a8a8a;
+}
+
+.chevron {
+  width: 8px;
+  height: 8px;
+  border-right: 2px solid #8a8a8a;
+  border-bottom: 2px solid #8a8a8a;
+  transform: rotate(45deg);
+  margin-top: -4px;
+  flex: 0 0 auto;
+}
+
+.chevronOpen {
+  transform: rotate(-135deg);
+  margin-top: 4px;
+}
+
+.prospectList {
+  list-style: none;
+  margin: 0;
+  padding: 0 12px 12px;
+  display: grid;
+  gap: 10px;
+}
+
+.prospect {
+  border: 1px solid #eeeeee;
+  border-radius: 16px;
+  padding: 14px;
+  display: grid;
+  gap: 10px;
+}
+
+.prospectTop {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.prospectHeading {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.prospectName {
+  margin: 0;
+  font-size: 15px;
+  line-height: 21px;
+  font-weight: 800;
+  color: #111111;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+
+.prospectMeta {
+  margin: 0;
+  font-size: 12px;
+  line-height: 16px;
+  color: #8a8a8a;
+}
+
+.gradeBadge {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 32px;
+  height: 24px;
+  padding: 0 8px;
+  border-radius: 999px;
+  border: 1px solid #e5e7eb;
+  background: #fafafa;
+  color: #4a4a4a;
+  font-size: 12px;
+  line-height: 14px;
+  font-weight: 800;
+}
+
+.prospectInfo {
+  margin: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.infoRow {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr);
+  gap: 8px;
+}
+
+.infoLabel {
+  font-size: 12px;
+  line-height: 18px;
+  font-weight: 700;
+  color: #8a8a8a;
+}
+
+.infoValue {
+  margin: 0;
+  font-size: 13px;
+  line-height: 18px;
+  color: #1f1f1f;
+  overflow-wrap: anywhere;
+}
+
+.selectable {
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+.prospectControls {
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr);
+  gap: 8px;
+}
+
+.stateSelect,
+.memoInput {
+  height: 44px;
+  border-radius: 12px;
+  border: 1px solid #d9d9d9;
+  background: #ffffff;
+  padding: 0 12px;
+  /* 16px 미만이면 iOS 가 입력 때 화면을 확대한다. */
+  font-size: 16px;
+  line-height: 20px;
+  color: #111111;
+  min-width: 0;
+}
+
+.stateSelect {
+  font-weight: 700;
+}
+
+.stateSelect:focus,
+.memoInput:focus {
+  outline: none;
+  border-color: #2aad38;
+  box-shadow: 0 0 0 3px rgba(42, 173, 56, 0.16);
+}
+
+.memoInput::placeholder {
+  color: #8a8a8a;
+}
+
+.state_untouched {
+  background: #ffffff;
+  color: #4a4a4a;
+}
+
+.state_contacted {
+  background: #eff6ff;
+  border-color: #bfdbfe;
+  color: #1d4ed8;
+}
+
+.state_meeting {
+  background: #fff7e6;
+  border-color: #fde7b1;
+  color: #b7791f;
+}
+
+.state_confirmed {
+  background: #eaf8ec;
+  border-color: #d9f3dc;
+  color: #2aad38;
+}
+
+.state_rejected {
+  background: #fef2f2;
+  border-color: #fecaca;
+  color: #dc2626;
+}
+
+.saveStatus {
+  margin: -4px 0 0;
+  min-height: 16px;
+  font-size: 12px;
+  line-height: 16px;
+  color: #8a8a8a;
+  text-align: right;
+}
+
+.saveError {
+  color: #dc2626;
+}
+
+.skeleton {
+  display: block;
+  border-radius: 16px;
+  background: #ececec;
+}
+
+.skeletonMetrics {
+  height: 68px;
+}
+
+.skeletonBlock {
+  height: 180px;
+}
+
+.skeletonRow {
+  height: 56px;
+}
+
+@media (max-width: 639px) {
+  .container {
+    padding: 20px 16px 48px;
+    gap: 16px;
+  }
+
+  .hero {
+    padding: 20px;
+  }
+
+  .pageTitle {
+    font-size: 24px;
+    line-height: 30px;
+  }
+
+  .heroActions {
+    width: 100%;
+  }
+
+  .buttonSecondary {
+    width: 100%;
+  }
+
+  .toolbar {
+    padding: 16px;
+  }
+
+  .searchInput {
+    font-size: 16px;
+  }
+}
+
+@media (min-width: 640px) {
+  .gaugeList {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: 24px;
+  }
+
+  .prospectList {
+    padding: 0 16px 16px;
+  }
+
+  .prospectControls {
+    grid-template-columns: 120px minmax(0, 1fr);
+  }
+}
+
+@media (min-width: 960px) {
+  .container {
+    padding: 32px 32px 64px;
+    gap: 28px;
+  }
+
+  .metricCard {
+    padding: 16px;
+  }
+
+  .metricValue {
+    font-size: 30px;
+    line-height: 34px;
+  }
+
+  .gaugeList {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .prospectList {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
