@@ -29,7 +29,11 @@ import { resolveDetailEligibility } from "@/features/classes/lib/class-detail-pr
 import { AppIcon } from "@/features/classes/ui/app-icon"
 import { AcademyLogo, AppButtonLink, AppNotice, AppSection, Band, Disclosure, Hero, InfoRows, PriceText, appUi as ui } from "@/features/classes/ui/parent-app-ui"
 import { AcademyInquiry, ShareButton, StickyDetailHeader } from "@/features/classes/ui/parent-app-ui-client"
+import { breadcrumbJsonLd, classJsonLd, JsonLd } from "@/shared/seo/json-ld"
 import styles from "./page.module.css"
+
+import type { Metadata } from "next"
+import { cache } from "react"
 
 type ClassDetailPageProps = {
   params: Promise<{
@@ -47,6 +51,54 @@ type ClassDetailPageProps = {
 
 const HERO = 260
 
+// generateMetadata 와 page 가 같은 요청에서 한 번만 읽도록 묶는다.
+const loadPublicClassDetail = cache(getPublicClassDetail)
+const loadPublicAcademy = cache((organizationId: string) => getPublicAcademyPageByHandle(organizationId).catch(() => null))
+
+const toSnippet = (value: string | null | undefined, max = 110) => {
+  const text = value?.replace(/\s+/g, " ").trim()
+  if (!text) return null
+  return text.length > max ? `${text.slice(0, max - 1)}…` : text
+}
+
+export async function generateMetadata({ params }: Pick<ClassDetailPageProps, "params">): Promise<Metadata> {
+  const { id } = await params
+  const { data: classItem } = await loadPublicClassDetail(id)
+  if (!classItem) return { title: "수업을 찾을 수 없어요", robots: { index: false } }
+
+  const organization = classItem.organization
+  const academyName = organization ? [organization.name, organization.branchName].filter(Boolean).join(" ") : null
+  const region = organization ? formatAdministrativeRegionLabel(organization)?.replace(" · ", " ") : null
+  const kind = classItem.programType === "level_test" ? "레벨테스트" : "체험수업"
+  const subject = formatClassSubjectDisplayLabel(classItem) || null
+  const target = classItem.targetAge?.trim() ? formatStoredTargetGrades(classItem.targetAge) : null
+  const price = appPriceInfo(classItem.programType, classItem.trialPrice, classItem.trialPriceConfirmed)
+
+  // 검색 결과에 그대로 보이는 문장. 실제 화면 값만 쓴다.
+  const title = [`${classItem.title} ${kind}`, academyName, region].filter(Boolean).join(" · ")
+  const facts = [subject, target, price.known ? price.label : null].filter(Boolean).join(" · ")
+  const description = [
+    `${[region, academyName].filter(Boolean).join(" ")} ${kind}${kind === "레벨테스트" ? "를" : "을"} 첫수업에서 바로 예약하세요.`.trim(),
+    facts || null,
+    toSnippet(classItem.description)
+  ].filter(Boolean).join(" ")
+  const path = `/classes/${classItem.id}`
+
+  return {
+    title,
+    description,
+    alternates: { canonical: path },
+    openGraph: {
+      type: "website",
+      url: path,
+      siteName: "첫수업",
+      title: `${title} | 첫수업`,
+      description,
+      images: classItem.coverImageUrl ? [{ url: classItem.coverImageUrl }] : undefined
+    }
+  }
+}
+
 export default async function ClassDetailPage({ params, searchParams }: ClassDetailPageProps) {
   const resolvedParams = await params
   const resolvedSearchParams = searchParams ? await searchParams : undefined
@@ -60,7 +112,7 @@ export default async function ClassDetailPage({ params, searchParams }: ClassDet
   }
   const classesHref = regionQuery.size ? `/classes?${regionQuery.toString()}` : "/classes"
   const [{ data: classItem, error }, { session, profile }] = await Promise.all([
-    getPublicClassDetail(resolvedParams.id),
+    loadPublicClassDetail(resolvedParams.id),
     (async () => {
       const session = await getSession()
       const profile = session ? await getMyProfile() : null
@@ -73,7 +125,7 @@ export default async function ClassDetailPage({ params, searchParams }: ClassDet
     classItem ? getPublicClassFeedback(classItem.id) : Promise.resolve({ chips: [] }),
     getPublicClassAvailableSlots(resolvedParams.id),
     isParentUser ? getMyChildren() : Promise.resolve({ data: [], error: null }),
-    organization?.id ? getPublicAcademyPageByHandle(organization.id).catch(() => null) : Promise.resolve(null)
+    organization?.id ? loadPublicAcademy(organization.id) : Promise.resolve(null)
   ])
   const regularPriceLabel = classItem ? formatRegularPrice({ type: classItem.regularPriceType, amount: classItem.regularPriceAmount }) : null
   const favoritesEnabled = !session || profile?.role === "parent"
@@ -142,9 +194,29 @@ export default async function ClassDetailPage({ params, searchParams }: ClassDet
     ? <BookmarkButton classId={classItem.id} className={className} activeClassName={ui.favoriteActive} iconSize={size} variant="heart" /> : null
   const share = (className: string) => <ShareButton message={shareMessage} path={`/classes/${classItem.id}`} className={className} />
   const requestedSlot = resolvedSearchParams?.slot
+  const structuredData = [
+    classJsonLd({
+      id: classItem.id,
+      title: classItem.title,
+      description: classItem.description,
+      programLabel: classItem.programType === "level_test" ? "레벨테스트" : "체험수업",
+      subjectLabel,
+      targetLabel,
+      imageUrl: classItem.coverImageUrl,
+      // 화면에 확정 가격으로 보이는 경우(known)만 넣는다. "학원에 문의"는 넣지 않는다.
+      price: price.known ? classItem.trialPrice : null,
+      academy: organizationLabel ? { name: organizationLabel, path: academyHref } : null
+    }),
+    breadcrumbJsonLd([
+      { name: "첫수업", path: "/" },
+      ...(academyHref && organizationLabel ? [{ name: organizationLabel, path: academyHref }] : []),
+      { name: classItem.title, path: `/classes/${classItem.id}` }
+    ])
+  ]
 
   return (
     <ParentAppShell navigation={false} className={ui.page} data-parent-class-detail>
+      <JsonLd data={structuredData} />
       <ClassDetailBookingProvider slots={slots} now={now} initial={typeof requestedSlot === "string" ? requestedSlot : undefined}>
         <div className={ui.column}>
           <StickyDetailHeader title={classItem.title} backHref={classesHref} threshold={HERO}>{share(ui.headerButton)}{favorite(ui.headerButton, 22)}</StickyDetailHeader>

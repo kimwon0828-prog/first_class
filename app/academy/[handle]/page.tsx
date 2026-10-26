@@ -19,6 +19,8 @@ import { ParentDetailLink } from "@/features/classes/ui/parent-detail-link"
 import { AcademyLogo, AppButtonLink, AppEmpty, AppSection, Band, ClassThumb, Hero, IconRow, PriceText, StatusBadge, appUi as ui } from "@/features/classes/ui/parent-app-ui"
 import { AcademyInquiry, AnchorTabs, ShareButton, StickyDetailHeader } from "@/features/classes/ui/parent-app-ui-client"
 
+import { academyJsonLd, breadcrumbJsonLd, JsonLd } from "@/shared/seo/json-ld"
+import { cache } from "react"
 import styles from "./page.module.css"
 
 type AcademyPageProps = {
@@ -52,19 +54,36 @@ const getDescriptionPreview = (shortDescription: string | null, description: str
 const resolveOpenGraphImage = (coverImageUrl: string | null, logoImageUrl: string | null) =>
   coverImageUrl ?? logoImageUrl ?? new URL("/images/first-class-logo.png", PARENT_ORIGIN).toString()
 
+// generateMetadata 와 page 가 같은 요청에서 한 번만 읽도록 묶는다.
+const loadAcademy = cache(getPublicAcademyPageByHandle)
+const loadAcademyClasses = cache(getPublicAcademyClasses)
+
+const subjectsOf = (cards: Array<{ subjectLabel: string }>) =>
+  [...new Set(cards.map(item => item.subjectLabel.split(/\s+·\s+/)[0]).filter(Boolean))]
+
 export async function generateMetadata({ params }: AcademyPageProps): Promise<Metadata> {
   const resolvedParams = await params
-  const academy = await getPublicAcademyPageByHandle(resolvedParams.handle)
+  const academy = await loadAcademy(resolvedParams.handle)
 
   if (!academy) {
     return {
-      title: "학원을 찾을 수 없습니다"
+      title: "학원을 찾을 수 없습니다",
+      robots: { index: false }
     }
   }
 
+  const subjects = subjectsOf(await loadAcademyClasses(academy.organizationId).catch(() => []))
+  const displayName = buildAcademyDisplayName(academy.name, academy.branchName)
+  const region = academy.regionLabel?.replace(" · ", " ") ?? null
+  const subjectText = subjects.slice(0, 3).join("·")
+
   // 문서 제목은 root template("%s | 첫수업")이 붙인다. 공유 미리보기(OG)는 template 을 거치지 않아 직접 붙인다.
-  const title = academy.name
-  const description = getDescriptionPreview(academy.shortDescription, academy.description)
+  // 예) "씨큐브코딩 중계센터 · 노원구 중계동 코딩·IT·로봇 체험수업"
+  const title = [displayName, [region, subjectText, "체험수업"].filter(Boolean).join(" ")].join(" · ")
+  const description = [
+    getDescriptionPreview(academy.shortDescription, academy.description),
+    `${displayName}의 체험수업 일정을 첫수업에서 확인하고 바로 예약하세요.`
+  ].join(" ")
   const canonicalHandle = academy.slug ?? academy.organizationId
   const ogImageUrl = resolveOpenGraphImage(academy.coverImageUrl, academy.logoImageUrl)
 
@@ -78,7 +97,7 @@ export async function generateMetadata({ params }: AcademyPageProps): Promise<Me
       type: "website",
       url: `/academy/${canonicalHandle}`,
       siteName: "첫수업",
-      title: `${academy.name} | 첫수업`,
+      title: `${title} | 첫수업`,
       description,
       images: [
         {
@@ -140,13 +159,13 @@ function ClassCard({ item, now }: { item: AcademyClass; now: number }) {
 
 export default async function AcademyPage({ params }: AcademyPageProps) {
   const { handle } = await params
-  const academy = await getPublicAcademyPageByHandle(handle)
+  const academy = await loadAcademy(handle)
   if (!academy) notFound()
   const now = Date.now()
-  const [cards, feedbackSummary] = await Promise.all([getPublicAcademyClasses(academy.organizationId), getPublicAcademyFeedback(academy.organizationId)])
+  const [cards, feedbackSummary] = await Promise.all([loadAcademyClasses(academy.organizationId), getPublicAcademyFeedback(academy.organizationId)])
   const classes = await withCardDetails(cards, now)
   const name = buildAcademyDisplayName(academy.name, academy.branchName)
-  const subjects = [...new Set(classes.map(item => item.subjectLabel.split(/\s+·\s+/)[0]).filter(Boolean))]
+  const subjects = subjectsOf(classes)
   const targets = [...new Set(classes.map(item => item.targetAgeLabel).filter(Boolean))]
   const target = targets.length && targets.length <= 2 ? targets.join(", ") : null
   const subjectCode = appSubjectCode(classes[0]?.subjectLabel)
@@ -154,7 +173,27 @@ export default async function AcademyPage({ params }: AcademyPageProps) {
   const intro = toNullableText(academy.description) ?? toNullableText(academy.shortDescription)
   const academyPath = `/academy/${academy.slug ?? academy.organizationId}`
   const share = (className: string) => <ShareButton message={name} path={academyPath} className={className} />
+  const structuredData = [
+    academyJsonLd({
+      name,
+      path: academyPath,
+      description: intro,
+      address: academy.address,
+      phone: academy.phone,
+      latitude: academy.latitude,
+      longitude: academy.longitude,
+      logoUrl: academy.logoImageUrl,
+      imageUrl: academy.coverImageUrl,
+      subjects
+    }),
+    breadcrumbJsonLd([
+      { name: "첫수업", path: "/" },
+      { name: "학원 둘러보기", path: "/academies" },
+      { name, path: academyPath }
+    ])
+  ]
   return <ParentAppShell navigation={false} className={ui.page} data-parent-design="v1">
+    <JsonLd data={structuredData} />
     <div className={ui.column}>
       <StickyDetailHeader title={name} backHref="/academies" threshold={HERO}>{share(ui.headerButton)}</StickyDetailHeader>
       <div className={`${ui.content} ${classes.length ? ui.withFooter : ""}`} data-flush>

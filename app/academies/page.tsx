@@ -14,6 +14,16 @@ import {
   parseStoredTargetGrades
 } from "@/shared/constants/grade-options"
 
+import type { Metadata } from "next"
+
+export const metadata: Metadata = {
+  title: "노원구 학원 둘러보기 · 체험수업 예약",
+  description:
+    "노원구 중계동 학원들의 체험수업과 레벨테스트를 한곳에서 비교해 보세요. 과목·학년별로 학원을 찾고, 첫수업에서 바로 예약할 수 있어요.",
+  alternates: {
+    canonical: "/academies"
+  }
+}
 
 type AcademiesPageProps = {
   searchParams?: Promise<Record<string, string | undefined>>
