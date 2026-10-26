@@ -7,6 +7,7 @@ import { AcademyLogo, appUi } from "@/features/classes/ui/parent-app-ui"
 import { appSubjectCodeFromTags } from "@/features/classes/lib/app-presentation"
 import { NotificationBell } from "@/features/notifications/ui/notification-indicator"
 import { toParentUrl } from "@/shared/config/site-origins"
+import { firstsuupOrganizationJsonLd, firstsuupWebsiteJsonLd, JsonLd } from "@/shared/seo/json-ld"
 
 import { Suspense } from "react"
 import { HomeErrorBoundary } from "@/features/classes/ui/home-error-boundary"
@@ -62,6 +63,8 @@ export const metadata: Metadata = {
     type: "website",
     url: toParentUrl("/"),
     siteName: "첫수업",
+    locale: "ko_KR",
+    images: [{ url: "/images/first-class-logo.png", width: 1787, height: 598, alt: "첫수업" }],
     title: "첫수업 | 학원 체험수업 비교·예약",
     description:
       "우리 아이에게 맞는 학원 체험수업과 레벨테스트를 한곳에서 비교하고 예약하세요. 첫수업은 학부모와 학원을 연결하는 체험수업 플랫폼입니다."
@@ -347,5 +350,8 @@ async function ParentHomeContent({ searchParams }: HomePageProps) {
 }
 
 export default function ParentHomePage(props: HomePageProps) {
-  return <HomeErrorBoundary><Suspense fallback={<HomeLoading />}><ParentHomeContent {...props} /></Suspense></HomeErrorBoundary>
+  return <>
+    <JsonLd data={[firstsuupOrganizationJsonLd(), firstsuupWebsiteJsonLd()]} />
+    <HomeErrorBoundary><Suspense fallback={<HomeLoading />}><ParentHomeContent {...props} /></Suspense></HomeErrorBoundary>
+  </>
 }

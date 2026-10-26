@@ -138,7 +138,7 @@ const startSteps = [
   }
 ]
 
-const faqItems = [
+export const faqItems = [
   {
     question: "지금 쓰는 학원관리 프로그램과 같이 써도 되나요?",
     answer: "네. 첫수업은 출결·수납이 아니라 체험 신청부터 등록 결정까지만 다뤄요. 같이 쓰셔도 겹치지 않아요."

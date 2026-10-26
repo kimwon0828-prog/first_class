@@ -13,7 +13,19 @@ export const metadata: Metadata = {
     default: "첫수업",
     template: "%s | 첫수업"
   },
-  description: "학부모와 학원을 연결하는 체험수업 예약 플랫폼"
+  description:
+    "우리 아이에게 맞는 학원 체험수업과 레벨테스트를 한곳에서 비교하고 예약하세요. 첫수업은 학부모와 학원을 연결하는 체험수업 플랫폼입니다.",
+  applicationName: "첫수업",
+  // 페이지가 openGraph 를 따로 주지 않을 때의 기본 공유 미리보기.
+  openGraph: {
+    type: "website",
+    siteName: "첫수업",
+    locale: "ko_KR",
+    images: [{ url: "/images/first-class-logo.png" }]
+  },
+  twitter: {
+    card: "summary"
+  }
 }
 
 type RootLayoutProps = {
