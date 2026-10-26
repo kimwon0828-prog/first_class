@@ -124,11 +124,11 @@ export const LEGAL_DOCUMENTS: Record<string, LegalDocumentDefinition> = {
     ]
   },
   "privacy": {
-    effectiveDate: "2026년 10월 25일",
-    lastUpdatedDate: "2026년 10월 25일",
+    effectiveDate: "2026년 10월 26일",
+    lastUpdatedDate: "2026년 10월 26일",
     eyebrow: "개인정보 안내",
     title: "개인정보처리방침",
-    notice: "2026년 10월 25일 개정: 선택 동의 항목으로 학원 소식(광고성 정보) 문자 발송을 추가했습니다. 동의하지 않아도 체험 신청과 서비스 알림은 그대로 이용할 수 있습니다. Android 푸시 알림의 처리 내역, 체험 기록의 12개월 보유 기준, 탈퇴 시 삭제 범위는 유지합니다.",
+    notice: "2026년 10월 26일 개정: 학원에 제공하는 보호자 연락처를 학원에 등록한 경우로 한정했습니다. 일정 확정·리포트 등 안내는 첫수업이 보냅니다. 학원 소식(광고성 정보) 선택 동의, Android 푸시 알림의 처리 내역, 체험 기록의 12개월 보유 기준, 탈퇴 시 삭제 범위는 유지합니다.",
     description: "첫수업은 학부모의 체험 신청과 자녀 정보 관리, 학원의 수업 운영에 필요한 개인정보를 처리합니다. 어떤 정보를 왜 사용하는지, 어디에 전달되는지, 탈퇴 시 무엇이 삭제되고 남는지 안내합니다.",
     sections: [
       {
@@ -190,7 +190,7 @@ export const LEGAL_DOCUMENTS: Record<string, LegalDocumentDefinition> = {
         title: "학원에 제공하는 정보",
         body: content([
           {"kind": "paragraph", "text": "체험 신청을 제출하면 선택한 학원과 해당 신청을 담당하는 선생님이 신청 접수, 일정 조율, 체험 운영, 상담과 등록 안내에 필요한 정보를 확인합니다. 전체 학원이나 불특정 다수에게 신청 정보를 일괄 제공하지 않습니다."},
-          {"kind": "paragraph", "text": "제공 항목은 보호자 이름·연락처, 학생 이름·학년·입력한 학교·관심 과목, 신청 수업·일정과 신청 시 확인하여 제출한 학습 정보·메모입니다. 학부모의 계정 이메일과 생년월일을 체험 신청 제공 항목에 추가하지 않습니다."},
+          {"kind": "paragraph", "text": "제공 항목은 보호자 이름, 보호자 연락처(학원에 등록한 경우에만), 학생 이름·학년·입력한 학교·관심 과목, 신청 수업·일정과 신청 시 확인하여 제출한 학습 정보·메모입니다. 학부모의 계정 이메일과 생년월일을 체험 신청 제공 항목에 추가하지 않습니다."},
           {"kind": "paragraph", "text": "체험 후 전달한 등록 의향·피드백·비공개 의견은 해당 신청 학원에서 확인할 수 있습니다. 공개 피드백은 개인 이름이나 비공개 의견 대신 선택 항목의 집계 형태로 제공합니다."},
           {"kind": "paragraph", "text": "구체적인 동의 내용은 신청 과정의 개인정보 제3자 제공 동의에서 확인할 수 있습니다."},
         ])
@@ -272,7 +272,7 @@ export const LEGAL_DOCUMENTS: Record<string, LegalDocumentDefinition> = {
     ]
   },
   "third-party-consent": {
-    effectiveDate: "2026년 10월 22일",
+    effectiveDate: "2026년 10월 26일",
     eyebrow: "개인정보 제공 안내",
     title: "개인정보 제3자 제공 동의",
     description: "체험수업·레벨테스트 신청을 처리하기 위해, 신청 화면에서 선택한 학원에 필요한 정보를 제공합니다. 제공받는 학원과 전달할 정보를 확인한 뒤 동의 여부를 선택해 주세요.",
@@ -295,7 +295,7 @@ export const LEGAL_DOCUMENTS: Record<string, LegalDocumentDefinition> = {
       {
         title: "제공 항목",
         body: content([
-          {"kind": "bullet", "text": "보호자 이름과 연락처"},
+          {"kind": "bullet", "text": "보호자 이름, 보호자 연락처(학원에 등록한 경우에만)"},
           {"kind": "bullet", "text": "학생 이름·학년, 선택하여 입력한 학교와 관심 과목"},
           {"kind": "bullet", "text": "신청 수업과 희망 일정"},
           {"kind": "bullet", "text": "신청 시 확인하여 제출한 자녀 특이사항, 과목 경험 여부·기간, 현재 수준, 정규수업 희망 일정, 목표와 메모"},

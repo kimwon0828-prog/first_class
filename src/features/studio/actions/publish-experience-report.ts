@@ -9,6 +9,7 @@ import { requireTeacherStudioAccess } from "@/features/studio/lib/require-teache
 import { getStudioTrialResultSaveContext } from "@/features/studio/queries/get-studio-trial-result-save-context"
 import { sendPublishedReportNotificationSafely } from "@/features/notifications/push/event-delivery"
 import { getStudioApplicationDetail } from "@/features/studio/queries/get-studio-application-detail"
+import { readApplicationParentPhoneForSend } from "@/features/studio/server/application-parent-phone"
 import { dataAdapter } from "@/shared/lib/db"
 
 export type PublishExperienceReportActionState = {
@@ -157,7 +158,7 @@ export async function publishExperienceReportAction(
           trialApplicationId: applicationId,
           createdBy: teacher.id,
           parentId: detail.parentId,
-          parentPhone: detail.parentPhone,
+          parentPhone: await readApplicationParentPhoneForSend(applicationId, teacher.organizationId),
           parentName: detail.parentName,
           studentName: detail.childName,
           academyName: detail.academyName ?? null,

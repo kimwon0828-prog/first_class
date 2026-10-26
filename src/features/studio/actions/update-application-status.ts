@@ -7,6 +7,7 @@ import { sendConfirmedApplicationSafely } from "@/features/notifications/push/co
 import { sendParentNotificationSafely } from "@/features/notifications/alimtalk/send-parent-notification"
 import { sendStudioNotificationSafely } from "@/features/notifications/sms/send-studio-notification"
 import { requireTeacherStudioAccess } from "@/features/studio/lib/require-teacher-studio-access"
+import { readApplicationParentPhoneForSend } from "@/features/studio/server/application-parent-phone"
 import { dataAdapter } from "@/shared/lib/db"
 import type { ApplicationStatus, ApplicationStatusActionType } from "@/shared/lib/db/adapter"
 
@@ -175,7 +176,7 @@ export async function updateApplicationStatusAction(
               trialApplicationId: updated.id,
               createdBy: teacher.id,
               parentId: updated.parentId,
-              parentPhone: updated.parentPhone,
+              parentPhone: await readApplicationParentPhoneForSend(updated.id, teacher.organizationId),
               parentName: updated.parentName,
               studentName: updated.childName,
               academyName: updated.academyName,
@@ -205,7 +206,7 @@ export async function updateApplicationStatusAction(
           trialApplicationId: updated.id,
           createdBy: teacher.id,
           parentId: updated.parentId,
-          parentPhone: updated.parentPhone,
+          parentPhone: await readApplicationParentPhoneForSend(updated.id, teacher.organizationId),
           parentName: updated.parentName,
           studentName: updated.childName,
           academyName: updated.academyName,
@@ -224,7 +225,7 @@ export async function updateApplicationStatusAction(
           trialApplicationId: updated.id,
           createdBy: teacher.id,
           parentId: updated.parentId,
-          parentPhone: updated.parentPhone,
+          parentPhone: await readApplicationParentPhoneForSend(updated.id, teacher.organizationId),
           parentName: updated.parentName,
           studentName: updated.childName,
           academyName: updated.academyName,

@@ -246,7 +246,7 @@ export const UnregisteredStudentsManager = async ({
               type="search"
               name="q"
               defaultValue={selectedQuery}
-              placeholder="학생명 / 보호자명 / 연락처 / 수업명 검색"
+              placeholder="학생명 / 보호자명 / 수업명 검색"
               className={styles.searchInput}
             />
           </label>

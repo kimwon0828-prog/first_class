@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache"
 import { requireTeacherStudioAccess } from "@/features/studio/lib/require-teacher-studio-access"
 import { requireStudioEntitlement } from "@/features/billing/lib/require-entitlement"
 import { logSmsEventSafely } from "@/features/notifications/sms/log-sms-event"
+import { readApplicationParentPhoneForSend } from "@/features/studio/server/application-parent-phone"
 import { validateRegistrationInput } from "../lib/registration-input"
 import { dataAdapter } from "@/shared/lib/db"
 import type { ApplicationRegistrationStatus } from "@/shared/lib/db/adapter"
@@ -28,7 +29,8 @@ export async function saveStudioRegistrationResultAction(applicationId: string, 
   // The DB lock/history decides first enrollment, never the stale form or action read.
   if (result.enrollmentTransition) {
     const updated = await dataAdapter.getStudioApplicationDetail(applicationId, teacher.organizationId).catch(() => null)
-    if (updated) await logSmsEventSafely({ organizationId: teacher.organizationId, application: updated,
+    if (updated) await logSmsEventSafely({ organizationId: teacher.organizationId,
+      application: { ...updated, parentPhone: await readApplicationParentPhoneForSend(applicationId, teacher.organizationId) },
       createdBy: teacher.id, recipientType: "parent", eventType: "trial_enrolled" })
   }
   try {

@@ -7,7 +7,6 @@ const matchesSearch = (
   item: {
     childName: string
     parentName: string | null
-    parentPhone: string | null
     classTitle: string | null
   },
   query: string
@@ -17,7 +16,7 @@ const matchesSearch = (
     return true
   }
 
-  return [item.childName, item.parentName, item.parentPhone, item.classTitle]
+  return [item.childName, item.parentName, item.classTitle]
     .filter((value): value is string => Boolean(value))
     .some((value) => value.toLowerCase().includes(normalized))
 }

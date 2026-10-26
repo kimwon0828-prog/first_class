@@ -143,7 +143,6 @@ export const matchesUnregisteredSearch = (
     item.childName,
     item.childGrade,
     item.parentName ?? "",
-    item.parentPhone ?? "",
     item.classTitle ?? "",
     item.classSubject ?? "",
     item.assignedTeacherName ?? ""

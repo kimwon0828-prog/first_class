@@ -65,7 +65,7 @@ async function createCaseQueryBuilder(supabase: CasesClient, organizationId: str
       .eq("classes.organization_id", organizationId)
       .or(getCaseFilterPredicate(options.view, options.filter).orExpression)
     if (search) {
-      const terms = [`child_name.ilike.%${search}%`, `parent_name.ilike.%${search}%`, `parent_phone.ilike.%${search}%`]
+      const terms = [`child_name.ilike.%${search}%`, `parent_name.ilike.%${search}%`]
       if (classIds.length) terms.push(`class_id.in.(${classIds.join(",")})`)
       query = query.or(terms.join(","))
     }

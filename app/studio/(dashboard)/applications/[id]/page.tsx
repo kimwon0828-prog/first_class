@@ -498,7 +498,6 @@ export default async function StudioApplicationDetailPage({ params, searchParams
           statusLabel: caseStage === "in_trial" ? CASE_STAGE_LABELS.in_trial : statusLabel,
           programTypeLabel,
           parentName,
-          parentPhone,
           childGrade,
           childSchool,
           interestSubjects,
@@ -570,7 +569,7 @@ export default async function StudioApplicationDetailPage({ params, searchParams
                 {[detailView.classTitle, detailView.confirmedSchedule ?? `희망 ${detailView.requestedSchedule}`, data.assignedTeacherName ? `${data.assignedTeacherName} 선생님` : null].filter(Boolean).join(" · ")}
               </p>
               <p className={styles.studentGuardian}>
-                {[detailView.parentName ? `보호자 ${detailView.parentName}` : null, detailView.parentPhone, `${detailView.applicationDate} 신청`].filter(Boolean).join(" · ")}
+                {[detailView.parentName ? `보호자 ${detailView.parentName}` : null, `${detailView.applicationDate} 신청`].filter(Boolean).join(" · ")}
               </p>
             </div>
             <div className={styles.contactButtons}>
