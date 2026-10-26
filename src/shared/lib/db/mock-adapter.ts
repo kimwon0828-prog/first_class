@@ -1955,6 +1955,10 @@ export const mockDataAdapter: DataAdapter = {
             .trim() || null,
         organizationAddress: mockOrganizationLocation.address ?? null,
         organizationAddressDetail: mockOrganizationLocation.addressDetail ?? null,
+        // supabase-adapter 와 같은 표시값. mock 에는 공개 프로필 로고와 일정 길이 근거가 없어 handle 만 채운다.
+        academyHandle: mockOrganizationLocation.id ?? null,
+        academyLogoUrl: null,
+        slotEndAt: null,
         childId: item.childId ?? null,
         childName: item.childName,
         childGrade: item.childGrade,

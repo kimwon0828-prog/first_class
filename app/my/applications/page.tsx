@@ -8,7 +8,7 @@ import { requireParentAccess } from "@/features/my/lib/require-parent-access"
 import { ApplicationsFrame, ApplicationsSkeleton } from "./applications-frame"
 import { ApplicationsList, ApplicationsFailure } from "./applications-list"
 
-export const metadata: Metadata = { title: "신청 현황 | 첫수업", alternates: { canonical: "/my/applications" } }
+export const metadata: Metadata = { title: "신청 현황", alternates: { canonical: "/my/applications" } }
 export const dynamic = "force-dynamic"
 export const revalidate = 0
 

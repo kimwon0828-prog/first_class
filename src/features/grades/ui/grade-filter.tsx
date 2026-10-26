@@ -133,7 +133,7 @@ export function GradeFilter({
         onClick={() => setIsOpen(true)}
         style={{ cursor: isPending ? "default" : "pointer" }}
       >
-        <span className={labelClassName}>학년 · {label}</span>
+        <span className={labelClassName}>{selectedGrade ? `학년 · ${label}` : "학년"}</span>
         <span className={chevronClassName}>
           <ChevronDownIcon />
         </span>

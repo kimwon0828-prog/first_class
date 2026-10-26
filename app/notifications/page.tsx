@@ -8,7 +8,7 @@ import { NotificationRow, notificationDaysAgo } from "@/features/notifications/u
 import { NotificationsRetry } from "@/features/notifications/ui/notifications-retry"
 import { EmptyState, appUi as ui } from "@/features/classes/ui/parent-app-ui"
 import styles from "./page.module.css"
-export const metadata: Metadata = { title: "알림 | 첫수업", description: "최근 첫수업 관련 변화와 안내를 다시 확인할 수 있습니다.", alternates: { canonical: "/notifications" } }
+export const metadata: Metadata = { title: "알림", description: "최근 첫수업 관련 변화와 안내를 다시 확인할 수 있습니다.", alternates: { canonical: "/notifications" } }
 export const dynamic = "force-dynamic"
 export const revalidate = 0
 const GROUPS = ["오늘", "이번 주", "지난 알림"] as const

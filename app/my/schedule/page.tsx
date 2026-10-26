@@ -10,7 +10,7 @@ import { getParentExperienceSignals } from "@/features/record/queries/get-parent
 import { ParentScheduleScreen } from "@/features/schedule/ui/parent-schedule-screen"
 
 export const metadata: Metadata = {
-  title: "내 일정 | 첫수업",
+  title: "내 일정",
   description: "예정된 체험수업과 완료된 일정을 날짜 순으로 확인하세요.",
   alternates: { canonical: "/my/schedule" }
 }

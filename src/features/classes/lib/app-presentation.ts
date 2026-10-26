@@ -20,6 +20,17 @@ export const appTimeLabel = (value: string) => {
 }
 /** "화" */
 export const appWeekday = (value: string) => weekdayFormatter.format(new Date(value))
+/**
+ * 앱 endTimeSuffix 와 같다: " – 5:20"(같은 오전·오후), " – 오후 12:20"(오전·오후가 바뀜), " – 10월 17일 (토) 오전 1:00"(날짜가 바뀜).
+ * 종료 시각이 없거나 시작보다 늦지 않으면 시작 시각만 — 길이를 짐작해 붙이지 않는다.
+ */
+export function appTimeRangeLabel(start: string, end?: string | null) {
+  const from = Date.parse(start), to = end ? Date.parse(end) : NaN
+  if (!end || !Number.isFinite(from) || !Number.isFinite(to) || to <= from) return appTimeLabel(start)
+  if (seoulDateKey(end) !== seoulDateKey(start)) return `${appTimeLabel(start)} – ${appDateLabel(end)} ${appTimeLabel(end)}`
+  const [startPeriod] = appTimeLabel(start).split(" "), [endPeriod, endClock] = appTimeLabel(end).split(" ")
+  return `${appTimeLabel(start)} – ${startPeriod === endPeriod ? endClock : appTimeLabel(end)}`
+}
 /** 카드 시간 칩: "화 13:00" */
 export const appShortSlot = (value: string) => {
   const parts = Object.fromEntries(shortFormatter.formatToParts(new Date(value)).map(part => [part.type, part.value]))

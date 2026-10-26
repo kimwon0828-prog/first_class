@@ -82,7 +82,7 @@ export default async function ExperienceReportPage({ params, searchParams }: {
   ])
   const organizationId = publicClass?.data?.organization?.id ?? null
   const academy = organizationId ? await getPublicAcademyPageByHandle(organizationId).catch(() => null) : null
-  const academyHref = organizationId ? `/academy/${academy?.slug ?? organizationId}` : null
+  const academyHref = organizationId ? `/academy/${academy?.slug ?? organizationId}` : experience.academyHandle ? `/academy/${experience.academyHandle}` : null
   const snapshot = report.content
   const summary = getExperienceReportSummary(snapshot)
   const attachments = getReportAttachments(snapshot)
@@ -93,7 +93,7 @@ export default async function ExperienceReportPage({ params, searchParams }: {
   return <ReportFrame backHref={backHref} footer={academyHref ? <AppButtonLink href={academyHref} variant="secondary">학원 보기</AppButtonLink> : null}>
     <ReportViewTracker reportId={report.id} />
     <div className={styles.academy}>
-      <AcademyLogo size={44} src={academy?.logoImageUrl} subjectCode="other" />
+      <AcademyLogo size={44} src={academy?.logoImageUrl ?? experience.academyLogoUrl} subjectCode="other" />
       <p className={`${ui.label} ${ui.oneLine}`}>{academyName}</p>
     </div>
     <div className={styles.title}>

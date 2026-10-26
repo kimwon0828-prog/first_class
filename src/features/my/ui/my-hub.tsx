@@ -123,6 +123,7 @@ export const MyHub = ({ profile, email, provider, kids, childrenError, consent }
     <div className={ui.band} aria-hidden="true" />
     <Group title="설정 및 안내">
       <Row icon="message-square" label="학원 소식" value={consent ? (consent.consented ? "받는 중" : "받지 않음") : null} href="/my/academy-news" />
+      <Row icon="help-circle" label="자주 묻는 질문" href="/my/faq" />
       <Row icon="mail" label="고객센터" value={COMPANY_INFO.customerCenterEmail} href={COMPANY_EMAIL_HREF} />
       <Row icon="file-text" label="약관 및 개인정보처리방침" onClick={() => setLegalOpen(true)} />
     </Group>

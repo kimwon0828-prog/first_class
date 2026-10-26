@@ -1,6 +1,7 @@
 import { readErasedReportFlags } from "@/shared/lib/db/erased-report-flags"
 import { requireAppReviewClass, REVIEW_DEMO_ORGANIZATION } from "@/shared/lib/db/app-store-review-access"
 import { parseReportAttachments } from "@/features/reports/lib/report-attachments"
+import { loadBookingTimes, type BookingTime } from "@/features/native/server/booking-time"
 import { isMissingTrialPriceConfirmationColumn, loadTrialPriceConfirmations, saveWithTrialPriceConfirmation, withTrialPriceConfirmation } from "@/shared/lib/db/trial-price-confirmation"
 import { getReportSubjectCategory } from "@/features/studio/lib/trial-result-options"
 import { withBookingClassHistory, type BookingDay, type BookingClosureMutation, type BookingClosure } from "@/features/studio/lib/booking-closures"
@@ -870,6 +871,38 @@ const getOrganizationLocationMap = async (organizationIds: string[]) => {
   )
 }
 
+/**
+ * 학부모 신청 요약의 표시값: 학원 공개 프로필의 slug · 로고와 실제 종료 시각.
+ *
+ * ⚠️ 호출부가 학부모 표면(my_trial_applications, parent_id = auth.uid())에서 이미 읽은 행만 넘긴다.
+ *    여기서 읽는 것은 공개 학원 프로필과, 그 행들의 일정 길이뿐이다(앱 API presentation 과 같은 조회).
+ */
+const getMyApplicationPresentation = async (rows: MyTrialApplicationRow[], organizationIds: string[]) => {
+  const client = getSupabaseServiceRoleClient()
+  const uniqueOrganizationIds = [...new Set(organizationIds)]
+  const [profiles, times] = await Promise.all([
+    uniqueOrganizationIds.length
+      ? client.from("academy_public_profiles").select("organization_id, slug, logo_image_path").in("organization_id", uniqueOrganizationIds)
+      : Promise.resolve({ data: [], error: null }),
+    loadBookingTimes(client, rows.map((row) => row.id)).catch(() => ({} as Record<string, BookingTime>))
+  ])
+  const text = (value: string | null | undefined) => value?.trim() || null
+  const profileByOrganization = new Map(
+    ((profiles.error ? [] : profiles.data ?? []) as { organization_id: string; slug: string | null; logo_image_path: string | null }[])
+      .map((profile) => [profile.organization_id, profile])
+  )
+  return new Map<string, MyApplicationPresentation>(rows.map((row) => {
+    const organizationId = row.class_organization_id ?? null
+    const profile = organizationId ? profileByOrganization.get(organizationId) : undefined
+    const logoPath = text(profile?.logo_image_path)
+    return [row.id, {
+      academyHandle: organizationId ? text(profile?.slug) ?? organizationId : null,
+      academyLogoUrl: logoPath ? client.storage.from("academy-profile-assets").getPublicUrl(logoPath).data.publicUrl || null : null,
+      slotEndAt: times[row.id]?.slot_end_at ?? null
+    }]
+  }))
+}
+
 const getEmbeddedClass = (row: TrialApplicationRow): EmbeddedClassRow | null => {
   if (!row.classes) {
     return null
@@ -954,9 +987,12 @@ const mapCreatedApplication = (row: MyTrialApplicationRow): CreatedTrialApplicat
   selectedScheduleLabel: row.selected_schedule_label ?? null
 })
 
+type MyApplicationPresentation = { academyHandle: string | null; academyLogoUrl: string | null; slotEndAt: string | null }
+
 const mapMyApplication = (
   row: MyTrialApplicationRow,
-  organization: OrganizationLocationInfo | null = null
+  organization: OrganizationLocationInfo | null = null,
+  presentation: MyApplicationPresentation | null = null
 ): ParentApplicationSummary => ({
   id: row.id,
   classId: row.class_id,
@@ -968,6 +1004,9 @@ const mapMyApplication = (
     : null,
   organizationAddress: organization?.address ?? null,
   organizationAddressDetail: organization?.addressDetail ?? null,
+  academyHandle: presentation?.academyHandle ?? null,
+  academyLogoUrl: presentation?.academyLogoUrl ?? null,
+  slotEndAt: presentation?.slotEndAt ?? null,
   childId: row.child_id ?? null,
   childName: row.child_name ?? "학생 정보 삭제됨",
   childGrade: row.child_grade ?? "",
@@ -4676,11 +4715,15 @@ export const supabaseDataAdapter: DataAdapter = {
     }
 
     const rows = (data ?? []) as MyTrialApplicationRow[]
-    const organizationLocationMap = await getOrganizationLocationMap(
-      rows
-        .map((row) => row.class_organization_id ?? null)
-        .filter((organizationId): organizationId is string => Boolean(organizationId))
-    )
+    const organizationIds = rows
+      .map((row) => row.class_organization_id ?? null)
+      .filter((organizationId): organizationId is string => Boolean(organizationId))
+    // 학원 표시값(로고 · 주소용 handle)과 종료 시각은 위에서 읽은 본인 신청 행의 id 로만 더 읽는다(앱 API 와 같은 조회).
+    // 둘 다 선택 표시값이라, 읽지 못하면 null 로 두고 목록은 그대로 돌려준다.
+    const [organizationLocationMap, presentationMap] = await Promise.all([
+      getOrganizationLocationMap(organizationIds),
+      getMyApplicationPresentation(rows, organizationIds).catch(() => new Map<string, MyApplicationPresentation>())
+    ])
 
     return rows.map((row) => {
       const organizationRow =
@@ -4688,7 +4731,7 @@ export const supabaseDataAdapter: DataAdapter = {
           ? organizationLocationMap.get(row.class_organization_id) ?? null
           : null
 
-      return mapMyApplication(row, mapOrganizationLocation(organizationRow))
+      return mapMyApplication(row, mapOrganizationLocation(organizationRow), presentationMap.get(row.id) ?? null)
     })
   },
   async listStudioApplications(organizationId, options: StudioApplicationListOptions = {}) {

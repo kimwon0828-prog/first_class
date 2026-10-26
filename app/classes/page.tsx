@@ -42,7 +42,7 @@ import { getStudioCrossProductHrefResolver } from "@/shared/lib/cross-product-na
  * query 계약은 그대로다: q · subjectCategory · subject · radius · sido · sigungu · bname
  */
 export const metadata: Metadata = {
-  title: "수업찾기 | 첫수업",
+  title: "수업찾기",
   description:
     "지역과 과목으로 학원 체험수업과 레벨테스트를 찾아보세요. 첫수업에서 원하는 조건의 첫 수업을 비교하고 예약할 수 있습니다.",
   alternates: {
@@ -203,7 +203,7 @@ async function ClassesSearchContent({ searchParams }: ClassesPageProps) {
                 className={homeStyles.childChip} labelClassName={homeStyles.childChipLabel}
                 unselectedLabel="자녀 선택" manageSheetFocus />
                 : <Link className={homeStyles.childChip} href={authenticated ? (isStudioUser ? studioHref("/studio") : "/my/children") : "/auth/sign-in?returnTo=%2Fclasses"}>
-                  {childrenResult.error ? "자녀 확인하기" : "자녀 선택"}
+                  {childrenResult.error ? "자녀 확인하기" : "자녀 등록"}
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m6 9 6 6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" /></svg>
                 </Link>}
             </div>

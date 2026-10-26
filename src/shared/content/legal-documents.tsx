@@ -286,7 +286,7 @@ export const LEGAL_DOCUMENTS: Record<string, LegalDocumentDefinition> = {
       {
         title: "제공 목적",
         body: content([
-          {"kind": "bullet", "text": "체험 신청 접수와 확인, 신청 관련 연락"},
+          {"kind": "bullet", "text": "체험 신청 접수와 확인, 신청 처리 및 체험 운영"},
           {"kind": "bullet", "text": "희망 일정 확인, 일정 확정·조율 및 상태 안내"},
           {"kind": "bullet", "text": "체험수업·레벨테스트 준비와 운영, 수업 후 리포트 제공"},
           {"kind": "bullet", "text": "등록 상담·안내와 실제 등록 결과 관리"},

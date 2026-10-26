@@ -6,9 +6,8 @@
 .profile:active { opacity: .8; }
 .months { padding-top: 16px; }
 .head { display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0; }
-.cardLink { display: flex; align-items: center; gap: 8px; color: inherit; text-decoration: none; }
+.cardLink { display: flex; align-items: center; gap: 8px; }
 .cardLink > svg { flex-shrink: 0; color: var(--text-3); }
-.cardLink:active { opacity: .8; }
 .sent { display: flex; align-items: center; gap: 4px; margin: 0; font-size: 13px; line-height: 18px; font-weight: 500; color: var(--brand-700); }
 .feedbackRow { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .notYet { font-size: 13px; line-height: 18px; font-weight: 500; color: var(--text-3); }
@@ -16,3 +15,10 @@
 .preparing { display: flex; align-items: center; gap: 8px; padding: 16px; border-radius: var(--r-card); background: var(--fill-soft); color: inherit; text-decoration: none; }
 .preparing:active { opacity: .8; }
 .retry { justify-self: start; }
+.cardBody { display: grid; gap: 12px; color: inherit; text-decoration: none; }
+.cardBody:active { opacity: .8; }
+.quote { display: -webkit-box; overflow: hidden; -webkit-line-clamp: 2; -webkit-box-orient: vertical; font-size: 15px; line-height: 22px; color: var(--ink-700); }
+.photos { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.photo { position: relative; aspect-ratio: 1; overflow: hidden; border-radius: var(--r-control); background: var(--surface-sub); }
+.photo img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.more { position: absolute; inset: 0; display: grid; place-items: center; background: rgba(17, 19, 18, .7); color: #fff; font-size: 14px; line-height: 20px; font-weight: 700; }

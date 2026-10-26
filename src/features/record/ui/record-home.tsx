@@ -13,6 +13,8 @@ import { withRecordChild } from "@/features/record/lib/record-href"
 import { slotAt } from "@/features/schedule/lib/app-schedule"
 
 import { RecordRetry } from "./record-retry"
+import { attachmentUrl } from "@/features/reports/lib/report-attachments"
+import type { ReportCardPreview } from "@/features/record/queries/get-parent-experience-signals"
 import styles from "../../../../app/record/page.module.css"
 
 // 앱 (tabs)/record(record-screen.tsx). 리포트가 있는 체험은 리포트 카드, 아직 없는 체험(완료 처리 전 포함)은 준비 중 카드.
@@ -28,9 +30,9 @@ export function RecordFrame({ children }: { children: ReactNode }) {
 }
 
 function Head({ item }: { item: ParentExperience }) {
-  // 신청 요약에 학원 로고가 없어 원형 자리에 기본 아이콘을 둔다(앱의 로고 없을 때 모양).
+  // 학원 공개 프로필 로고. 없으면 앱처럼 원 안에 기본 아이콘.
   return <span className={styles.head}>
-    <AcademyLogo size={36} subjectCode="other" />
+    <AcademyLogo size={36} src={item.academyLogoUrl} subjectCode="other" />
     <span className={ui.rowText}>
       <span className={`${ui.subtitle} ${ui.oneLine}`}>{item.classTitle ?? "수업 정보 준비 중"}</span>
       <span className={`${ui.caption} ${ui.oneLine}`}>{meta(item)}</span>
@@ -38,14 +40,23 @@ function Head({ item }: { item: ParentExperience }) {
   </span>
 }
 
-function ReportCard({ item, decided, childId }: { item: ParentExperience; decided: boolean | null; childId: string | null }) {
+// 앱 ReportCard: 머리 · 선생님 이야기 인용 · 사진 3칸(+N) · "내 의견 보냄" / "아직 의견을 남기지 않았어요 · 한마디 남기기".
+function ReportCard({ item, preview, feedback, childId }: { item: ParentExperience; preview?: ReportCardPreview; feedback: "sent" | "open" | null; childId: string | null }) {
   const report = withRecordChild(`/record/${item.id}/report`, childId)
+  const photos = preview?.photoIds ?? [], more = (preview?.photoCount ?? 0) > 3 ? (preview?.photoCount ?? 0) - 2 : 0
   return <article className={ui.card}>
-    <ParentDetailLink href={report} className={styles.cardLink} aria-label={`${item.classTitle ?? "수업"} 리포트 보기`}>
-      <Head item={item} /><AppIcon name="chevron-right" size={18} />
+    <ParentDetailLink href={report} className={styles.cardBody} aria-label={`${item.classTitle ?? "수업"} 리포트 보기`}>
+      <span className={styles.cardLink}><Head item={item} /><AppIcon name="chevron-right" size={18} /></span>
+      {preview?.summary ? <span className={styles.quote}>“{preview.summary}”</span> : null}
+      {photos.length ? <span className={styles.photos}>{photos.map((id, index) => <span key={id} className={styles.photo}>
+        {/* 리포트 사진은 기존 학부모 전용 경로(/api/report-attachments)로만 읽는다. 공개 이미지 캐시를 거치지 않는다. */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={attachmentUrl(id)} alt="" loading="lazy" />
+        {more && index === 2 ? <span className={styles.more}>+{more}</span> : null}
+      </span>)}</span> : null}
     </ParentDetailLink>
-    {decided === true ? <p className={styles.sent}><AppIcon name="message-square" size={14} />내 의견 보냄</p>
-      : decided === false ? <div className={styles.feedbackRow}>
+    {feedback === "sent" ? <p className={styles.sent}><AppIcon name="message-square" size={14} />내 의견 보냄</p>
+      : feedback === "open" ? <div className={styles.feedbackRow}>
         <span className={styles.notYet}>아직 의견을 남기지 않았어요</span>
         <Link href={`${report}#experience-feedback`} className={styles.feedbackLink} aria-label={`${item.classTitle ?? "수업"} 한마디 남기기`}>한마디 남기기<AppIcon name="chevron-right" size={16} /></Link>
       </div> : null}
@@ -64,10 +75,13 @@ type RecordHomeProps = {
   selectedChildId: string | null
   error: "children" | "records" | null
   reportedExperienceIds?: ReadonlySet<string>
-  decidedExperienceIds?: ReadonlySet<string>
+  reportPreviews?: ReadonlyMap<string, ReportCardPreview>
+  /** 의견을 남길 수 있는 경험 / 의견과 등록 의향을 모두 남긴 경험. 읽지 못했으면 없음(줄을 그리지 않는다). */
+  feedbackEligibleIds?: ReadonlySet<string>
+  feedbackSentIds?: ReadonlySet<string>
   signalsFailed?: boolean
 }
-export function RecordHome({ experiences, childOptions, selectedChildId, error, reportedExperienceIds, decidedExperienceIds, signalsFailed }: RecordHomeProps) {
+export function RecordHome({ experiences, childOptions, selectedChildId, error, reportedExperienceIds, reportPreviews, feedbackEligibleIds, feedbackSentIds, signalsFailed }: RecordHomeProps) {
   const profileChild = childOptions.find(child => child.id === selectedChildId) ?? (childOptions.length === 1 ? childOptions[0] : null)
   const sorted = [...experiences].sort((a, b) => Date.parse(when(b)) - Date.parse(when(a)) || a.id.localeCompare(b.id))
   const months = new Map<string, ParentExperience[]>()
@@ -88,7 +102,8 @@ export function RecordHome({ experiences, childOptions, selectedChildId, error, 
       {sorted.length ? <div className={`${ui.stackLoose} ${styles.months}`}>{[...months].map(([month, list]) => <section key={month} className={ui.stack} aria-label={month}>
         <h2 className={ui.groupLabel}>{month}</h2>
         {list.map(item => item.status === "completed" && reportedExperienceIds?.has(item.id)
-          ? <ReportCard key={item.id} item={item} childId={selectedChildId} decided={decidedExperienceIds ? decidedExperienceIds.has(item.id) : null} />
+          ? <ReportCard key={item.id} item={item} childId={selectedChildId} preview={reportPreviews?.get(item.id)}
+            feedback={feedbackSentIds?.has(item.id) ? "sent" : feedbackEligibleIds?.has(item.id) ? "open" : null} />
           : <PreparingCard key={item.id} item={item} childId={selectedChildId} />)}
       </section>)}</div>
         : <EmptyState icon="file-text" title="아직 받은 리포트가 없어요" body="체험을 마치면 선생님이 남긴 기록이 여기 쌓여요"
