@@ -5,9 +5,9 @@ import { getMyApplications } from "@/features/applications/queries/get-my-applic
 import { getMyChildren } from "@/features/children/queries/get-my-children"
 import { resolveSelectedChildId, toChildSelectorOptions } from "@/features/children/lib/child-selection"
 import { requireParentAccess } from "@/features/my/lib/require-parent-access"
-import { buildScheduleView } from "@/features/schedule/lib/schedule-view"
+import { finishedApplications, scheduledApplications } from "@/features/schedule/lib/app-schedule"
+import { getParentExperienceSignals } from "@/features/record/queries/get-parent-experience-signals"
 import { ParentScheduleScreen } from "@/features/schedule/ui/parent-schedule-screen"
-import { formatSeoulDateKey } from "@/shared/lib/seoul-datetime"
 
 export const metadata: Metadata = {
   title: "내 일정 | 첫수업",
@@ -24,8 +24,13 @@ export default async function ParentSchedulePage({ searchParams }: SchedulePageP
   await requireParentAccess({ returnTo: parentEntryHref("/my/schedule", params) })
   const [applications, children] = await Promise.all([getMyApplications(), getMyChildren()])
   const selectedChildId = resolveSelectedChildId(typeof params?.child === "string" ? params.child : null, children.data)
-  const now = new Date()
-  return <ParentScheduleScreen model={buildScheduleView(applications.data, selectedChildId, now.getTime())}
-    childOptions={toChildSelectorOptions(children.data)} selectedChildId={selectedChildId}
-    today={formatSeoulDateKey(now)!} failed={Boolean(applications.error || children.error)} />
+  const now = Date.now()
+  // Legacy childId=null belongs only to the all-children view, never matched by name.
+  const mine = selectedChildId ? applications.data.filter(row => row.childId === selectedChildId) : applications.data
+  const finished = finishedApplications(mine, now)
+  const failed = Boolean(applications.error || children.error)
+  const signals = await getParentExperienceSignals(failed ? [] : finished.filter(row => row.status === "completed"))
+  return <ParentScheduleScreen upcoming={scheduledApplications(mine, now)} finished={finished} now={now}
+    reportedIds={signals.error ? undefined : [...signals.reportedExperienceIds]}
+    childOptions={toChildSelectorOptions(children.data)} selectedChildId={selectedChildId} failed={failed} />
 }

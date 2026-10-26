@@ -8,7 +8,7 @@ type Props = HTMLAttributes<HTMLElement> & {
 /** All Parent frames delegate navigation and its content clearance to this shell. */
 export function ParentAppShell({ children, className, navigation, ...props }: Props) {
   return <main {...props} data-parent-design="v1" data-parent-app-shell
-    className={`${className ?? ""} ${navigation === false ? "" : styles.withNavigation}`}>
+    className={`${styles.app} ${className ?? ""} ${navigation === false ? "" : styles.withNavigation}`}>
     {children}
     {navigation === false ? null : <ParentBottomNav {...navigation} designVersion="v1" />}
   </main>

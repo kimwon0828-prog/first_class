@@ -19,11 +19,18 @@ type ExperienceCancelButtonProps = {
   experienceId: string
   /** 무엇을 취소하는지 사용자가 확인할 수 있게 만든 문장. */
   confirmDescription: string
+  /** 버튼 모양(앱: 일정 카드 "신청 취소" 보조 버튼, 상세 "예약 취소" 행). 없으면 기존 모양. */
+  className?: string
+  label?: string
+  trailing?: React.ReactNode
 }
 
 export const ExperienceCancelButton = ({
   experienceId,
-  confirmDescription
+  confirmDescription,
+  className,
+  label = "신청 취소",
+  trailing
 }: ExperienceCancelButtonProps) => {
   const router = useRouter()
   const [isOpen, setIsOpen] = useState(false)
@@ -45,11 +52,11 @@ export const ExperienceCancelButton = ({
     <>
       <button
         type="button"
-        className={styles.cancelButton}
+        className={className ?? styles.cancelButton}
         disabled={isPending}
         onClick={() => setIsOpen(true)}
       >
-        {isPending ? "취소 처리 중..." : "신청 취소"}
+        {isPending ? "취소 처리 중..." : label}{trailing}
       </button>
 
       <CancelConfirmDialog

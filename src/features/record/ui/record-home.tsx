@@ -1,29 +1,63 @@
-import { ParentDetailLink } from "@/features/classes/ui/parent-detail-link"
-import { ParentAppShell } from "@/features/classes/ui/parent-app-shell"
-import { ParentHeader } from "@/features/classes/ui/parent-header"
 import Link from "next/link"
 import type { ReactNode } from "react"
-import { HomeChildSelector } from "@/features/children/ui/home-child-selector"
+
 import type { ChildSelectorOption } from "@/features/children/lib/child-selection"
 import { buildClassesHref } from "@/features/classes/lib/classes-href"
+import { appDateLabel, seoulDateKey } from "@/features/classes/lib/app-presentation"
+import { AppIcon } from "@/features/classes/ui/app-icon"
+import { ParentAppShell } from "@/features/classes/ui/parent-app-shell"
+import { ParentDetailLink } from "@/features/classes/ui/parent-detail-link"
+import { AcademyLogo, AppButtonLink, AppLoading, EmptyState, StatusBadge, TabHeader, appUi as ui } from "@/features/classes/ui/parent-app-ui"
 import type { ParentExperience } from "@/features/record/lib/experience-view"
 import { withRecordChild } from "@/features/record/lib/record-href"
-import { RecordExperienceList } from "./record-experience-list"
+import { slotAt } from "@/features/schedule/lib/app-schedule"
+
 import { RecordRetry } from "./record-retry"
 import styles from "../../../../app/record/page.module.css"
-import contextStyles from "@/features/schedule/ui/parent-schedule-screen.module.css"
 
-function RecordIcon({ person = false }: { person?: boolean }) {
-  return <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-    {person ? <><circle cx="12" cy="8" r="4" /><path d="M4 21v-2a8 8 0 0 1 16 0v2" /></> : <><rect x="5" y="3" width="14" height="18" rx="2" /><path d="M9 8h6M9 12h6M9 16h4" /></>}
-  </svg>
-}
+// 앱 (tabs)/record(record-screen.tsx). 리포트가 있는 체험은 리포트 카드, 아직 없는 체험(완료 처리 전 포함)은 준비 중 카드.
+const when = (item: ParentExperience) => item.status === "completed" ? item.confirmedSlotAt || item.completedAt || item.requestedSlotAt : slotAt(item)
+const monthTitle = (value: string) => { const key = seoulDateKey(value); return `${key.slice(0, 4)}년 ${Number(key.slice(5, 7))}월` }
+const meta = (item: ParentExperience) => [item.academyName, appDateLabel(when(item))].filter(Boolean).join(" · ")
+
 export function RecordFrame({ children }: { children: ReactNode }) {
-  return <ParentAppShell data-parent-design="v1" className={styles.page}><div className={styles.shell}>
-    <ParentHeader title="기록" inset /><p className={styles.subcopy}>아이의 체험 기록을 한눈에 확인해보세요.</p>
-    {children}
+  return <ParentAppShell data-parent-design="v1" className={ui.page}><div className={ui.column}>
+    <TabHeader title="기록" />
+    <div className={ui.tabContent}>{children}</div>
   </div></ParentAppShell>
 }
+
+function Head({ item }: { item: ParentExperience }) {
+  // 신청 요약에 학원 로고가 없어 원형 자리에 기본 아이콘을 둔다(앱의 로고 없을 때 모양).
+  return <span className={styles.head}>
+    <AcademyLogo size={36} subjectCode="other" />
+    <span className={ui.rowText}>
+      <span className={`${ui.subtitle} ${ui.oneLine}`}>{item.classTitle ?? "수업 정보 준비 중"}</span>
+      <span className={`${ui.caption} ${ui.oneLine}`}>{meta(item)}</span>
+    </span>
+  </span>
+}
+
+function ReportCard({ item, decided, childId }: { item: ParentExperience; decided: boolean | null; childId: string | null }) {
+  const report = withRecordChild(`/record/${item.id}/report`, childId)
+  return <article className={ui.card}>
+    <ParentDetailLink href={report} className={styles.cardLink} aria-label={`${item.classTitle ?? "수업"} 리포트 보기`}>
+      <Head item={item} /><AppIcon name="chevron-right" size={18} />
+    </ParentDetailLink>
+    {decided === true ? <p className={styles.sent}><AppIcon name="message-square" size={14} />내 의견 보냄</p>
+      : decided === false ? <div className={styles.feedbackRow}>
+        <span className={styles.notYet}>아직 의견을 남기지 않았어요</span>
+        <Link href={`${report}#experience-feedback`} className={styles.feedbackLink} aria-label={`${item.classTitle ?? "수업"} 한마디 남기기`}>한마디 남기기<AppIcon name="chevron-right" size={16} /></Link>
+      </div> : null}
+  </article>
+}
+
+function PreparingCard({ item, childId }: { item: ParentExperience; childId: string | null }) {
+  return <ParentDetailLink href={withRecordChild(`/record/${item.id}`, childId)} className={styles.preparing} aria-label={`${item.classTitle ?? "수업"} 상세`}>
+    <Head item={item} /><StatusBadge label="리포트 준비 중" />
+  </ParentDetailLink>
+}
+
 type RecordHomeProps = {
   experiences: ParentExperience[]
   childOptions: ChildSelectorOption[]
@@ -34,40 +68,34 @@ type RecordHomeProps = {
   signalsFailed?: boolean
 }
 export function RecordHome({ experiences, childOptions, selectedChildId, error, reportedExperienceIds, decidedExperienceIds, signalsFailed }: RecordHomeProps) {
-  const selected = childOptions.find((child) => child.id === selectedChildId) ?? null
-  const profileChild = selected ?? (childOptions.length === 1 ? childOptions[0] : null)
+  const profileChild = childOptions.find(child => child.id === selectedChildId) ?? (childOptions.length === 1 ? childOptions[0] : null)
+  const sorted = [...experiences].sort((a, b) => Date.parse(when(b)) - Date.parse(when(a)) || a.id.localeCompare(b.id))
+  const months = new Map<string, ParentExperience[]>()
+  for (const item of sorted) { const key = monthTitle(when(item)); months.set(key, [...(months.get(key) ?? []), item]) }
   return <RecordFrame>
-    {error ? <section className={styles.emptyState} role="alert">
-      <h2>{error === "children" ? "자녀 정보를 불러오지 못했어요." : "교육 기록을 불러오지 못했어요."}</h2>
-      <p>잠시 후 다시 시도해주세요.</p><RecordRetry />
-    </section> : <>
-      {childOptions.length > 0 && <HomeChildSelector options={childOptions} selectedChildId={selectedChildId} manageSheetFocus
-        unselectedLabel="모든 아이" allChildrenLabel="모든 아이" className={contextStyles.childSelector} labelClassName={contextStyles.childLabel}
-        triggerContent={<><span className={contextStyles.avatar}><RecordIcon person /></span><span className={contextStyles.childText}>
-          <span>{selected?.name ?? "모든 아이"}</span><span className={contextStyles.grade}>{selected ? selected.grade : `총 ${childOptions.length}명의 자녀`}</span>
-        </span></>} />}
-      {profileChild ? <ParentDetailLink href={withRecordChild("/record/profile", profileChild.id)} className={styles.profileCta}>
-        <span className={styles.profileIcon}><RecordIcon /></span><span className={styles.profileBody}>
-          <strong>교육 프로필</strong><span>아이의 교육 경험을 한눈에 살펴보세요.</span>
-        </span><span aria-hidden="true">›</span>
+    {error ? <div className={ui.notice} role="alert">
+      <p className={ui.body}>{error === "children" ? "자녀 정보를 불러오지 못했어요." : "기록을 불러오지 못했어요."} 잠시 후 다시 시도해 주세요.</p><RecordRetry />
+    </div> : <>
+      {childOptions.length > 1 ? <nav className={styles.chips} aria-label="아이 선택">
+        <Link href="/record" className={ui.filterChip} aria-pressed={!selectedChildId} replace>모든 아이</Link>
+        {childOptions.map(child => <Link key={child.id} href={withRecordChild("/record", child.id)} className={ui.filterChip} aria-pressed={selectedChildId === child.id} replace>{child.name}</Link>)}
+      </nav> : null}
+      {profileChild ? <ParentDetailLink href={withRecordChild("/record/profile", profileChild.id)} className={`${ui.rowLink} ${styles.profile}`}>
+        <span className={ui.rowText}><span className={ui.label}>교육 프로필</span><span className={ui.caption}>아이의 교육 경험을 한눈에 살펴보세요.</span></span>
+        <AppIcon name="chevron-right" size={18} />
       </ParentDetailLink> : null}
-      <div className={styles.content}>
-        <h2 className={styles.count}>교육 기록 {experiences.length}개</h2>
-        {signalsFailed && <p className={styles.signalNotice}>리포트와 생각 기록 정보를 불러오지 못했어요. 경험 상세에서 다시 확인해주세요.</p>}
-        {experiences.length === 0 ? <section className={styles.emptyState}>
-          <span className={styles.emptyIcon}><RecordIcon /></span>
-          <h3>아직 쌓인 교육 기록이 없어요.</h3>
-          <p>체험수업이나 레벨테스트를 완료하면<br />아이의 경험이 이곳에 차곡차곡 쌓여요.</p>
-          <Link href={buildClassesHref({ child: selectedChildId })} className={styles.primaryButton}>수업 찾아보기</Link>
-        </section> : <RecordExperienceList experiences={experiences} showChildName={!selectedChildId} selectedChildId={selectedChildId}
-          reportedExperienceIds={reportedExperienceIds} decidedExperienceIds={decidedExperienceIds} />}
-      </div>
+      {signalsFailed ? <p className={ui.caption} role="status">리포트 정보를 불러오지 못했어요. 체험 기록에서 다시 확인해 주세요.</p> : null}
+      {sorted.length ? <div className={`${ui.stackLoose} ${styles.months}`}>{[...months].map(([month, list]) => <section key={month} className={ui.stack} aria-label={month}>
+        <h2 className={ui.groupLabel}>{month}</h2>
+        {list.map(item => item.status === "completed" && reportedExperienceIds?.has(item.id)
+          ? <ReportCard key={item.id} item={item} childId={selectedChildId} decided={decidedExperienceIds ? decidedExperienceIds.has(item.id) : null} />
+          : <PreparingCard key={item.id} item={item} childId={selectedChildId} />)}
+      </section>)}</div>
+        : <EmptyState icon="file-text" title="아직 받은 리포트가 없어요" body="체험을 마치면 선생님이 남긴 기록이 여기 쌓여요"
+          action={<AppButtonLink href={buildClassesHref({ child: selectedChildId })} size="medium">체험수업 둘러보기</AppButtonLink>} />}
     </>}
   </RecordFrame>
 }
 export function RecordSkeleton() {
-  return <RecordFrame><div className={styles.skeleton} role="status" aria-busy="true" aria-label="교육 기록 불러오는 중">
-    <div className={styles.skeletonContext} />
-    {[0, 1, 2].map(key => <div className={styles.skeletonCard} key={key}><span /><div><span /><span /><span /></div></div>)}
-  </div></RecordFrame>
+  return <RecordFrame><AppLoading label="기록 불러오는 중" /></RecordFrame>
 }

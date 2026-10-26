@@ -28,6 +28,8 @@ export type TrialApplicationFormProps = {
 
 type UseTrialApplicationFormOptions = {
   autoSelectSingleSlot?: boolean
+  /** 신청이 성공한 뒤, 이동하기 전에 한 번 부른다(예: 선택 동의 저장). 실패해도 신청은 성공이고, 길어도 4초 뒤에는 이동한다. */
+  onSuccess?: () => Promise<unknown>
 }
 
 const initialState: CreateTrialApplicationActionState = {
@@ -191,15 +193,20 @@ export const useTrialApplicationForm = (
     setGoalNote(selectedChild.goalNote ?? "")
   }, [selectedChild])
 
+  const onSuccessRef = useRef(options?.onSuccess)
+  onSuccessRef.current = options?.onSuccess
   useEffect(() => {
     if (state.status !== "success") {
       return
     }
 
     clearTrialApplicationDraft()
-    if (state.redirectTo) {
-      router.replace(state.redirectTo)
-    }
+    const afterSuccess = onSuccessRef.current?.().catch(() => undefined) ?? Promise.resolve()
+    void Promise.race([afterSuccess, new Promise(resolve => setTimeout(resolve, 4000))]).then(() => {
+      if (state.redirectTo) {
+        router.replace(state.redirectTo)
+      }
+    })
   }, [router, state.redirectTo, state.status])
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {

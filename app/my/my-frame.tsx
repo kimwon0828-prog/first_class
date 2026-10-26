@@ -1,14 +1,16 @@
 import { ParentAppShell } from "@/features/classes/ui/parent-app-shell"
-import { ParentHeader } from "@/features/classes/ui/parent-header"
+import { NotificationBell } from "@/features/notifications/ui/notification-indicator"
+import { TabHeader, appUi as ui } from "@/features/classes/ui/parent-app-ui"
 import Link from "next/link"
 import type { ReactNode } from "react"
 import styles from "./page.module.css"
 
-export function MyFrame({ children }: { children: ReactNode }) {
-  return <ParentAppShell className={styles.page} data-parent-design="v1">
-    <div className={styles.shell}>
-      <ParentHeader title="마이페이지" actions={<Link href="/notifications" className={styles.notification} aria-label="알림"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9ZM10 21h4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg></Link>} />
-      <div className={styles.content}>{children}</div>
+/** 마이 탭(앱 (tabs)/my): 큰 제목 "마이" + 알림(읽지 않은 알림 점). */
+export function MyFrame({ children, unread = false }: { children: ReactNode; unread?: boolean }) {
+  return <ParentAppShell className={ui.page} data-parent-design="v1">
+    <div className={ui.column}>
+      <TabHeader title="마이"><Link href="/notifications" className={styles.notification} aria-label={unread ? "알림, 읽지 않은 알림이 있음" : "알림"}><NotificationBell hasUnreadNotifications={unread} /></Link></TabHeader>
+      <div className={ui.tabContent}>{children}</div>
     </div>
   </ParentAppShell>
 }

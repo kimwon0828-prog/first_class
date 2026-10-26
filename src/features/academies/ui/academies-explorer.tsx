@@ -10,7 +10,9 @@ import { formatAdministrativeRegionLabel } from "@/features/location/lib/region-
 import { formatDistanceLabel } from "@/features/location/lib/search-location"
 import { ParentLaunchLocation } from "@/features/location/ui/parent-launch-location"
 import { PARENT_LAUNCH_REGION } from "@/features/location/lib/parent-launch-region"
-import { HomeAcademyLogo } from "@/features/classes/ui/home-academy-logo"
+import { appSubjectCodeFromTags } from "@/features/classes/lib/app-presentation"
+import { AppIcon } from "@/features/classes/ui/app-icon"
+import { AcademyLogo, AppButton, AppButtonLink, appUi as ui } from "@/features/classes/ui/parent-app-ui"
 import { SubjectFilter } from "@/features/subjects/ui/subject-filter"
 import { GradeFilter } from "@/features/grades/ui/grade-filter"
 import { ClassesSearchPill } from "@/features/classes/ui/classes-region-select"
@@ -80,48 +82,37 @@ export function AcademiesExplorer({
     <div className={styles.locationRow}>
       <ParentLaunchLocation className={styles.launchLocation} />
     </div>
-    <p className={styles.launchNotice}>{PARENT_LAUNCH_REGION.notice}</p>
+    <p className={ui.caption}>{PARENT_LAUNCH_REGION.notice}</p>
     <ClassesSearchPill initialQuery={initialQuery} placeholder="학원명, 지점명으로 찾기" className={styles.searchForm} pillClassName={styles.searchPill} inputClassName={styles.searchInput} submitButtonClassName={styles.searchSubmit} />
     <div className={styles.filterRow}>
-      <SubjectFilter catalog={subjectCatalog} selectedCategory={selectedSubjectCategory} selectedSubject={selectedSubject} label={selectedSubjectCategory ? selectedSubjectLabel : "전체"}
-        triggerClassName={`${styles.filterButton} ${selectedSubjectCategory ? styles.filterActive : ""}`} labelClassName={styles.filterLabel} chevronWrapClassName={styles.chevron} openChevronClassName={styles.chevronOpen} />
-      <GradeFilter selectedGrade={selectedGrade} label={selectedGrade ? selectedGradeLabel : "전체"}
-        triggerClassName={`${styles.filterButton} ${selectedGrade ? styles.filterActive : ""}`} labelClassName={styles.filterLabel} chevronWrapClassName={styles.chevron} openChevronClassName={styles.chevronOpen} />
+      <SubjectFilter catalog={subjectCatalog} selectedCategory={selectedSubjectCategory} selectedSubject={selectedSubject} label={selectedSubjectCategory ? selectedSubjectLabel : "과목"}
+        triggerClassName={ui.filterChip} labelClassName={styles.filterLabel} chevronWrapClassName={styles.chevron} openChevronClassName={styles.chevronOpen} />
+      <GradeFilter selectedGrade={selectedGrade} label={selectedGrade ? selectedGradeLabel : "학년"}
+        triggerClassName={ui.filterChip} labelClassName={styles.filterLabel} chevronWrapClassName={styles.chevron} openChevronClassName={styles.chevronOpen} />
       <AcademySortFilter selectedSort={selectedSort} disabledReasonLabel={sortDisabledReasonLabel}
-        triggerClassName={styles.filterButton} labelClassName={styles.filterLabel} chevronWrapClassName={styles.chevron} openChevronClassName={styles.chevronOpen} />
+        triggerClassName={ui.filterChip} labelClassName={styles.filterLabel} chevronWrapClassName={styles.chevron} openChevronClassName={styles.chevronOpen} />
     </div>
-    {conditions.length > 0 ? <div className={styles.conditions} aria-label="선택된 검색 조건">
-      {conditions.map(condition => <Link key={condition.keys[0]} className={styles.condition} href={without(condition.keys)} replace aria-label={`${condition.label} 조건 해제`}>{condition.label}<span aria-hidden="true">×</span></Link>)}
+    {conditions.length > 0 ? <div className={ui.chipRow} aria-label="선택된 검색 조건">
+      {conditions.map(condition => <Link key={condition.keys[0]} className={ui.filterChip} data-selected href={without(condition.keys)} replace aria-label={`${condition.label} 조건 해제`}>{condition.label}<AppIcon name="x" size={14} /></Link>)}
       {conditions.length > 1 ? <Link href={resetHref} replace className={styles.clearLink}>전체 해제</Link> : null}
     </div> : null}
-    {error ? <div className={styles.state} role="alert">
-      <span className={styles.stateIcon} aria-hidden="true">!</span><h2>학원 정보를 불러오지 못했어요.</h2><p>잠시 후 다시 시도해 주세요.</p>
-      <button type="button" className={styles.primaryButton} disabled={pending} onClick={() => startTransition(() => router.refresh())}>{pending ? "불러오는 중…" : "다시 시도하기"}</button>
-      <Link href="/" className={styles.secondaryButton}>홈으로 돌아가기</Link>
+    {error ? <div className={ui.notice} role="alert">
+      <p className={ui.body}>학원 정보를 불러오지 못했어요. 잠시 후 다시 시도해 주세요.</p>
+      <AppButton variant="secondary" disabled={pending} onClick={() => startTransition(() => router.refresh())}>{pending ? "불러오는 중…" : "다시 시도"}</AppButton>
     </div> : <>
-      <h2 className={styles.resultCount}>학원 {academies.length}개</h2>
-      {academies.length === 0 ? <div className={styles.state}>
-        <span className={styles.stateIcon}><AcademyIcon /></span>
-        <h3>{filtered ? "조건에 맞는 학원을 찾지 못했어요." : "아직 공개된 학원이 없어요."}</h3>
-        <p>{filtered ? "검색어나 과목, 학년을 바꿔 다시 찾아보세요." : "노원구의 공개 학원이 준비되면 여기에서 확인할 수 있어요."}</p>
-        {conditions.length > 0 ? <Link href={resetHref} replace className={styles.secondaryButton}>검색 조건 초기화</Link> : null}
+      {filtered ? <p className={ui.caption}>학원 {academies.length}개</p> : null}
+      {academies.length === 0 ? <div className={ui.notice}>
+        <p className={ui.bodyMuted}>{filtered ? "조건에 맞는 학원을 찾지 못했어요. 검색어나 과목, 학년을 바꿔 다시 찾아보세요." : "학원을 준비하고 있어요."}</p>
+        {conditions.length > 0 ? <AppButtonLink href={resetHref} replace variant="secondary">검색 조건 초기화</AppButtonLink> : null}
       </div> : <ul className={styles.academyList}>{academies.map(academy => <li key={academy.id}>
-        <ParentDetailLink href={`/academy/${academy.id}`} className={styles.academyCard}>
-          <span className={styles.academyIcon}><HomeAcademyLogo url={academy.logoImageUrl ?? null} name={academy.displayName} fallback={<span role="img" aria-label={`${academy.displayName} 로고 없음`}><AcademyIcon /></span>} /></span>
-          <div className={styles.academyBody}>
-            <h3 className={styles.academyName}>{academy.displayName}</h3>
-            {buildAcademyLocationLabel(academy) ? <p className={styles.locationMeta}>{buildAcademyLocationLabel(academy)}</p> : null}
-            <div className={styles.subjectTags}>{academy.subjectTags.map(tag => <span key={tag} className={styles.subjectTag}>{tag}</span>)}</div>
-            <p className={styles.targetAge}>{academy.targetAgeSummary}</p>
-            {academy.address || academy.addressDetail ? <p className={styles.address}>{academy.address || academy.addressDetail}</p> : null}
-          </div>
-          <svg className={styles.cardChevron} width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m9 6 6 6-6 6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>
+        <ParentDetailLink href={`/academy/${academy.id}`} className={styles.academyRow} aria-label={`${academy.displayName} 학원 소개`}>
+          <AcademyLogo src={academy.logoImageUrl ?? null} subjectCode={appSubjectCodeFromTags(academy.subjectTags)} size={52} />
+          <span className={ui.rowText}>
+            <span className={`${ui.subtitle} ${ui.oneLine}`}>{academy.displayName}</span>
+            <span className={`${ui.caption} ${ui.oneLine}`}>{[...academy.subjectTags, buildAcademyLocationLabel(academy)].filter(Boolean).join(" · ")}</span>
+          </span>
         </ParentDetailLink>
       </li>)}</ul>}
     </>}
   </section>
-}
-
-function AcademyIcon() {
-  return <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 21V7l8-4 8 4v14H4ZM10 21v-6h4v6M8 9v2M12 8v3M16 9v2" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>
 }

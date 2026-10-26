@@ -1,15 +1,11 @@
-
 import { applePhoneGateHref } from "@/features/auth/phone/gate"
-import { canOptimizeParentImage } from "@/features/classes/lib/parent-image"
 import { safeParentReturnTo } from "@/features/classes/lib/parent-navigation"
 import { ParentAppShell } from "@/features/classes/ui/parent-app-shell"
-import { ParentHeader } from "@/features/classes/ui/parent-header"
+import { ParentBackLink } from "@/features/classes/ui/parent-back-link"
 import { getPublicClassFeedback } from "@/features/feedback/queries/get-public-feedback"
 import { PublicFeedback } from "@/features/feedback/ui/public-feedback"
 import { formatRegularPrice } from "@/shared/lib/regular-price"
-import { formatDiscoveryPrice } from "@/features/classes/lib/class-discovery-results"
 import Link from "next/link"
-import Image from "next/image"
 
 import { formatStoredTargetGrades } from "@/shared/constants/grade-options"
 import { getMyProfile } from "@/features/auth/lib/profile-sync"
@@ -17,6 +13,7 @@ import { getSession } from "@/features/auth/lib/session"
 import { formatAdministrativeRegionLabel } from "@/features/location/lib/region-selection"
 import { getPublicClassAvailableSlots } from "@/features/applications/queries/get-public-class-available-slots"
 import { ClassDetailApplicationSheet } from "@/features/applications/ui/class-detail-application-sheet"
+import { ClassDetailBookingProvider, DetailSlotSection } from "@/features/applications/ui/class-detail-booking"
 import { getPublicClassDetail } from "@/features/classes/queries/get-public-class-detail"
 import { getMyChildren } from "@/features/children/queries/get-my-children"
 import { BookmarkButton } from "@/features/favorites/ui/bookmark-button"
@@ -24,12 +21,15 @@ import { NaverMapByAddress } from "@/features/maps/ui/naver-map-by-address"
 import { resolveStoredMapCoordinates } from "@/features/maps/lib/stored-map-coordinates"
 import { resolveOrganizationAddressLines } from "@/features/organizations/lib/organization-address-contract"
 import { formatClassSubjectDisplayLabel } from "@/shared/lib/subject-master"
-import styles from "./page.module.css"
 import { getPublicAcademyPageByHandle } from "@/features/academies/queries/get-public-academy-page"
 import { getChildGradeLabel } from "@/shared/constants/education-taxonomy"
-import { ImageFallback } from "@/shared/ui/image-fallback"
-import { DetailDisclosure, DetailIntroduction } from "@/features/classes/ui/class-detail-disclosure"
-import { formatDetailSchedule, selectEarliestDetailSlot, resolveDetailEligibility } from "@/features/classes/lib/class-detail-presentation"
+import { isBookablePublicSlot } from "@/features/applications/lib/public-class-slots"
+import { appDurationLabel, appPriceInfo, appSubjectCode } from "@/features/classes/lib/app-presentation"
+import { resolveDetailEligibility } from "@/features/classes/lib/class-detail-presentation"
+import { AppIcon } from "@/features/classes/ui/app-icon"
+import { AcademyLogo, AppButtonLink, AppNotice, AppSection, Band, Disclosure, Hero, InfoRows, PriceText, appUi as ui } from "@/features/classes/ui/parent-app-ui"
+import { AcademyInquiry, ShareButton, StickyDetailHeader } from "@/features/classes/ui/parent-app-ui-client"
+import styles from "./page.module.css"
 
 type ClassDetailPageProps = {
   params: Promise<{
@@ -41,23 +41,11 @@ type ClassDetailPageProps = {
     sido?: string
     sigungu?: string
     bname?: string
+    slot?: string
   }>
 }
 
-const formatProgramType = (value: string) => (value === "level_test" ? "레벨테스트" : "체험수업")
-
-function DetailIcon({ kind }: { kind: "calendar" | "program" | "format" | "user" | "check" }) {
-  const paths = {
-    calendar: "M8 2v4m8-4v4M3 10h18M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z",
-    program: "M4 4h16v16H4zM8 8h8M8 12h8M8 16h4",
-    format: "M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2m14-13a4 4 0 0 1 0 8m5 5v-2a4 4 0 0 0-3-3.87M13 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0Z",
-    user: "M20 21v-2a7 7 0 0 0-14 0v2M17 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0Z",
-    check: "m8 12 3 3 5-6M22 12a10 10 0 1 1-20 0 10 10 0 0 1 20 0Z"
-  }
-  return <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-    <path d={paths[kind]} stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" />
-  </svg>
-}
+const HERO = 260
 
 export default async function ClassDetailPage({ params, searchParams }: ClassDetailPageProps) {
   const resolvedParams = await params
@@ -114,183 +102,125 @@ export default async function ClassDetailPage({ params, searchParams }: ClassDet
   const hasLocation = Boolean(addressLines.line1 || storedCoordinates)
   const searchQuery = fullAddress || organizationLabel
   const naverMapUrl = `https://map.naver.com/p/search/${encodeURIComponent(searchQuery)}`
-  const targetGradeLabel = formatStoredTargetGrades(classItem?.targetAge)
   // 지역 표시는 organization 행정지역 metadata 로만 만든다. legacy classes.region 은 쓰지 않는다.
   const administrativeRegionLabel = organization
     ? formatAdministrativeRegionLabel(organization)
     : null
-  const classSubjectLabel = classItem
-    ? formatClassSubjectDisplayLabel(classItem) || "과목 정보 준비 중"
-    : null
   const academyHref = organization?.id ? `/academy/${academy?.slug ?? organization.id}` : null
-  const academyImage = academy?.logoImageUrl ?? academy?.coverImageUrl
   const eligibility = isParentUser && !childrenError && classItem
     ? resolveDetailEligibility(children, resolvedSearchParams?.child, classItem.targetAge)
     : { kind: "hidden" as const }
   const childLabel = (child: { name: string; grade: string }) =>
     [child.name, getChildGradeLabel(child.grade) ?? child.grade].filter(Boolean).join(" · ")
-  const eligibilityPositive = eligibility.kind === "multiple" || (eligibility.kind === "single" && eligibility.eligible)
-  const earliestSlot = selectEarliestDetailSlot(slots, Date.now())
-  const earliestTiming = formatDetailSchedule(earliestSlot)
+  const now = Date.now()
+  const firstSlot = [...slots].filter(slot => isBookablePublicSlot(slot, now)).sort((a, b) => Date.parse(a.startAt) - Date.parse(b.startAt))[0] ?? slots[0]
+
+  if (error || !classItem) return <ParentAppShell navigation={false} className={ui.page} data-parent-class-detail>
+    <div className={ui.column}>
+      <div className={styles.stateTop}><ParentBackLink href={classesHref} preferHistory label="뒤로가기" className={ui.circle}><AppIcon name="chevron-left" size={22} /></ParentBackLink></div>
+      <div className={ui.content}>
+        {error ? <AppNotice message="수업 정보를 불러오지 못했어요. 잠시 후 다시 시도해 주세요." retryHref={detailHref} />
+          : <AppNotice message="찾으시는 정보를 볼 수 없어요. 링크가 바뀌었거나 공개가 종료된 수업일 수 있어요.">
+            <AppButtonLink href={classesHref} variant="secondary">수업 찾기로 돌아가기</AppButtonLink>
+          </AppNotice>}
+      </div>
+    </div>
+  </ParentAppShell>
+
+  const subjectLabel = formatClassSubjectDisplayLabel(classItem) || null
+  const subjectCode = classItem.subjectCategoryCode ?? appSubjectCode(subjectLabel)
+  const targetLabel = classItem.targetAge?.trim() ? formatStoredTargetGrades(classItem.targetAge) : null
+  const kind = classItem.programType === "level_test" ? "레벨테스트" : "체험"
+  const price = appPriceInfo(classItem.programType, classItem.trialPrice, classItem.trialPriceConfirmed)
+  const duration = appDurationLabel(firstSlot)
+  const eligibleChildren = eligibility.kind === "single" ? (eligibility.eligible ? [eligibility.child] : [])
+    : eligibility.kind === "multiple" ? eligibility.children : []
+  const childrenRow = eligibility.kind === "hidden" ? null
+    : eligibleChildren.length ? eligibleChildren.map(childLabel).join(", ") : "등록된 자녀 중 신청 대상에 포함되는 자녀가 없어요."
+  const shareMessage = `${[organizationLabel, classItem.title].filter(Boolean).join(" ")} 체험수업`
+  const favorite = (className: string, size: number) => favoritesEnabled
+    ? <BookmarkButton classId={classItem.id} className={className} activeClassName={ui.favoriteActive} iconSize={size} variant="heart" /> : null
+  const share = (className: string) => <ShareButton message={shareMessage} path={`/classes/${classItem.id}`} className={className} />
+  const requestedSlot = resolvedSearchParams?.slot
+
   return (
-    <ParentAppShell className={styles.page} data-parent-class-detail>
-      <div className={styles.shell}>
-        <ParentHeader title="수업 상세" inset backHref={classesHref} />
-
-        {error ? (
-          <section className={styles.sectionState} role="alert">
-            <h1 className={styles.sectionTitle}>수업 정보를 불러오지 못했어요.</h1>
-            <p className={styles.mutedText}>잠시 후 다시 시도해 주세요.</p>
-            <Link href={detailHref} className={styles.secondaryButton}>다시 불러오기</Link>
-            <Link href={classesHref} className={styles.textLink}>목록으로 돌아가기</Link>
-          </section>
-        ) : null}
-        {!error && !classItem ? (
-          <section className={styles.sectionState}>
-            <h1 className={styles.sectionTitle}>수업 정보를 찾을 수 없어요</h1>
-            <p className={styles.mutedText}>링크가 바뀌었거나 공개가 종료된 수업일 수 있습니다.</p>
-            <Link href={classesHref} className={styles.textLink}>목록으로 돌아가기</Link>
-          </section>
-        ) : null}
-
-        {!error && classItem ? (
-          <>
-            <section className={styles.heroSection}>
-              <div className={styles.imageFrame}>
-                {classItem.coverImageUrl ? <Image src={classItem.coverImageUrl} alt={`${classItem.title} 대표 이미지`}
-                  fill sizes="(max-width: 480px) calc(100vw - 40px), 440px" style={{ objectFit: "cover" }} unoptimized={!canOptimizeParentImage(classItem.coverImageUrl)} priority />
-                  : <ImageFallback label="수업 이미지 없음" />}
+    <ParentAppShell navigation={false} className={ui.page} data-parent-class-detail>
+      <ClassDetailBookingProvider slots={slots} now={now} initial={typeof requestedSlot === "string" ? requestedSlot : undefined}>
+        <div className={ui.column}>
+          <StickyDetailHeader title={classItem.title} backHref={classesHref} threshold={HERO}>{share(ui.headerButton)}{favorite(ui.headerButton, 22)}</StickyDetailHeader>
+          <div className={`${ui.content} ${ui.withFooter}`} data-flush>
+            <Hero src={classItem.coverImageUrl} alt={`${classItem.title} 대표 이미지`} subjectCode={subjectCode}>
+              <div className={ui.heroButtons}>
+                <ParentBackLink href={classesHref} preferHistory label="뒤로가기" className={ui.circle}><AppIcon name="chevron-left" size={22} /></ParentBackLink>
+                <div className={ui.heroActions}>{share(ui.circle)}{favorite(ui.circle, 20)}</div>
               </div>
-              <div className={styles.titleBlock}>
-                <div className={styles.badges}>
-                  {classSubjectLabel ? <span className={styles.badge}>{classSubjectLabel}</span> : null}
-                  {classItem.targetAge?.trim() ? <span className={styles.badge}>{targetGradeLabel}</span> : null}
-                </div>
-                <h1 className={styles.title}>{classItem.title}</h1>
-                <div className={styles.tuition} aria-label="수업료">
-                  <h2 className={styles.tuitionHeading}>수업료</h2>
-                  <p className={styles.price}>{formatDiscoveryPrice(classItem)}</p>
-                  {regularPriceLabel &&
-                    <div className={styles.regularTuition}>
-                      <span className={styles.tuitionLabel}>정규수업</span>
-                      <p className={styles.regularTuitionAmount}>{regularPriceLabel}</p>
-                      {classItem.regularPriceNote?.trim() && <p className={styles.regularTuitionNote}>{classItem.regularPriceNote}</p>}
-                    </div>}
-                </div>
-                {academyHref ? <Link href={academyHref} className={styles.academyEntry}>
-                  <span className={styles.academyImage}>
-                    {academyImage ? <Image src={academyImage} alt="" fill sizes="64px" style={{ objectFit: "cover" }} unoptimized={!canOptimizeParentImage(academyImage)} />
-                      : <ImageFallback label="학원 이미지 없음" />}
-                  </span>
-                  <span className={styles.academySummary}>
-                    <span className={styles.noticeTitle}>{organizationLabel || "학원 정보 준비 중"}</span>
-                    {administrativeRegionLabel ? <span className={styles.mutedText}>{administrativeRegionLabel}</span> : null}
-                  </span>
-                  <span aria-hidden="true">›</span>
-                </Link> : null}
+            </Hero>
+
+            {childrenError ? <p className={`${ui.caption} ${styles.childError}`} role="alert">자녀 정보를 불러오지 못했어요. 신청 화면에서 다시 확인해 주세요.</p> : null}
+
+            <section className={styles.summary} aria-label="수업 요약">
+              {[subjectLabel, targetLabel].some(Boolean) ? <p className={ui.caption}>{[subjectLabel, targetLabel].filter(Boolean).join(" · ")}</p> : null}
+              <h1 className={ui.display}>{classItem.title}</h1>
+              <div className={styles.priceRow}>
+                <PriceText price={price} size="title" />
+                {[duration, classItem.classFormat].some(Boolean) ? <span className={`${ui.bodyMuted} ${ui.oneLine}`}>{[duration, classItem.classFormat].filter(Boolean).join(" · ")}</span> : null}
               </div>
+              {academyHref ? <Link href={academyHref} className={`${ui.rowLink} ${ui.boxLink} ${styles.academy}`} aria-label={`${organizationLabel} 학원 소개`}>
+                <AcademyLogo size={44} src={academy?.logoImageUrl} subjectCode={subjectCode} />
+                <span className={ui.rowText}>
+                  <span className={`${ui.subtitle} ${ui.oneLine}`}>{organizationLabel || "학원 정보 준비 중"}</span>
+                  <span className={`${ui.caption} ${ui.oneLine}`}>{[administrativeRegionLabel, "학원 정보 보기"].filter(Boolean).join(" · ")}</span>
+                </span>
+                <AppIcon name="chevron-right" size={20} />
+              </Link> : null}
             </section>
 
-            {eligibility.kind !== "hidden" ? <aside className={`${styles.childNotice} ${eligibilityPositive ? styles.childEligible : ""}`} aria-label="등록 자녀 신청 대상 안내">
-              <span className={styles.childAvatar}><DetailIcon kind="user" /></span>
-              <div className={styles.childCopy}>
-                {eligibility.kind === "single" ? <>
-                  <p className={styles.noticeTitle}>{childLabel(eligibility.child)}</p>
-                  <p className={styles.bodyText}>{eligibility.eligible
-                    ? "이 수업의 신청 대상에 포함돼요." : "현재 설정된 대상 범위와 달라요."}</p>
-                </> : eligibility.kind === "multiple" ? <>
-                  <p className={styles.noticeTitle}>신청 가능한 자녀 {eligibility.children.length}명</p>
-                  <p className={styles.bodyText}>{eligibility.children.map(childLabel).join(", ")}</p>
-                  <p className={styles.mutedText}>신청할 자녀는 체험수업 신청 화면에서 선택해주세요.</p>
-                </> : <p className={styles.bodyText}>등록된 자녀 중 현재 신청 대상에 포함되는 자녀가 없어요.</p>}
+            <Band />
+            <DetailSlotSection slotsError={slotsError} retryHref={detailHref} />
+            <Band />
+
+            <AppSection title="수업 정보">
+              <InfoRows rows={[
+                ["대상", targetLabel],
+                ["수업 방식", classItem.classFormat?.trim() || null],
+                ["소요 시간", duration],
+                ["정규 수업료", regularPriceLabel ? [regularPriceLabel, classItem.regularPriceNote?.trim()].filter(Boolean).join("\n") : null],
+                ["담당 배정", classItem.assignmentMode === "preassigned" ? null : "담당 선생님은 신청 후 학원에서 배정됩니다."],
+                ["신청 가능 자녀", childrenRow]
+              ]} />
+              <p className={ui.body}>{classItem.description?.trim() || "등록된 수업 소개가 없어요."}</p>
+              <div>
+                <Disclosure title="이런 아이에게 추천해요">{classItem.recommendedFor?.trim() || "등록된 정보가 없어요."}</Disclosure>
+                <Disclosure title="이 수업에서 경험하는 것">{classItem.experiencePoints?.trim() || "등록된 정보가 없어요."}</Disclosure>
+                <Disclosure title="커리큘럼">{classItem.curriculum?.trim() || "등록된 정보가 없어요."}</Disclosure>
               </div>
-              {eligibilityPositive ? <span className={styles.successIcon}><DetailIcon kind="check" /></span> : null}
-            </aside> : null}
-            {childrenError ?
-              <p className={styles.childNotice}>자녀 정보를 불러오지 못했어요. 신청 화면에서 다시 확인해 주세요.</p> : null}
+            </AppSection>
 
-            <div className={styles.sections}>
-              <section className={styles.section}>
-                <h2 className={styles.sectionTitle}>수업 정보</h2>
-                <dl className={styles.infoGrid}>
-                  <div className={styles.infoRow}><dt><DetailIcon kind="program" />프로그램</dt><dd>{formatProgramType(classItem.programType)}</dd></div>
-                  {classItem.classFormat?.trim() ? <div className={styles.infoRow}><dt><DetailIcon kind="format" />수업 방식</dt><dd>{classItem.classFormat}</dd></div> : null}
-                  {classItem.assignmentMode !== "preassigned" ? <div className={styles.infoRow}>
-                    <dt><DetailIcon kind="user" />담당 배정</dt><dd>담당 선생님은 신청 후 학원에서 배정됩니다.</dd>
-                  </div> : null}
-                </dl>
-              </section>
+            {feedbackSummary.chips.length ? <><Band /><PublicFeedback summary={feedbackSummary} scope="CLASS" className={ui.section} /></> : null}
 
-              <section className={styles.section}>
-                <h2 className={styles.sectionTitle}>가장 빠른 체험 일정</h2>
-                {slotsError ? (
-                  <p className={styles.mutedText}>예약 가능 시간대를 불러오지 못했어요. 잠시 후 다시 시도해 주세요.</p>
-                ) : !earliestTiming ? (
-                  <p className={styles.mutedText}>현재 예약 가능한 일정이 없어요.</p>
-                ) : (
-                  <>
-                    <p className={styles.mutedText}>지금 예약 가능한 가장 빠른 일정이에요.</p>
-                    <div className={styles.slotItem}>
-                      <span className={styles.scheduleIcon}><DetailIcon kind="calendar" /></span>
-                      <div className={styles.slotContent}>
-                        <p className={styles.slotDate}>{earliestTiming.dateLabel}</p>
-                        <p className={styles.mutedText}>{earliestTiming.timeLabel}</p>
-                      </div>
-                    </div>
-                  </>
-                )}
-              </section>
+            {hasLocation ? <><Band /><AppSection title="위치">
+              <p className={ui.body}>{fullAddress || organizationLabel || "주소 정보 준비 중"}</p>
+              <div className={styles.map}>
+                <NaverMapByAddress address={addressLines.line1 ?? ""} addressDetail={addressLines.line2}
+                  latitude={organization?.latitude} longitude={organization?.longitude}
+                  markerLabel={organizationLabel || classItem.title} height={150} />
+              </div>
+              <a href={naverMapUrl} target="_blank" rel="noreferrer" className={ui.button} data-variant="secondary" aria-label="지도 앱에서 보기 (새 창)">지도 앱에서 보기</a>
+            </AppSection></> : null}
 
-              <section className={styles.section}>
-                <h2 className={styles.sectionTitle}>수업 소개</h2>
-                {classItem.description?.trim() ? <DetailIntroduction text={classItem.description} />
-                  : <p className={styles.mutedText}>수업 소개가 준비 중입니다.</p>}
-              </section>
-
-              <PublicFeedback summary={feedbackSummary} scope="CLASS" className={styles.section} />
-
-              <section className={styles.section}>
-                <h2 className={styles.sectionTitle}>수업을 더 알아보세요</h2>
-                <div className={styles.accordions}>
-                  <DetailDisclosure title="이런 아이에게 추천해요">
-                    <p className={styles.bodyText}>{classItem.recommendedFor?.trim() ? classItem.recommendedFor : "추천 대상 정보가 준비 중입니다."}</p>
-                  </DetailDisclosure>
-                  <DetailDisclosure title="이 수업에서 경험하는 것">
-                    <p className={styles.bodyText}>{classItem.experiencePoints?.trim() ? classItem.experiencePoints : "수업 경험 정보가 준비 중입니다."}</p>
-                  </DetailDisclosure>
-                  <DetailDisclosure title="커리큘럼">
-                    <p className={styles.bodyText}>{classItem.curriculum?.trim() ? classItem.curriculum : "커리큘럼 정보가 준비 중입니다."}</p>
-                  </DetailDisclosure>
-                </div>
-              </section>
-
-              {hasLocation ? <section className={styles.section}>
-                <h2 className={styles.sectionTitle}>위치</h2>
-                <div className={styles.locationStack}>
-                  <p className={styles.noticeTitle}>{organizationLabel || "학원 위치"}</p>
-                  <p className={styles.bodyText}>{fullAddress || "주소 정보 준비 중"}</p>
-                  <div className={styles.mapFrame}>
-                    <NaverMapByAddress address={addressLines.line1 ?? ""} addressDetail={addressLines.line2}
-                      latitude={organization?.latitude} longitude={organization?.longitude}
-                      markerLabel={organizationLabel || classItem.title} height={240} />
-                  </div>
-                  <a href={naverMapUrl} target="_blank" rel="noreferrer" className={styles.secondaryButton}
-                    aria-label="네이버 지도에서 보기 (새 창)">네이버 지도에서 보기</a>
-                </div>
-              </section> : null}
-            </div>
-          </>
-        ) : null}
-      </div>
-      {!error && classItem ? <ClassDetailApplicationSheet
-        classId={classItem.id} classTitle={classItem.title} classTargetAge={classItem.targetAge}
-        availableSlots={slots} slotsError={slotsError} childProfiles={children} childProfilesError={childrenError}
-        parentName={profile?.name ?? ""} parentPhone={profile?.phone ?? null}
-        academyName={organizationLabel || null} trialPriceLabel={formatDiscoveryPrice(classItem)}
-        hasSession={Boolean(session) && !phoneGate} isParentUser={isParentUser && !phoneGate} signInHref={signInHref}
-        secondaryAction={favoritesEnabled ? <BookmarkButton key="favorite" classId={classItem.id}
-          className={styles.dockFavorite} activeClassName={styles.favoriteActive} iconSize={24} variant="heart" /> : null}
-        fixedCtaClassName={styles.fixedCta} ctaButtonClassName={styles.ctaButton} /> : null}
+            {academyHref ? <AcademyInquiry phone={academy?.phone ?? null} academyHref={academyHref} /> : null}
+          </div>
+        </div>
+        <ClassDetailApplicationSheet
+          classId={classItem.id} classTitle={classItem.title} classTargetAge={classItem.targetAge}
+          availableSlots={slots} slotsError={slotsError} childProfiles={children} childProfilesError={childrenError}
+          parentName={profile?.name ?? ""} parentPhone={profile?.phone ?? null}
+          placeLabel={[organizationLabel, administrativeRegionLabel].filter(Boolean).join(" · ") || null}
+          priceLabel={appPriceInfo(classItem.programType, classItem.trialPrice, classItem.trialPriceConfirmed, classItem.programType === "level_test" ? "레벨테스트" : "체험수업").label}
+          hasSession={Boolean(session) && !phoneGate} isParentUser={isParentUser && !phoneGate} signInHref={signInHref} now={now}
+          submitLabel={`${price.free ? "무료 " : ""}${kind} 신청하기`} retryHref={detailHref}
+          secondaryAction={favorite(ui.squareFavorite, 22)} />
+      </ClassDetailBookingProvider>
     </ParentAppShell>
   )
 }

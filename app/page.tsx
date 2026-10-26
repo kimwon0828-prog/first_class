@@ -1,4 +1,3 @@
-import { canOptimizeParentImage } from "@/features/classes/lib/parent-image"
 import { ParentDetailLink } from "@/features/classes/ui/parent-detail-link"
 import { ParentAppShell } from "@/features/classes/ui/parent-app-shell"
 import { ParentHeader } from "@/features/classes/ui/parent-header"
@@ -6,7 +5,6 @@ import { formatDiscoveryPrice } from "@/features/classes/lib/class-discovery-res
 import { HomeReportCta } from "@/features/classes/ui/home-report-cta"
 import { HomeAcademyLogo } from "@/features/classes/ui/home-academy-logo"
 import { NotificationBell } from "@/features/notifications/ui/notification-indicator"
-import { ImageFallback } from "@/shared/ui/image-fallback"
 import { toParentUrl } from "@/shared/config/site-origins"
 
 import { Suspense } from "react"
@@ -22,7 +20,8 @@ import { resolveCurrentAuth } from "@/features/auth/lib/current-auth"
 import { buildClassesHref, decodeQueryValue } from "@/features/classes/lib/classes-href"
 import { selectHomeDiscoveryClasses } from "@/features/classes/lib/parent-home"
 import { getHomeAcademies } from "@/features/classes/queries/get-home-academies"
-import { SubjectIcon } from "@/features/classes/ui/home-subject-icon"
+import { AppSubjectArt } from "@/features/classes/ui/app-subject-art"
+import { homeSection, loadCardSlots } from "@/features/native/server/catalog-slots"
 import { CHILD_QUERY_KEY } from "@/features/children/lib/child-selection"
 import { HomeChildSelector } from "@/features/children/ui/home-child-selector"
 import { settleHomeEnhancement } from "@/features/classes/lib/home-enhancement"
@@ -125,12 +124,7 @@ async function ParentHomeContent({ searchParams }: HomePageProps) {
   }
 
   const [context, auth] = await Promise.all([
-    resolveClassDiscoveryContext(resolvedSearchParams, {
-      // A child-specific preview must be filtered before the six-card limit.
-      discoveryFetchLimit: (resolvedSearchParams as Record<string, unknown> | undefined)?.[CHILD_QUERY_KEY]
-        ? undefined
-        : HOME_DISCOVERY_LIMIT
-    }),
+    resolveClassDiscoveryContext(resolvedSearchParams),
     resolveCurrentAuth("/")
   ])
 
@@ -181,19 +175,24 @@ async function ParentHomeContent({ searchParams }: HomePageProps) {
       ? ((resolvedSearchParams as Record<string, string>)[CHILD_QUERY_KEY] ?? null)
       : null
   const notificationRequest = auth.status === "ok" && isParentUser ? getHomeNotifications(auth.profile.id) : Promise.resolve(null)
-  const [parentHome, academyResult, notificationResult] = await Promise.all([
+  const now = Date.now()
+  const [parentHome, academyResult, notificationResult, slotsById] = await Promise.all([
     authenticated && isParentUser ? settleHomeEnhancement("summary", () => getParentHomeSummary(requestedChildId, notificationRequest), { ...EMPTY_SUMMARY, error: true }) : Promise.resolve(null),
     getHomeAcademies(context),
-    notificationRequest
+    notificationRequest,
+    loadCardSlots(context.classes.map(item => item.id), now)
   ])
   const hasUnreadNotifications = hasHomeUnreadNotifications(notificationResult)
-  const discoveryHref = buildClassesHref({ radius: context.radiusQueryValue, ...context.regionQueryValues })
+  const discoveryHref = buildClassesHref({ child: parentHome?.selectedChildId, radius: context.radiusQueryValue, ...context.regionQueryValues })
   const academyHref = discoveryHref.replace("/classes", "/academies")
   const selectedChild = parentHome?.childOptions.find((child) => child.id === parentHome.selectedChildId)
   const searchEntryHref = buildClassesHref({ child: selectedChild?.id, radius: context.radiusQueryValue, ...context.regionQueryValues })
   const report = parentHome?.actions[0]
-  const upcoming = selectedChild ? parentHome?.upcoming[0] : undefined
-  const homeDiscoveryClasses = selectHomeDiscoveryClasses(context.classes, selectedChild, HOME_DISCOVERY_LIMIT)
+  const upcoming = parentHome?.upcoming[0]
+  const eligibleClasses = selectHomeDiscoveryClasses(context.classes, selectedChild, context.classes.length)
+  const discovery = homeSection(eligibleClasses, slotsById, now)
+  const homeDiscoveryClasses = discovery.items.slice(0, HOME_DISCOVERY_LIMIT)
+  const showAddChild = !authenticated || (isParentUser && parentHome && !parentHome.error && !parentHome.childrenError && parentHome.childOptions.length === 0)
 
   return (
     <ParentAppShell className={`${styles.page} ${styles.experience}`} navigation={{ scheduleHref: scheduleEntryHref, recordHref: recordEntryHref, myPageHref: myPageEntryHref }}>
@@ -220,31 +219,27 @@ async function ParentHomeContent({ searchParams }: HomePageProps) {
             </Link>
 
             </div>} />
-        <h1 className={styles.hero}>우리 아이에게 맞는<br /><span>수업의 시작</span></h1>
+        <h1 className={styles.srOnly}>첫수업, 우리 아이에게 맞는 체험수업 찾기</h1>
         <div className={styles.header}>
           <div className={styles.headerContext} role="group" aria-label="탐색 지역과 자녀 선택">
             <div className={styles.filterInlineItem}><ParentLaunchLocation className={`${styles.filterInlineTrigger} ${styles.launchLocation}`} /></div>
 
             <div className={styles.childContext} role="group" aria-label="자녀 선택">
             {parentHome && parentHome.childOptions.length > 0 ? (
-              /*
-                등록된 자녀가 있을 때만 띄운다. 0명이면 selector 자체가 없고,
-                Home 에서 자녀 등록을 새로 권하지 않는다 - 그 자리는 /my/children 이다.
-              */
+              /* 등록된 자녀 선택은 기존 URL 계약을 유지한다. */
               <>
               <HomeChildSelector
                 options={parentHome.childOptions}
                 selectedChildId={parentHome.selectedChildId}
                 unselectedLabel={`우리 아이 ${parentHome.childOptions.length}명`}
-                triggerContent={<><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true"><circle cx="12" cy="8" r="3" /><path d="M5 21v-2a7 7 0 0 1 14 0v2" /></svg><span>{selectedChild?.name ?? `우리 아이 ${parentHome.childOptions.length}명`}</span></>}
+                triggerContent={<span>{selectedChild?.name ?? (parentHome.childOptions.length === 1 ? parentHome.childOptions[0].name : `우리 아이 ${parentHome.childOptions.length}명`)}</span>}
                 className={styles.childChip}
                 labelClassName={styles.childChipLabel}
               />
               </>
             ) : (
               <Link href={authenticated ? (isStudioUser ? studioHref("/studio") : "/my/children") : "/auth/sign-in?returnTo=%2Fmy%2Fchildren"} className={styles.childChip}>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true"><circle cx="12" cy="8" r="3" /><path d="M5 21v-2a7 7 0 0 1 14 0v2" /></svg>
-                <span>{parentHome?.childrenError ? "자녀 확인하기" : "자녀 선택"}</span>
+                <span>{parentHome?.childrenError ? "자녀 확인하기" : "자녀 등록"}</span>
                 <span aria-hidden="true">⌄</span>
               </Link>
             )}
@@ -252,7 +247,7 @@ async function ParentHomeContent({ searchParams }: HomePageProps) {
           </div>
 
           <Link href={searchEntryHref} className={`${styles.searchPill} ${styles.searchTrigger}`} aria-label="수업 검색하기">
-            <span className={styles.searchPlaceholder}>학원, 수업명을 검색해보세요</span>
+            <span className={styles.searchPlaceholder}>학원, 수업 이름으로 찾기</span>
             <span className={styles.searchSubmit} aria-hidden="true">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
                 <circle cx="10.5" cy="10.5" r="7.5" stroke="currentColor" strokeWidth="2" />
@@ -266,29 +261,25 @@ async function ParentHomeContent({ searchParams }: HomePageProps) {
           <nav className={styles.subjectChipRail} aria-label="과목별 둘러보기">
             {context.subjectCatalog.map((category) => (
               <Link key={category.id} href={buildClassesHref({ subjectCategory: category.code, child: selectedChild?.id, radius: context.radiusQueryValue, ...context.regionQueryValues })} className={styles.subjectChip}>
-                <span className={styles.subjectCircle}><SubjectIcon code={category.code} colored /></span>
+                <span className={styles.subjectCircle}><AppSubjectArt code={category.code} /></span>
                 <span>{category.name}</span>
               </Link>
             ))}
           </nav>
 
-          {selectedChild && upcoming ? (
-            <section className={styles.sectionBlock} aria-labelledby="home-upcoming-title">
-              <div className={styles.sectionHeading}>
-                <h2 id="home-upcoming-title" className={styles.sectionHeadingTitle}>다가오는 수업 일정</h2>
-                <Link href={`/my/schedule?${new URLSearchParams({ child: selectedChild.id }).toString()}`} className={styles.sectionHeadingLink}>전체보기 {chevronIcon}</Link>
-              </div>
-              <ParentDetailLink href={upcoming.href} className={styles.scheduleCard}>
-                <span className={styles.scheduleImage}>
-                  {upcoming.coverImageUrl ? (
-                    <Image src={upcoming.coverImageUrl} alt={`${upcoming.classTitle} 수업 이미지`} fill sizes="(max-width: 480px) calc(100vw - 40px), 440px" unoptimized={!canOptimizeParentImage(upcoming.coverImageUrl)} priority={!report} style={{ objectFit: "cover" }} />
-                  ) : <ImageFallback label="수업 이미지 없음" />}
-                </span>
-                <h3 className={styles.scheduleTitle}>{upcoming.classTitle}</h3>
-                {upcoming.academyName ? <p className={styles.contextDescription}>{upcoming.academyName}</p> : null}
-                <p className={styles.scheduleTime}>{upcoming.scheduleLabel}</p>
-              </ParentDetailLink>
-            </section>
+          {upcoming ? (
+            <ParentDetailLink href={upcoming.href} className={styles.scheduleCard}>
+              <span className={styles.eyebrow}>다가오는 체험수업</span>
+              <p className={styles.scheduleTime}>{upcoming.scheduleLabel}</p>
+              <h2 className={styles.scheduleTitle}>{upcoming.classTitle}</h2>
+              {upcoming.academyName ? <p className={styles.contextDescription}>{upcoming.academyName}</p> : null}
+              <span className={styles.scheduleAction}>예약 확인하기 {chevronIcon}</span>
+            </ParentDetailLink>
+          ) : report ? <HomeReportCta report={report} /> : showAddChild ? (
+            <aside className={styles.addChildCard}>
+              <div><h2>아이 학년을 알려주세요</h2><p>아이 학년에 맞는 수업을 찾아보세요</p></div>
+              <Link href={authenticated ? "/my/children" : "/auth/sign-in?returnTo=%2Fmy%2Fchildren"}>등록</Link>
+            </aside>
           ) : null}
 
           {parentHome?.error ? (
@@ -297,11 +288,10 @@ async function ParentHomeContent({ searchParams }: HomePageProps) {
               <Link href="/record" className={styles.textLink}>기록에서 확인하기 {chevronIcon}</Link>
             </section>
           ) : null}
-          {report ? <HomeReportCta report={report} /> : null}
 
           <section className={styles.sectionBlock} aria-labelledby="home-classes-title">
             <div className={styles.sectionHeading}>
-              <h2 id="home-classes-title" className={styles.sectionHeadingTitle}>이런 수업은 어때요?</h2>
+              <h2 id="home-classes-title" className={styles.sectionHeadingTitle}>{discovery.section === "this_week" ? "이번 주 체험할 수 있는 수업" : "체험할 수 있는 수업"}</h2>
               <Link href={discoveryHref} className={styles.sectionHeadingLink}>전체보기 {chevronIcon}</Link>
             </div>
             {context.error || homeDiscoveryClasses.length === 0 ? (
@@ -316,6 +306,7 @@ async function ParentHomeContent({ searchParams }: HomePageProps) {
                     <HomeClassCard priority={index === 0 && !upcoming && !report} href={`/classes/${item.id}`} thumbnailUrl={item.coverImageUrl} thumbnailAlt={`${item.title} 대표 이미지`} title={item.title}
                       academyName={item.organization ? [item.organization.name, item.organization.branchName].filter(Boolean).join(" ") : null}
                       subjectLabel={getClassSubjectLabel(item)} priceLabel={formatDiscoveryPrice(item)}
+                      slots={slotsById.get(item.id)?.slots ?? []} now={now}
                       locationLabel={item.organization?.bname || item.organization?.sigungu || item.organization?.sido || null}
                       distanceLabel={context.isNearbyMode && typeof item.distanceKm === "number" ? formatDistanceLabel(item.distanceKm) : null} classId={item.id} />
                   </li>

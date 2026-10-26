@@ -1,14 +1,14 @@
-import { ParentAppShell } from "@/features/classes/ui/parent-app-shell"
-import { ParentHeader } from "@/features/classes/ui/parent-header"
 import type { ReactNode } from "react"
+import { AppIcon } from "@/features/classes/ui/app-icon"
+import { ParentAppShell } from "@/features/classes/ui/parent-app-shell"
+import { ParentBackLink } from "@/features/classes/ui/parent-back-link"
+import { appUi as ui } from "@/features/classes/ui/parent-app-ui"
 import styles from "../../../../app/academy/[handle]/page.module.css"
 
-export function AcademyIcon() {
-  return <svg width="32" height="32" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 21V7l8-4 8 4v14H4ZM10 21v-6h4v6M8 9v2M12 8v3M16 9v2" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>
-}
+/** 학원 상세의 불러오는 중 · 오류 · 없음 화면 틀(앱: 대표 이미지 자리 없이 뒤로 버튼 + 본문). */
 export function AcademyDetailFrame({ children }: { children: ReactNode }) {
-  return <ParentAppShell className={styles.page} data-parent-design="v1"><div className={styles.shell}>
-    <ParentHeader title="학원 소개" backHref="/academies" />
-    <div className={styles.content}>{children}</div>
+  return <ParentAppShell navigation={false} className={ui.page} data-parent-design="v1"><div className={ui.column}>
+    <div className={styles.stateTop}><ParentBackLink href="/academies" preferHistory label="뒤로가기" className={ui.circle}><AppIcon name="chevron-left" size={22} /></ParentBackLink></div>
+    <div className={ui.content}>{children}</div>
   </div></ParentAppShell>
 }

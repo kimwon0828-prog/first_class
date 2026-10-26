@@ -12,8 +12,10 @@ import styles from "./my-children-manager.module.css"
 type Props = { items: ChildProfile[]; onSaved?: () => void | Promise<void> }
 const initialActionState: ChildProfileActionState = { status: "idle", message: "" }
 
-function Avatar() {
-  return <span className={styles.avatar} aria-hidden="true"><svg width="28" height="28" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="8" r="4" stroke="currentColor" strokeWidth="1.8" /><path d="M4 21v-2a8 8 0 0 1 16 0v2" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" /></svg></span>
+function Avatar({ group = false }: { group?: boolean }) {
+  return <span className={styles.avatar} aria-hidden="true">{group
+    ? <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" /></svg>
+    : <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>}</span>
 }
 
 // Each opened form owns fresh action state, so switching children never carries an old error.
@@ -60,7 +62,7 @@ export const MyChildrenManager = ({ items, onSaved }: Props) => {
   const open = (id: string) => { openerIdRef.current = id; setAnnouncement(""); setEditor(id) }
   return <section ref={rootRef} className={styles.stack}>
     <p className={styles.announcement} role="status">{announcement}</p>
-    {editor !== "create" && items.length > 0 ? <div className={styles.noticeCard}><Avatar /><p>자녀 정보를 확인하고 언제든 수정할 수 있어요.</p></div> : null}
+    {editor !== "create" && items.length > 0 ? <div className={styles.noticeCard}><Avatar group /><p>자녀 정보를 확인하고 언제든 수정할 수 있어요.</p></div> : null}
     {items.length > 0 ? <section className={styles.listSection} aria-labelledby="children-list-title">
       <h2 id="children-list-title" className={styles.sectionTitle}>등록된 자녀 {items.length}명</h2>
       <div className={styles.childList}>{items.map(item => {
@@ -82,8 +84,8 @@ export const MyChildrenManager = ({ items, onSaved }: Props) => {
     </section> : editor !== "create" ? <div className={styles.empty}>
       <Avatar />
       <h2 className={styles.emptyTitle}>등록된 자녀가 없어요.</h2>
-      <p className={styles.emptyDesc}>자녀를 등록하면 체험수업 신청 시<br />정보를 편하게 불러올 수 있어요.</p>
-      <button type="button" className={styles.primaryButton} data-editor-trigger="create" onClick={() => open("create")}>+ 자녀 추가하기</button>
+      <p className={styles.emptyDesc}>자녀를 등록하면 체험수업 신청 시 정보를 편하게 불러올 수 있어요.</p>
+      <button type="button" className={styles.addButton} data-editor-trigger="create" onClick={() => open("create")}>+ 자녀 추가하기</button>
     </div> : null}
     {editor === "create" ? <Editor onCancel={close} onSaved={saved} /> : items.length > 0 && !editor ? <button type="button" className={styles.addButton} data-editor-trigger="create" onClick={() => open("create")}>+ 자녀 추가하기</button> : null}
   </section>

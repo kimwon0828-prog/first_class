@@ -1,2 +1,47 @@
-/* A minimum, not an extra spacer: frames with an existing larger CTA reserve keep it. */
+/* Native app design tokens (firstsuup app src/ui/theme.ts), confined to parent screens. */
+.app[data-parent-app-shell] {
+  --brand-50: #eef7ef;
+  --brand-200: #bfdfc3;
+  --brand-500: #2aad38;
+  --brand-700: #1b7a26;
+  --brand-800: #145c1d;
+  --text-1: #111312;
+  --text-2: #626966;
+  --text-3: #8a908d;
+  --ink-700: #454b48;
+  --ink-300: #aeb4b1;
+  --border: #e6e9e7;
+  --line-subtle: #eef0ef;
+  --surface: #ffffff;
+  --surface-sub: #f3f4f3;
+  --fill-soft: #f7f8f8;
+  --warn-bg: #fff4e5;
+  --warn-fg: #8a4b00;
+  --alert: #e5484d;
+  --danger: #b42318;
+  --scrim: rgba(17, 19, 18, 0.48);
+  --gutter: 20px;
+  --r-badge: 6px;
+  --r-chip: 10px;
+  --r-control: 12px;
+  --r-card: 16px;
+  --r-sheet: 20px;
+  --parent-primary-action: #1b7a26;
+  --parent-primary-action-hover: #145c1d;
+  --parent-primary-action-pressed: #145c1d;
+  --parent-nav-h: 66px;
+  --parent-nav-inset: 8px;
+  --parent-bottom-nav-offset: calc(8px + env(safe-area-inset-bottom, 0px));
+  --parent-nav-space: calc(90px + env(safe-area-inset-bottom, 0px));
+  --font-h1: 25px;
+  --font-h2: 20px;
+  --font-h3: 20px;
+  --font-h4: 16px;
+  --font-h5: 14px;
+  --font-b1: 15px;
+  --font-b2: 13px;
+  --font-c1: 11px;
+  font-weight: 400;
+}
+/* Keep larger CTA clearances where a screen has its own floating action. */
 .withNavigation > div:first-of-type { padding-bottom: max(var(--parent-nav-space), var(--parent-content-bottom, 0px)); }

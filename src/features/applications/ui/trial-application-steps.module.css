@@ -1,0 +1,66 @@
+/* 앱 application-sheet.tsx 배치. 시트(수업 상세)와 페이지(/classes/[id]/apply)가 같이 쓴다. */
+.scrim { position: fixed; inset: 0; z-index: 80; background: var(--scrim); }
+.sheet { box-sizing: border-box; position: fixed; left: 50%; bottom: 0; z-index: 81; width: 100%; max-width: var(--col); max-height: 85dvh; transform: translateX(-50%); overflow: hidden; border-radius: var(--r-sheet) var(--r-sheet) 0 0; background: var(--surface); }
+.sheet *, .layout[data-mode="page"] * { box-sizing: border-box; }
+.layout { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; max-height: 85dvh; }
+.layout[data-mode="page"] { max-height: none; min-height: calc(100dvh - 52px - env(safe-area-inset-top, 0px)); }
+.handle { width: 40px; height: 4px; margin: 8px auto 0; border-radius: 999px; background: var(--border); }
+.header { display: flex; align-items: center; gap: 8px; padding: 8px 8px 0 var(--gutter); }
+[data-mode="page"] .header { padding-right: var(--gutter); }
+.stepTitle { flex: 1; min-width: 0; margin: 0; font-size: 16px; line-height: 22px; font-weight: 700; color: var(--text-1); }
+.stepCount { font-size: 13px; line-height: 18px; font-weight: 500; color: var(--text-2); }
+.close { display: grid; place-items: center; width: 44px; height: 44px; padding: 0; border: 0; background: transparent; color: var(--text-1); cursor: pointer; }
+.track { height: 2px; margin: 8px var(--gutter) 0; background: var(--line-subtle); }
+.track > span { display: block; height: 2px; background: var(--text-1); transition: width 160ms ease-out; }
+.body { display: grid; align-content: start; gap: 16px; min-height: 0; overflow-y: auto; padding: var(--gutter); overscroll-behavior: contain; }
+.footer { display: grid; gap: 8px; padding: 8px var(--gutter) calc(16px + env(safe-area-inset-bottom, 0px)); background: var(--surface); }
+[data-mode="page"] .footer { position: sticky; bottom: 0; border-top: 1px solid var(--line-subtle); padding-top: 12px; }
+.footerRow { display: flex; gap: 8px; }
+.footerRow > * { flex: 2; }
+.footerRow > [data-variant="secondary"] { flex: 1; }
+.footerNote { margin: 0; text-align: center; font-size: 13px; line-height: 18px; font-weight: 500; color: var(--text-2); }
+
+/* 2단계 */
+.children { display: grid; gap: 8px; }
+.child { display: flex; align-items: center; gap: 12px; width: 100%; padding: 16px; border: 1px solid var(--border); border-radius: var(--r-control); background: var(--surface); font: inherit; text-align: left; cursor: pointer; }
+.child[aria-checked="true"] { border: 1.5px solid var(--text-1); }
+.child:disabled { background: var(--surface-sub); cursor: default; }
+.child:active:not(:disabled) { opacity: .8; }
+.avatar { display: grid; place-items: center; flex: 0 0 36px; height: 36px; border-radius: 999px; background: var(--surface-sub); font-size: 14px; line-height: 20px; font-weight: 700; color: var(--ink-700); }
+.childText { display: grid; flex: 1; min-width: 0; }
+.child:disabled .childName { color: var(--text-3); }
+.childName { font-size: 16px; line-height: 22px; font-weight: 700; color: var(--text-1); }
+.radio { display: grid; place-items: center; flex: 0 0 22px; height: 22px; border: 1.5px solid var(--ink-300); border-radius: 999px; }
+.child[aria-checked="true"] .radio { border: 2px solid var(--text-1); }
+.child[aria-checked="true"] .radio::after { content: ""; width: 10px; height: 10px; border-radius: 999px; background: var(--brand-500); }
+.textButton { justify-self: start; padding: 4px 0; border: 0; background: transparent; color: var(--brand-700); font: inherit; font-size: 14px; line-height: 20px; font-weight: 700; cursor: pointer; }
+.field { display: grid; gap: 8px; }
+.fieldLabel { font-size: 14px; line-height: 20px; font-weight: 700; color: var(--text-1); }
+.optional { margin-left: 8px; font-size: 13px; line-height: 18px; font-weight: 500; color: var(--text-3); }
+.input { width: 100%; min-height: 48px; padding: 12px; border: 1px solid var(--surface-sub); border-radius: var(--r-control); background: var(--surface-sub); color: var(--text-1); font: inherit; font-size: 16px; }
+.input:focus { outline: 0; border-color: var(--text-1); }
+textarea.input { min-height: 100px; resize: vertical; }
+.disclosure { display: flex; align-items: center; justify-content: space-between; width: 100%; padding: 12px 0; border: 0; border-top: 1px solid var(--line-subtle); background: transparent; font: inherit; font-size: 16px; line-height: 22px; font-weight: 700; color: var(--text-1); cursor: pointer; }
+.disclosure > svg { color: var(--text-2); }
+
+/* 3단계 */
+.infoLine { display: flex; align-items: center; gap: 8px; }
+.infoLine > svg { flex-shrink: 0; color: var(--text-2); }
+.agreement { display: flex; align-items: flex-start; gap: 8px; width: 100%; padding: 8px 0; border: 0; background: transparent; font: inherit; text-align: left; color: var(--text-1); cursor: pointer; }
+.agreement > svg { flex-shrink: 0; color: var(--text-3); }
+.agreement[aria-checked="true"] > svg { color: var(--brand-700); }
+.agreement:disabled { cursor: default; }
+.agreementText { flex: 1; font-size: 15px; line-height: 22px; }
+.allAgree { padding-bottom: 12px; margin-bottom: 4px; border-bottom: 1px solid var(--line-subtle); }
+.allAgree .agreementText { font-size: 16px; line-height: 22px; font-weight: 700; }
+.allAgreeNote { margin-left: 8px; font-size: 13px; line-height: 18px; font-weight: 500; color: var(--text-2); }
+.agreements { display: grid; }
+.marketing { display: grid; gap: 4px; }
+.marketingHelp { margin: 0; padding-left: 30px; font-size: 13px; line-height: 18px; font-weight: 500; color: var(--text-2); }
+
+/* 키보드가 열려 있을 때만 시트 높이를 보이는 영역에 맞춘다. */
+.sheet[data-keyboard="true"] { bottom: var(--application-keyboard-offset); max-height: calc(var(--application-visible-height) - 12px); }
+.sheet[data-keyboard="true"] .layout { max-height: calc(var(--application-visible-height) - 12px); }
+.sheet[data-keyboard="true"] .body { scroll-padding-block: 12px; }
+.sheet[data-keyboard="true"] .footer { padding-bottom: 12px; }
+.sheet :is(a, button, input, select, textarea):focus-visible, .layout[data-mode="page"] :is(a, button, input, select, textarea):focus-visible { outline: 2px solid var(--brand-700); outline-offset: 2px; }

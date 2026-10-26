@@ -1,0 +1,17 @@
+/* 앱 slot-picker.tsx 배치. 색·크기는 ParentAppShell 토큰. */
+.picker { display: grid; gap: 12px; min-width: 0; }
+.dates { display: flex; gap: 8px; }
+.dates[data-scroll] { overflow-x: auto; margin-inline: calc(-1 * var(--gutter)); padding-inline: var(--gutter); scrollbar-width: none; }
+.dates[data-scroll]::-webkit-scrollbar { display: none; }
+.date { flex: 1; display: grid; justify-items: center; min-width: 0; padding: 8px 0; border: 1px solid var(--border); border-radius: var(--r-control); background: var(--surface); font: inherit; cursor: pointer; }
+.dates[data-scroll] .date { flex: 0 0 60px; }
+.date[aria-pressed="true"] { border: 1.5px solid var(--brand-700); background: var(--brand-50); }
+.date:active:not(:disabled) { opacity: .8; }
+.weekday { font-size: 13px; line-height: 18px; font-weight: 500; color: var(--text-2); }
+.day { font-size: 16px; line-height: 22px; font-weight: 700; color: var(--text-1); }
+.date[aria-pressed="true"] :is(.weekday, .day) { color: var(--brand-700); }
+.date:disabled { cursor: default; }
+.date:disabled :is(.weekday, .day) { color: var(--ink-300); }
+.times { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.chosen { display: flex; align-items: center; gap: 4px; margin: 0; font-size: 13px; line-height: 18px; font-weight: 500; color: var(--text-2); }
+.chosen > svg { flex-shrink: 0; }

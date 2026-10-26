@@ -10,6 +10,7 @@ import { getMyProfile } from "@/features/auth/queries/get-my-profile"
 import { resolvePostAuthRedirect } from "@/features/auth/lib/redirect"
 import { getSession } from "@/features/auth/lib/session"
 import { KakaoAuthButton } from "@/features/auth/ui/kakao-auth-button"
+import { ParentAppShell } from "@/features/classes/ui/parent-app-shell"
 import styles from "./page.module.css"
 
 type SignInPageProps = {
@@ -40,7 +41,7 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
   }
 
   return (
-    <main className={styles.page}>
+    <ParentAppShell navigation={false} className={styles.page}>
       <div className={styles.shell}>
         <div className={styles.topBar}>
           <Link href="/" className={styles.backButton} aria-label="뒤로가기">
@@ -124,6 +125,6 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
           </div>
         </section>
       </div>
-    </main>
+    </ParentAppShell>
   )
 }

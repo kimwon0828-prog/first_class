@@ -4,6 +4,9 @@
 
 /** 동의 화면 문구 버전. 학부모 앱(firstsuup-mobile)과 같은 값. 문구를 바꾸면 값을 바꾼다(서버는 기록만 한다). */
 export const MARKETING_CONSENT_TEXT_VERSION = "firstsuup-academy-news-2026-10"
+/** 화면 문구(앱 src/data/marketing-consent.ts 와 같다). 바꾸면 위 버전도 바꾼다. */
+export const MARKETING_CONSENT_LABEL = "첫수업 학원 소식 받기 (광고)"
+export const MARKETING_CONSENT_HELP = "체험한 학원에 새 반·특강이 열리면 첫수업이 문자로 알려드려요. 마이 › 학원 소식에서 언제든 끌 수 있어요."
 
 export type MarketingConsentSource = "parent_app" | "parent_web"
 
