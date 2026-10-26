@@ -28,6 +28,7 @@
 .sectionBlock { display: grid; gap: 16px; min-width: 0; }
 .sectionHeading { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-width: 0; }
 .sectionHeadingTitle { margin: 0; font-size: 20px; line-height: 28px; font-weight: 700; word-break: keep-all; }
+.partnerEntry { margin: 0; display: flex; justify-content: center; }
 .sectionHeadingLink, .textLink { display: inline-flex; align-items: center; min-height: 44px; gap: 4px; font-size: 13px; color: var(--text-2); text-decoration: none; flex-shrink: 0; }
 .homeCardRail { display: flex; gap: 12px; overflow-x: auto; scroll-snap-type: x mandatory; margin: 0 -20px 0 0; padding: 2px 20px 4px 0; list-style: none; scrollbar-width: none; }
 .homeCardItem { flex: 0 0 240px; min-width: 0; scroll-snap-align: start; }
