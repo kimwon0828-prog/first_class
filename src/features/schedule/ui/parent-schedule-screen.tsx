@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation"
 import { HomeChildSelector } from "@/features/children/ui/home-child-selector"
 import type { ChildSelectorOption } from "@/features/children/lib/child-selection"
 import { buildClassesHref } from "@/features/classes/lib/classes-href"
-import { appDateLabel, appTimeLabel, seoulDateKey } from "@/features/classes/lib/app-presentation"
+import { appDateLabel, appTimeRangeLabel, seoulDateKey } from "@/features/classes/lib/app-presentation"
 import { AppIcon } from "@/features/classes/ui/app-icon"
 import { ParentAppShell } from "@/features/classes/ui/parent-app-shell"
 import { ParentDetailLink } from "@/features/classes/ui/parent-detail-link"
@@ -59,7 +59,7 @@ function UpcomingCard({ row, childId }: { row: Row; childId: string | null }) {
     <ParentDetailLink href={withRecordChild(`/record/${row.id}`, childId)} className={styles.cardLink} aria-label={`${row.classTitle ?? "수업"} 예약 상세`}>
       <span className={styles.cardTop}>
         {badge ? <StatusBadge label={badge.label} tone={badge.tone} /> : null}
-        <span className={`${ui.label} ${styles.grow}`}>{appTimeLabel(slotAt(row))}</span>
+        <span className={`${ui.label} ${styles.grow}`}>{appTimeRangeLabel(slotAt(row), row.slotEndAt)}</span>
         <AppIcon name="chevron-right" size={18} />
       </span>
       <span className={styles.cardBody}>
@@ -93,6 +93,7 @@ function PastRow({ row, reported, childId }: { row: Row; reported: boolean | nul
     </ParentDetailLink>
     {report ? <div className={styles.pastActions}>
       <AppButtonLink href={withRecordChild(`/record/${row.id}/report`, childId)} variant="secondary" size="medium">리포트 보기</AppButtonLink>
+      {row.academyHandle ? <AppButtonLink href={`/academy/${row.academyHandle}`} variant="secondary" size="medium">학원 보기</AppButtonLink> : null}
     </div> : null}
   </li>
 }

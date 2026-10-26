@@ -713,6 +713,12 @@ export type ParentApplicationSummary = {
   academyName: string | null
   organizationAddress: string | null
   organizationAddressDetail: string | null
+  /** 학원 상세 주소(/academy/[handle])에 쓰는 값: 공개 slug, 없으면 organization id. 모르면 null. 링크로만 쓴다. */
+  academyHandle?: string | null
+  /** 학원 공개 프로필 로고의 공개 URL. 없으면 null. */
+  academyLogoUrl?: string | null
+  /** 실제 종료 시각(DB app.booking_application_end 와 같은 규칙). 근거가 없으면 null — 길이를 짐작하지 않는다. */
+  slotEndAt?: string | null
   /** 이 경험이 어느 아이의 것인가. 엑셀 이관분 등 legacy 신청은 null 이다. */
   childId: string | null
   childName: string

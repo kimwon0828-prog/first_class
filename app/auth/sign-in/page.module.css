@@ -15,7 +15,7 @@
 .ctaBlock { display: grid; gap: 14px; padding-top: 12px; }
 .kakaoButton, .appleButton { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; min-height: 52px; padding: 14px 16px; border: 0; border-radius: var(--r-control); font: inherit; font-size: 16px; line-height: 22px; font-weight: 600; cursor: pointer; }
 .kakaoButton { background: #fee500; color: #191919; }
-.appleButton { padding: 0; background: #000; color: #fff; }
+.appleButton { background: #000; color: #fff; }
 .kakaoButton:active:not(:disabled), .appleButton:active:not(:disabled) { opacity: .8; }
 .kakaoButton:disabled, .appleButton:disabled { opacity: .6; cursor: wait; }
 .kakaoButton:focus-visible, .appleButton:focus-visible, .legalLink:focus-visible, .backButton:focus-visible { outline: 2px solid var(--brand-700); outline-offset: 2px; }

@@ -1,6 +1,5 @@
 "use client"
 
-import Image from "next/image"
 import { useEffect, useRef, useState } from "react"
 import { getSupabaseBrowserClient } from "@/integrations/supabase/client"
 import { getPublicEnv } from "@/shared/config/env"
@@ -54,8 +53,11 @@ export function AppleAuthButton({ next, className }: { next?: string; className?
   return <div>
     <button type="button" className={className} onClick={handleClick} disabled={isPending}
       aria-label="Apple로 계속하기" aria-busy={isPending}>
-      <Image src="/images/auth/apple-continue-ko.png" alt="" width={350} height={52} unoptimized priority
-        style={{ display: "block", maxWidth: "100%", width: 350, height: "auto" }} />
+      {/* Apple HIG 사용자 지정 버튼: Apple 로고 + 승인된 제목. 글자는 카카오 버튼과 같은 16px · 600(앱 로그인과 같다). */}
+      <svg width="16" height="19" viewBox="0 0 17 20" fill="currentColor" aria-hidden="true" focusable="false">
+        <path d="M14.04 10.62c-.02-2.2 1.8-3.26 1.88-3.31-1.02-1.5-2.62-1.7-3.19-1.73-1.36-.14-2.65.8-3.34.8-.69 0-1.75-.78-2.88-.76-1.48.02-2.85.86-3.61 2.19-1.54 2.67-.39 6.62 1.11 8.79.73 1.06 1.6 2.25 2.75 2.2 1.1-.04 1.52-.71 2.85-.71 1.33 0 1.71.71 2.88.69 1.19-.02 1.94-1.08 2.66-2.14.84-1.23 1.19-2.42 1.21-2.48-.03-.01-2.32-.89-2.34-3.54ZM11.85 4.16c.61-.74 1.02-1.76.91-2.79-.88.04-1.94.59-2.57 1.32-.56.65-1.06 1.7-.93 2.7.98.08 1.98-.5 2.59-1.23Z" />
+      </svg>
+      <span>Apple로 계속하기</span>
     </button>
     {isPending ? <p role="status">Apple 연결 중...</p> : null}
     {error ? <p role="alert">{error}</p> : null}

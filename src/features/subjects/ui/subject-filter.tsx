@@ -187,7 +187,7 @@ export function SubjectFilter({
         }}
         style={{ cursor: isPending ? "default" : "pointer" }}
       >
-        <span className={labelClassName}>과목 · {label}</span>
+        <span className={labelClassName}>{selectedCategory ? `과목 · ${label}` : "과목"}</span>
         <span className={chevronClassName}>
           <ChevronDownIcon />
         </span>

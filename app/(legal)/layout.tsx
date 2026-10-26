@@ -3,7 +3,7 @@ import type { ReactNode } from "react"
 
 export const metadata: Metadata = {
   title: {
-    default: "법적 안내 | 첫수업",
+    default: "법적 안내",
     template: "%s | 첫수업"
   }
 }

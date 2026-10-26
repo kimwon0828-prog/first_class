@@ -3,6 +3,8 @@ import "server-only"
 import { getMyChildren } from "@/features/children/queries/get-my-children"
 import { dataAdapter } from "@/shared/lib/db"
 import type { ParentApplicationSummary } from "@/shared/lib/db/adapter"
+import { getMyProfile } from "@/features/auth/lib/profile-sync"
+import { getExperienceReportSummary, getReportAttachments, type ExperienceReportSnapshotV1 } from "@/features/reports/lib/experience-report-snapshot"
 
 /**
  * 경험마다 "리포트가 있는가 / 내 생각을 남겼는가".
@@ -20,8 +22,14 @@ export type ParentExperienceSignals = {
   reportedExperienceIds: Set<string>
   /** ParentDecision 이 남아 있는 경험. 무엇을 골랐는지는 보지 않는다. */
   decidedExperienceIds: Set<string>
+  /** 기록 카드용(`recordCards` 일 때만): 발행본의 선생님 이야기 첫 줄과 앞 사진 3장. */
+  reportPreviews?: Map<string, ReportCardPreview>
+  /** 기록 카드용: 의견을 남길 수 있는 경험 / 의견(피드백)과 등록 의향을 모두 남긴 경험(앱 "내 의견 보냄"). */
+  feedbackEligibleIds?: Set<string>
+  feedbackSentIds?: Set<string>
   error: string | null
 }
+export type ReportCardPreview = { summary: string | null; photoIds: string[]; photoCount: number }
 
 const EMPTY: ParentExperienceSignals = {
   reportedExperienceIds: new Set(),
@@ -29,8 +37,16 @@ const EMPTY: ParentExperienceSignals = {
   error: null
 }
 
+// 선생님 이야기 첫 줄. 이미 읽은 발행 스냅샷에서만 만든다.
+const firstLine = (text: string | null) => text?.split("\n").map(line => line.trim()).find(Boolean) ?? null
+const toPreview = (content: ExperienceReportSnapshotV1): ReportCardPreview => {
+  const photos = getReportAttachments(content)
+  return { summary: firstLine(getExperienceReportSummary(content)), photoIds: photos.slice(0, 3).map(photo => photo.id), photoCount: photos.length }
+}
+
 export const getParentExperienceSignals = async (
-  candidates: readonly ParentApplicationSummary[]
+  candidates: readonly ParentApplicationSummary[],
+  options: { recordCards?: boolean } = {}
 ): Promise<ParentExperienceSignals> => {
   if (candidates.length === 0) {
     return EMPTY
@@ -43,6 +59,7 @@ export const getParentExperienceSignals = async (
     const children = await getMyChildren()
     if (children.error) throw new Error("failed_to_fetch_signal_children")
     const reportedExperienceIds = new Set<string>()
+    const reportPreviews = new Map<string, ReportCardPreview>()
 
     // Both paths remain session/RLS scoped. Legacy reports do not depend on
     // the child report results; wait for both before querying decisions.
@@ -52,12 +69,15 @@ export const getParentExperienceSignals = async (
       Promise.all(children.data.map((child) => dataAdapter.listMyPublishedReportsByChild(child.id))),
       Promise.all(legacyCandidates.map(async (item) => {
         const report = await dataAdapter.getPublishedExperienceReport(item.id)
+        if (report) reportPreviews.set(item.id, toPreview(report.content))
         return report ? item.id : null
       }))
     ])
     for (const reports of perChild) {
       for (const report of reports) {
-        if (candidateIds.has(report.experienceId)) reportedExperienceIds.add(report.experienceId)
+        if (!candidateIds.has(report.experienceId)) continue
+        reportedExperienceIds.add(report.experienceId)
+        reportPreviews.set(report.experienceId, toPreview(report.content))
       }
     }
     for (const experienceId of legacyReports) {
@@ -69,16 +89,26 @@ export const getParentExperienceSignals = async (
     }
 
     queryStage = "getCurrentParentDecision"
-    const decided = await Promise.all(
+    // 기록 카드는 기존 의견 화면과 같은 읽기(세션 · RLS 범위의 피드백 context)로 "의견을 남겼는가"도 본다.
+    const parentId = options.recordCards ? (await getMyProfile())?.id ?? null : null
+    const rows = await Promise.all(
       [...reportedExperienceIds].map(async (experienceId) => {
-        const decision = await dataAdapter.getCurrentParentDecision(experienceId)
-        return decision ? experienceId : null
+        const [decision, feedback] = await Promise.all([
+          dataAdapter.getCurrentParentDecision(experienceId),
+          parentId ? dataAdapter.getParentFeedbackContext(experienceId, parentId).catch(() => null) : Promise.resolve(null)
+        ])
+        return { experienceId, decided: Boolean(decision), feedback }
       })
     )
+    const decidedExperienceIds = new Set(rows.filter(row => row.decided).map(row => row.experienceId))
+    if (!options.recordCards) return { reportedExperienceIds, decidedExperienceIds, error: null }
 
     return {
       reportedExperienceIds,
-      decidedExperienceIds: new Set(decided.filter((value): value is string => value !== null)),
+      decidedExperienceIds,
+      reportPreviews,
+      feedbackEligibleIds: new Set(rows.filter(row => row.feedback?.eligible).map(row => row.experienceId)),
+      feedbackSentIds: new Set(rows.filter(row => row.decided && row.feedback?.feedback).map(row => row.experienceId)),
       error: null
     }
   } catch (error) {

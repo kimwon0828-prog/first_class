@@ -14,7 +14,7 @@ import { getExperienceReportSummary } from "@/features/reports/lib/experience-re
 import { RecordDetailRetry } from "@/features/record/ui/record-detail-retry"
 import { getPublicClassDetail } from "@/features/classes/queries/get-public-class-detail"
 import { getPublicAcademyPageByHandle } from "@/features/academies/queries/get-public-academy-page"
-import { appDateLabel, appTimeLabel } from "@/features/classes/lib/app-presentation"
+import { appDateLabel, appTimeLabel, appTimeRangeLabel } from "@/features/classes/lib/app-presentation"
 import { AppIcon } from "@/features/classes/ui/app-icon"
 import { AppButtonLink, Band, IconRow, StatusBadge, Timeline, appUi as ui } from "@/features/classes/ui/parent-app-ui"
 import { AcademyInquiryButton } from "@/features/classes/ui/parent-app-ui-client"
@@ -69,7 +69,7 @@ export default async function ExperienceDetailPage({
   ])
   const organizationId = publicClass?.data?.organization?.id ?? null
   const academy = organizationId ? await getPublicAcademyPageByHandle(organizationId).catch(() => null) : null
-  const academyHref = organizationId ? `/academy/${academy?.slug ?? organizationId}` : null
+  const academyHref = organizationId ? `/academy/${academy?.slug ?? organizationId}` : experience.academyHandle ? `/academy/${experience.academyHandle}` : null
   const backHref = withRecordChild(completed ? "/record" : "/my/schedule", selectedChildId)
 
   const hasPublishedReport = reportResult?.status === "ok"
@@ -93,7 +93,7 @@ export default async function ExperienceDetailPage({
           <section className={styles.summary} aria-label={title}>
             {badge ? <StatusBadge label={badge.label} tone={badge.tone} /> : null}
             <h2 className={ui.display}>{experience.classTitle ?? "수업 정보 준비 중"}</h2>
-            <IconRow icon="calendar"><time dateTime={at}>{at ? `${appDateLabel(at)} ${appTimeLabel(at)}` : "일정 확인 중"}</time></IconRow>
+            <IconRow icon="calendar"><time dateTime={at}>{at ? `${appDateLabel(at)} ${appTimeRangeLabel(at, experience.slotEndAt)}` : "일정 확인 중"}</time></IconRow>
             {childLabel ? <IconRow icon="user">{childLabel}</IconRow> : null}
             {[experience.academyName, address].some(Boolean) ? <IconRow icon="map-pin">{[experience.academyName, address].filter(Boolean).join(" · ")}</IconRow> : null}
             {pending ? <p className={`${ui.pendingNote} ${styles.gap}`}><AppIcon name="clock" size={14} /><span>학원이 확인하면 확정 알림을 보내드려요</span></p> : null}

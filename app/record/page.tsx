@@ -26,9 +26,11 @@ async function RecordContent({ searchParams }: RecordPageProps) {
   // 앱과 같이 완료 처리 전(확정·일정 지남)도 "리포트 준비 중"으로 함께 보인다.
   const experiences = finishedApplications(mine, Date.now())
   const error = children.error ? "children" : applications.error ? "records" : null
-  const signals = await getParentExperienceSignals(error ? [] : experiences.filter(item => item.status === "completed"))
+  const signals = await getParentExperienceSignals(error ? [] : experiences.filter(item => item.status === "completed"), { recordCards: true })
   return <RecordHome experiences={experiences} childOptions={toChildSelectorOptions(children.data)} selectedChildId={selectedChildId}
     error={error} signalsFailed={Boolean(signals.error)}
     reportedExperienceIds={signals.error ? undefined : signals.reportedExperienceIds}
-    decidedExperienceIds={signals.error ? undefined : signals.decidedExperienceIds} />
+    reportPreviews={signals.error ? undefined : signals.reportPreviews}
+    feedbackEligibleIds={signals.error ? undefined : signals.feedbackEligibleIds}
+    feedbackSentIds={signals.error ? undefined : signals.feedbackSentIds} />
 }

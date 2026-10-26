@@ -7,7 +7,7 @@ import { MyRetry } from "@/features/my/ui/my-retry"
 import { appUi as ui } from "@/features/classes/ui/parent-app-ui"
 import { AcademyNewsFrame } from "./frame"
 
-export const metadata: Metadata = { title: "학원 소식 | 첫수업", alternates: { canonical: "/my/academy-news" } }
+export const metadata: Metadata = { title: "학원 소식", alternates: { canonical: "/my/academy-news" } }
 export const dynamic = "force-dynamic"
 export const revalidate = 0
 

@@ -191,3 +191,22 @@ DB/migration/Studio/네이티브 앱 파일 변경 없음. 고객 데이터 쓰�
 2. **기록 목록 신호(`getParentExperienceSignals`)에 발행 리포트의 `summary` 와 첨부 사진 id 앞 3개를 함께 돌려주기** — 기록 리포트 카드의 선생님 이야기 인용과 사진 3장 미리보기가 채워진다.
 3. **“의견 보냄” 판정에 피드백 저장 여부 더하기** — 지금은 등록 의향 기록만 본다(앱은 의견 + 등록 의향).
 4. (조회 아님) 웹 FAQ 화면 — 앱 `my/faq` 정적 내용을 옮길지 결정 필요.
+
+---
+
+# 3차 — 마무리 수정 (2026-10-26, PR #42 배포 후)
+
+- 학원 목록 필터: 고르지 않으면 “과목”·“학년”, 고르면 “과목 · 수학”·“학년 · 초2”. 두 필터는 학원 목록에서만 쓴다(수업 찾기는 다른 부품이라 접두어가 없다).
+- 페이지 제목: root template(“%s | 첫수업”)과 겹치던 “ | 첫수업”을 수업찾기 · 내 일정 · 신청 현황 · 알림 · 학원 소식 · 학원 상세(없음 포함) · 약관 기본값에서 뺐다. 학원 상세의 공유 미리보기(og:title)는 template 을 거치지 않아 “학원명 | 첫수업” 그대로다. Studio 는 absolute + 자체 template 라 겹침이 없었다.
+- 홈 “학원 둘러보기”: 학원 목록과 같은 원형 로고 줄(`AcademyLogo` · 이름 · 과목 · 지역)과 같은 조회(`getAcademiesForList({ includeLogos: true })`)로 바꿨다. 원인: 두 화면 모두 같은 `academy_public_profiles.logo_image_path` 를 읽었고 씨큐브코딩은 로고가 없다. 학원 목록은 로고가 없으면 과목 아이콘(코딩)을 원 안에 그려 로고처럼 보였고, 홈은 네모 칸에 “로고 없음” 사진 아이콘을 그렸다. `HomeAcademyLogo` 는 지웠다.
+- 수업 찾기 자녀 버튼: 자녀가 없거나 비로그인일 때 “자녀 등록”(오류 시 “자녀 확인하기” 유지).
+- Apple 로그인: Apple 로고 + “Apple로 계속하기” 글자 버튼(카카오와 같은 52px · 16px · 600). Apple HIG 의 사용자 지정 버튼 방식이고 앱 로그인과 같다. 로그인 동작(설정 확인 · `signInWithOAuth` · `redirectTo`)은 그대로다. 공식 그림 `apple-continue-ko.png` 는 더 쓰지 않아 지웠다.
+- 홈 오른쪽 위 “스튜디오” 링크를 뺐다(학원 계정으로 로그인했을 때만 보이던 링크).
+- 약관: 제3자 제공 목적 “신청 관련 연락” → “신청 처리 및 체험 운영”(시행일 그대로).
+- 조회(읽기만):
+  - 신청 요약(`ParentApplicationSummary`)에 `academyHandle` · `academyLogoUrl` · `slotEndAt` 를 더했다. `listMyApplications` 가 학부모 표면(`my_trial_applications`, parent_id = 본인 · RLS)에서 읽은 행의 id 로만, 앱 API 와 같은 조회로 채운다: 공개 학원 프로필(slug · 로고)과 `loadBookingTimes`(DB `app.booking_application_end` 와 같은 규칙). 읽지 못하면 null. mock adapter 도 맞췄다.
+  - 기록 신호(`getParentExperienceSignals(…, { recordCards: true })`): 이미 읽던 발행 스냅샷에서 선생님 이야기 첫 줄과 사진 앞 3장 id · 사진 수를 넘긴다(새 열 없음). 사진은 기존 `/api/report-attachments/{id}`(인증된 `read_report_attachment` RPC 로 본인 확인)로 보인다.
+  - “내 의견 보냄” = 등록 의향 + 의견(기존 `get_parent_experience_feedback_context`, 세션 범위) 둘 다. 의견을 남길 수 있으면 “아직 의견을 남기지 않았어요 · 한마디 남기기”. 홈 · 알림이 쓰는 `decidedExperienceIds` 뜻은 그대로다.
+  - 화면: 일정 카드 “오후 4:30 – 5:20”, 지난 체험 “학원 보기”, 기록 카드 원형 로고 · 인용 · 사진 3칸(+N) · 의견 상태, 예약 상세 일정 줄 종료 시각, 리포트 로고/학원 보기의 대체 경로.
+- 새 화면 `/my/faq`: 앱 FAQ 6개(한 번에 하나 펼침) + “원하는 답이 없나요?” + 고객센터(company-info: hello@firstsuup.com, 평일 09:00–18:00 · 주말·공휴일 휴무 — 앱 값과 같음) + 이메일로 문의하기. 마이 설정 및 안내: 학원 소식 → 자주 묻는 질문 → 고객센터 → 약관.
+- 확인: typecheck · lint 0, build 성공. 운영 빌드로 홈 · 수업 찾기 · 학원 목록 · 학원 상세 · 로그인 · /my/faq 를 390 / 1280 에서 확인(가로 넘침 · 오류 0). 기록 카드 · 일정 카드는 저장소에 남기지 않은 임시 미리보기로 모양만 확인.

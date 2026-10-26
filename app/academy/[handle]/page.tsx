@@ -58,11 +58,12 @@ export async function generateMetadata({ params }: AcademyPageProps): Promise<Me
 
   if (!academy) {
     return {
-      title: "학원을 찾을 수 없습니다 | 첫수업"
+      title: "학원을 찾을 수 없습니다"
     }
   }
 
-  const title = `${academy.name} | 첫수업`
+  // 문서 제목은 root template("%s | 첫수업")이 붙인다. 공유 미리보기(OG)는 template 을 거치지 않아 직접 붙인다.
+  const title = academy.name
   const description = getDescriptionPreview(academy.shortDescription, academy.description)
   const canonicalHandle = academy.slug ?? academy.organizationId
   const ogImageUrl = resolveOpenGraphImage(academy.coverImageUrl, academy.logoImageUrl)
@@ -77,7 +78,7 @@ export async function generateMetadata({ params }: AcademyPageProps): Promise<Me
       type: "website",
       url: `/academy/${canonicalHandle}`,
       siteName: "첫수업",
-      title,
+      title: `${academy.name} | 첫수업`,
       description,
       images: [
         {

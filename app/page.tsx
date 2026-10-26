@@ -3,7 +3,8 @@ import { ParentAppShell } from "@/features/classes/ui/parent-app-shell"
 import { ParentHeader } from "@/features/classes/ui/parent-header"
 import { formatDiscoveryPrice } from "@/features/classes/lib/class-discovery-results"
 import { HomeReportCta } from "@/features/classes/ui/home-report-cta"
-import { HomeAcademyLogo } from "@/features/classes/ui/home-academy-logo"
+import { AcademyLogo, appUi } from "@/features/classes/ui/parent-app-ui"
+import { appSubjectCodeFromTags } from "@/features/classes/lib/app-presentation"
 import { NotificationBell } from "@/features/notifications/ui/notification-indicator"
 import { toParentUrl } from "@/shared/config/site-origins"
 
@@ -207,9 +208,6 @@ async function ParentHomeContent({ searchParams }: HomePageProps) {
                 priority
               />
             </Link>} actions={<div className={styles.headerAccountActions} role="group" aria-label="학부모 계정">
-            {authenticated && isStudioUser ? (
-              <Link href={studioHref("/studio")} className={styles.headerAction}>스튜디오</Link>
-            ) : null}
             <Link
               href={authenticated ? (isStudioUser ? studioHref("/studio") : "/notifications") : "/auth/sign-in?returnTo=%2Fnotifications"}
               className={styles.headerIconButton}
@@ -329,16 +327,13 @@ async function ParentHomeContent({ searchParams }: HomePageProps) {
               <ul className={styles.academyList}>
                 {academyResult.data.map((academy) => (
                   <li key={academy.id}>
-                    <ParentDetailLink href={`/academy/${academy.id}`} className={styles.academyCard}>
-                      <span className={styles.academyImage}>
-                        <HomeAcademyLogo url={academy.logoImageUrl} name={academy.displayName} />
-                      </span>
+                    {/* 앱 AcademyRow 와 /academies 와 같은 줄: 원형 로고 52 · 이름 · 과목 · 지역 */}
+                    <ParentDetailLink href={`/academy/${academy.id}`} className={styles.academyCard} aria-label={`${academy.displayName} 학원 소개`}>
+                      <AcademyLogo src={academy.logoImageUrl} subjectCode={appSubjectCodeFromTags(academy.subjectTags)} size={52} />
                       <span className={styles.academyBody}>
-                        <span className={styles.academyName}>{academy.displayName}</span>
-                        <span className={styles.muted}>{academy.subjectTags.join(" · ")}</span>
-                        <span className={styles.muted}>{[academy.sigungu, academy.bname].filter(Boolean).join(" ")}{typeof academy.distanceKm === "number" ? ` · ${formatDistanceLabel(academy.distanceKm)}` : ""}</span>
+                        <span className={`${appUi.subtitle} ${appUi.oneLine}`}>{academy.displayName}</span>
+                        <span className={`${appUi.caption} ${appUi.oneLine}`}>{[...academy.subjectTags, [academy.sigungu, academy.bname].filter(Boolean).join(" "), typeof academy.distanceKm === "number" ? formatDistanceLabel(academy.distanceKm) : null].filter(Boolean).join(" · ")}</span>
                       </span>
-                      {chevronIcon}
                     </ParentDetailLink>
                   </li>
                 ))}

@@ -85,9 +85,9 @@ export function AcademiesExplorer({
     <p className={ui.caption}>{PARENT_LAUNCH_REGION.notice}</p>
     <ClassesSearchPill initialQuery={initialQuery} placeholder="학원명, 지점명으로 찾기" className={styles.searchForm} pillClassName={styles.searchPill} inputClassName={styles.searchInput} submitButtonClassName={styles.searchSubmit} />
     <div className={styles.filterRow}>
-      <SubjectFilter catalog={subjectCatalog} selectedCategory={selectedSubjectCategory} selectedSubject={selectedSubject} label={selectedSubjectCategory ? selectedSubjectLabel : "과목"}
+      <SubjectFilter catalog={subjectCatalog} selectedCategory={selectedSubjectCategory} selectedSubject={selectedSubject} label={selectedSubjectLabel}
         triggerClassName={ui.filterChip} labelClassName={styles.filterLabel} chevronWrapClassName={styles.chevron} openChevronClassName={styles.chevronOpen} />
-      <GradeFilter selectedGrade={selectedGrade} label={selectedGrade ? selectedGradeLabel : "학년"}
+      <GradeFilter selectedGrade={selectedGrade} label={selectedGradeLabel}
         triggerClassName={ui.filterChip} labelClassName={styles.filterLabel} chevronWrapClassName={styles.chevron} openChevronClassName={styles.chevronOpen} />
       <AcademySortFilter selectedSort={selectedSort} disabledReasonLabel={sortDisabledReasonLabel}
         triggerClassName={ui.filterChip} labelClassName={styles.filterLabel} chevronWrapClassName={styles.chevron} openChevronClassName={styles.chevronOpen} />
