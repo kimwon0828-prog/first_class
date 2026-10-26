@@ -115,8 +115,8 @@ export default async function StudioCasesPage({ searchParams }: StudioCasesPageP
           {filter !== "all" ? <input type="hidden" name="filter" value={filter} /> : null}
           <label className={styles.searchField}>
             <V2SearchIcon size={18} />
-            <span className={styles.srOnly}>학생·보호자·연락처·수업명 검색</span>
-            <input className={styles.searchInput} type="search" name="q" defaultValue={searchQuery} placeholder="학생·보호자·연락처·수업명" maxLength={60} />
+            <span className={styles.srOnly}>학생·보호자 이름 검색</span>
+            <input className={styles.searchInput} type="search" name="q" defaultValue={searchQuery} placeholder="학생·보호자 이름" maxLength={60} />
           </label>
           <button className={styles.srOnly} type="submit">검색</button>
           {searchQuery ? <Link className={v2ButtonClassName({ variant: "ghost", size: "sm" })} href={studioPath(buildHref({ view, filter }))}>초기화</Link> : null}
@@ -190,7 +190,7 @@ export default async function StudioCasesPage({ searchParams }: StudioCasesPageP
                             <span className={styles.studentName}>{item.student.name}</span>
                             <span className={styles.studentGrade}>{getChildGradeLabel(item.student.grade) ?? "학년 미기록"}</span>
                           </span>
-                          {item.guardian.phone ? <span className={styles.sub}><span className={styles.srOnly}>보호자 연락처 </span>보호자 {item.guardian.phone}</span> : null}
+                          {item.guardian.name ? <span className={styles.sub}>보호자 {item.guardian.name}</span> : null}
                         </span>
                         <span className={styles.cellStack}>
                           <V2StatusBadge tone={row.progressTone}>{item.workflow.progress}</V2StatusBadge>

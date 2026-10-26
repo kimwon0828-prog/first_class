@@ -115,6 +115,18 @@ Standard 전용:
 - `recontact_recipients`는 개인정보 파기(20261022120000) 대상에 들어 있다. `trial_applications`를 참조하는 표를 새로 만들면 같은 migration에서 파기 허용 목록과 파기 함수에 넣는다 — 그렇지 않으면 학부모 탈퇴와 보관 파기가 멈춘다.
 - 문자 차단 스위치(`SMS_SEND_ENABLED`)가 꺼져 있으면 dry_run이다. 개발 환경이 운영 DB를 보면 결제와 같은 로컬 가드(`getLocalMutationGuard`, `BILLING_LOCAL_ALLOW=1`)로 막는다.
 
+## 학부모 번호 학원 비공개 정책 (2026-10-26)
+첫수업은 전화 상담 없이 체험을 연결한다(대표 결정 2026-10-26). 학부모는 체험에 함께 오고, 번호가 필요한 연락(확정 · 전날 알림 · 리포트 · 학원 소식)은 첫수업이 보낸다. 학원에 학부모 휴대폰 번호는 필요 없다.
+
+- 학원(Studio)에는 신청서 번호(`trial_applications.parent_phone`)를 보여 주지 않는다. 예외는 두 가지뿐이다.
+  - 등록 학생: `registration_status = 'enrolled'`
+  - 엑셀로 가져온 신청: `import_batch_id is not null`(학원이 직접 넣은 번호)
+- DB가 막는다: `studio_trial_applications` 뷰가 위 두 경우가 아니면 `parent_phone`을 null로 돌려주고, 학원은 `parent_phone`을 고칠 수 없다(20261026130000). 화면에서 따로 가리지 않는다.
+- 그 밖에는 번호 · [전화] · [문자]를 아예 그리지 않는다. 대체 안내 문구나 "연락처 미기록" 같은 빈 표시도 쓰지 않는다. 번호 검색도 없다(학생 · 보호자 이름으로 찾는다).
+- 학원 세션으로 학부모에게 문자 · 알림톡 · 푸시를 보낼 때는 뷰의 `parentPhone`을 쓰지 않는다. `src/features/studio/server/application-parent-phone.ts`(`readApplicationParentPhoneForSend`, server-only)가 service role로 신청 + 학원 조직을 맞춘 뒤 번호를 읽는다. 번호는 발송에만 쓰고 action 결과 · props로 클라이언트에 돌려주지 않는다.
+- 크론(`run-trial-reminders` 등)과 학원 소식 발송은 원래 service role이라 이 규칙과 무관하다. 학원 소식은 학부모 계정 번호로 보내고, 학부모당 한도는 두지 않는다.
+- 학원에 번호를 돌려주는 새 뷰 · RPC · 화면을 만들지 않는다. 필요하면 이 정책을 먼저 바꾼다.
+
 ## 개발 원칙
 - 항상 먼저 계획을 짧게 제시한 뒤 구현한다.
 - docs 폴더의 문서를 먼저 읽고 그 기준으로 작업한다.

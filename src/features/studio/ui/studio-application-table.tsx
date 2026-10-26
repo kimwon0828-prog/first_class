@@ -161,7 +161,6 @@ export const StudioApplicationTable = ({ items, periodLabel }: StudioApplication
         item.childName,
         item.childGrade,
         item.parentName ?? "",
-        item.parentPhone ?? "",
         item.classTitle ?? "",
         getSubjectLabel(item.classSubject) ?? "",
         item.classRegion ?? "",
@@ -285,7 +284,7 @@ export const StudioApplicationTable = ({ items, periodLabel }: StudioApplication
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             className={styles.search}
-            placeholder="학생 · 보호자 · 연락처 검색"
+            placeholder="학생·보호자 이름"
             aria-label="신청 검색"
           />
         </header>
@@ -369,8 +368,7 @@ export const StudioApplicationTable = ({ items, periodLabel }: StudioApplication
                           </span>
                         </td>
                         <td>
-                          <span>{item.parentName ?? "-"}</span>
-                          <span className={styles.subText}>{item.parentPhone ?? "연락처 미기록"}</span>
+                          <span>{item.parentName ? `보호자 ${item.parentName}` : "-"}</span>
                         </td>
                         <td className={styles.numeric}>{formatApplicationDate(item.createdAt) ?? "-"}</td>
                         <td className={styles.chevron} aria-hidden="true">›</td>
@@ -426,7 +424,7 @@ export const StudioApplicationTable = ({ items, periodLabel }: StudioApplication
                       {item.assignedTeacherName ?? "미배정"}
                     </strong>
                     <span>보호자</span>
-                    <strong>{item.parentName ?? "-"} · {item.parentPhone ?? "연락처 미기록"}</strong>
+                    <strong>{item.parentName ?? "-"}</strong>
                   </div>
                   <span className={styles.mobileChevron} aria-hidden="true">상세 보기 ›</span>
                 </article>
