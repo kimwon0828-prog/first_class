@@ -53,7 +53,8 @@ import { getStudioCrossProductHrefResolver } from "@/shared/lib/cross-product-na
  * 지역은 filter 가 아니라 Home 의 맥락이므로 여기 남는다.
  */
 export const metadata: Metadata = {
-  title: "첫수업 | 학원 체험수업 비교·예약",
+  // 브랜드("첫수업") 단독 검색은 학원용 /partner 로 보내고, 홈은 학부모 검색어(지역·체험수업)를 앞에 둔다.
+  title: "노원구 학원 체험수업 비교·예약",
   description:
     "우리 아이에게 맞는 학원 체험수업과 레벨테스트를 한곳에서 비교하고 예약하세요. 첫수업은 학부모와 학원을 연결하는 체험수업 플랫폼입니다.",
   alternates: {
@@ -65,7 +66,7 @@ export const metadata: Metadata = {
     siteName: "첫수업",
     locale: "ko_KR",
     images: [{ url: "/images/first-class-logo.png", width: 1787, height: 598, alt: "첫수업" }],
-    title: "첫수업 | 학원 체험수업 비교·예약",
+    title: "노원구 학원 체험수업 비교·예약 | 첫수업",
     description:
       "우리 아이에게 맞는 학원 체험수업과 레벨테스트를 한곳에서 비교하고 예약하세요. 첫수업은 학부모와 학원을 연결하는 체험수업 플랫폼입니다."
   }
@@ -343,6 +344,10 @@ async function ParentHomeContent({ searchParams }: HomePageProps) {
               </ul>
             )}
           </section>
+
+          <p className={styles.partnerEntry}>
+            <Link href="/partner" className={styles.textLink}>학원 원장님이신가요? 첫수업 파트너 알아보기 {chevronIcon}</Link>
+          </p>
         </div>
       </div>
     </ParentAppShell>

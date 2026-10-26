@@ -12,15 +12,17 @@ import {
 
 import PartnerLanding, { faqItems } from "./PartnerLanding"
 
-const title = "첫수업 파트너 - 체험수업 운영·전환 관리 SaaS"
+// "첫수업" 브랜드 검색에서 이 페이지가 잡히도록 제목을 브랜드로 시작한다.
+// root template("%s | 첫수업")을 거치면 브랜드가 두 번 붙으므로 absolute 로 쓴다.
+const title = "첫수업 - 학원 체험수업 예약·등록 관리 서비스"
 const description =
-  "전화 상담 없이, 체험 예약부터 등록까지. 학부모는 첫수업에서 체험을 직접 예약하고, 원장님은 일정·기록·리포트·등록 결과를 한 화면에서 관리해요."
+  "첫수업은 학원 체험수업 예약부터 등록까지 관리하는 서비스예요. 전화 상담 없이 학부모가 체험을 직접 예약하고, 원장님은 일정·기록·리포트·등록 결과를 한 화면에서 관리해요."
 
 // 스탠다드 월 요금(부가세 포함). 결제 플랜 카탈로그 값을 그대로 쓴다.
 const STANDARD_MONTHLY_PRICE = BILLING_PLANS.standard.amount
 
 export const metadata: Metadata = {
-  title,
+  title: { absolute: title },
   description,
   alternates: {
     canonical: "/partner"
@@ -31,7 +33,7 @@ export const metadata: Metadata = {
     siteName: "첫수업",
     locale: "ko_KR",
     images: [{ url: "/images/first-class-logo.png", width: 1787, height: 598, alt: "첫수업" }],
-    title: `${title} | 첫수업`,
+    title,
     description
   }
 }

@@ -20,8 +20,8 @@ const STATIC_PUBLIC_PATHS: Array<{
   changeFrequency: NonNullable<MetadataRoute.Sitemap[number]["changeFrequency"]>
   priority: number
 }> = [
-  { path: "/", changeFrequency: "daily", priority: 1 },
-  { path: "/partner", changeFrequency: "weekly", priority: 0.9 },
+  { path: "/partner", changeFrequency: "weekly", priority: 1 },
+  { path: "/", changeFrequency: "daily", priority: 0.9 },
   { path: "/academies", changeFrequency: "daily", priority: 0.8 },
   { path: "/classes", changeFrequency: "daily", priority: 0.8 },
   { path: "/privacy", changeFrequency: "monthly", priority: 0.2 },
