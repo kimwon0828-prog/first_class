@@ -4,6 +4,8 @@
   flex-direction: column;
   gap: var(--sv2-space-16);
   font-family: var(--sv2-font);
+  /* 칸 수는 화면이 아니라 이 카드가 놓인 칸의 너비로 정한다(신청 상세 오른쪽 칸은 300~400px). */
+  container: registration-result / inline-size;
 }
 
 .head {
@@ -70,6 +72,7 @@
   font: inherit;
   line-height: 1.45;
   text-align: left;
+  word-break: keep-all;
   cursor: pointer;
 }
 
@@ -180,7 +183,7 @@
   color: var(--sv2-state-danger-fg);
 }
 
-@media (max-width: 960px) {
+@container registration-result (max-width: 600px) {
   .options {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
