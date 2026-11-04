@@ -1,6 +1,7 @@
 import { createClient } from "@supabase/supabase-js"
 import { getPublicEnv } from "@/shared/config/env"
 import { createNativePushDeviceHandler } from "@/features/native/server/push-device"
+import { readNativeParentPhoneState } from "@/features/auth/phone/gate"
 
 export const dynamic = "force-dynamic"
 
@@ -12,7 +13,8 @@ const handle = createNativePushDeviceHandler({
       auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false }
     })
   },
-  enabled: () => process.env.PARENT_PUSH_REGISTRATION_ENABLED === "true"
+  enabled: () => process.env.PARENT_PUSH_REGISTRATION_ENABLED === "true",
+  phoneState: (db, user) => readNativeParentPhoneState(db, user, { via: "api" })
 })
 
 export const GET = handle

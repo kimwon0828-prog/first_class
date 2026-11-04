@@ -3,6 +3,11 @@ export function hasAppleIdentity(user: { app_metadata?: Record<string, unknown>;
   return user.app_metadata?.provider === "apple" || (Array.isArray(user.app_metadata?.providers) && user.app_metadata.providers.includes("apple")) || user.identities?.some(identity => identity.provider === "apple") === true
 }
 
+/** Apple·Google sign-ins carry no trusted phone, so the server requires its own OTP proof. */
+export function hasOAuthPhoneProofIdentity(user: { identities?: Array<{ provider?: string }> | null }) {
+  return user.identities?.some(identity => identity.provider === "apple" || identity.provider === "google") === true
+}
+
 export function isStudioSignup(user: { user_metadata?: Record<string, unknown> }) {
   return ["teacher_invite", "staff_invite", "teacher_public"].includes(String(user.user_metadata?.signup_intent))
 }

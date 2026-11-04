@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
 import type { ParentDeletionResult } from "@/features/my/lib/parent-account-deletion-workflow"
+import { isStudioSignup } from "@/features/auth/lib/apple-auth"
 const json = (body: unknown, status = 200) => Response.json(body, { status, headers: { "Cache-Control": "private, no-store", Vary: "Authorization" } })
 export async function nativeDeletion(request: Request, db: SupabaseClient, options: { enabled: boolean; run: (appleRefreshToken?: string) => Promise<ParentDeletionResult> }) {
   let appleRefreshToken: string | undefined
@@ -26,7 +27,9 @@ export async function nativeDeletion(request: Request, db: SupabaseClient, optio
   ])
   if (profile.error || deletion.error || typeof deletion.data !== "boolean") return json({ error: "account_unavailable" }, 503)
   // The existing self-only retry marker remains usable after personal/profile cleanup.
-  if (profile.data?.role !== "parent" && !deletion.data) return json({ error: "parent_required" }, 403)
+  // A sign-in that never got a profile (stopped at phone verification/name) may also leave.
+  const preProfile = !profile.data && !deletion.data && !isStudioSignup(user) && user.app_metadata?.app_store_review !== true
+  if (profile.data?.role !== "parent" && !deletion.data && !preProfile) return json({ error: "parent_required" }, 403)
   if (request.method === "GET") return json({ enabled: options.enabled, pending: deletion.data })
   const result = await options.run(appleRefreshToken)
   return json(result, result.status === "success" ? 200 : 503)

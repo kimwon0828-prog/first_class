@@ -1,4 +1,4 @@
-import type { SupabaseClient } from "@supabase/supabase-js"
+import type { SupabaseClient, User } from "@supabase/supabase-js"
 import { parsePushDevice } from "@/features/notifications/push/contracts"
 
 const reply = (body: unknown, status = 200) => Response.json(body, {
@@ -10,6 +10,8 @@ const reply = (body: unknown, status = 200) => Response.json(body, {
 export function createNativePushDeviceHandler(deps: {
   client: (token: string) => SupabaseClient
   enabled: () => boolean
+  // Enrollment-aware phone gate shared with the native reader. Defaults to the plain status RPC.
+  phoneState?: (db: SupabaseClient, user: User) => Promise<{ unavailable?: boolean; required: boolean; phoneVerifiedAt: string | null; excluded?: boolean }>
 }) {
   return async (request: Request): Promise<Response> => {
     try {
@@ -21,7 +23,9 @@ export function createNativePushDeviceHandler(deps: {
       const [profile, deletion, phone] = await Promise.all([
         db.from("profiles").select("id, role").eq("id", user.id).maybeSingle(),
         db.rpc("get_my_parent_account_deletion_status"),
-        db.rpc("get_my_parent_phone_status")
+        deps.phoneState
+          ? deps.phoneState(db, user).then(state => state.unavailable ? { data: null, error: true } : { data: state, error: null })
+          : db.rpc("get_my_parent_phone_status")
       ])
       if (profile.error || deletion.error || phone.error || typeof deletion.data !== "boolean") {
         return reply({ error: "account_unavailable" }, 503)

@@ -12,16 +12,18 @@ import { getPublicEnv } from "@/shared/config/env"
 import { getSupabaseServiceRoleClient } from "@/integrations/supabase/service-role"
 import { createNativeParentReader } from "@/features/native/server/parent-reader"
 import { loadBookingTimes, type BookingTime } from "@/features/native/server/booking-time"
+import { readNativeParentPhoneState } from "@/features/auth/phone/gate"
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
 const read = createNativeParentReader({
   reviewAccess: requireAppReviewScope,
+  phoneState: (db, user) => readNativeParentPhoneState(db, user, { via: "api" }),
   pushDevice: (request, db) => nativePushDevice(request, db, process.env.PARENT_PUSH_REGISTRATION_ENABLED === "true"),
   application: nativeApplication,
   responses: (request, path, db, userId) => nativeResponses(request,path,db,userId,{admin:getSupabaseServiceRoleClient,notify:sendStudioNotificationSafely,revalidate:revalidatePath}),
   deletion: (request, db) => nativeDeletion(request, db, {
     enabled: isParentAccountDeletionEnabled(),
-    run: (appleRefreshToken) => deleteParentAccountWithApple(db, getSupabaseServiceRoleClient(), { appleRefreshToken })
+    run: (appleRefreshToken) => deleteParentAccountWithApple(db, getSupabaseServiceRoleClient(), { appleRefreshToken, allowPreProfile: true })
   }),
   client(token) {
     const { supabaseUrl, supabasePublishableKey } = getPublicEnv()

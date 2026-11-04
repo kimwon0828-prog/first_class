@@ -6,6 +6,7 @@ import { isMyParentAccountDeletionPending } from "@/features/my/lib/parent-accou
 import { NextResponse } from "next/server"
 
 import { detectOAuthEmailConflict } from "@/features/auth/lib/oauth-account-conflict"
+import { preferredOAuthName } from "@/features/auth/lib/oauth-profile-name"
 import { ensureParentProfile, getProfileForUser } from "@/features/auth/lib/profile-sync"
 import { resolvePostAuthRedirect } from "@/features/auth/lib/redirect"
 import { getSupabaseServerClient } from "@/integrations/supabase/server"
@@ -23,33 +24,7 @@ const normalizePhone = (value: unknown) => {
   return typeof value === "string" && value.trim().length > 0 ? value.trim() : null
 }
 
-const normalizeName = (user: {
-  email?: string | null
-  app_metadata?: Record<string, unknown>
-  user_metadata?: Record<string, unknown>
-  identities?: Array<{ provider?: string; identity_data?: Record<string, unknown> | null }> | null
-}) => {
-  const metadata = user.user_metadata ?? {}
-  const identityData = user.identities?.[0]?.identity_data ?? {}
-  const candidates = [
-    metadata.name,
-    metadata.full_name,
-    metadata.nickname,
-    identityData.name,
-    identityData.nickname,
-    identityData.profile_nickname
-  ]
-
-  const preferred = candidates.find((value) => typeof value === "string" && value.trim().length > 0)
-  if (typeof preferred === "string") {
-    return preferred.trim().slice(0, 30)
-  }
-
-  if (hasAppleIdentity(user)) return undefined
-
-  const emailLocalPart = user.email?.split("@")[0]?.trim()
-  return emailLocalPart?.slice(0, 30) || "학부모"
-}
+const normalizeName = preferredOAuthName
 
 const isStudioMetadataAccount = (user: { user_metadata?: Record<string, unknown> }) => {
   const signupIntent = user.user_metadata?.signup_intent

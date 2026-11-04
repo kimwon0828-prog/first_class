@@ -4,6 +4,7 @@ import { after } from "next/server"
 import { sendMarketingConsentNoticeSafely } from "@/features/marketing-consent/server/consent-notice-sender"
 import { createNativeMarketingConsentHandler } from "@/features/marketing-consent/server/native-handler"
 import { getPublicEnv } from "@/shared/config/env"
+import { readNativeParentPhoneState } from "@/features/auth/phone/gate"
 
 export const dynamic = "force-dynamic"
 
@@ -16,6 +17,7 @@ const handle = createNativeMarketingConsentHandler({
       auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false }
     })
   },
+  phoneState: (db, user) => readNativeParentPhoneState(db, user, { via: "api" }),
   // 처리 결과 알림(정보통신망법 제50조 제7항)은 응답을 보낸 뒤 보낸다.
   onChanged: (change) => after(() => sendMarketingConsentNoticeSafely(change).then(() => undefined))
 })

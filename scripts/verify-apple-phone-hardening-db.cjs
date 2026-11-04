@@ -120,6 +120,11 @@ async function snapshot() {
     assert.deepEqual(await snapshot(), before);
     assert.deepEqual((await db.query('select * from pg_policies order by schemaname,tablename,policyname')).rows, policiesBefore);
     pass('migration rewrites zero rows; existing RLS policies unchanged');
+    // Regression mode: the later OAuth enrollment migration must keep every HARDENING contract below.
+    if (process.env.APPLY_OAUTH_PHONE_ENROLLMENT === '1') {
+      await db.exec("alter table auth.users add column raw_app_meta_data jsonb default '{}'");
+      await db.exec(read('20261030120000_oauth_parent_phone_enrollment.sql'));
+    }
 
     for (const uid of [users.grandfather,users.kakao]) {
       await asUser(uid);

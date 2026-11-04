@@ -14,6 +14,8 @@ export type NativeReaderDependencies = {
   application?: (request: Request, path: string[], db: SupabaseClient, userId: string, user: User) => Promise<Response>
   client: (token: string) => SupabaseClient
   storage: () => SupabaseClient
+  // Enrollment-aware phone gate (Apple/Google without OTP proof). Defaults to the plain status RPC.
+  phoneState?: (db: SupabaseClient, user: User) => Promise<{ unavailable?: boolean; required: boolean; phoneVerifiedAt: string | null; excluded?: boolean }>
   presentation?: (rows: { id: string; class_id: string | null; class_organization_id: string | null }[], user: User) => Promise<Record<string, NativePresentation>>
 }
 // 신청·리포트 응답에 덧붙이는 학원·수업 표시 정보(읽기 전용, 추가 필드만).
@@ -44,7 +46,9 @@ export function createNativeParentReader(deps: NativeReaderDependencies) {
       const [profile, deletion, phone] = await Promise.all([
         db.from("profiles").select("id, role, name").eq("id", user.id).maybeSingle(),
         db.rpc("get_my_parent_account_deletion_status"),
-        db.rpc("get_my_parent_phone_status")
+        deps.phoneState
+          ? deps.phoneState(db, user).then(state => state.unavailable ? { data: null, error: true } : { data: state, error: null })
+          : db.rpc("get_my_parent_phone_status")
       ])
       if (profile.error || deletion.error || phone.error) fail(503, "account_unavailable")
       if (!profile.data || profile.data.role !== "parent") fail(403, "parent_required")
